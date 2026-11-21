@@ -45,7 +45,7 @@ function TieCard({
 }) {
   if (!tie) {
     return (
-      <div className="flex h-[58px] w-[188px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-3 text-[11px] font-medium text-slate-600">
+      <div className="flex h-[58px] w-[200px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-3 text-[11px] font-medium text-slate-600">
         {placeholderLabel}
       </div>
     );
@@ -101,13 +101,15 @@ function TieCard({
         </div>
         <div className="flex shrink-0 items-center gap-1.5 font-mono tabular-nums">
           {tie.stage !== 'final' && tie.leg1 && (
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] font-semibold text-slate-300">
               ({formatLegScores(tie, 'A')})
             </span>
           )}
           <span
-            className={`w-4 text-right text-xs font-bold ${
-              aWon ? 'text-amber-300' : 'text-slate-300'
+            className={`min-w-[22px] rounded px-1 py-0.5 text-center text-xs font-black border ${
+              aWon
+                ? 'border-amber-400/50 bg-amber-500/15 text-amber-300'
+                : 'border-slate-700/80 bg-slate-950/90 text-slate-200'
             }`}
           >
             {hasPlayed ? tie.aggTeamA : '-'}
@@ -151,13 +153,15 @@ function TieCard({
         </div>
         <div className="flex shrink-0 items-center gap-1.5 font-mono tabular-nums">
           {tie.stage !== 'final' && tie.leg1 && (
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] font-semibold text-slate-300">
               ({formatLegScores(tie, 'B')})
             </span>
           )}
           <span
-            className={`w-4 text-right text-xs font-bold ${
-              bWon ? 'text-amber-300' : 'text-slate-300'
+            className={`min-w-[22px] rounded px-1 py-0.5 text-center text-xs font-black border ${
+              bWon
+                ? 'border-amber-400/50 bg-amber-500/15 text-amber-300'
+                : 'border-slate-700/80 bg-slate-950/90 text-slate-200'
             }`}
           >
             {hasPlayed ? tie.aggTeamB : '-'}
@@ -167,7 +171,7 @@ function TieCard({
     </>
   );
 
-  const cls = `w-[188px] overflow-hidden rounded-xl border text-left transition ${
+  const cls = `w-[200px] overflow-hidden rounded-xl border text-left transition ${
     involvesUser
       ? 'border-emerald-500/55 bg-[#101e1c] shadow-sm shadow-emerald-500/10'
       : 'border-slate-800 bg-[#121923]'

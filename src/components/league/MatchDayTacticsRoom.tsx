@@ -53,10 +53,18 @@ interface MatchDayTacticsRoomProps {
   onAutoOptimize: () => void;
   onInspectPlayer?: (player: Player, slotSubPosition?: SubPosition) => void;
   onClickOpponentPlayerName?: (playerId: string) => void;
+  firstLegBanner?: {
+    stageLabel: string;
+    homeName: string;
+    awayName: string;
+    homeLeg1Goals: number;
+    awayLeg1Goals: number;
+    isUserHomeLeg2: boolean;
+  } | null;
   children?: React.ReactNode; // Sticky Kickoff / Skip action buttons slot
 }
 
-type PitchTabMode = 'opponent' | 'our_squad' | 'split';
+type PitchTabMode = 'split' | 'opponent' | 'our_squad';
 
 function StatComparePill({
   label,
@@ -116,9 +124,10 @@ export function MatchDayTacticsRoom({
   onAutoOptimize,
   onInspectPlayer,
   onClickOpponentPlayerName,
+  firstLegBanner = null,
   children,
 }: MatchDayTacticsRoomProps) {
-  const [pitchTab, setPitchTab] = useState<PitchTabMode>('opponent');
+  const [pitchTab, setPitchTab] = useState<PitchTabMode>('split');
   const [selectedSlot, setSelectedSlot] = useState<SlotRef | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
 
@@ -246,6 +255,68 @@ export function MatchDayTacticsRoom({
           전술·상성 도감
         </button>
       </div>
+
+      {/* Prominent UCL 2nd-Leg 1st-Leg Score & Required Goals Banner */}
+      {firstLegBanner && (() => {
+        const userLeg1 = firstLegBanner.isUserHomeLeg2
+          ? firstLegBanner.homeLeg1Goals
+          : firstLegBanner.awayLeg1Goals;
+        const oppLeg1 = firstLegBanner.isUserHomeLeg2
+          ? firstLegBanner.awayLeg1Goals
+          : firstLegBanner.homeLeg1Goals;
+        const diff = userLeg1 - oppLeg1;
+        const statusCls =
+          diff > 0
+            ? 'border-emerald-400/60 bg-gradient-to-r from-emerald-950/75 via-[#101c26] to-sky-950/50'
+            : diff < 0
+              ? 'border-rose-400/60 bg-gradient-to-r from-rose-950/75 via-[#1c131d] to-amber-950/40'
+              : 'border-amber-400/60 bg-gradient-to-r from-amber-950/70 via-[#161a24] to-sky-950/50';
+        const neededText =
+          diff > 0
+            ? `현재 합산 +${diff}골 리드 · 2차전 무승부 또는 ${diff - 1}골 차 이내 패배까지 진출`
+            : diff < 0
+              ? `현재 합산 ${Math.abs(diff)}골 차 열세 · ${Math.abs(diff)}골 차 승리 시 연장전, ${Math.abs(diff) + 1}골 차 이상 승리 시 직행!`
+              : '현재 합산 동점 · 2차전 승리 시 진출 (무승부 시 연장·승부차기)';
+
+        return (
+          <div
+            className={`rounded-xl border-2 px-3.5 py-3 shadow-lg ${statusCls}`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-black text-slate-950 whitespace-nowrap">
+                  1차전 합산 현황
+                </span>
+                <div className="flex items-center gap-2 font-display text-base sm:text-lg font-black text-white tabular-nums">
+                  <span className={firstLegBanner.isUserHomeLeg2 ? 'text-emerald-300' : 'text-slate-100'}>
+                    {firstLegBanner.homeName}
+                  </span>
+                  <span className="rounded-lg border border-amber-400/50 bg-slate-950/90 px-3 py-0.5 text-amber-300 text-lg sm:text-xl">
+                    {firstLegBanner.homeLeg1Goals} - {firstLegBanner.awayLeg1Goals}
+                  </span>
+                  <span className={!firstLegBanner.isUserHomeLeg2 ? 'text-emerald-300' : 'text-slate-100'}>
+                    {firstLegBanner.awayName}
+                  </span>
+                </div>
+              </div>
+              <span
+                className={`rounded-md px-2.5 py-1 text-[11px] font-extrabold ${
+                  diff > 0
+                    ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/40'
+                    : diff < 0
+                      ? 'bg-rose-500/20 text-rose-200 border border-rose-400/40'
+                      : 'bg-amber-500/20 text-amber-200 border border-amber-400/40'
+                }`}
+              >
+                {diff > 0 ? `+${diff} 리드` : diff < 0 ? `${diff} 열세` : '동점'}
+              </span>
+            </div>
+            <p className="mt-1.5 text-xs font-bold text-slate-200">
+              {neededText}
+            </p>
+          </div>
+        );
+      })()}
 
       {/* 2) Streamlined Head-to-Head Comparison Bar (Our Team vs Opponent) */}
       <div className="rounded-xl border border-slate-800/90 bg-[#0b1018] p-3 space-y-2.5">
@@ -483,42 +554,42 @@ export function MatchDayTacticsRoom({
       <div className="rounded-xl border border-slate-800/90 bg-[#0b1018] p-3 space-y-2.5">
         {/* Segmented Pitch View Switcher */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 rounded-lg bg-[#111822] p-1 text-[11px] w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => setPitchTab('opponent')}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                pitchTab === 'opponent'
-                  ? 'bg-sky-400 text-slate-950'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Eye className="w-3.5 h-3.5" />
-              상대 포메이션 ({opponent.formation})
-            </button>
-            <button
-              type="button"
-              onClick={() => setPitchTab('our_squad')}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 font-bold transition-colors cursor-pointer whitespace-nowrap ${
-                pitchTab === 'our_squad'
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              내 선발 편집 ({formation})
-            </button>
+          <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#111822] p-1 text-[11px] w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setPitchTab('split')}
-              className={`hidden sm:inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 font-bold transition-colors cursor-pointer whitespace-nowrap ${
+              className={`inline-flex items-center justify-center gap-1 rounded-md px-2 sm:px-2.5 py-1.5 font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 pitchTab === 'split'
                   ? 'bg-amber-400 text-slate-950'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Columns2 className="w-3.5 h-3.5" />
+              <Columns2 className="w-3.5 h-3.5 shrink-0" />
               양 팀 피치 비교
+            </button>
+            <button
+              type="button"
+              onClick={() => setPitchTab('opponent')}
+              className={`inline-flex items-center justify-center gap-1 rounded-md px-2 sm:px-2.5 py-1.5 font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                pitchTab === 'opponent'
+                  ? 'bg-sky-400 text-slate-950'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Eye className="w-3.5 h-3.5 shrink-0" />
+              상대 ({opponent.formation})
+            </button>
+            <button
+              type="button"
+              onClick={() => setPitchTab('our_squad')}
+              className={`inline-flex items-center justify-center gap-1 rounded-md px-2 sm:px-2.5 py-1.5 font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                pitchTab === 'our_squad'
+                  ? 'bg-emerald-500 text-slate-950'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              내 선발 ({formation})
             </button>
           </div>
 

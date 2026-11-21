@@ -8,7 +8,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import {
   getInjuryTooltip,
@@ -44,6 +44,7 @@ import {
 } from '../../utils/playerLookup';
 import { ClubSquadModal } from '../common/ClubSquadModal';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
+import { JerseySvg } from '../common/JerseySvg';
 import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { MatchDetailModal } from '../common/MatchDetailModal';
 import { PitchBoard, type SlotRef } from '../common/PitchBoard';
@@ -79,7 +80,7 @@ export function UclDashboard() {
 
   const [tab, setTab] = useState<UclTab>('match');
   const [showLpSummary, setShowLpSummary] = useState(false);
-  const [showSkipResultBanner, setShowSkipResultBanner] = useState(false);
+  const [skipResultModalOpen, setSkipResultModalOpen] = useState(false);
   const [swapPick, setSwapPick] = useState<SlotRef | null>(null);
   const [inspected, setInspected] = useState<{
     player: Player;
@@ -92,14 +93,6 @@ export function UclDashboard() {
 
   const season = state.season;
   const ucl = season?.ucl ?? null;
-
-  useEffect(() => {
-    if (!showSkipResultBanner) return;
-    const timer = window.setTimeout(() => {
-      setShowSkipResultBanner(false);
-    }, 6000);
-    return () => window.clearTimeout(timer);
-  }, [showSkipResultBanner, season?.userUclMatchHistory.length]);
 
   const openPlayerById = (
     playerId: string,
@@ -331,8 +324,8 @@ export function UclDashboard() {
         </div>
       </div>
 
-      {/* UCL 1-Match Skip Result Score Banner (Toast + Top Card) */}
-      {showSkipResultBanner &&
+      {/* UCL 1-Match Skip Result Popup Modal (League Phase + Knockout Playoff/R16/QF/SF/Final) */}
+      {skipResultModalOpen &&
         season.userUclMatchHistory.length > 0 &&
         (() => {
           const lastMatch =
@@ -352,104 +345,308 @@ export function UclDashboard() {
               (!isUserHome && pk.winnerTeamId === lastMatch.awayTeamId)
             : false;
 
+          // Match against all knockout ties to surface 1st-leg & Aggregate (AGG) status
+          const allTies: UclKnockoutTie[] = Object.values(ucl.ties).flat();
+          const matchedTie =
+            allTies.find(
+              (t) =>
+                t.leg1?.fixtureId === lastMatch.fixtureId ||
+                t.leg2?.fixtureId === lastMatch.fixtureId,
+            ) ?? null;
+
+          const isLeg1OfTwoLeg = Boolean(
+            matchedTie &&
+              matchedTie.stage !== 'final' &&
+              matchedTie.leg1?.fixtureId === lastMatch.fixtureId &&
+              !matchedTie.leg2,
+          );
+          const isLeg2OfTwoLeg = Boolean(
+            matchedTie &&
+              matchedTie.stage !== 'final' &&
+              matchedTie.leg2?.fixtureId === lastMatch.fixtureId,
+          );
+
           const outcome =
             userGoals > oppGoals || (pk && userWonPk)
               ? {
-                  label: pk ? '승 (PK)' : '승리',
+                  label: pk ? '승리 (PK)' : '승리',
                   badgeCls: 'bg-emerald-500 text-slate-950',
-                  borderCls:
-                    'border-emerald-400/60 bg-gradient-to-r from-emerald-950/90 via-[#101926] to-[#0d1420]',
+                  ringCls: 'border-emerald-400/55',
                 }
               : userGoals < oppGoals || (pk && !userWonPk)
                 ? {
-                    label: pk ? '패 (PK)' : '패배',
+                    label: pk ? '패배 (PK)' : '패배',
                     badgeCls: 'bg-rose-500 text-white',
-                    borderCls:
-                      'border-rose-400/60 bg-gradient-to-r from-rose-950/90 via-[#101926] to-[#0d1420]',
+                    ringCls: 'border-rose-400/55',
                   }
                 : {
                     label: '무승부',
                     badgeCls: 'bg-slate-600 text-white',
-                    borderCls:
-                      'border-sky-400/50 bg-gradient-to-r from-sky-950/85 via-[#101926] to-[#0d1420]',
+                    ringCls: 'border-sky-400/55',
                   };
+
+          // Tie aggregate verdict (for knockout ties)
+          const tieVerdict = (() => {
+            if (!matchedTie) return null;
+            const userIsA = matchedTie.teamAId === USER_CLUB_ID;
+            const userAgg = userIsA ? matchedTie.aggTeamA : matchedTie.aggTeamB;
+            const oppAgg = userIsA ? matchedTie.aggTeamB : matchedTie.aggTeamA;
+            if (matchedTie.winnerId === USER_CLUB_ID) {
+              return {
+                label:
+                  matchedTie.stage === 'final'
+                    ? '🏆 UEFA 챔피언스리그 우승!'
+                    : '✅ 다음 라운드 진출 확정!',
+                cls: 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200',
+              };
+            }
+            if (matchedTie.winnerId && matchedTie.winnerId !== USER_CLUB_ID) {
+              return {
+                label:
+                  matchedTie.stage === 'final'
+                    ? '🥈 준우승 · 아쉽게 우승 실패'
+                    : '❌ 토너먼트 탈락',
+                cls: 'border-rose-400/50 bg-rose-500/20 text-rose-200',
+              };
+            }
+            const diff = userAgg - oppAgg;
+            return {
+              label:
+                diff > 0
+                  ? `2차전 대기 · 합산 +${diff} 리드`
+                  : diff < 0
+                    ? `2차전 대기 · 합산 ${diff} 열세`
+                    : '2차전 대기 · 합산 동률',
+              cls:
+                diff > 0
+                  ? 'border-sky-400/45 bg-sky-500/15 text-sky-200'
+                  : diff < 0
+                    ? 'border-amber-400/45 bg-amber-500/15 text-amber-200'
+                    : 'border-slate-600 bg-slate-800/80 text-slate-200',
+            };
+          })();
 
           const goalEvents = lastMatch.events
             .filter((e) => e.type === 'goal')
-            .slice(0, 4);
+            .slice(0, 6);
 
           return (
             <div
-              className={`rounded-2xl border-2 px-4 py-3 shadow-xl transition-all ${outcome.borderCls}`}
+              id="ucl-skip-result-modal"
+              className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2.5 min-w-0">
-                  <span
-                    className={`rounded-md px-2 py-0.5 text-xs font-black whitespace-nowrap ${outcome.badgeCls}`}
+              <div
+                className={`w-full max-w-xl max-h-[90dvh] overflow-y-auto rounded-2xl border-2 bg-[#0f1724] shadow-2xl ${outcome.ringCls}`}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between gap-2 border-b border-slate-800 bg-[#0a101a] px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded-md px-2 py-0.5 text-xs font-black ${outcome.badgeCls}`}
+                    >
+                      {outcome.label}
+                    </span>
+                    <span className="rounded bg-sky-500/15 border border-sky-400/35 px-2 py-0.5 text-[11px] font-bold text-sky-200">
+                      {lastMatch.competitionLabel ?? `UCL ${lastMatch.round}R`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSkipResultModalOpen(false)}
+                    className="rounded-lg border border-slate-700 bg-slate-900 p-1.5 text-slate-400 hover:text-white cursor-pointer"
+                    aria-label="결과 창 닫기"
                   >
-                    {outcome.label}
-                  </span>
-                  <span className="rounded bg-slate-900/90 px-2 py-0.5 text-[11px] font-bold text-sky-300 whitespace-nowrap">
-                    {lastMatch.competitionLabel ?? `UCL ${lastMatch.round}R`}
-                  </span>
-                  <div className="flex items-center gap-2 font-display text-base sm:text-lg font-black text-white tabular-nums">
-                    <span
-                      className={
-                        isUserHome ? 'text-emerald-300' : 'text-slate-100'
-                      }
-                    >
-                      {homeClub?.name ?? lastMatch.homeTeamId}
-                    </span>
-                    <span className="rounded-lg bg-slate-950/90 border border-slate-700 px-2.5 py-0.5 text-amber-300">
-                      {lastMatch.homeGoals} - {lastMatch.awayGoals}
-                    </span>
-                    <span
-                      className={
-                        !isUserHome ? 'text-emerald-300' : 'text-slate-100'
-                      }
-                    >
-                      {awayClub?.name ?? lastMatch.awayTeamId}
-                    </span>
-                    {pk && (
-                      <span className="text-xs font-bold text-amber-300">
-                        (PK {pk.homePenGoals}:{pk.awayPenGoals})
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="p-4 sm:p-5 space-y-4">
+                  {/* Single-Match Scoreboard */}
+                  <div className="grid grid-cols-3 items-center gap-2 rounded-xl border border-slate-800 bg-[#0b111b] px-3 py-4 text-center">
+                    <div className="flex flex-col items-center gap-1.5 min-w-0">
+                      {homeClub && (
+                        <JerseySvg
+                          primaryColor={homeClub.primaryColor}
+                          secondaryColor={homeClub.secondaryColor}
+                          pattern={homeClub.pattern}
+                          label={homeClub.shortName}
+                          size={42}
+                        />
+                      )}
+                      <span
+                        className={`truncate max-w-full text-xs sm:text-sm font-extrabold ${
+                          isUserHome ? 'text-emerald-300' : 'text-white'
+                        }`}
+                      >
+                        {homeClub?.name ?? lastMatch.homeTeamId}
                       </span>
-                    )}
+                    </div>
+
+                    <div className="flex flex-col items-center gap-1">
+                      <div className="font-display text-3xl sm:text-4xl font-black tracking-wider text-amber-300 tabular-nums">
+                        {lastMatch.homeGoals} <span className="text-slate-600">:</span>{' '}
+                        {lastMatch.awayGoals}
+                      </div>
+                      {pk && (
+                        <span className="rounded bg-purple-500/20 border border-purple-400/40 px-2 py-0.5 text-[11px] font-black text-purple-200 tabular-nums">
+                          PK {pk.homePenGoals} : {pk.awayPenGoals}
+                        </span>
+                      )}
+                      {lastMatch.extraTime && !pk && (
+                        <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                          연장전 종료 (AET)
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col items-center gap-1.5 min-w-0">
+                      {awayClub && (
+                        <JerseySvg
+                          primaryColor={awayClub.primaryColor}
+                          secondaryColor={awayClub.secondaryColor}
+                          pattern={awayClub.pattern}
+                          label={awayClub.shortName}
+                          size={42}
+                        />
+                      )}
+                      <span
+                        className={`truncate max-w-full text-xs sm:text-sm font-extrabold ${
+                          !isUserHome ? 'text-emerald-300' : 'text-white'
+                        }`}
+                      >
+                        {awayClub?.name ?? lastMatch.awayTeamId}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Prominent Knockout 1st-Leg + Aggregate Score Box */}
+                  {matchedTie && (isLeg1OfTwoLeg || isLeg2OfTwoLeg || matchedTie.stage === 'final') && (() => {
+                    const clubA = clubsById[matchedTie.teamAId];
+                    const clubB = clubsById[matchedTie.teamBId];
+                    const leg1 = matchedTie.leg1;
+                    return (
+                      <div className="rounded-xl border border-sky-400/45 bg-gradient-to-r from-sky-950/60 via-[#0e192b] to-indigo-950/50 p-3.5 space-y-2.5">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs font-black text-sky-200">
+                            🏆 {UCL_STAGE_LABELS[matchedTie.stage]}{' '}
+                            {matchedTie.stage === 'final'
+                              ? '결승 결과'
+                              : isLeg2OfTwoLeg
+                                ? '최종 합산 스코어 (AGG)'
+                                : '1차전 종료 · 합산 현황'}
+                          </span>
+                          {tieVerdict && (
+                            <span
+                              className={`rounded-md border px-2 py-0.5 text-[11px] font-extrabold ${tieVerdict.cls}`}
+                            >
+                              {tieVerdict.label}
+                            </span>
+                          )}
+                        </div>
+
+                        {matchedTie.stage !== 'final' && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs tabular-nums">
+                            {leg1 && (
+                              <div className="rounded-lg border border-slate-700/80 bg-slate-950/75 px-3 py-2 flex items-center justify-between">
+                                <span className="text-[11px] font-bold text-slate-400">
+                                  1차전 ({clubB?.shortName} 홈)
+                                </span>
+                                <span className="font-mono font-bold text-slate-200">
+                                  {clubB?.shortName} {leg1.homeGoals} : {leg1.awayGoals}{' '}
+                                  {clubA?.shortName}
+                                </span>
+                              </div>
+                            )}
+                            <div className="rounded-lg border border-amber-400/45 bg-amber-950/25 px-3 py-2 flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-amber-200">
+                                합산 (AGG)
+                              </span>
+                              <span className="font-mono text-sm font-black text-amber-300">
+                                {clubA?.shortName} {matchedTie.aggTeamA} :{' '}
+                                {matchedTie.aggTeamB} {clubB?.shortName}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Scorers */}
+                  {goalEvents.length > 0 && (
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5 space-y-1.5">
+                      <div className="text-[11px] font-bold text-slate-400">
+                        ⚽ 주요 득점 기록
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {goalEvents.map((g, i) => (
+                          <span
+                            key={`${g.minute}-${g.scorerName}-${i}`}
+                            className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
+                              g.teamId === USER_CLUB_ID
+                                ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200'
+                                : 'border-slate-700 bg-slate-900 text-slate-200'
+                            }`}
+                          >
+                            {g.scorerName} ({g.minute}&apos;)
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quick Match Stats */}
+                  <div className="grid grid-cols-4 gap-2 text-center tabular-nums">
+                    <div className="rounded-lg border border-slate-800 bg-[#101826] px-2 py-2">
+                      <div className="text-[10px] text-slate-500">점유율</div>
+                      <div className="text-xs font-extrabold text-white mt-0.5">
+                        {lastMatch.homePossession}% : {100 - lastMatch.homePossession}%
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-[#101826] px-2 py-2">
+                      <div className="text-[10px] text-slate-500">슈팅(유효)</div>
+                      <div className="text-xs font-extrabold text-white mt-0.5">
+                        {lastMatch.homeShots}({lastMatch.homeShotsOnTarget}) :{' '}
+                        {lastMatch.awayShots}({lastMatch.awayShotsOnTarget})
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-[#101826] px-2 py-2">
+                      <div className="text-[10px] text-slate-500">기대득점 xG</div>
+                      <div className="text-xs font-extrabold text-sky-300 mt-0.5">
+                        {lastMatch.homeXg.toFixed(1)} : {lastMatch.awayXg.toFixed(1)}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-[#101826] px-2 py-2">
+                      <div className="text-[10px] text-slate-500">MOM</div>
+                      <div className="truncate text-xs font-extrabold text-amber-300 mt-0.5">
+                        {lastMatch.momPlayerName}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Modal Footer Actions */}
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSkipResultModalOpen(false);
+                        setInspectedTie(matchedTie);
+                        setInspectedMatch(lastMatch);
+                      }}
+                      className="rounded-xl border border-sky-400/45 bg-sky-500/15 px-4 py-2.5 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                    >
+                      상세 기록 보기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSkipResultModalOpen(false)}
+                      className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-black text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                    >
+                      확인 · 계속하기
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setInspectedMatch(lastMatch)}
-                    className="rounded-lg border border-sky-400/40 bg-sky-500/15 px-2.5 py-1 text-xs font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer whitespace-nowrap"
-                  >
-                    상세 기록
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowSkipResultBanner(false)}
-                    className="rounded-lg border border-slate-700 bg-slate-900 p-1 text-slate-400 hover:text-white cursor-pointer"
-                    title="배너 닫기"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
               </div>
-
-              {goalEvents.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
-                  <span className="font-bold text-slate-400">⚽ 득점:</span>
-                  {goalEvents.map((g, i) => (
-                    <span
-                      key={`${g.minute}-${g.scorerName}-${i}`}
-                      className="rounded bg-slate-950/60 px-1.5 py-0.5 text-[10px]"
-                    >
-                      {g.scorerName} ({g.minute}&apos;)
-                    </span>
-                  ))}
-                </div>
-              )}
             </div>
           );
         })()}
@@ -554,10 +751,19 @@ export function UclDashboard() {
                   userStarters: state.starters,
                   userBench: state.bench,
                 });
-                const aggNote =
-                  nextKnockoutInfo?.aggHomeBeforeMatch !== undefined
-                    ? ` · 1차전 합산 ${nextHome.shortName} ${nextKnockoutInfo.aggHomeBeforeMatch}:${nextKnockoutInfo.aggAwayBeforeMatch} ${nextAway.shortName}`
-                    : '';
+                const firstLegBanner =
+                  nextKnockoutInfo &&
+                  nextKnockoutInfo.aggHomeBeforeMatch !== undefined &&
+                  nextKnockoutInfo.aggAwayBeforeMatch !== undefined
+                    ? {
+                        stageLabel: UCL_STAGE_LABELS[nextKnockoutInfo.tie.stage],
+                        homeName: nextHome.shortName,
+                        awayName: nextAway.shortName,
+                        homeLeg1Goals: nextKnockoutInfo.aggHomeBeforeMatch,
+                        awayLeg1Goals: nextKnockoutInfo.aggAwayBeforeMatch,
+                        isUserHomeLeg2: isUserHomeUcl,
+                      }
+                    : null;
                 return (
                   <MatchDayTacticsRoom
                     opponent={uclOpponent}
@@ -568,12 +774,13 @@ export function UclDashboard() {
                         : undefined
                     }
                     isHome={isUserHomeUcl}
-                    headerBadge={`${
+                    headerBadge={
                       nextKnockoutInfo
                         ? nextKnockoutInfo.competitionLabel
                         : `UCL 스위스 리그 페이즈 ${ucl.leaguePhaseRound + 1} / 8R`
-                    }${aggNote}`}
+                    }
                     headerAccent="ucl"
+                    firstLegBanner={firstLegBanner}
                     activeTactic={activeTactic}
                     defaultTactic={season.defaultTactic}
                     formation={state.formation}
@@ -604,7 +811,7 @@ export function UclDashboard() {
                         id="ucl-skip-single-match-btn"
                         type="button"
                         onClick={() => {
-                          setShowSkipResultBanner(true);
+                          setSkipResultModalOpen(true);
                           simulateSingleMatchInstant();
                         }}
                         className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white cursor-pointer"
