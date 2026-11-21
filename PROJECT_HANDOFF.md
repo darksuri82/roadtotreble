@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v3.0)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v3.1)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,12 +9,16 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **19개 파일 / 68개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **19개 파일 / 70개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
+- **v3.1 주요 신규 모듈·기능**:
+  - **누적 피로도(Fatigue) 완전 제거 & 단독 부상 확률 재조정**: 우리 팀·AI 5대 리그 전체의 경기 간 누적 피로도 계산·OVR 페널티·UI 게이지/배지 완전 삭제(부상·사기·단일 경기 내부 체력 `staminaEngine.ts`는 그대로 유지), 단독 부상 기본 확률 재조정(경상 `0.42%` / 중상 `0.030%` / 치명적 중상 `0.006%`, 경상 강행 악화 고정 `6%`, 경기당 팀 신규 부상 최대 1명 캡, 부상 시 사기 `-1/-2/-3` 하락)
+  - **포메이션 피치 기반 부상 교체 팝업 (`InjuryAlertModal.tsx`, `PitchBoard.tsx`)**: `PitchBoard`(`compact`) 재사용 + 부상 슬롯 빨간 테두리 강조(`highlightedPlayerIds`) + 선발 간 자유 포지션 스왑 & 실시간 대상 슬롯 포지션 적합도 벤치 추천 패널(`recommendBenchReplacements`)
+  - **부상 완치 시 원 선발 자동 복귀 (`resolveAutoReturnInjuredStarters`, `GameContext.tsx`, `InjuryReturnToast.tsx`)**: 부상 교체 시 `season.injuryAutoReturns`에 원 선발·슬롯·대체 선수 기록, 완치 시 모든 대회/고속진행 공통으로 원 선발 자동 복귀(다단계 스왑 역복원·이적/수동복귀 안전 가드) 및 상단 알림 토스트(`InjuryReturnToast`) 표시
 - **v3.0 주요 신규 모듈·기능**:
-  - **전 리그·전 대회 누적 피로도 & 현실적 3단계 부상 시스템**: `src/types/condition.ts`, `src/engine/conditionEngine.ts`, `InjuryAlertModal.tsx`, `FastSimModal.tsx`(주전 부상 시 고속진행 자동 일시정지), `otherLeaguesEngine.ts`·`cupEngine.ts`·`uclEngine.ts`·`GameContext.tsx` 전 세계 5대 리그 96구단 + 36팀 UCL 동일 적용 및 AI 자동 로테이션·부상 대체, `OpponentPitchView.tsx`·`ClubSquadModal.tsx` 실시간 부상/피로 반영
-  - **팀/포지션 라인/선수 단위 사기(Morale) & 72종 기자회견·라커룸 연설**: `src/data/managerEventsPress.ts`(36종), `src/data/managerEventsLocker.ts`(36종), `src/data/managerEvents.ts`(동일 시즌 중복 방지 큐·쿨다운·동적 변수 치환·하이리스크 분기), `ManagerEventModal.tsx`, 도트 SVG 상태 아이콘 3종(`PixelStatusIcon.tsx`: 부상 빨간 십자가 / 사기 최상 불꽃 / 사기 최악 얼음)
+  - **전 리그·전 대회 현실적 3단계 부상 시스템**: `src/types/condition.ts`, `src/engine/conditionEngine.ts`, `InjuryAlertModal.tsx`, `FastSimModal.tsx`(주전 부상 시 고속진행 자동 일시정지), `otherLeaguesEngine.ts`·`cupEngine.ts`·`uclEngine.ts`·`GameContext.tsx` 전 세계 5대 리그 96구단 + 36팀 UCL 동일 적용 및 AI 부상 대체, `OpponentPitchView.tsx`·`ClubSquadModal.tsx` 실시간 부상 반영
+  - **팀/포지션 라인/선수 단위 사기(Morale) & 72종 기자회견·라커룸 연설**: `src/data/managerEventsPress.ts`(36종), `src/data/managerEventsLocker.ts`(36종), `src/data/managerEvents.ts`(동일 시즌 중복 방지 큐·쿨다운·동적 변수 치환·전 이벤트 100% 리스크/사기 하락 분기), `ManagerEventModal.tsx`, 자연 냉각 및 단독 불꽃 우선 게이트, 도트 SVG 상태 아이콘 3종(`PixelStatusIcon.tsx`: 부상 빨간 십자가 / 사기 최상 불꽃 / 사기 최악 얼음)
   - **전 세계 105개국(2,397명) Windows 호환 인라인 SVG 국기 아이콘**: `CountryFlagSvg.tsx`(영국 4개 홈네이션 잉글랜드·스코틀랜드·웨일스·북아일랜드 구분 및 한국/대한민국 통합), 전 선수 카드·피치보드·드래프트·이적시장·득점/도움/평점 순위·상세 모달 전역 적용
 - **v2.9 주요 신규 모듈·기능**:
   - **모바일 브라우저 터치 좌표(Hit-Test) 밀림 완벽 해결 & 뷰포트 안정화**: `html`/`body`/`#root` 단일 문서 스크롤 `overflow-x: clip` + `100dvh`(`min-h-dvh`), `sticky` 헤더 모바일 폭 정상화(`300px` 이내 수납) 및 `backdrop-blur` 합성 레이어 제거, 매치 데이 전술실 액션 버튼 상단 컨트롤 카드 통합, 드래프트 프리뷰 바 높이 고정(`min-h-[84px]`), 카드/피치 노드 `scale`/`translate` 제거 및 전역 `touch-action: manipulation` 적용

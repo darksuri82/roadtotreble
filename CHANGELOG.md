@@ -5,7 +5,29 @@
 
 ---
 
-## v3.0 — 전 리그 누적 피로도 & 3단계 부상 · 사기 & 72종 기자회견/라커룸 연설 · 도트 상태 아이콘 · 105개국 SVG 국기
+## v3.1 — 누적 피로도 완전 삭제 · 포메이션 피치 부상 교체 팝업 · 부상 완치 선발 자동 복귀
+
+### 1. 누적 피로도(Fatigue) 시스템만 완전 삭제 & 단독 부상 확률 재조정
+- **누적 피로도 전면 제거 (`src/types/condition.ts`, `src/engine/conditionEngine.ts`, `PitchBoard.tsx`, `SquadManagerModal.tsx`, `OpponentPitchView.tsx`, `SeasonDashboard.tsx`, `ClubSquadModal.tsx`, `PlayerDetailModal.tsx`, `managerEvents.ts`)**:
+  - 우리 팀 및 5대 리그 AI 구단 전체의 경기 간 누적 피로도 계산·OVR 페널티·피로 로테이션·UI 피로도 게이지/배지/문구를 모두 삭제.
+  - **유지 항목**: 3단계 부상 시스템(도트 십자가·사기 하락·AI 부상 결장/대체), 사기 시스템(도트 불꽃/얼음·72종 기자회견/라커룸 연설 — 연전 이벤트는 `consecutiveMatchesPlayed >= 4` 기준으로 연동), 단일 경기 내부 체력(`staminaEngine.ts`·`matchEngine.ts` 하프타임/연장전 교체용)은 그대로 유지.
+  - 피로도 배율 제거에 맞춰 90분 기준 단독 기본 부상 확률을 재조정: **경상 `0.42%`**(시즌당 선수단 전체 약 2~2.5회), **중상 `0.030%`**, **치명적 중상 `0.006%`**, 경상 출전 강행 악화 고정 `6%`, 경기당 팀 신규 부상 최대 1명 캡 유지.
+
+### 2. 부상 발생 교체 팝업 → 실제 스쿼드 포메이션 피치 화면 개편
+- **포메이션 피치 기반 교체 모달 (`src/components/common/InjuryAlertModal.tsx`, `PitchBoard.tsx`, `App.tsx`)**:
+  - 기존 [내 스쿼드]와 동일한 `PitchBoard`(`compact`)를 재사용해 부상 발생 시 포지션을 외우지 않아도 한눈에 라인업을 보고 교체 가능.
+  - 방금 부상당한 선수 슬롯을 빨간 테두리·링·`부상 발생` 배지(`highlightedPlayerIds`)로 강조하고 기본 선택 상태로 지정.
+  - 선발 ↔ 선발 포지션 스왑 후 빈자리에 벤치 선수를 넣는 유연한 로테이션 지원 + 선택 슬롯에 맞춰 실시간 갱신되는 후보 벤치 목록(포지션 적합도·실효 OVR·`추천` 배지·원클릭 투입).
+
+### 3. 부상 완치 시 원래 선발 라인업 자동 복귀 & 상단 토스트
+- **자동 복귀 엔진 & 예외 안전장치 (`src/engine/conditionEngine.ts`, `src/store/GameContext.tsx`, `src/components/common/InjuryReturnToast.tsx`, `src/types/game.ts`)**:
+  - 부상 교체 팝업에서 부상 선발을 벤치로 내리고 대체 투입 확정 시 `{ injuredPlayerId, injuredPlayerName, originalSlotIndex, replacementPlayerId }`를 `season.injuryAutoReturns`에 기록.
+  - 라운드 진행(일반 경기·스킵·2D 라이브·고속진행·컵·UCL 공통) 중 결장 기간이 끝나 완치(`matchesRemaining === 0`)되면 자동으로 원래 선발 슬롯에 복귀시키고 임시 대체 선수는 벤치로 반환(다단계 선발 스왑도 역복원).
+  - 이적·방출된 선수, 이미 수동 복귀한 선수 등 예외 상황에서도 중복·누락 없이 안전 처리하며, 자동 복귀 시 화면 상단에 `InjuryReturnToast` 배너 표시.
+
+---
+
+## v3.0 — 3단계 부상 · 사기 & 72종 기자회견/라커룸 연설 · 도트 상태 아이콘 · 105개국 SVG 국기
 
 ### 1. 전 리그·전 대회 누적 피로도 & 현실적 3단계 부상 시스템
 - **통합 컨디션 엔진 (`src/types/condition.ts`, `src/engine/conditionEngine.ts`, `dataLoader.ts`, `staminaEngine.ts`, `otherLeaguesEngine.ts`, `cupEngine.ts`, `uclEngine.ts`, `GameContext.tsx`)**:

@@ -8,15 +8,14 @@ import { LOCKER_ROOM_EVENTS } from '../data/managerEventsLocker';
 import { PRESS_CONFERENCE_EVENTS } from '../data/managerEventsPress';
 import {
   applyConditionToPlayers,
-  computeMatchFatigueGain,
   createDefaultCondition,
   createDefaultManagerEventsState,
   createInjury,
-  getFatigueInitialStaminaCap,
-  getFatigueOvrPenalty,
   getInjuryOvrPenalty,
   getMoraleOvrBonus,
   getTeamMoraleBonus,
+  recommendBenchReplacements,
+  resolveAutoReturnInjuredStarters,
   rollPlayerMatchInjury,
   selectConditionAwareAiLineup,
   tickInjuryOneMatch,
@@ -28,7 +27,7 @@ import {
   resolveFlagKey,
   SUPPORTED_FLAG_KEYS,
 } from '../components/common/CountryFlagSvg';
-import type { PlayerConditionMap } from '../types/condition';
+import type { InjuryAutoReturnEntry, PlayerConditionMap } from '../types/condition';
 import type { Player } from '../types/player';
 
 function makeSeededRng(seed = 202603): () => number {
@@ -39,94 +38,47 @@ function makeSeededRng(seed = 202603): () => number {
   };
 }
 
-describe('v3.0 Cumulative Fatigue, 3-Tier Injuries, Morale, 72 Manager Events & 105 SVG Flags', () => {
-  it('accumulates fatigue on match play, recovers on rest, and applies expected tier penalties', () => {
-    const cm = ACTIVE_PLAYERS.find((p) => p.position === 'MF')!;
-    const gk = ACTIVE_PLAYERS.find((p) => p.position === 'GK')!;
-
-    const cmGain = computeMatchFatigueGain({
-      player: cm,
-      subPosition: 'CM',
-      tactic: 'gegenpressing',
-      minutesPlayed: 90,
-    });
-    const gkGain = computeMatchFatigueGain({
-      player: gk,
-      subPosition: 'GK',
-      tactic: 'balanced',
-      minutesPlayed: 90,
-    });
-    expect(cmGain).toBeGreaterThan(gkGain * 2);
-
-    expect(getFatigueOvrPenalty(35)).toBe(0);
-    expect(getFatigueOvrPenalty(45)).toBe(-1.0);
-    expect(getFatigueOvrPenalty(65)).toBe(-2.5);
-    expect(getFatigueOvrPenalty(85)).toBe(-4.5);
-
-    expect(getFatigueInitialStaminaCap(35)).toBe(100);
-    expect(getFatigueInitialStaminaCap(65)).toBe(84);
-    expect(getFatigueInitialStaminaCap(85)).toBe(74);
-
-    // Rest recovers significantly
-    const squad = [cm, gk];
-    const condMap: PlayerConditionMap = {
-      [cm.id]: { ...createDefaultCondition(), fatigue: 55 },
-      [gk.id]: { ...createDefaultCondition(), fatigue: 20 },
-    };
-    const res = updateSquadConditionsAfterMatch({
-      squad,
-      starterIds: new Set([gk.id]),
-      minutesByPlayerId: { [cm.id]: 0, [gk.id]: 90 },
-      tactic: 'balanced',
-      conditionMap: condMap,
-      competition: 'league',
-      isShortRest: false,
-      rng: () => 0.99, // no injury
-    });
-    expect(res.conditionMap[cm.id].fatigue).toBe(31); // 55 - 24
-  });
-
-  it('produces restrained realistic injury rates and scales up when fatigued', () => {
+describe('v3.1 Standalone 3-Tier Injuries, Auto-Return Lineup, Morale, 72 Manager Events & 105 SVG Flags', () => {
+  it('produces restrained standalone injury rates (~0.456% outfield / lower for GK) with max-1 per match cap & morale drop', () => {
     const fw = ACTIVE_PLAYERS.find((p) => p.position === 'FW')!;
-    const rngFresh = makeSeededRng(101);
-    const rngFatigued = makeSeededRng(101);
+    const gk = ACTIVE_PLAYERS.find((p) => p.position === 'GK')!;
+    const rngFw = makeSeededRng(101);
+    const rngGk = makeSeededRng(101);
 
-    let freshMinor = 0;
-    let freshModerate = 0;
-    let freshSevere = 0;
-    let fatiguedTotal = 0;
+    let fwMinor = 0;
+    let fwModerate = 0;
+    let fwSevere = 0;
+    let gkTotal = 0;
     const trials = 20000;
 
     for (let i = 0; i < trials; i += 1) {
       const fRes = rollPlayerMatchInjury({
         player: fw,
         currentCondition: createDefaultCondition(),
-        postMatchFatigue: 20,
         minutesPlayed: 90,
-        rng: rngFresh,
+        rng: rngFw,
       });
-      if (fRes.injury?.severity === 'minor') freshMinor += 1;
-      if (fRes.injury?.severity === 'moderate') freshModerate += 1;
-      if (fRes.injury?.severity === 'severe') freshSevere += 1;
+      if (fRes.injury?.severity === 'minor') fwMinor += 1;
+      if (fRes.injury?.severity === 'moderate') fwModerate += 1;
+      if (fRes.injury?.severity === 'severe') fwSevere += 1;
 
-      const dRes = rollPlayerMatchInjury({
-        player: fw,
+      const gRes = rollPlayerMatchInjury({
+        player: gk,
         currentCondition: createDefaultCondition(),
-        postMatchFatigue: 70,
         minutesPlayed: 90,
-        rng: rngFatigued,
+        rng: rngGk,
       });
-      if (dRes.injury) fatiguedTotal += 1;
+      if (gRes.injury) gkTotal += 1;
     }
 
-    const freshTotal = freshMinor + freshModerate + freshSevere;
-    expect(freshMinor).toBeGreaterThan(freshModerate);
-    expect(freshModerate).toBeGreaterThanOrEqual(freshSevere);
-    // ~0.324% fresh rate => roughly 40..95 injuries over 20000 player-matches
-    expect(freshTotal).toBeGreaterThan(40);
-    expect(freshTotal).toBeLessThan(95);
-    // Fatigued (1.9x) must be substantially higher
-    expect(fatiguedTotal).toBeGreaterThan(freshTotal * 1.5);
+    const fwTotal = fwMinor + fwModerate + fwSevere;
+    expect(fwMinor).toBeGreaterThan(fwModerate * 5);
+    expect(fwModerate).toBeGreaterThanOrEqual(fwSevere);
+    // ~0.456% outfield rate => roughly 65..125 injuries over 20000 player-matches (~2.2-2.5 minor/season)
+    expect(fwTotal).toBeGreaterThan(60);
+    expect(fwTotal).toBeLessThan(130);
+    // GK (0.35x) must be substantially lower than outfield
+    expect(gkTotal).toBeLessThan(fwTotal * 0.55);
 
     // Per-team per-match safety cap: never more than 1 fresh injury in a single match even with rng=0
     const squad11 = ACTIVE_PLAYERS.slice(0, 11);
@@ -141,10 +93,142 @@ describe('v3.0 Cumulative Fatigue, 3-Tier Injuries, Morale, 72 Manager Events & 
       rng: () => 0.00001,
     });
     expect(capped.newInjuries.length).toBe(1);
-    // Severe injury (rng=0.00001 < 0.00004) drops injured player morale by -3 and shocks teamMoraleDelta
+    // Severe injury (rng=0.00001 < 0.00006) drops injured player morale by -3 and shocks teamMoraleDelta
     const injuredId = capped.newInjuries[0].playerId;
     expect(capped.conditionMap[injuredId].morale).toBe(-3);
     expect(capped.teamMoraleDelta).toBe(-1);
+  });
+
+  it('auto-returns healed original starters safely across direct swap, multi-step rotation, manual return, and transfer edge cases', () => {
+    const pool = ACTIVE_PLAYERS.slice(0, 16);
+    const origStarters: (Player | null)[] = pool.slice(0, 11);
+    const origBench: (Player | null)[] = pool.slice(11, 16);
+
+    // Scenario A: Direct 1:1 replacement (slot 9 injured -> bench[0] put into slot 9)
+    const injuredA = origStarters[9]!;
+    const repA = origBench[0]!;
+    const startersA = [...origStarters];
+    const benchA = [...origBench];
+    startersA[9] = repA;
+    benchA[0] = injuredA;
+
+    const entryA: InjuryAutoReturnEntry = {
+      injuredPlayerId: injuredA.id,
+      injuredPlayerName: injuredA.name,
+      originalSlotIndex: 9,
+      replacementPlayerId: repA.id,
+    };
+
+    // While still injured (matchesRemaining > 0), must NOT auto-return
+    const stillOutMap: PlayerConditionMap = {
+      [injuredA.id]: {
+        ...createDefaultCondition(),
+        injury: {
+          ...createInjury('minor', 1, 'league', () => 0.1),
+          matchesRemaining: 1,
+        },
+      },
+    };
+    const notYet = resolveAutoReturnInjuredStarters({
+      starters: startersA,
+      bench: benchA,
+      conditionMap: stillOutMap,
+      autoReturns: [entryA],
+      formation: '4-3-3',
+    });
+    expect(notYet.returnedNotifications.length).toBe(0);
+    expect(notYet.remainingAutoReturns.length).toBe(1);
+    expect(notYet.starters[9]?.id).toBe(repA.id);
+
+    // Once healed (matchesRemaining === 0 / null), must auto-return injuredA -> slot 9 and repA -> bench
+    const healedMap: PlayerConditionMap = {
+      [injuredA.id]: { ...createDefaultCondition(), injury: null },
+    };
+    const restoredA = resolveAutoReturnInjuredStarters({
+      starters: startersA,
+      bench: benchA,
+      conditionMap: healedMap,
+      autoReturns: [entryA],
+      formation: '4-3-3',
+    });
+    expect(restoredA.returnedNotifications.length).toBe(1);
+    expect(restoredA.returnedNotifications[0].playerId).toBe(injuredA.id);
+    expect(restoredA.remainingAutoReturns.length).toBe(0);
+    expect(restoredA.starters[9]?.id).toBe(injuredA.id);
+    expect(restoredA.bench[0]?.id).toBe(repA.id);
+
+    // Scenario B: Flexible 2-step rotation reversal (slot 9 injured -> slot 8 moved to slot 9, bench[1] entered slot 8)
+    const slot8Orig = origStarters[8]!;
+    const repB = origBench[1]!;
+    const startersB = [...origStarters];
+    const benchB = [...origBench];
+    startersB[9] = slot8Orig;
+    startersB[8] = repB;
+    benchB[1] = injuredA;
+
+    const restoredB = resolveAutoReturnInjuredStarters({
+      starters: startersB,
+      bench: benchB,
+      conditionMap: healedMap,
+      autoReturns: [
+        {
+          injuredPlayerId: injuredA.id,
+          injuredPlayerName: injuredA.name,
+          originalSlotIndex: 9,
+          replacementPlayerId: repB.id,
+        },
+      ],
+      formation: '4-3-3',
+    });
+    expect(restoredB.starters[9]?.id).toBe(injuredA.id);
+    expect(restoredB.starters[8]?.id).toBe(slot8Orig.id);
+    expect(restoredB.bench[1]?.id).toBe(repB.id);
+    // Ensure zero duplicate player IDs across starters + bench
+    const allIdsB = [...restoredB.starters, ...restoredB.bench]
+      .filter((p): p is Player => Boolean(p))
+      .map((p) => p.id);
+    expect(new Set(allIdsB).size).toBe(16);
+
+    // Scenario C: Safety guards — departed/transferred player & already-manually-returned player
+    const edgeRes = resolveAutoReturnInjuredStarters({
+      starters: origStarters,
+      bench: origBench,
+      conditionMap: {},
+      autoReturns: [
+        {
+          injuredPlayerId: 'departed-player-999',
+          injuredPlayerName: '이적 선수',
+          originalSlotIndex: 5,
+          replacementPlayerId: origBench[0]!.id,
+        },
+        {
+          injuredPlayerId: origStarters[2]!.id, // already manually in starters!
+          injuredPlayerName: origStarters[2]!.name,
+          originalSlotIndex: 2,
+          replacementPlayerId: origBench[1]!.id,
+        },
+      ],
+      formation: '4-3-3',
+    });
+    expect(edgeRes.remainingAutoReturns.length).toBe(0);
+    expect(edgeRes.returnedNotifications.length).toBe(0);
+    expect(edgeRes.starters[2]?.id).toBe(origStarters[2]!.id);
+  });
+
+  it('recommends bench replacements ranked by position fit and effective OVR', () => {
+    const gk = ACTIVE_PLAYERS.find((p) => p.position === 'GK')!;
+    const st = ACTIVE_PLAYERS.find((p) => p.mainPositions.includes('ST'))!;
+    const cb = ACTIVE_PLAYERS.find((p) => p.mainPositions.includes('CB'))!;
+    const recs = recommendBenchReplacements({
+      injuredSlotPosition: 'FW',
+      injuredSlotSubPosition: 'ST',
+      bench: [gk, cb, st],
+      conditionMap: {},
+      includeUnavailable: true,
+    });
+    expect(recs[0].player.id).toBe(st.id);
+    expect(recs[0].fit).toBe('main');
+    expect(recs[recs.length - 1].player.id).toBe(gk.id);
   });
 
   it('enforces natural morale cooldown, solo MOM ignition over mass team fire, and collective explosion surges', () => {
@@ -265,10 +349,10 @@ describe('v3.0 Cumulative Fatigue, 3-Tier Injuries, Morale, 72 Manager Events & 
     const sample = ACTIVE_PLAYERS[0];
     const boosted = applyConditionToPlayers(
       [sample],
-      { [sample.id]: { ...createDefaultCondition(), morale: 5, fatigue: 10 } },
+      { [sample.id]: { ...createDefaultCondition(), morale: 5 } },
       4,
     );
-    expect(boosted[0].ovr).toBe(Math.min(99, sample.ovr + 3)); // +2 + 0.5 rounded = +3 or +2
+    expect(boosted[0].ovr).toBe(Math.min(99, sample.ovr + 3)); // +2 + 0.5 rounded = +3
   });
 
   it('provides 72 unique manager events (36 press + 36 locker) where every event has a morale-drop/risk choice', () => {
