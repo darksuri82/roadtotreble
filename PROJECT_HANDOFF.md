@@ -1,6 +1,6 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.1)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.2)
 
-이 문서는 GitHub 저장소(`darksuri82/-38-0`)가 연결된 **새 Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
+이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
 ---
 
@@ -9,8 +9,14 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 다크 스포츠 대시보드 테마 (`#090e14`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react`
-- **Testing & Lint**: Vitest (`npm run test` — 현재 **13개 파일 / 37개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **14개 파일 / 42개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
+- **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
+- **v2.2 주요 신규 모듈·기능**:
+  - 전술 vs 플레이스타일 상성(`evaluatePlaystyleTacticMatchup`) + 후반 스코어 상황 보정 + 하프타임 수석코치 교체 추천(`buildHalftimeCoachRecommendations`)
+  - 하프타임 선발 ↔ 선발 자유 스왑, 벤치 교체 안전 확인창, 하프타임 `[빠른 선발]`(`optimizeCurrentStartersForFormation`)
+  - 2D 시뮬 10종 패턴(U자 빌드업 & 반대전환, 세컨찬스 리바운드, 인게임 PK, VAR 오프사이드 취소) + 개별 선수 능력치 직접 반영(`computeIndividualRosterImpact`) + 노트북/PC 2단 중계 레이아웃
+  - 스쿼드/전술 탭 감독 강점 상시 카드(`src/components/common/ManagerTraitBadgeCard.tsx`)
 - **중요 TypeScript 컴파일러 제약 (`tsconfig.app.json`)**:
   - `verbatimModuleSyntax: true` (타입은 반드시 `import type` 사용)
   - `erasableSyntaxOnly: true` (enum / parameter properties 금지)

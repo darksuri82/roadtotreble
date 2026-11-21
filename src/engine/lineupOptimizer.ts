@@ -333,3 +333,82 @@ export function optimizeBestLineup(
     bench: organizeBenchSlots(benchPool),
   };
 }
+
+/**
+ * Halftime / In-Match Quick Best Arrangement (`하프타임 [빠른 선발]`):
+ * Optimizes slot positions ONLY among the 11 players currently on the pitch
+ * for the selected formation and tactic, maximizing Effective OVR + Chemistry
+ * without touching the bench (so subbed-out players are never illegally re-entered
+ * and substitution counts are preserved).
+ */
+export function optimizeCurrentStartersForFormation(
+  currentStarters: (Player | null)[],
+  formation: FormationId,
+  tactic: TacticId,
+  managerTraitId: ManagerTraitId | null = null,
+): (Player | null)[] {
+  const activePlayers = currentStarters.filter((p): p is Player => p !== null);
+  if (activePlayers.length === 0) {
+    return Array.from({ length: 11 }, () => null);
+  }
+
+  const slots = FORMATIONS[formation].slots;
+
+  // Phase 1: Hungarian assignment maximizing positional Effective OVR
+  const weights = activePlayers.map((player) =>
+    slots.map((slot) => {
+      const fit = evaluatePositionFit(player, slot.subPosition, managerTraitId);
+      const fitBonus =
+        fit.fit === 'main'
+          ? 55
+          : fit.fit === 'secondary'
+            ? 18
+            : fit.fit === 'out_of_pos'
+              ? -12
+              : -260;
+      return fit.effectiveOvr * 10 + fitBonus;
+    }),
+  );
+
+  const assignment = solveMaxWeightAssignment(weights);
+  const starters: (Player | null)[] = Array.from({ length: 11 }, () => null);
+  for (let i = 0; i < activePlayers.length; i += 1) {
+    const slotIdx = assignment[i];
+    if (slotIdx >= 0 && slotIdx < 11) {
+      starters[slotIdx] = activePlayers[i];
+    }
+  }
+
+  // Phase 2: 2-opt starter <-> starter swaps to maximize combined Effective OVR + Chemistry
+  let bestScore = evaluateFullLineupObjective(
+    starters,
+    formation,
+    tactic,
+    managerTraitId,
+  );
+
+  for (let pass = 0; pass < 5; pass += 1) {
+    let improved = false;
+    for (let i = 0; i < 11; i += 1) {
+      for (let j = i + 1; j < 11; j += 1) {
+        if (!starters[i] && !starters[j]) continue;
+        [starters[i], starters[j]] = [starters[j], starters[i]];
+        const candidateScore = evaluateFullLineupObjective(
+          starters,
+          formation,
+          tactic,
+          managerTraitId,
+        );
+        if (candidateScore > bestScore + 0.001) {
+          bestScore = candidateScore;
+          improved = true;
+        } else {
+          [starters[i], starters[j]] = [starters[j], starters[i]];
+        }
+      }
+    }
+    if (!improved) break;
+  }
+
+  return starters;
+}

@@ -25,6 +25,7 @@ import type { Club, TacticId } from '../../types/league';
 import type { Player, SubPosition } from '../../types/player';
 import type { UclKnockoutTie } from '../../types/ucl';
 import { JerseySvg } from '../common/JerseySvg';
+import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { PitchBoard, type SlotRef } from '../common/PitchBoard';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
@@ -852,6 +853,7 @@ export function UclDashboard() {
             />
           </div>
           <div className="lg:col-span-4 space-y-4">
+            <ManagerTraitBadgeCard traitId={state.manager.traitId} compact />
             <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-1.5 text-xs font-black text-white">

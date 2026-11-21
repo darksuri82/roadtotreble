@@ -41,6 +41,7 @@ import {
 } from '../engine/legacyEngine';
 import {
   optimizeBestLineup,
+  optimizeCurrentStartersForFormation,
   remapStartersForFormation,
 } from '../engine/lineupOptimizer';
 import {
@@ -622,6 +623,7 @@ type GameAction =
   | { type: 'SET_DRAFT_LEAGUE_POOL'; payload: { leagues: LeagueId[] } }
   | { type: 'CHANGE_FORMATION'; payload: { formation: FormationId } }
   | { type: 'AUTO_OPTIMIZE_LINEUP' }
+  | { type: 'OPTIMIZE_HALFTIME_STARTERS'; payload?: { tactic?: TacticId } }
   | { type: 'SET_DEFAULT_TACTIC'; payload: { tactic: TacticId } }
   | { type: 'START_DRAFT' }
   | { type: 'SPIN_DRAFT_ROULETTE' }
@@ -1083,6 +1085,24 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         starters: optStarters,
         bench: optBench,
         draft: nextDraft,
+      };
+    }
+
+    case 'OPTIMIZE_HALFTIME_STARTERS': {
+      const currentTactic =
+        action.payload?.tactic ??
+        state.season?.nextMatchTactic ??
+        state.season?.defaultTactic ??
+        state.defaultTactic;
+      const optStarters = optimizeCurrentStartersForFormation(
+        state.starters,
+        state.formation,
+        currentTactic,
+        state.manager.traitId,
+      );
+      return {
+        ...state,
+        starters: optStarters,
       };
     }
 
@@ -3053,6 +3073,7 @@ interface GameContextValue {
   setDraftLeaguePool: (leagues: LeagueId[]) => void;
   changeFormation: (formation: FormationId) => void;
   autoOptimizeLineup: () => void;
+  optimizeHalftimeStarters: (tactic?: TacticId) => void;
   setDefaultTactic: (tactic: TacticId) => void;
   startDraft: () => void;
   spinDraftRoulette: () => void;
@@ -3304,6 +3325,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       changeFormation: (formation) =>
         dispatch({ type: 'CHANGE_FORMATION', payload: { formation } }),
       autoOptimizeLineup: () => dispatch({ type: 'AUTO_OPTIMIZE_LINEUP' }),
+      optimizeHalftimeStarters: (tactic) =>
+        dispatch({ type: 'OPTIMIZE_HALFTIME_STARTERS', payload: { tactic } }),
       setDefaultTactic: (tactic) =>
         dispatch({ type: 'SET_DEFAULT_TACTIC', payload: { tactic } }),
       startDraft: () => dispatch({ type: 'START_DRAFT' }),

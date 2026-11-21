@@ -159,12 +159,12 @@ describe('V5.3 Stamina, Auto-Substitution & 7 Highlight Patterns', () => {
     }
   });
 
-  it('generates all 7 highlight patterns and weights them by tactic & set_piece_master trait', () => {
+  it('generates all 10 highlight patterns and weights them by tactic & set_piece_master trait', () => {
     const sampleRoster = ACTIVE_PLAYERS.slice(0, 11);
     const rng = createSeededRng(303);
     const seen = new Set<HighlightPatternId>();
 
-    for (let i = 0; i < 400; i += 1) {
+    for (let i = 0; i < 600; i += 1) {
       seen.add(
         pickHighlightPattern({
           tactic: 'balanced',
@@ -173,7 +173,7 @@ describe('V5.3 Stamina, Auto-Substitution & 7 Highlight Patterns', () => {
         }),
       );
     }
-    expect(seen.size).toBe(7);
+    expect(seen.size).toBe(10);
 
     // Wingplay should favor crosses/cutbacks over counter
     let wingCrossCutback = 0;

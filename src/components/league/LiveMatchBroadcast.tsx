@@ -1,5 +1,6 @@
 import {
   Activity,
+  AlertTriangle,
   ArrowLeftRight,
   Check,
   Compass,
@@ -10,11 +11,14 @@ import {
   Radio,
   Sparkles,
   Star,
+  UserCheck,
+  Wand2,
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
+import { PLAYSTYLES } from '../../data/playstyles';
 import { calculateChemistry } from '../../engine/chemistryEngine';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import {
@@ -24,6 +28,7 @@ import {
   MAX_MATCH_SUBS,
 } from '../../engine/staminaEngine';
 import {
+  buildHalftimeCoachRecommendations,
   evaluateFormationMatchup,
   evaluateTacticMatchup,
   TACTIC_LIST,
@@ -82,6 +87,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     state,
     chemistry,
     changeFormation,
+    optimizeHalftimeStarters,
     swapSquadPositions,
     enterHalftimeLocker,
     startSecondHalfBroadcast,
@@ -101,6 +107,14 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   );
   const [swapPick, setSwapPick] = useState<SlotRef | null>(null);
   const [subbedInIds, setSubbedInIds] = useState<string[]>([]);
+  const [pendingHtSubConfirm, setPendingHtSubConfirm] = useState<{
+    from: SlotRef;
+    to: SlotRef;
+    outPlayer: Player;
+    inPlayer: Player;
+    slotLabel: string;
+  } | null>(null);
+  const [htNotice, setHtNotice] = useState<string | null>(null);
   const [inspected, setInspected] = useState<{
     player: Player;
     slotSubPosition?: SubPosition;
@@ -255,7 +269,10 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
       ({ ev, key }) =>
         ev.minute === minute &&
         !(phase === 'first_half' && ev.half === 2) &&
-        (ev.type === 'goal' || ev.type === 'save' || ev.type === 'chance') &&
+        (ev.type === 'goal' ||
+          ev.type === 'save' ||
+          ev.type === 'chance' ||
+          ev.type === 'var_offside') &&
         !handledHighlightKeys.includes(key),
     );
     if (unhandledNow) {
@@ -317,7 +334,10 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
         ({ ev, key }) =>
           ev.minute === nextMin &&
           !(phase === 'first_half' && ev.half === 2) &&
-          (ev.type === 'goal' || ev.type === 'save' || ev.type === 'chance') &&
+          (ev.type === 'goal' ||
+            ev.type === 'save' ||
+            ev.type === 'chance' ||
+            ev.type === 'var_offside') &&
           !handledHighlightKeys.includes(key),
       );
       setMinute(nextMin);
@@ -367,7 +387,10 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
           if (ev.minute > minute) return false;
           if (
             ev.minute === minute &&
-            (ev.type === 'goal' || ev.type === 'save' || ev.type === 'chance')
+            (ev.type === 'goal' ||
+              ev.type === 'save' ||
+              ev.type === 'chance' ||
+              ev.type === 'var_offside')
           ) {
             if (dramaticEvent && dramaticEvent.key === key && !dramaticEvent.revealed) {
               return false;
@@ -591,20 +614,95 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   const subsUsed = halftime.halftimeSubsMade;
   const subsRemaining = Math.max(0, MAX_MATCH_SUBS - subsUsed);
 
+  const coachRecommendations =
+    phase === 'halftime' && subsRemaining > 0
+      ? buildHalftimeCoachRecommendations({
+          starters: state.starters,
+          bench: state.bench,
+          formation: state.formation,
+          oppTactic,
+          userGoals: halftime.isUserHome ? halftime.homeGoals : halftime.awayGoals,
+          oppGoals: halftime.isUserHome ? halftime.awayGoals : halftime.homeGoals,
+          staminaByPlayerId,
+          firstHalfEvents: halftime.firstHalfEvents,
+          disabledBenchIds: subbedOutIdSet,
+          managerTraitId: state.manager.traitId,
+          maxRecommendations: 2,
+        })
+      : [];
+
   const performHalftimeSwap = (from: SlotRef, to: SlotRef) => {
+    if (from.area === 'bench' && to.area === 'bench') return;
+
     const isBenchSub = from.area !== to.area;
-    if (isBenchSub) {
-      if (subsUsed >= MAX_MATCH_SUBS) return;
-      const incoming =
-        from.area === 'bench'
-          ? state.bench[from.index]
-          : state.bench[to.index];
-      if (!incoming || subbedOutIdSet.has(incoming.id)) return;
-      if (!subbedInIds.includes(incoming.id)) {
-        setSubbedInIds((prev) => [...prev, incoming.id]);
-      }
+    if (!isBenchSub) {
+      // Starter <-> Starter free positional swap (zero substitution count used)
+      const pA = state.starters[from.index];
+      const pB = state.starters[to.index];
+      if (!pA || !pB) return;
+      swapSquadPositions(from, to);
+      setHtNotice(
+        `선발 위치 변경: ${pA.name} ↔ ${pB.name} (교체 횟수 차감 없음)`,
+      );
+      return;
+    }
+
+    if (subsUsed >= MAX_MATCH_SUBS) return;
+    const starterIdx = from.area === 'starter' ? from.index : to.index;
+    const benchIdx = from.area === 'bench' ? from.index : to.index;
+    const outPlayer = state.starters[starterIdx];
+    const inPlayer = state.bench[benchIdx];
+    if (!outPlayer || !inPlayer || subbedOutIdSet.has(inPlayer.id)) return;
+
+    const slotLabel = formationSlots[starterIdx]?.label ?? `#${starterIdx + 1}`;
+    setPendingHtSubConfirm({
+      from: { area: 'starter', index: starterIdx },
+      to: { area: 'bench', index: benchIdx },
+      outPlayer,
+      inPlayer,
+      slotLabel,
+    });
+  };
+
+  const confirmPendingHalftimeSub = () => {
+    if (!pendingHtSubConfirm) return;
+    const { from, to, outPlayer, inPlayer } = pendingHtSubConfirm;
+    if (subsUsed >= MAX_MATCH_SUBS) {
+      setPendingHtSubConfirm(null);
+      return;
+    }
+    if (!subbedInIds.includes(inPlayer.id)) {
+      setSubbedInIds((prev) => [...prev, inPlayer.id]);
     }
     swapSquadPositions(from, to);
+    setHtNotice(`교체 완료: OUT ${outPlayer.name} → IN ${inPlayer.name}`);
+    setPendingHtSubConfirm(null);
+  };
+
+  const handleApplyCoachRecommendation = (
+    starterIndex: number,
+    benchIndex: number,
+  ) => {
+    if (subsUsed >= MAX_MATCH_SUBS) return;
+    const outPlayer = state.starters[starterIndex];
+    const inPlayer = state.bench[benchIndex];
+    if (!outPlayer || !inPlayer || subbedOutIdSet.has(inPlayer.id)) return;
+    const slotLabel = formationSlots[starterIndex]?.label ?? `#${starterIndex + 1}`;
+    setPendingHtSubConfirm({
+      from: { area: 'starter', index: starterIndex },
+      to: { area: 'bench', index: benchIndex },
+      outPlayer,
+      inPlayer,
+      slotLabel,
+    });
+  };
+
+  const handleHalftimeQuickBestXi = () => {
+    setSwapPick(null);
+    optimizeHalftimeStarters(selectedTactic);
+    setHtNotice(
+      `현재 선발 11명을 ${state.formation} 최적 포지션으로 자동 재배치했습니다.`,
+    );
   };
 
   const handleSlotClick = (area: 'starter' | 'bench', index: number) => {
@@ -628,6 +726,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   const handleInstantFinish = () => {
     setDramaticEvent(null);
     setLiveSubOpen(false);
+    setPendingHtSubConfirm(null);
     if (phase === 'second_half') {
       setMinute(90);
       commitLiveMatch();
@@ -637,6 +736,8 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   };
 
   const handleStartSecondHalf = () => {
+    setPendingHtSubConfirm(null);
+    setHtNotice(null);
     startSecondHalfBroadcast({
       secondHalfTactic: selectedTactic,
       subPlayerIds: subbedInIds,
@@ -825,10 +926,10 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   const latestPenKick = revealedKicks[revealedKicks.length - 1] ?? null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/92 p-3 sm:p-5 backdrop-blur-sm">
-      <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0f1621] shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/92 p-2 sm:p-4 backdrop-blur-sm">
+      <div className="flex max-h-[95vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0f1621] shadow-2xl">
         {/* Top Broadcast Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-800 bg-[#0a0f17] px-4 sm:px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-[#0a0f17] px-3.5 sm:px-5 py-2.5">
           <div className="flex items-center gap-2.5">
             <span
               className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-black tracking-wide ${
@@ -963,82 +1064,88 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
         </div>
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto p-4 sm:p-5 space-y-4">
-          {/* Live Scoreboard & Progress Bar */}
-          <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-4 space-y-3">
+        <div className="overflow-y-auto p-3 sm:p-4 space-y-3">
+          {/* Compact Live Scoreboard & Stats Strip */}
+          <div className="rounded-xl border border-slate-800 bg-[#0b1018] px-3.5 py-2.5 space-y-2">
             <div className="grid grid-cols-3 items-center text-center gap-2">
-              <div className="flex flex-col items-center">
+              <div className="flex items-center justify-end gap-2.5 text-right">
+                <div className="min-w-0">
+                  <div
+                    className={`truncate text-xs sm:text-sm font-bold ${
+                      home.isUser ? 'text-emerald-300' : 'text-white'
+                    }`}
+                  >
+                    {home.name}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    {liveHomeFormation} ·{' '}
+                    {TACTICS[fullResult?.homeTactic ?? halftime.homeTactic].shortName}
+                  </div>
+                </div>
                 <JerseySvg
                   primaryColor={home.primaryColor}
                   secondaryColor={home.secondaryColor}
                   pattern={home.pattern}
                   label={home.shortName}
-                  size={44}
+                  size={34}
                 />
-                <span
-                  className={`mt-1.5 text-xs sm:text-sm font-bold ${
-                    home.isUser ? 'text-emerald-300' : 'text-white'
-                  }`}
-                >
-                  {home.name}
-                </span>
-                <span className="text-[10px] text-slate-500">
-                  {liveHomeFormation} ·{' '}
-                  {TACTICS[fullResult?.homeTactic ?? halftime.homeTactic].shortName}
-                </span>
               </div>
 
               <div className="flex flex-col items-center">
-                <div className="font-display text-4xl sm:text-5xl font-bold tracking-wider text-white tabular-nums">
+                <div className="font-display text-3xl sm:text-4xl font-bold tracking-wider text-white tabular-nums leading-none">
                   {liveHomeGoals} <span className="text-slate-600">:</span>{' '}
                   {liveAwayGoals}
                 </div>
-                {isTwoLegSecond && (
-                  <div className="mt-0.5 rounded bg-sky-500/15 px-2 py-0.5 text-[11px] font-bold text-sky-300 tabular-nums">
-                    합산 {liveAggHome} : {liveAggAway}
-                  </div>
-                )}
-                {phase === 'penalties' && (
-                  <div className="mt-0.5 rounded bg-purple-500/20 px-2 py-0.5 text-[11px] font-black text-purple-200 tabular-nums">
-                    PK {livePenHomeScore} : {livePenAwayScore}
-                  </div>
-                )}
-                <div className="mt-1 font-display text-sm font-bold text-emerald-400 tabular-nums">
-                  {phase === 'halftime'
-                    ? "45' HT"
-                    : phase === 'extra_time_break'
-                      ? "90' 연장 대기"
-                      : phase === 'penalties'
-                        ? isPenaltiesDone
-                          ? 'PK 종료'
-                          : '승부차기 진행 중'
-                        : isSecondHalfDone
-                          ? minute > 90
-                            ? "120' AET"
-                            : "90' FT"
-                          : `${minute}'`}
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
+                  <span className="font-display text-xs font-bold text-emerald-400 tabular-nums">
+                    {phase === 'halftime'
+                      ? "45' HT"
+                      : phase === 'extra_time_break'
+                        ? "90' 연장 대기"
+                        : phase === 'penalties'
+                          ? isPenaltiesDone
+                            ? 'PK 종료'
+                            : '승부차기 진행 중'
+                          : isSecondHalfDone
+                            ? minute > 90
+                              ? "120' AET"
+                              : "90' FT"
+                            : `${minute}'`}
+                  </span>
+                  {isTwoLegSecond && (
+                    <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-300 tabular-nums">
+                      합산 {liveAggHome}:{liveAggAway}
+                    </span>
+                  )}
+                  {phase === 'penalties' && (
+                    <span className="rounded bg-purple-500/20 px-1.5 py-0.5 text-[10px] font-black text-purple-200 tabular-nums">
+                      PK {livePenHomeScore}:{livePenAwayScore}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div className="flex flex-col items-center">
+              <div className="flex items-center justify-start gap-2.5 text-left">
                 <JerseySvg
                   primaryColor={away.primaryColor}
                   secondaryColor={away.secondaryColor}
                   pattern={away.pattern}
                   label={away.shortName}
-                  size={44}
+                  size={34}
                 />
-                <span
-                  className={`mt-1.5 text-xs sm:text-sm font-bold ${
-                    away.isUser ? 'text-emerald-300' : 'text-white'
-                  }`}
-                >
-                  {away.name}
-                </span>
-                <span className="text-[10px] text-slate-500">
-                  {liveAwayFormation} ·{' '}
-                  {TACTICS[fullResult?.awayTactic ?? halftime.awayTactic].shortName}
-                </span>
+                <div className="min-w-0">
+                  <div
+                    className={`truncate text-xs sm:text-sm font-bold ${
+                      away.isUser ? 'text-emerald-300' : 'text-white'
+                    }`}
+                  >
+                    {away.name}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    {liveAwayFormation} ·{' '}
+                    {TACTICS[fullResult?.awayTactic ?? halftime.awayTactic].shortName}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1055,31 +1162,31 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
               <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-600" />
             </div>
 
-            {/* Live Match Stats */}
-            <div className="grid grid-cols-4 gap-2 pt-1 text-center tabular-nums">
-              <div className="rounded-lg bg-[#111822] p-2">
-                <div className="text-[10px] text-slate-500">점유율</div>
-                <div className="font-display text-sm font-bold text-white">
+            {/* Compact Live Match Stats */}
+            <div className="grid grid-cols-4 gap-1.5 text-center tabular-nums">
+              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#111822] px-2 py-1">
+                <span className="text-[10px] text-slate-500">점유율</span>
+                <span className="font-display text-xs font-bold text-white">
                   {liveHomePoss}% : {100 - liveHomePoss}%
-                </div>
+                </span>
               </div>
-              <div className="rounded-lg bg-[#111822] p-2">
-                <div className="text-[10px] text-slate-500">xG</div>
-                <div className="font-display text-sm font-bold text-emerald-300">
+              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#111822] px-2 py-1">
+                <span className="text-[10px] text-slate-500">xG</span>
+                <span className="font-display text-xs font-bold text-emerald-300">
                   {liveHomeXg.toFixed(2)} : {liveAwayXg.toFixed(2)}
-                </div>
+                </span>
               </div>
-              <div className="rounded-lg bg-[#111822] p-2">
-                <div className="text-[10px] text-slate-500">슈팅</div>
-                <div className="font-display text-sm font-bold text-white">
+              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#111822] px-2 py-1">
+                <span className="text-[10px] text-slate-500">슈팅</span>
+                <span className="font-display text-xs font-bold text-white">
                   {liveHomeShots} : {liveAwayShots}
-                </div>
+                </span>
               </div>
-              <div className="rounded-lg bg-[#111822] p-2">
-                <div className="text-[10px] text-slate-500">유효슈팅</div>
-                <div className="font-display text-sm font-bold text-sky-300">
+              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#111822] px-2 py-1">
+                <span className="text-[10px] text-slate-500">유효슈팅</span>
+                <span className="font-display text-xs font-bold text-sky-300">
                   {liveHomeSot} : {liveAwaySot}
-                </div>
+                </span>
               </div>
             </div>
           </div>
@@ -1276,87 +1383,9 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
             </div>
           )}
 
-          {/* 2D LIVE PITCH ANIMATION (FM Classic Style + Auto Slow-Mo) */}
-          {(phase === 'first_half' ||
-            phase === 'second_half' ||
-            phase === 'extra_time') && (
-            <div className="space-y-2.5">
-              <PitchMatch2D
-                homeClub={home}
-                awayClub={away}
-                homeFormation={liveHomeFormation}
-                awayFormation={liveAwayFormation}
-                minute={minute}
-                phase={pitchPhase}
-                isFullTime={isSecondHalfDone}
-                speed={speed}
-                homePossession={liveHomePoss}
-                dramaticEvent={dramaticEvent}
-              />
-
-              {/* Live Starter Stamina Strip (Green -> Yellow -> Orange -> Red) */}
-              <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-2.5 space-y-2">
-                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                  <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
-                    <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                    선발 실시간 체력 (STA · {TACTICS[userActiveTactic].shortName})
-                  </span>
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                    <span>70%↑ 정상</span>
-                    <span className="text-yellow-300">55~69% -1.5</span>
-                    <span className="text-orange-300">40~54% -3.5</span>
-                    <span className="text-rose-400">40%↓ -6.0</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-1.5 tabular-nums">
-                  {starterStaminaRows.map((row) => {
-                    if (!row.player) return null;
-                    return (
-                      <div
-                        key={`live-stam-${row.index}`}
-                        className={`rounded-lg border px-2 py-1.5 ${
-                          row.staminaPct < 40
-                            ? 'border-rose-500/45 bg-rose-950/20'
-                            : row.staminaPct < 55
-                              ? 'border-orange-500/35 bg-orange-950/15'
-                              : 'border-slate-800 bg-[#111822]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-1 text-[10px]">
-                          <span className="font-bold text-slate-400">
-                            {row.slotLabel}
-                          </span>
-                          <span
-                            className={`font-extrabold ${getStaminaTextColor(row.staminaPct)}`}
-                          >
-                            {row.staminaPct}%
-                          </span>
-                        </div>
-                        <div className="truncate text-[11px] font-bold text-slate-100">
-                          {row.player.name}
-                          {row.isFreshSub && (
-                            <span className="ml-1 text-[9px] font-black text-sky-300">
-                              IN
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-900">
-                          <div
-                            className={`h-full rounded-full transition-all duration-200 ${getStaminaBarColor(row.staminaPct)}`}
-                            style={{ width: `${row.staminaPct}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* FULL-TIME MOM BANNER */}
           {isSecondHalfDone && fullResult && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/35 bg-amber-950/20 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/35 bg-amber-950/20 px-4 py-2.5">
               <div className="flex items-center gap-2 text-xs">
                 <Star className="w-4 h-4 text-amber-300 fill-current" />
                 <span className="font-bold text-amber-200">
@@ -1373,8 +1402,142 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
             </div>
           )}
 
+          {/* LIVE 2-COLUMN DESKTOP LAYOUT: Left (2D Pitch + Stamina) / Right (Live Commentary) */}
+          {(phase === 'first_half' ||
+            phase === 'second_half' ||
+            phase === 'extra_time') && (
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
+              <div className="lg:col-span-8 space-y-2.5">
+                <PitchMatch2D
+                  homeClub={home}
+                  awayClub={away}
+                  homeFormation={liveHomeFormation}
+                  awayFormation={liveAwayFormation}
+                  minute={minute}
+                  phase={pitchPhase}
+                  isFullTime={isSecondHalfDone}
+                  speed={speed}
+                  homePossession={liveHomePoss}
+                  dramaticEvent={dramaticEvent}
+                />
+
+                {/* Compact Live Starter Stamina Strip */}
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-2.5 space-y-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
+                      <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                      선발 실시간 체력 (STA · {TACTICS[userActiveTactic].shortName})
+                    </span>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                      <span>70%↑ 정상</span>
+                      <span className="text-yellow-300">55~69% -1.5</span>
+                      <span className="text-orange-300">40~54% -3.5</span>
+                      <span className="text-rose-400">40%↓ -6.0</span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5 tabular-nums">
+                    {starterStaminaRows.map((row) => {
+                      if (!row.player) return null;
+                      return (
+                        <div
+                          key={`live-stam-${row.index}`}
+                          className={`rounded-lg border px-2 py-1 ${
+                            row.staminaPct < 40
+                              ? 'border-rose-500/45 bg-rose-950/20'
+                              : row.staminaPct < 55
+                                ? 'border-orange-500/35 bg-orange-950/15'
+                                : 'border-slate-800 bg-[#111822]'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1 text-[10px]">
+                            <span className="font-bold text-slate-400">
+                              {row.slotLabel}
+                            </span>
+                            <span
+                              className={`font-extrabold ${getStaminaTextColor(row.staminaPct)}`}
+                            >
+                              {row.staminaPct}%
+                            </span>
+                          </div>
+                          <div className="truncate text-[10px] font-bold text-slate-100">
+                            {row.player.name}
+                            {row.isFreshSub && (
+                              <span className="ml-1 text-[9px] font-black text-sky-300">
+                                IN
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-900">
+                            <div
+                              className={`h-full rounded-full transition-all duration-200 ${getStaminaBarColor(row.staminaPct)}`}
+                              style={{ width: `${row.staminaPct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Live Commentary Timeline (fits alongside 2D pitch on laptop/PC!) */}
+              <div className="lg:col-span-4 rounded-xl border border-slate-800 bg-[#0b1018] p-3 flex flex-col">
+                <div className="mb-2 flex items-center justify-between text-xs shrink-0">
+                  <span className="font-bold text-slate-200">실시간 문자 중계</span>
+                  <span className="text-[11px] text-slate-500 tabular-nums">
+                    {visibleEvents.length}개 이벤트
+                  </span>
+                </div>
+                <div className="max-h-56 lg:max-h-[405px] space-y-1.5 overflow-y-auto pr-1 text-xs">
+                  {[...visibleEvents].reverse().map((ev, idx) => {
+                    const evClub = clubsById[ev.teamId];
+                    return (
+                      <div
+                        key={`${ev.minute}-${ev.type}-${idx}`}
+                        className={`flex items-start gap-2 rounded-lg px-2.5 py-2 ${
+                          ev.type === 'goal'
+                            ? ev.teamId === USER_CLUB_ID
+                              ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-100 font-semibold'
+                              : 'bg-rose-500/12 border border-rose-500/25 text-rose-100 font-semibold'
+                            : ev.type === 'var_offside'
+                              ? 'bg-purple-500/15 border border-purple-400/40 text-purple-100 font-semibold'
+                              : ev.type === 'save'
+                                ? 'bg-sky-500/10 text-sky-200'
+                                : ev.type === 'yellow'
+                                  ? 'bg-amber-500/10 text-amber-200'
+                                  : ev.type === 'sub'
+                                    ? 'bg-sky-950/60 border border-sky-500/30 text-sky-200 font-semibold'
+                                    : 'bg-[#111822]/70 text-slate-400'
+                        }`}
+                      >
+                        <span className="w-7 shrink-0 font-display text-[11px] font-bold text-slate-400 tabular-nums">
+                          {ev.minute}&apos;
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1 min-w-0">
+                          {evClub &&
+                            ev.type !== 'halftime' &&
+                            ev.type !== 'fulltime' &&
+                            ev.type !== 'kickoff' && (
+                              <ClubTag
+                                shortName={evClub.shortName}
+                                primaryColor={evClub.primaryColor}
+                                isUserTeam={evClub.id === USER_CLUB_ID}
+                              />
+                            )}
+                          <span className="leading-snug text-[11px]">
+                            {ev.description}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* HALFTIME LOCKER ROOM PANEL (auto-shown at 45') */}
-          {phase === 'halftime' ? (
+          {phase === 'halftime' && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
               <div className="lg:col-span-6 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1389,14 +1552,79 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                   )}
                 </div>
 
-                <div className="rounded-xl border border-amber-500/30 bg-amber-950/15 p-3">
-                  <div className="mb-1 flex items-center gap-1.5 text-xs font-bold text-amber-300">
-                    <Lightbulb className="w-3.5 h-3.5" />
-                    수석코치 전반 분석
+                {/* Assistant Coach Tactical Analysis + Recommended Subs */}
+                <div className="rounded-xl border border-amber-500/30 bg-amber-950/15 p-3 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                      <Lightbulb className="w-3.5 h-3.5" />
+                      수석코치 전반 분석 & 추천 교체
+                    </div>
+                    <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-200">
+                      상대: {TACTICS[oppTactic].shortName} · {oppFormation}
+                    </span>
                   </div>
                   <p className="text-xs leading-relaxed text-slate-300">
                     {halftime.tacticalHint}
                   </p>
+
+                  {coachRecommendations.length > 0 ? (
+                    <div className="space-y-2 pt-1 border-t border-amber-500/20">
+                      {coachRecommendations.map((rec) => {
+                        const inStyle = rec.inPlayer.playstyles[0]
+                          ? PLAYSTYLES[rec.inPlayer.playstyles[0]]?.shortName
+                          : null;
+                        return (
+                          <div
+                            key={rec.id}
+                            className="rounded-lg border border-slate-700/80 bg-[#0b1018]/90 p-2.5 space-y-1.5"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-1.5">
+                              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-extrabold text-sky-200">
+                                  {rec.badge}
+                                </span>
+                                <span className="font-bold text-rose-300 line-through">
+                                  {rec.outPlayer.name} ({rec.outStaminaPct}%)
+                                </span>
+                                <span className="text-slate-500">→</span>
+                                <span className="font-extrabold text-emerald-300">
+                                  {rec.inPlayer.name} ({rec.inPlayer.ovr})
+                                </span>
+                                {inStyle && (
+                                  <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-1 py-0.5 text-[9px] font-bold text-emerald-200">
+                                    {inStyle}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                disabled={subsRemaining <= 0}
+                                onClick={() =>
+                                  handleApplyCoachRecommendation(
+                                    rec.starterIndex,
+                                    rec.benchIndex,
+                                  )
+                                }
+                                className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2.5 py-1 text-[10px] font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-40 cursor-pointer"
+                              >
+                                <UserCheck className="w-3 h-3" />
+                                추천 적용
+                              </button>
+                            </div>
+                            <p className="text-[11px] leading-relaxed text-slate-300">
+                              {rec.reason}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="pt-1 border-t border-amber-500/20 text-[11px] text-slate-400">
+                      {subsRemaining <= 0
+                        ? '이미 교체 카드 5장을 모두 사용했습니다. 전술과 포메이션 조정으로 후반을 준비하세요.'
+                        : '현재 선발 11명의 체력과 상성이 양호합니다. 후반 흐름을 보며 60분 이후 교체를 활용해도 좋습니다.'}
+                    </div>
+                  )}
                 </div>
 
                 {/* Tactic & Formation Controls */}
@@ -1444,22 +1672,33 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                     })}
                   </div>
 
-                  <div className="pt-2 border-t border-slate-800">
-                    <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <div className="pt-2 border-t border-slate-800 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs">
                       <span className="font-bold text-white">
                         후반 포메이션 (상대: {oppFormation})
                       </span>
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                          formMatch.delta > 0
-                            ? 'bg-emerald-500/20 text-emerald-300'
-                            : formMatch.delta < 0
-                              ? 'bg-rose-500/20 text-rose-300'
-                              : 'bg-slate-800 text-slate-300'
-                        }`}
-                      >
-                        {formMatch.label}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                            formMatch.delta > 0
+                              ? 'bg-emerald-500/20 text-emerald-300'
+                              : formMatch.delta < 0
+                                ? 'bg-rose-500/20 text-rose-300'
+                                : 'bg-slate-800 text-slate-300'
+                          }`}
+                        >
+                          {formMatch.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleHalftimeQuickBestXi}
+                          title="현재 그라운드의 선발 11명(교체 아웃 선수 제외)을 선택한 포메이션에 맞춰 최적 포지션으로 자동 재배치합니다"
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-[10px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                        >
+                          <Wand2 className="w-3 h-3" />
+                          빠른 선발
+                        </button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-6 gap-1">
                       {FORMATION_LIST.map((f) => (
@@ -1480,8 +1719,22 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                   </div>
                 </div>
 
+                {htNotice && (
+                  <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/35 bg-emerald-950/20 px-3 py-2 text-[11px] font-semibold text-emerald-200">
+                    <span>✓ {htNotice}</span>
+                    <button
+                      type="button"
+                      onClick={() => setHtNotice(null)}
+                      className="text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
                 <div className="rounded-xl border border-slate-800/90 bg-[#0b1018] px-3 py-2 text-[11px] text-slate-400">
-                  💡 오른쪽 포메이션 위 선수별 <strong className="text-emerald-300">체력바(%)</strong>를 보고 바로 클릭·드래그로 교체하세요. 경기 중 교체는 이번 경기에만 적용되며 <strong className="text-slate-200">종료 후 원래 선발 라인업으로 자동 복원</strong>됩니다.
+                  💡 <strong className="text-sky-300">선발 ↔ 선발</strong> 클릭/드래그는 교체 차감 없이 즉시 위치 변경되며,{' '}
+                  <strong className="text-emerald-300">선발 ↔ 벤치</strong> 교체는 실수 방지를 위해 확인창을 거칩니다. 경기 종료 후 원래 선발로 자동 복원됩니다.
                 </div>
 
                 <button
@@ -1499,7 +1752,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                 <div className="flex items-center justify-between text-xs">
                   <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300">
                     <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
-                    선수 교체 ({subsUsed} / {MAX_MATCH_SUBS}명 · 포메이션 체력바 표시)
+                    선수 교체 ({subsUsed} / {MAX_MATCH_SUBS}명) · 선발끼리 자유 스왑 가능
                   </span>
                   {swapPick && (
                     <button
@@ -1531,48 +1784,36 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                 />
               </div>
             </div>
-          ) : (
-            /* LIVE CHRONOLOGICAL COMMENTARY FEED */
-            <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5">
-              <div className="mb-2 flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-300">실시간 문자 중계</span>
+          )}
+
+          {/* Commentary fallback for extra_time_break / penalties phases */}
+          {(phase === 'extra_time_break' || phase === 'penalties') && (
+            <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3">
+              <div className="mb-1.5 flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-300">경기 주요 기록</span>
                 <span className="text-[11px] text-slate-500 tabular-nums">
                   {visibleEvents.length}개 이벤트
                 </span>
               </div>
-              <div className="max-h-52 space-y-1.5 overflow-y-auto pr-1 text-xs">
+              <div className="max-h-36 space-y-1 overflow-y-auto pr-1 text-xs">
                 {[...visibleEvents].reverse().map((ev, idx) => {
                   const evClub = clubsById[ev.teamId];
                   return (
                     <div
                       key={`${ev.minute}-${ev.type}-${idx}`}
-                      className={`flex items-start gap-2.5 rounded-lg px-3 py-2 ${
-                        ev.type === 'goal'
-                          ? ev.teamId === USER_CLUB_ID
-                            ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-100 font-semibold'
-                            : 'bg-rose-500/12 border border-rose-500/25 text-rose-100 font-semibold'
-                          : ev.type === 'save'
-                            ? 'bg-sky-500/10 text-sky-200'
-                            : ev.type === 'yellow'
-                              ? 'bg-amber-500/10 text-amber-200'
-                              : ev.type === 'sub'
-                                ? 'bg-sky-950/60 border border-sky-500/30 text-sky-200 font-semibold'
-                                : 'bg-[#111822]/70 text-slate-400'
-                      }`}
+                      className="flex items-start gap-2 rounded-lg bg-[#111822]/70 px-2.5 py-1.5 text-[11px] text-slate-300"
                     >
-                      <span className="w-8 shrink-0 font-display text-xs font-bold text-slate-400 tabular-nums">
+                      <span className="w-7 shrink-0 font-display font-bold text-slate-500 tabular-nums">
                         {ev.minute}&apos;
                       </span>
-                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                        {evClub && ev.type !== 'halftime' && ev.type !== 'fulltime' && ev.type !== 'kickoff' && (
-                          <ClubTag
-                            shortName={evClub.shortName}
-                            primaryColor={evClub.primaryColor}
-                            isUserTeam={evClub.id === USER_CLUB_ID}
-                          />
-                        )}
-                        <span className="leading-snug">{ev.description}</span>
-                      </div>
+                      {evClub && ev.type !== 'halftime' && ev.type !== 'fulltime' && ev.type !== 'kickoff' && (
+                        <ClubTag
+                          shortName={evClub.shortName}
+                          primaryColor={evClub.primaryColor}
+                          isUserTeam={evClub.id === USER_CLUB_ID}
+                        />
+                      )}
+                      <span>{ev.description}</span>
                     </div>
                   );
                 })}
@@ -1581,6 +1822,82 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
           )}
         </div>
       </div>
+
+      {/* Halftime Bench Substitution Safety Confirmation Modal */}
+      {pendingHtSubConfirm && (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-amber-500/45 bg-[#101824] p-5 shadow-2xl space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                <AlertTriangle className="w-5 h-5" />
+              </span>
+              <div>
+                <h4 className="text-sm font-black text-white">
+                  선수 교체를 확정할까요?
+                </h4>
+                <p className="mt-1 text-xs leading-relaxed text-slate-300">
+                  <strong className="text-rose-300">
+                    {pendingHtSubConfirm.outPlayer.name}
+                  </strong>{' '}
+                  선수를 빼고{' '}
+                  <strong className="text-emerald-300">
+                    {pendingHtSubConfirm.inPlayer.name}
+                  </strong>{' '}
+                  선수를 투입합니다.
+                </p>
+                <p className="mt-1 text-[11px] font-semibold text-amber-300/90">
+                  교체 아웃된 선수는 이번 경기에 다시 출전할 수 없습니다. (교체 {subsUsed + 1}/{MAX_MATCH_SUBS})
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 text-xs">
+              <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-2.5">
+                <div className="text-[10px] font-bold text-rose-300">
+                  OUT · {pendingHtSubConfirm.slotLabel}
+                </div>
+                <div className="mt-0.5 font-extrabold text-white truncate">
+                  {pendingHtSubConfirm.outPlayer.name}
+                </div>
+                <div className="mt-1 text-[11px] text-slate-400 tabular-nums">
+                  OVR {pendingHtSubConfirm.outPlayer.ovr} · 체력{' '}
+                  {staminaByPlayerId[pendingHtSubConfirm.outPlayer.id] ?? 75}%
+                </div>
+              </div>
+              <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/20 p-2.5">
+                <div className="text-[10px] font-bold text-emerald-300">
+                  IN · 벤치 투입
+                </div>
+                <div className="mt-0.5 font-extrabold text-white truncate">
+                  {pendingHtSubConfirm.inPlayer.name}
+                </div>
+                <div className="mt-1 text-[11px] text-emerald-200/90 tabular-nums">
+                  OVR {pendingHtSubConfirm.inPlayer.ovr} · 체력 100%
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setPendingHtSubConfirm(null)}
+                className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                id="confirm-halftime-sub-btn"
+                type="button"
+                onClick={confirmPendingHalftimeSub}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                교체 확정
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Live 2nd-Half Substitution Pause Overlay (Full Formation PitchBoard + Live Stamina Bars!) */}
       {liveSubOpen && (

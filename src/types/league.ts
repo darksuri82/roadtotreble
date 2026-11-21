@@ -45,6 +45,7 @@ export type MatchEventType =
   | 'goal'
   | 'chance'
   | 'save'
+  | 'var_offside'
   | 'yellow'
   | 'kickoff'
   | 'halftime'
@@ -58,14 +59,25 @@ export type HighlightPatternId =
   | 'cut_inside_curler'
   | 'corner_kick'
   | 'direct_free_kick'
-  | 'high_press_counter';
+  | 'high_press_counter'
+  | 'u_buildup_switch'
+  | 'rebound_finish'
+  | 'penalty_kick';
 
 export type HighlightOutcomeType =
   | 'goal'
   | 'save'
   | 'woodwork'
   | 'blocked'
-  | 'near_miss';
+  | 'near_miss'
+  | 'var_offside';
+
+export type ShotAngleType =
+  | 'near_post'
+  | 'far_post'
+  | 'acute_left'
+  | 'acute_right'
+  | 'center';
 
 export interface MatchEvent {
   minute: number;
@@ -82,6 +94,11 @@ export interface MatchEvent {
   xgDelta?: number;
   highlightPattern?: HighlightPatternId;
   highlightOutcome?: HighlightOutcomeType;
+  shotAngle?: ShotAngleType;
+  isPenalty?: boolean;
+  pkDirection?: 'left' | 'center' | 'right';
+  reboundOrigin?: 'save' | 'woodwork' | 'blocked';
+  secondaryShooterName?: string;
   subOutName?: string;
   subInName?: string;
   description: string;

@@ -223,9 +223,11 @@ export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
                     ? ev.teamId === USER_CLUB_ID
                       ? 'bg-emerald-500/15 text-emerald-200 font-semibold'
                       : 'bg-rose-500/12 text-rose-200 font-semibold'
-                    : ev.type === 'sub'
-                      ? 'bg-amber-500/12 text-amber-200 font-semibold'
-                      : 'text-slate-400'
+                    : ev.type === 'var_offside'
+                      ? 'bg-purple-500/15 text-purple-200 font-semibold'
+                      : ev.type === 'sub'
+                        ? 'bg-amber-500/12 text-amber-200 font-semibold'
+                        : 'text-slate-400'
                 }`}
               >
                 <span className="w-7 shrink-0 font-display text-xs font-bold text-slate-500 tabular-nums">

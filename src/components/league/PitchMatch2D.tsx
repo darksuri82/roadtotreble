@@ -6,6 +6,7 @@ import type {
   HighlightOutcomeType,
   HighlightPatternId,
   MatchEvent,
+  ShotAngleType,
 } from '../../types/league';
 
 export interface DramaticHighlightPayload {
@@ -43,6 +44,9 @@ interface ActiveSequence {
   attackerIdx: number;
   passerIdx: number;
   targetY: number;
+  shotAngle: ShotAngleType;
+  pkDirection: 'left' | 'center' | 'right';
+  reboundOrigin: 'save' | 'woodwork' | 'blocked';
   scorerName: string;
   assistName?: string;
   minute: number;
@@ -57,6 +61,9 @@ const PATTERN_BADGE_LABELS: Record<HighlightPatternId, string> = {
   corner_kick: '코너킥 세트피스',
   direct_free_kick: '직접 프리킥',
   high_press_counter: '전방 압박 고속 역습',
+  u_buildup_switch: 'U자 빌드업 · 반대전환',
+  rebound_finish: '세컨찬스 리바운드',
+  penalty_kick: '페널티킥 (PK)',
 };
 
 const ALL_PATTERNS: HighlightPatternId[] = [
@@ -67,6 +74,9 @@ const ALL_PATTERNS: HighlightPatternId[] = [
   'corner_kick',
   'direct_free_kick',
   'high_press_counter',
+  'u_buildup_switch',
+  'rebound_finish',
+  'penalty_kick',
 ];
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -207,6 +217,8 @@ export function PitchMatch2D({
     let outcome: HighlightOutcomeType;
     if (ev.highlightOutcome) {
       outcome = ev.highlightOutcome;
+    } else if (ev.type === 'var_offside') {
+      outcome = 'var_offside';
     } else if (ev.type === 'goal') {
       outcome = 'goal';
     } else if (ev.type === 'save') {
@@ -217,6 +229,41 @@ export function PitchMatch2D({
     }
 
     const flankSide: 1 | -1 = seed % 2 === 0 ? -1 : 1;
+    const shotAngle: ShotAngleType =
+      ev.shotAngle ??
+      (pattern === 'cut_inside_curler'
+        ? 'far_post'
+        : flankSide < 0
+          ? 'acute_left'
+          : 'acute_right');
+    const pkDirection: 'left' | 'center' | 'right' =
+      ev.pkDirection ??
+      (seed % 3 === 0 ? 'left' : seed % 3 === 1 ? 'right' : 'center');
+    const reboundOrigin: 'save' | 'woodwork' | 'blocked' =
+      ev.reboundOrigin ??
+      (seed % 3 === 0 ? 'save' : seed % 3 === 1 ? 'woodwork' : 'blocked');
+
+    let targetY = 0.5;
+    if (outcome === 'woodwork') {
+      targetY = flankSide < 0 ? 0.405 : 0.595;
+    } else if (pattern === 'penalty_kick') {
+      targetY =
+        pkDirection === 'left'
+          ? 0.422
+          : pkDirection === 'right'
+            ? 0.578
+            : 0.5;
+    } else if (shotAngle === 'far_post') {
+      targetY = flankSide < 0 ? 0.578 : 0.422;
+    } else if (shotAngle === 'near_post') {
+      targetY = flankSide < 0 ? 0.428 : 0.572;
+    } else if (shotAngle === 'acute_left') {
+      targetY = 0.435 + (seed % 3) * 0.015;
+    } else if (shotAngle === 'acute_right') {
+      targetY = 0.565 - (seed % 3) * 0.015;
+    } else {
+      targetY = 0.45 + ((seed % 5) / 4) * 0.1;
+    }
 
     sequenceRef.current = {
       key: dramaticEvent.key,
@@ -228,16 +275,10 @@ export function PitchMatch2D({
       durationMs: DRAMATIC_TOTAL_MS,
       attackerIdx: 8 + (seed % 3),
       passerIdx: 5 + (seed % 3),
-      targetY:
-        outcome === 'woodwork'
-          ? flankSide < 0
-            ? 0.405
-            : 0.595
-          : pattern === 'direct_free_kick' || pattern === 'cut_inside_curler'
-            ? flankSide < 0
-              ? 0.57
-              : 0.43
-            : 0.43 + ((seed % 5) / 4) * 0.14,
+      targetY,
+      shotAngle,
+      pkDirection,
+      reboundOrigin,
       scorerName:
         ev.scorerName ??
         (isHomeAttack ? homeClub.shortName : awayClub.shortName),
@@ -476,11 +517,18 @@ export function PitchMatch2D({
         patternLabel: string;
         alpha: number;
       } | null = null;
+      let varBanner: {
+        scorer: string;
+        minute: number;
+        teamShort: string;
+        alpha: number;
+      } | null = null;
+      let varOffsideLine: { x: number; alpha: number } | null = null;
       let topAlertPill: { text: string; color: string; border: string } | null =
         null;
       let pitchFlashAlpha = 0;
 
-      // Custom per-player overrides during the 7 specialized highlight patterns
+      // Custom per-player overrides during the 10 specialized highlight patterns
       const atkOverrides = new Map<number, Vec2>();
       const defOverrides = new Map<number, Vec2>();
 
@@ -692,6 +740,171 @@ export function PitchMatch2D({
             ballTargetX = fkSpot.x;
             ballTargetY = fkSpot.y;
           }
+        } else if (seq.pattern === 'u_buildup_switch') {
+          // 8) U-shape rear buildup (CB -> CDM -> opp CB) -> arcing diagonal switch pass to opposite flank!
+          const cbStart: Vec2 = { x: atkX(isH, 0.34), y: fl < 0 ? 0.32 : 0.68 };
+          const cdmPivot: Vec2 = { x: atkX(isH, 0.44), y: 0.50 };
+          const cbSwitch: Vec2 = { x: atkX(isH, 0.42), y: fl < 0 ? 0.72 : 0.28 };
+          const oppFlankY = fl < 0 ? 0.14 : 0.86;
+          const wingerRecv: Vec2 = { x: atkX(isH, 0.78), y: oppFlankY };
+          const cutAnglePos: Vec2 = {
+            x: atkX(isH, 0.86),
+            y: fl < 0 ? 0.28 : 0.72,
+          };
+
+          atkOverrides.set(2, cbStart);
+          atkOverrides.set(5, cdmPivot);
+          atkOverrides.set(3, cbSwitch);
+          atkOverrides.set(seq.attackerIdx, {
+            x: lerp(wingerRecv.x, cutAnglePos.x, Math.max(0, Math.min(1, (seqProg - 0.24) * 5))),
+            y: lerp(wingerRecv.y, cutAnglePos.y, Math.max(0, Math.min(1, (seqProg - 0.24) * 5))),
+          });
+          defOverrides.set(1, { x: atkX(isH, 0.76), y: fl < 0 ? 0.65 : 0.35 }); // pulled to wrong side!
+          defOverrides.set(4, { x: atkX(isH, lerp(0.78, 0.86, seqProg)), y: fl < 0 ? 0.34 : 0.66 });
+          shotOrigin = cutAnglePos;
+          shotControl = {
+            x: atkX(isH, 0.91),
+            y: lerp(cutAnglePos.y, seq.targetY, 0.42),
+          };
+
+          if (seqProg < 0.36) {
+            if (seqProg < 0.11) {
+              const t1 = seqProg / 0.11;
+              ballTargetX = lerp(cbStart.x, cdmPivot.x, t1);
+              ballTargetY = lerp(cbStart.y, cdmPivot.y, t1);
+            } else if (seqProg < 0.20) {
+              const t2 = (seqProg - 0.11) / 0.09;
+              ballTargetX = lerp(cdmPivot.x, cbSwitch.x, t2);
+              ballTargetY = lerp(cdmPivot.y, cbSwitch.y, t2);
+              curvePath = {
+                p0: cbStart,
+                p1: cdmPivot,
+                p2: cbSwitch,
+                alpha: 0.7,
+                color: '#38bdf8',
+              };
+            } else {
+              const t3 = (seqProg - 0.20) / 0.16;
+              const switchCtrl: Vec2 = {
+                x: atkX(isH, 0.62),
+                y: 0.50,
+              };
+              const pt = quadBezier(cbSwitch, switchCtrl, wingerRecv, t3);
+              ballTargetX = pt.x;
+              ballTargetY = pt.y;
+              ballLift = Math.sin(t3 * Math.PI) * 1.25; // Towering diagonal switch!
+              curvePath = {
+                p0: cbSwitch,
+                p1: switchCtrl,
+                p2: wingerRecv,
+                alpha: 0.88,
+                color: '#38bdf8',
+              };
+            }
+          }
+        } else if (seq.pattern === 'rebound_finish') {
+          // 9) Second-chance rebound: 1st shot parried/post/blocked -> loose ball -> 2nd attacker smashes it in!
+          const firstShooterPos: Vec2 = {
+            x: atkX(isH, 0.75),
+            y: fl < 0 ? 0.34 : 0.66,
+          };
+          const deflectSpot: Vec2 =
+            seq.reboundOrigin === 'woodwork'
+              ? { x: atkX(isH, 0.98), y: fl < 0 ? 0.41 : 0.59 }
+              : seq.reboundOrigin === 'blocked'
+                ? { x: atkX(isH, 0.86), y: 0.50 + fl * 0.06 }
+                : { x: atkX(isH, 0.94), y: 0.50 + fl * 0.05 };
+          const reboundSpot: Vec2 = {
+            x: atkX(isH, 0.875),
+            y: 0.50 - fl * 0.07,
+          };
+          atkOverrides.set(seq.passerIdx, firstShooterPos);
+          atkOverrides.set(seq.attackerIdx, {
+            x: atkX(isH, lerp(0.76, 0.875, Math.min(1, seqProg / 0.34))),
+            y: lerp(0.50 - fl * 0.16, reboundSpot.y, Math.min(1, seqProg / 0.34)),
+          });
+          defOverrides.set(2, { x: atkX(isH, 0.86), y: 0.50 + fl * 0.06 });
+          defOverrides.set(3, { x: atkX(isH, 0.89), y: 0.50 - fl * 0.14 });
+          shotOrigin = reboundSpot;
+          shotControl = { x: atkX(isH, 0.92), y: seq.targetY };
+
+          if (seqProg < 0.36) {
+            if (seqProg < 0.20) {
+              const t1 = seqProg / 0.20;
+              ballTargetX = lerp(firstShooterPos.x, deflectSpot.x, t1);
+              ballTargetY = lerp(firstShooterPos.y, deflectSpot.y, t1);
+              ballLift = Math.sin(t1 * Math.PI) * 0.3;
+              curvePath = {
+                p0: firstShooterPos,
+                p1: {
+                  x: lerp(firstShooterPos.x, deflectSpot.x, 0.5),
+                  y: lerp(firstShooterPos.y, deflectSpot.y, 0.5),
+                },
+                p2: deflectSpot,
+                alpha: 0.72,
+                color: '#f8fafc',
+              };
+            } else {
+              const t2 = (seqProg - 0.20) / 0.16;
+              ballTargetX = lerp(deflectSpot.x, reboundSpot.x, t2);
+              ballTargetY = lerp(deflectSpot.y, reboundSpot.y, t2);
+              ballLift = Math.sin(t2 * Math.PI) * 0.55;
+              impactRing = {
+                x: deflectSpot.x,
+                y: deflectSpot.y,
+                alpha: Math.max(0, 1 - t2),
+                color:
+                  seq.reboundOrigin === 'woodwork'
+                    ? '#fb923c'
+                    : seq.reboundOrigin === 'blocked'
+                      ? '#fbbf24'
+                      : '#38bdf8',
+              };
+            }
+          }
+        } else if (seq.pattern === 'penalty_kick') {
+          // 10) Penalty Kick: everyone outside box arc, tense standoff, left/center/right strike + GK dive!
+          const pkSpot: Vec2 = { x: atkX(isH, 0.885), y: 0.50 };
+          const runT = Math.max(0, Math.min(1, (seqProg - 0.16) / 0.18));
+          atkOverrides.set(seq.attackerIdx, {
+            x: pkSpot.x + (isH ? -0.055 * (1 - runT) : 0.055 * (1 - runT)),
+            y: 0.50 + 0.025 * (1 - runT),
+          });
+          // Line up other players outside the penalty box
+          for (let k = 1; k < 11; k += 1) {
+            if (k !== seq.attackerIdx) {
+              atkOverrides.set(k, {
+                x: atkX(isH, 0.79 - (k % 3) * 0.03),
+                y: 0.24 + ((k * 7) % 10) * 0.055,
+              });
+            }
+            defOverrides.set(k, {
+              x: atkX(isH, 0.805 - (k % 2) * 0.02),
+              y: 0.22 + ((k * 5) % 10) * 0.058,
+            });
+          }
+          // GK on the goal line: dives to corner after shot is struck
+          const gkDiveY =
+            seqProg < 0.36
+              ? 0.50
+              : seq.outcome === 'save'
+                ? seq.targetY
+                : seq.pkDirection === 'center'
+                  ? 0.435
+                  : seq.targetY < 0.5
+                    ? 0.565
+                    : 0.435;
+          defOverrides.set(0, { x: atkX(isH, 0.962), y: gkDiveY });
+
+          shotOrigin = pkSpot;
+          shotControl = {
+            x: atkX(isH, 0.93),
+            y: lerp(0.50, seq.targetY, 0.6),
+          };
+          if (seqProg < 0.35) {
+            ballTargetX = pkSpot.x;
+            ballTargetY = pkSpot.y;
+          }
         } else {
           // 7) high_press_counter: midfield/high turnover + rapid 2-pass counter
           const stealPos: Vec2 = { x: atkX(isH, 0.54), y: halfSpaceY };
@@ -738,13 +951,22 @@ export function PitchMatch2D({
             ? 0.25
             : seq.pattern === 'corner_kick'
               ? 0.32
-              : seq.pattern === 'cut_inside_curler'
-                ? 0.28
-                : 0.30;
+              : seq.pattern === 'u_buildup_switch' || seq.pattern === 'rebound_finish'
+                ? 0.36
+                : seq.pattern === 'penalty_kick'
+                  ? 0.35
+                  : seq.pattern === 'cut_inside_curler'
+                    ? 0.28
+                    : 0.30;
 
         if (seqProg < buildupEnd) {
           topAlertPill = {
-            text: `🔥 ${seq.teamShortName} · ${patternLabel} · SLOW-MO`,
+            text:
+              seq.pattern === 'penalty_kick'
+                ? `🎯 ${seq.teamShortName} · 페널티킥 대치! · SLOW-MO`
+                : seq.pattern === 'rebound_finish' && seqProg >= 0.20
+                  ? `⚡ 세컨찬스 리바운드 쇄도! · SLOW-MO`
+                  : `🔥 ${seq.teamShortName} · ${patternLabel} · SLOW-MO`,
             color: '#fef08a',
             border: '#f59e0b',
           };
@@ -781,7 +1003,7 @@ export function PitchMatch2D({
             border: '#f59e0b',
           };
         } else {
-          // Phase 3: Outcome Reveal (5 varied outcomes!)
+          // Phase 3: Outcome Reveal (6 varied outcomes including VAR Offside!)
           const t = (seqProg - revealPoint) / (1 - revealPoint);
           if (seq.outcome === 'goal') {
             ballTargetX = lerp(
@@ -803,6 +1025,36 @@ export function PitchMatch2D({
               patternLabel,
               alpha: t < 0.82 ? 1 : Math.max(0, (1 - t) / 0.18),
             };
+          } else if (seq.outcome === 'var_offside') {
+            // Brief net ripple followed immediately by VAR Offside line + Disallowed banner!
+            ballTargetX = lerp(
+              preImpactX,
+              goalX + (isH ? 0.015 : -0.015),
+              Math.min(1, t * 4.0),
+            );
+            ballTargetY = seq.targetY;
+            if (t < 0.26) {
+              goalRipple = {
+                side: isH ? 'right' : 'left',
+                intensity: 0.7,
+              };
+              topAlertPill = {
+                text: `📺 VAR 오프사이드 판독 중...`,
+                color: '#e9d5ff',
+                border: '#a855f7',
+              };
+            } else {
+              varOffsideLine = {
+                x: atkX(isH, 0.82),
+                alpha: t < 0.88 ? 0.92 : Math.max(0, (1 - t) / 0.12),
+              };
+              varBanner = {
+                scorer: seq.scorerName,
+                minute: seq.minute,
+                teamShort: seq.teamShortName,
+                alpha: t < 0.86 ? 1 : Math.max(0, (1 - t) / 0.14),
+              };
+            }
           } else if (seq.outcome === 'save') {
             const gkX = preImpactX;
             ballTargetX = lerp(gkX, atkX(isH, 0.81), t);
@@ -819,7 +1071,10 @@ export function PitchMatch2D({
               color: '#38bdf8',
             };
             topAlertPill = {
-              text: `🧤 슈퍼 세이브! (${patternLabel})`,
+              text:
+                seq.pattern === 'penalty_kick'
+                  ? `🧤 PK 슈퍼 세이브!!`
+                  : `🧤 슈퍼 세이브! (${patternLabel})`,
               color: '#7dd3fc',
               border: '#38bdf8',
             };
@@ -867,7 +1122,10 @@ export function PitchMatch2D({
             ballTargetX = atkX(isH, 1.015);
             ballTargetY = seq.targetY < 0.5 ? 0.31 : 0.69;
             topAlertPill = {
-              text: `⚡ 간발의 빗나감! (${patternLabel})`,
+              text:
+                seq.pattern === 'penalty_kick'
+                  ? `😱 페널티킥 실축!`
+                  : `⚡ 간발의 빗나감! (${patternLabel})`,
               color: '#cbd5e1',
               border: '#64748b',
             };
@@ -1160,7 +1418,63 @@ export function PitchMatch2D({
       ctx.fill();
       ctx.stroke();
 
-      if (goalBanner && goalBanner.alpha > 0.02) {
+      if (varOffsideLine && varOffsideLine.alpha > 0.02) {
+        const vx = padX + varOffsideLine.x * pw;
+        ctx.save();
+        ctx.globalAlpha = varOffsideLine.alpha;
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2.2;
+        ctx.setLineDash([7, 5]);
+        ctx.beginPath();
+        ctx.moveTo(vx, padY);
+        ctx.lineTo(vx, padY + ph);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(vx - 3, padY);
+        ctx.lineTo(vx - 3, padY + ph);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (varBanner && varBanner.alpha > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = varBanner.alpha;
+        const bw = Math.min(width * 0.84, 340);
+        const bh = 58;
+        const bx = (width - bw) / 2;
+        const by = (height - bh) / 2;
+
+        ctx.fillStyle = 'rgba(24, 10, 38, 0.95)';
+        ctx.strokeStyle = '#c084fc';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, bw, bh, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#e9d5ff';
+        ctx.font = '900 12px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(
+          `📺 VAR 판독 · ${varBanner.teamShort} ${varBanner.minute}'`,
+          width / 2,
+          by + 18,
+        );
+
+        ctx.fillStyle = '#fb7185';
+        ctx.font = '900 13px system-ui, sans-serif';
+        ctx.fillText(
+          `🚩 오프사이드! ${varBanner.scorer} 득점 취소`,
+          width / 2,
+          by + 40,
+        );
+        ctx.restore();
+      } else if (goalBanner && goalBanner.alpha > 0.02) {
         ctx.save();
         ctx.globalAlpha = goalBanner.alpha;
         const bw = Math.min(width * 0.82, 340);
@@ -1244,7 +1558,7 @@ export function PitchMatch2D({
           <span className="font-bold text-slate-200">{homeClub.shortName}</span>
           <span className="text-slate-600">→</span>
           <span className="text-slate-400 text-[10px]">
-            2D 매치 엔진 (7종 공격·세트피스 + 자동 슬로우모션)
+            2D 매치 엔진 (10종 전술·리바운드·PK·VAR + 슬로우모션)
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -1259,7 +1573,7 @@ export function PitchMatch2D({
 
       <div
         ref={containerRef}
-        className="relative w-full h-[215px] sm:h-[250px]"
+        className="relative w-full h-[200px] sm:h-[225px] lg:h-[245px] xl:h-[270px] max-h-[36vh]"
       >
         <canvas ref={canvasRef} className="block w-full h-full" />
       </div>

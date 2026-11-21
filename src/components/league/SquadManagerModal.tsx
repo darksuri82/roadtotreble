@@ -14,6 +14,7 @@ import { TACTIC_LIST } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
 import { getCardTier } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
+import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
@@ -130,8 +131,9 @@ export function SquadManagerModal({
 
   const content = (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-      {/* Left: 6 Formations + 5 Tactics + Quick Auto-Lineup + Pitch */}
+      {/* Left: Manager Trait + 6 Formations + 5 Tactics + Quick Auto-Lineup + Pitch */}
       <div className="lg:col-span-5 space-y-3">
+        <ManagerTraitBadgeCard traitId={state.manager.traitId} compact />
         <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold text-slate-400">
