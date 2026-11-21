@@ -1,10 +1,22 @@
 import { useMemo } from 'react';
 import { FORMATIONS } from '../../data/formations';
 import { PLAYSTYLES } from '../../data/playstyles';
+import {
+  getFatigueLabel,
+  getInjuryTooltip,
+  getMoraleLabel,
+  getMoraleTier,
+  isPlayerActivelyInjured,
+  selectConditionAwareAiLineup,
+} from '../../engine/conditionEngine';
+import { getClubRealDepthPool } from '../../engine/dataLoader';
 import { evaluatePositionFit } from '../../engine/positionEngine';
+import { TACTICS } from '../../engine/tacticEngine';
+import { useGame } from '../../store/GameContext';
 import type { Club } from '../../types/league';
 import type { Player } from '../../types/player';
-import { TACTICS } from '../../engine/tacticEngine';
+import { CountryFlagSvg } from '../common/CountryFlagSvg';
+import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerNameButton } from '../common/PlayerNameButton';
 
 interface OpponentPitchViewProps {
@@ -80,10 +92,31 @@ export function OpponentPitchView({
   roster,
   onClickPlayerName,
 }: OpponentPitchViewProps) {
+  const { state } = useGame();
+  const conditionMap = state.season?.playerConditions;
   const config = FORMATIONS[opponent.formation] ?? FORMATIONS['4-3-3'];
+
+  const { expectedStarters, injuredPlayers } = useMemo(() => {
+    const excludeIds = new Set<string>([
+      ...state.starters.filter((p): p is Player => Boolean(p)).map((p) => p.id),
+      ...state.bench.filter((p): p is Player => Boolean(p)).map((p) => p.id),
+      ...(state.season?.departedPlayerIds ?? []),
+    ]);
+    const depthPool = getClubRealDepthPool(opponent.name, excludeIds);
+    const res = selectConditionAwareAiLineup({
+      baseRoster: roster,
+      fullClubPool: depthPool,
+      conditionMap,
+    });
+    return {
+      expectedStarters: res.starters,
+      injuredPlayers: res.injuredPlayers,
+    };
+  }, [opponent.name, roster, conditionMap, state.starters, state.bench, state.season?.departedPlayerIds]);
+
   const lineup = useMemo(
-    () => assignRosterToFormation(opponent, roster),
-    [opponent, roster],
+    () => assignRosterToFormation(opponent, expectedStarters),
+    [opponent, expectedStarters],
   );
 
   const keyThreats = useMemo(
@@ -210,33 +243,82 @@ export function OpponentPitchView({
                   >
                     {player?.ovr ?? '-'}
                   </span>
+                  {player && (
+                    <CountryFlagSvg
+                      code={player.nationalityCode}
+                      nationality={player.nationality}
+                      size="xs"
+                    />
+                  )}
                   <span className="text-[8px] font-bold text-slate-400">
                     {slot.label}
                   </span>
                 </div>
 
                 {player ? (
-                  onClickPlayerName ? (
-                    <PlayerNameButton
-                      onClick={() => onClickPlayerName(player.id)}
-                      title={`${player.name} (OVR ${player.ovr}) 세부 스탯`}
-                      className="mt-0.5 max-w-[74px] text-[10px] font-bold text-white text-center leading-tight"
-                    >
-                      {shortLastName(player.name)}
-                    </PlayerNameButton>
-                  ) : (
-                    <span className="mt-0.5 max-w-[74px] truncate text-[10px] font-bold text-white leading-tight">
-                      {shortLastName(player.name)}
-                    </span>
-                  )
+                  <div className="mt-0.5 flex items-center gap-0.5">
+                    {onClickPlayerName ? (
+                      <PlayerNameButton
+                        onClick={() => onClickPlayerName(player.id)}
+                        title={`${player.name} (OVR ${player.ovr}) 세부 스탯`}
+                        className="max-w-[70px] text-[10px] font-bold text-white text-center leading-tight"
+                      >
+                        {shortLastName(player.name)}
+                      </PlayerNameButton>
+                    ) : (
+                      <span className="max-w-[70px] truncate text-[10px] font-bold text-white leading-tight">
+                        {shortLastName(player.name)}
+                      </span>
+                    )}
+                    {(() => {
+                      const cond = conditionMap?.[player.id];
+                      if (!cond) return null;
+                      const injured = isPlayerActivelyInjured(cond);
+                      const mTier = getMoraleTier(cond.morale);
+                      return (
+                        <>
+                          {injured && cond.injury && (
+                            <PixelStatusIcon
+                              variant="injury"
+                              size={10}
+                              title={getInjuryTooltip(cond.injury)}
+                            />
+                          )}
+                          {mTier === 'ecstatic' && (
+                            <PixelStatusIcon
+                              variant="morale_high"
+                              size={10}
+                              title={`사기 ${getMoraleLabel(cond.morale)}`}
+                            />
+                          )}
+                          {mTier === 'frozen' && (
+                            <PixelStatusIcon
+                              variant="morale_low"
+                              size={10}
+                              title={`사기 ${getMoraleLabel(cond.morale)}`}
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
                 ) : (
                   <span className="mt-0.5 text-[9px] text-slate-500">미정</span>
                 )}
 
-                {primaryStyle && (
-                  <span className="mt-0.5 max-w-[74px] truncate rounded bg-slate-900/90 px-1 text-[8px] font-semibold text-slate-300 leading-tight">
-                    {primaryStyle}
+                {player && (conditionMap?.[player.id]?.fatigue ?? 0) >= 50 ? (
+                  <span
+                    title={`누적 피로 ${conditionMap?.[player.id]?.fatigue ?? 0}% (${getFatigueLabel(conditionMap?.[player.id]?.fatigue ?? 0)})`}
+                    className="mt-0.5 rounded bg-orange-500/20 px-1 text-[8px] font-bold text-orange-200 leading-tight"
+                  >
+                    피로 {conditionMap?.[player.id]?.fatigue}%
                   </span>
+                ) : (
+                  primaryStyle && (
+                    <span className="mt-0.5 max-w-[74px] truncate rounded bg-slate-900/90 px-1 text-[8px] font-semibold text-slate-300 leading-tight">
+                      {primaryStyle}
+                    </span>
+                  )
                 )}
               </div>
             </div>
@@ -253,6 +335,11 @@ export function OpponentPitchView({
               key={`threat-${p.id}`}
               className="inline-flex items-center gap-1 rounded-md bg-[#0b1018] border border-slate-800 px-1.5 py-0.5 text-slate-200"
             >
+              <CountryFlagSvg
+                code={p.nationalityCode}
+                nationality={p.nationality}
+                size="xs"
+              />
               {onClickPlayerName ? (
                 <PlayerNameButton
                   onClick={() => onClickPlayerName(p.id)}
@@ -264,6 +351,33 @@ export function OpponentPitchView({
                 <span className="font-bold">{p.name}</span>
               )}
               <span className="font-mono text-amber-300 font-bold">{p.ovr}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Opponent Real Injury Report */}
+      {injuredPlayers.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-rose-500/25 bg-rose-950/20 px-2.5 py-1.5 text-[10px]">
+          <span className="inline-flex items-center gap-1 font-bold text-rose-300 shrink-0">
+            <PixelStatusIcon variant="injury" size={11} />
+            상대 부상자:
+          </span>
+          {injuredPlayers.slice(0, 4).map(({ player: p, injury }) => (
+            <span
+              key={`opp-inj-${p.id}`}
+              title={getInjuryTooltip(injury)}
+              className="inline-flex items-center gap-1 rounded bg-slate-950/70 border border-rose-500/30 px-1.5 py-0.5 text-rose-200"
+            >
+              <CountryFlagSvg
+                code={p.nationalityCode}
+                nationality={p.nationality}
+                size="xs"
+              />
+              <span className="font-bold">{p.name}</span>
+              <span className="text-rose-300/80">
+                ({injury.matchesRemaining}경기)
+              </span>
             </span>
           ))}
         </div>

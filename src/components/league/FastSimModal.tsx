@@ -116,6 +116,10 @@ function FastSimModalInner({
       !season.cupChampionCelebrated,
   );
 
+  const hasPendingInjury = Boolean(
+    season?.pendingInjuryAlerts && season.pendingInjuryAlerts.length > 0,
+  );
+
   const isTargetReached = useMemo(() => {
     if (!season) return true;
     if (state.phase === 'season_end') return true;
@@ -124,14 +128,15 @@ function FastSimModalInner({
     return false;
   }, [mode, season, state.phase, pendingCupNode]);
 
-  // Step 1 round at a time with smooth animation interval, auto-pausing for Domestic Cup matches & trophy celebration
+  // Step 1 round at a time with smooth animation interval, auto-pausing for Domestic Cup matches, trophy celebration, and user injuries
   useEffect(() => {
     if (
       !season ||
       paused ||
       isTargetReached ||
       Boolean(pendingCupNode) ||
-      uncelebratedCupWin
+      uncelebratedCupWin ||
+      hasPendingInjury
     ) {
       return;
     }
@@ -150,6 +155,7 @@ function FastSimModalInner({
     isTargetReached,
     pendingCupNode,
     uncelebratedCupWin,
+    hasPendingInjury,
     simulateOneFastRound,
   ]);
 

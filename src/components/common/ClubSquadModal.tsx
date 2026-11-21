@@ -1,18 +1,29 @@
 import { Crown, Diamond, Users, X } from 'lucide-react';
 import { useEffect } from 'react';
+import {
+  getFatigueLabel,
+  getFatigueTier,
+  getInjuryTooltip,
+  getMoraleLabel,
+  getMoraleTier,
+  isPlayerActivelyInjured,
+} from '../../engine/conditionEngine';
 import { formatMainPositions } from '../../engine/positionEngine';
 import { getPlayerStatById } from '../../engine/standingsEngine';
 import { TACTICS } from '../../engine/tacticEngine';
+import type { PlayerConditionMap } from '../../types/condition';
 import type { Club, PlayerSeasonStats } from '../../types/league';
 import type { Player } from '../../types/player';
-import { getCountryFlag } from '../../utils/countryFlag';
+import { CountryFlagSvg } from './CountryFlagSvg';
 import { JerseySvg } from './JerseySvg';
+import { PixelStatusIcon } from './PixelStatusIcon';
 import { PlayerNameButton } from './PlayerNameButton';
 
 interface ClubSquadModalProps {
   club: Club | null;
   roster: Player[];
   statsMap?: Record<string, PlayerSeasonStats>;
+  conditionMap?: PlayerConditionMap;
   onSelectPlayer: (player: Player) => void;
   onClose: () => void;
 }
@@ -28,6 +39,7 @@ export function ClubSquadModal({
   club,
   roster,
   statsMap,
+  conditionMap,
   onSelectPlayer,
   onClose,
 }: ClubSquadModalProps) {
@@ -48,7 +60,7 @@ export function ClubSquadModal({
 
   return (
     <div
-      className="fixed inset-0 z-[56] flex items-center justify-center bg-slate-950/82 p-3 sm:p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[56] flex items-center justify-center bg-slate-950/82 p-3 sm:p-4"
       onClick={onClose}
     >
       <div
@@ -103,6 +115,11 @@ export function ClubSquadModal({
           <div className="divide-y divide-slate-800/70 rounded-xl border border-slate-800 bg-[#090e16] overflow-hidden">
             {sortedRoster.map((p) => {
               const st = getPlayerStatById(statsMap, p.id);
+              const cond = conditionMap?.[p.id];
+              const injured = isPlayerActivelyInjured(cond);
+              const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
+              const fat = cond?.fatigue ?? 0;
+              const fatTier = getFatigueTier(fat);
               return (
                 <div
                   key={p.id}
@@ -124,6 +141,11 @@ export function ClubSquadModal({
                     </span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
+                        <CountryFlagSvg
+                          code={p.nationalityCode}
+                          nationality={p.nationality}
+                          size="xs"
+                        />
                         <PlayerNameButton
                           onClick={() => onSelectPlayer(p)}
                           className="font-bold text-white"
@@ -136,12 +158,45 @@ export function ClubSquadModal({
                         {!p.isLegend && p.ovr >= 91 && (
                           <Diamond className="h-3 w-3 text-cyan-300 shrink-0" />
                         )}
-                        <span className="text-[11px]">
-                          {getCountryFlag(p.nationalityCode)}
-                        </span>
+                        {injured && cond?.injury && (
+                          <span
+                            title={getInjuryTooltip(cond.injury)}
+                            className="inline-flex items-center gap-0.5 rounded bg-rose-500/20 border border-rose-400/40 px-1 py-0.5 text-[9px] font-bold text-rose-200"
+                          >
+                            <PixelStatusIcon variant="injury" size={11} />
+                            {cond.injury.matchesRemaining}G
+                          </span>
+                        )}
+                        {mTier === 'ecstatic' && (
+                          <PixelStatusIcon
+                            variant="morale_high"
+                            size={12}
+                            title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                          />
+                        )}
+                        {mTier === 'frozen' && (
+                          <PixelStatusIcon
+                            variant="morale_low"
+                            size={12}
+                            title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                          />
+                        )}
                       </div>
-                      <div className="text-[10px] text-slate-500">
-                        {formatMainPositions(p)} · STA {p.stamina ?? 82}
+                      <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                        <span>
+                          {formatMainPositions(p)} · STA {p.stamina ?? 82}
+                        </span>
+                        {fat >= 40 && (
+                          <span
+                            className={
+                              fatTier === 'burnout' || fatTier === 'danger'
+                                ? 'text-rose-400 font-semibold'
+                                : 'text-amber-300'
+                            }
+                          >
+                            · 피로 {fat}% ({getFatigueLabel(fat)})
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

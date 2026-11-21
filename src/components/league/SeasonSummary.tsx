@@ -38,11 +38,13 @@ import type {
 import type { UclKnockoutTie } from '../../types/ucl';
 import {
   buildPlayerCompetitionBreakdown,
+  getPlayerNationalityMeta,
   resolveClubRoster,
   resolvePlayerById,
 } from '../../utils/playerLookup';
 import { ClubSquadModal } from '../common/ClubSquadModal';
 import { ClubTag } from '../common/ClubTag';
+import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
 import { MatchDetailModal } from '../common/MatchDetailModal';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
@@ -1623,6 +1625,16 @@ export function SeasonSummary() {
                             <span className="w-4 shrink-0 font-mono text-[11px] text-slate-500">
                               {idx + 1}.
                             </span>
+                            {(() => {
+                              const nat = getPlayerNationalityMeta(s.playerId);
+                              return nat ? (
+                                <CountryFlagSvg
+                                  code={nat.nationalityCode}
+                                  nationality={nat.nationality}
+                                  size="xs"
+                                />
+                              ) : null;
+                            })()}
                             <PlayerNameButton
                               onClick={() => openPlayerById(s.playerId, s)}
                               className="font-semibold"
@@ -1815,6 +1827,7 @@ export function SeasonSummary() {
               )
             : combinedStatsMap
         }
+        conditionMap={season.playerConditions}
         onSelectPlayer={(player) => {
           setInspectedClub(null);
           openPlayerById(player.id);

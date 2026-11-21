@@ -3,10 +3,24 @@ import { useEffect } from 'react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
+  getFatigueLabel,
+  getFatigueOvrPenalty,
+  getFatigueTier,
+  getInjuryOvrPenalty,
+  getInjuryTooltip,
+  getMoraleLabel,
+  getMoraleOvrBonus,
+  getMoraleTier,
+  isPlayerActivelyInjured,
+  isPlayerRecoveringRust,
+} from '../../engine/conditionEngine';
+import {
   evaluatePositionFit,
   formatMainPositions,
 } from '../../engine/positionEngine';
 import { TACTICS } from '../../engine/tacticEngine';
+import { useGame } from '../../store/GameContext';
+import type { PlayerConditionState } from '../../types/condition';
 import type { ManagerTraitId, PlayerSlotSynergy } from '../../types/game';
 import type { PlayerSeasonStats } from '../../types/league';
 import {
@@ -15,8 +29,9 @@ import {
   POSITION_LABELS,
 } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
-import { getCountryFlag } from '../../utils/countryFlag';
 import type { PlayerCompetitionStatsBreakdown } from '../../utils/playerLookup';
+import { CountryFlagSvg } from './CountryFlagSvg';
+import { PixelStatusIcon } from './PixelStatusIcon';
 
 interface PlayerDetailModalProps {
   player: Player | null;
@@ -25,6 +40,7 @@ interface PlayerDetailModalProps {
   managerTraitId?: ManagerTraitId | null;
   seasonStats?: PlayerSeasonStats | null;
   competitionStats?: PlayerCompetitionStatsBreakdown | null;
+  condition?: PlayerConditionState | null;
   onClose: () => void;
 }
 
@@ -35,8 +51,14 @@ export function PlayerDetailModal({
   managerTraitId = null,
   seasonStats = null,
   competitionStats = null,
+  condition: conditionProp = null,
   onClose,
 }: PlayerDetailModalProps) {
+  const { state } = useGame();
+  const condition =
+    conditionProp ??
+    (player ? (state.season?.playerConditions?.[player.id] ?? null) : null);
+
   useEffect(() => {
     if (!player) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -157,8 +179,13 @@ export function PlayerDetailModal({
             </h3>
 
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-              <span>
-                {getCountryFlag(player.nationalityCode)} {player.nationality}
+              <span className="inline-flex items-center gap-1.5">
+                <CountryFlagSvg
+                  code={player.nationalityCode}
+                  nationality={player.nationality}
+                  size="sm"
+                />
+                {player.nationality}
               </span>
               <span className="text-slate-600">·</span>
               <span className="font-semibold text-slate-200">{displayClub}</span>
@@ -253,6 +280,105 @@ export function PlayerDetailModal({
 
         {/* Body */}
         <div className="space-y-4 p-5 max-h-[75vh] overflow-y-auto">
+          {/* v3.0 Condition: Fatigue, Morale, Injury */}
+          {condition && (
+            <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2.5">
+              <div className="grid grid-cols-2 gap-2.5 text-xs">
+                <div className="rounded-lg border border-slate-800/90 bg-[#0f1622] px-3 py-2">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span>누적 피로도</span>
+                    <span
+                      className={`font-bold ${
+                        getFatigueTier(condition.fatigue) === 'burnout' ||
+                        getFatigueTier(condition.fatigue) === 'danger'
+                          ? 'text-rose-400'
+                          : getFatigueTier(condition.fatigue) === 'caution'
+                            ? 'text-amber-300'
+                            : 'text-emerald-300'
+                      }`}
+                    >
+                      {getFatigueLabel(condition.fatigue)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 tabular-nums">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-900">
+                      <div
+                        className={`h-full rounded-full ${
+                          condition.fatigue >= 80
+                            ? 'bg-rose-500'
+                            : condition.fatigue >= 60
+                              ? 'bg-orange-400'
+                              : condition.fatigue >= 40
+                                ? 'bg-amber-400'
+                                : 'bg-emerald-400'
+                        }`}
+                        style={{ width: `${Math.min(100, condition.fatigue)}%` }}
+                      />
+                    </div>
+                    <span className="font-bold text-slate-200">
+                      {condition.fatigue}%
+                    </span>
+                  </div>
+                  {getFatigueOvrPenalty(condition.fatigue) < 0 && (
+                    <div className="mt-1 text-[10px] text-rose-300">
+                      실효 OVR {getFatigueOvrPenalty(condition.fatigue)}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-slate-800/90 bg-[#0f1622] px-3 py-2">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span>선수 사기</span>
+                    <span className="inline-flex items-center gap-1 font-bold text-slate-200">
+                      {getMoraleTier(condition.morale) === 'ecstatic' && (
+                        <PixelStatusIcon variant="morale_high" size={12} />
+                      )}
+                      {getMoraleTier(condition.morale) === 'frozen' && (
+                        <PixelStatusIcon variant="morale_low" size={12} />
+                      )}
+                      {getMoraleLabel(condition.morale)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-baseline justify-between tabular-nums">
+                    <span className="font-display text-sm font-black text-white">
+                      {condition.morale > 0 ? `+${condition.morale}` : condition.morale} / 5
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold ${
+                        getMoraleOvrBonus(condition.morale) > 0
+                          ? 'text-emerald-300'
+                          : getMoraleOvrBonus(condition.morale) < 0
+                            ? 'text-sky-300'
+                            : 'text-slate-400'
+                      }`}
+                    >
+                      OVR {getMoraleOvrBonus(condition.morale) >= 0 ? '+' : ''}
+                      {getMoraleOvrBonus(condition.morale)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {(isPlayerActivelyInjured(condition) || isPlayerRecoveringRust(condition)) &&
+                condition.injury && (
+                  <div className="flex items-start gap-2 rounded-lg border border-rose-500/35 bg-rose-950/30 px-3 py-2 text-[11px] text-rose-200">
+                    <PixelStatusIcon variant="injury" size={15} className="mt-0.5" />
+                    <div className="leading-snug">
+                      <div className="font-bold">
+                        {getInjuryTooltip(condition.injury)}
+                      </div>
+                      {getInjuryOvrPenalty(condition) < 0 &&
+                        condition.injury.canPlayThrough && (
+                          <div className="text-[10px] text-amber-200/90 mt-0.5">
+                            출전 강행 중 실효 OVR {getInjuryOvrPenalty(condition)} 적용
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                )}
+            </div>
+          )}
+
           {/* Individual Synergy OVR Breakdown Banner */}
           {((slotSynergy && slotSynergy.reasons.length > 0) || mgrSynergy.isMatch) && (
             <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/20 px-3.5 py-2.5 space-y-1">

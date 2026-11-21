@@ -32,7 +32,7 @@ import { useGame } from '../../store/GameContext';
 import type { TransferTargetPlayer } from '../../types/game';
 import { getCardTier, LEAGUE_LABELS } from '../../types/player';
 import type { Player, Position } from '../../types/player';
-import { getCountryFlag } from '../../utils/countryFlag';
+import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
 
 interface TransferMarketModalProps {
@@ -1104,12 +1104,18 @@ export function TransferMarketModal({
                                 )}
                               </div>
 
-                              <div className="text-[11px] text-slate-400">
-                                {getCountryFlag(p.nationalityCode)}{' '}
-                                {p.nationality} ·{' '}
-                                {p.playstyles
-                                  .map((ps) => PLAYSTYLES[ps]?.shortName ?? ps)
-                                  .join(' · ')}
+                              <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
+                                <CountryFlagSvg
+                                  code={p.nationalityCode}
+                                  nationality={p.nationality}
+                                  size="xs"
+                                />
+                                <span>
+                                  {p.nationality} ·{' '}
+                                  {p.playstyles
+                                    .map((ps) => PLAYSTYLES[ps]?.shortName ?? ps)
+                                    .join(' · ')}
+                                </span>
                               </div>
                             </div>
 

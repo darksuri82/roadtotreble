@@ -2,9 +2,19 @@ import { Crown, Diamond, Info } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { BENCH_SLOTS, FORMATIONS } from '../../data/formations';
 import {
+  getFatigueLabel,
+  getFatigueTier,
+  getInjuryTooltip,
+  getMoraleLabel,
+  getMoraleTier,
+  isPlayerActivelyInjured,
+} from '../../engine/conditionEngine';
+import {
   evaluatePositionFit,
   formatMainPositions,
 } from '../../engine/positionEngine';
+import { useGame } from '../../store/GameContext';
+import type { PlayerConditionMap } from '../../types/condition';
 import type {
   ChemistryLineType,
   ChemistryResult,
@@ -13,7 +23,8 @@ import type {
 } from '../../types/game';
 import { getCardTier } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
-import { getCountryFlag } from '../../utils/countryFlag';
+import { CountryFlagSvg } from './CountryFlagSvg';
+import { PixelStatusIcon } from './PixelStatusIcon';
 
 export interface SlotRef {
   area: 'starter' | 'bench';
@@ -30,6 +41,7 @@ interface PitchBoardProps {
   selectedSlot?: SlotRef | null;
   previewSlot?: SlotRef | null;
   staminaByPlayerId?: Record<string, number>;
+  conditionByPlayerId?: PlayerConditionMap;
   disabledBenchIds?: Set<string>;
   onSlotClick?: (area: 'starter' | 'bench', index: number) => void;
   onSlotSwap?: (from: SlotRef, to: SlotRef) => void;
@@ -69,6 +81,7 @@ export function PitchBoard({
   selectedSlot = null,
   previewSlot = null,
   staminaByPlayerId,
+  conditionByPlayerId: conditionProp,
   disabledBenchIds,
   onSlotClick,
   onSlotSwap,
@@ -77,6 +90,9 @@ export function PitchBoard({
   showChemBreakdown = true,
   compact = false,
 }: PitchBoardProps) {
+  const { state: gameState } = useGame();
+  const conditionByPlayerId =
+    conditionProp ?? gameState.season?.playerConditions;
   const config = FORMATIONS[formation];
   const [draggingFrom, setDraggingFrom] = useState<SlotRef | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<SlotRef | null>(null);
@@ -418,54 +434,105 @@ export function PitchBoard({
 
                 {player && fit ? (
                   <>
-                    <div className="flex items-center gap-0.5 leading-none tabular-nums">
-                      <span
-                        className={`font-display text-sm sm:text-base font-bold ${
-                          hasPenalty
-                            ? fit.fit === 'secondary'
-                              ? 'text-amber-300'
-                              : fit.fit === 'out_of_pos'
-                                ? 'text-orange-400'
-                                : 'text-rose-400'
-                            : isLegend
-                              ? 'text-amber-300'
-                              : isSuperstar
-                                ? 'text-cyan-200'
-                                : 'text-white'
-                        }`}
-                      >
-                        {fit.effectiveOvr}
-                      </span>
-                      {synBonus > 0 && (
-                        <span
-                          title={slotSyn?.reasons.join(' · ')}
-                          className="rounded bg-emerald-500/25 border border-emerald-400/50 px-1 py-0.5 text-[8px] sm:text-[9px] font-black text-emerald-300 leading-none"
-                        >
-                          +{synBonus}
-                        </span>
-                      )}
-                      <span className="text-[10px]">
-                        {getCountryFlag(player.nationalityCode)}
-                      </span>
-                    </div>
-                    <span className="mt-0.5 max-w-[66px] sm:max-w-[82px] truncate text-[9px] sm:text-[10px] font-bold text-slate-100 leading-tight">
-                      {player.name}
-                    </span>
-                    {staminaPct !== null && (
-                      <div className="mt-1 w-full flex items-center gap-1 tabular-nums">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-950/90">
-                          <div
-                            className={`h-full rounded-full transition-all ${getStaminaBarBg(staminaPct)}`}
-                            style={{ width: `${staminaPct}%` }}
-                          />
-                        </div>
-                        <span
-                          className={`text-[8px] font-black leading-none ${getStaminaNumCls(staminaPct)}`}
-                        >
-                          {staminaPct}
-                        </span>
-                      </div>
-                    )}
+                    {(() => {
+                      const cond = conditionByPlayerId?.[player.id];
+                      const injured = isPlayerActivelyInjured(cond);
+                      const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
+                      const fat = cond?.fatigue ?? 0;
+                      const fatTier = getFatigueTier(fat);
+                      return (
+                        <>
+                          {(injured || mTier === 'ecstatic' || mTier === 'frozen') && (
+                            <div className="absolute -bottom-2 -right-1.5 z-30 flex items-center gap-0.5 rounded bg-slate-950/95 px-0.5 py-0.5 border border-slate-700/80 shadow">
+                              {injured && cond?.injury && (
+                                <PixelStatusIcon
+                                  variant="injury"
+                                  size={12}
+                                  title={getInjuryTooltip(cond.injury)}
+                                />
+                              )}
+                              {mTier === 'ecstatic' && (
+                                <PixelStatusIcon
+                                  variant="morale_high"
+                                  size={12}
+                                  title={`사기 ${getMoraleLabel(cond!.morale)} (+2 OVR)`}
+                                />
+                              )}
+                              {mTier === 'frozen' && (
+                                <PixelStatusIcon
+                                  variant="morale_low"
+                                  size={12}
+                                  title={`사기 ${getMoraleLabel(cond!.morale)} (-2 OVR)`}
+                                />
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 leading-none tabular-nums">
+                            <span
+                              className={`font-display text-sm sm:text-base font-bold ${
+                                hasPenalty
+                                  ? fit.fit === 'secondary'
+                                    ? 'text-amber-300'
+                                    : fit.fit === 'out_of_pos'
+                                      ? 'text-orange-400'
+                                      : 'text-rose-400'
+                                  : isLegend
+                                    ? 'text-amber-300'
+                                    : isSuperstar
+                                      ? 'text-cyan-200'
+                                      : 'text-white'
+                              }`}
+                            >
+                              {fit.effectiveOvr}
+                            </span>
+                            {synBonus > 0 && (
+                              <span
+                                title={slotSyn?.reasons.join(' · ')}
+                                className="rounded bg-emerald-500/25 border border-emerald-400/50 px-1 py-0.5 text-[8px] sm:text-[9px] font-black text-emerald-300 leading-none"
+                              >
+                                +{synBonus}
+                              </span>
+                            )}
+                            <CountryFlagSvg
+                              code={player.nationalityCode}
+                              nationality={player.nationality}
+                              size="xs"
+                            />
+                          </div>
+                          <span className="mt-0.5 max-w-[66px] sm:max-w-[82px] truncate text-[9px] sm:text-[10px] font-bold text-slate-100 leading-tight">
+                            {player.name}
+                          </span>
+                          {staminaPct !== null ? (
+                            <div className="mt-1 w-full flex items-center gap-1 tabular-nums">
+                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-950/90">
+                                <div
+                                  className={`h-full rounded-full transition-all ${getStaminaBarBg(staminaPct)}`}
+                                  style={{ width: `${staminaPct}%` }}
+                                />
+                              </div>
+                              <span
+                                className={`text-[8px] font-black leading-none ${getStaminaNumCls(staminaPct)}`}
+                              >
+                                {staminaPct}
+                              </span>
+                            </div>
+                          ) : fat >= 40 ? (
+                            <span
+                              title={`누적 피로 ${fat}% (${getFatigueLabel(fat)})`}
+                              className={`mt-0.5 rounded px-1 text-[8px] font-extrabold leading-tight tabular-nums ${
+                                fatTier === 'burnout'
+                                  ? 'bg-rose-500/30 text-rose-200'
+                                  : fatTier === 'danger'
+                                    ? 'bg-orange-500/25 text-orange-200'
+                                    : 'bg-amber-500/20 text-amber-200'
+                              }`}
+                            >
+                              피로 {fat}%
+                            </span>
+                          ) : null}
+                        </>
+                      );
+                    })()}
                   </>
                 ) : (
                   <>
@@ -667,45 +734,80 @@ export function PitchBoard({
                     {player ? formatMainPositions(player) : bSlot.label}
                   </span>
                   {player ? (
-                    <>
-                      <span
-                        className={`font-display text-sm font-bold leading-tight ${
-                          isLegend
-                            ? 'text-amber-300'
-                            : isSuperstar
-                              ? 'text-cyan-200'
-                              : 'text-white'
-                        }`}
-                      >
-                        {player.ovr}
-                      </span>
-                      <span className="w-full truncate text-[10px] font-semibold text-slate-200">
-                        {player.name}
-                      </span>
-                      {benchStaminaPct !== null && (
-                        <div className="mt-1 w-full flex items-center gap-1 tabular-nums">
-                          <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-950">
-                            <div
-                              className={`h-full rounded-full ${
-                                isDisabledBench
-                                  ? 'bg-slate-600'
-                                  : getStaminaBarBg(benchStaminaPct)
+                    (() => {
+                      const cond = conditionByPlayerId?.[player.id];
+                      const injured = isPlayerActivelyInjured(cond);
+                      const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
+                      return (
+                        <>
+                          <div className="flex items-center justify-center gap-1">
+                            <span
+                              className={`font-display text-sm font-bold leading-tight ${
+                                isLegend
+                                  ? 'text-amber-300'
+                                  : isSuperstar
+                                    ? 'text-cyan-200'
+                                    : 'text-white'
                               }`}
-                              style={{ width: `${benchStaminaPct}%` }}
+                            >
+                              {player.ovr}
+                            </span>
+                            <CountryFlagSvg
+                              code={player.nationalityCode}
+                              nationality={player.nationality}
+                              size="xs"
                             />
+                            {injured && cond?.injury && (
+                              <PixelStatusIcon
+                                variant="injury"
+                                size={11}
+                                title={getInjuryTooltip(cond.injury)}
+                              />
+                            )}
+                            {mTier === 'ecstatic' && (
+                              <PixelStatusIcon
+                                variant="morale_high"
+                                size={11}
+                                title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                              />
+                            )}
+                            {mTier === 'frozen' && (
+                              <PixelStatusIcon
+                                variant="morale_low"
+                                size={11}
+                                title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                              />
+                            )}
                           </div>
-                          <span
-                            className={`text-[8px] font-black leading-none ${
-                              isDisabledBench
-                                ? 'text-slate-500'
-                                : getStaminaNumCls(benchStaminaPct)
-                            }`}
-                          >
-                            {benchStaminaPct}%
+                          <span className="w-full truncate text-[10px] font-semibold text-slate-200">
+                            {player.name}
                           </span>
-                        </div>
-                      )}
-                    </>
+                          {benchStaminaPct !== null && (
+                            <div className="mt-1 w-full flex items-center gap-1 tabular-nums">
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-950">
+                                <div
+                                  className={`h-full rounded-full ${
+                                    isDisabledBench
+                                      ? 'bg-slate-600'
+                                      : getStaminaBarBg(benchStaminaPct)
+                                  }`}
+                                  style={{ width: `${benchStaminaPct}%` }}
+                                />
+                              </div>
+                              <span
+                                className={`text-[8px] font-black leading-none ${
+                                  isDisabledBench
+                                    ? 'text-slate-500'
+                                    : getStaminaNumCls(benchStaminaPct)
+                                }`}
+                              >
+                                {benchStaminaPct}%
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()
                   ) : (
                     <span className="mt-1 text-[10px] text-slate-500">
                       {isActive ? '선택 중' : '대기'}

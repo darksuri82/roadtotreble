@@ -2,18 +2,27 @@ import { Crown, Diamond, Star } from 'lucide-react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
+  getInjuryTooltip,
+  getMoraleLabel,
+  getMoraleTier,
+  isPlayerActivelyInjured,
+} from '../../engine/conditionEngine';
+import {
   evaluatePositionFit,
   formatMainPositions,
 } from '../../engine/positionEngine';
+import type { PlayerConditionState } from '../../types/condition';
 import type { ManagerTraitId } from '../../types/game';
 import { getCardTier, LEAGUE_LABELS, TIER_LABELS } from '../../types/player';
 import type { CardTier, Player, SubPosition } from '../../types/player';
-import { getCountryFlag } from '../../utils/countryFlag';
+import { CountryFlagSvg } from './CountryFlagSvg';
+import { PixelStatusIcon } from './PixelStatusIcon';
 
 interface PlayerCardProps {
   player: Player;
   targetSubPosition?: SubPosition;
   managerTraitId?: ManagerTraitId | null;
+  condition?: PlayerConditionState | null;
   onClick?: () => void;
   onConfirmAction?: () => void;
   selected?: boolean;
@@ -69,6 +78,7 @@ export function PlayerCard({
   player,
   targetSubPosition,
   managerTraitId = null,
+  condition = null,
   onClick,
   onConfirmAction,
   selected = false,
@@ -80,8 +90,9 @@ export function PlayerCard({
   const style = TIER_STYLES[tier];
   const isLegend = tier === 'legend';
   const isSuperstar = tier === 'superstar';
-  const flag = getCountryFlag(player.nationalityCode);
   const mainPosText = formatMainPositions(player);
+  const isInjured = isPlayerActivelyInjured(condition);
+  const moraleTier = condition ? getMoraleTier(condition.morale) : 'normal';
 
   const fit = targetSubPosition
     ? evaluatePositionFit(player, targetSubPosition, managerTraitId)
@@ -129,9 +140,34 @@ export function PlayerCard({
                 {isSuperstar && (
                   <Diamond className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
                 )}
+                {isInjured && condition?.injury && (
+                  <PixelStatusIcon
+                    variant="injury"
+                    size={13}
+                    title={getInjuryTooltip(condition.injury)}
+                  />
+                )}
+                {moraleTier === 'ecstatic' && (
+                  <PixelStatusIcon
+                    variant="morale_high"
+                    size={13}
+                    title={`사기 ${getMoraleLabel(condition!.morale)} (+2 OVR)`}
+                  />
+                )}
+                {moraleTier === 'frozen' && (
+                  <PixelStatusIcon
+                    variant="morale_low"
+                    size={13}
+                    title={`사기 ${getMoraleLabel(condition!.morale)} (-2 OVR)`}
+                  />
+                )}
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-slate-400 truncate mt-0.5">
-                <span>{flag}</span>
+                <CountryFlagSvg
+                  code={player.nationalityCode}
+                  nationality={player.nationality}
+                  size="xs"
+                />
                 <span className="truncate">{player.club}</span>
                 {player.secondaryPositions.length > 0 && (
                   <span className="text-[10px] text-slate-500">
@@ -181,12 +217,10 @@ export function PlayerCard({
           onClick?.();
         }
       }}
-      className={`group relative flex flex-col justify-between overflow-hidden rounded-xl p-3.5 text-left transition-all duration-150 ${style.wrapper} ${
-        selected ? 'ring-2 ring-emerald-400 scale-[1.01]' : ''
+      className={`group relative flex flex-col justify-between overflow-hidden rounded-xl p-3.5 text-left transition-colors duration-150 ${style.wrapper} ${
+        selected ? 'ring-2 ring-emerald-400' : ''
       } ${
-        onClick && !disabled
-          ? 'cursor-pointer hover:-translate-y-0.5 active:translate-y-0'
-          : 'cursor-default'
+        onClick && !disabled ? 'cursor-pointer' : 'cursor-default'
       } ${disabled ? 'opacity-50' : ''}`}
     >
       {/* Hologram Shimmer ONLY for Legend & Active Superstar */}
@@ -252,11 +286,38 @@ export function PlayerCard({
 
       {/* Name, Nation, Club */}
       <div className="relative z-10 my-2.5">
-        <h3 className="truncate text-sm font-bold text-slate-100 group-hover:text-white">
-          {player.name}
-        </h3>
+        <div className="flex items-center gap-1.5">
+          <h3 className="truncate text-sm font-bold text-slate-100 group-hover:text-white">
+            {player.name}
+          </h3>
+          {isInjured && condition?.injury && (
+            <PixelStatusIcon
+              variant="injury"
+              size={14}
+              title={getInjuryTooltip(condition.injury)}
+            />
+          )}
+          {moraleTier === 'ecstatic' && (
+            <PixelStatusIcon
+              variant="morale_high"
+              size={14}
+              title={`사기 ${getMoraleLabel(condition!.morale)} (+2 OVR)`}
+            />
+          )}
+          {moraleTier === 'frozen' && (
+            <PixelStatusIcon
+              variant="morale_low"
+              size={14}
+              title={`사기 ${getMoraleLabel(condition!.morale)} (-2 OVR)`}
+            />
+          )}
+        </div>
         <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
-          <span>{flag}</span>
+          <CountryFlagSvg
+            code={player.nationalityCode}
+            nationality={player.nationality}
+            size="sm"
+          />
           <span className="truncate">{player.nationality}</span>
           <span className="text-slate-600">·</span>
           <span className="truncate text-slate-300">

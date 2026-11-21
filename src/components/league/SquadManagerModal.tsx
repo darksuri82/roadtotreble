@@ -9,17 +9,27 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
+import {
+  getFatigueLabel,
+  getFatigueTier,
+  getInjuryTooltip,
+  getMoraleLabel,
+  getMoraleTier,
+  isPlayerActivelyInjured,
+} from '../../engine/conditionEngine';
 import { formatMainPositions } from '../../engine/positionEngine';
 import { TACTIC_LIST } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
 import { getCardTier } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
+import { buildPlayerCompetitionBreakdown } from '../../utils/playerLookup';
+import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
+import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
-import { buildPlayerCompetitionBreakdown } from '../../utils/playerLookup';
 
 interface SquadManagerModalProps {
   onClose?: () => void;
@@ -297,6 +307,11 @@ export function SquadManagerModal({
               {rows.map((r) => {
                 const tier = getCardTier(r.player);
                 const sta = r.player.stamina ?? 82;
+                const cond = state.season?.playerConditions?.[r.player.id];
+                const injured = isPlayerActivelyInjured(cond);
+                const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
+                const fat = cond?.fatigue ?? 0;
+                const fatTier = getFatigueTier(fat);
                 return (
                   <tr
                     key={r.player.id}
@@ -304,6 +319,11 @@ export function SquadManagerModal({
                   >
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-1.5">
+                        <CountryFlagSvg
+                          code={r.player.nationalityCode}
+                          nationality={r.player.nationality}
+                          size="xs"
+                        />
                         <PlayerNameButton
                           onClick={() =>
                             setInspected({
@@ -321,9 +341,44 @@ export function SquadManagerModal({
                         {tier === 'superstar' && (
                           <Diamond className="w-3 h-3 text-cyan-300 shrink-0" />
                         )}
+                        {injured && cond?.injury && (
+                          <span
+                            title={getInjuryTooltip(cond.injury)}
+                            className="inline-flex items-center gap-0.5 rounded bg-rose-500/20 border border-rose-400/40 px-1 py-0.5 text-[9px] font-bold text-rose-200"
+                          >
+                            <PixelStatusIcon variant="injury" size={11} />
+                            {cond.injury.matchesRemaining}G
+                          </span>
+                        )}
+                        {mTier === 'ecstatic' && (
+                          <PixelStatusIcon
+                            variant="morale_high"
+                            size={12}
+                            title={`사기 ${getMoraleLabel(cond!.morale)} (+2 OVR)`}
+                          />
+                        )}
+                        {mTier === 'frozen' && (
+                          <PixelStatusIcon
+                            variant="morale_low"
+                            size={12}
+                            title={`사기 ${getMoraleLabel(cond!.morale)} (-2 OVR)`}
+                          />
+                        )}
                       </div>
                       <span className="text-[10px] text-slate-500">
                         {r.label} · {r.player.club}
+                        {fat >= 40 && (
+                          <span
+                            title={`누적 피로 ${fat}% (${getFatigueLabel(fat)})`}
+                            className={`ml-1.5 font-semibold ${
+                              fatTier === 'burnout' || fatTier === 'danger'
+                                ? 'text-rose-400'
+                                : 'text-amber-300'
+                            }`}
+                          >
+                            · 피로 {fat}%
+                          </span>
+                        )}
                       </span>
                     </td>
                     <td className="py-2 px-2 text-center text-[11px] font-semibold text-slate-300">

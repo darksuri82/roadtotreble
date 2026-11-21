@@ -15,6 +15,12 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
+  getFatigueTier,
+  getMoraleLabel,
+  getMoraleTier,
+  isPlayerActivelyInjured,
+} from '../../engine/conditionEngine';
+import {
   CUP_STAGE_LABELS,
   didUserWinCup,
   findUserCupMatch,
@@ -34,13 +40,16 @@ import type {
 } from '../../types/league';
 import {
   buildPlayerCompetitionBreakdown,
+  getPlayerNationalityMeta,
   resolveClubRoster,
   resolvePlayerById,
 } from '../../utils/playerLookup';
 import { ClubSquadModal } from '../common/ClubSquadModal';
 import { ClubTag } from '../common/ClubTag';
+import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
 import { MatchDetailModal } from '../common/MatchDetailModal';
+import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
@@ -287,6 +296,71 @@ export function SeasonDashboard() {
                 케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
                 {chemistry.chemistryOvrBonus.toFixed(1)})
               </span>
+              {(() => {
+                const condMap = season.playerConditions;
+                const teamMorale = season.managerEvents?.teamMorale ?? 0;
+                const mTier = getMoraleTier(teamMorale);
+                const startersFilled = state.starters.filter(
+                  (p): p is NonNullable<typeof p> => Boolean(p),
+                );
+                const avgFatigue =
+                  startersFilled.length > 0
+                    ? Math.round(
+                        startersFilled.reduce(
+                          (acc, p) => acc + (condMap?.[p.id]?.fatigue ?? 0),
+                          0,
+                        ) / startersFilled.length,
+                      )
+                    : 0;
+                const fatTier = getFatigueTier(avgFatigue);
+                const injuredCount = [...state.starters, ...state.bench].filter(
+                  (p) => p && isPlayerActivelyInjured(condMap?.[p.id]),
+                ).length;
+
+                return (
+                  <>
+                    <span
+                      title="팀 사기 · 기자회견/라커룸 연설과 경기 결과에 연동"
+                      className={`inline-flex items-center gap-1 font-semibold ${
+                        mTier === 'ecstatic' || mTier === 'high'
+                          ? 'text-amber-300'
+                          : mTier === 'low' || mTier === 'frozen'
+                            ? 'text-sky-300'
+                            : 'text-slate-300'
+                      }`}
+                    >
+                      {mTier === 'ecstatic' && (
+                        <PixelStatusIcon variant="morale_high" size={12} />
+                      )}
+                      {mTier === 'frozen' && (
+                        <PixelStatusIcon variant="morale_low" size={12} />
+                      )}
+                      사기 {getMoraleLabel(teamMorale)}
+                    </span>
+                    <span
+                      title="선발 11인 평균 누적 피로도"
+                      className={`font-semibold ${
+                        fatTier === 'burnout' || fatTier === 'danger'
+                          ? 'text-rose-400'
+                          : fatTier === 'caution'
+                            ? 'text-amber-300'
+                            : 'text-slate-300'
+                      }`}
+                    >
+                      피로 {avgFatigue}%
+                    </span>
+                    {injuredCount > 0 && (
+                      <span
+                        title="현재 우리 팀 부상자 수"
+                        className="inline-flex items-center gap-1 rounded bg-rose-500/15 border border-rose-400/35 px-1.5 py-0.5 text-[11px] font-bold text-rose-200"
+                      >
+                        <PixelStatusIcon variant="injury" size={11} />
+                        부상 {injuredCount}명
+                      </span>
+                    )}
+                  </>
+                );
+              })()}
               {nextTransferRound !== null && (
                 <span className="inline-flex items-center gap-1 text-amber-300/90">
                   <Calendar className="w-3 h-3" />
@@ -660,6 +734,16 @@ export function SeasonDashboard() {
                           <span className="font-display w-4 shrink-0 text-slate-500 font-bold text-center">
                             {idx + 1}
                           </span>
+                          {(() => {
+                            const nat = getPlayerNationalityMeta(entry.playerId);
+                            return nat ? (
+                              <CountryFlagSvg
+                                code={nat.nationalityCode}
+                                nationality={nat.nationality}
+                                size="xs"
+                              />
+                            ) : null;
+                          })()}
                           <PlayerNameButton
                             onClick={() =>
                               setInspectedPlayer({
@@ -1082,6 +1166,7 @@ export function SeasonDashboard() {
               season.allPlayerStats)
             : season.allPlayerStats
         }
+        conditionMap={season.playerConditions}
         onSelectPlayer={(player) => {
           setInspectedClub(null);
           setInspectedPlayer({ playerId: player.id });

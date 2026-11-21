@@ -14,7 +14,7 @@ import type {
 import type { LeagueId } from '../../types/league';
 import { LEAGUE_LABELS } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
-import { getCountryFlag } from '../../utils/countryFlag';
+import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
 import { PlayerCard } from '../common/PlayerCard';
 
@@ -264,8 +264,12 @@ export function RouletteReelsView({
                   <span className="truncate text-sm font-extrabold text-white">
                     {selectedCandidate.name}
                   </span>
-                  <span className="text-xs text-slate-300">
-                    {getCountryFlag(selectedCandidate.nationalityCode)}{' '}
+                  <span className="inline-flex items-center gap-1 text-xs text-slate-300">
+                    <CountryFlagSvg
+                      code={selectedCandidate.nationalityCode}
+                      nationality={selectedCandidate.nationality}
+                      size="xs"
+                    />
                     {selectedCandidate.isLegend
                       ? 'ICON 와일드카드'
                       : selectedCandidate.club}

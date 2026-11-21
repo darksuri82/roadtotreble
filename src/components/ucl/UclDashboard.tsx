@@ -10,6 +10,12 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
+import {
+  getInjuryTooltip,
+  getMoraleLabel,
+  getMoraleTier,
+  isPlayerActivelyInjured,
+} from '../../engine/conditionEngine';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { formatMainPositions } from '../../engine/positionEngine';
 import { getUserRank } from '../../engine/standingsEngine';
@@ -32,13 +38,16 @@ import type { Player, SubPosition } from '../../types/player';
 import type { UclKnockoutTie } from '../../types/ucl';
 import {
   buildPlayerCompetitionBreakdown,
+  getPlayerNationalityMeta,
   resolveClubRoster,
   resolvePlayerById,
 } from '../../utils/playerLookup';
 import { ClubSquadModal } from '../common/ClubSquadModal';
+import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { MatchDetailModal } from '../common/MatchDetailModal';
 import { PitchBoard, type SlotRef } from '../common/PitchBoard';
+import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
@@ -204,6 +213,7 @@ export function UclDashboard() {
             : []
         }
         statsMap={season.uclPlayerStats}
+        conditionMap={season.playerConditions}
         onSelectPlayer={(player) => {
           setInspectedClub(null);
           setInspected({ player });
@@ -953,6 +963,16 @@ export function UclDashboard() {
                         <span className="w-4 shrink-0 font-mono text-[11px] text-slate-400">
                           {idx + 1}
                         </span>
+                        {(() => {
+                          const nat = getPlayerNationalityMeta(st.playerId);
+                          return nat ? (
+                            <CountryFlagSvg
+                              code={nat.nationalityCode}
+                              nationality={nat.nationality}
+                              size="xs"
+                            />
+                          ) : null;
+                        })()}
                         <PlayerNameButton
                           onClick={() => openPlayerById(st.playerId, st)}
                           className="font-semibold"
@@ -1095,12 +1115,50 @@ export function UclDashboard() {
                             {isStarter ? '선발' : '벤치'}
                           </span>
                           <div className="min-w-0">
-                            <PlayerNameButton
-                              onClick={() => openPlayerById(p.id, st)}
-                              className="font-bold text-slate-100"
-                            >
-                              {p.name}
-                            </PlayerNameButton>
+                            <div className="flex items-center gap-1.5">
+                              <CountryFlagSvg
+                                code={p.nationalityCode}
+                                nationality={p.nationality}
+                                size="xs"
+                              />
+                              <PlayerNameButton
+                                onClick={() => openPlayerById(p.id, st)}
+                                className="font-bold text-slate-100"
+                              >
+                                {p.name}
+                              </PlayerNameButton>
+                              {(() => {
+                                const cond = season.playerConditions?.[p.id];
+                                if (!cond) return null;
+                                const inj = isPlayerActivelyInjured(cond);
+                                const mt = getMoraleTier(cond.morale);
+                                return (
+                                  <>
+                                    {inj && cond.injury && (
+                                      <PixelStatusIcon
+                                        variant="injury"
+                                        size={11}
+                                        title={getInjuryTooltip(cond.injury)}
+                                      />
+                                    )}
+                                    {mt === 'ecstatic' && (
+                                      <PixelStatusIcon
+                                        variant="morale_high"
+                                        size={11}
+                                        title={`사기 ${getMoraleLabel(cond.morale)}`}
+                                      />
+                                    )}
+                                    {mt === 'frozen' && (
+                                      <PixelStatusIcon
+                                        variant="morale_low"
+                                        size={11}
+                                        title={`사기 ${getMoraleLabel(cond.morale)}`}
+                                      />
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
                             <div className="text-[10px] text-slate-500">
                               {formatMainPositions(p)} · OVR {p.ovr}
                               {slotSyn && slotSyn.totalBonus > 0 && (
