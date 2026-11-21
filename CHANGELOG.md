@@ -5,12 +5,31 @@
 
 ---
 
+## v2.9 — 모바일 브라우저 터치 좌표(Hit-Test) 밀림 완벽 수정 · 동적 뷰포트(100dvh) & 단일 스크롤 안정화
+
+### 1. `html` · `body` · `#root` 단일 문서 스크롤 & 동적 뷰포트(`100dvh`) 정상화
+- **모바일 뷰포트·오버플로 구조 정비** (`index.html`, `src/index.css`, `src/App.tsx`, `TitleScreen.tsx`, `TransferMarketModal.tsx`):
+  - `html`, `body`, `#root`에 단일 문서 스크롤 기반 `overflow-x: clip` 및 `width/max-width: 100%`를 적용하고, 기존 `100vh`(`min-h-screen`) 기반 높이를 모바일 주소창 축소/확장에 즉시 대응하는 `100dvh`(`min-h-dvh`)로 교체.
+  - `viewport-fit=cover` 및 전역 인터랙티브 요소(`button, [role="button"], a, input, select`)에 `touch-action: manipulation` 적용.
+
+### 2. 상단 `sticky` 헤더 모바일 가로폭 초과 해결 & `backdrop-blur` 합성 레이어 제거
+- **터치 좌표계 불일치 근본 해결** (`src/components/common/HeaderNav.tsx`, `MatchDayTacticsRoom.tsx`, `OpponentPitchView.tsx`, `TransferMarketModal.tsx`):
+  - 상단 `sticky top-0` 헤더가 모바일(`360~390px`) 화면에서 가로폭(`~500px`)을 초과해 Layout Viewport와 Visual Viewport의 터치 좌표계를 어긋나게 만들던 문제 해결(PC 1줄 텍스트 버튼 유지, 모바일 컴팩트 아이콘 레이아웃으로 `300px` 이내 수납).
+  - 모바일 스크롤 시 GPU 합성 레이어 좌표 오차를 유발하던 `sticky` 헤더 `backdrop-blur-md`, 매치 데이 전술실 하단 `sticky bottom-2 backdrop-blur-md`, 상대 피치 노드 `backdrop-blur-xs`, 이적시장 중첩 모달 `backdrop-blur-sm` 제거.
+
+### 3. 매치 데이 전술실 액션 버튼 상단 통합 & 드래프트 터치 레이아웃 점프(Layout Shift) 제거
+- **터치 시 레이아웃 흔들림 차단** (`MatchDayTacticsRoom.tsx`, `RouletteReelsView.tsx`, `PlayerCard.tsx`, `PitchBoard.tsx`):
+  - 매치 데이 전술실의 `[2D 실시간 중계 시작]`·`[1경기 스킵]` 버튼을 상단 전술·포메이션 컨트롤 카드 내부에 통합 배치하고 포메이션 그리드를 모바일 3열(`grid-cols-3`) / PC 6열(`sm:grid-cols-6`)로 반응형 분리.
+  - 드래프트 프리뷰 바의 선택 전/후 높이를 `min-h-[84px]`로 고정하고 선수 카드·피치 노드의 `hover:-translate-y-0.5`·`scale-105` 이동을 제거.
+
+---
+
 ## v2.8 — 매치 데이 전술실 상대 피치 시각화 · 드래프트 임시 배치 시너지 프리뷰 & 공식 가이드 · 원스톱 이적시장 · 정규리그 최종 결과 배너 & 5대 리그 도트 트로피 · UCL UI 폴리싱
 
 ### 1. 경기 전 [매치 데이 전술실] 레이아웃 전면 정돈 & 상대팀 포메이션 피치 시각화
 - **상대팀 포메이션 피치 시각화** (`src/components/league/OpponentPitchView.tsx`, `MatchDayTacticsRoom.tsx`):
   - 상대 예상 선발 11인을 테이블/리스트 대신 컴팩트 포메이션 피치 위에 배치하고 핵심 경계 선수(TOP 3)·OVR·주포지션·플레이스타일을 직관적으로 시각화.
-  - 상단 양 팀 전력 비교 바(우리 팀 vs 상대 팀 포메이션·전술·실시간 상성 진단 1줄 스트립·ATT/MID/DEF 스탯 비교 필), 상시 노출 전술·포메이션 컨트롤, 하단 고정(`sticky`) 경기 액션 바(`[경기 진행]`, `[1경기 스킵]` 등) 및 3모드 피치 전환(`[상대 포메이션]` / `[내 선발 편집]` / `[양 팀 피치 비교]`) 적용.
+  - 상단 양 팀 전력 비교 바(우리 팀 vs 상대 팀 포메이션·전술·실시간 상성 진단 1줄 스트립·ATT/MID/DEF 스탯 비교 필), 상시 노출 전술·포메이션 컨트롤 및 경기 액션 바, 3모드 피치 전환(`[상대 포메이션]` / `[내 선발 편집]` / `[양 팀 피치 비교]`) 적용.
 
 ### 2. 드래프트 포메이션 임시 배치(시너지 실시간 프리뷰) & 체계적인 시너지 공식 가이드
 - **1회 클릭 임시 배치 & 시너지 실시간 프리뷰** (`src/components/common/PitchBoard.tsx`, `PlayerCard.tsx`, `RouletteReelsView.tsx`, `DraftScreen.tsx`):
@@ -33,11 +52,6 @@
 - **UCL 내 스쿼드 피치 정규화 & 1경기 스킵 결과 배너** (`src/components/ucl/UclDashboard.tsx`):
   - UCL `[내 스쿼드 / 전술]` 탭 피치를 정규 리그 스쿼드 관리 창과 동일한 비율(`lg:col-span-5` + `max-w-[460px]` + `compact`)로 정규화하고 우측에 16인 UCL 스탯 요약 리스트 추가.
   - UCL `[1경기 스킵]` 클릭 시 라운드명, 양 팀 스코어, 승/무/패(PK) 배지, 득점자 요약, `[상세 기록]` 버튼이 포함된 결과 스코어 배너 즉시 표시.
-
-### 6. 모바일 브라우저 터치 좌표(Hit-Test) 밀림 현상 해결 및 뷰포트 안정화 (Hotfix)
-- **모바일 뷰포트·터치 히트박스 정상화** (`index.html`, `src/index.css`, `src/App.tsx`, `HeaderNav.tsx`, `MatchDayTacticsRoom.tsx`, `OpponentPitchView.tsx`, `RouletteReelsView.tsx`, `PlayerCard.tsx`, `PitchBoard.tsx`, `TransferMarketModal.tsx`):
-  - `html`, `body`, `#root`에 단일 문서 스크롤 기반 `overflow-x: clip` 및 `100dvh`(`min-h-dvh`)를 적용하고 상단 `sticky` 헤더의 모바일 가로폭 초과·`backdrop-blur` 합성 레이어와 내부 `sticky bottom-2 backdrop-blur` 래퍼를 제거해 모바일 주소창 변화 시 터치 좌표가 위쪽으로 밀리던 문제 해결.
-  - 드래프트 프리뷰 바 선택 전/후 높이 고정(`min-h-[84px]`), 카드/피치 노드의 `hover:-translate-y-0.5`·`scale-105` 제거, 전역 인터랙티브 요소 `touch-action: manipulation` 적용.
 
 ---
 
