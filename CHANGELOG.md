@@ -5,6 +5,37 @@
 
 ---
 
+## v3.2 — NBA식 구단 트레이드 전면 개편 · 드래프트 임시 자리 이동 · 2D 시뮬-통계 정합성 · 프리뷰 양 팀 비교 기본화 · UCL 스킵 팝업 & 1차전/합산 강조
+
+### 1. 이적시장 → NBA식 구단 트레이드 제도 전면 개편 (Option 3 로스터 16인 균형)
+- **트레이드 가치 & 포지션 니즈 엔진 (`src/types/game.ts`, `src/types/league.ts`, `src/engine/transferEngine.ts`)**:
+  - 지수형 트레이드 가치(`Base TP = 10 × 1.185^(OVR-70)`), 체력·멀티포지션·시즌 폼·부상(-3%/-15%/-35%)·사기(-6%/+4%) 보정, 다대일 압축 보정(`100% / 78% / 60%`, 상대 필요 포지션 `+10%` 완화), OVR 87+ 슈퍼스타 최소 핵심급 가드(`maxUserOvr >= targetOvr - 7`) 도입.
+  - 상대 구단 실제 스쿼드 분석(`analyzeClubPositionNeeds`)으로 최우선 보강(`+18%`)·보강(`+10%`)·포화(`-15%`) 포지션 배지와 예상 성사 확률(`0~95%`), 단장 반응 코멘트 생성.
+  - **Option 3 자동 백업 매칭(`selectAutoFillerPlayers`)**: 2:1·3:1 다대일 트레이드 시 상대 구단 저OVR 로테이션 백업을 자동 매칭(유저 선택 변경 가능)해 우리 팀 16인(선발 11 + 벤치 5, GK 최소 1명)과 AI 구단 로스터 안전선 유지.
+  - **타 구단 먼저 오는 트레이드 제안(`generateIncomingTradeOffers`)**: 매 이적시장 0~5건 생성, `[즉시 수락]` · `[조건 수정 · 역제안]` · `[거절]` 지원.
+- **100% 양방향 로스터 동기화 & 트레이드 이력 (`src/store/GameContext.tsx`, `TransferMarketModal.tsx`, `PlayerDetailModal.tsx`)**:
+  - `TRADE_SUBMIT_PACKAGE`, `TRADE_ACCEPT_INCOMING`, `TRADE_REJECT_INCOMING` 액션 신설 및 5대 리그(`aiRosters` + `otherLeagues`) + UCL(`ucl.aiRosters`) 양방향 선수 이동(전 세계 중복 0건), 누적 스탯 보존, `PlayerDetailModal` `🔄 트레이드` 배지 표시, 트레이드된 선수의 `injuryAutoReturns` 자동 정리.
+
+### 2. 드래프트 임시 배치(프리뷰) 중 자리 이동(스왑) 지원
+- **`src/components/draft/DraftScreen.tsx`**:
+  - 후보 1회 클릭으로 피치에 임시 배치한 상태에서 기존 선발·벤치 선수들과 클릭·드래그 스왑 가능(`previewSwaps`), 이동 즉시 케미·개인 시너지 OVR·팀 실효 스탯 실시간 재계산, `[배치 원복]` 및 영입 확정 시 임시 스왑 일괄 반영.
+
+### 3. 2D 경기 시뮬레이션 흐름 ↔ 실제 경기 통계 정합성 강화
+- **`src/engine/matchEngine.ts`, `src/components/league/PitchMatch2D.tsx`, `src/components/league/LiveMatchBroadcast.tsx`**:
+  - `generateHalfFlavorEvents`의 공격 찬스·골키퍼 세이브·VAR 하이라이트 수와 팀 소유 비중을 실제 슈팅 수·유효슈팅(비득점 선방 수)·xG에 비례하도록 연동.
+  - `PitchMatch2D`에 실시간 슈팅·xG·전술 props를 전달해 빌드업→중원→파이널서드 단계적 전개, 지배 팀의 라인 압박 시프트, 전술별(점유·게겐프레싱·역습·측면) 움직임 패턴을 2D 피치에 구현.
+
+### 4. 매치 데이 프리뷰 기본 화면 → [양 팀 피치 비교] 기본값 변경
+- **`src/components/league/MatchDayTacticsRoom.tsx`**:
+  - 기본 탭을 `'split'`(`[양 팀 피치 비교]`)으로 변경하고 모바일·데스크톱 모두에서 1순위 탭으로 배치.
+
+### 5. UCL 토너먼트 1경기 스킵 결과 팝업 모달 & 1차전/합산 스코어(AGG) 강조
+- **`src/components/ucl/UclDashboard.tsx`, `MatchDayTacticsRoom.tsx`, `LiveMatchBroadcast.tsx`, `UclBracketTree.tsx`**:
+  - 자동 소멸되던 상단 스킵 배너를 영구 팝업 모달(`#ucl-skip-result-modal`)로 교체해 리그 페이즈·플레이오프·16강·8강·4강·결승 모든 1경기 스킵 시 단판 스코어 + 1차전/합산(AGG) + 진출/탈락/연장/PK 판정 + 득점자 + 스탯 + `[상세 기록 보기]`를 즉시 표시.
+  - 2차전 프리뷰(`firstLegBanner`), 2D 중계 전광판 및 하프타임 라커룸(`실시간 합산(AGG)` + 필요 골 수 배지), 브래킷 트리(`UclBracketTree`) 전반의 1차전·합산 스코어 시인성 대폭 강화.
+
+---
+
 ## v3.1 — 누적 피로도 완전 삭제 · 포메이션 피치 부상 교체 팝업 · 부상 완치 선발 자동 복귀
 
 ### 1. 누적 피로도(Fatigue) 시스템만 완전 삭제 & 단독 부상 확률 재조정

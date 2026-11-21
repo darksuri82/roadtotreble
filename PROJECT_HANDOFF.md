@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v3.1)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v3.2)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,10 +9,15 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **19개 파일 / 70개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **20개 파일 / 75개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
+- **v3.2 주요 신규 모듈·기능**:
+  - **NBA식 구단 트레이드 제도 전면 개편 (`transferEngine.ts`, `GameContext.tsx`, `TransferMarketModal.tsx`, `PlayerDetailModal.tsx`)**: 지수형 TP(`10 * 1.185^(ovr-70)`) + 다대일 압축 보정(`100%/78%/60%`) + OVR 87+ 슈퍼스타 최소 핵심급 가드(`maxUserOvr >= targetOvr - 7`) + 구단 실제 스쿼드 포지션 니즈(`+18%/+10%/-15%`) + Option 3 로스터 16인 자동 로테이션 백업 매칭 + 타 구단 먼저 오는 트레이드 제안(0~5건, 수락/역제안/거절) + 5대 리그·UCL 100% 양방향 로스터 이동(중복 0건, 누적 스탯 보존, `🔄 트레이드` 이력, `injuryAutoReturns` 정리)
+  - **드래프트 임시 배치 중 자리 이동 (`DraftScreen.tsx`)**: 프리뷰 모드 중 기존 선발·벤치 클릭/드래그 스왑(`previewSwaps`), 실시간 케미/시너지 OVR/스탯 재계산, `[배치 원복]` 및 확정 시 자동 반영
+  - **2D 경기 시뮬레이션 ↔ 통계 정합성 강화 (`matchEngine.ts`, `PitchMatch2D.tsx`, `LiveMatchBroadcast.tsx`)**: 비득점 공격/세이브/VAR 하이라이트를 실제 슈팅·유효슈팅·xG 비중에 연동, 2D 일반 전개에 단계적 빌드업·슈팅/xG 라인 시프트·전술별 움직임 패턴 반영
+  - **매치 프리뷰 기본 화면 & UCL 토너먼트 스킵 팝업·합산 강조 (`MatchDayTacticsRoom.tsx`, `UclDashboard.tsx`, `LiveMatchBroadcast.tsx`, `UclBracketTree.tsx`)**: 프리뷰 기본 탭 `'split'`(`[양 팀 피치 비교]`), UCL 1경기 스킵 영구 결과 팝업 모달(`#ucl-skip-result-modal`), 2차전 프리뷰·2D 전광판·브래킷 트리 1차전/합산(AGG) 시인성 강화
 - **v3.1 주요 신규 모듈·기능**:
   - **누적 피로도(Fatigue) 완전 제거 & 단독 부상 확률 재조정**: 우리 팀·AI 5대 리그 전체의 경기 간 누적 피로도 계산·OVR 페널티·UI 게이지/배지 완전 삭제(부상·사기·단일 경기 내부 체력 `staminaEngine.ts`는 그대로 유지), 단독 부상 기본 확률 재조정(경상 `0.42%` / 중상 `0.030%` / 치명적 중상 `0.006%`, 경상 강행 악화 고정 `6%`, 경기당 팀 신규 부상 최대 1명 캡, 부상 시 사기 `-1/-2/-3` 하락)
   - **포메이션 피치 기반 부상 교체 팝업 (`InjuryAlertModal.tsx`, `PitchBoard.tsx`)**: `PitchBoard`(`compact`) 재사용 + 부상 슬롯 빨간 테두리 강조(`highlightedPlayerIds`) + 선발 간 자유 포지션 스왑 & 실시간 대상 슬롯 포지션 적합도 벤치 추천 패널(`recommendBenchReplacements`)
