@@ -460,12 +460,26 @@ export function resolveManagerEventChoice(params: {
   const benchPlayers = bench.filter((p): p is Player => Boolean(p));
   const allPlayers = [...starterPlayers, ...benchPlayers];
 
-  const applyDeltaToPlayer = (playerId: string, delta: number) => {
+  const applyDeltaToPlayer = (
+    playerId: string,
+    delta: number,
+    options?: { allowFireIgnition?: boolean; capAt?: number },
+  ) => {
     if (delta === 0) return;
     const prev = getPlayerCondition(nextMap, playerId);
+    let next = clampMorale(prev.morale + delta);
+    if (delta > 0) {
+      const allowFire = options?.allowFireIgnition ?? true;
+      if (!allowFire && prev.morale < 4 && next >= 4) {
+        next = 3;
+      }
+      if (typeof options?.capAt === 'number' && prev.morale <= options.capAt && next > options.capAt) {
+        next = options.capAt;
+      }
+    }
     nextMap[playerId] = {
       ...prev,
-      morale: clampMorale(prev.morale + delta),
+      morale: next,
     };
   };
 
@@ -475,16 +489,23 @@ export function resolveManagerEventChoice(params: {
   // 1. Primary target effect (player or position_group)
   if (effect.targetMoraleDelta && effect.targetMoraleDelta !== 0) {
     if (event.targetScope === 'player' && event.targetPlayerId) {
-      applyDeltaToPlayer(event.targetPlayerId, effect.targetMoraleDelta);
+      // Individual target can always ignite solo 🔥 (or freeze ❄️ on fail/backlash)
+      applyDeltaToPlayer(event.targetPlayerId, effect.targetMoraleDelta, {
+        allowFireIgnition: true,
+      });
       outcomes.push({
         label: event.targetPlayerName ?? '대상 선수',
         delta: effect.targetMoraleDelta,
         note: moraleNote(effect.targetMoraleDelta, riskSucceeded, wasRisky),
       });
     } else if (event.targetScope === 'position_group' && event.positionGroup) {
+      const canIgniteLine = effect.targetMoraleDelta >= 2;
       for (const p of allPlayers) {
         if (getPositionGroup(p.position) === event.positionGroup) {
-          applyDeltaToPlayer(p.id, effect.targetMoraleDelta);
+          applyDeltaToPlayer(p.id, effect.targetMoraleDelta, {
+            allowFireIgnition: canIgniteLine,
+            capAt: canIgniteLine ? 4 : undefined,
+          });
         }
       }
       outcomes.push({
@@ -497,8 +518,12 @@ export function resolveManagerEventChoice(params: {
 
   // 2. Whole-team effect
   if (effect.teamMoraleDelta && effect.teamMoraleDelta !== 0) {
+    const canIgniteTeam = effect.teamMoraleDelta >= 2;
     for (const p of allPlayers) {
-      applyDeltaToPlayer(p.id, effect.teamMoraleDelta);
+      applyDeltaToPlayer(p.id, effect.teamMoraleDelta, {
+        allowFireIgnition: canIgniteTeam,
+        capAt: canIgniteTeam ? 4 : undefined,
+      });
     }
     nextTeamMorale = clampMorale(nextTeamMorale + effect.teamMoraleDelta);
     outcomes.push({
@@ -510,8 +535,12 @@ export function resolveManagerEventChoice(params: {
 
   // 3. Starter-only / Bench-only effects
   if (effect.starterMoraleDelta && effect.starterMoraleDelta !== 0) {
+    const canIgniteStarters = effect.starterMoraleDelta >= 2;
     for (const p of starterPlayers) {
-      applyDeltaToPlayer(p.id, effect.starterMoraleDelta);
+      applyDeltaToPlayer(p.id, effect.starterMoraleDelta, {
+        allowFireIgnition: canIgniteStarters,
+        capAt: canIgniteStarters ? 4 : undefined,
+      });
     }
     outcomes.push({
       label: '선발 11인',
@@ -521,8 +550,12 @@ export function resolveManagerEventChoice(params: {
   }
 
   if (effect.benchMoraleDelta && effect.benchMoraleDelta !== 0) {
+    const canIgniteBench = effect.benchMoraleDelta >= 2;
     for (const p of benchPlayers) {
-      applyDeltaToPlayer(p.id, effect.benchMoraleDelta);
+      applyDeltaToPlayer(p.id, effect.benchMoraleDelta, {
+        allowFireIgnition: canIgniteBench,
+        capAt: canIgniteBench ? 4 : undefined,
+      });
     }
     outcomes.push({
       label: '벤치 멤버',
@@ -535,7 +568,10 @@ export function resolveManagerEventChoice(params: {
   if (effect.secondaryGroup && effect.secondaryGroupDelta && effect.secondaryGroupDelta !== 0) {
     for (const p of allPlayers) {
       if (getPositionGroup(p.position) === effect.secondaryGroup) {
-        applyDeltaToPlayer(p.id, effect.secondaryGroupDelta);
+        applyDeltaToPlayer(p.id, effect.secondaryGroupDelta, {
+          allowFireIgnition: effect.secondaryGroupDelta >= 2,
+          capAt: 4,
+        });
       }
     }
     outcomes.push({
@@ -551,7 +587,7 @@ export function resolveManagerEventChoice(params: {
     for (const p of allPlayers) {
       const prev = getPlayerCondition(conditionMap, p.id);
       if (prev.morale <= -3) {
-        applyDeltaToPlayer(p.id, effect.frozenReliefBonus);
+        applyDeltaToPlayer(p.id, effect.frozenReliefBonus, { allowFireIgnition: false });
         relievedCount += 1;
       }
     }

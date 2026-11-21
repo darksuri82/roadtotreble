@@ -147,9 +147,9 @@ export function getFatigueInitialStaminaCap(fatigue: number): number {
 }
 
 export function getFatigueInjuryRiskMultiplier(fatigue: number): number {
-  if (fatigue >= 80) return 3.2;
-  if (fatigue >= 60) return 2.1;
-  if (fatigue >= 40) return 1.35;
+  if (fatigue >= 80) return 2.8;
+  if (fatigue >= 60) return 1.9;
+  if (fatigue >= 40) return 1.3;
   return 1.0;
 }
 
@@ -275,13 +275,19 @@ export function createInjury(
   };
 }
 
+export function getInjuryMoralePenalty(severity: InjurySeverity): number {
+  if (severity === 'severe') return -3;
+  if (severity === 'moderate') return -2;
+  return -1;
+}
+
 /**
  * Rolls whether a player who played in a match sustains a new injury (or aggravates a minor injury).
  * Base probabilities (per player per 90-min match at fresh fatigue < 40):
- * - minor: 0.38% (~2-3 minor injuries per full season)
- * - moderate: 0.075% (~0.4 moderate injuries per season)
- * - severe: 0.012% (rare season-ending event)
- * Scaled by fatigue risk multiplier (1.0x / 1.35x / 2.1x / 3.2x), minutes ratio, and GK factor (0.35x).
+ * - minor: 0.30% (~2-3 minor injuries per full season across entire squad)
+ * - moderate: 0.020% (~0.12-0.15 per season — genuinely uncommon)
+ * - severe: 0.004% (~0.02-0.03 per season — truly rare season-ending event)
+ * Scaled by fatigue risk multiplier (1.0x / 1.3x / 1.9x / 2.8x), minutes ratio, and GK factor (0.35x).
  */
 export function rollPlayerMatchInjury(params: {
   player: Pick<Player, 'position'>;
@@ -303,22 +309,22 @@ export function rollPlayerMatchInjury(params: {
   } = params;
   if (minutesPlayed <= 0) return { injury: null, wasAggravated: false };
 
-  // Playing through an existing minor injury => +7% aggravation risk
+  // Playing through an existing minor injury => +6% aggravation risk
   if (
     currentCondition.injury &&
     currentCondition.injury.matchesRemaining > 0 &&
     currentCondition.injury.canPlayThrough
   ) {
-    const aggravationChance = 0.07 * (postMatchFatigue >= 60 ? 1.35 : 1.0);
+    const aggravationChance = 0.06 * (postMatchFatigue >= 60 ? 1.3 : 1.0);
     if (rng() < aggravationChance) {
-      // 65% escalate to moderate, 35% extend minor by +2..3 matches
-      if (rng() < 0.65) {
+      // 30% escalate to moderate, 70% extend minor by +2 matches
+      if (rng() < 0.3) {
         return {
           injury: createInjury('moderate', round, competition, rng),
           wasAggravated: true,
         };
       }
-      const extra = randomInt(2, 3, rng);
+      const extra = 2;
       return {
         injury: {
           ...currentCondition.injury,
@@ -342,9 +348,9 @@ export function rollPlayerMatchInjury(params: {
   const minMult = Math.min(1.25, Math.max(0.35, minutesPlayed / 90));
   const totalMult = riskMult * gkMult * minMult;
 
-  const severeProb = 0.00012 * totalMult;
-  const moderateProb = 0.00075 * totalMult;
-  const minorProb = 0.0038 * totalMult;
+  const severeProb = 0.00004 * totalMult;
+  const moderateProb = 0.0002 * totalMult;
+  const minorProb = 0.003 * totalMult;
 
   const roll = rng();
   if (roll < severeProb) {
@@ -502,6 +508,8 @@ export interface PostMatchTeamUpdateInput {
   momPlayerId?: string | null;
   goalScorerIds?: Set<string>;
   assisterIds?: Set<string>;
+  goalsByPlayerId?: Record<string, number>;
+  assistsByPlayerId?: Record<string, number>;
   cleanSheet?: boolean;
   ratingsByPlayerId?: Record<string, number>;
   teamWinStreak?: number;
@@ -540,6 +548,8 @@ export function updateSquadConditionsAfterMatch(
     momPlayerId = null,
     goalScorerIds,
     assisterIds,
+    goalsByPlayerId = {},
+    assistsByPlayerId = {},
     cleanSheet = false,
     ratingsByPlayerId = {},
     teamWinStreak = 0,
@@ -556,25 +566,72 @@ export function updateSquadConditionsAfterMatch(
   const sortedOvrs = squad.map((p) => p.ovr).sort((a, b) => b - a);
   const starterCaliberThreshold = sortedOvrs[Math.min(10, Math.max(0, sortedOvrs.length - 1))] ?? 78;
 
-  // Team-level morale shift from match result
+  // True collective explosion: 7+ win streak, 4+ goal demolition, or big-match 3+ goal thrashing
+  const isCollectiveExplosion =
+    outcome === 'W' &&
+    (goalDiff >= 4 || teamWinStreak >= 7 || (isBigMatch && goalDiff >= 3));
+
+  // Moderate team warmup (warms players toward +2/+3 without igniting the whole squad)
+  const isTeamWarmup =
+    outcome === 'W' &&
+    !isCollectiveExplosion &&
+    (teamWinStreak >= 4 || goalDiff >= 3 || isBigMatch);
+
+  // Team-level morale shift for match participants
+  let teamPartDelta = 0;
   let teamMoraleDelta = 0;
   if (outcome === 'W') {
-    if (teamWinStreak >= 3) teamMoraleDelta += 1;
-    if (isBigMatch || competition === 'cup' || competition === 'ucl') teamMoraleDelta += 1;
+    if (isCollectiveExplosion) {
+      teamPartDelta = 2;
+      teamMoraleDelta = 2;
+    } else if (isTeamWarmup) {
+      teamPartDelta = 1;
+      teamMoraleDelta = 1;
+    }
   } else if (outcome === 'L') {
-    if (teamLossStreak >= 2) teamMoraleDelta -= 1;
-    if (isBigMatch || competition === 'cup' || competition === 'ucl') teamMoraleDelta -= 1;
+    if (teamLossStreak >= 2) {
+      teamPartDelta -= 1;
+      teamMoraleDelta -= 1;
+    }
+    if (goalDiff <= -3) {
+      teamPartDelta -= 2;
+      teamMoraleDelta -= 1;
+    }
+    if (isBigMatch) {
+      teamPartDelta -= 1;
+      teamMoraleDelta -= 1;
+    }
   }
+  teamPartDelta = Math.max(-3, Math.min(2, teamPartDelta));
   teamMoraleDelta = Math.max(-2, Math.min(2, teamMoraleDelta));
+
+  // On a winning clean sheet, award +1 morale ONLY to the single highest-rated GK/DF hero
+  let cleanSheetHeroId: string | null = null;
+  if (cleanSheet && outcome === 'W') {
+    let bestRating = -1;
+    for (const p of squad) {
+      const mins = minutesByPlayerId[p.id] ?? (starterIds.has(p.id) ? 90 : 0);
+      if (mins >= 45 && (p.position === 'GK' || p.position === 'DF')) {
+        const r = ratingsByPlayerId[p.id] ?? (p.position === 'GK' ? 7.3 : 7.1);
+        if (r > bestRating) {
+          bestRating = r;
+          cleanSheetHeroId = p.id;
+        }
+      }
+    }
+  }
 
   const playedRecovery = isShortRest ? 5 : 10;
   const restedRecovery = isShortRest ? 18 : 24;
   let teamFreshInjuriesThisMatch = 0;
+  let severeInjuryOccurred = false;
 
   for (const player of squad) {
     const prev = getPlayerCondition(conditionMap, player.id);
     const minutes = minutesByPlayerId[player.id] ?? (starterIds.has(player.id) ? 90 : 0);
     const played = minutes > 0;
+    const isStarter = starterIds.has(player.id);
+    const wasUnavailable = isPlayerUnavailable(prev);
 
     // 1. Fatigue update
     let nextFatigue: number;
@@ -593,6 +650,7 @@ export function updateSquadConditionsAfterMatch(
     // 2. Injury roll (if played) or tick down existing injury
     // Cap fresh injuries at max 1 per team per match to avoid multi-injury pileups
     let nextInjury = tickInjuryOneMatch(prev.injury);
+    let newInjuryThisMatch: PlayerInjury | null = null;
     const isPlayingThroughMinor = Boolean(
       prev.injury && prev.injury.matchesRemaining > 0 && prev.injury.canPlayThrough,
     );
@@ -611,6 +669,10 @@ export function updateSquadConditionsAfterMatch(
           teamFreshInjuriesThisMatch += 1;
         }
         nextInjury = rolled.injury;
+        newInjuryThisMatch = rolled.injury;
+        if (rolled.injury.severity === 'severe') {
+          severeInjuryOccurred = true;
+        }
         if (trackUserAlerts) {
           newInjuries.push({
             playerId: player.id,
@@ -620,7 +682,7 @@ export function updateSquadConditionsAfterMatch(
             position: player.position,
             mainPosition: player.mainPositions[0] ?? (player.position === 'GK' ? 'GK' : 'CM'),
             ovr: player.ovr,
-            isStarter: starterIds.has(player.id),
+            isStarter,
             starterSlotIndex: starterSlotIndexByPlayerId[player.id] ?? null,
             injury: rolled.injury,
             wasAggravated: rolled.wasAggravated,
@@ -629,17 +691,34 @@ export function updateSquadConditionsAfterMatch(
       }
     }
 
-    // 3. Morale update
-    let moraleDelta = teamMoraleDelta;
+    // 3. Morale update (individual heroics + natural cooldown + injury setback + strict fire gating)
+    const goals = goalsByPlayerId[player.id] ?? (goalScorerIds?.has(player.id) ? 1 : 0);
+    const assists = assistsByPlayerId[player.id] ?? (assisterIds?.has(player.id) ? 1 : 0);
+    const rating = ratingsByPlayerId[player.id];
+
+    let indivDelta = 0;
+    let isPersonalHero = false;
     if (played) {
-      if (outcome === 'W' && goalDiff >= 3) moraleDelta += 1;
-      if (outcome === 'L' && goalDiff <= -3) moraleDelta -= 2;
-      if (momPlayerId && momPlayerId === player.id) moraleDelta += 2;
-      if (goalScorerIds?.has(player.id) || assisterIds?.has(player.id)) moraleDelta += 1;
-      if (cleanSheet && (player.position === 'GK' || player.position === 'DF')) moraleDelta += 1;
-      const rating = ratingsByPlayerId[player.id];
-      if (typeof rating === 'number' && rating <= 5.8) moraleDelta -= 1;
+      if (momPlayerId && momPlayerId === player.id) {
+        indivDelta += 3;
+        isPersonalHero = true;
+      } else if (goals >= 2 || (typeof rating === 'number' && rating >= 9.0)) {
+        indivDelta += 2;
+        isPersonalHero = true;
+      } else if (goals === 1 || assists >= 1 || player.id === cleanSheetHeroId) {
+        indivDelta += 1;
+      }
+
+      if (typeof rating === 'number') {
+        if (rating <= 5.3) indivDelta -= 2;
+        else if (rating <= 5.9) indivDelta -= 1;
+      }
     }
+
+    // Injury lowers morale immediately (-1 minor, -2 moderate, -3 severe)
+    const injuryMoralePenalty = newInjuryThisMatch
+      ? getInjuryMoralePenalty(newInjuryThisMatch.severity)
+      : 0;
 
     // Unhappy starter-caliber player continuously benched (when healthy)
     const isHealthy = !nextInjury || nextInjury.matchesRemaining === 0;
@@ -649,14 +728,68 @@ export function updateSquadConditionsAfterMatch(
         ? prev.consecutiveBenchMatches + 1
         : prev.consecutiveBenchMatches;
 
+    let benchPenalty = 0;
     if (!played && isHealthy && player.ovr >= starterCaliberThreshold) {
       if (nextBenchStreak === 3 || (nextBenchStreak > 3 && (nextBenchStreak - 3) % 2 === 0)) {
-        moraleDelta -= 1;
+        benchPenalty = -1;
       }
     }
 
+    // Step 3a: Natural cooldown / mean reversion toward calm equilibrium
+    let baseMorale = prev.morale;
+    if (baseMorale >= 4) {
+      // Ecstatic (🔥) cools back to +3 (high) after a match unless refreshed by heroics or collective explosion
+      if (!isPersonalHero && !isCollectiveExplosion) {
+        baseMorale = 3;
+      }
+    } else if (baseMorale >= 2) {
+      // High (+2/+3) gradually cools when neither personal heroics nor team surge occurred
+      if (indivDelta <= 0 && teamPartDelta <= 0) {
+        baseMorale -= 1;
+      }
+    } else if (baseMorale === 1) {
+      if (outcome !== 'W' || (!played && indivDelta <= 0)) {
+        baseMorale -= 1;
+      }
+    } else if (baseMorale <= -4) {
+      // Frozen (❄️) slowly thaws on a clean winning appearance
+      if (outcome === 'W' && played && indivDelta >= 0 && injuryMoralePenalty === 0) {
+        baseMorale += 1;
+      }
+    } else if (baseMorale <= -2) {
+      if (outcome === 'W' && played && indivDelta >= 0 && injuryMoralePenalty === 0 && rng() < 0.5) {
+        baseMorale += 1;
+      }
+    }
+
+    // Step 3b: Apply match deltas (unavailable/benched players don't ride positive team surges)
+    const teamContribution = played
+      ? teamPartDelta
+      : teamPartDelta < 0 && !wasUnavailable
+        ? Math.max(-1, teamPartDelta)
+        : 0;
+    const clampedDelta = Math.max(
+      -3,
+      Math.min(3, teamContribution + indivDelta + injuryMoralePenalty + benchPenalty),
+    );
+    let nextMorale = baseMorale + clampedDelta;
+
+    // Step 3c: Strict fire gate (>= 4) so solo heroics fire more often than whole-team fire
+    const earnedSoloFire =
+      (isPersonalHero && injuryMoralePenalty === 0) ||
+      (goals >= 1 && baseMorale >= 3 && injuryMoralePenalty === 0);
+    const earnedCollectiveFire =
+      isCollectiveExplosion && isStarter && baseMorale >= 2 && injuryMoralePenalty === 0;
+
+    if (!earnedSoloFire && !earnedCollectiveFire && baseMorale < 4 && nextMorale >= 4) {
+      nextMorale = 3;
+    }
+    if (earnedCollectiveFire && !earnedSoloFire && nextMorale > 4) {
+      nextMorale = 4;
+    }
+
     // Track goal drought for FW
-    const scoredThisMatch = Boolean(goalScorerIds?.has(player.id));
+    const scoredThisMatch = goals > 0;
     const nextGoalDrought =
       player.position === 'FW' && played
         ? scoredThisMatch
@@ -664,17 +797,20 @@ export function updateSquadConditionsAfterMatch(
           : prev.recentGoalDrought + 1
         : prev.recentGoalDrought;
 
-    const nextMorale = clampMorale(prev.morale + Math.max(-3, Math.min(3, moraleDelta)));
-
     nextMap[player.id] = {
       fatigue: nextFatigue,
-      morale: nextMorale,
+      morale: clampMorale(nextMorale),
       injury: nextInjury,
       consecutiveBenchMatches: nextBenchStreak,
       consecutiveMatchesPlayed: played ? prev.consecutiveMatchesPlayed + 1 : 0,
       recentGoalDrought: nextGoalDrought,
-      lastMatchRating: played ? ratingsByPlayerId[player.id] : prev.lastMatchRating,
+      lastMatchRating: played ? rating : prev.lastMatchRating,
     };
+  }
+
+  // A season-ending severe injury shocks team morale slightly (-1)
+  if (severeInjuryOccurred) {
+    teamMoraleDelta = Math.max(-2, teamMoraleDelta - 1);
   }
 
   return {

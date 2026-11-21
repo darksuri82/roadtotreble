@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowLeftRight, ShieldAlert, Users, X } from 'lucide-rea
 import {
   getFatigueLabel,
   getFatigueTier,
+  getInjuryMoralePenalty,
   recommendBenchReplacements,
   SEVERITY_LABELS,
 } from '../../engine/conditionEngine';
@@ -102,6 +103,10 @@ export function InjuryAlertModal({
                       <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-slate-300">
                         {alert.isStarter ? '선발 주전' : '벤치'} · {alert.mainPosition}
                       </span>
+                      <span className="inline-flex items-center gap-1 rounded border border-sky-400/40 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-200">
+                        <PixelStatusIcon variant="morale_low" size={11} />
+                        사기 {getInjuryMoralePenalty(injury.severity)}
+                      </span>
                     </div>
 
                     <div className="mt-1.5 flex items-center gap-2">
@@ -143,15 +148,15 @@ export function InjuryAlertModal({
                       <strong className="text-amber-300">
                         OVR {injury.playThroughPenalty} 하락
                       </strong>
-                      과 중상 악화 위험(+7%)이 따릅니다.
+                      과 중상 악화 위험(+6%)이 따릅니다.
                     </p>
                   ) : injury.severity === 'severe' ? (
                     <p className="text-[11px] text-rose-200/90 leading-relaxed">
-                      장기 이탈이 불가피한 치명적 중상입니다. 복귀 후에도 {injury.recoveryMatchesRemaining}경기 컨디션 회복기가 필요합니다.
+                      장기 이탈이 불가피한 치명적 중상입니다. 선수 사기가 크게 떨어지고(-3) 팀 사기도 흔들리며(-1), 복귀 후 {injury.recoveryMatchesRemaining}경기 컨디션 회복기가 필요합니다.
                     </p>
                   ) : (
                     <p className="text-[11px] text-orange-200/90 leading-relaxed">
-                      완전 회복까지 출전이 불가하며, 복귀 직후 {injury.recoveryMatchesRemaining}경기 동안 실효 OVR 소폭 하락이 적용됩니다.
+                      완전 회복까지 출전이 불가하며(사기 -2), 복귀 직후 {injury.recoveryMatchesRemaining}경기 동안 실효 OVR 소폭 하락이 적용됩니다.
                     </p>
                   )}
                 </div>

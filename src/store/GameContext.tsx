@@ -447,6 +447,8 @@ function applyPostUserMatchConditionAndEvents(params: {
   // Extract exact minutesPlayed, scorers, assisters, ratings, MOM from MatchPlayerRating & MatchEvent
   const goalScorerIds = new Set<string>();
   const assisterIds = new Set<string>();
+  const goalsByPlayerId: Record<string, number> = {};
+  const assistsByPlayerId: Record<string, number> = {};
   const ratingsByPlayerId: Record<string, number> = {};
 
   for (const pr of userMatchResult.playerRatings) {
@@ -455,24 +457,50 @@ function applyPostUserMatchConditionAndEvents(params: {
       if (typeof pr.minutesPlayed === 'number' && pr.minutesPlayed > 0) {
         minutesByPlayerId[pr.playerId] = pr.minutesPlayed;
       }
-      if (pr.goals > 0) goalScorerIds.add(pr.playerId);
-      if (pr.assists > 0) assisterIds.add(pr.playerId);
+      if (pr.goals > 0) {
+        goalScorerIds.add(pr.playerId);
+        goalsByPlayerId[pr.playerId] = Math.max(goalsByPlayerId[pr.playerId] ?? 0, pr.goals);
+      }
+      if (pr.assists > 0) {
+        assisterIds.add(pr.playerId);
+        assistsByPlayerId[pr.playerId] = Math.max(assistsByPlayerId[pr.playerId] ?? 0, pr.assists);
+      }
     }
   }
 
+  const eventGoalCounts: Record<string, number> = {};
+  const eventAssistCounts: Record<string, number> = {};
   for (const ev of userMatchResult.events) {
     if (ev.type === 'goal' && ev.teamId === USER_CLUB_ID) {
-      if (ev.scorerId) goalScorerIds.add(ev.scorerId);
-      if (ev.assistId) assisterIds.add(ev.assistId);
+      if (ev.scorerId) {
+        goalScorerIds.add(ev.scorerId);
+        eventGoalCounts[ev.scorerId] = (eventGoalCounts[ev.scorerId] ?? 0) + 1;
+      }
+      if (ev.assistId) {
+        assisterIds.add(ev.assistId);
+        eventAssistCounts[ev.assistId] = (eventAssistCounts[ev.assistId] ?? 0) + 1;
+      }
     }
   }
   if (userMatchResult.extraTime) {
     for (const ev of userMatchResult.extraTime.etEvents) {
       if (ev.type === 'goal' && ev.teamId === USER_CLUB_ID) {
-        if (ev.scorerId) goalScorerIds.add(ev.scorerId);
-        if (ev.assistId) assisterIds.add(ev.assistId);
+        if (ev.scorerId) {
+          goalScorerIds.add(ev.scorerId);
+          eventGoalCounts[ev.scorerId] = (eventGoalCounts[ev.scorerId] ?? 0) + 1;
+        }
+        if (ev.assistId) {
+          assisterIds.add(ev.assistId);
+          eventAssistCounts[ev.assistId] = (eventAssistCounts[ev.assistId] ?? 0) + 1;
+        }
       }
     }
+  }
+  for (const [pid, cnt] of Object.entries(eventGoalCounts)) {
+    goalsByPlayerId[pid] = Math.max(goalsByPlayerId[pid] ?? 0, cnt);
+  }
+  for (const [pid, cnt] of Object.entries(eventAssistCounts)) {
+    assistsByPlayerId[pid] = Math.max(assistsByPlayerId[pid] ?? 0, cnt);
   }
 
   const momPlayerId: string | null = userMatchResult.momPlayerId ?? null;
@@ -500,6 +528,8 @@ function applyPostUserMatchConditionAndEvents(params: {
     momPlayerId,
     goalScorerIds,
     assisterIds,
+    goalsByPlayerId,
+    assistsByPlayerId,
     cleanSheet: oppGoals === 0,
     ratingsByPlayerId,
     teamWinStreak: nextWinStreak,
@@ -513,8 +543,16 @@ function applyPostUserMatchConditionAndEvents(params: {
     ...userCondUpdate.conditionMap,
   };
 
+  let baseTeamMorale = prevEvents.teamMorale;
+  if (baseTeamMorale >= 4 && userCondUpdate.teamMoraleDelta <= 0) {
+    baseTeamMorale = 3;
+  } else if (baseTeamMorale >= 2 && outcome !== 'W' && userCondUpdate.teamMoraleDelta <= 0) {
+    baseTeamMorale -= 1;
+  } else if (baseTeamMorale <= -4 && outcome === 'W' && userCondUpdate.teamMoraleDelta >= 0) {
+    baseTeamMorale += 1;
+  }
   const nextTeamMorale = clampMorale(
-    prevEvents.teamMorale + userCondUpdate.teamMoraleDelta,
+    baseTeamMorale + userCondUpdate.teamMoraleDelta,
   );
   const nextPendingAlerts =
     userCondUpdate.newInjuries.length > 0

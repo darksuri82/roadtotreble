@@ -95,7 +95,7 @@ describe('v3.0 Cumulative Fatigue, 3-Tier Injuries, Morale, 72 Manager Events & 
     let freshModerate = 0;
     let freshSevere = 0;
     let fatiguedTotal = 0;
-    const trials = 4000;
+    const trials = 20000;
 
     for (let i = 0; i < trials; i += 1) {
       const fRes = rollPlayerMatchInjury({
@@ -122,10 +122,10 @@ describe('v3.0 Cumulative Fatigue, 3-Tier Injuries, Morale, 72 Manager Events & 
     const freshTotal = freshMinor + freshModerate + freshSevere;
     expect(freshMinor).toBeGreaterThan(freshModerate);
     expect(freshModerate).toBeGreaterThanOrEqual(freshSevere);
-    // ~0.467% fresh rate => roughly 8..35 injuries over 4000 player-matches
-    expect(freshTotal).toBeGreaterThan(5);
-    expect(freshTotal).toBeLessThan(40);
-    // Fatigued (2.1x) must be substantially higher
+    // ~0.324% fresh rate => roughly 40..95 injuries over 20000 player-matches
+    expect(freshTotal).toBeGreaterThan(40);
+    expect(freshTotal).toBeLessThan(95);
+    // Fatigued (1.9x) must be substantially higher
     expect(fatiguedTotal).toBeGreaterThan(freshTotal * 1.5);
 
     // Per-team per-match safety cap: never more than 1 fresh injury in a single match even with rng=0
@@ -141,6 +141,73 @@ describe('v3.0 Cumulative Fatigue, 3-Tier Injuries, Morale, 72 Manager Events & 
       rng: () => 0.00001,
     });
     expect(capped.newInjuries.length).toBe(1);
+    // Severe injury (rng=0.00001 < 0.00004) drops injured player morale by -3 and shocks teamMoraleDelta
+    const injuredId = capped.newInjuries[0].playerId;
+    expect(capped.conditionMap[injuredId].morale).toBe(-3);
+    expect(capped.teamMoraleDelta).toBe(-1);
+  });
+
+  it('enforces natural morale cooldown, solo MOM ignition over mass team fire, and collective explosion surges', () => {
+    const squad11 = ACTIVE_PLAYERS.slice(0, 11);
+    const starterIds = new Set(squad11.map((p) => p.id));
+    const minutesByPlayerId = Object.fromEntries(squad11.map((p) => [p.id, 90]));
+    const momId = squad11[8].id;
+
+    // 1. Ordinary 1-0 win: ONLY MOM ignites (🔥 >= 4), teammates stay calm (<= 3)
+    const warmStart: PlayerConditionMap = Object.fromEntries(
+      squad11.map((p) => [p.id, { ...createDefaultCondition(), morale: 1 }]),
+    );
+    const ordinaryWin = updateSquadConditionsAfterMatch({
+      squad: squad11,
+      starterIds,
+      minutesByPlayerId,
+      tactic: 'balanced',
+      conditionMap: warmStart,
+      competition: 'league',
+      outcome: 'W',
+      goalDiff: 1,
+      momPlayerId: momId,
+      goalsByPlayerId: { [momId]: 1 },
+      teamWinStreak: 2,
+      rng: () => 0.99,
+    });
+    const fireAfterOrd = squad11.filter((p) => ordinaryWin.conditionMap[p.id].morale >= 4);
+    expect(fireAfterOrd.map((p) => p.id)).toEqual([momId]);
+
+    // 2. Next ordinary match without fresh heroics: previous MOM cools from >=4 back to 3
+    const nextMatch = updateSquadConditionsAfterMatch({
+      squad: squad11,
+      starterIds,
+      minutesByPlayerId,
+      tactic: 'balanced',
+      conditionMap: ordinaryWin.conditionMap,
+      competition: 'league',
+      outcome: 'D',
+      goalDiff: 0,
+      rng: () => 0.99,
+    });
+    expect(nextMatch.conditionMap[momId].morale).toBe(3);
+
+    // 3. True collective explosion (4-0 demolition on a warm squad): multiple starters ignite together
+    const hotStart: PlayerConditionMap = Object.fromEntries(
+      squad11.map((p) => [p.id, { ...createDefaultCondition(), morale: 2 }]),
+    );
+    const demolition = updateSquadConditionsAfterMatch({
+      squad: squad11,
+      starterIds,
+      minutesByPlayerId,
+      tactic: 'balanced',
+      conditionMap: hotStart,
+      competition: 'league',
+      outcome: 'W',
+      goalDiff: 4,
+      momPlayerId: momId,
+      goalsByPlayerId: { [momId]: 2 },
+      teamWinStreak: 5,
+      rng: () => 0.99,
+    });
+    const fireAfterDemo = squad11.filter((p) => demolition.conditionMap[p.id].morale >= 4);
+    expect(fireAfterDemo.length).toBeGreaterThanOrEqual(8);
   });
 
   it('handles 3-tier injury recovery countdown, minor play-through penalty, and AI injury substitution', () => {
@@ -204,7 +271,7 @@ describe('v3.0 Cumulative Fatigue, 3-Tier Injuries, Morale, 72 Manager Events & 
     expect(boosted[0].ovr).toBe(Math.min(99, sample.ovr + 3)); // +2 + 0.5 rounded = +3 or +2
   });
 
-  it('provides 72 unique manager events (36 press + 36 locker) across all 3 target scopes with clean interpolation & resolution', () => {
+  it('provides 72 unique manager events (36 press + 36 locker) where every event has a morale-drop/risk choice', () => {
     expect(PRESS_CONFERENCE_EVENTS.length).toBe(36);
     expect(LOCKER_ROOM_EVENTS.length).toBe(36);
     expect(ALL_MANAGER_EVENTS.length).toBe(72);
@@ -221,10 +288,31 @@ describe('v3.0 Cumulative Fatigue, 3-Tier Injuries, Morale, 72 Manager Events & 
 
     for (const ev of ALL_MANAGER_EVENTS) {
       expect(ev.choices.length).toBe(3);
+      let hasNegativePath = false;
       for (const ch of ev.choices) {
         expect(ch.quote.length).toBeGreaterThan(10);
         expect(ch.successEffect.reactionText.length).toBeGreaterThan(10);
+        const s = ch.successEffect;
+        const f = ch.failEffect;
+        const sNeg = [
+          s.targetMoraleDelta,
+          s.teamMoraleDelta,
+          s.starterMoraleDelta,
+          s.benchMoraleDelta,
+          s.secondaryGroupDelta,
+        ].some((v) => (v ?? 0) < 0);
+        const fNeg = f
+          ? [
+              f.targetMoraleDelta,
+              f.teamMoraleDelta,
+              f.starterMoraleDelta,
+              f.benchMoraleDelta,
+              f.secondaryGroupDelta,
+            ].some((v) => (v ?? 0) < 0)
+          : false;
+        if (sNeg || fNeg) hasNegativePath = true;
       }
+      expect(hasNegativePath).toBe(true);
     }
 
     // Test non-repeating selection + interpolation + resolution
