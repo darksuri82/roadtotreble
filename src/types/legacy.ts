@@ -155,3 +155,58 @@ export function buildHallOfFameMember(
     avgRating,
   };
 }
+
+export type LeaderboardEntrySource = 'user' | 'historical' | 'global';
+
+export interface HistoricalBestXiPlayer {
+  position: string;
+  name: string;
+  note?: string;
+}
+
+export interface HistoricalTeamEntry {
+  id: string;
+  seasonLabel: string; // e.g. "19-20"
+  displayName: string; // e.g. "19-20 바이에른 뮌헨"
+  nickname: string; // e.g. "UCL 전승 트레블"
+  managerName: string;
+  userClub: UserClubProfile;
+  leagueId: LeagueId;
+  leagueKoreanName: string;
+  formation: FormationId;
+  defaultTactic: TacticId;
+  finalLeagueRank: number;
+  leaguePoints: number;
+  leagueTotalRounds: number;
+  leagueRecord: string;
+  leagueGoalDifference: number;
+  cupName: string;
+  cupResultLabel: string;
+  cupWon: boolean;
+  uclResultLabel: string;
+  uclWon: boolean;
+  isTreble: boolean;
+  isLeagueChampion: boolean;
+  teamAvgOvr: number;
+  seasonScore: SeasonScoreBreakdown;
+  trophies: string[];
+  summaryNote: string;
+  ballonDorWinnerName?: string;
+  worldBestXiCount: number;
+  leagueMvpName?: string;
+  leagueBestXiCount: number;
+  bestXi: HistoricalBestXiPlayer[];
+}
+
+export interface UnifiedLeaderboardEntry {
+  id: string;
+  source: LeaderboardEntrySource;
+  displayName: string;
+  subtitle: string;
+  completedAt: string;
+  totalScore: number;
+  grade: SeasonScoreBreakdown['grade'];
+  userEntry?: HallOfFameEntry;
+  historicalEntry?: HistoricalTeamEntry;
+}
+

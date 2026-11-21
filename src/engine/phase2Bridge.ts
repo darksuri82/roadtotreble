@@ -48,7 +48,10 @@ export function buildPhase2HandoffState(params: {
     awards,
   } = params;
 
-  const userRankIdx = standings.findIndex((r) => r.teamId === USER_CLUB_ID);
+  let userRankIdx = standings.findIndex((r) => r.teamId === USER_CLUB_ID);
+  if (userRankIdx === -1) {
+    userRankIdx = standings.findIndex((r) => r.isUser);
+  }
   if (userRankIdx === -1) return null;
   const finalRank = userRankIdx + 1;
   if (finalRank > 4) return null;

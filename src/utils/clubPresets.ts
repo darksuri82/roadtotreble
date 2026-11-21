@@ -1,4 +1,8 @@
-import type { UserClubProfile } from '../types/game';
+import {
+  DEFAULT_MANAGER_AVATAR,
+  type ManagerAvatarConfig,
+  type UserClubProfile,
+} from '../types/game';
 
 export const CLUB_PRESETS_STORAGE_KEY = 'pitch_manager_club_presets_v1';
 export const MAX_CLUB_PRESETS = 6;
@@ -6,6 +10,21 @@ export const MAX_CLUB_PRESETS = 6;
 export interface ClubPreset extends UserClubProfile {
   id: string;
   savedAt: string;
+  managerName?: string;
+  managerAvatar?: ManagerAvatarConfig;
+}
+
+export function normalizeManagerAvatar(
+  avatar?: Partial<ManagerAvatarConfig> | null,
+): ManagerAvatarConfig {
+  if (!avatar) return { ...DEFAULT_MANAGER_AVATAR };
+  return {
+    gender: avatar.gender === 'female' ? 'female' : 'male',
+    skinTone: avatar.skinTone ?? DEFAULT_MANAGER_AVATAR.skinTone,
+    hairStyle: avatar.hairStyle ?? DEFAULT_MANAGER_AVATAR.hairStyle,
+    hairColor: avatar.hairColor ?? DEFAULT_MANAGER_AVATAR.hairColor,
+    outfit: avatar.outfit ?? DEFAULT_MANAGER_AVATAR.outfit,
+  };
 }
 
 export function loadClubPresets(): ClubPreset[] {
@@ -15,27 +34,40 @@ export function loadClubPresets(): ClubPreset[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (item): item is ClubPreset =>
-        Boolean(
-          item &&
-            typeof item.id === 'string' &&
-            typeof item.name === 'string' &&
-            typeof item.shortName === 'string' &&
-            typeof item.primaryColor === 'string',
-        ),
-    );
+    return parsed
+      .filter(
+        (item): item is ClubPreset =>
+          Boolean(
+            item &&
+              typeof item.id === 'string' &&
+              typeof item.name === 'string' &&
+              typeof item.shortName === 'string' &&
+              typeof item.primaryColor === 'string',
+          ),
+      )
+      .map((item) => ({
+        ...item,
+        managerAvatar: item.managerAvatar
+          ? normalizeManagerAvatar(item.managerAvatar)
+          : undefined,
+      }));
   } catch {
     return [];
   }
 }
 
-export function saveClubPreset(profile: UserClubProfile): ClubPreset[] {
+export function saveClubPreset(
+  profile: UserClubProfile,
+  manager?: { name?: string; avatar?: ManagerAvatarConfig },
+): ClubPreset[] {
   const normalizedName = profile.name.trim() || 'FC 유나이티드 드림';
   const normalizedShort =
     (profile.shortName.trim() || 'FUD').toUpperCase().slice(0, 4);
 
   const existing = loadClubPresets();
+  const prevMatch = existing.find(
+    (p) => p.name.trim().toLowerCase() === normalizedName.toLowerCase(),
+  );
   const deduped = existing.filter(
     (p) => p.name.trim().toLowerCase() !== normalizedName.toLowerCase(),
   );
@@ -48,6 +80,10 @@ export function saveClubPreset(profile: UserClubProfile): ClubPreset[] {
     secondaryColor: profile.secondaryColor,
     pattern: profile.pattern,
     savedAt: new Date().toISOString(),
+    managerName: manager?.name ?? prevMatch?.managerName,
+    managerAvatar: manager?.avatar
+      ? normalizeManagerAvatar(manager.avatar)
+      : prevMatch?.managerAvatar,
   };
 
   const nextList = [nextPreset, ...deduped].slice(0, MAX_CLUB_PRESETS);

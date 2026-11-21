@@ -312,6 +312,7 @@ export interface GlobalSeasonAwards {
 
 export interface TeamSeasonAnalytics {
   finalRank: number;
+  rankLabel?: string; // e.g. '1위', '우승', '4강' for cup/UCL/combined displays
   points: number;
   played: number;
   won: number;

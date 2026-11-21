@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.3)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.4)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,14 +9,19 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **15개 파일 / 46+개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **16개 파일 / 52+개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **v2.3 주요 신규 모듈·기능**:
-  - 2등신 도트 감독 아바타(`PixelManagerAvatar.tsx`) & 이름 커스터마이징(피부5/헤어4×4/의상5) 전역 연동 + 도트 트로피 SVG(`PixelTrophySvg.tsx`) + 첫 화면 미니멀 리뉴얼
-  - 자국 컵 고속진행 자동 일시정지(`FastSimModal.tsx` `stopAtCup`) + 우승 도트 트로피 축하 모달(`CupChampionModal.tsx`, 라이브/스킵/고속진행 전 경로 보장)
-  - UCL 스위스 리그 페이즈 고속진행(`simulateUclLeaguePhaseToEnd`) + 정통 좌→우 SVG 직각 연결선 브래킷 트리(`UclBracketTree.tsx`)
-  - 글로벌 시즌 시상식(`computeGlobalSeasonAwards`: 발롱도르 TOP 5 & 월드베스트 XI 4-3-3) + 시즌 스코어 개인 수상 보너스(발롱 +600 / 월베 +120 / 리그 MVP +350 / 리그 베스트 +60) + 5탭 전체 대회 기록 & 명예의 전당 경기 히스토리 보존
+- **v2.4 주요 신규 모듈·기능**:
+  - 역대 최강 14팀 벤치마크(`src/data/historicalTeams.ts`): 유저와 동일한 `computeSeasonScore`로 공정 산출, 명예의 전당 3종 필터(`[전체 / 유저 / 역대 강팀]`)·베스트 11 상세 모달·결산 한 줄 비교 피드백·Phase 3 Supabase 확장 호환 타입(`UnifiedLeaderboardEntry`)
+  - 최종 순위 `0위` 버그 근본 수정(`standingsEngine.ts`, `analyticsEngine.ts`, `phase2Bridge.ts`, `TeamAnalyticsTab.tsx`, `SeasonSummary.tsx`)
+  - 감독 강점 14종 카드 그리드 직접 선택(`SELECT_MANAGER_TRAIT` + `[🎲 랜덤 선택]` 보조 버튼)
+  - 2등신 도트 감독 성별(남/여)·여성 헤어 3종(단발/포니테일/웨이브 롱헤어)·대머리 명장(`bald`, 머리색 자동 숨김) 확장 및 팀 프리셋(`clubPresets.ts`)·구버전 `localStorage` 안전 폴백 연동
+- **v2.3 주요 모듈·기능**:
+  - 2등신 도트 감독 아바타(`PixelManagerAvatar.tsx`) & 이름 커스터마이징 전역 연동 + 도트 트로피 SVG(`PixelTrophySvg.tsx`) + 첫 화면 미니멀 리뉴얼
+  - 자국 컵 고속진행 자동 일시정지(`FastSimModal.tsx`) + 우승 도트 트로피 축하 모달(`CupChampionModal.tsx`)
+  - UCL 스위스 리그 페이즈 고속진행(`simulateUclLeaguePhaseToEnd`) + 정통 좌→우 SVG 브래킷 트리(`UclBracketTree.tsx`)
+  - 발롱도르 TOP 5 & 월드베스트 XI 4-3-3(`computeGlobalSeasonAwards`) + 개인 수상 시즌 스코어 보너스 + 5탭 전체 대회 기록 영구 보존
 - **v2.2 주요 모듈·기능**:
   - 전술 vs 플레이스타일 상성(`evaluatePlaystyleTacticMatchup`) + 후반 스코어 상황 보정 + 하프타임 수석코치 교체 추천(`buildHalftimeCoachRecommendations`)
   - 하프타임/후반 선발 ↔ 선발 자유 스왑, 벤치 교체 안전 확인창, 하프타임 `[빠른 선발]`(`optimizeCurrentStartersForFormation`)

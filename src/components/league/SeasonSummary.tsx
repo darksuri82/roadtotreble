@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
+import { compareScoreWithHistoricalTeams } from '../../data/historicalTeams';
 import {
   computeMatchesOnlyAnalytics,
   computeSquadPlayerAnalytics,
@@ -222,6 +223,10 @@ export function SeasonSummary() {
     });
   }, [season]);
 
+  const leagueRankForAnalytics = season
+    ? getUserRank(season.standings, USER_CLUB_ID)
+    : 1;
+
   const combinedTeamAnalytics = useMemo(() => {
     if (!season) return null;
     return computeMatchesOnlyAnalytics({
@@ -232,8 +237,10 @@ export function SeasonSummary() {
       ],
       clubs: allKnownClubs,
       userClubId: USER_CLUB_ID,
+      finalRank: leagueRankForAnalytics,
+      rankLabel: `리그 ${leagueRankForAnalytics}위`,
     });
-  }, [season, allKnownClubs]);
+  }, [season, allKnownClubs, leagueRankForAnalytics]);
 
   const leagueTeamAnalytics = useMemo(() => {
     if (!season) return null;
@@ -251,8 +258,10 @@ export function SeasonSummary() {
       matches: season.userCupMatchHistory,
       clubs: season.clubs,
       userClubId: USER_CLUB_ID,
+      finalRank: leagueRankForAnalytics,
+      rankLabel: getUserCupResultLabel(season.cup, USER_CLUB_ID),
     });
-  }, [season]);
+  }, [season, leagueRankForAnalytics]);
 
   const uclTeamAnalytics = useMemo(() => {
     if (!season) return null;
@@ -260,8 +269,10 @@ export function SeasonSummary() {
       matches: season.userUclMatchHistory,
       clubs: allKnownClubs,
       userClubId: USER_CLUB_ID,
+      finalRank: leagueRankForAnalytics,
+      rankLabel: getUserUclResultLabel(season.ucl, USER_CLUB_ID),
     });
-  }, [season, allKnownClubs]);
+  }, [season, allKnownClubs, leagueRankForAnalytics]);
 
   const combinedSquadRows = useMemo(() => {
     if (!season) return [];
@@ -611,6 +622,27 @@ export function SeasonSummary() {
               ))}
             </div>
           )}
+
+          {(() => {
+            const histComp = compareScoreWithHistoricalTeams(score.totalScore);
+            return (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/8 px-3.5 py-2.5 text-xs">
+                <div className="flex items-center gap-2 text-emerald-100">
+                  <span className="rounded bg-amber-400/20 px-2 py-0.5 text-[10px] font-black text-amber-300">
+                    🏛️ 역대 강팀 비교
+                  </span>
+                  <span className="font-semibold">{histComp.feedbackText}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLegacyModalOpen(true)}
+                  className="shrink-0 text-[11px] font-bold text-emerald-300 hover:underline cursor-pointer"
+                >
+                  역대 랭킹표 보기 →
+                </button>
+              </div>
+            );
+          })()}
         </section>
       )}
 

@@ -59,10 +59,10 @@ export function TeamAnalyticsTab({
       {/* Top KPI Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 tabular-nums">
         <div className="rounded-xl border border-slate-800 bg-[#111822] p-4">
-          <div className="text-[11px] text-slate-400">최종 순위 · 승점</div>
+          <div className="text-[11px] text-slate-400">최종 성적 · 승점</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold text-amber-300">
-              {t.finalRank}위
+              {t.rankLabel ?? (t.finalRank > 0 ? `${t.finalRank}위` : '-')}
             </span>
             <span className="font-display text-lg font-bold text-white">
               {t.points}점

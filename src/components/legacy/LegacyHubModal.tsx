@@ -10,16 +10,24 @@ import {
   X,
 } from 'lucide-react';
 import { HIDDEN_ACHIEVEMENTS } from '../../data/achievements';
+import {
+  buildUnifiedLeaderboard,
+  HISTORICAL_BENCHMARK_TEAMS,
+} from '../../data/historicalTeams';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
 import { getAchievementProgress } from '../../engine/legacyEngine';
 import { TACTICS } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
-import type { HallOfFameEntry } from '../../types/legacy';
+import type {
+  HallOfFameEntry,
+  HistoricalTeamEntry,
+} from '../../types/legacy';
 import { JerseySvg } from '../common/JerseySvg';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 
 type LegacyTab = 'hof' | 'achievements';
+type HofFilterTab = 'all' | 'user' | 'historical';
 type HofSortBy = 'score' | 'date';
 type HofDetailSubTab = 'squad' | 'history';
 type HofHistoryFilter = 'all' | 'league' | 'cup' | 'ucl';
@@ -42,10 +50,13 @@ export function LegacyHubModal() {
   } = useGame();
 
   const [tab, setTab] = useState<LegacyTab>('hof');
+  const [hofFilter, setHofFilter] = useState<HofFilterTab>('all');
   const [sortBy, setSortBy] = useState<HofSortBy>('score');
   const [selectedEntry, setSelectedEntry] = useState<HallOfFameEntry | null>(
     null,
   );
+  const [selectedHistorical, setSelectedHistorical] =
+    useState<HistoricalTeamEntry | null>(null);
   const [detailSubTab, setDetailSubTab] = useState<HofDetailSubTab>('squad');
   const [historyFilter, setHistoryFilter] = useState<HofHistoryFilter>('all');
   const [achFilter, setAchFilter] = useState<'all' | 'unlocked' | 'locked'>(
@@ -57,19 +68,15 @@ export function LegacyHubModal() {
     [legacyState],
   );
 
-  const sortedHof = useMemo(() => {
-    const copy = [...legacyState.hallOfFame];
-    if (sortBy === 'score') {
-      copy.sort(
-        (a, b) =>
-          b.seasonScore.totalScore - a.seasonScore.totalScore ||
-          b.completedAt.localeCompare(a.completedAt),
-      );
-    } else {
-      copy.sort((a, b) => b.completedAt.localeCompare(a.completedAt));
-    }
-    return copy;
-  }, [legacyState.hallOfFame, sortBy]);
+  const unifiedLeaderboard = useMemo(
+    () =>
+      buildUnifiedLeaderboard({
+        userEntries: legacyState.hallOfFame,
+        filter: hofFilter,
+        sortBy,
+      }),
+    [legacyState.hallOfFame, hofFilter, sortBy],
+  );
 
   const filteredAchievements = useMemo(() => {
     return HIDDEN_ACHIEVEMENTS.filter((def) => {
@@ -81,6 +88,8 @@ export function LegacyHubModal() {
   }, [legacyState.unlockedAchievements, achFilter]);
 
   if (!legacyModalOpen) return null;
+
+  const isViewingDetail = Boolean(selectedEntry || selectedHistorical);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 backdrop-blur-sm sm:p-5">
@@ -96,11 +105,11 @@ export function LegacyHubModal() {
                 PITCH MANAGER 레거시 &amp; 명예의 전당
               </h2>
               <p className="text-xs text-slate-400">
-                명예의 전당 {legacyState.hallOfFame.length}시즌 · 히든 도전과제{' '}
+                유저 기록 {legacyState.hallOfFame.length}시즌 · 역대 강팀{' '}
+                {HISTORICAL_BENCHMARK_TEAMS.length}팀 · 히든 도전과제{' '}
                 <span className="font-bold text-amber-300">
                   {progress.unlocked} / {progress.total}
-                </span>{' '}
-                해금
+                </span>
               </p>
             </div>
           </div>
@@ -112,6 +121,7 @@ export function LegacyHubModal() {
                 onClick={() => {
                   setTab('hof');
                   setSelectedEntry(null);
+                  setSelectedHistorical(null);
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                   tab === 'hof'
@@ -119,13 +129,14 @@ export function LegacyHubModal() {
                     : 'text-slate-300 hover:text-white'
                 }`}
               >
-                🏛️ 명예의 전당 ({legacyState.hallOfFame.length})
+                🏛️ 명예의 전당 ({legacyState.hallOfFame.length + HISTORICAL_BENCHMARK_TEAMS.length})
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setTab('achievements');
                   setSelectedEntry(null);
+                  setSelectedHistorical(null);
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                   tab === 'achievements'
@@ -150,51 +161,175 @@ export function LegacyHubModal() {
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5">
-          {tab === 'hof' && !selectedEntry && (
+          {tab === 'hof' && !isViewingDetail && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-xs text-slate-400">
-                  완료된 모든 시즌은 34R/38R 경기당 승점(PPG×38) 공정 보정 + 개인 수상 보너스로 기록됩니다.
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setSortBy('score')}
-                    className={`rounded-lg border px-2.5 py-1 text-xs font-semibold cursor-pointer ${
-                      sortBy === 'score'
-                        ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
-                        : 'border-slate-700 bg-slate-800/60 text-slate-300'
-                    }`}
-                  >
-                    최고 스코어순
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSortBy('date')}
-                    className={`rounded-lg border px-2.5 py-1 text-xs font-semibold cursor-pointer ${
-                      sortBy === 'date'
-                        ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
-                        : 'border-slate-700 bg-slate-800/60 text-slate-300'
-                    }`}
-                  >
-                    최신 플레이순
-                  </button>
+              {/* Filter Tabs: All (User + Historical) | User Only | Historical Benchmark */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-800 bg-slate-950/70 p-1">
+                  {(
+                    [
+                      [
+                        'all',
+                        `전체 랭킹 (${legacyState.hallOfFame.length + HISTORICAL_BENCHMARK_TEAMS.length})`,
+                      ],
+                      ['user', `유저 기록만 (${legacyState.hallOfFame.length})`],
+                      [
+                        'historical',
+                        `역대 실제 강팀 (${HISTORICAL_BENCHMARK_TEAMS.length})`,
+                      ],
+                    ] as [HofFilterTab, string][]
+                  ).map(([fid, label]) => (
+                    <button
+                      key={fid}
+                      type="button"
+                      onClick={() => {
+                        setHofFilter(fid);
+                        if (fid !== 'user') setSortBy('score');
+                      }}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        hofFilter === fid
+                          ? 'bg-emerald-500 text-slate-950'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
+
+                {hofFilter === 'user' && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSortBy('score')}
+                      className={`rounded-lg border px-2.5 py-1 text-xs font-semibold cursor-pointer ${
+                        sortBy === 'score'
+                          ? 'border-amber-400/50 bg-amber-400/15 text-amber-300'
+                          : 'border-slate-700 bg-slate-800/60 text-slate-300'
+                      }`}
+                    >
+                      최고 스코어순
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSortBy('date')}
+                      className={`rounded-lg border px-2.5 py-1 text-xs font-semibold cursor-pointer ${
+                        sortBy === 'date'
+                          ? 'border-emerald-400/50 bg-emerald-400/15 text-emerald-300'
+                          : 'border-slate-700 bg-slate-800/60 text-slate-300'
+                      }`}
+                    >
+                      최신 플레이순
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {sortedHof.length === 0 ? (
+              <p className="text-xs text-slate-400">
+                모든 유저 팀과 실제 축구 역사 속 최강 14팀은 완전히 동일한 공정 시즌 스코어 공식(34R/38R PPG×38 + 우승/대업/언더독/개인수상 보너스)으로 순위를 겨룹니다.
+              </p>
+
+              {unifiedLeaderboard.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-10 text-center">
                   <Trophy className="mx-auto mb-3 h-10 w-10 text-slate-600" />
                   <p className="text-sm font-bold text-slate-300">
-                    아직 명예의 전당에 등재된 시즌이 없습니다.
+                    아직 명예의 전당에 등재된 유저 시즌이 없습니다.
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    시즌을 완료하면 구단, 감독 캐릭터, 우승 트로피, 최종 스쿼드와 경기 기록이 영구 보관됩니다.
+                    시즌을 완료하면 역대 최강 14팀과 함께 동일한 스코어보드에 등재됩니다!
                   </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {sortedHof.map((entry, idx) => {
+                  {unifiedLeaderboard.map((row, idx) => {
+                    const rankNum = idx + 1;
+
+                    if (row.source === 'historical' && row.historicalEntry) {
+                      const h = row.historicalEntry;
+                      return (
+                        <div
+                          key={h.id}
+                          className="group relative flex flex-col justify-between rounded-2xl border border-amber-500/25 bg-gradient-to-br from-[#171612] via-[#11151d] to-[#0d1118] p-4 transition hover:border-amber-400/60"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-amber-500/35 bg-slate-900">
+                                <JerseySvg
+                                  primaryColor={h.userClub.primaryColor}
+                                  secondaryColor={h.userClub.secondaryColor}
+                                  pattern={h.userClub.pattern}
+                                  label={h.userClub.shortName}
+                                  size={34}
+                                />
+                                <span
+                                  className={`absolute -top-2 -left-2 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-black ${
+                                    rankNum <= 3
+                                      ? 'bg-amber-400 text-slate-950'
+                                      : 'bg-slate-800 text-slate-200 border border-slate-700'
+                                  }`}
+                                >
+                                  {rankNum}
+                                </span>
+                              </div>
+
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-black text-amber-300 border border-amber-500/35">
+                                    🏛️ 역대 강팀
+                                  </span>
+                                  <h3 className="text-sm font-black text-white truncate">
+                                    {h.displayName}
+                                  </h3>
+                                  {h.isTreble && (
+                                    <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-black text-amber-300">
+                                      👑 트레블
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="mt-0.5 text-[11px] text-slate-300 truncate">
+                                  {h.managerName} 감독 · {h.nickname}
+                                </p>
+                                <p className="mt-0.5 text-[10px] text-slate-500 truncate">
+                                  {h.leagueKoreanName} {h.leaguePoints}점 ({h.leagueRecord}) · {h.cupName}{' '}
+                                  {h.cupResultLabel} · UCL {h.uclResultLabel}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <div className="text-xs font-bold text-amber-400">
+                                {h.seasonScore.grade} 등급
+                              </div>
+                              <div className="font-mono text-lg font-black text-white">
+                                {h.seasonScore.totalScore.toLocaleString()}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex items-center justify-between border-t border-slate-800/80 pt-2.5">
+                            <div className="flex flex-wrap gap-1">
+                              {h.trophies.slice(0, 3).map((tr) => (
+                                <span
+                                  key={tr}
+                                  className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-200/90"
+                                >
+                                  🏆 {tr}
+                                </span>
+                              ))}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedHistorical(h)}
+                              className="shrink-0 rounded-lg bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-300 hover:bg-amber-500/25 cursor-pointer"
+                            >
+                              베스트 11 보기
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const entry = row.userEntry!;
                     const trait = entry.managerTraitId
                       ? MANAGER_TRAITS[entry.managerTraitId]
                       : null;
@@ -202,22 +337,26 @@ export function LegacyHubModal() {
                     return (
                       <div
                         key={entry.id}
-                        className="group relative flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-950/70 p-4 transition hover:border-emerald-500/50"
+                        className="group relative flex flex-col justify-between rounded-2xl border border-emerald-500/35 bg-gradient-to-br from-[#0e1b18] via-[#0f1620] to-[#0c1118] p-4 transition hover:border-emerald-400/70"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-900">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-emerald-500/40 bg-slate-900">
                               <JerseySvg
                                 primaryColor={entry.userClub.primaryColor}
                                 secondaryColor={entry.userClub.secondaryColor}
                                 pattern={entry.userClub.pattern}
                                 size={34}
                               />
-                              {sortBy === 'score' && idx < 3 && (
-                                <span className="absolute -top-2 -left-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-slate-950">
-                                  {idx + 1}
-                                </span>
-                              )}
+                              <span
+                                className={`absolute -top-2 -left-2 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-black ${
+                                  rankNum <= 3
+                                    ? 'bg-emerald-400 text-slate-950'
+                                    : 'bg-slate-800 text-emerald-300 border border-emerald-500/40'
+                                }`}
+                              >
+                                {rankNum}
+                              </span>
                             </div>
 
                             {entry.managerAvatar && (
@@ -231,9 +370,12 @@ export function LegacyHubModal() {
                               </div>
                             )}
 
-                            <div>
+                            <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <h3 className="text-sm font-black text-white">
+                                <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-black text-emerald-300 border border-emerald-500/40">
+                                  👤 MY TEAM
+                                </span>
+                                <h3 className="text-sm font-black text-white truncate">
                                   {entry.userClub.name}
                                 </h3>
                                 <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-slate-300">
@@ -245,12 +387,12 @@ export function LegacyHubModal() {
                                   </span>
                                 )}
                               </div>
-                              <p className="mt-0.5 text-[11px] text-slate-400">
+                              <p className="mt-0.5 text-[11px] text-slate-300 truncate">
                                 {entry.managerName ? `${entry.managerName} 감독 · ` : ''}
                                 {entry.leagueRecord} ({entry.leaguePoints}점) · {entry.cupName}{' '}
                                 {entry.cupResultLabel} · UCL {entry.uclResultLabel}
                               </p>
-                              <p className="mt-0.5 text-[10px] text-slate-500">
+                              <p className="mt-0.5 text-[10px] text-slate-500 truncate">
                                 {formatShortDate(entry.completedAt)} · OVR {entry.teamAvgOvr} · 케미{' '}
                                 {entry.chemistry}
                                 {trait ? ` · ${trait.name}` : ''}
@@ -258,8 +400,8 @@ export function LegacyHubModal() {
                             </div>
                           </div>
 
-                          <div className="text-right">
-                            <div className="text-xs font-bold text-amber-400">
+                          <div className="text-right shrink-0">
+                            <div className="text-xs font-bold text-emerald-400">
                               {entry.seasonScore.grade} 등급
                             </div>
                             <div className="font-mono text-lg font-black text-white">
@@ -317,6 +459,146 @@ export function LegacyHubModal() {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* HISTORICAL TEAM BENCHMARK DETAIL VIEW */}
+          {tab === 'hof' && selectedHistorical && (
+            <div className="space-y-4">
+              <button
+                type="button"
+                onClick={() => setSelectedHistorical(null)}
+                className="text-xs font-bold text-amber-300 hover:underline cursor-pointer"
+              >
+                ← 명예의 전당 랭킹으로 돌아가기
+              </button>
+
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/35 bg-slate-950/85 p-5">
+                <div className="flex items-center gap-4">
+                  <JerseySvg
+                    primaryColor={selectedHistorical.userClub.primaryColor}
+                    secondaryColor={selectedHistorical.userClub.secondaryColor}
+                    pattern={selectedHistorical.userClub.pattern}
+                    label={selectedHistorical.userClub.shortName}
+                    size={56}
+                  />
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-black text-amber-300 border border-amber-500/35">
+                        🏛️ 역대 실제 강팀
+                      </span>
+                      <h3 className="text-xl font-black text-white">
+                        {selectedHistorical.displayName}
+                      </h3>
+                      <span className="rounded-lg bg-amber-400/20 px-2 py-0.5 text-xs font-black text-amber-300">
+                        {selectedHistorical.seasonScore.grade} (
+                        {selectedHistorical.seasonScore.totalScore.toLocaleString()}점)
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs font-semibold text-amber-200">
+                      {selectedHistorical.managerName} 감독 · {selectedHistorical.nickname}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-300">
+                      {selectedHistorical.leagueKoreanName} {selectedHistorical.leagueTotalRounds}R{' '}
+                      {selectedHistorical.leaguePoints}점 우승 ({selectedHistorical.leagueRecord}, 득실{' '}
+                      +{selectedHistorical.leagueGoalDifference}) · {selectedHistorical.cupName}{' '}
+                      {selectedHistorical.cupResultLabel} · UCL {selectedHistorical.uclResultLabel}
+                    </p>
+                    <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
+                      {selectedHistorical.summaryNote}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trophies */}
+              <div className="flex flex-wrap gap-2">
+                {selectedHistorical.trophies.map((tr) => (
+                  <span
+                    key={tr}
+                    className="rounded-lg border border-amber-400/35 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-200"
+                  >
+                    🏆 {tr}
+                  </span>
+                ))}
+                {selectedHistorical.ballonDorWinnerName && (
+                  <span className="rounded-lg border border-yellow-400/40 bg-yellow-500/15 px-3 py-1 text-xs font-bold text-yellow-200">
+                    ⚽ 발롱도르: {selectedHistorical.ballonDorWinnerName}
+                  </span>
+                )}
+              </div>
+
+              {/* Same Fair Season Score Breakdown */}
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
+                {[
+                  { label: '리그 환산(PPG×38)', val: selectedHistorical.seasonScore.leagueConvertedScore },
+                  { label: '리그 순위', val: selectedHistorical.seasonScore.leagueRankBonus },
+                  { label: '자국 컵', val: selectedHistorical.seasonScore.cupBonus },
+                  { label: '챔피언스리그', val: selectedHistorical.seasonScore.uclBonus },
+                  { label: '대업(트레블/무패)', val: selectedHistorical.seasonScore.honorsBonus },
+                  { label: '언더독 보너스', val: selectedHistorical.seasonScore.underdogBonus },
+                  { label: '개인 수상 보너스', val: selectedHistorical.seasonScore.awardsBonus ?? 0 },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-center"
+                  >
+                    <div className="text-[10px] text-slate-400">{item.label}</div>
+                    <div className="mt-1 font-mono text-sm font-black text-amber-300">
+                      +{item.val.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedHistorical.seasonScore.awardsBonusDetails &&
+                selectedHistorical.seasonScore.awardsBonusDetails.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2 text-[11px] text-amber-200">
+                    <span className="font-bold text-amber-300">당시 개인 수상 가산점:</span>
+                    {selectedHistorical.seasonScore.awardsBonusDetails.map((d) => (
+                      <span
+                        key={d}
+                        className="rounded-md bg-slate-950/70 px-2 py-0.5 font-semibold"
+                      >
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+              {/* Representative Best 11 */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h4 className="text-xs font-extrabold text-white">
+                    대표 베스트 11 ({selectedHistorical.formation} · {TACTICS[selectedHistorical.defaultTactic].name})
+                  </h4>
+                  <span className="text-[11px] text-slate-400">
+                    추정 팀 OVR {selectedHistorical.teamAvgOvr}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {selectedHistorical.bestXi.map((p, idx) => (
+                    <div
+                      key={`${p.position}-${p.name}-${idx}`}
+                      className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/75 px-3 py-2 text-xs"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-9 shrink-0 rounded bg-slate-800 py-0.5 text-center font-mono text-[10px] font-bold text-amber-300">
+                          {p.position}
+                        </span>
+                        <span className="truncate font-bold text-white">
+                          {p.name}
+                        </span>
+                      </div>
+                      {p.note && (
+                        <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
+                          {p.note}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

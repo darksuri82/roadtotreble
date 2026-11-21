@@ -44,7 +44,11 @@ export function getUserRank(
   standings: StandingRow[],
   userClubId = USER_CLUB_ID,
 ): number {
-  const idx = standings.findIndex((row) => row.teamId === userClubId);
+  if (standings.length === 0) return 1;
+  let idx = standings.findIndex((row) => row.teamId === userClubId);
+  if (idx === -1 && userClubId === USER_CLUB_ID) {
+    idx = standings.findIndex((row) => row.isUser);
+  }
   return idx === -1 ? standings.length : idx + 1;
 }
 

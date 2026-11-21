@@ -257,8 +257,16 @@ export function computeMatchesOnlyAnalytics(params: {
   matches: MatchResult[];
   clubs: Club[];
   userClubId?: string;
+  finalRank?: number;
+  rankLabel?: string;
 }): TeamSeasonAnalytics {
-  const { matches, clubs, userClubId = USER_CLUB_ID } = params;
+  const {
+    matches,
+    clubs,
+    userClubId = USER_CLUB_ID,
+    finalRank,
+    rankLabel,
+  } = params;
   const synthetic = computeTeamSeasonAnalytics({
     standings: [],
     userMatchHistory: matches,
@@ -273,6 +281,8 @@ export function computeMatchesOnlyAnalytics(params: {
 
   return {
     ...synthetic,
+    finalRank: finalRank && finalRank > 0 ? finalRank : synthetic.finalRank,
+    rankLabel,
     points: won * 3 + drawn,
     won,
     drawn,

@@ -5,6 +5,31 @@
 
 ---
 
+## v2.4 — 역대 최강팀 14팀 벤치마크 · 최종 순위 0위 버그 수정 · 감독 능력 직접 선택 · 남/여 & 대머리 커스터마이징
+
+### 명예의 전당 — 실제 역대 최강팀 14팀 벤치마크 랭킹
+- **실제 역대 최강 14팀 데이터 & 공정 점수 산출** (`src/data/historicalTeams.ts`, `src/types/legacy.ts`):
+  - 19-20·12-13 바이에른, 14-15·08-09 바르사, 22-23·17-18 맨시티, 09-10 인테르, 98-99 맨유, 23-24 레버쿠젠, 11-12 레알, 13-14 유벤투스, 03-04 아스널, 04-05 첼시, 15-16 레스터 14팀 수록.
+  - 하드코딩 없이 유저와 동일한 `computeSeasonScore` 함수에 실제 리그/컵/챔스/개인수상 실적을 통과시켜 공정 산출.
+  - Phase 3 Supabase 글로벌 명예의 전당 데이터를 그대로 병합할 수 있는 `UnifiedLeaderboardEntry` 타입으로 설계.
+- **명예의 전당 UI & 결산 비교 피드백** (`LegacyHubModal.tsx`, `SeasonSummary.tsx`):
+  - `[전체 랭킹 | 유저 기록만 | 역대 실제 강팀]` 3종 필터 탭, `🏛️ 역대 강팀` / `👤 MY TEAM` 배지 구분, 역대 강팀 상세 보기(감독명·실제 성적·트로피·대표 베스트 11·시즌 스코어 세부 내역) 구현.
+  - 시즌 결산 스코어 카드에 역대 랭킹 N위 한 줄 비교 피드백(`compareScoreWithHistoricalTeams`) 표시.
+
+### 최종 순위 `0위` 버그 근본 수정
+- **원인 및 수정** (`src/engine/analyticsEngine.ts`, `src/engine/standingsEngine.ts`, `src/engine/phase2Bridge.ts`, `src/components/league/TeamAnalyticsTab.tsx`, `src/components/league/SeasonSummary.tsx`):
+  - `computeMatchesOnlyAnalytics`가 빈 배열 `standings: []`을 전달해 `getUserRank([])`가 `0`을 반환하고 `TeamAnalyticsTab`에서 `0위`로 출력되던 문제를 수정.
+  - `getUserRank`에 `row.isUser` 폴백 및 빈 배열 가드(`>= 1`) 추가, 통합·컵·UCL 분석 카드에 대회별 실제 성적(`rankLabel`: 리그 N위 / 우승·4강 등)을 정확히 전달하도록 수정.
+
+### 감독 능력(강점) 직접 선택 방식 전환 & 감독 캐릭터 남/여·대머리 확장
+- **14종 감독 강점 카드 그리드 직접 선택** (`ManagerRouletteScreen.tsx`, `GameContext.tsx`):
+  - 룰렛 방식을 14종 카드 그리드 직접 선택 UI(`SELECT_MANAGER_TRAIT`)로 전환하고, 우측 상단에 `[🎲 랜덤 선택]` 보조 버튼 배치.
+- **성별(남/여) & 대머리(명장) 도트 커스터마이징 확장** (`PixelManagerAvatar.tsx`, `src/types/game.ts`, `src/utils/clubPresets.ts`, `FormationSelect.tsx`):
+  - 여성 감독 속눈썹·단발·포니테일·웨이브 롱헤어 및 명장 광택 대머리(`bald`, 선택 시 머리색 팔레트 숨김) 추가.
+  - 팀 프리셋(`localStorage`) 및 기존 세이브에 성별·헤어 설정 저장·복원 및 구버전(`gender` 누락) `male` 안전 폴백 적용.
+
+---
+
 ## v2.3 — 도트 감독 커스터마이징 · 발롱도르 & 월드베스트 XI · 챔스 트리 대진표 & 트로피 개편
 
 ### 도트 아바타 & 도트 트로피 · 미니멀 UI 리뉴얼

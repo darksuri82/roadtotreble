@@ -113,6 +113,7 @@ import {
   type SeasonAchievementTrackers,
 } from '../types/legacy';
 import type { Player } from '../types/player';
+import { normalizeManagerAvatar, saveClubPreset } from '../utils/clubPresets';
 
 const GAME_STORAGE_KEY = 'football_draft_game_state_v5';
 
@@ -642,6 +643,7 @@ type GameAction =
       type: 'UPDATE_MANAGER_PROFILE';
       payload: { name?: string; avatar?: Partial<ManagerAvatarConfig> };
     }
+  | { type: 'SELECT_MANAGER_TRAIT'; payload: { traitId: ManagerTraitId } }
   | { type: 'SPIN_MANAGER_TRAIT' }
   | { type: 'CONFIRM_MANAGER_TRAIT' }
   | { type: 'UPDATE_CLUB_PROFILE'; payload: Partial<UserClubProfile> }
@@ -1000,24 +1002,28 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'SELECT_MANAGER_TRAIT': {
+      return {
+        ...state,
+        manager: {
+          ...state.manager,
+          traitId: action.payload.traitId,
+          hasSpun: true,
+        },
+      };
+    }
+
     case 'SPIN_MANAGER_TRAIT': {
-      if (state.manager.hasSpun && state.manager.rerollsRemaining <= 0) {
-        return state;
-      }
       const pool = MANAGER_TRAIT_LIST.filter(
         (t) => t.id !== state.manager.traitId,
       );
       const chosen = pool[Math.floor(Math.random() * pool.length)];
-      const nextRerolls = state.manager.hasSpun
-        ? Math.max(0, state.manager.rerollsRemaining - 1)
-        : state.manager.rerollsRemaining;
 
       return {
         ...state,
         manager: {
           ...state.manager,
           traitId: chosen.id,
-          rerollsRemaining: nextRerolls,
           hasSpun: true,
         },
       };
@@ -1025,8 +1031,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'CONFIRM_MANAGER_TRAIT': {
       if (!state.manager.traitId) return state;
+      const trimmedManagerName = state.manager.name.trim() || DEFAULT_MANAGER_NAME;
+      const normalizedAvatar = normalizeManagerAvatar(state.manager.avatar);
+      saveClubPreset(state.userClub, {
+        name: trimmedManagerName,
+        avatar: normalizedAvatar,
+      });
       return {
         ...state,
+        manager: {
+          ...state.manager,
+          name: trimmedManagerName,
+          avatar: normalizedAvatar,
+        },
         phase: 'draft',
         starters: createEmptyStarters(),
         bench: createEmptyBench(),
@@ -3239,13 +3256,11 @@ function loadSavedGameState(): GameState {
       parsed.manager &&
       Array.isArray(parsed.starters)
     ) {
-      // Backfill v2.3 manager profile fields for existing saves
+      // Backfill v2.3/v2.4 manager profile fields (including gender) for existing saves
       if (typeof parsed.manager.name !== 'string') {
         parsed.manager.name = DEFAULT_MANAGER_NAME;
       }
-      if (!parsed.manager.avatar) {
-        parsed.manager.avatar = { ...DEFAULT_MANAGER_AVATAR };
-      }
+      parsed.manager.avatar = normalizeManagerAvatar(parsed.manager.avatar);
       if (
         !Array.isArray(parsed.draftLeaguePool) ||
         parsed.draftLeaguePool.length === 0
@@ -3310,6 +3325,7 @@ interface GameContextValue {
     name?: string;
     avatar?: Partial<ManagerAvatarConfig>;
   }) => void;
+  selectManagerTrait: (traitId: ManagerTraitId) => void;
   spinManagerTrait: () => void;
   confirmManagerTrait: () => void;
   updateClubProfile: (patch: Partial<UserClubProfile>) => void;
@@ -3587,6 +3603,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       goToManagerRoulette: () => dispatch({ type: 'GO_TO_MANAGER_ROULETTE' }),
       updateManagerProfile: (patch) =>
         dispatch({ type: 'UPDATE_MANAGER_PROFILE', payload: patch }),
+      selectManagerTrait: (traitId) =>
+        dispatch({ type: 'SELECT_MANAGER_TRAIT', payload: { traitId } }),
       spinManagerTrait: () => dispatch({ type: 'SPIN_MANAGER_TRAIT' }),
       confirmManagerTrait: () => dispatch({ type: 'CONFIRM_MANAGER_TRAIT' }),
       updateClubProfile: (patch) =>

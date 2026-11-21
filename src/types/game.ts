@@ -142,8 +142,17 @@ export interface RouletteReelResult {
   candidates: Player[]; // 2..3 position-compatible players per rolled club or Legend slot
 }
 
+export type ManagerGenderId = 'male' | 'female';
 export type ManagerSkinToneId = 'light' | 'peach' | 'warm' | 'tan' | 'deep';
-export type ManagerHairStyleId = 'fluffy' | 'parted' | 'slick' | 'buzz';
+export type ManagerHairStyleId =
+  | 'fluffy'
+  | 'parted'
+  | 'slick'
+  | 'buzz'
+  | 'bald'
+  | 'bob'
+  | 'ponytail'
+  | 'long_wave';
 export type ManagerHairColorId = 'brown' | 'black' | 'silver' | 'blonde';
 export type ManagerOutfitId =
   | 'classic_suit'
@@ -153,6 +162,7 @@ export type ManagerOutfitId =
   | 'puffer_jacket';
 
 export interface ManagerAvatarConfig {
+  gender?: ManagerGenderId; // optional for legacy localStorage saves; defaults to 'male'
   skinTone: ManagerSkinToneId;
   hairStyle: ManagerHairStyleId;
   hairColor: ManagerHairColorId;
@@ -162,6 +172,7 @@ export interface ManagerAvatarConfig {
 export const DEFAULT_MANAGER_NAME = '신임 감독';
 
 export const DEFAULT_MANAGER_AVATAR: ManagerAvatarConfig = {
+  gender: 'male',
   skinTone: 'peach',
   hairStyle: 'fluffy',
   hairColor: 'brown',

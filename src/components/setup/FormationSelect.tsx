@@ -63,6 +63,7 @@ export function FormationSelect() {
   const {
     state,
     updateClubProfile,
+    updateManagerProfile,
     setDraftLeaguePool,
     changeFormation,
     setDefaultTactic,
@@ -97,6 +98,12 @@ export function FormationSelect() {
       secondaryColor: preset.secondaryColor,
       pattern: preset.pattern,
     });
+    if (preset.managerName || preset.managerAvatar) {
+      updateManagerProfile({
+        name: preset.managerName,
+        avatar: preset.managerAvatar,
+      });
+    }
   };
 
   const handleDeletePreset = (id: string) => {
@@ -114,7 +121,12 @@ export function FormationSelect() {
       shortName: trimmedShort,
     };
     updateClubProfile({ name: trimmedName, shortName: trimmedShort });
-    setPresets(saveClubPreset(nextProfile));
+    setPresets(
+      saveClubPreset(nextProfile, {
+        name: state.manager.name,
+        avatar: state.manager.avatar,
+      }),
+    );
     proceedToManagerRoulette();
   };
 
@@ -129,7 +141,7 @@ export function FormationSelect() {
             구단 · 드래프트 풀 · 포메이션 설정
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            구단 유니폼과 드래프트 등장 리그 풀, 초기 포메이션·전술을 설정하세요. 다음 단계에서 감독 강점을 추첨합니다.
+            구단 유니폼과 드래프트 등장 리그 풀, 초기 포메이션·전술을 설정하세요. 다음 단계에서 감독 캐릭터와 능력을 직접 선택합니다.
           </p>
         </div>
 
