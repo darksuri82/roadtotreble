@@ -251,129 +251,53 @@ export function RouletteReelsView({
         )}
       </div>
 
-      {/* 2-Step Selection & Live Pitch Synergy Preview Bar */}
+      {/* 2-Step Selection & Live Pitch Synergy Preview Bar (Height-Stable to prevent vertical layout shift on tap) */}
       {allRevealed && reels.length > 0 && (
         <div className="space-y-3">
           {selectedCandidate && selectedFit ? (
-            <div className="rounded-xl border border-emerald-400/70 bg-emerald-950/30 p-3.5 space-y-2.5 shadow-[0_0_20px_rgba(16,185,129,0.12)]">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1.5 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="rounded bg-emerald-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
-                      포메이션 임시 배치 중
-                    </span>
-                    <span className="text-sm font-extrabold text-white">
-                      {selectedCandidate.name}
-                    </span>
-                    <span className="text-xs text-slate-300">
-                      {getCountryFlag(selectedCandidate.nationalityCode)}{' '}
-                      {selectedCandidate.nationality} ·{' '}
-                      {selectedCandidate.isLegend
-                        ? 'ICON 와일드카드'
-                        : selectedCandidate.club}
-                    </span>
-                  </div>
-
-                  {/* Live Synergy OVR & Chemistry Impact Row */}
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-200 tabular-nums">
-                    <span className="rounded-lg border border-slate-700/80 bg-slate-950/80 px-2 py-1">
-                      {targetSubPosition} 실효 OVR:{' '}
-                      <strong
-                        className={
-                          selectedFit.penalty < 0
-                            ? 'text-amber-300'
-                            : 'text-white'
-                        }
-                      >
-                        {selectedFit.effectiveOvr}
-                        {selectedFit.penalty < 0
-                          ? ` (${selectedFit.penalty})`
-                          : ''}
-                      </strong>
-                      {synBonus > 0 && (
-                        <>
-                          {' → '}
-                          <strong className="text-emerald-300 font-extrabold">
-                            {finalBoostedOvr} (+{synBonus})
-                          </strong>
-                        </>
-                      )}
-                    </span>
-
-                    {previewSlotSynergy && previewSlotSynergy.managerBonus > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-amber-400/45 bg-amber-400/15 px-2 py-1 text-[10px] font-extrabold text-amber-200">
-                        <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
-                        감독 시너지 +{previewSlotSynergy.managerBonus}
-                      </span>
-                    )}
-
-                    {previewSlotSynergy && previewSlotSynergy.neighborBonus > 0 && (
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-400/45 bg-emerald-500/15 px-2 py-1 text-[10px] font-extrabold text-emerald-200">
-                        <Link2 className="w-3 h-3 text-emerald-300" />
-                        인접 팀원 케미 +{previewSlotSynergy.neighborBonus}
-                      </span>
-                    )}
-
-                    <span
-                      className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${
-                        previewChemDelta > 0
-                          ? 'border-sky-400/40 bg-sky-500/15 text-sky-200'
-                          : previewChemDelta < 0
-                            ? 'border-rose-400/40 bg-rose-500/15 text-rose-200'
-                            : 'border-slate-800 bg-slate-900/80 text-slate-400'
-                      }`}
+            <div className="min-h-[84px] flex flex-col justify-center rounded-xl border border-emerald-400/70 bg-emerald-950/30 px-3.5 py-2.5 space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                  <span className="rounded bg-emerald-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
+                    임시 배치 중
+                  </span>
+                  <span className="truncate text-sm font-extrabold text-white">
+                    {selectedCandidate.name}
+                  </span>
+                  <span className="text-xs text-slate-300">
+                    {getCountryFlag(selectedCandidate.nationalityCode)}{' '}
+                    {selectedCandidate.isLegend
+                      ? 'ICON 와일드카드'
+                      : selectedCandidate.club}
+                  </span>
+                  <span className="rounded bg-slate-950/85 border border-slate-700/80 px-1.5 py-0.5 text-[11px] font-bold text-slate-200 tabular-nums">
+                    {targetSubPosition} OVR{' '}
+                    <strong
+                      className={
+                        selectedFit.penalty < 0
+                          ? 'text-amber-300'
+                          : 'text-white'
+                      }
                     >
-                      팀 케미 {previewChemDelta > 0 ? `+${previewChemDelta}` : previewChemDelta}
-                    </span>
-                  </div>
-
-                  {/* Synergy Reasons & Positions */}
-                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-300">
-                    <span>
-                      주포지션:{' '}
-                      <strong className="text-emerald-300">
-                        {formatMainPositions(selectedCandidate)}
-                      </strong>
-                    </span>
-                    {selectedCandidate.secondaryPositions.length > 0 && (
-                      <span>
-                        부포지션:{' '}
-                        <strong className="text-amber-300">
-                          {selectedCandidate.secondaryPositions.join(' · ')}
+                      {selectedFit.effectiveOvr}
+                    </strong>
+                    {synBonus > 0 && (
+                      <>
+                        {' → '}
+                        <strong className="text-emerald-300 font-extrabold">
+                          {finalBoostedOvr} (+{synBonus})
                         </strong>
-                      </span>
+                      </>
                     )}
-                    {previewSlotSynergy &&
-                      previewSlotSynergy.reasons.length > 0 && (
-                        <span className="text-emerald-200/90 font-semibold">
-                          · 시너지 상세: {previewSlotSynergy.reasons.join(' + ')}
-                        </span>
-                      )}
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
-                    {selectedCandidate.playstyles.map((ps) => (
-                      <span
-                        key={ps}
-                        className="rounded bg-slate-900 px-1.5 py-0.5 font-semibold text-amber-300"
-                      >
-                        {PLAYSTYLES[ps]?.name ?? ps}
-                      </span>
-                    ))}
-                    {selectedCandidate.scoutNote && (
-                      <span className="truncate">
-                        · {selectedCandidate.scoutNote}
-                      </span>
-                    )}
-                  </div>
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <div className="flex items-center gap-1.5 w-full sm:w-auto shrink-0">
                   <button
                     id="confirm-draft-pick-btn"
                     type="button"
                     onClick={() => handleConfirmPick(selectedCandidate)}
-                    className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 transition-colors cursor-pointer"
+                    className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 transition-colors cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     {selectedCandidate.name} {pickActionLabel} 확정
@@ -382,17 +306,70 @@ export function RouletteReelsView({
                     type="button"
                     onClick={() => updateSelectedCandidate(null)}
                     title="임시 배치 해제"
-                    className="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900/90 p-2.5 text-slate-400 hover:border-slate-500 hover:text-white transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900/90 p-2 text-slate-400 hover:border-slate-500 hover:text-white transition-colors cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
+
+              {/* Compact 1-Line Synergy & Position Tags */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-300 tabular-nums">
+                <span>
+                  포지션:{' '}
+                  <strong className="text-emerald-300">
+                    {formatMainPositions(selectedCandidate)}
+                  </strong>
+                  {selectedCandidate.secondaryPositions.length > 0 && (
+                    <span className="text-amber-300">
+                      {' '}
+                      (부 {selectedCandidate.secondaryPositions.join('/')})
+                    </span>
+                  )}
+                </span>
+
+                {previewSlotSynergy && previewSlotSynergy.managerBonus > 0 && (
+                  <span className="inline-flex items-center gap-0.5 rounded border border-amber-400/45 bg-amber-400/15 px-1.5 py-0.5 font-extrabold text-amber-200">
+                    <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                    감독 +{previewSlotSynergy.managerBonus}
+                  </span>
+                )}
+
+                {previewSlotSynergy && previewSlotSynergy.neighborBonus > 0 && (
+                  <span className="inline-flex items-center gap-0.5 rounded border border-emerald-400/45 bg-emerald-500/15 px-1.5 py-0.5 font-extrabold text-emerald-200">
+                    <Link2 className="w-2.5 h-2.5 text-emerald-300" />
+                    인접 케미 +{previewSlotSynergy.neighborBonus}
+                  </span>
+                )}
+
+                <span
+                  className={`rounded border px-1.5 py-0.5 font-bold ${
+                    previewChemDelta > 0
+                      ? 'border-sky-400/40 bg-sky-500/15 text-sky-200'
+                      : previewChemDelta < 0
+                        ? 'border-rose-400/40 bg-rose-500/15 text-rose-200'
+                        : 'border-slate-800 bg-slate-900/80 text-slate-400'
+                  }`}
+                >
+                  팀 케미 {previewChemDelta > 0 ? `+${previewChemDelta}` : previewChemDelta}
+                </span>
+
+                {selectedCandidate.playstyles.map((ps) => (
+                  <span
+                    key={ps}
+                    className="rounded bg-slate-900 px-1.5 py-0.5 font-semibold text-amber-300"
+                  >
+                    {PLAYSTYLES[ps]?.name ?? ps}
+                  </span>
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-slate-800 bg-[#0d131c] px-3.5 py-2.5 text-xs text-slate-400">
-              후보 카드를 <strong className="text-emerald-300">1회 클릭하면 포메이션 피치에 임시 배치</strong>되어 시너지 OVR 상승량과 연결선이 실시간 표시됩니다. 마음에 들면{' '}
-              <strong className="text-white">[영입 확정]</strong>(또는 재클릭)으로 확정하세요.
+            <div className="min-h-[84px] flex items-center rounded-xl border border-slate-800 bg-[#0d131c] px-3.5 py-2.5 text-xs text-slate-400">
+              <div>
+                후보 카드를 <strong className="text-emerald-300">1회 클릭하면 포메이션 피치에 임시 배치</strong>되어 시너지 OVR 상승량과 연결선이 실시간 표시됩니다. 마음에 들면{' '}
+                <strong className="text-white">[영입 확정]</strong>(또는 재클릭)으로 확정하세요.
+              </div>
             </div>
           )}
 

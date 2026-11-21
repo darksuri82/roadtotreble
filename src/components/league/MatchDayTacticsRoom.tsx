@@ -394,17 +394,17 @@ export function MatchDayTacticsRoom({
                   key={t.id}
                   type="button"
                   onClick={() => onSelectTactic(t.id)}
-                  className={`relative rounded-lg py-1.5 px-1 text-center transition-all cursor-pointer ${
+                  className={`relative min-w-0 rounded-lg py-1.5 px-1 text-center transition-colors cursor-pointer ${
                     active
                       ? 'bg-emerald-500 text-slate-950 font-extrabold shadow'
                       : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600 font-bold'
                   }`}
                 >
-                  <div className="text-[11px] leading-tight whitespace-nowrap">
+                  <div className="truncate text-[10px] sm:text-[11px] leading-tight">
                     {t.shortName}
                   </div>
                   <div
-                    className={`mt-0.5 text-[9px] font-bold tabular-nums ${
+                    className={`mt-0.5 truncate text-[8px] sm:text-[9px] font-bold tabular-nums ${
                       active
                         ? 'text-slate-900'
                         : vsEval.delta > 0
@@ -415,9 +415,9 @@ export function MatchDayTacticsRoom({
                     }`}
                   >
                     {vsEval.delta > 0
-                      ? `유리 +${vsEval.delta.toFixed(1)}`
+                      ? `+${vsEval.delta.toFixed(1)}`
                       : vsEval.delta < 0
-                        ? `불리 ${vsEval.delta.toFixed(1)}`
+                        ? `${vsEval.delta.toFixed(1)}`
                         : '호각'}
                   </div>
                   {isRec && !active && (
@@ -450,7 +450,7 @@ export function MatchDayTacticsRoom({
               빠른 최적 선발
             </button>
           </div>
-          <div className="grid grid-cols-6 gap-1">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
             {FORMATION_LIST.map((f) => (
               <button
                 key={f.id}
@@ -459,7 +459,7 @@ export function MatchDayTacticsRoom({
                   setSelectedSlot(null);
                   onChangeFormation(f.id);
                 }}
-                className={`rounded-lg py-1.5 text-[11px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                className={`rounded-lg py-1.5 text-[11px] font-bold transition-colors cursor-pointer ${
                   formation === f.id
                     ? 'bg-sky-400 text-slate-950 font-extrabold'
                     : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
@@ -470,6 +470,13 @@ export function MatchDayTacticsRoom({
             ))}
           </div>
         </div>
+
+        {/* Always-Visible Primary Match Action Controls (Kickoff / Skip) */}
+        {children && (
+          <div className="pt-2.5 border-t border-slate-800/90">
+            {children}
+          </div>
+        )}
       </div>
 
       {/* 4) Formation Pitch Visualizer (Opponent Pitch vs Our Lineup Editor) */}
@@ -621,13 +628,6 @@ export function MatchDayTacticsRoom({
           </div>
         )}
       </div>
-
-      {/* 5) Sticky Always-Visible Match Kickoff / Skip Action Bar */}
-      {children && (
-        <div className="sticky bottom-2 z-30 rounded-xl border border-slate-700/90 bg-[#0a1019]/95 p-2.5 shadow-2xl backdrop-blur-md">
-          {children}
-        </div>
-      )}
 
       <TacticsGuideModal open={guideOpen} onClose={() => setGuideOpen(false)} />
     </div>

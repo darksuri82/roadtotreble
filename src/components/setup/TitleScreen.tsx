@@ -22,7 +22,7 @@ export function TitleScreen() {
 
   return (
     <>
-      <div className="mx-auto flex min-h-[calc(100vh-64px)] max-w-4xl flex-col justify-center px-4 py-10 sm:py-16">
+      <div className="mx-auto flex min-h-[calc(100dvh-64px)] max-w-4xl flex-col justify-center px-4 py-10 sm:py-16">
         {/* Modern Minimalist Hero with 3 Treble Pixel Trophies */}
         <section className="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-[#0e141d] px-6 py-12 text-center shadow-2xl sm:px-14 sm:py-16">
           <div

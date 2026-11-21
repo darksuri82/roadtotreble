@@ -190,12 +190,12 @@ export function OpponentPitchView({
               className="absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center"
             >
               <div
-                className={`flex flex-col items-center rounded-xl px-1.5 py-1 min-w-[64px] max-w-[82px] text-center shadow-md backdrop-blur-xs ${
+                className={`flex flex-col items-center rounded-xl px-1.5 py-1 min-w-[60px] max-w-[80px] text-center shadow-md ${
                   isSuper
                     ? 'border border-cyan-400/65 bg-[#0e1b29]/95'
                     : isThreat
                       ? 'border border-amber-400/45 bg-[#151821]/95'
-                      : 'border border-slate-700/80 bg-[#0d141f]/92'
+                      : 'border border-slate-700/80 bg-[#0d141f]/95'
                 }`}
               >
                 <div className="flex items-center gap-1 leading-none">

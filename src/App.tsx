@@ -15,9 +15,9 @@ function GameRouter() {
   const { state } = useGame();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-dvh w-full max-w-full overflow-x-clip flex flex-col">
       <HeaderNav />
-      <main className="flex-1 pb-10">
+      <main className="flex-1 w-full max-w-full pb-10">
         {state.phase === 'title' && <TitleScreen />}
         {state.phase === 'manager_roulette' && <ManagerRouletteScreen />}
         {state.phase === 'setup' && <FormationSelect />}

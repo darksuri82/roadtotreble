@@ -102,12 +102,10 @@ export function PlayerCard({
         type="button"
         onClick={onClick}
         disabled={disabled}
-        className={`relative w-full overflow-hidden rounded-xl p-3 text-left transition-all duration-150 ${style.wrapper} ${
+        className={`relative w-full overflow-hidden rounded-xl p-3 text-left transition-colors duration-150 ${style.wrapper} ${
           selected ? 'ring-2 ring-emerald-400' : ''
         } ${
-          onClick && !disabled
-            ? 'cursor-pointer hover:-translate-y-0.5'
-            : 'cursor-default'
+          onClick && !disabled ? 'cursor-pointer' : 'cursor-default'
         } ${disabled ? 'opacity-50' : ''}`}
       >
         <div className="flex items-center justify-between gap-2.5">
@@ -333,8 +331,8 @@ export function PlayerCard({
             {actionLabel ?? '영입하기'} 확정 ✓
           </button>
         ) : (
-          <div className="relative z-10 mt-2.5 w-full rounded-lg border border-slate-700/80 bg-slate-900/75 py-1.5 text-center text-[11px] font-semibold text-slate-400 group-hover:border-emerald-500/50 group-hover:text-emerald-200">
-            클릭하여 피치 임시 배치 · 시너지 프리뷰
+          <div className="relative z-10 mt-2.5 w-full rounded-lg border border-slate-700/80 bg-slate-900/75 py-2 text-center text-xs font-semibold text-slate-400 group-hover:border-emerald-500/50 group-hover:text-emerald-200">
+            클릭하여 피치 임시 배치 · 프리뷰
           </div>
         )
       ) : (

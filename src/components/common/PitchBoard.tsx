@@ -358,14 +358,14 @@ export function PitchBoard({
                   ? `${player.name} (${formatMainPositions(player)}) · ${player.club}${synTooltipText}${staminaPct !== null ? ` · 체력 ${staminaPct}%` : ''} (우클릭/ⓘ 상세)`
                   : `${slot.label} 빈 슬롯`
               }
-              className={`group absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center select-none transition-transform duration-150 ${
-                onSlotClick ? 'cursor-pointer hover:scale-105' : 'cursor-default'
+              className={`group absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center select-none ${
+                onSlotClick ? 'cursor-pointer' : 'cursor-default'
               }`}
             >
               <div
-                className={`relative flex flex-col items-center justify-center rounded-xl px-1.5 py-1 min-w-[60px] sm:min-w-[74px] text-center shadow-md transition-all ${
+                className={`relative flex flex-col items-center justify-center rounded-xl px-1.5 py-1 min-w-[60px] sm:min-w-[74px] text-center shadow-md transition-colors ${
                   isPreview && player
-                    ? 'bg-emerald-950/95 border-2 border-emerald-300 ring-2 ring-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.55)] scale-105'
+                    ? 'bg-emerald-950/95 border-2 border-emerald-300 ring-2 ring-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.55)]'
                     : player
                       ? isLegend
                         ? 'bg-gradient-to-b from-amber-950 via-stone-900 to-amber-950 border-2 border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.5)]'
@@ -379,8 +379,8 @@ export function PitchBoard({
                       : isActive
                         ? 'bg-emerald-500/20 border-2 border-emerald-400'
                         : 'bg-slate-950/70 border border-dashed border-slate-600/60'
-                } ${isSelected ? 'ring-2 ring-emerald-400 scale-105' : ''} ${
-                  isDragOver ? 'ring-2 ring-sky-400 scale-105' : ''
+                } ${isSelected ? 'ring-2 ring-emerald-400' : ''} ${
+                  isDragOver ? 'ring-2 ring-sky-400' : ''
                 }`}
               >
                 {isPreview && player ? (

@@ -48,10 +48,10 @@ export function HeaderNav() {
 
   return (
     <>
-      <header className="sticky top-0 z-40 border-b border-slate-800/75 bg-[#090d13]/92 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2 px-3 sm:px-4 py-2">
+      <header className="sticky top-0 z-40 w-full max-w-full overflow-x-clip border-b border-slate-800/80 bg-[#090d13]">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2">
           {/* Brand + Club / Manager */}
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
             {!isTitle ? (
               <div className="flex items-center gap-1.5 shrink-0">
                 <JerseySvg
@@ -59,7 +59,7 @@ export function HeaderNav() {
                   secondaryColor={state.userClub.secondaryColor}
                   pattern={state.userClub.pattern}
                   label={state.userClub.shortName}
-                  size={26}
+                  size={24}
                 />
                 <div className="hidden sm:flex h-7 w-6 items-center justify-center rounded-md border border-slate-800 bg-[#111822]">
                   <PixelManagerAvatar
@@ -76,7 +76,7 @@ export function HeaderNav() {
 
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-display text-sm sm:text-base font-bold tracking-wider text-white whitespace-nowrap">
+                <span className="font-display text-xs sm:text-base font-bold tracking-wider text-white whitespace-nowrap">
                   PITCH MANAGER
                 </span>
                 <button
@@ -89,7 +89,7 @@ export function HeaderNav() {
                 </button>
               </div>
               {!isTitle && (
-                <p className="text-[10px] sm:text-[11px] text-slate-400 truncate max-w-[140px] sm:max-w-[220px] md:max-w-none">
+                <p className="text-[10px] sm:text-[11px] text-slate-400 truncate max-w-[115px] sm:max-w-[220px] md:max-w-none">
                   {state.userClub.name} · {state.manager.name} 감독 · {state.formation}
                 </p>
               )}
@@ -128,7 +128,7 @@ export function HeaderNav() {
             {!isTitle &&
               state.phase !== 'manager_roulette' &&
               state.phase !== 'setup' && (
-                <div className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-[#0e141d] px-2 py-1 text-[11px] tabular-nums whitespace-nowrap shrink-0">
+                <div className="hidden sm:flex items-center gap-1.5 rounded-lg border border-slate-800 bg-[#0e141d] px-2 py-1 text-[11px] tabular-nums whitespace-nowrap shrink-0">
                   <span className="inline-flex items-center gap-1 text-slate-300">
                     <Trophy className="w-3 h-3 text-amber-400 shrink-0" />
                     <strong className="font-display text-white">
@@ -147,7 +147,7 @@ export function HeaderNav() {
               id="open-patchnotes-btn"
               type="button"
               onClick={() => setShowPatchNotes(true)}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] px-2 py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
               title="버전별 패치노트 열기"
             >
               <ScrollText className="w-3.5 h-3.5 text-sky-400 shrink-0" />
@@ -160,12 +160,12 @@ export function HeaderNav() {
                   id="open-legacy-btn"
                   type="button"
                   onClick={() => setLegacyModalOpen(true)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] px-2 py-1 text-[11px] font-semibold text-amber-300 hover:border-amber-500/50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-amber-300 hover:border-amber-500/50 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                   title="명예의 전당 및 24종 히든 도전과제 열기"
                 >
                   <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span className="hidden sm:inline">레거시</span>
-                  <span className="font-mono text-[10px] text-amber-200/80">
+                  <span className="hidden sm:inline font-mono text-[10px] text-amber-200/80">
                     {achProgress.unlocked}/{achProgress.total}
                   </span>
                 </button>
@@ -174,7 +174,7 @@ export function HeaderNav() {
                   id="open-tactics-guide-btn"
                   type="button"
                   onClick={() => setShowTacticsGuide(true)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] px-2 py-1 text-[11px] font-semibold text-sky-300 hover:border-sky-500/50 hover:text-sky-200 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-sky-300 hover:border-sky-500/50 hover:text-sky-200 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                   title="전술 & 플레이스타일 상성 도감 열기"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-sky-400 shrink-0" />
@@ -185,7 +185,7 @@ export function HeaderNav() {
                   id="open-guide-btn"
                   type="button"
                   onClick={() => setShowGuide(true)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] px-2 py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
                   title="게임 시스템 가이드 열기"
                 >
                   <HelpCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -197,7 +197,7 @@ export function HeaderNav() {
                     <button
                       type="button"
                       onClick={() => setConfirmReset(true)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] px-2 py-1 text-[11px] font-semibold text-slate-400 hover:border-slate-600 hover:text-white cursor-pointer whitespace-nowrap shrink-0"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-slate-400 hover:border-slate-600 hover:text-white cursor-pointer whitespace-nowrap shrink-0"
                       title="처음으로 돌아가기"
                     >
                       <RotateCcw className="w-3.5 h-3.5 shrink-0" />
@@ -211,9 +211,9 @@ export function HeaderNav() {
                           setConfirmReset(false);
                           resetGame();
                         }}
-                        className="rounded bg-rose-500 px-2 py-0.5 font-bold text-white hover:bg-rose-400 cursor-pointer whitespace-nowrap"
+                        className="rounded bg-rose-500 px-1.5 py-0.5 font-bold text-white hover:bg-rose-400 cursor-pointer whitespace-nowrap"
                       >
-                        초기화 확인
+                        확인
                       </button>
                       <button
                         type="button"

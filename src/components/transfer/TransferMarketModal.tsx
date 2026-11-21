@@ -389,9 +389,9 @@ export function TransferMarketModal({
                     top: `${row.y}%`,
                   }}
                   title={`${row.slotLabel} ${row.player.name} · 실효 OVR ${row.effectiveOvr}${row.penalty < 0 ? ` (페널티 ${row.penalty})` : ''} · 평점 ${row.apps > 0 ? row.avgRating.toFixed(1) : '-'}`}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center rounded-lg border px-1.5 py-1 min-w-[54px] max-w-[74px] transition-all tabular-nums ${
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center rounded-lg border px-1.5 py-1 min-w-[54px] max-w-[74px] transition-colors tabular-nums ${
                     isSelectedOut
-                      ? 'z-20 border-rose-400 bg-rose-950/92 ring-2 ring-rose-400/80 shadow-[0_0_14px_rgba(251,113,133,0.45)] scale-105'
+                      ? 'z-20 border-rose-400 bg-rose-950/92 ring-2 ring-rose-400/80 shadow-[0_0_14px_rgba(251,113,133,0.45)]'
                       : isTargetMainFit
                         ? 'z-10 border-emerald-400 bg-[#0d1c19]/92 ring-1 ring-emerald-400/70'
                         : row.isPenaltyWeak
@@ -1256,14 +1256,14 @@ export function TransferMarketModal({
       {/* ONE-STOP NEGOTIATION MODAL / BOTTOM DRAWER (Zero Scroll Back-and-Forth on PC & Mobile) */}
       {negotiatingTarget && (
         <div
-          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-slate-950/85 p-2 sm:p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-slate-950/90 p-2 sm:p-4"
           onClick={() => {
             setNegotiatingTarget(null);
             setSelectedOutSlot(null);
           }}
         >
           <div
-            className="w-full max-w-2xl overflow-hidden rounded-2xl border border-emerald-500/45 bg-[#111822] shadow-2xl flex flex-col max-h-[92vh]"
+            className="w-full max-w-2xl overflow-hidden rounded-2xl border border-emerald-500/45 bg-[#111822] shadow-2xl flex flex-col max-h-[90dvh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
