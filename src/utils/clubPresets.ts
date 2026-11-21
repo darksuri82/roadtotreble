@@ -1,8 +1,5 @@
-import {
-  DEFAULT_MANAGER_AVATAR,
-  type ManagerAvatarConfig,
-  type UserClubProfile,
-} from '../types/game';
+import { normalizeAvatarForGender } from '../components/common/PixelManagerAvatar';
+import type { ManagerAvatarConfig, UserClubProfile } from '../types/game';
 
 export const CLUB_PRESETS_STORAGE_KEY = 'pitch_manager_club_presets_v1';
 export const MAX_CLUB_PRESETS = 6;
@@ -17,14 +14,7 @@ export interface ClubPreset extends UserClubProfile {
 export function normalizeManagerAvatar(
   avatar?: Partial<ManagerAvatarConfig> | null,
 ): ManagerAvatarConfig {
-  if (!avatar) return { ...DEFAULT_MANAGER_AVATAR };
-  return {
-    gender: avatar.gender === 'female' ? 'female' : 'male',
-    skinTone: avatar.skinTone ?? DEFAULT_MANAGER_AVATAR.skinTone,
-    hairStyle: avatar.hairStyle ?? DEFAULT_MANAGER_AVATAR.hairStyle,
-    hairColor: avatar.hairColor ?? DEFAULT_MANAGER_AVATAR.hairColor,
-    outfit: avatar.outfit ?? DEFAULT_MANAGER_AVATAR.outfit,
-  };
+  return normalizeAvatarForGender(avatar);
 }
 
 export function loadClubPresets(): ClubPreset[] {

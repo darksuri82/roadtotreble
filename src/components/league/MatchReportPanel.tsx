@@ -5,6 +5,7 @@ import { TACTICS } from '../../engine/tacticEngine';
 import type { Club, MatchResult } from '../../types/league';
 import { ClubTag } from '../common/ClubTag';
 import { JerseySvg } from '../common/JerseySvg';
+import { PlayerNameButton } from '../common/PlayerNameButton';
 
 interface MatchReportPanelProps {
   match: MatchResult;
@@ -114,16 +115,20 @@ export function MatchReportPanel({
             {match.homeGoals} <span className="text-slate-600">:</span>{' '}
             {match.awayGoals}
           </div>
-          <button
-            type="button"
-            onClick={() => onSelectPlayer?.(match.momPlayerId)}
-            className={`mt-1 inline-flex items-center gap-1 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300 ${
-              onSelectPlayer ? 'hover:bg-amber-500/25 cursor-pointer' : ''
-            }`}
-          >
-            <Star className="w-2.5 h-2.5 fill-current" />
-            {match.momPlayerName} ({match.momRating.toFixed(1)})
-          </button>
+          <div className="mt-1 inline-flex items-center gap-1 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+            <Star className="w-2.5 h-2.5 fill-current shrink-0" />
+            {onSelectPlayer ? (
+              <PlayerNameButton
+                onClick={() => onSelectPlayer(match.momPlayerId)}
+                className="font-bold text-amber-200"
+              >
+                {match.momPlayerName}
+              </PlayerNameButton>
+            ) : (
+              <span>{match.momPlayerName}</span>
+            )}
+            <span>({match.momRating.toFixed(1)})</span>
+          </div>
         </div>
 
         <div className="flex flex-col items-center text-center">
@@ -184,17 +189,31 @@ export function MatchReportPanel({
                 <span className="font-display text-emerald-400">
                   {ev.minute}&apos;
                 </span>
-                <button
-                  type="button"
-                  onClick={() => ev.scorerId && onSelectPlayer?.(ev.scorerId)}
-                  className={`font-semibold ${
-                    ev.scorerId && onSelectPlayer ? 'hover:text-emerald-300 hover:underline cursor-pointer' : ''
-                  }`}
-                >
-                  {ev.scorerName}
-                </button>
+                {ev.scorerId && onSelectPlayer ? (
+                  <PlayerNameButton
+                    onClick={() => onSelectPlayer(ev.scorerId!)}
+                    className="font-semibold text-slate-100"
+                  >
+                    {ev.scorerName}
+                  </PlayerNameButton>
+                ) : (
+                  <span className="font-semibold">{ev.scorerName}</span>
+                )}
                 {ev.assistName && (
-                  <span className="text-slate-500">({ev.assistName})</span>
+                  <span className="text-slate-500 inline-flex items-center gap-0.5">
+                    (
+                    {ev.assistId && onSelectPlayer ? (
+                      <PlayerNameButton
+                        onClick={() => onSelectPlayer(ev.assistId!)}
+                        className="text-slate-400"
+                      >
+                        {ev.assistName}
+                      </PlayerNameButton>
+                    ) : (
+                      ev.assistName
+                    )}
+                    )
+                  </span>
                 )}
               </div>
             ))}
@@ -202,17 +221,31 @@ export function MatchReportPanel({
           <div className="space-y-1 text-right">
             {awayGoalEvents.map((ev, i) => (
               <div key={i} className="text-slate-200 flex items-center justify-end gap-1 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => ev.scorerId && onSelectPlayer?.(ev.scorerId)}
-                  className={`font-semibold ${
-                    ev.scorerId && onSelectPlayer ? 'hover:text-amber-300 hover:underline cursor-pointer' : ''
-                  }`}
-                >
-                  {ev.scorerName}
-                </button>
+                {ev.scorerId && onSelectPlayer ? (
+                  <PlayerNameButton
+                    onClick={() => onSelectPlayer(ev.scorerId!)}
+                    className="font-semibold text-slate-100"
+                  >
+                    {ev.scorerName}
+                  </PlayerNameButton>
+                ) : (
+                  <span className="font-semibold">{ev.scorerName}</span>
+                )}
                 {ev.assistName && (
-                  <span className="text-slate-500">({ev.assistName})</span>
+                  <span className="text-slate-500 inline-flex items-center gap-0.5">
+                    (
+                    {ev.assistId && onSelectPlayer ? (
+                      <PlayerNameButton
+                        onClick={() => onSelectPlayer(ev.assistId!)}
+                        className="text-slate-400"
+                      >
+                        {ev.assistName}
+                      </PlayerNameButton>
+                    ) : (
+                      ev.assistName
+                    )}
+                    )
+                  </span>
                 )}
                 <span className="font-display text-amber-400">
                   {ev.minute}&apos;
@@ -302,21 +335,34 @@ export function MatchReportPanel({
             </div>
             <div className="grid grid-cols-2 gap-1.5 text-xs">
               {userRatings.map((r) => (
-                <button
+                <div
                   key={`${r.teamId}-${r.playerId}`}
-                  type="button"
-                  onClick={() => onSelectPlayer?.(r.playerId)}
-                  className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 border text-left ${
+                  className={`flex w-full items-center justify-between gap-1 rounded-lg px-2 py-1.5 border text-left ${
                     r.playerId === match.momPlayerId && r.teamId === USER_CLUB_ID
                       ? 'border-amber-400/50 bg-amber-500/10'
                       : 'border-slate-800/80 bg-[#0b1018]'
-                  } ${onSelectPlayer ? 'hover:border-emerald-400/50 cursor-pointer' : ''}`}
+                  }`}
                 >
-                  <span className="truncate font-semibold text-slate-200">
-                    {r.playerName}
-                    {r.goals > 0 ? ` ⚽${r.goals}` : ''}
-                    {r.assists > 0 ? ` 🅰️${r.assists}` : ''}
-                  </span>
+                  <div className="flex items-center gap-1 min-w-0">
+                    {onSelectPlayer ? (
+                      <PlayerNameButton
+                        onClick={() => onSelectPlayer(r.playerId)}
+                        className="font-semibold text-slate-200"
+                      >
+                        {r.playerName}
+                      </PlayerNameButton>
+                    ) : (
+                      <span className="truncate font-semibold text-slate-200">
+                        {r.playerName}
+                      </span>
+                    )}
+                    {r.goals > 0 && (
+                      <span className="shrink-0 text-[10px]">⚽{r.goals}</span>
+                    )}
+                    {r.assists > 0 && (
+                      <span className="shrink-0 text-[10px]">🅰️{r.assists}</span>
+                    )}
+                  </div>
                   <span
                     className={`font-display text-xs font-bold shrink-0 ml-1 tabular-nums ${
                       r.rating >= 8.0
@@ -328,7 +374,7 @@ export function MatchReportPanel({
                   >
                     {r.rating.toFixed(1)}
                   </span>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -343,22 +389,31 @@ export function MatchReportPanel({
             </div>
             <div className="grid grid-cols-2 gap-1.5 text-xs">
               {oppRatings.map((r) => (
-                <button
+                <div
                   key={`${r.teamId}-${r.playerId}`}
-                  type="button"
-                  onClick={() => onSelectPlayer?.(r.playerId)}
-                  className={`flex w-full items-center justify-between rounded-lg border border-slate-800/70 bg-[#0b1018] px-2 py-1.5 text-left ${
-                    onSelectPlayer ? 'hover:border-sky-400/50 cursor-pointer' : ''
-                  }`}
+                  className="flex w-full items-center justify-between gap-1 rounded-lg border border-slate-800/70 bg-[#0b1018] px-2 py-1.5 text-left"
                 >
-                  <span className="truncate text-slate-300">
-                    {r.playerName}
-                    {r.goals > 0 ? ` ⚽${r.goals}` : ''}
-                  </span>
-                  <span className="font-display text-xs font-bold text-slate-200 tabular-nums">
+                  <div className="flex items-center gap-1 min-w-0">
+                    {onSelectPlayer ? (
+                      <PlayerNameButton
+                        onClick={() => onSelectPlayer(r.playerId)}
+                        className="text-slate-300"
+                      >
+                        {r.playerName}
+                      </PlayerNameButton>
+                    ) : (
+                      <span className="truncate text-slate-300">
+                        {r.playerName}
+                      </span>
+                    )}
+                    {r.goals > 0 && (
+                      <span className="shrink-0 text-[10px]">⚽{r.goals}</span>
+                    )}
+                  </div>
+                  <span className="font-display text-xs font-bold text-slate-200 tabular-nums shrink-0">
                     {r.rating.toFixed(1)}
                   </span>
-                </button>
+                </div>
               ))}
             </div>
           </div>

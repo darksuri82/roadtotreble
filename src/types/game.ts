@@ -165,14 +165,19 @@ export type ManagerHairStyleId =
   | 'bald'
   | 'bob'
   | 'ponytail'
-  | 'long_wave';
+  | 'long_wave'
+  | 'updo_bun';
 export type ManagerHairColorId = 'brown' | 'black' | 'silver' | 'blonde';
 export type ManagerOutfitId =
   | 'classic_suit'
   | 'navy_coat'
   | 'team_tracksuit'
   | 'casual_shirt'
-  | 'puffer_jacket';
+  | 'puffer_jacket'
+  | 'female_blazer'
+  | 'female_trench'
+  | 'female_tracksuit'
+  | 'female_knit_skirt';
 
 export interface ManagerAvatarConfig {
   gender?: ManagerGenderId; // optional for legacy localStorage saves; defaults to 'male'

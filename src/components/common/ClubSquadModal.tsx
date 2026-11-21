@@ -7,6 +7,7 @@ import type { Club, PlayerSeasonStats } from '../../types/league';
 import type { Player } from '../../types/player';
 import { getCountryFlag } from '../../utils/countryFlag';
 import { JerseySvg } from './JerseySvg';
+import { PlayerNameButton } from './PlayerNameButton';
 
 interface ClubSquadModalProps {
   club: Club | null;
@@ -96,18 +97,16 @@ export function ClubSquadModal({
               <Users className="h-3.5 w-3.5 text-emerald-400" />
               등록 스쿼드 ({sortedRoster.length}명)
             </span>
-            <span>선수 클릭 시 대회별 세부 스탯 확인</span>
+            <span>선수 이름 클릭 시 대회별 세부 스탯 확인</span>
           </div>
 
           <div className="divide-y divide-slate-800/70 rounded-xl border border-slate-800 bg-[#090e16] overflow-hidden">
             {sortedRoster.map((p) => {
               const st = getPlayerStatById(statsMap, p.id);
               return (
-                <button
+                <div
                   key={p.id}
-                  type="button"
-                  onClick={() => onSelectPlayer(p)}
-                  className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-xs hover:bg-slate-800/50 transition cursor-pointer"
+                  className="flex w-full items-center justify-between gap-2 px-3.5 py-2.5 text-left text-xs hover:bg-slate-800/35 transition"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
@@ -125,9 +124,12 @@ export function ClubSquadModal({
                     </span>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate font-bold text-white">
+                        <PlayerNameButton
+                          onClick={() => onSelectPlayer(p)}
+                          className="font-bold text-white"
+                        >
                           {p.name}
-                        </span>
+                        </PlayerNameButton>
                         {p.isLegend && (
                           <Crown className="h-3 w-3 text-amber-400 shrink-0" />
                         )}
@@ -161,7 +163,7 @@ export function ClubSquadModal({
                       {p.ovr}
                     </span>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

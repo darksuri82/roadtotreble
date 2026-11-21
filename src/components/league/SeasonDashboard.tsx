@@ -42,6 +42,7 @@ import { ClubTag } from '../common/ClubTag';
 import { JerseySvg } from '../common/JerseySvg';
 import { MatchDetailModal } from '../common/MatchDetailModal';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
+import { PlayerNameButton } from '../common/PlayerNameButton';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
 import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
@@ -170,7 +171,13 @@ export function SeasonDashboard() {
     season.transferMarket.completedWindows,
   );
 
-  const allStatsList = Object.values(season.allPlayerStats).filter(
+  const viewedStatsMap = isViewingUserLeague
+    ? season.allPlayerStats
+    : (viewedBgLeague?.playerStats ?? {});
+  const viewedRoundForMin = isViewingUserLeague
+    ? season.currentRound
+    : (viewedBgLeague?.currentRound ?? 0);
+  const allStatsList = Object.values(viewedStatsMap).filter(
     (s) => s.appearances > 0,
   );
   const activeLeaderboard = [...allStatsList]
@@ -181,7 +188,7 @@ export function SeasonDashboard() {
           ? s.assists > 0
           : recordTab === 'cleanSheets'
             ? (s.position === 'GK' || s.position === 'DF') && s.cleanSheets > 0
-            : s.appearances >= Math.max(1, Math.floor(season.currentRound * 0.4)),
+            : s.appearances >= Math.max(1, Math.floor(viewedRoundForMin * 0.4)),
     )
     .sort((a, b) => {
       if (recordTab === 'goals') return b.goals - a.goals || b.assists - a.assists;
@@ -565,92 +572,10 @@ export function SeasonDashboard() {
               />
             </div>
 
-            <div className="lg:col-span-5">
-              {isViewingUserLeague ? (
-                <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                      <Award className="w-4 h-4 text-amber-400" />
-                      리그 개인 기록 TOP 10
-                    </div>
-                    <span className="text-[10px] text-slate-500">
-                      클릭하여 세부 스탯
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-1 rounded-lg bg-[#0b1018] p-1 text-[11px]">
-                    {(
-                      [
-                        ['goals', '득점'],
-                        ['assists', '도움'],
-                        ['cleanSheets', '클린시트'],
-                        ['rating', '평점'],
-                      ] as [RecordSubTab, string][]
-                    ).map(([id, label]) => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setRecordTab(id)}
-                        className={`rounded-md py-1.5 font-bold cursor-pointer ${
-                          recordTab === id
-                            ? 'bg-emerald-500 text-slate-950'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {activeLeaderboard.length === 0 ? (
-                    <p className="py-6 text-center text-xs text-slate-500">
-                      아직 집계된 기록이 없습니다.
-                    </p>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {activeLeaderboard.map((entry, idx) => (
-                        <button
-                          key={`${entry.teamId}-${entry.playerId}`}
-                          type="button"
-                          onClick={() =>
-                            setInspectedPlayer({
-                              playerId: entry.playerId,
-                              fallbackStats: entry,
-                            })
-                          }
-                          className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs tabular-nums transition-colors cursor-pointer ${
-                            entry.isUserTeam
-                              ? 'bg-emerald-500/15 border border-emerald-500/35 hover:bg-emerald-500/25'
-                              : 'bg-[#0b1018] border border-transparent hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-display w-4 text-slate-500 font-bold text-center">
-                              {idx + 1}
-                            </span>
-                            <span className="truncate font-bold text-slate-100 hover:text-emerald-300">
-                              {entry.playerName}
-                            </span>
-                            <ClubTag
-                              shortName={entry.teamShortName}
-                              primaryColor={entry.teamPrimaryColor}
-                              isUserTeam={entry.isUserTeam}
-                            />
-                          </div>
-                          <span className="font-display text-sm font-bold text-emerald-300 shrink-0">
-                            {recordTab === 'goals' && `${entry.goals}골`}
-                            {recordTab === 'assists' && `${entry.assists}도움`}
-                            {recordTab === 'cleanSheets' && `${entry.cleanSheets}CS`}
-                            {recordTab === 'rating' && entry.avgRating.toFixed(2)}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-4">
-                  <div className="flex items-center justify-between gap-2">
+            <div className="lg:col-span-5 space-y-4">
+              {!isViewingUserLeague && (
+                <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span
                         className="rounded px-2 py-0.5 text-[11px] font-extrabold text-slate-950"
@@ -663,58 +588,106 @@ export function SeasonDashboard() {
                         {viewedLeagueMeta.totalRounds}R 진행 중
                       </span>
                     </div>
+                    {viewedBgLeague?.cup && (
+                      <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/35 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                        <Trophy className="w-3 h-3" />
+                        {viewedBgLeague.cup.completed && viewedBgLeague.cup.championTeamId
+                          ? `${viewedBgLeague.cup.meta.koreanName} 우승: ${
+                              viewedClubsById[viewedBgLeague.cup.championTeamId]?.name ??
+                              viewedBgLeague.cup.championTeamId
+                            }`
+                          : `${viewedBgLeague.cup.meta.koreanName} 진행 중`}
+                      </span>
+                    )}
                   </div>
-
-                  <p className="text-xs leading-relaxed text-slate-400">
-                    동일한 구단 평점·포아송 엔진으로 백그라운드 시뮬레이션이 진행 중입니다. 시즌 종료 시 상위 4팀은 Phase 2 챔피언스리그에 합류합니다.
+                  <p className="text-[11px] leading-relaxed text-slate-400">
+                    실제 2026-27 구단 스쿼드로 리그·자국 컵이 실시간 시뮬레이션되며, 개인 기록은 발롱도르·월드베스트 XI에 동일 기준으로 반영됩니다.
                   </p>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
-                      <Trophy className="w-3.5 h-3.5" />
-                      현재 챔피언스리그 진출권 TOP 4
-                    </div>
-                    <div className="space-y-1.5">
-                      {viewedStandings.slice(0, 4).map((row, idx) => (
-                        <button
-                          key={row.teamId}
-                          type="button"
-                          onClick={() => {
-                            const c = viewedClubsById[row.teamId];
-                            if (c)
-                              setInspectedClub({
-                                club: c,
-                                leagueId: viewedLeagueId,
-                              });
-                          }}
-                          className="flex w-full items-center justify-between rounded-xl border border-emerald-500/25 bg-[#0b1018] px-3 py-2.5 text-left text-xs tabular-nums transition-colors hover:border-emerald-400/50 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="font-display text-sm font-bold text-emerald-400 w-4 text-center">
-                              {idx + 1}
-                            </span>
-                            <span
-                              className="h-2.5 w-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: row.primaryColor }}
-                            />
-                            <span className="truncate font-bold text-white">
-                              {row.teamName}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[11px] text-slate-400">
-                              {row.won}승 {row.drawn}무 {row.lost}패
-                            </span>
-                            <span className="font-display text-sm font-bold text-emerald-300">
-                              {row.points}점
-                            </span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               )}
+
+              <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                    <Award className="w-4 h-4 text-amber-400" />
+                    {viewedLeagueMeta.koreanName} 개인 기록 TOP 10
+                  </div>
+                  <span className="text-[10px] text-slate-500">
+                    선수 이름 클릭 시 세부 스탯
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1 rounded-lg bg-[#0b1018] p-1 text-[11px]">
+                  {(
+                    [
+                      ['goals', '득점'],
+                      ['assists', '도움'],
+                      ['cleanSheets', '클린시트'],
+                      ['rating', '평점'],
+                    ] as [RecordSubTab, string][]
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setRecordTab(id)}
+                      className={`rounded-md py-1.5 font-bold cursor-pointer ${
+                        recordTab === id
+                          ? 'bg-emerald-500 text-slate-950'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {activeLeaderboard.length === 0 ? (
+                  <p className="py-6 text-center text-xs text-slate-500">
+                    아직 집계된 기록이 없습니다.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {activeLeaderboard.map((entry, idx) => (
+                      <div
+                        key={`${entry.teamId}-${entry.playerId}`}
+                        className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs tabular-nums ${
+                          entry.isUserTeam
+                            ? 'bg-emerald-500/15 border border-emerald-500/35'
+                            : 'bg-[#0b1018] border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-display w-4 shrink-0 text-slate-500 font-bold text-center">
+                            {idx + 1}
+                          </span>
+                          <PlayerNameButton
+                            onClick={() =>
+                              setInspectedPlayer({
+                                playerId: entry.playerId,
+                                fallbackStats: entry,
+                              })
+                            }
+                            className="font-bold text-slate-100"
+                          >
+                            {entry.playerName}
+                          </PlayerNameButton>
+                          <ClubTag
+                            shortName={entry.teamShortName}
+                            primaryColor={entry.teamPrimaryColor}
+                            isUserTeam={entry.isUserTeam}
+                          />
+                        </div>
+                        <span className="font-display text-sm font-bold text-emerald-300 shrink-0">
+                          {recordTab === 'goals' && `${entry.goals}골`}
+                          {recordTab === 'assists' && `${entry.assists}도움`}
+                          {recordTab === 'cleanSheets' && `${entry.cleanSheets}CS`}
+                          {recordTab === 'rating' && entry.avgRating.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1103,7 +1076,12 @@ export function SeasonDashboard() {
               })
             : []
         }
-        statsMap={season.allPlayerStats}
+        statsMap={
+          inspectedClub?.leagueId && inspectedClub.leagueId !== season.leagueId
+            ? (season.otherLeagues?.[inspectedClub.leagueId]?.playerStats ??
+              season.allPlayerStats)
+            : season.allPlayerStats
+        }
         onSelectPlayer={(player) => {
           setInspectedClub(null);
           setInspectedPlayer({ playerId: player.id });

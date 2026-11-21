@@ -218,4 +218,135 @@ describe('v2.7 Stage 1 Core Engine: Synergy OVR, Strict League Points, Concrete 
     expect(briefing.recommendedPkKickers.length).toBeGreaterThanOrEqual(3);
     expect(briefing.adviceLines.some((l) => l.includes('승부차기'))).toBe(true);
   });
+
+  it('strictly separates male vs female hairstyles/outfits and normalizes legacy avatars cleanly', async () => {
+    const {
+      getHairStyleOptionsForGender,
+      getOutfitOptionsForGender,
+      normalizeAvatarForGender,
+    } = await import('../components/common/PixelManagerAvatar');
+
+    const maleHairs = new Set(getHairStyleOptionsForGender('male').map((h) => h.id));
+    const femaleHairs = new Set(getHairStyleOptionsForGender('female').map((h) => h.id));
+    const maleOutfits = new Set(getOutfitOptionsForGender('male').map((o) => o.id));
+    const femaleOutfits = new Set(getOutfitOptionsForGender('female').map((o) => o.id));
+
+    expect(maleHairs.size).toBe(5);
+    expect(femaleHairs.size).toBe(4);
+    expect(maleOutfits.size).toBe(5);
+    expect(femaleOutfits.size).toBe(4);
+
+    // Zero overlap between male-only and female-only catalogs
+    for (const h of maleHairs) expect(femaleHairs.has(h)).toBe(false);
+    for (const o of maleOutfits) expect(femaleOutfits.has(o)).toBe(false);
+
+    // Legacy female save with male outfit/hair maps cleanly to valid female options
+    const normalizedFemale = normalizeAvatarForGender({
+      gender: 'female',
+      skinTone: 'peach',
+      hairStyle: 'fluffy',
+      hairColor: 'brown',
+      outfit: 'team_tracksuit',
+    });
+    expect(femaleHairs.has(normalizedFemale.hairStyle)).toBe(true);
+    expect(normalizedFemale.outfit).toBe('female_tracksuit');
+    expect(femaleOutfits.has(normalizedFemale.outfit)).toBe(true);
+
+    // Switching female back to male maps female_trench -> navy_coat & updo_bun -> slick
+    const normalizedMale = normalizeAvatarForGender(
+      {
+        gender: 'female',
+        skinTone: 'light',
+        hairStyle: 'updo_bun',
+        hairColor: 'black',
+        outfit: 'female_trench',
+      },
+      'male',
+    );
+    expect(normalizedMale.hairStyle).toBe('slick');
+    expect(normalizedMale.outfit).toBe('navy_coat');
+  });
+
+  it('simulates split Extra Time 1st Half (91-105) and 2nd Half + Penalties (106-120) cleanly', async () => {
+    const {
+      simulateExtraTimeFirstHalf,
+      simulateExtraTimeSecondHalfAndPenalties,
+    } = await import('../engine/matchEngine');
+    const epl = getLeagueById('epl');
+    const home = epl.clubs[0];
+    const away = epl.clubs[1];
+    const homeRoster = ACTIVE_PLAYERS.slice(0, 11);
+    const awayRoster = ACTIVE_PLAYERS.slice(11, 22);
+    const rng = createSeededRng(7777);
+
+    const base90: MatchResult = {
+      fixtureId: 'et-test-1',
+      round: 1,
+      homeTeamId: home.id,
+      awayTeamId: away.id,
+      homeGoals: 1,
+      awayGoals: 1,
+      homeGoals90: 1,
+      awayGoals90: 1,
+      homeXg: 1.4,
+      awayXg: 1.3,
+      homePossession: 52,
+      homeShots: 11,
+      awayShots: 10,
+      homeShotsOnTarget: 4,
+      awayShotsOnTarget: 4,
+      homeTactic: 'possession',
+      awayTactic: 'counter',
+      homeFormation: '4-3-3',
+      awayFormation: '4-4-2',
+      homeTacticBonus: 0,
+      awayTacticBonus: 0,
+      events: [],
+      playerRatings: homeRoster.map((p) => ({
+        playerId: p.id,
+        playerName: p.name,
+        teamId: home.id,
+        position: p.position,
+        subPosition: p.mainPositions[0],
+        rating: 7.0,
+        goals: 0,
+        assists: 0,
+        xg: 0.1,
+        minutesPlayed: 90,
+      })),
+      momPlayerId: homeRoster[0].id,
+      momPlayerName: homeRoster[0].name,
+      momRating: 7.5,
+    };
+
+    const et1 = simulateExtraTimeFirstHalf({
+      baseResult: base90,
+      homeClub: home,
+      awayClub: away,
+      homeRoster,
+      awayRoster,
+      rng,
+    });
+    expect(et1.extraTime).toBeDefined();
+    expect(et1.events.some((e) => e.minute === 105 && e.type === 'halftime')).toBe(
+      true,
+    );
+
+    const et2 = simulateExtraTimeSecondHalfAndPenalties({
+      et1Result: et1,
+      homeClub: home,
+      awayClub: away,
+      homeRoster,
+      awayRoster,
+      rng,
+    });
+    expect(et2.extraTime?.winnerTeamId).toBeTruthy();
+    expect(et2.events.some((e) => e.minute === 120 && e.type === 'fulltime')).toBe(
+      true,
+    );
+    if (et2.homeGoals === et2.awayGoals) {
+      expect(et2.extraTime?.penalties).toBeDefined();
+      expect(et2.extraTime?.penalties?.winnerTeamId).toBeTruthy();
+    }
+  });
 });

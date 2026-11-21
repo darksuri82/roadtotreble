@@ -5,6 +5,7 @@ import type {
   SquadPlayerAnalyticsRow,
   TeamSeasonAnalytics,
 } from '../../types/league';
+import { PlayerNameButton } from '../common/PlayerNameButton';
 
 interface TeamAnalyticsTabProps {
   teamAnalytics: TeamSeasonAnalytics;
@@ -356,18 +357,22 @@ export function TeamAnalyticsTab({
               {sortedSquad.map((row) => (
                 <tr
                   key={row.playerId}
-                  onClick={onSelectPlayer ? () => onSelectPlayer(row.playerId) : undefined}
-                  className={`hover:bg-slate-800/30 ${onSelectPlayer ? 'cursor-pointer' : ''}`}
+                  className="hover:bg-slate-800/30"
                 >
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-1.5">
-                      <span
-                        className={`font-bold text-slate-100 ${
-                          onSelectPlayer ? 'hover:text-emerald-300 hover:underline' : ''
-                        }`}
-                      >
-                        {row.playerName}
-                      </span>
+                      {onSelectPlayer ? (
+                        <PlayerNameButton
+                          onClick={() => onSelectPlayer(row.playerId)}
+                          className="font-bold text-slate-100"
+                        >
+                          {row.playerName}
+                        </PlayerNameButton>
+                      ) : (
+                        <span className="font-bold text-slate-100">
+                          {row.playerName}
+                        </span>
+                      )}
                       {row.isLegend && (
                         <Crown className="w-3 h-3 text-amber-400 shrink-0" />
                       )}

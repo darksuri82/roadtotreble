@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.6)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.7)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,9 +9,17 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **17개 파일 / 55개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **18개 파일 / 61개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
+- **v2.7 주요 신규 모듈·기능**:
+  - **드래프트 감독 시너지 가이드 & 선수 단위 시너지 OVR**: `evaluateManagerPlayerSynergy`, `slotSynergies`(+0~+3), `applySlotSynergiesToStarters`, 드래프트 가이드 바, 피치 녹색 `(+N)` 배지 & 상세 내역
+  - **매치 데이 전술실 & 상성 도감**: `MatchDayTacticsRoom.tsx`(상대 예상 XI 스카우팅 + 인라인 전술/포메이션/선발 편집 + 실시간 상성 진단 배지), `TacticsGuideModal.tsx`(1페이지 전술/플레이스타일 상성 도감), 강화된 `TACTIC_MATRIX`(±2.8) & 플레이스타일 상성
+  - **연장전(90'·105') 통합 라커룸 & 수석코치 조언**: `simulateExtraTimeFirstHalf`, `simulateExtraTimeSecondHalfAndPenalties`, `buildExtraTimeCoachBriefing`(체력 방전/PK 키커 TOP 5/원클릭 추천), `ENTER_ET_HALFTIME_LOCKER`·`START_ET_SECOND_HALF_BROADCAST`
+  - **감독 도트 캐릭터 전면 리뉴얼**: `PixelManagerAvatar.tsx` 여성 수염 노이즈 제거, 성별별 실루엣(여성 모래시계 체형) 분리, 남성/여성 전용 헤어(5종/4종) & 의상(5종/4종) 완전 분리 + `normalizeAvatarForGender` 구버전 하위호환
+  - **정규 리그 전용 승점 엄격 분리**: `computeMatchesOnlyAnalytics` 가짜 합산 승점 제거, `competitionScope`/`leaguePoints`/`winRatePct` 도입
+  - **유럽 5대 리그 완전 구체화 · 공정 발롱도르 & 난이도 상향**: `otherLeaguesEngine.ts` 타 4대 리그 실제 로스터·개인 스탯·16팀 자국 컵 실시간 시뮬, `awardsEngine.ts` 합성 스탯 제거 및 100% 동일 기준 평가, AI 조직력/원정/스태미나 밸런싱, 5대 리그 순위·컵 우승·득점/도움/평점 UI 개방
+  - **선수 이름 전용 클릭 통일**: `PlayerNameButton.tsx` 신설 및 전 기록/순위/리포트/어워즈/스쿼드 화면 행 클릭 제거
 - **v2.6 주요 신규 모듈·기능**:
   - **FotMob(`fotmob.com/ko`) 2026-27 5대 리그 96/96 구단 100% 전수 교차검증**: 현역 2,188명(EPL 462 / 라리가 432 / 세리에A 472 / 분데스리가 424 / 리그1 398, 구단당 최소 18명) + 레전드 33명(레벤수 포함) + UCL 외곽 16팀 176명 = 전 세계 **2,397명** 중복 ID/이름 0건, 영문 미번역 0건 검증
   - **근거 기반 OVR 전면 재조정 & 다비드 라야 월드클래스(90) 승격**: FotMob 시장가치 로그 곡선 + 나이 커브 + 포지션 보정 + 2계층 큐레이션(슈퍼스타 91~94 19명, 월드클래스 87~90 67명 — 다비드 라야 90 포함) 및 `leagues.json` 96구단 능력치/`topScorers` 동기화

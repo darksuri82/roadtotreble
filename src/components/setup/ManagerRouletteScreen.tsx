@@ -18,9 +18,10 @@ import { useGame } from '../../store/GameContext';
 import type { ManagerGenderId, ManagerTraitId } from '../../types/game';
 import {
   GENDER_OPTIONS,
+  getHairStyleOptionsForGender,
+  getOutfitOptionsForGender,
   HAIR_COLOR_OPTIONS,
-  HAIR_STYLE_OPTIONS,
-  OUTFIT_OPTIONS,
+  normalizeAvatarForGender,
   PixelManagerAvatar,
   SKIN_TONE_OPTIONS,
 } from '../common/PixelManagerAvatar';
@@ -63,10 +64,13 @@ export function ManagerRouletteScreen() {
     setDefaultTactic,
   } = useGame();
 
-  const { name, avatar, traitId } = state.manager;
+  const { name, traitId } = state.manager;
+  const avatar = normalizeAvatarForGender(state.manager.avatar);
   const activeTrait = traitId ? MANAGER_TRAITS[traitId] : null;
   const activeGender: ManagerGenderId = avatar.gender === 'female' ? 'female' : 'male';
   const isBald = avatar.hairStyle === 'bald';
+  const genderHairOptions = getHairStyleOptionsForGender(activeGender);
+  const genderOutfitOptions = getOutfitOptionsForGender(activeGender);
 
   const synergyTacticDef = activeTrait?.synergyTactic
     ? TACTICS[activeTrait.synergyTactic]
@@ -74,15 +78,9 @@ export function ManagerRouletteScreen() {
 
   const handleGenderChange = (nextGender: ManagerGenderId) => {
     if (nextGender === activeGender) return;
-    // Suggest a harmonious default hairstyle when switching gender, while keeping bald intact
-    let nextHair = avatar.hairStyle;
-    if (nextGender === 'female' && (avatar.hairStyle === 'fluffy' || avatar.hairStyle === 'parted' || avatar.hairStyle === 'slick' || avatar.hairStyle === 'buzz')) {
-      nextHair = 'bob';
-    } else if (nextGender === 'male' && (avatar.hairStyle === 'bob' || avatar.hairStyle === 'ponytail' || avatar.hairStyle === 'long_wave')) {
-      nextHair = 'fluffy';
-    }
+    const normalized = normalizeAvatarForGender(avatar, nextGender);
     updateManagerProfile({
-      avatar: { gender: nextGender, hairStyle: nextHair },
+      avatar: normalized,
     });
   };
 
@@ -213,10 +211,12 @@ export function ManagerRouletteScreen() {
             </div>
           </div>
 
-          {/* Hair Style (all 8 styles accessible, including Bald & Female styles) */}
+          {/* Hair Style (Gender-exclusive presets) */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="font-semibold text-slate-400">헤어스타일</span>
+              <span className="font-semibold text-slate-400">
+                {activeGender === 'female' ? '여성 전용 헤어스타일' : '남성 전용 헤어스타일'}
+              </span>
               {isBald && (
                 <span className="text-[10px] font-bold text-amber-300">
                   ✨ 명장 광택 적용
@@ -224,7 +224,7 @@ export function ManagerRouletteScreen() {
               )}
             </div>
             <div className="grid grid-cols-2 gap-1.5">
-              {HAIR_STYLE_OPTIONS.map((opt) => {
+              {genderHairOptions.map((opt) => {
                 const selected = avatar.hairStyle === opt.id;
                 return (
                   <button
@@ -278,16 +278,17 @@ export function ManagerRouletteScreen() {
             </div>
           )}
 
-          {/* Manager Outfit */}
+          {/* Manager Outfit (Gender-exclusive coordinates) */}
           <div className="space-y-1.5">
-            <div className="text-[11px] font-semibold text-slate-400">감독 의상</div>
+            <div className="text-[11px] font-semibold text-slate-400">
+              {activeGender === 'female' ? '여성 전용 감독 의상' : '남성 전용 감독 의상'}
+            </div>
             <div className="flex flex-wrap gap-1.5">
-              {OUTFIT_OPTIONS.map((opt) => {
+              {genderOutfitOptions.map((opt) => {
                 const selected = avatar.outfit === opt.id;
-                const swatch =
-                  opt.id === 'team_tracksuit'
-                    ? state.userClub.primaryColor
-                    : opt.previewColor;
+                const swatch = opt.usesTeamColor
+                  ? state.userClub.primaryColor
+                  : opt.previewColor;
                 return (
                   <button
                     key={opt.id}

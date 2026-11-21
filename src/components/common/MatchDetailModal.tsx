@@ -6,6 +6,7 @@ import type { Club, MatchResult } from '../../types/league';
 import type { UclKnockoutTie } from '../../types/ucl';
 import { ClubTag } from './ClubTag';
 import { JerseySvg } from './JerseySvg';
+import { PlayerNameButton } from './PlayerNameButton';
 
 export interface MatchDetailModalProps {
   match?: MatchResult | null;
@@ -222,16 +223,21 @@ export function MatchDetailModal({
                     : '연장전 종료 (AET)'}
                 </div>
               )}
-              <button
-                type="button"
-                onClick={() => onSelectPlayer?.(activeMatch.momPlayerId)}
-                className={`mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300 ${
-                  onSelectPlayer ? 'hover:bg-amber-500/25 cursor-pointer' : ''
-                }`}
-              >
-                <Star className="h-3 w-3 fill-current" />
-                MOM {activeMatch.momPlayerName} ({activeMatch.momRating.toFixed(1)})
-              </button>
+              <div className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                <Star className="h-3 w-3 fill-current shrink-0" />
+                <span>MOM</span>
+                {onSelectPlayer ? (
+                  <PlayerNameButton
+                    onClick={() => onSelectPlayer(activeMatch.momPlayerId)}
+                    className="font-bold text-amber-200"
+                  >
+                    {activeMatch.momPlayerName}
+                  </PlayerNameButton>
+                ) : (
+                  <span>{activeMatch.momPlayerName}</span>
+                )}
+                <span>({activeMatch.momRating.toFixed(1)})</span>
+              </div>
             </div>
 
             <div className="flex flex-col items-center text-center">
@@ -267,29 +273,32 @@ export function MatchDetailModal({
                     <span className="font-mono text-[11px] font-bold text-emerald-400">
                       {ev.minute}&apos;
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => ev.scorerId && onSelectPlayer?.(ev.scorerId)}
-                      className={`font-bold ${
-                        ev.scorerId && onSelectPlayer
-                          ? 'hover:text-emerald-300 hover:underline cursor-pointer'
-                          : ''
-                      }`}
-                    >
-                      ⚽ {ev.scorerName}
-                    </button>
-                    {ev.assistName && (
-                      <button
-                        type="button"
-                        onClick={() => ev.assistId && onSelectPlayer?.(ev.assistId)}
-                        className={`text-[11px] text-slate-400 ${
-                          ev.assistId && onSelectPlayer
-                            ? 'hover:text-sky-300 hover:underline cursor-pointer'
-                            : ''
-                        }`}
+                    <span>⚽</span>
+                    {ev.scorerId && onSelectPlayer ? (
+                      <PlayerNameButton
+                        onClick={() => onSelectPlayer(ev.scorerId!)}
+                        className="font-bold text-slate-100"
                       >
-                        (도움: {ev.assistName})
-                      </button>
+                        {ev.scorerName}
+                      </PlayerNameButton>
+                    ) : (
+                      <span className="font-bold">{ev.scorerName}</span>
+                    )}
+                    {ev.assistName && (
+                      <span className="text-[11px] text-slate-400 inline-flex items-center gap-0.5">
+                        (도움:{' '}
+                        {ev.assistId && onSelectPlayer ? (
+                          <PlayerNameButton
+                            onClick={() => onSelectPlayer(ev.assistId!)}
+                            className="text-slate-300"
+                          >
+                            {ev.assistName}
+                          </PlayerNameButton>
+                        ) : (
+                          ev.assistName
+                        )}
+                        )
+                      </span>
                     )}
                   </div>
                 ))}
@@ -301,29 +310,32 @@ export function MatchDetailModal({
                     className="flex flex-wrap items-center justify-end gap-1 text-slate-200"
                   >
                     {ev.assistName && (
-                      <button
-                        type="button"
-                        onClick={() => ev.assistId && onSelectPlayer?.(ev.assistId)}
-                        className={`text-[11px] text-slate-400 ${
-                          ev.assistId && onSelectPlayer
-                            ? 'hover:text-sky-300 hover:underline cursor-pointer'
-                            : ''
-                        }`}
-                      >
-                        (도움: {ev.assistName})
-                      </button>
+                      <span className="text-[11px] text-slate-400 inline-flex items-center gap-0.5">
+                        (도움:{' '}
+                        {ev.assistId && onSelectPlayer ? (
+                          <PlayerNameButton
+                            onClick={() => onSelectPlayer(ev.assistId!)}
+                            className="text-slate-300"
+                          >
+                            {ev.assistName}
+                          </PlayerNameButton>
+                        ) : (
+                          ev.assistName
+                        )}
+                        )
+                      </span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => ev.scorerId && onSelectPlayer?.(ev.scorerId)}
-                      className={`font-bold ${
-                        ev.scorerId && onSelectPlayer
-                          ? 'hover:text-sky-300 hover:underline cursor-pointer'
-                          : ''
-                      }`}
-                    >
-                      {ev.scorerName} ⚽
-                    </button>
+                    {ev.scorerId && onSelectPlayer ? (
+                      <PlayerNameButton
+                        onClick={() => onSelectPlayer(ev.scorerId!)}
+                        className="font-bold text-slate-100"
+                      >
+                        {ev.scorerName}
+                      </PlayerNameButton>
+                    ) : (
+                      <span className="font-bold">{ev.scorerName}</span>
+                    )}
+                    <span>⚽</span>
                     <span className="font-mono text-[11px] font-bold text-sky-400">
                       {ev.minute}&apos;
                     </span>
@@ -485,24 +497,35 @@ export function MatchDetailModal({
                     {side.list.map((r) => {
                       const isMom = r.playerId === activeMatch.momPlayerId;
                       return (
-                        <button
+                        <div
                           key={`${r.teamId}-${r.playerId}`}
-                          type="button"
-                          onClick={() => onSelectPlayer?.(r.playerId)}
-                          className={`flex w-full items-center justify-between rounded-lg px-2 py-1 text-left transition ${
+                          className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1 text-left ${
                             isMom
                               ? 'border border-amber-400/45 bg-amber-500/12'
-                              : 'hover:bg-slate-800/60'
-                          } ${onSelectPlayer ? 'cursor-pointer' : ''}`}
+                              : 'hover:bg-slate-800/35'
+                          }`}
                         >
-                          <span className="truncate text-slate-200">
-                            <span className="mr-1.5 text-[10px] font-bold text-slate-500">
+                          <div className="flex items-center gap-1 min-w-0 text-slate-200">
+                            <span className="mr-0.5 shrink-0 text-[10px] font-bold text-slate-500">
                               {r.subPosition}
                             </span>
-                            <span className="font-semibold">{r.playerName}</span>
-                            {r.goals > 0 && ` ⚽${r.goals}`}
-                            {r.assists > 0 && ` 🅰️${r.assists}`}
-                          </span>
+                            {onSelectPlayer ? (
+                              <PlayerNameButton
+                                onClick={() => onSelectPlayer(r.playerId)}
+                                className="font-semibold text-slate-100"
+                              >
+                                {r.playerName}
+                              </PlayerNameButton>
+                            ) : (
+                              <span className="truncate font-semibold">{r.playerName}</span>
+                            )}
+                            {r.goals > 0 && (
+                              <span className="shrink-0 text-[10px]">⚽{r.goals}</span>
+                            )}
+                            {r.assists > 0 && (
+                              <span className="shrink-0 text-[10px]">🅰️{r.assists}</span>
+                            )}
+                          </div>
                           <span
                             className={`font-mono text-xs font-bold shrink-0 ml-2 ${
                               isMom
@@ -514,7 +537,7 @@ export function MatchDetailModal({
                           >
                             {r.rating.toFixed(1)}
                           </span>
-                        </button>
+                        </div>
                       );
                     })}
                   </div>

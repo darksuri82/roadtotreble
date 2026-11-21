@@ -5,6 +5,53 @@
 
 ---
 
+## v2.7 — 시너지 OVR · 매치 데이 전술실 & 상성 도감 · 연장 라커룸 통일 · 도트 감독 리뉴얼 · 5대 리그 구체화 & 난이도 상향
+
+### 1. 드래프트 감독 시너지 가이드 & 포메이션 피치 선수 단위 시너지 OVR
+- **드래프트·이적시장 감독 시너지 가이드** (`src/data/managerTraits.ts`, `PlayerCard.tsx`, `DraftScreen.tsx`, `TransferMarketModal.tsx`):
+  - 14종 감독 특성별 `synergyPlaystyles`·`draftGuideTip` 및 `evaluateManagerPlayerSynergy` 추가.
+  - 드래프트 상단 접이식 `[⭐ 내 감독 추천 선수 스타일]` 가이드 바 및 선수 카드 `⭐ 감독 시너지` 배지·사유 툴팁 추가.
+- **피치 위 선수 단위 시너지 OVR 표시 & 엔진 직결** (`src/engine/chemistryEngine.ts`, `matchEngine.ts`, `PitchBoard.tsx`, `PlayerDetailModal.tsx`):
+  - 감독 궁합(+1) + 인접 팀원 케미(구단/국적/보완 스타일, +0~+2) 합산 개인 시너지 `slotSynergies`(+0~+3) 산출 및 `applySlotSynergiesToStarters`로 경기 시뮬레이션 엔진에 직접 반영.
+  - 피치 위 각 선수 카드에 녹색 `(+1~+3)` 배지 및 호버/상세 모달 상승 내역 표시.
+
+### 2. 경기 전 [매치 데이 전술실] · 전술/상성 영향력 강화 · [전술 & 플레이스타일 상성 도감]
+- **매치 데이 전술실** (`src/components/league/MatchDayTacticsRoom.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`):
+  - 경기 시작 전 상대 예상 포메이션·전술·선발 11인(OVR·플레이스타일) 스카우팅 및 탭 이동 없는 인라인 전술·포메이션·선발 라인업 수정 지원.
+- **전술·플레이스타일 상성 밸런스 강화 & 상성 도감** (`src/engine/tacticEngine.ts`, `src/components/common/TacticsGuideModal.tsx`, `HeaderNav.tsx`):
+  - `TACTIC_MATRIX` 강화(±2.2→±2.8, ±0.9→±1.1) 및 `evaluatePlaystyleTacticMatchup` 영향력 상향(ATT/MID/DEF 최대 +1.6, xG ±0.14).
+  - 실시간 상성 진단 배지(`🟢/🟡/🔴` + 한 줄 사유)와 헤더·전술실·라커룸 어디서나 열 수 있는 1페이지 `[전술 & 플레이스타일 상성 도감]` 모달 추가.
+
+### 3. 연장전(90분·105분) 교체 UX 하프타임 완전 통일 & 연장 수석코치 조언
+- **연장 전/후반 분할 시뮬 & 통합 라커룸** (`src/engine/matchEngine.ts`, `src/engine/tacticEngine.ts`, `src/store/GameContext.tsx`, `LiveMatchBroadcast.tsx`):
+  - `simulateExtraTimeFirstHalf`(91'~105')와 `simulateExtraTimeSecondHalfAndPenalties`(106'~120'+PK) 분리 구현 및 `extra_time_break`(90')·`extra_time_ht`(105') 양쪽 모두 하프타임 라커룸과 완전히 동일한 2단 UX(피치보드, 자유 스왑, 빠른 선발, 교체 확인창, 최대 6명 교체, 실시간 체력 게이지)로 통일.
+  - `buildExtraTimeCoachBriefing`으로 연장 추가 교체 1장 안내, 체력 방전(<52%) 선수 지목, 승부차기 키커 TOP 5 및 원클릭 추천 교체 제공.
+
+### 4. 감독 도트 캐릭터 전면 리뉴얼 — 성별별 실루엣·헤어·의상 완전 분리
+- **픽셀 아트 전면 개편** (`src/types/game.ts`, `PixelManagerAvatar.tsx`, `ManagerRouletteScreen.tsx`, `clubPresets.ts`):
+  - 여성 감독 턱·입 주변 수염 노이즈(`y=16..17` 그림자 바) 완전 제거 및 남/여 호감형 얼굴 디테일 정교화.
+  - 여성 감독 전용 모래시계 실루엣(슬림한 어깨, 자연스러운 바스트 음영, `y=22..23` 잘록한 허리, `y=24..26` 골반/스커트 플레어)을 모든 의상에 일관 적용.
+  - 남성 전용 헤어 5종(`fluffy`/`parted`/`slick`/`buzz`/`bald`) & 의상 5종, 여성 전용 헤어 4종(`bob` C컬/`ponytail`/`long_wave`/`updo_bun`) & 의상 4종(`female_blazer`/`female_trench`/`female_tracksuit`/`female_knit_skirt`) 완전 분리 및 구버전 세이브 자동 매핑(`normalizeAvatarForGender`).
+
+### 5. 승점(Points) 집계 오류 수정 — 정규 리그 전용 엄격 분리
+- **정규 리그 전용 승점 규칙 통일** (`src/types/league.ts`, `analyticsEngine.ts`, `TeamAnalyticsTab.tsx`, `SeasonSummary.tsx`):
+  - `computeMatchesOnlyAnalytics`의 가짜 합산 승점(`won * 3 + drawn`) 산출을 제거하고 `competitionScope`·`leaguePoints`·`winRatePct` 도입.
+  - 통합 탭은 순수 `리그 승점` 명시 + 총 전적·승률(%) 표시, 컵·UCL 탭은 최종 성적·승률(%) 표시로 정리. 시즌 스코어(PPG×38) 및 명예의 전당 정합성 검증 완료.
+
+### 6. 유럽 5대 리그 전체 스쿼드·스탯·자국 컵 구체화 · 100% 공정 발롱도르 & 난이도 상향
+- **타 4대 리그 완전 구체화** (`src/engine/otherLeaguesEngine.ts`, `cupEngine.ts`, `uclEngine.ts`, `playerLookup.ts`, `SeasonDashboard.tsx`, `SeasonSummary.tsx`):
+  - 미선택 4개 빅리그도 실제 `activePlayers.json` 스쿼드(`aiRosters`) 기반 `simulateMatch` + 개인 스탯(`playerStats`) + 16팀 자국 컵(`cup`, `cupPlayerStats`)을 실시간 시뮬레이션하고 UCL 36팀과 동일 로스터 공유.
+  - 순위/기록 탭 및 시즌 결산 탭에서 타 4대 리그 우승팀·자국 컵 우승팀·득점/도움/평점 순위 및 선수 상세 스탯·우승 이력을 직접 열람 가능.
+- **100% 동일 기준 발롱도르/월드베스트 XI & 난이도 밸런싱** (`src/engine/awardsEngine.ts`, `matchEngine.ts`):
+  - `awardsEngine.ts`의 타 리그 상위 3팀 합성 스탯 로직을 완전 제거하고 5대 리그 전원 동일 기준·실제 스탯·우승 커리어로 평가.
+  - AI 구단 티어별 조직력 보정, UCL 강도 보정, 원정 xG 압박, 강팀 후반 체력 스쿼드 깊이 반영 및 유저 상시 버프 중복 정리.
+
+### 7. 선수 상세 팝업 클릭 범위 통일 — 선수 이름 텍스트 전용
+- **전역 클릭 범위 정비** (`PlayerNameButton.tsx`, `TeamAnalyticsTab.tsx`, `SeasonDashboard.tsx`, `SeasonSummary.tsx`, `UclDashboard.tsx`, `ClubSquadModal.tsx`, `MatchReportPanel.tsx`, `MatchDetailModal.tsx`, `SquadManagerModal.tsx`):
+  - 모든 기록표·순위표·리포트·어워즈·스쿼드 모달의 행/카드 전체 클릭을 제거하고 `PlayerNameButton`으로 선수 이름 텍스트 클릭 시에만 `PlayerDetailModal`이 열리도록 통일.
+
+---
+
 ## v2.6 — FotMob 2026-27 5대 리그 96개 구단 전수 교차검증 · 근거 기반 OVR 전면 재조정
 
 ### 1. FotMob(`fotmob.com/ko`) 2026-27 5대 리그 96개 구단 100% 전수 교차검증

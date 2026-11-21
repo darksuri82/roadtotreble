@@ -18,6 +18,7 @@ import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
+import { PlayerNameButton } from '../common/PlayerNameButton';
 import { buildPlayerCompetitionBreakdown } from '../../utils/playerLookup';
 
 interface SquadManagerModalProps {
@@ -299,19 +300,21 @@ export function SquadManagerModal({
                 return (
                   <tr
                     key={r.player.id}
-                    onClick={() =>
-                      setInspected({
-                        player: r.player,
-                        slotSubPosition: r.slotSubPosition,
-                      })
-                    }
-                    className="hover:bg-slate-800/40 cursor-pointer transition-colors"
+                    className="hover:bg-slate-800/35 transition-colors"
                   >
                     <td className="py-2 px-3">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-slate-100">
+                        <PlayerNameButton
+                          onClick={() =>
+                            setInspected({
+                              player: r.player,
+                              slotSubPosition: r.slotSubPosition,
+                            })
+                          }
+                          className="font-bold text-slate-100"
+                        >
                           {r.player.name}
-                        </span>
+                        </PlayerNameButton>
                         {tier === 'legend' && (
                           <Crown className="w-3 h-3 text-amber-400 shrink-0" />
                         )}

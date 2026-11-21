@@ -39,6 +39,7 @@ import { MatchDetailModal } from '../common/MatchDetailModal';
 import { PitchBoard, type SlotRef } from '../common/PitchBoard';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
+import { PlayerNameButton } from '../common/PlayerNameButton';
 import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
@@ -793,7 +794,7 @@ export function UclDashboard() {
                   <Award className="h-4 w-4 text-amber-400" />
                   {col.title}
                 </h3>
-                <span className="text-[10px] text-slate-500">클릭 시 세부 스탯</span>
+                <span className="text-[10px] text-slate-500">이름 클릭 시 세부 스탯</span>
               </div>
               {col.list.length === 0 ? (
                 <p className="py-6 text-center text-xs text-slate-500">
@@ -802,31 +803,32 @@ export function UclDashboard() {
               ) : (
                 <div className="space-y-1.5 text-xs">
                   {col.list.map((st, idx) => (
-                    <button
+                    <div
                       key={`${col.title}-${st.teamId}-${st.playerId}`}
-                      type="button"
-                      onClick={() => openPlayerById(st.playerId, st)}
-                      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left transition-colors cursor-pointer ${
+                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left ${
                         st.isUserTeam
-                          ? 'bg-emerald-500/15 font-bold text-emerald-200 hover:bg-emerald-500/25'
-                          : 'bg-slate-950/60 text-slate-200 hover:bg-slate-800/70'
+                          ? 'bg-emerald-500/15 font-bold text-emerald-200'
+                          : 'bg-slate-950/60 text-slate-200'
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-4 font-mono text-[11px] text-slate-400">
+                        <span className="w-4 shrink-0 font-mono text-[11px] text-slate-400">
                           {idx + 1}
                         </span>
-                        <span className="truncate hover:text-sky-300">
+                        <PlayerNameButton
+                          onClick={() => openPlayerById(st.playerId, st)}
+                          className="font-semibold"
+                        >
                           {st.playerName}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
+                        </PlayerNameButton>
+                        <span className="text-[10px] text-slate-500 shrink-0">
                           {st.teamShortName}
                         </span>
                       </div>
-                      <span className="font-mono font-black text-amber-300">
+                      <span className="font-mono font-black text-amber-300 shrink-0">
                         {col.metric(st)}
                       </span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}

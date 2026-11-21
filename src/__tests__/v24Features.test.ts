@@ -124,15 +124,26 @@ describe('v2.4 Features: Historical Benchmarks, 0-Rank Bug Fix & Manager Avatar 
     expect(legacySaved.gender).toBe('male');
     expect(legacySaved.hairStyle).toBe('parted');
 
-    const femaleBald = normalizeManagerAvatar({
+    const maleBald = normalizeManagerAvatar({
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'bald',
+      hairColor: 'brown',
+      outfit: 'team_tracksuit',
+    });
+    expect(maleBald.gender).toBe('male');
+    expect(maleBald.hairStyle).toBe('bald');
+
+    const femaleLegacy = normalizeManagerAvatar({
       gender: 'female',
       skinTone: 'peach',
       hairStyle: 'bald',
       hairColor: 'brown',
       outfit: 'team_tracksuit',
     });
-    expect(femaleBald.gender).toBe('female');
-    expect(femaleBald.hairStyle).toBe('bald');
+    expect(femaleLegacy.gender).toBe('female');
+    expect(femaleLegacy.hairStyle).toBe('bob');
+    expect(femaleLegacy.outfit).toBe('female_tracksuit');
 
     expect(DEFAULT_MANAGER_AVATAR.gender).toBe('male');
   });
