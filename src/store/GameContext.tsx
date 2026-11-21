@@ -1951,7 +1951,7 @@ function executeBidirectionalTrade(params: {
   }
 
   const nextOtherLeagues: SeasonState['otherLeagues'] = {
-    ...(season.otherLeagues ?? {}),
+    ...season.otherLeagues,
   };
   for (const lid of Object.keys(nextOtherLeagues) as LeagueId[]) {
       const ol = nextOtherLeagues[lid];
@@ -5033,6 +5033,38 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       }
       if (userSentSlots.length !== offer.userRequestedPlayers.length) {
         return state;
+      }
+
+      // Guard: ensure user still has >= 1 GK after accepting incoming offer
+      const reqIds = new Set(offer.userRequestedPlayers.map((p) => p.id));
+      const userSquadNow = [
+        ...state.starters.filter((p): p is Player => p !== null),
+        ...state.bench.filter((p): p is Player => p !== null),
+      ];
+      const postUserGks =
+        userSquadNow.filter((p) => !reqIds.has(p.id) && p.position === 'GK')
+          .length +
+        offer.aiOffersPlayers.filter((p) => p.position === 'GK').length;
+      if (postUserGks < 1) {
+        return {
+          ...state,
+          season: {
+            ...state.season,
+            transferMarket: {
+              ...tm,
+              lastOfferResult: {
+                success: false,
+                isTrade: true,
+                targetPlayer: offer.aiOffersPlayers[0],
+                outPlayer: offer.userRequestedPlayers[0],
+                probability: 0,
+                marketValueM: 0,
+                message:
+                  '우리 팀에 최소 1명의 골키퍼(GK)를 남겨야 하므로 이 제안을 수락할 수 없습니다.',
+              },
+            },
+          },
+        };
       }
 
       return executeBidirectionalTrade({

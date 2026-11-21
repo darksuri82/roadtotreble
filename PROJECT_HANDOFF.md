@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v3.2)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v3.2.1)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,10 +9,14 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **20개 파일 / 75개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **20개 파일 / 76개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
+- **v3.2.1 주요 핫픽스·UX 개선**:
+  - **이적시장 닫기 검은 화면 크래시 근본 수정 (`TransferMarketModal.tsx`)**: Wrapper/Inner 분리로 조건부 훅 실행(`Rendered fewer hooks than expected`) 원천 제거 및 이적시장 창 전환 시 로컬 상태 자동 리셋
+  - **타 구단 제안 포지션 모순 제거 & 선수 상세 카드 연동 (`transferEngine.ts`, `GameContext.tsx`, `TransferMarketModal.tsx`)**: 요청 포지션·최우선 필요 포지션 제시 차단(GK≤2·GK 필요 시 GK 판매 불가), `TRADE_ACCEPT_INCOMING` 최소 GK 가드 추가, 트레이드 전 화면 선수 이름 클릭 시 `PlayerDetailModal` 즉시 표시
+  - **양 팀 포메이션 피치 + 하단 벤치 트레이드 뷰 & 확률 상향·0% 제거 (`TransferMarketModal.tsx`, `transferEngine.ts`)**: 양 팀 포메이션 피치+벤치 기본 뷰(`[포메이션 보기 / 리스트 보기]` 전환), 동등 가치 성사 확률 ~72% 상향 및 0% 구간 제거(최소 2~3% 기적 도전 확률)
 - **v3.2 주요 신규 모듈·기능**:
   - **NBA식 구단 트레이드 제도 전면 개편 (`transferEngine.ts`, `GameContext.tsx`, `TransferMarketModal.tsx`, `PlayerDetailModal.tsx`)**: 지수형 TP(`10 * 1.185^(ovr-70)`) + 다대일 압축 보정(`100%/78%/60%`) + OVR 87+ 슈퍼스타 최소 핵심급 가드(`maxUserOvr >= targetOvr - 7`) + 구단 실제 스쿼드 포지션 니즈(`+18%/+10%/-15%`) + Option 3 로스터 16인 자동 로테이션 백업 매칭 + 타 구단 먼저 오는 트레이드 제안(0~5건, 수락/역제안/거절) + 5대 리그·UCL 100% 양방향 로스터 이동(중복 0건, 누적 스탯 보존, `🔄 트레이드` 이력, `injuryAutoReturns` 정리)
   - **드래프트 임시 배치 중 자리 이동 (`DraftScreen.tsx`)**: 프리뷰 모드 중 기존 선발·벤치 클릭/드래그 스왑(`previewSwaps`), 실시간 케미/시너지 OVR/스탯 재계산, `[배치 원복]` 및 확정 시 자동 반영

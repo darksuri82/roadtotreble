@@ -6,6 +6,8 @@ import {
   Dices,
   Handshake,
   Inbox,
+  LayoutGrid,
+  List,
   RefreshCw,
   ShieldAlert,
   Sparkles,
@@ -25,7 +27,10 @@ import {
 } from '../../engine/conditionEngine';
 import { ALL_CLUBS_WITH_LEAGUE } from '../../engine/dataLoader';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
-import { formatMainPositions } from '../../engine/positionEngine';
+import {
+  evaluatePositionFit,
+  formatMainPositions,
+} from '../../engine/positionEngine';
 import { getUserRank } from '../../engine/standingsEngine';
 import {
   analyzeClubPositionNeeds,
@@ -36,6 +41,7 @@ import {
 } from '../../engine/transferEngine';
 import { useGame } from '../../store/GameContext';
 import type {
+  FormationId,
   IncomingTradeOffer,
   TransferClubOffer,
   TransferTargetPlayer,
@@ -46,9 +52,12 @@ import {
   type Player,
   type Position,
 } from '../../types/player';
+import { buildPlayerCompetitionBreakdown } from '../../utils/playerLookup';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
 import { PixelStatusIcon } from '../common/PixelStatusIcon';
+import { PlayerDetailModal } from '../common/PlayerDetailModal';
+import { PlayerNameButton } from '../common/PlayerNameButton';
 
 interface TransferMarketModalProps {
   embedded?: boolean;
@@ -56,6 +65,7 @@ interface TransferMarketModalProps {
 
 type MarketTab = 'explore' | 'incoming';
 type PosFilter = 'ALL' | Position;
+type PickerViewMode = 'formation' | 'list';
 
 interface SlotRef {
   area: 'starter' | 'bench';
@@ -73,11 +83,101 @@ function slotKey(ref: SlotRef): string {
   return `${ref.area}:${ref.index}`;
 }
 
+function shortPitchName(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.length <= 7) return trimmed;
+  const parts = trimmed.split(' ');
+  const last = parts[parts.length - 1] ?? trimmed;
+  return last.length <= 8 ? last : trimmed.slice(0, 7);
+}
+
+/**
+ * Assigns a club's browseable squad into 11 formation starter slots + remaining bench players
+ * so the Trade Room can display an authentic Formation Pitch + Bench below it.
+ */
+function assignPartnerSquadToFormation(
+  formationId: FormationId,
+  targets: TransferTargetPlayer[],
+): {
+  starters: (TransferTargetPlayer | null)[];
+  bench: TransferTargetPlayer[];
+} {
+  const config = FORMATIONS[formationId] ?? FORMATIONS['4-3-3'];
+  const slots = config.slots;
+  const assigned: (TransferTargetPlayer | null)[] = Array.from(
+    { length: slots.length },
+    () => null,
+  );
+  const usedIds = new Set<string>();
+
+  // 1) GK slot first
+  const gkSlotIdx = slots.findIndex((s) => s.position === 'GK');
+  if (gkSlotIdx >= 0) {
+    const bestGk = [...targets]
+      .filter((t) => t.player.position === 'GK')
+      .sort((a, b) => b.player.ovr - a.player.ovr)[0];
+    if (bestGk) {
+      assigned[gkSlotIdx] = bestGk;
+      usedIds.add(bestGk.player.id);
+    }
+  }
+
+  // 2) Remaining outfield slots by best fit + OVR
+  for (let idx = 0; idx < slots.length; idx += 1) {
+    if (assigned[idx] !== null) continue;
+    const slot = slots[idx];
+    let bestTarget: TransferTargetPlayer | null = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (const t of targets) {
+      if (usedIds.has(t.player.id)) continue;
+      if (t.player.position === 'GK' && slot.position !== 'GK') continue;
+      const fit = evaluatePositionFit(t.player, slot.subPosition, null);
+      const fitBonus =
+        fit.fit === 'main' ? 18 : fit.fit === 'secondary' ? 8 : -8;
+      const score = fit.effectiveOvr + fitBonus;
+      if (score > bestScore) {
+        bestScore = score;
+        bestTarget = t;
+      }
+    }
+    if (bestTarget) {
+      assigned[idx] = bestTarget;
+      usedIds.add(bestTarget.player.id);
+    }
+  }
+
+  const bench = targets
+    .filter((t) => !usedIds.has(t.player.id))
+    .sort((a, b) => b.player.ovr - a.player.ovr);
+
+  return { starters: assigned, bench };
+}
+
+/**
+ * Outer wrapper guarantees zero Rules-of-Hooks violations when tm.isOpen flips true -> false,
+ * and cleanly resets inner UI state whenever a new transfer window opens.
+ */
 export function TransferMarketModal({
   embedded = false,
 }: TransferMarketModalProps) {
+  const { state } = useGame();
+  const season = state.season;
+  const tm = season?.transferMarket ?? null;
+
+  if (!season || !tm || !tm.isOpen) return null;
+
+  return (
+    <TransferMarketModalInner
+      key={`${tm.windowIndex}-${tm.triggerRound}-${tm.isUclSpecial ? 'ucl' : 'lg'}`}
+      embedded={embedded}
+    />
+  );
+}
+
+function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
   const {
     state,
+    chemistry,
     transferSpinClubs,
     transferSubmitOffer,
     tradeSubmitPackage,
@@ -86,22 +186,27 @@ export function TransferMarketModal({
     transferCloseWindow,
   } = useGame();
 
-  const season = state.season;
-  const tm = season?.transferMarket ?? null;
+  const season = state.season!;
+  const tm = season.transferMarket;
 
-  const incomingOffers = tm?.incomingOffers ?? [];
+  const incomingOffers = tm.incomingOffers ?? [];
   const pendingIncomingCount = incomingOffers.filter(
     (o) => o.status === 'pending',
   ).length;
 
   const [activeTab, setActiveTab] = useState<MarketTab>('explore');
+  const [pickerViewMode, setPickerViewMode] =
+    useState<PickerViewMode>('formation');
   const [animating, setAnimating] = useState(false);
-  const [lockedCount, setLockedCount] = useState(tm?.hasSpunClubs ? 3 : 0);
+  const [lockedCount, setLockedCount] = useState(tm.hasSpunClubs ? 3 : 0);
   const [tick, setTick] = useState(0);
   const [activeReelIdx, setActiveReelIdx] = useState<number>(0);
   const [counterOfferClub, setCounterOfferClub] =
     useState<TransferClubOffer | null>(null);
   const [posFilter, setPosFilter] = useState<PosFilter>('ALL');
+
+  // Player Detail Inspector Modal
+  const [inspectedPlayer, setInspectedPlayer] = useState<Player | null>(null);
 
   // NBA Multi-player Trade Package State
   const [selectedAiPlayerIds, setSelectedAiPlayerIds] = useState<string[]>([]);
@@ -170,12 +275,16 @@ export function TransferMarketModal({
   // Active partner club offer (either counter-offer club from incoming tab OR selected roulette reel)
   const activeClubOffer: TransferClubOffer | null = useMemo(() => {
     if (counterOfferClub) return counterOfferClub;
-    if (!tm || !tm.hasSpunClubs || tm.rolledClubs.length === 0) return null;
+    if (!tm.hasSpunClubs || tm.rolledClubs.length === 0) return null;
     return tm.rolledClubs[activeReelIdx] ?? tm.rolledClubs[0] ?? null;
-  }, [counterOfferClub, tm, activeReelIdx]);
+  }, [counterOfferClub, tm.hasSpunClubs, tm.rolledClubs, activeReelIdx]);
 
   const activePartnerAiRoster = useMemo(() => {
-    if (!season || !activeClubOffer || activeClubOffer.isLegendSlot || !activeClubOffer.club) {
+    if (
+      !activeClubOffer ||
+      activeClubOffer.isLegendSlot ||
+      !activeClubOffer.club
+    ) {
       return [] as Player[];
     }
     const cid = activeClubOffer.club.id;
@@ -195,16 +304,51 @@ export function TransferMarketModal({
     return analyzeClubPositionNeeds(activePartnerAiRoster);
   }, [activeClubOffer, activePartnerAiRoster]);
 
-  // Resolve selected players cleanly (filtering out anyone already traded away)
+  // All available (not-yet-signed) targets on the active partner club
+  const availablePartnerTargets = useMemo(() => {
+    if (!activeClubOffer) return [] as TransferTargetPlayer[];
+    const signedSet = new Set(tm.signedPlayerIds);
+    return activeClubOffer.squad.filter((t) => !signedSet.has(t.player.id));
+  }, [activeClubOffer, tm.signedPlayerIds]);
+
+  const filteredPartnerSquad = useMemo(() => {
+    return availablePartnerTargets.filter((t) => {
+      if (posFilter === 'ALL') return true;
+      return t.player.position === posFilter;
+    });
+  }, [availablePartnerTargets, posFilter]);
+
+  const partnerFormationLayout = useMemo(() => {
+    if (
+      !activeClubOffer ||
+      activeClubOffer.isLegendSlot ||
+      !activeClubOffer.club
+    ) {
+      return null;
+    }
+    const formId = activeClubOffer.club.formation ?? '4-3-3';
+    const { starters, bench } = assignPartnerSquadToFormation(
+      formId,
+      availablePartnerTargets,
+    );
+    return {
+      formationId: formId,
+      slots: (FORMATIONS[formId] ?? FORMATIONS['4-3-3']).slots,
+      starters,
+      bench,
+    };
+  }, [activeClubOffer, availablePartnerTargets]);
+
+  // Resolve selected players cleanly
   const selectedAiPlayers = useMemo(() => {
     if (!activeClubOffer || activeClubOffer.isLegendSlot) return [] as Player[];
-    const byId = new Map(activeClubOffer.squad.map((t) => [t.player.id, t.player]));
-    const signedSet = new Set(tm?.signedPlayerIds ?? []);
+    const byId = new Map(
+      availablePartnerTargets.map((t) => [t.player.id, t.player]),
+    );
     return selectedAiPlayerIds
-      .filter((id) => !signedSet.has(id))
       .map((id) => byId.get(id))
       .filter((p): p is Player => Boolean(p));
-  }, [activeClubOffer, selectedAiPlayerIds, tm]);
+  }, [activeClubOffer, availablePartnerTargets, selectedAiPlayerIds]);
 
   const selectedUserPlayers = useMemo(() => {
     return selectedUserSlots
@@ -263,9 +407,12 @@ export function TransferMarketModal({
     customFillerIds,
   ]);
 
-  // Available candidate backups on partner club so user can optionally swap the Option 3 filler
   const optionalFillerPool = useMemo(() => {
-    if (neededAutoFillers <= 0 || !activeClubOffer || activeClubOffer.isLegendSlot) {
+    if (
+      neededAutoFillers <= 0 ||
+      !activeClubOffer ||
+      activeClubOffer.isLegendSlot
+    ) {
       return [] as Player[];
     }
     const targetIds = new Set(selectedAiPlayers.map((p) => p.id));
@@ -273,12 +420,16 @@ export function TransferMarketModal({
       .filter((p) => !targetIds.has(p.id))
       .sort((a, b) => a.ovr - b.ovr)
       .slice(0, 6);
-  }, [neededAutoFillers, activeClubOffer, activePartnerAiRoster, selectedAiPlayers]);
+  }, [
+    neededAutoFillers,
+    activeClubOffer,
+    activePartnerAiRoster,
+    selectedAiPlayers,
+  ]);
 
   // Live Trade Package Evaluation
   const tradeEval = useMemo(() => {
     if (
-      !season ||
       !activeClubOffer ||
       activeClubOffer.isLegendSlot ||
       !activeClubOffer.club ||
@@ -300,7 +451,7 @@ export function TransferMarketModal({
       aiLeagueSize: activeClubOffer.leagueSize,
       allPlayerStats: season.allPlayerStats,
       conditionMap: season.playerConditions,
-      championBonusActive: Boolean(tm?.championBonusActive),
+      championBonusActive: Boolean(tm.championBonusActive),
     });
   }, [
     season,
@@ -311,10 +462,13 @@ export function TransferMarketModal({
     autoFillerPlayers,
     activePartnerAiRoster,
     userSquadPlayers,
-    tm,
+    tm.championBonusActive,
   ]);
 
-  if (!season || !tm || !tm.isOpen) return null;
+  const inspectedBreakdown = useMemo(() => {
+    if (!inspectedPlayer) return null;
+    return buildPlayerCompetitionBreakdown(inspectedPlayer.id, season, null);
+  }, [inspectedPlayer, season]);
 
   const isUclSpecial = Boolean(tm.isUclSpecial);
   const isChampBonus = Boolean(tm.championBonusActive);
@@ -368,7 +522,9 @@ export function TransferMarketModal({
     if (optionalFillerPool.length <= 1) return;
     const currentIds = autoFillerPlayers.map((p) => p.id);
     const currentId = currentIds[fillerIndex];
-    const currentPoolIdx = optionalFillerPool.findIndex((p) => p.id === currentId);
+    const currentPoolIdx = optionalFillerPool.findIndex(
+      (p) => p.id === currentId,
+    );
     for (let step = 1; step <= optionalFillerPool.length; step += 1) {
       const nextCand =
         optionalFillerPool[(currentPoolIdx + step) % optionalFillerPool.length];
@@ -414,7 +570,6 @@ export function TransferMarketModal({
       championBonusActive: isChampBonus,
     });
 
-    // Ensure AI's offered players are present in squad list
     setCounterOfferClub(clubOffer);
     setSelectedAiPlayerIds(offer.aiOffersPlayers.map((p) => p.id));
 
@@ -461,16 +616,6 @@ export function TransferMarketModal({
     setLegendOutSlot(null);
   };
 
-  const filteredPartnerSquad = useMemo(() => {
-    if (!activeClubOffer) return [];
-    const signedSet = new Set(tm.signedPlayerIds);
-    return activeClubOffer.squad.filter((t) => {
-      if (signedSet.has(t.player.id)) return false;
-      if (posFilter === 'ALL') return true;
-      return t.player.position === posFilter;
-    });
-  }, [activeClubOffer, posFilter, tm.signedPlayerIds]);
-
   const canSubmitTrade = Boolean(
     tradeEval &&
       !tradeEval.blockedReason &&
@@ -506,12 +651,15 @@ export function TransferMarketModal({
               </span>
               {tm.legendBonusActive && (
                 <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                  👑 {isChampBonus ? '우승 레전드 보너스 5.5%' : '상위권 레전드 보너스 4.0%'}
+                  👑{' '}
+                  {isChampBonus
+                    ? '우승 레전드 보너스 5.5%'
+                    : '상위권 레전드 보너스 4.0%'}
                 </span>
               )}
             </div>
             <p className="text-[11px] text-slate-400">
-              1:1 · 2:1 · 3:1 NBA식 패키지 트레이드 · 상대 포지션 니즈 보너스 · 로스터 16인 자동 균형
+              양 팀 포메이션 보면서 1:1 · 2:1 · 3:1 트레이드 · 선수 이름 클릭 시 상세 카드 확인
             </p>
           </div>
         </div>
@@ -616,7 +764,7 @@ export function TransferMarketModal({
                   📩 타 구단으로부터 도착한 트레이드 제안 ({incomingOffers.length}건)
                 </h3>
                 <p className="text-[11px] text-slate-400">
-                  즉시 수락하면 100% 성사되며, [조건 수정 · 역제안]으로 다대일(2:1 · 3:1) 패키지를 재구성할 수도 있습니다.
+                  선수 이름을 클릭하면 상세 능력치 카드를 볼 수 있습니다. 즉시 수락(100%) 또는 [조건 수정 · 역제안]을 선택하세요.
                 </p>
               </div>
             </div>
@@ -699,7 +847,7 @@ export function TransferMarketModal({
                         )}
                       </div>
 
-                      {/* Swap visual */}
+                      {/* Swap visual with clickable player names */}
                       <div className="grid grid-cols-11 items-center gap-2 rounded-xl border border-slate-800 bg-[#0b1019] p-3">
                         <div className="col-span-5 space-y-1.5">
                           <div className="text-[10px] font-bold text-emerald-300">
@@ -722,9 +870,12 @@ export function TransferMarketModal({
                                     nationality={p.nationality}
                                     size="xs"
                                   />
-                                  <span className="truncate text-xs font-extrabold text-white">
+                                  <PlayerNameButton
+                                    onClick={() => setInspectedPlayer(p)}
+                                    className="truncate text-xs font-extrabold text-white"
+                                  >
                                     {p.name}
-                                  </span>
+                                  </PlayerNameButton>
                                 </div>
                                 <div className="mt-0.5 flex items-center justify-between text-[10px] text-slate-300 tabular-nums">
                                   <span>
@@ -765,9 +916,12 @@ export function TransferMarketModal({
                                     nationality={p.nationality}
                                     size="xs"
                                   />
-                                  <span className="truncate text-xs font-extrabold text-white">
+                                  <PlayerNameButton
+                                    onClick={() => setInspectedPlayer(p)}
+                                    className="truncate text-xs font-extrabold text-white"
+                                  >
                                     {p.name}
-                                  </span>
+                                  </PlayerNameButton>
                                 </div>
                                 <div className="mt-0.5 flex items-center justify-between text-[10px] text-slate-300 tabular-nums">
                                   <span>
@@ -824,7 +978,7 @@ export function TransferMarketModal({
         {/* TAB 1: EXPLORE CLUBS & NBA TRADE BUILDER */}
         {activeTab === 'explore' && (
           <div className="space-y-4">
-            {/* Step 1: 3-Club Roulette Banner (when not yet spun or showing 3 rolled clubs) */}
+            {/* Step 1: 3-Club Roulette Banner */}
             {!tm.hasSpunClubs && !counterOfferClub ? (
               <div className="rounded-2xl border border-sky-500/35 bg-gradient-to-b from-[#111c30] to-[#0c1320] p-6 text-center space-y-4">
                 <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/35 bg-sky-500/15 px-3 py-1 text-xs font-bold text-sky-200">
@@ -835,10 +989,9 @@ export function TransferMarketModal({
                   이번 이적시장에서 협상 테이블을 열 3개 구단을 추첨하세요!
                 </h3>
                 <p className="max-w-xl mx-auto text-xs text-slate-400">
-                  각 구단의 실제 스쿼드 약점(포지션 니즈)이 공개됩니다. 1:1뿐 아니라 2:1 · 3:1 패키지로 슈퍼스타 트레이드를 노려보세요!
+                  각 구단의 포메이션과 실제 스쿼드 약점(포지션 니즈)이 공개됩니다. 양 팀 포메이션을 비교하며 1:1 · 2:1 · 3:1 트레이드를 구성해 보세요!
                 </p>
 
-                {/* 3 Slot Reels Preview */}
                 <div className="grid grid-cols-3 gap-3 max-w-xl mx-auto">
                   {[0, 1, 2].map((rIdx) => {
                     const spinClub =
@@ -862,7 +1015,9 @@ export function TransferMarketModal({
                           size={40}
                         />
                         <div className="text-[11px] font-bold text-slate-300 truncate max-w-full">
-                          {animating ? spinClub.club.name : `협상 슬롯 #${rIdx + 1}`}
+                          {animating
+                            ? spinClub.club.name
+                            : `협상 슬롯 #${rIdx + 1}`}
                         </div>
                       </div>
                     );
@@ -967,24 +1122,27 @@ export function TransferMarketModal({
                                   {offer.leagueId !== 'LEGEND'
                                     ? LEAGUE_LABELS[offer.leagueId]
                                     : ''}{' '}
-                                  {offer.clubRank}위 · 선수 {offer.squad.length}명
+                                  {offer.clubRank}위 · {offer.club?.formation}
                                 </div>
                               </div>
                             </div>
                             {offer.clubNeeds && (
                               <div className="flex flex-wrap gap-1">
-                                {offer.clubNeeds.neededPositions.map((p, nIdx) => (
-                                  <span
-                                    key={`${idx}-need-${p}`}
-                                    className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold ${
-                                      nIdx === 0
-                                        ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40'
-                                        : 'bg-sky-500/15 text-sky-200 border border-sky-400/35'
-                                    }`}
-                                  >
-                                    {nIdx === 0 ? '🔥 최우선' : '✨ 필요'} {POS_BADGE_KO[p]}
-                                  </span>
-                                ))}
+                                {offer.clubNeeds.neededPositions.map(
+                                  (p, nIdx) => (
+                                    <span
+                                      key={`${idx}-need-${p}`}
+                                      className={`rounded px-1.5 py-0.5 text-[9px] font-extrabold ${
+                                        nIdx === 0
+                                          ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40'
+                                          : 'bg-sky-500/15 text-sky-200 border border-sky-400/35'
+                                      }`}
+                                    >
+                                      {nIdx === 0 ? '🔥 최우선' : '✨ 필요'}{' '}
+                                      {POS_BADGE_KO[p]}
+                                    </span>
+                                  ),
+                                )}
                                 {offer.clubNeeds.saturatedPositions.map((p) => (
                                   <span
                                     key={`${idx}-sat-${p}`}
@@ -1025,654 +1183,1048 @@ export function TransferMarketModal({
                 )}
 
                 {/* LEGEND FA 1:1 SPECIAL NEGOTIATION PANEL */}
-                {activeClubOffer?.isLegendSlot && activeClubOffer.squad[0] && (() => {
-                  const legTarget = activeClubOffer.squad[0];
-                  const alreadySigned = tm.signedPlayerIds.includes(
-                    legTarget.player.id,
-                  );
-                  return (
-                    <div className="rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-950/35 via-[#131926] to-[#0d1320] p-4 sm:p-5 space-y-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow">
-                            <Crown className="h-6 w-6" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <CountryFlagSvg
-                                code={legTarget.player.nationalityCode}
-                                nationality={legTarget.player.nationality}
-                                size="sm"
-                              />
-                              <h3 className="text-base sm:text-lg font-black text-amber-200">
-                                {legTarget.player.name}
-                              </h3>
-                              <span className="rounded bg-amber-400 px-2 py-0.5 text-xs font-black text-slate-950">
-                                OVR {legTarget.player.ovr}
-                              </span>
+                {activeClubOffer?.isLegendSlot &&
+                  activeClubOffer.squad[0] &&
+                  (() => {
+                    const legTarget = activeClubOffer.squad[0];
+                    const alreadySigned = tm.signedPlayerIds.includes(
+                      legTarget.player.id,
+                    );
+                    return (
+                      <div className="rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-950/35 via-[#131926] to-[#0d1320] p-4 sm:p-5 space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow">
+                              <Crown className="h-6 w-6" />
                             </div>
-                            <p className="text-xs text-slate-300">
-                              {formatMainPositions(legTarget.player)} ·{' '}
-                              {legTarget.formSummary} · 영입 성공 확률{' '}
-                              <strong className="text-amber-300">
-                                {legTarget.successChance}%
-                              </strong>
-                            </p>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <CountryFlagSvg
+                                  code={legTarget.player.nationalityCode}
+                                  nationality={legTarget.player.nationality}
+                                  size="sm"
+                                />
+                                <PlayerNameButton
+                                  onClick={() =>
+                                    setInspectedPlayer(legTarget.player)
+                                  }
+                                  className="text-base sm:text-lg font-black text-amber-200"
+                                >
+                                  {legTarget.player.name}
+                                </PlayerNameButton>
+                                <span className="rounded bg-amber-400 px-2 py-0.5 text-xs font-black text-slate-950">
+                                  OVR {legTarget.player.ovr}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-300">
+                                {formatMainPositions(legTarget.player)} ·{' '}
+                                {legTarget.formSummary} · 영입 성공 확률{' '}
+                                <strong className="text-amber-300">
+                                  {legTarget.successChance}%
+                                </strong>
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                        <button
-                          type="button"
-                          disabled={
-                            alreadySigned ||
-                            !legendOutSlot ||
-                            tm.attemptsRemaining <= 0
-                          }
-                          onClick={() => handleSubmitLegendOffer(legTarget)}
-                          className="rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black text-slate-950 hover:bg-amber-300 disabled:opacity-40 cursor-pointer"
-                        >
-                          {alreadySigned
-                            ? '영입 완료'
-                            : `👑 레전드 FA 영입 제안 (${legTarget.successChance}%)`}
-                        </button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="text-xs font-bold text-slate-300">
-                          방출(교체)할 우리 팀 선수 1명을 선택하세요:
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          {userRosterEntries.map((entry) => {
-                            const selected =
-                              legendOutSlot &&
-                              slotKey(legendOutSlot) === entry.key;
-                            return (
-                              <button
-                                key={`leg-out-${entry.key}`}
-                                type="button"
-                                onClick={() => setLegendOutSlot(entry.ref)}
-                                className={`rounded-lg border px-2.5 py-2 text-left transition cursor-pointer ${
-                                  selected
-                                    ? 'border-amber-400 bg-amber-500/20'
-                                    : 'border-slate-800 bg-slate-950/70 hover:border-slate-600'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between text-[10px]">
-                                  <span className="font-bold text-slate-400">
-                                    {entry.slotLabel}
-                                  </span>
-                                  <span className="font-black text-white">
-                                    OVR {entry.player.ovr}
-                                  </span>
-                                </div>
-                                <div className="truncate text-xs font-bold text-slate-100 mt-0.5">
-                                  {entry.player.name}
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* NBA TRADE PACKAGE BUILDER & DUAL SQUAD PICKER */}
-                {activeClubOffer && !activeClubOffer.isLegendSlot && activeClubOffer.club && (
-                  <div className="space-y-4">
-                    {/* Live Trade Table Evaluation Summary */}
-                    <div className="rounded-2xl border border-slate-700/90 bg-gradient-to-r from-[#11192a] via-[#101826] to-[#0e1924] p-4 space-y-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs sm:text-sm font-black text-white">
-                            📋 트레이드 협상 테이블 · {activeClubOffer.club.name}
-                          </span>
-                          <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-sky-300">
-                            {selectedUserPlayers.length} :{' '}
-                            {selectedAiPlayers.length}
-                            {autoFillerPlayers.length > 0
-                              ? ` (+백업 ${autoFillerPlayers.length})`
-                              : ''}{' '}
-                            패키지
-                          </span>
-                        </div>
-                        {(selectedAiPlayers.length > 0 ||
-                          selectedUserPlayers.length > 0) && (
                           <button
                             type="button"
-                            onClick={resetTradeBuilder}
-                            className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
+                            disabled={
+                              alreadySigned ||
+                              !legendOutSlot ||
+                              tm.attemptsRemaining <= 0
+                            }
+                            onClick={() => handleSubmitLegendOffer(legTarget)}
+                            className="rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black text-slate-950 hover:bg-amber-300 disabled:opacity-40 cursor-pointer"
                           >
-                            패키지 초기화
+                            {alreadySigned
+                              ? '영입 완료'
+                              : `👑 레전드 FA 영입 제안 (${legTarget.successChance}%)`}
                           </button>
-                        )}
-                      </div>
-
-                      {/* Side-by-side Package Chips */}
-                      <div className="grid grid-cols-1 md:grid-cols-11 gap-2.5 items-stretch">
-                        {/* User Sending */}
-                        <div className="md:col-span-5 rounded-xl border border-rose-500/30 bg-rose-950/15 p-2.5 space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-extrabold text-rose-300">
-                              📤 보내는 선수 ({selectedUserPlayers.length}/3)
-                            </span>
-                            {tradeEval && (
-                              <span className="font-mono font-bold text-rose-200 tabular-nums">
-                                실효 {tradeEval.userEffectiveTp} TP
-                              </span>
-                            )}
-                          </div>
-                          {selectedUserPlayers.length === 0 ? (
-                            <div className="py-3 text-center text-[11px] text-slate-500">
-                              우측 우리 팀 스쿼드에서 보낼 선수를 선택하세요
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              {selectedUserPlayers.map((p, idx) => {
-                                const val = tradeEval?.userValuations.find(
-                                  (v) => v.playerId === p.id,
-                                );
-                                return (
-                                  <div
-                                    key={`sent-${p.id}`}
-                                    className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/75 px-2.5 py-1.5 text-xs"
-                                  >
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <CountryFlagSvg
-                                        code={p.nationalityCode}
-                                        nationality={p.nationality}
-                                        size="xs"
-                                      />
-                                      <span className="truncate font-bold text-white">
-                                        {p.name}
-                                      </span>
-                                      <span className="text-[10px] text-slate-400">
-                                        {p.position} · {p.ovr}
-                                      </span>
-                                      {val && val.needModPct > 0 && (
-                                        <span className="rounded bg-emerald-500/20 px-1 py-px text-[9px] font-black text-emerald-300">
-                                          니즈 +{val.needModPct}%
-                                        </span>
-                                      )}
-                                      {val && val.needModPct < 0 && (
-                                        <span className="rounded bg-rose-500/20 px-1 py-px text-[9px] font-black text-rose-300">
-                                          포화 {val.needModPct}%
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      {val && (
-                                        <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
-                                          {val.effectiveTp}TP
-                                        </span>
-                                      )}
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          handleToggleUserSlot(
-                                            selectedUserSlots[idx],
-                                          )
-                                        }
-                                        className="text-slate-500 hover:text-rose-300 cursor-pointer"
-                                        aria-label={`${p.name} 제거`}
-                                      >
-                                        <X className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
                         </div>
 
-                        <div className="md:col-span-1 flex items-center justify-center">
-                          <ArrowLeftRight className="h-5 w-5 text-sky-400" />
-                        </div>
-
-                        {/* AI Sending (Targets + Option 3 Auto Fillers) */}
-                        <div className="md:col-span-5 rounded-xl border border-emerald-500/30 bg-emerald-950/15 p-2.5 space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-extrabold text-emerald-300">
-                              📥 받는 선수 ({selectedAiPlayers.length}/3
-                              {autoFillerPlayers.length > 0
-                                ? ` + 자동 백업 ${autoFillerPlayers.length}`
-                                : ''}
-                              )
-                            </span>
-                            {tradeEval && (
-                              <span className="font-mono font-bold text-emerald-200 tabular-nums">
-                                요구 {tradeEval.aiEffectiveTp} TP
-                              </span>
-                            )}
+                        <div className="space-y-2">
+                          <div className="text-xs font-bold text-slate-300">
+                            방출(교체)할 우리 팀 선수 1명을 선택하세요:
                           </div>
-                          {selectedAiPlayers.length === 0 ? (
-                            <div className="py-3 text-center text-[11px] text-slate-500">
-                              좌측 상대 구단 선수단에서 영입할 선수를 선택하세요
-                            </div>
-                          ) : (
-                            <div className="space-y-1">
-                              {selectedAiPlayers.map((p) => {
-                                const val = tradeEval?.aiValuations.find(
-                                  (v) => v.playerId === p.id,
-                                );
-                                return (
-                                  <div
-                                    key={`rec-${p.id}`}
-                                    className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/75 px-2.5 py-1.5 text-xs"
-                                  >
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <CountryFlagSvg
-                                        code={p.nationalityCode}
-                                        nationality={p.nationality}
-                                        size="xs"
-                                      />
-                                      <span className="truncate font-bold text-white">
-                                        {p.name}
-                                      </span>
-                                      <span className="text-[10px] text-slate-400">
-                                        {p.position} · {p.ovr}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      {val && (
-                                        <span className="font-mono text-[10px] font-bold text-emerald-300 tabular-nums">
-                                          {val.effectiveTp}TP
-                                        </span>
-                                      )}
-                                      <button
-                                        type="button"
-                                        onClick={() => handleToggleAiPlayer(p.id)}
-                                        className="text-slate-500 hover:text-rose-300 cursor-pointer"
-                                        aria-label={`${p.name} 제거`}
-                                      >
-                                        <X className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-
-                              {/* Option 3 Automatic Roster-Balance Fillers */}
-                              {autoFillerPlayers.map((fp, fIdx) => (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {userRosterEntries.map((entry) => {
+                              const selected =
+                                legendOutSlot &&
+                                slotKey(legendOutSlot) === entry.key;
+                              return (
                                 <div
-                                  key={`filler-${fp.id}`}
-                                  className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-sky-400/40 bg-sky-950/25 px-2.5 py-1.5 text-[11px]"
-                                >
-                                  <div className="flex items-center gap-1.5 min-w-0">
-                                    <span className="rounded bg-sky-500/20 px-1 py-px text-[9px] font-black text-sky-300">
-                                      16인 균형 백업
-                                    </span>
-                                    <span className="truncate font-bold text-sky-100">
-                                      {fp.name}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400">
-                                      {fp.position} · OVR {fp.ovr}
-                                    </span>
-                                  </div>
-                                  {optionalFillerPool.length > 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={() => handleCycleFiller(fIdx)}
-                                      className="rounded border border-sky-400/40 bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-sky-200 hover:bg-sky-500/20 cursor-pointer shrink-0"
-                                    >
-                                      백업 변경
-                                    </button>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Evaluation Bar + GM Reaction + Submit */}
-                      {tradeEval &&
-                        (selectedAiPlayers.length > 0 ||
-                          selectedUserPlayers.length > 0) && (
-                          <div className="rounded-xl border border-slate-800 bg-[#0a1019] p-3 space-y-2.5">
-                            {/* Extra outgoing player prompt when receiving more than sending (1:2 / 1:3) */}
-                            {tradeEval.requiredUserReleaseCount > 0 && (
-                              <div className="flex items-center gap-2 rounded-lg border border-amber-400/45 bg-amber-950/30 px-3 py-2 text-xs font-bold text-amber-200">
-                                <AlertCircle className="h-4 w-4 shrink-0 text-amber-300" />
-                                로스터 16인 유지를 위해 우리 팀에서{' '}
-                                {tradeEval.requiredUserReleaseCount}명을 더 보내는 선수로 선택해 주세요!
-                              </div>
-                            )}
-
-                            {tradeEval.blockedReason &&
-                              tradeEval.requiredUserReleaseCount === 0 && (
-                                <div className="flex items-center gap-2 rounded-lg border border-rose-500/45 bg-rose-950/35 px-3 py-2 text-xs font-bold text-rose-200">
-                                  <ShieldAlert className="h-4 w-4 shrink-0 text-rose-400" />
-                                  {tradeEval.blockedReason}
-                                </div>
-                              )}
-
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                              <div className="space-y-1 min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-[11px] font-bold text-slate-400">
-                                    예상 성사 확률:
-                                  </span>
-                                  <span
-                                    className={`rounded-md px-2 py-0.5 text-sm font-black tabular-nums ${
-                                      tradeEval.acceptanceChance >= 75
-                                        ? 'bg-emerald-500 text-slate-950'
-                                        : tradeEval.acceptanceChance >= 45
-                                          ? 'bg-amber-400 text-slate-950'
-                                          : tradeEval.acceptanceChance > 0
-                                            ? 'bg-orange-500/25 text-orange-200 border border-orange-400/40'
-                                            : 'bg-rose-500/25 text-rose-200 border border-rose-500/40'
-                                    }`}
-                                  >
-                                    {tradeEval.acceptanceChance}%
-                                  </span>
-                                  <span className="text-[11px] font-mono text-slate-400 tabular-nums">
-                                    가치 비율 {Math.round(tradeEval.ratio * 100)}%
-                                  </span>
-                                  {selectedUserPlayers.length > 1 && (
-                                    <span className="text-[10px] text-slate-500">
-                                      (다인 패키지 압축 보정 적용)
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs text-slate-200 leading-relaxed">
-                                  {tradeEval.gmReaction}
-                                </p>
-                              </div>
-
-                              <button
-                                id="submit-trade-package-btn"
-                                type="button"
-                                disabled={!canSubmitTrade}
-                                onClick={handleSubmitTrade}
-                                className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 shadow-lg hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
-                              >
-                                🤝 트레이드 제안 ({tradeEval.acceptanceChance}%)
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                    </div>
-
-                    {/* Dual Column Squad Picker */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                      {/* Left: Counterparty Club Squad */}
-                      <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <JerseySvg
-                              primaryColor={activeClubOffer.club.primaryColor}
-                              secondaryColor={activeClubOffer.club.secondaryColor}
-                              pattern={activeClubOffer.club.pattern}
-                              label={activeClubOffer.club.shortName}
-                              size={28}
-                            />
-                            <div>
-                              <div className="text-xs font-black text-white">
-                                {activeClubOffer.club.name} 선수단 (받는 선수)
-                              </div>
-                              {activeClubNeeds && (
-                                <div className="text-[10px] text-sky-300 font-bold">
-                                  {activeClubNeeds.summaryText}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {(['ALL', 'GK', 'DF', 'MF', 'FW'] as const).map(
-                              (pf) => (
-                                <button
-                                  key={`pf-${pf}`}
-                                  type="button"
-                                  onClick={() => setPosFilter(pf)}
-                                  className={`rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
-                                    posFilter === pf
-                                      ? 'bg-sky-400 text-slate-950'
-                                      : 'bg-slate-900 text-slate-400 hover:text-white'
+                                  key={`leg-out-${entry.key}`}
+                                  onClick={() => setLegendOutSlot(entry.ref)}
+                                  className={`rounded-lg border px-2.5 py-2 text-left transition cursor-pointer ${
+                                    selected
+                                      ? 'border-amber-400 bg-amber-500/20'
+                                      : 'border-slate-800 bg-slate-950/70 hover:border-slate-600'
                                   }`}
                                 >
-                                  {pf === 'ALL' ? '전체' : pf}
-                                </button>
-                              ),
+                                  <div className="flex items-center justify-between text-[10px]">
+                                    <span className="font-bold text-slate-400">
+                                      {entry.slotLabel}
+                                    </span>
+                                    <span className="font-black text-white">
+                                      OVR {entry.player.ovr}
+                                    </span>
+                                  </div>
+                                  <div className="mt-0.5 truncate">
+                                    <PlayerNameButton
+                                      onClick={() =>
+                                        setInspectedPlayer(entry.player)
+                                      }
+                                      className="text-xs font-bold text-slate-100"
+                                    >
+                                      {entry.player.name}
+                                    </PlayerNameButton>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                {/* NBA TRADE PACKAGE BUILDER & DUAL FORMATION PICKER */}
+                {activeClubOffer &&
+                  !activeClubOffer.isLegendSlot &&
+                  activeClubOffer.club && (
+                    <div className="space-y-4">
+                      {/* Live Trade Table Evaluation Summary */}
+                      <div className="rounded-2xl border border-slate-700/90 bg-gradient-to-r from-[#11192a] via-[#101826] to-[#0e1924] p-4 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs sm:text-sm font-black text-white">
+                              📋 트레이드 협상 테이블 ·{' '}
+                              {activeClubOffer.club.name}
+                            </span>
+                            <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-bold text-sky-300">
+                              {selectedUserPlayers.length} :{' '}
+                              {selectedAiPlayers.length}
+                              {autoFillerPlayers.length > 0
+                                ? ` (+백업 ${autoFillerPlayers.length})`
+                                : ''}{' '}
+                              패키지
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {/* Formation / List View Toggle */}
+                            <div className="inline-flex rounded-lg border border-slate-700 bg-slate-950 p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => setPickerViewMode('formation')}
+                                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-extrabold cursor-pointer ${
+                                  pickerViewMode === 'formation'
+                                    ? 'bg-emerald-500 text-slate-950'
+                                    : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                <LayoutGrid className="h-3 w-3" />
+                                포메이션 보기
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPickerViewMode('list')}
+                                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-extrabold cursor-pointer ${
+                                  pickerViewMode === 'list'
+                                    ? 'bg-sky-400 text-slate-950'
+                                    : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                <List className="h-3 w-3" />
+                                리스트 보기
+                              </button>
+                            </div>
+                            {(selectedAiPlayers.length > 0 ||
+                              selectedUserPlayers.length > 0) && (
+                              <button
+                                type="button"
+                                onClick={resetTradeBuilder}
+                                className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
+                              >
+                                초기화
+                              </button>
                             )}
                           </div>
                         </div>
 
-                        <div className="max-h-[380px] overflow-y-auto space-y-1.5 pr-1">
-                          {filteredPartnerSquad.map((target) => {
-                            const p = target.player;
-                            const isPicked = selectedAiPlayerIds.includes(p.id);
-                            const tpVal = computePlayerTradePoints({
-                              player: p,
-                              stats: season.allPlayerStats[p.id] ?? null,
-                              conditionMap: season.playerConditions,
-                            });
-                            const cond = season.playerConditions?.[p.id];
-                            const inj = cond ? isPlayerActivelyInjured(cond) : false;
-                            const mt = cond ? getMoraleTier(cond.morale) : 'normal';
-                            const tier = getCardTier(p);
-                            return (
-                              <button
-                                key={`ai-p-${p.id}`}
-                                type="button"
-                                onClick={() => handleToggleAiPlayer(p.id)}
-                                className={`w-full rounded-xl border px-3 py-2 text-left transition cursor-pointer flex items-center justify-between gap-2 ${
-                                  isPicked
-                                    ? 'border-emerald-400 bg-emerald-950/35 ring-1 ring-emerald-400/40'
-                                    : 'border-slate-800 bg-[#101826] hover:border-slate-600'
-                                }`}
-                              >
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5">
-                                    <CountryFlagSvg
-                                      code={p.nationalityCode}
-                                      nationality={p.nationality}
-                                      size="xs"
-                                    />
-                                    <span className="truncate text-xs font-extrabold text-white">
-                                      {p.name}
-                                    </span>
-                                    {tier === 'superstar' && (
-                                      <Sparkles className="h-3 w-3 text-cyan-300 shrink-0" />
-                                    )}
-                                    {inj && cond?.injury && (
-                                      <PixelStatusIcon
-                                        variant="injury"
-                                        size={11}
-                                        title={getInjuryTooltip(cond.injury)}
-                                      />
-                                    )}
-                                    {mt === 'ecstatic' && (
-                                      <PixelStatusIcon
-                                        variant="morale_high"
-                                        size={11}
-                                        title={`사기 ${getMoraleLabel(cond!.morale)}`}
-                                      />
-                                    )}
-                                    {mt === 'frozen' && (
-                                      <PixelStatusIcon
-                                        variant="morale_low"
-                                        size={11}
-                                        title={`사기 ${getMoraleLabel(cond!.morale)}`}
-                                      />
-                                    )}
-                                  </div>
-                                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
-                                    <span>{formatMainPositions(p)}</span>
-                                    <span>· STA {p.stamina}</span>
-                                    <span className="inline-flex items-center gap-0.5">
-                                      {target.formTrend === 'up' && (
-                                        <TrendingUp className="h-3 w-3 text-emerald-400" />
-                                      )}
-                                      {target.formTrend === 'down' && (
-                                        <TrendingDown className="h-3 w-3 text-rose-400" />
-                                      )}
-                                      평점 {target.formRating.toFixed(1)}
-                                    </span>
-                                  </div>
-                                </div>
+                        {/* Side-by-side Package Chips */}
+                        <div className="grid grid-cols-1 md:grid-cols-11 gap-2.5 items-stretch">
+                          {/* AI Sending (Targets + Option 3 Auto Fillers) */}
+                          <div className="md:col-span-5 rounded-xl border border-emerald-500/30 bg-emerald-950/15 p-2.5 space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-extrabold text-emerald-300">
+                                📥 받는 선수 ({selectedAiPlayers.length}/3
+                                {autoFillerPlayers.length > 0
+                                  ? ` + 백업 ${autoFillerPlayers.length}`
+                                  : ''}
+                                )
+                              </span>
+                              {tradeEval && (
+                                <span className="font-mono font-bold text-emerald-200 tabular-nums">
+                                  요구 {tradeEval.aiEffectiveTp} TP
+                                </span>
+                              )}
+                            </div>
+                            {selectedAiPlayers.length === 0 ? (
+                              <div className="py-2.5 text-center text-[11px] text-slate-500">
+                                좌측 상대 포메이션/벤치에서 영입할 선수를 클릭하세요
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                {selectedAiPlayers.map((p) => {
+                                  const val = tradeEval?.aiValuations.find(
+                                    (v) => v.playerId === p.id,
+                                  );
+                                  return (
+                                    <div
+                                      key={`rec-${p.id}`}
+                                      className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/75 px-2.5 py-1.5 text-xs"
+                                    >
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <CountryFlagSvg
+                                          code={p.nationalityCode}
+                                          nationality={p.nationality}
+                                          size="xs"
+                                        />
+                                        <PlayerNameButton
+                                          onClick={() => setInspectedPlayer(p)}
+                                          className="truncate font-bold text-white"
+                                        >
+                                          {p.name}
+                                        </PlayerNameButton>
+                                        <span className="text-[10px] text-slate-400">
+                                          {p.position} · {p.ovr}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        {val && (
+                                          <span className="font-mono text-[10px] font-bold text-emerald-300 tabular-nums">
+                                            {val.effectiveTp}TP
+                                          </span>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleToggleAiPlayer(p.id)
+                                          }
+                                          className="text-slate-500 hover:text-rose-300 cursor-pointer"
+                                          aria-label={`${p.name} 제거`}
+                                        >
+                                          <X className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
 
-                                <div className="flex items-center gap-2 shrink-0 tabular-nums">
-                                  <div className="text-right">
-                                    <div className="text-xs font-black text-amber-300">
-                                      OVR {p.ovr}
-                                    </div>
-                                    <div className="text-[10px] font-mono text-sky-300">
-                                      {tpVal.effectiveTp} TP
-                                    </div>
-                                  </div>
-                                  <span
-                                    className={`rounded-lg px-2 py-1 text-[10px] font-black ${
-                                      isPicked
-                                        ? 'bg-emerald-500 text-slate-950'
-                                        : 'bg-slate-800 text-slate-300'
-                                    }`}
+                                {/* Option 3 Automatic Roster-Balance Fillers */}
+                                {autoFillerPlayers.map((fp, fIdx) => (
+                                  <div
+                                    key={`filler-${fp.id}`}
+                                    className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-sky-400/40 bg-sky-950/25 px-2.5 py-1.5 text-[11px]"
                                   >
-                                    {isPicked ? '✓ 선택' : '+ 추가'}
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Right: User Squad (16 Players) */}
-                      <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <div>
-                            <div className="text-xs font-black text-white">
-                              {state.userClub.name} 스쿼드 (보내는 선수)
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              상대 필요 포지션 선수를 포함하면 가치가 +10%~+18% 상승합니다!
-                            </div>
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="rounded bg-sky-500/20 px-1 py-px text-[9px] font-black text-sky-300 shrink-0">
+                                        16인 백업
+                                      </span>
+                                      <PlayerNameButton
+                                        onClick={() => setInspectedPlayer(fp)}
+                                        className="truncate font-bold text-sky-100"
+                                      >
+                                        {fp.name}
+                                      </PlayerNameButton>
+                                      <span className="text-[10px] text-slate-400 shrink-0">
+                                        {fp.position} · {fp.ovr}
+                                      </span>
+                                    </div>
+                                    {optionalFillerPool.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleCycleFiller(fIdx)}
+                                        className="rounded border border-sky-400/40 bg-slate-900 px-1.5 py-0.5 text-[10px] font-bold text-sky-200 hover:bg-sky-500/20 cursor-pointer shrink-0"
+                                      >
+                                        변경
+                                      </button>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <span className="rounded bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-slate-300">
-                            {selectedUserSlots.length} / 3 선택
-                          </span>
+
+                          <div className="md:col-span-1 flex items-center justify-center">
+                            <ArrowLeftRight className="h-5 w-5 text-sky-400" />
+                          </div>
+
+                          {/* User Sending */}
+                          <div className="md:col-span-5 rounded-xl border border-rose-500/30 bg-rose-950/15 p-2.5 space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="font-extrabold text-rose-300">
+                                📤 보내는 선수 ({selectedUserPlayers.length}/3)
+                              </span>
+                              {tradeEval && (
+                                <span className="font-mono font-bold text-rose-200 tabular-nums">
+                                  실효 {tradeEval.userEffectiveTp} TP
+                                </span>
+                              )}
+                            </div>
+                            {selectedUserPlayers.length === 0 ? (
+                              <div className="py-2.5 text-center text-[11px] text-slate-500">
+                                우측 우리 팀 포메이션/벤치에서 보낼 선수를 클릭하세요
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                {selectedUserPlayers.map((p, idx) => {
+                                  const val = tradeEval?.userValuations.find(
+                                    (v) => v.playerId === p.id,
+                                  );
+                                  return (
+                                    <div
+                                      key={`sent-${p.id}`}
+                                      className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/75 px-2.5 py-1.5 text-xs"
+                                    >
+                                      <div className="flex items-center gap-1.5 min-w-0">
+                                        <CountryFlagSvg
+                                          code={p.nationalityCode}
+                                          nationality={p.nationality}
+                                          size="xs"
+                                        />
+                                        <PlayerNameButton
+                                          onClick={() => setInspectedPlayer(p)}
+                                          className="truncate font-bold text-white"
+                                        >
+                                          {p.name}
+                                        </PlayerNameButton>
+                                        <span className="text-[10px] text-slate-400">
+                                          {p.position} · {p.ovr}
+                                        </span>
+                                        {val && val.needModPct > 0 && (
+                                          <span className="rounded bg-emerald-500/20 px-1 py-px text-[9px] font-black text-emerald-300">
+                                            +{val.needModPct}%
+                                          </span>
+                                        )}
+                                        {val && val.needModPct < 0 && (
+                                          <span className="rounded bg-rose-500/20 px-1 py-px text-[9px] font-black text-rose-300">
+                                            {val.needModPct}%
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        {val && (
+                                          <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
+                                            {val.effectiveTp}TP
+                                          </span>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handleToggleUserSlot(
+                                              selectedUserSlots[idx],
+                                            )
+                                          }
+                                          className="text-slate-500 hover:text-rose-300 cursor-pointer"
+                                          aria-label={`${p.name} 제거`}
+                                        >
+                                          <X className="h-3.5 w-3.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="max-h-[380px] overflow-y-auto space-y-1.5 pr-1">
-                          {userRosterEntries.map((entry) => {
-                            const p = entry.player;
-                            const isPicked = selectedUserSlots.some(
-                              (s) => slotKey(s) === entry.key,
-                            );
-                            const tpVal = computePlayerTradePoints({
-                              player: p,
-                              receivingClubNeeds: activeClubNeeds,
-                              stats:
-                                season.allPlayerStats[p.id] ??
-                                season.allPlayerStats[`user::${p.id}`] ??
-                                null,
-                              conditionMap: season.playerConditions,
-                            });
-                            const cond = season.playerConditions?.[p.id];
-                            const inj = cond ? isPlayerActivelyInjured(cond) : false;
-                            const mt = cond ? getMoraleTier(cond.morale) : 'normal';
+                        {/* Evaluation Bar + GM Reaction + Submit */}
+                        {tradeEval &&
+                          (selectedAiPlayers.length > 0 ||
+                            selectedUserPlayers.length > 0) && (
+                            <div className="rounded-xl border border-slate-800 bg-[#0a1019] p-3 space-y-2.5">
+                              {tradeEval.requiredUserReleaseCount > 0 && (
+                                <div className="flex items-center gap-2 rounded-lg border border-amber-400/45 bg-amber-950/30 px-3 py-2 text-xs font-bold text-amber-200">
+                                  <AlertCircle className="h-4 w-4 shrink-0 text-amber-300" />
+                                  로스터 16인 유지를 위해 우리 팀에서{' '}
+                                  {tradeEval.requiredUserReleaseCount}명을 더
+                                  보내는 선수로 선택해 주세요!
+                                </div>
+                              )}
 
-                            return (
-                              <button
-                                key={`u-p-${entry.key}`}
-                                type="button"
-                                onClick={() => handleToggleUserSlot(entry.ref)}
-                                className={`w-full rounded-xl border px-3 py-2 text-left transition cursor-pointer flex items-center justify-between gap-2 ${
-                                  isPicked
-                                    ? 'border-rose-400 bg-rose-950/35 ring-1 ring-rose-400/40'
-                                    : 'border-slate-800 bg-[#101826] hover:border-slate-600'
-                                }`}
-                              >
-                                <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-1.5">
+                              {tradeEval.blockedReason &&
+                                tradeEval.requiredUserReleaseCount === 0 && (
+                                  <div className="flex items-center gap-2 rounded-lg border border-rose-500/45 bg-rose-950/35 px-3 py-2 text-xs font-bold text-rose-200">
+                                    <ShieldAlert className="h-4 w-4 shrink-0 text-rose-400" />
+                                    {tradeEval.blockedReason}
+                                  </div>
+                                )}
+
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="space-y-1 min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-400">
+                                      예상 성사 확률:
+                                    </span>
                                     <span
-                                      className={`rounded px-1.5 py-0.5 text-[9px] font-black ${
-                                        entry.isStarter
-                                          ? 'bg-emerald-500/20 text-emerald-300'
-                                          : 'bg-slate-800 text-slate-400'
+                                      className={`rounded-md px-2 py-0.5 text-sm font-black tabular-nums ${
+                                        tradeEval.acceptanceChance >= 72
+                                          ? 'bg-emerald-500 text-slate-950'
+                                          : tradeEval.acceptanceChance >= 45
+                                            ? 'bg-amber-400 text-slate-950'
+                                            : 'bg-orange-500/25 text-orange-200 border border-orange-400/40'
                                       }`}
                                     >
-                                      {entry.slotLabel}
+                                      {tradeEval.acceptanceChance}%
                                     </span>
-                                    <CountryFlagSvg
-                                      code={p.nationalityCode}
-                                      nationality={p.nationality}
-                                      size="xs"
-                                    />
-                                    <span className="truncate text-xs font-extrabold text-white">
-                                      {p.name}
+                                    <span className="text-[11px] font-mono text-slate-400 tabular-nums">
+                                      가치 비율 {Math.round(tradeEval.ratio * 100)}%
                                     </span>
-                                    {inj && cond?.injury && (
-                                      <PixelStatusIcon
-                                        variant="injury"
-                                        size={11}
-                                        title={getInjuryTooltip(cond.injury)}
-                                      />
-                                    )}
-                                    {mt === 'ecstatic' && (
-                                      <PixelStatusIcon
-                                        variant="morale_high"
-                                        size={11}
-                                        title={`사기 ${getMoraleLabel(cond!.morale)}`}
-                                      />
-                                    )}
-                                    {mt === 'frozen' && (
-                                      <PixelStatusIcon
-                                        variant="morale_low"
-                                        size={11}
-                                        title={`사기 ${getMoraleLabel(cond!.morale)}`}
-                                      />
-                                    )}
                                   </div>
-                                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
-                                    <span>
-                                      {formatMainPositions(p)} · STA {p.stamina}
-                                    </span>
-                                    {tpVal.needModPct >= 18 && (
-                                      <span className="rounded bg-amber-500/20 px-1.5 py-px text-[9px] font-black text-amber-200">
-                                        🔥 최우선 니즈 +18%
-                                      </span>
-                                    )}
-                                    {tpVal.needModPct === 10 && (
-                                      <span className="rounded bg-sky-500/15 px-1.5 py-px text-[9px] font-black text-sky-200">
-                                        ✨ 보강 니즈 +10%
-                                      </span>
-                                    )}
-                                    {tpVal.needModPct < 0 && (
-                                      <span className="rounded bg-slate-800 px-1.5 py-px text-[9px] font-bold text-slate-400">
-                                        ⚠️ 포화 -15%
-                                      </span>
-                                    )}
-                                  </div>
+                                  <p className="text-xs text-slate-200 leading-relaxed">
+                                    {tradeEval.gmReaction}
+                                  </p>
                                 </div>
 
-                                <div className="flex items-center gap-2 shrink-0 tabular-nums">
-                                  <div className="text-right">
-                                    <div className="text-xs font-black text-white">
-                                      OVR {p.ovr}
+                                <button
+                                  id="submit-trade-package-btn"
+                                  type="button"
+                                  disabled={!canSubmitTrade}
+                                  onClick={handleSubmitTrade}
+                                  className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 shadow-lg hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                                >
+                                  🤝 트레이드 제안 ({tradeEval.acceptanceChance}%)
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                      </div>
+
+                      {/* DUAL FORMATION PITCH VIEW (DEFAULT) */}
+                      {pickerViewMode === 'formation' &&
+                        partnerFormationLayout && (
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                            {/* LEFT: Partner Club Formation Pitch + Bench Below */}
+                            <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <JerseySvg
+                                    primaryColor={
+                                      activeClubOffer.club.primaryColor
+                                    }
+                                    secondaryColor={
+                                      activeClubOffer.club.secondaryColor
+                                    }
+                                    pattern={activeClubOffer.club.pattern}
+                                    label={activeClubOffer.club.shortName}
+                                    size={28}
+                                  />
+                                  <div className="min-w-0">
+                                    <div className="truncate text-xs font-black text-white">
+                                      📥 {activeClubOffer.club.name} (
+                                      {partnerFormationLayout.formationId})
                                     </div>
-                                    <div className="text-[10px] font-mono text-rose-300">
-                                      {tpVal.effectiveTp} TP
+                                    {activeClubNeeds && (
+                                      <div className="text-[10px] font-bold text-sky-300">
+                                        {activeClubNeeds.summaryText}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="rounded bg-emerald-500/15 border border-emerald-400/35 px-2 py-0.5 text-[10px] font-extrabold text-emerald-200 shrink-0">
+                                  받는 선수 {selectedAiPlayers.length}/3
+                                </span>
+                              </div>
+
+                              {/* Partner Pitch */}
+                              <div className="relative aspect-[4/4.6] w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-b from-[#0f2c1f] via-[#113324] to-[#0d261b]">
+                                {/* Pitch Markings */}
+                                <div className="pointer-events-none absolute inset-3 rounded border border-emerald-300/20">
+                                  <div className="absolute left-0 right-0 top-1/2 h-px bg-emerald-300/20" />
+                                  <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300/20" />
+                                  <div className="absolute left-1/2 top-0 h-10 w-28 -translate-x-1/2 border-b border-x border-emerald-300/20" />
+                                  <div className="absolute left-1/2 bottom-0 h-10 w-28 -translate-x-1/2 border-t border-x border-emerald-300/20" />
+                                </div>
+
+                                {partnerFormationLayout.slots.map(
+                                  (slot, idx) => {
+                                    const t =
+                                      partnerFormationLayout.starters[idx];
+                                    if (!t) return null;
+                                    const p = t.player;
+                                    const isPicked =
+                                      selectedAiPlayerIds.includes(p.id);
+                                    const tpVal = computePlayerTradePoints({
+                                      player: p,
+                                      stats: season.allPlayerStats[p.id] ?? null,
+                                      conditionMap: season.playerConditions,
+                                    });
+                                    const cond = season.playerConditions?.[p.id];
+                                    const inj = cond
+                                      ? isPlayerActivelyInjured(cond)
+                                      : false;
+                                    const mt = cond
+                                      ? getMoraleTier(cond.morale)
+                                      : 'normal';
+
+                                    return (
+                                      <div
+                                        key={`ai-pitch-${idx}-${p.id}`}
+                                        onClick={() =>
+                                          handleToggleAiPlayer(p.id)
+                                        }
+                                        style={{
+                                          left: `${slot.x}%`,
+                                          top: `${slot.y}%`,
+                                        }}
+                                        className={`absolute -translate-x-1/2 -translate-y-1/2 w-[78px] sm:w-[84px] rounded-lg border px-1.5 py-1 text-center transition cursor-pointer select-none ${
+                                          isPicked
+                                            ? 'border-emerald-300 bg-emerald-950/95 ring-2 ring-emerald-400 shadow-lg z-20'
+                                            : 'border-slate-700/90 bg-slate-950/90 hover:border-emerald-400/70 z-10'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between text-[9px] tabular-nums leading-none">
+                                          <span className="font-bold text-slate-400">
+                                            {slot.label}
+                                          </span>
+                                          <span className="font-black text-amber-300">
+                                            {p.ovr}
+                                          </span>
+                                        </div>
+                                        <div className="mt-0.5 flex items-center justify-center gap-0.5">
+                                          <CountryFlagSvg
+                                            code={p.nationalityCode}
+                                            nationality={p.nationality}
+                                            size="xs"
+                                          />
+                                          <PlayerNameButton
+                                            onClick={() => setInspectedPlayer(p)}
+                                            className="truncate text-[10px] font-extrabold text-white"
+                                          >
+                                            {shortPitchName(p.name)}
+                                          </PlayerNameButton>
+                                        </div>
+                                        <div className="mt-0.5 flex items-center justify-center gap-1 text-[9px] tabular-nums leading-none">
+                                          <span className="font-mono text-sky-300">
+                                            {Math.round(tpVal.effectiveTp)}TP
+                                          </span>
+                                          {inj && cond?.injury && (
+                                            <PixelStatusIcon
+                                              variant="injury"
+                                              size={9}
+                                              title={getInjuryTooltip(
+                                                cond.injury,
+                                              )}
+                                            />
+                                          )}
+                                          {mt === 'ecstatic' && (
+                                            <PixelStatusIcon
+                                              variant="morale_high"
+                                              size={9}
+                                              title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                                            />
+                                          )}
+                                          {mt === 'frozen' && (
+                                            <PixelStatusIcon
+                                              variant="morale_low"
+                                              size={9}
+                                              title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                                            />
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  },
+                                )}
+                              </div>
+
+                              {/* Partner Club Bench Below Pitch */}
+                              <div className="space-y-1.5">
+                                <div className="text-[10px] font-extrabold text-slate-400">
+                                  후보 / 로테이션 벤치 ({partnerFormationLayout.bench.length}명)
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                                  {partnerFormationLayout.bench.map((t) => {
+                                    const p = t.player;
+                                    const isPicked =
+                                      selectedAiPlayerIds.includes(p.id);
+                                    const tpVal = computePlayerTradePoints({
+                                      player: p,
+                                      stats: season.allPlayerStats[p.id] ?? null,
+                                      conditionMap: season.playerConditions,
+                                    });
+                                    return (
+                                      <div
+                                        key={`ai-bench-${p.id}`}
+                                        onClick={() =>
+                                          handleToggleAiPlayer(p.id)
+                                        }
+                                        className={`rounded-lg border px-2 py-1.5 transition cursor-pointer ${
+                                          isPicked
+                                            ? 'border-emerald-400 bg-emerald-950/45 ring-1 ring-emerald-400/50'
+                                            : 'border-slate-800 bg-[#101826] hover:border-slate-600'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between text-[9px] tabular-nums">
+                                          <span className="font-bold text-slate-400">
+                                            {p.mainPositions[0] ?? p.position}
+                                          </span>
+                                          <span className="font-black text-amber-300">
+                                            {p.ovr} · {Math.round(tpVal.effectiveTp)}TP
+                                          </span>
+                                        </div>
+                                        <div className="mt-0.5 flex items-center gap-1 min-w-0">
+                                          <CountryFlagSvg
+                                            code={p.nationalityCode}
+                                            nationality={p.nationality}
+                                            size="xs"
+                                          />
+                                          <PlayerNameButton
+                                            onClick={() => setInspectedPlayer(p)}
+                                            className="truncate text-[11px] font-bold text-white"
+                                          >
+                                            {p.name}
+                                          </PlayerNameButton>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* RIGHT: User Club Formation Pitch + 5 Bench Below */}
+                            <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <JerseySvg
+                                    primaryColor={state.userClub.primaryColor}
+                                    secondaryColor={
+                                      state.userClub.secondaryColor
+                                    }
+                                    pattern={state.userClub.pattern}
+                                    label={state.userClub.shortName}
+                                    size={28}
+                                  />
+                                  <div className="min-w-0">
+                                    <div className="truncate text-xs font-black text-emerald-300">
+                                      📤 {state.userClub.name} ({state.formation})
+                                    </div>
+                                    <div className="text-[10px] text-slate-400">
+                                      🔥 상대 최우선 니즈 +18% · ✨ 보강 니즈 +10%
                                     </div>
                                   </div>
-                                  <span
-                                    className={`rounded-lg px-2 py-1 text-[10px] font-black ${
+                                </div>
+                                <span className="rounded bg-rose-500/15 border border-rose-400/35 px-2 py-0.5 text-[10px] font-extrabold text-rose-200 shrink-0">
+                                  보내는 선수 {selectedUserSlots.length}/3
+                                </span>
+                              </div>
+
+                              {/* User Pitch */}
+                              <div className="relative aspect-[4/4.6] w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-b from-[#0f2c1f] via-[#113324] to-[#0d261b]">
+                                <div className="pointer-events-none absolute inset-3 rounded border border-emerald-300/20">
+                                  <div className="absolute left-0 right-0 top-1/2 h-px bg-emerald-300/20" />
+                                  <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300/20" />
+                                  <div className="absolute left-1/2 top-0 h-10 w-28 -translate-x-1/2 border-b border-x border-emerald-300/20" />
+                                  <div className="absolute left-1/2 bottom-0 h-10 w-28 -translate-x-1/2 border-t border-x border-emerald-300/20" />
+                                </div>
+
+                                {formationSlots.map((slot, idx) => {
+                                  const p = state.starters[idx];
+                                  if (!p) return null;
+                                  const ref: SlotRef = {
+                                    area: 'starter',
+                                    index: idx,
+                                  };
+                                  const isPicked = selectedUserSlots.some(
+                                    (s) => slotKey(s) === slotKey(ref),
+                                  );
+                                  const tpVal = computePlayerTradePoints({
+                                    player: p,
+                                    receivingClubNeeds: activeClubNeeds,
+                                    stats:
+                                      season.allPlayerStats[p.id] ??
+                                      season.allPlayerStats[`user::${p.id}`] ??
+                                      null,
+                                    conditionMap: season.playerConditions,
+                                  });
+                                  const cond = season.playerConditions?.[p.id];
+                                  const inj = cond
+                                    ? isPlayerActivelyInjured(cond)
+                                    : false;
+                                  const mt = cond
+                                    ? getMoraleTier(cond.morale)
+                                    : 'normal';
+
+                                  return (
+                                    <div
+                                      key={`u-pitch-${idx}-${p.id}`}
+                                      onClick={() => handleToggleUserSlot(ref)}
+                                      style={{
+                                        left: `${slot.x}%`,
+                                        top: `${slot.y}%`,
+                                      }}
+                                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-[78px] sm:w-[84px] rounded-lg border px-1.5 py-1 text-center transition cursor-pointer select-none ${
+                                        isPicked
+                                          ? 'border-rose-400 bg-rose-950/95 ring-2 ring-rose-400 shadow-lg z-20'
+                                          : 'border-slate-700/90 bg-slate-950/90 hover:border-rose-400/70 z-10'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between text-[9px] tabular-nums leading-none">
+                                        <span className="font-bold text-slate-400">
+                                          {slot.label}
+                                        </span>
+                                        <span className="font-black text-white">
+                                          {p.ovr}
+                                        </span>
+                                      </div>
+                                      <div className="mt-0.5 flex items-center justify-center gap-0.5">
+                                        <CountryFlagSvg
+                                          code={p.nationalityCode}
+                                          nationality={p.nationality}
+                                          size="xs"
+                                        />
+                                        <PlayerNameButton
+                                          onClick={() => setInspectedPlayer(p)}
+                                          className="truncate text-[10px] font-extrabold text-white"
+                                        >
+                                          {shortPitchName(p.name)}
+                                        </PlayerNameButton>
+                                      </div>
+                                      <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[9px] tabular-nums leading-none">
+                                        <span className="font-mono text-rose-300">
+                                          {Math.round(tpVal.effectiveTp)}TP
+                                        </span>
+                                        {tpVal.needModPct >= 18 && (
+                                          <span className="text-[8px] font-black text-amber-300">
+                                            🔥
+                                          </span>
+                                        )}
+                                        {tpVal.needModPct === 10 && (
+                                          <span className="text-[8px] font-black text-sky-300">
+                                            ✨
+                                          </span>
+                                        )}
+                                        {inj && cond?.injury && (
+                                          <PixelStatusIcon
+                                            variant="injury"
+                                            size={9}
+                                            title={getInjuryTooltip(cond.injury)}
+                                          />
+                                        )}
+                                        {mt === 'ecstatic' && (
+                                          <PixelStatusIcon
+                                            variant="morale_high"
+                                            size={9}
+                                            title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                                          />
+                                        )}
+                                        {mt === 'frozen' && (
+                                          <PixelStatusIcon
+                                            variant="morale_low"
+                                            size={9}
+                                            title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                                          />
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* User Bench Below Pitch */}
+                              <div className="space-y-1.5">
+                                <div className="text-[10px] font-extrabold text-slate-400">
+                                  우리 팀 벤치 멤버 (5명)
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                                  {state.bench.map((p, idx) => {
+                                    if (!p) return null;
+                                    const ref: SlotRef = {
+                                      area: 'bench',
+                                      index: idx,
+                                    };
+                                    const isPicked = selectedUserSlots.some(
+                                      (s) => slotKey(s) === slotKey(ref),
+                                    );
+                                    const tpVal = computePlayerTradePoints({
+                                      player: p,
+                                      receivingClubNeeds: activeClubNeeds,
+                                      stats:
+                                        season.allPlayerStats[p.id] ??
+                                        season.allPlayerStats[`user::${p.id}`] ??
+                                        null,
+                                      conditionMap: season.playerConditions,
+                                    });
+                                    return (
+                                      <div
+                                        key={`u-bench-${idx}-${p.id}`}
+                                        onClick={() => handleToggleUserSlot(ref)}
+                                        className={`rounded-lg border px-2 py-1.5 transition cursor-pointer ${
+                                          isPicked
+                                            ? 'border-rose-400 bg-rose-950/45 ring-1 ring-rose-400/50'
+                                            : 'border-slate-800 bg-[#101826] hover:border-slate-600'
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between text-[9px] tabular-nums">
+                                          <span className="font-bold text-slate-400">
+                                            {BENCH_SLOTS[idx]?.label ??
+                                              p.position}
+                                          </span>
+                                          <span className="font-black text-white">
+                                            {p.ovr} ·{' '}
+                                            <span className="text-rose-300">
+                                              {Math.round(tpVal.effectiveTp)}TP
+                                            </span>
+                                            {tpVal.needModPct > 0
+                                              ? tpVal.needModPct >= 18
+                                                ? ' 🔥'
+                                                : ' ✨'
+                                              : ''}
+                                          </span>
+                                        </div>
+                                        <div className="mt-0.5 flex items-center gap-1 min-w-0">
+                                          <CountryFlagSvg
+                                            code={p.nationalityCode}
+                                            nationality={p.nationality}
+                                            size="xs"
+                                          />
+                                          <PlayerNameButton
+                                            onClick={() => setInspectedPlayer(p)}
+                                            className="truncate text-[11px] font-bold text-white"
+                                          >
+                                            {p.name}
+                                          </PlayerNameButton>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                      {/* LIST VIEW (OPTIONAL TOGGLE) */}
+                      {pickerViewMode === 'list' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                          {/* Left: Partner List */}
+                          <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-xs font-black text-white">
+                                📥 {activeClubOffer.club.name} 선수단
+                              </div>
+                              <div className="flex items-center gap-1">
+                                {(['ALL', 'GK', 'DF', 'MF', 'FW'] as const).map(
+                                  (pf) => (
+                                    <button
+                                      key={`pf-${pf}`}
+                                      type="button"
+                                      onClick={() => setPosFilter(pf)}
+                                      className={`rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
+                                        posFilter === pf
+                                          ? 'bg-sky-400 text-slate-950'
+                                          : 'bg-slate-900 text-slate-400 hover:text-white'
+                                      }`}
+                                    >
+                                      {pf === 'ALL' ? '전체' : pf}
+                                    </button>
+                                  ),
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="max-h-[380px] overflow-y-auto space-y-1.5 pr-1">
+                              {filteredPartnerSquad.map((target) => {
+                                const p = target.player;
+                                const isPicked = selectedAiPlayerIds.includes(
+                                  p.id,
+                                );
+                                const tpVal = computePlayerTradePoints({
+                                  player: p,
+                                  stats: season.allPlayerStats[p.id] ?? null,
+                                  conditionMap: season.playerConditions,
+                                });
+                                const tier = getCardTier(p);
+                                return (
+                                  <div
+                                    key={`ai-p-${p.id}`}
+                                    onClick={() => handleToggleAiPlayer(p.id)}
+                                    className={`w-full rounded-xl border px-3 py-2 text-left transition cursor-pointer flex items-center justify-between gap-2 ${
                                       isPicked
-                                        ? 'bg-rose-500 text-white'
-                                        : 'bg-slate-800 text-slate-300'
+                                        ? 'border-emerald-400 bg-emerald-950/35 ring-1 ring-emerald-400/40'
+                                        : 'border-slate-800 bg-[#101826] hover:border-slate-600'
                                     }`}
                                   >
-                                    {isPicked ? '✓ 포함' : '+ 선택'}
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })}
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <CountryFlagSvg
+                                          code={p.nationalityCode}
+                                          nationality={p.nationality}
+                                          size="xs"
+                                        />
+                                        <PlayerNameButton
+                                          onClick={() => setInspectedPlayer(p)}
+                                          className="truncate text-xs font-extrabold text-white"
+                                        >
+                                          {p.name}
+                                        </PlayerNameButton>
+                                        {tier === 'superstar' && (
+                                          <Sparkles className="h-3 w-3 text-cyan-300 shrink-0" />
+                                        )}
+                                      </div>
+                                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
+                                        <span>{formatMainPositions(p)}</span>
+                                        <span>· STA {p.stamina}</span>
+                                        <span className="inline-flex items-center gap-0.5">
+                                          {target.formTrend === 'up' && (
+                                            <TrendingUp className="h-3 w-3 text-emerald-400" />
+                                          )}
+                                          {target.formTrend === 'down' && (
+                                            <TrendingDown className="h-3 w-3 text-rose-400" />
+                                          )}
+                                          평점 {target.formRating.toFixed(1)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0 tabular-nums">
+                                      <div className="text-right">
+                                        <div className="text-xs font-black text-amber-300">
+                                          OVR {p.ovr}
+                                        </div>
+                                        <div className="text-[10px] font-mono text-sky-300">
+                                          {tpVal.effectiveTp} TP
+                                        </div>
+                                      </div>
+                                      <span
+                                        className={`rounded-lg px-2 py-1 text-[10px] font-black ${
+                                          isPicked
+                                            ? 'bg-emerald-500 text-slate-950'
+                                            : 'bg-slate-800 text-slate-300'
+                                        }`}
+                                      >
+                                        {isPicked ? '✓ 선택' : '+ 추가'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Right: User List */}
+                          <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-xs font-black text-emerald-300">
+                                📤 {state.userClub.name} 스쿼드 (16인)
+                              </div>
+                              <span className="rounded bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                                {selectedUserSlots.length} / 3 선택
+                              </span>
+                            </div>
+
+                            <div className="max-h-[380px] overflow-y-auto space-y-1.5 pr-1">
+                              {userRosterEntries.map((entry) => {
+                                const p = entry.player;
+                                const isPicked = selectedUserSlots.some(
+                                  (s) => slotKey(s) === entry.key,
+                                );
+                                const tpVal = computePlayerTradePoints({
+                                  player: p,
+                                  receivingClubNeeds: activeClubNeeds,
+                                  stats:
+                                    season.allPlayerStats[p.id] ??
+                                    season.allPlayerStats[`user::${p.id}`] ??
+                                    null,
+                                  conditionMap: season.playerConditions,
+                                });
+                                return (
+                                  <div
+                                    key={`u-p-${entry.key}`}
+                                    onClick={() =>
+                                      handleToggleUserSlot(entry.ref)
+                                    }
+                                    className={`w-full rounded-xl border px-3 py-2 text-left transition cursor-pointer flex items-center justify-between gap-2 ${
+                                      isPicked
+                                        ? 'border-rose-400 bg-rose-950/35 ring-1 ring-rose-400/40'
+                                        : 'border-slate-800 bg-[#101826] hover:border-slate-600'
+                                    }`}
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span
+                                          className={`rounded px-1.5 py-0.5 text-[9px] font-black ${
+                                            entry.isStarter
+                                              ? 'bg-emerald-500/20 text-emerald-300'
+                                              : 'bg-slate-800 text-slate-400'
+                                          }`}
+                                        >
+                                          {entry.slotLabel}
+                                        </span>
+                                        <CountryFlagSvg
+                                          code={p.nationalityCode}
+                                          nationality={p.nationality}
+                                          size="xs"
+                                        />
+                                        <PlayerNameButton
+                                          onClick={() => setInspectedPlayer(p)}
+                                          className="truncate text-xs font-extrabold text-white"
+                                        >
+                                          {p.name}
+                                        </PlayerNameButton>
+                                      </div>
+                                      <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
+                                        <span>
+                                          {formatMainPositions(p)} · STA{' '}
+                                          {p.stamina}
+                                        </span>
+                                        {tpVal.needModPct >= 18 && (
+                                          <span className="rounded bg-amber-500/20 px-1.5 py-px text-[9px] font-black text-amber-200">
+                                            🔥 최우선 니즈 +18%
+                                          </span>
+                                        )}
+                                        {tpVal.needModPct === 10 && (
+                                          <span className="rounded bg-sky-500/15 px-1.5 py-px text-[9px] font-black text-sky-200">
+                                            ✨ 보강 니즈 +10%
+                                          </span>
+                                        )}
+                                        {tpVal.needModPct < 0 && (
+                                          <span className="rounded bg-slate-800 px-1.5 py-px text-[9px] font-bold text-slate-400">
+                                            ⚠️ 포화 -15%
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0 tabular-nums">
+                                      <div className="text-right">
+                                        <div className="text-xs font-black text-white">
+                                          OVR {p.ovr}
+                                        </div>
+                                        <div className="text-[10px] font-mono text-rose-300">
+                                          {tpVal.effectiveTp} TP
+                                        </div>
+                                      </div>
+                                      <span
+                                        className={`rounded-lg px-2 py-1 text-[10px] font-black ${
+                                          isPicked
+                                            ? 'bg-rose-500 text-white'
+                                            : 'bg-slate-800 text-slate-300'
+                                        }`}
+                                      >
+                                        {isPicked ? '✓ 포함' : '+ 선택'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  )}
               </>
             )}
           </div>
@@ -1695,11 +2247,17 @@ export function TransferMarketModal({
                       {rec.round}R · {rec.partnerClubName}
                     </span>
                     <span className="font-bold text-emerald-300">
-                      IN {rec.receivedPlayers.map((p) => `${p.name}(${p.ovr})`).join(' + ')}
+                      IN{' '}
+                      {rec.receivedPlayers
+                        .map((p) => `${p.name}(${p.ovr})`)
+                        .join(' + ')}
                     </span>
                     <span className="text-slate-500">↔</span>
                     <span className="font-bold text-rose-300">
-                      OUT {rec.sentPlayers.map((p) => `${p.name}(${p.ovr})`).join(' + ')}
+                      OUT{' '}
+                      {rec.sentPlayers
+                        .map((p) => `${p.name}(${p.ovr})`)
+                        .join(' + ')}
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-400">
@@ -1713,6 +2271,22 @@ export function TransferMarketModal({
           </div>
         )}
       </div>
+
+      {/* Player Detail Card Modal (z-[60], floats cleanly above Trade Room!) */}
+      {inspectedPlayer && (
+        <PlayerDetailModal
+          player={inspectedPlayer}
+          slotSynergy={
+            Object.values(chemistry.slotSynergies).find(
+              (s) => s.playerId === inspectedPlayer.id,
+            ) ?? null
+          }
+          managerTraitId={state.manager.traitId}
+          seasonStats={inspectedBreakdown?.total ?? null}
+          competitionStats={inspectedBreakdown}
+          onClose={() => setInspectedPlayer(null)}
+        />
+      )}
     </div>
   );
 

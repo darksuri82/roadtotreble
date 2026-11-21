@@ -9,7 +9,7 @@ import {
   selectAutoFillerPlayers,
 } from '../engine/transferEngine';
 import { createInitialState, gameReducer } from '../store/GameContext';
-import type { Club } from '../types/league';
+import type { Club, LeagueId } from '../types/league';
 import type { Player } from '../types/player';
 
 function makeSeededRng(seed = 202611): () => number {
@@ -47,8 +47,8 @@ function makeSyntheticPlayer(
   };
 }
 
-describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat Coherence', () => {
-  it('blocks 3x low-OVR cheese for an 88+ superstar via exponential TP curve and Star Quality Guard', () => {
+describe('v3.2 / v3.2.1 NBA-Style Trade System (Option 3), Position Coherence, No-0% Curve & Full-Season Stress Verification', () => {
+  it('heavily penalizes 3x low-OVR cheese for an 89 superstar without ever showing 0%', () => {
     const epl = getLeagueById('epl');
     const aiClub = epl.clubs[0];
     const aiRoster = [
@@ -99,12 +99,14 @@ describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat C
       allPlayerStats: {},
     });
 
-    expect(evalCheese.blockedReason).not.toBeNull();
-    expect(evalCheese.acceptanceChance).toBe(0);
+    // No 0% floor: miracle chance stays very low (2..10%) rather than 0%, still preventing easy cheese
+    expect(evalCheese.blockedReason).toBeNull();
+    expect(evalCheese.acceptanceChance).toBeGreaterThanOrEqual(2);
+    expect(evalCheese.acceptanceChance).toBeLessThanOrEqual(10);
     expect(evalCheese.gmTone).toBe('offended');
   });
 
-  it('rewards positional needs (+18%) and evaluates realistic 2:1 star packages fairly', () => {
+  it('rewards positional needs (+18%) and evaluates realistic 2:1 star packages generously', () => {
     const epl = getLeagueById('epl');
     const aiClub = epl.clubs[1];
     // Weak in FW (only 2 low-OVR FWs) so FW is top need
@@ -162,8 +164,8 @@ describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat C
     });
 
     expect(evalFair.blockedReason).toBeNull();
-    expect(evalFair.acceptanceChance).toBeGreaterThanOrEqual(45);
-    expect(evalFair.acceptanceChance).toBeLessThanOrEqual(95);
+    expect(evalFair.acceptanceChance).toBeGreaterThanOrEqual(55);
+    expect(evalFair.acceptanceChance).toBeLessThanOrEqual(96);
   });
 
   it('executes a 2:1 bidirectional trade via gameReducer preserving 16-player invariant, 0 duplicates, cumulative stats & injuryAutoReturns pruning', () => {
@@ -173,22 +175,18 @@ describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat C
     st = gameReducer(st, { type: 'AUTO_COMPLETE_DRAFT' });
     st = gameReducer(st, { type: 'SELECT_LEAGUE', payload: { leagueId: 'epl' } });
 
-    // Open transfer window cleanly via SIMULATE_TO_NEXT_TRANSFER
     st = gameReducer(st, { type: 'SIMULATE_TO_NEXT_TRANSFER' });
     expect(st.season?.transferMarket.isOpen).toBe(true);
 
-    // Pick a partner club from user's own league so we can verify live aiRosters movement directly
     const partnerClub = st.season!.clubs.find((c) => !c.isUser)!;
     const partnerRosterBefore = st.season!.aiRosters[partnerClub.id]!;
     expect(partnerRosterBefore.length).toBeGreaterThanOrEqual(11);
 
-    // Pick a non-GK target from partner club (with moderate OVR so our top 2 outfielders pass star guard)
     const sortedTargets = [...partnerRosterBefore]
       .filter((p) => p.position !== 'GK')
       .sort((a, b) => a.ovr - b.ovr);
     const targetPlayer = sortedTargets[Math.floor(sortedTargets.length / 2)];
 
-    // Pick 2 user outfielders (highest OVR so deal is valid & not blocked)
     const userSlots: { area: 'starter' | 'bench'; index: number; player: Player }[] =
       [];
     st.starters.forEach((p, idx) => {
@@ -200,7 +198,6 @@ describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat C
     const sentSlot1 = userSlots[0];
     const sentSlot2 = userSlots[1];
 
-    // Seed cumulative stats for targetPlayer and sentSlot1, plus a stale injuryAutoReturn for sentSlot1
     st = {
       ...st,
       season: {
@@ -257,13 +254,12 @@ describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat C
           { area: sentSlot2.area, index: sentSlot2.index },
         ],
         aiTargetPlayers: [targetPlayer],
-        overrideRoll: 0, // guaranteed acceptance when acceptanceChance > 0
+        overrideRoll: 0,
       },
     });
 
     expect(afterTrade.season!.transferMarket.lastOfferResult?.success).toBe(true);
 
-    // 1) User maintains exact 16-player Option 3 invariant (11 starters + 5 bench)
     const userStartersAfter = afterTrade.starters.filter(
       (p): p is Player => p !== null,
     );
@@ -281,21 +277,18 @@ describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat C
     expect(userIdsAfter.has(sentSlot1.player.id)).toBe(false);
     expect(userIdsAfter.has(sentSlot2.player.id)).toBe(false);
 
-    // 2) 100% Bidirectional movement: sent players now live on partnerClub's AI roster, target removed
     const partnerRosterAfter = afterTrade.season!.aiRosters[partnerClub.id]!;
     const partnerIdsAfter = new Set(partnerRosterAfter.map((p) => p.id));
     expect(partnerIdsAfter.has(targetPlayer.id)).toBe(false);
     expect(partnerIdsAfter.has(sentSlot1.player.id)).toBe(true);
     expect(partnerIdsAfter.has(sentSlot2.player.id)).toBe(true);
 
-    // 3) Zero duplicates across user squad and all league AI rosters
     const allLeagueIds: string[] = [...userIdsAfter];
     for (const roster of Object.values(afterTrade.season!.aiRosters)) {
       for (const p of roster) allLeagueIds.push(p.id);
     }
     expect(new Set(allLeagueIds).size).toBe(allLeagueIds.length);
 
-    // 4) Cumulative stats preserved + 🔄 trade record appended
     const targetStats = afterTrade.season!.allPlayerStats[targetPlayer.id];
     expect(targetStats.goals).toBe(5);
     expect(targetStats.assists).toBe(3);
@@ -311,21 +304,20 @@ describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat C
       sentStats.transferHistory?.some((tr) => tr.type === 'trade'),
     ).toBe(true);
 
-    // 5) injuryAutoReturns pruned for traded-out player
     expect(afterTrade.season!.injuryAutoReturns ?? []).toHaveLength(0);
   });
 
-  it('generates 0..5 realistic incoming AI trade offers with no duplicates and handles accept/reject', () => {
+  it('never generates contradictory incoming offers (e.g., asking for GK while selling GK) across 80 simulated windows', () => {
     let st = createInitialState();
     st = gameReducer(st, { type: 'START_NEW_CAREER' });
     st = gameReducer(st, { type: 'START_DRAFT' });
     st = gameReducer(st, { type: 'AUTO_COMPLETE_DRAFT' });
     st = gameReducer(st, { type: 'SELECT_LEAGUE', payload: { leagueId: 'epl' } });
 
-    const counts: number[] = [];
-    for (let seed = 1; seed <= 12; seed += 1) {
+    let totalOffersChecked = 0;
+    for (let seed = 1; seed <= 80; seed += 1) {
       const offers = generateIncomingTradeOffers({
-        windowIndex: 1,
+        windowIndex: (seed % 3) + 1,
         currentRound: 10,
         userLeagueId: 'epl',
         userStarters: st.starters,
@@ -334,14 +326,157 @@ describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat C
         otherLeagues: st.season!.otherLeagues,
         aiRosters: st.season!.aiRosters,
         allPlayerStats: st.season!.allPlayerStats,
-        rng: makeSeededRng(seed * 997),
+        rng: makeSeededRng(seed * 1301),
       });
       expect(offers.length).toBeGreaterThanOrEqual(0);
       expect(offers.length).toBeLessThanOrEqual(5);
-      counts.push(offers.length);
+
+      for (const offer of offers) {
+        totalOffersChecked += 1;
+        const aiOffered = offer.aiOffersPlayers[0];
+        const userReq = offer.userRequestedPlayers[0];
+        // Never offer the same position as the requested player!
+        expect(aiOffered.position).not.toBe(userReq.position);
+        // Never offer from AI's #1 needed position!
+        expect(aiOffered.position).not.toBe(offer.clubNeeds.neededPositions[0]);
+        // Never offer a GK if AI needs a GK!
+        if (offer.clubNeeds.neededPositions.includes('GK')) {
+          expect(aiOffered.position).not.toBe('GK');
+        }
+      }
     }
-    expect(Math.max(...counts)).toBeGreaterThanOrEqual(2);
+    expect(totalOffersChecked).toBeGreaterThan(80);
   });
+
+  it('stress-tests 5 full seasons across all 5 Big-5 leagues (3 windows + trades + close + cup + UCL) with zero invariant failures', () => {
+    const leagues: LeagueId[] = [
+      'epl',
+      'laliga',
+      'seriea',
+      'bundesliga',
+      'ligue1',
+    ];
+
+    for (const leagueId of leagues) {
+      let st = createInitialState();
+      st = gameReducer(st, { type: 'START_NEW_CAREER' });
+      st = gameReducer(st, { type: 'START_DRAFT' });
+      st = gameReducer(st, { type: 'AUTO_COMPLETE_DRAFT' });
+      st = gameReducer(st, { type: 'SELECT_LEAGUE', payload: { leagueId } });
+
+      let windowsHandled = 0;
+      let guard = 0;
+      while (st.phase === 'season' && guard < 12) {
+        guard += 1;
+        st = gameReducer(st, { type: 'SIMULATE_TO_NEXT_TRANSFER' });
+        if (st.phase !== 'season' || !st.season) break;
+
+        if (st.season.transferMarket.isOpen) {
+          windowsHandled += 1;
+          // 1) Spin clubs
+          st = gameReducer(st, { type: 'TRANSFER_SPIN_CLUBS' });
+          expect(st.season!.transferMarket.hasSpunClubs).toBe(true);
+          expect(st.season!.transferMarket.rolledClubs).toHaveLength(3);
+
+          // 2) Accept first pending incoming offer if any
+          const pendingInc = (st.season!.transferMarket.incomingOffers ?? []).find(
+            (o) => o.status === 'pending',
+          );
+          if (pendingInc) {
+            st = gameReducer(st, {
+              type: 'TRADE_ACCEPT_INCOMING',
+              payload: { offerId: pendingInc.id },
+            });
+          }
+
+          // 3) Submit a 1:1 trade with first non-legend rolled club
+          const clubOffer = st.season!.transferMarket.rolledClubs.find(
+            (c) => !c.isLegendSlot && c.club && c.leagueId !== 'LEGEND',
+          );
+          if (clubOffer && clubOffer.club && clubOffer.leagueId !== 'LEGEND') {
+            const target = clubOffer.squad.find(
+              (t) =>
+                t.player.position !== 'GK' &&
+                !st.season!.transferMarket.signedPlayerIds.includes(t.player.id),
+            );
+            const userIdx = st.starters.findIndex(
+              (p) => p !== null && p.position !== 'GK',
+            );
+            if (target && userIdx >= 0) {
+              st = gameReducer(st, {
+                type: 'TRADE_SUBMIT_PACKAGE',
+                payload: {
+                  partnerClub: clubOffer.club,
+                  partnerLeagueId: clubOffer.leagueId,
+                  partnerClubRank: clubOffer.clubRank,
+                  partnerLeagueSize: clubOffer.leagueSize,
+                  userSentSlots: [{ area: 'starter', index: userIdx }],
+                  aiTargetPlayers: [target.player],
+                  overrideRoll: 0,
+                },
+              });
+            }
+          }
+
+          // 4) Close transfer window cleanly
+          st = gameReducer(st, { type: 'TRANSFER_CLOSE_WINDOW' });
+          expect(st.season!.transferMarket.isOpen).toBe(false);
+
+          // Assert 16-player invariant + >= 1 GK + 0 duplicates in user league
+          const uStarters = st.starters.filter((p): p is Player => p !== null);
+          const uBench = st.bench.filter((p): p is Player => p !== null);
+          expect(uStarters).toHaveLength(11);
+          expect(uBench).toHaveLength(5);
+          const allUser = [...uStarters, ...uBench];
+          expect(allUser.some((p) => p.position === 'GK')).toBe(true);
+
+          const seenIds = new Set(allUser.map((p) => p.id));
+          expect(seenIds.size).toBe(16);
+          for (const roster of Object.values(st.season!.aiRosters)) {
+            expect(roster.length).toBeGreaterThanOrEqual(11);
+            for (const p of roster) {
+              expect(seenIds.has(p.id)).toBe(false);
+              seenIds.add(p.id);
+            }
+          }
+          // Also verify zero duplicates across all 4 background otherLeagues
+          for (const ol of Object.values(st.season!.otherLeagues)) {
+            if (!ol?.aiRosters) continue;
+            for (const roster of Object.values(ol.aiRosters)) {
+              for (const p of roster) {
+                expect(seenIds.has(p.id)).toBe(false);
+                seenIds.add(p.id);
+              }
+            }
+          }
+        }
+      }
+
+      expect(windowsHandled).toBe(3);
+      expect(st.phase).toBe('season_end');
+      expect(st.season?.currentRound).toBe(st.season?.totalRounds);
+      expect(st.season?.awards).not.toBeNull();
+
+      // If user finished Top 4, also verify UCL Special Transfer open -> trade -> close -> League Phase -> completion
+      const userStandingIdx = st.season!.standings.findIndex((r) => r.isUser);
+      if (userStandingIdx >= 0 && userStandingIdx < 4) {
+        st = gameReducer(st, { type: 'ENTER_UCL_MODE' });
+        expect(st.phase).toBe('ucl');
+        expect(st.season?.transferMarket.isOpen).toBe(true);
+        expect(st.season?.ucl?.stage).toBe('special_transfer');
+
+        st = gameReducer(st, { type: 'TRANSFER_SPIN_CLUBS' });
+        st = gameReducer(st, { type: 'TRANSFER_CLOSE_WINDOW' });
+        expect(st.season?.transferMarket.isOpen).toBe(false);
+        expect(st.season?.ucl?.stage).toBe('league_phase');
+
+        st = gameReducer(st, { type: 'SIMULATE_UCL_LEAGUE_PHASE_TO_END' });
+        expect(st.season?.ucl?.leaguePhaseRound).toBe(8);
+        st = gameReducer(st, { type: 'SIMULATE_UCL_TO_END' });
+        expect(st.season?.ucl?.completed).toBe(true);
+      }
+    }
+  }, 45000);
 
   it('produces stat-coherent attacking highlight events matching dominant shots/xG in 2D simulation', () => {
     const epl = getLeagueById('epl');
@@ -413,7 +548,6 @@ describe('v3.2 NBA-Style Trade System (Option 3), Bidirectional Sync & 2D Stat C
       }
     }
 
-    // Dominant home side must generate significantly more shots AND significantly more 2D attacking chance events
     expect(totalHomeShots).toBeGreaterThan(totalAwayShots * 1.8);
     expect(homeChances).toBeGreaterThan(awayChances * 1.8);
   });

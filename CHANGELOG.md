@@ -5,6 +5,27 @@
 
 ---
 
+## v3.2.1 — 이적시장 닫기 검은 화면 수정 · 양 팀 포메이션 피치 트레이드 뷰 · 선수 상세 카드 연동 · 제안 포지션 모순 제거 & 0% 확률 제거
+
+### 1. 이적시장 닫기 시 검은 화면 멈춤 치명적 오류 수정
+- **`src/components/transfer/TransferMarketModal.tsx`**:
+  - `if (!season || !tm || !tm.isOpen) return null;` 뒤에 존재하던 `useMemo`로 인해 창 닫힘 시 발생하던 React Rules-of-Hooks 크래시(`Rendered fewer hooks than expected`)를 `TransferMarketModal` 래퍼 + `TransferMarketModalInner` 구조 분리로 근본 수정.
+
+### 2. 타 구단 트레이드 제안 포지션 논리 모순 수정 & 선수 상세 카드 연동
+- **`src/engine/transferEngine.ts`, `src/store/GameContext.tsx`**:
+  - `generateIncomingTradeOffers`에서 상대 구단이 요청한 포지션 및 최우선 필요 포지션(`neededPositions[0]`) 선수는 절대 제시 카드에 포함하지 않도록 필터링(GK 필요 시 또는 GK ≤ 2명 시 GK 제시 원천 차단, 여유/포화 포지션 우선 제시, 단장 멘트 포지션 100% 일치).
+  - `TRADE_ACCEPT_INCOMING`에 우리 팀 최소 GK 1명 유지 이중 안전 가드 추가.
+- **`src/components/transfer/TransferMarketModal.tsx`**:
+  - 받은 트레이드 제안·협상 테이블·양 팀 포메이션 피치·하단 벤치·레전드 FA 슬롯 전체에서 선수 이름(`PlayerNameButton`) 클릭 시 `PlayerDetailModal` 상세 카드가 즉시 열리도록 연동.
+
+### 3. 양 팀 포메이션 피치 + 하단 벤치 트레이드 선택 뷰 & 확률 상향(0% 제거)
+- **`src/components/transfer/TransferMarketModal.tsx`**:
+  - 트레이드 선택 기본 화면을 양 팀 2D 포메이션 피치 + 하단 벤치 멤버 그리드로 개편(`[포메이션 보기 / 리스트 보기]` 전환 지원).
+- **`src/engine/transferEngine.ts`**:
+  - `evaluateTradePackage`의 성사 확률 곡선을 상향(동등 가치 ~72%, 상한 96%)하고 0% 확률 구간을 완전 제거(최소 2~3% 기적 도전 확률 유지).
+
+---
+
 ## v3.2 — NBA식 구단 트레이드 전면 개편 · 드래프트 임시 자리 이동 · 2D 시뮬-통계 정합성 · 프리뷰 양 팀 비교 기본화 · UCL 스킵 팝업 & 1차전/합산 강조
 
 ### 1. 이적시장 → NBA식 구단 트레이드 제도 전면 개편 (Option 3 로스터 16인 균형)

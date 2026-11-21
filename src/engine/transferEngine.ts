@@ -1222,42 +1222,42 @@ export function evaluateTradePackage(
     );
   }
 
-  // Anti-Cheese Star Min Quality Guard (OVR 87+ target requires core piece within 7 OVR)
+  // Anti-Cheese Star Quality Penalty (OVR 87+ target without core piece within 7 OVR gets steep penalty, never 0%)
   const maxAiTargetOvr = Math.max(...aiTargetPlayers.map((p) => p.ovr));
   const maxUserSentOvr = Math.max(...userSentPlayers.map((p) => p.ovr));
-  if (maxAiTargetOvr >= 87 && maxUserSentOvr < maxAiTargetOvr - 7) {
-    const starName =
-      aiTargetPlayers.find((p) => p.ovr === maxAiTargetOvr)?.name ?? '핵심 스타';
-    return makeBlocked(
-      `OVR ${maxAiTargetOvr} 슈퍼스타(${starName}) 영입에는 최소 OVR ${maxAiTargetOvr - 7} 이상의 핵심 선수가 포함되어야 합니다.`,
-      `${aiClub.shortName} 단장: "장난하십니까? ${starName} 같은 프랜차이즈 스타를 로테이션 선수들 묶음으로 바꿀 순 없습니다!"`,
-    );
-  }
+  const starQualityMismatch =
+    maxAiTargetOvr >= 87 && maxUserSentOvr < maxAiTargetOvr - 7;
 
   // Prestige & standing gentle shift
   let prestigeShift = 0;
   if (userRank === 1) prestigeShift += 0.04;
   else if (userRank <= 4) prestigeShift += 0.025;
-  else if (userRank >= userLeagueSize - 3) prestigeShift -= 0.03;
+  else if (userRank >= userLeagueSize - 3) prestigeShift -= 0.025;
   if (championBonusActive) prestigeShift += 0.03;
-  if (aiClubRank <= 3) prestigeShift -= 0.03;
+  if (aiClubRank <= 3) prestigeShift -= 0.025;
   else if (aiClubRank >= aiLeagueSize - 4) prestigeShift += 0.04;
 
   const adjRatio = ratio + prestigeShift;
-  let chance = 0;
-  if (adjRatio < 0.72) {
-    chance = 0;
-  } else if (adjRatio < 0.88) {
-    chance = 5 + ((adjRatio - 0.72) / 0.16) * 23; // 5..28%
-  } else if (adjRatio < 1.0) {
-    chance = 28 + ((adjRatio - 0.88) / 0.12) * 34; // 28..62%
+  let chance = 3;
+  if (adjRatio < 0.55) {
+    chance = 3 + Math.max(0, adjRatio / 0.55) * 5; // 3..8% (never 0%!)
+  } else if (adjRatio < 0.78) {
+    chance = 8 + ((adjRatio - 0.55) / 0.23) * 20; // 8..28%
+  } else if (adjRatio < 0.92) {
+    chance = 28 + ((adjRatio - 0.78) / 0.14) * 26; // 28..54%
+  } else if (adjRatio < 1.02) {
+    chance = 54 + ((adjRatio - 0.92) / 0.1) * 22; // 54..76% (fair 1:1 ~72%)
   } else if (adjRatio < 1.14) {
-    chance = 62 + ((adjRatio - 1.0) / 0.14) * 24; // 62..86%
+    chance = 76 + ((adjRatio - 1.02) / 0.12) * 15; // 76..91%
   } else {
-    chance = 86 + Math.min(9, ((adjRatio - 1.14) / 0.2) * 9); // 86..95%
+    chance = 91 + Math.min(5, ((adjRatio - 1.14) / 0.2) * 5); // 91..96%
   }
 
-  const acceptanceChance = clamp(Math.round(chance), 0, 95);
+  if (starQualityMismatch) {
+    chance = clamp(chance * 0.26, 2, 10);
+  }
+
+  const acceptanceChance = clamp(Math.round(chance), 2, 96);
   const fillsTopNeed = userSentPlayers.some(
     (p) => p.position === aiNeeds.neededPositions[0],
   );
@@ -1266,7 +1266,10 @@ export function evaluateTradePackage(
 
   let gmTone: TradePackageEvaluation['gmTone'];
   let gmReaction: string;
-  if (acceptanceChance >= 78) {
+  if (starQualityMismatch) {
+    gmTone = 'offended';
+    gmReaction = `${aiClub.shortName} 단장: "기적이라도 바라시는 겁니까? ${topTarget.name}급 슈퍼스타를 영입하려면 OVR ${maxAiTargetOvr - 7}+ 핵심 선수가 필요합니다. (극저확률 도전은 가능)"`;
+  } else if (acceptanceChance >= 76) {
     gmTone = 'eager';
     gmReaction = fillsTopNeed
       ? `${aiClub.shortName} 단장: "딱 우리가 찾던 ${POS_LABEL_KO[topSent.position]} 보강 카드입니다! ${topSent.name} 포함 패키지라면 당장 서명하고 싶네요."`
@@ -1276,12 +1279,12 @@ export function evaluateTradePackage(
     gmReaction = fillsTopNeed
       ? `${aiClub.shortName} 단장: "${topSent.name}이(가) 우리 취약 포지션에 잘 맞긴 한데, ${topTarget.name}을(를) 내주기엔 조금 더 고민이 필요합니다."`
       : `${aiClub.shortName} 단장: "나쁘지 않은 테이블입니다. 다만 우리가 급한 ${POS_LABEL_KO[aiNeeds.neededPositions[0] ?? 'MF']} 자원이 포함되면 확률이 크게 올라갈 겁니다."`;
-  } else if (acceptanceChance >= 15) {
+  } else if (acceptanceChance >= 18) {
     gmTone = 'hesitant';
     gmReaction = `${aiClub.shortName} 단장: "${topTarget.name}의 위상을 생각하면 아직 가치가 부족합니다. 더 확실한 주전급 카드나 필요 포지션 선수를 보태주세요."`;
   } else {
     gmTone = 'offended';
-    gmReaction = `${aiClub.shortName} 단장: "이건 너무 일방적인 제안입니다. ${topTarget.name}을(를) 영입하려면 훨씬 진지한 패키지를 가져오셔야 합니다."`;
+    gmReaction = `${aiClub.shortName} 단장: "솔직히 일방적인 조건입니다. 성사되려면 기적에 가까우니 더 진지한 패키지를 권해드립니다."`;
   }
 
   return {
@@ -1482,9 +1485,9 @@ export function generateIncomingTradeOffers(
     if (clubRoster.length < 11) continue;
 
     const clubNeeds = analyzeClubPositionNeeds(clubRoster);
-    const wantedPos = clubNeeds.neededPositions[0] ?? 'MF';
+    const topNeedPos = clubNeeds.neededPositions[0] ?? 'MF';
 
-    // Pick an appealing user player matching AI's needed position (prefer OVR >= 77)
+    // Pick an appealing user player matching AI's needed position (prefer OVR >= 76)
     const userCandidates = userSquad
       .filter((p) => {
         if (p.position === 'GK' && userGkCount <= 1) return false;
@@ -1513,35 +1516,50 @@ export function generateIncomingTradeOffers(
       conditionMap,
     });
 
-    // Find a fair 1:1 trade chip from AI's roster (prefer non-need or surplus position, keeping AI GK >= 1)
+    // Find a logically coherent 1:1 trade chip from AI's roster:
+    // - NEVER offer a player of the SAME position as the requested player (no GK-for-GK when needing GK!)
+    // - NEVER offer a player from AI's #1 needed position
+    // - NEVER offer a GK if AI needs GK or has <= 2 GKs
+    // - Prefer surplus/saturated positions
     const aiGkCount = clubRoster.filter((p) => p.position === 'GK').length;
     const aiChips = clubRoster
       .filter((p) => {
-        if (p.position === 'GK' && aiGkCount <= 1 && requestedPlayer.position !== 'GK') {
+        if (p.position === requestedPlayer.position) return false;
+        if (p.position === topNeedPos) return false;
+        if (
+          p.position === 'GK' &&
+          (aiGkCount <= 2 || clubNeeds.neededPositions.includes('GK'))
+        ) {
           return false;
         }
         return Math.abs(p.ovr - requestedPlayer.ovr) <= 4;
       })
-      .map((p) => ({
-        player: p,
-        val: computePlayerTradePoints({
+      .map((p) => {
+        const val = computePlayerTradePoints({
           player: p,
           receivingClubNeeds: null,
           stats: allPlayerStats[p.id] ?? null,
           conditionMap,
-        }),
-      }))
+        });
+        const surplusBonus = clubNeeds.saturatedPositions.includes(p.position)
+          ? -8
+          : clubNeeds.neededPositions.includes(p.position)
+            ? 12
+            : 0;
+        return { player: p, val, surplusBonus };
+      })
       .sort(
         (a, b) =>
-          Math.abs(a.val.effectiveTp - requestedVal.effectiveTp) -
-          Math.abs(b.val.effectiveTp - requestedVal.effectiveTp),
+          Math.abs(a.val.effectiveTp - requestedVal.effectiveTp) +
+          a.surplusBonus -
+          (Math.abs(b.val.effectiveTp - requestedVal.effectiveTp) + b.surplusBonus),
       );
 
     if (aiChips.length === 0) continue;
 
     const chosenAiPlayer = aiChips[0].player;
     const ratio = aiChips[0].val.effectiveTp / Math.max(1, requestedVal.effectiveTp);
-    // Keep offers realistically fair (0.82 .. 1.24 TP ratio)
+    // Keep offers realistically fair (0.80 .. 1.28 TP ratio)
     if (ratio < 0.8 || ratio > 1.28) continue;
 
     let clubRank = 10;
@@ -1566,11 +1584,19 @@ export function generateIncomingTradeOffers(
       leagueSize = est.leagueSize;
     }
 
-    const pitches = [
-      `"우리 구단은 지금 ${POS_LABEL_KO[wantedPos]} 보강이 절실합니다. ${chosenAiPlayer.name} (OVR ${chosenAiPlayer.ovr}) 카드를 드릴 테니 ${requestedPlayer.name} 트레이드를 논의해 보시죠."`,
-      `"${requestedPlayer.name} 선수를 오래 지켜봤습니다. ${chosenAiPlayer.name}과의 맞트레이드라면 양 팀 모두 전력 보강이 될 겁니다!"`,
-      `"스카우트 팀에서 ${requestedPlayer.name} 영입을 강력 추천했습니다. ${chosenAiPlayer.name}을(를) 내어드리는 진지한 제안입니다."`,
-    ];
+    const reqPosMatchesNeed = clubNeeds.neededPositions.includes(
+      requestedPlayer.position,
+    );
+    const pitches = reqPosMatchesNeed
+      ? [
+          `"우리 구단은 지금 ${POS_LABEL_KO[requestedPlayer.position]} 보강이 절실합니다. 여유 자원인 ${chosenAiPlayer.name} (${chosenAiPlayer.position} · OVR ${chosenAiPlayer.ovr}) 카드를 드릴 테니 ${requestedPlayer.name} 트레이드를 논의해 보시죠."`,
+          `"${POS_LABEL_KO[requestedPlayer.position]} 라인 강화를 위해 ${requestedPlayer.name} 선수를 오래 지켜봤습니다. ${chosenAiPlayer.name} (${chosenAiPlayer.position})과의 맞트레이드라면 양 팀 모두 빈자리를 채울 수 있습니다!"`,
+          `"스카우트 팀에서 ${POS_LABEL_KO[requestedPlayer.position]} 최우선 타깃으로 ${requestedPlayer.name} 영입을 추천했습니다. ${chosenAiPlayer.name}을(를) 내어드리는 진지한 제안입니다."`,
+        ]
+      : [
+          `"${requestedPlayer.name} 선수의 전술적 활용도를 높게 평가하고 있습니다. ${chosenAiPlayer.name} (${chosenAiPlayer.position} · OVR ${chosenAiPlayer.ovr})과의 맞트레이드를 제안드립니다."`,
+          `"우리 구단 스타일에 ${requestedPlayer.name} 선수가 꼭 맞습니다. ${chosenAiPlayer.name} 카드를 제시하는 진지한 오퍼입니다."`,
+        ];
 
     usedClubIds.add(entry.club.id);
     usedAiPlayerIds.add(chosenAiPlayer.id);
