@@ -209,22 +209,47 @@ export function PlayerDetailModal({
               </div>
             )}
 
-            {/* Mid-season Transfer History Badge */}
+            {/* Mid-season Transfer / Trade History Badge */}
             {transferHistory.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                {transferHistory.map((tr, idx) => (
-                  <span
-                    key={`${tr.fromClubId}-${tr.toClubId}-${tr.round}-${idx}`}
-                    className="inline-flex items-center gap-1 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-200"
-                  >
-                    <span>{tr.fromClubName}</span>
-                    <ArrowRight className="w-2.5 h-2.5 text-emerald-400" />
-                    <span>{tr.toClubName}</span>
-                    <span className="text-emerald-400/80">
-                      ({tr.competition === 'ucl' ? 'UCL 특별' : `${tr.round}R`})
+                {transferHistory.map((tr, idx) => {
+                  const isTrade = tr.type === 'trade';
+                  return (
+                    <span
+                      key={`${tr.fromClubId}-${tr.toClubId}-${tr.round}-${idx}`}
+                      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${
+                        isTrade
+                          ? 'border-sky-400/45 bg-sky-500/15 text-sky-200'
+                          : 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200'
+                      }`}
+                    >
+                      {isTrade && (
+                        <span className="rounded bg-sky-400/20 px-1 py-px text-[9px] font-black text-sky-300">
+                          🔄 트레이드
+                        </span>
+                      )}
+                      <span>{tr.fromClubName}</span>
+                      <ArrowRight
+                        className={`w-2.5 h-2.5 ${
+                          isTrade ? 'text-sky-400' : 'text-emerald-400'
+                        }`}
+                      />
+                      <span>{tr.toClubName}</span>
+                      <span
+                        className={
+                          isTrade ? 'text-sky-300/80' : 'text-emerald-400/80'
+                        }
+                      >
+                        (
+                        {tr.windowLabel ??
+                          (tr.competition === 'ucl'
+                            ? 'UCL 특별'
+                            : `${tr.round}R`)}
+                        )
+                      </span>
                     </span>
-                  </span>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -92,9 +92,13 @@ import {
   normalizeLegacyPlayerStatsMap,
 } from '../engine/standingsEngine';
 import {
+  analyzeClubPositionNeeds,
   checkTransferWindowTrigger,
   createClosedTransferState,
   createOpenTransferState,
+  evaluateTradePackage,
+  generateIncomingTradeOffers,
+  selectAutoFillerPlayers,
   spinTransferClubs,
 } from '../engine/transferEngine';
 import {
@@ -1362,6 +1366,27 @@ type GameAction =
         outSlot: { area: 'starter' | 'bench'; index: number };
       };
     }
+  | {
+      type: 'TRADE_SUBMIT_PACKAGE';
+      payload: {
+        partnerClub: Club;
+        partnerLeagueId: LeagueId;
+        partnerClubRank: number;
+        partnerLeagueSize: number;
+        userSentSlots: { area: 'starter' | 'bench'; index: number }[];
+        aiTargetPlayers: Player[];
+        aiFillerPlayers?: Player[];
+        overrideRoll?: number; // optional deterministic roll 0..100 for tests
+      };
+    }
+  | {
+      type: 'TRADE_ACCEPT_INCOMING';
+      payload: { offerId: string };
+    }
+  | {
+      type: 'TRADE_REJECT_INCOMING';
+      payload: { offerId: string };
+    }
   | { type: 'TRANSFER_CLOSE_WINDOW' }
   | { type: 'MARK_CUP_CELEBRATED' }
   | { type: 'ENTER_UCL_MODE' }
@@ -1767,12 +1792,15 @@ function commitLiveMatchResult(
   if (trigger) {
     nextSeason = {
       ...nextSeason,
-      transferMarket: createOpenTransferState(
-        trigger.windowIndex,
-        trigger.triggerRound,
-        getUserRank(nextSeason.standings, USER_CLUB_ID),
-        nextSeason.transferMarket,
-      ),
+      transferMarket: openTransferWindowWithIncomingOffers({
+        season: nextSeason,
+        starters: restoredStarters,
+        bench: restoredBench,
+        windowIndex: trigger.windowIndex,
+        triggerRound: trigger.triggerRound,
+        userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
+        allowedLeagueIds: state.draftLeaguePool,
+      }),
     };
   }
 
@@ -1783,6 +1811,528 @@ function commitLiveMatchResult(
     bench: restoredBench,
     season: nextSeason,
   });
+}
+
+function openTransferWindowWithIncomingOffers(params: {
+  season: SeasonState;
+  starters: (Player | null)[];
+  bench: (Player | null)[];
+  windowIndex: number;
+  triggerRound: number;
+  userRank: number;
+  allowedLeagueIds?: LeagueId[];
+  options?: { isUclSpecial?: boolean; championBonusActive?: boolean };
+}) {
+  const {
+    season,
+    starters,
+    bench,
+    windowIndex,
+    triggerRound,
+    userRank,
+    allowedLeagueIds,
+    options,
+  } = params;
+  const incomingOffers = generateIncomingTradeOffers({
+    windowIndex,
+    currentRound: season.currentRound,
+    userLeagueId: season.leagueId,
+    userStarters: starters,
+    userBench: bench,
+    standings: season.standings,
+    otherLeagues: season.otherLeagues,
+    aiRosters: season.aiRosters,
+    allPlayerStats: season.allPlayerStats,
+    conditionMap: season.playerConditions,
+    departedPlayerIds: season.departedPlayerIds ?? [],
+    allowedLeagueIds,
+  });
+  return createOpenTransferState(
+    windowIndex,
+    triggerRound,
+    userRank,
+    season.transferMarket,
+    {
+      ...options,
+      incomingOffers,
+    },
+  );
+}
+
+function executeBidirectionalTrade(params: {
+  state: GameState;
+  partnerClub: Club;
+  partnerLeagueId: LeagueId;
+  userSentSlots: { area: 'starter' | 'bench'; index: number }[];
+  aiTargetPlayers: Player[];
+  aiFillerPlayers: Player[];
+  acceptanceChance: number;
+  gmReaction: string;
+  isIncomingOffer: boolean;
+  acceptedIncomingOfferId?: string;
+  nextAttempts: number;
+}): GameState {
+  const {
+    state,
+    partnerClub,
+    partnerLeagueId,
+    userSentSlots,
+    aiTargetPlayers,
+    aiFillerPlayers,
+    acceptanceChance,
+    gmReaction,
+    isIncomingOffer,
+    acceptedIncomingOfferId,
+    nextAttempts,
+  } = params;
+  const season = state.season;
+  if (!season) return state;
+  const tm = season.transferMarket;
+
+  const userSentPlayers: Player[] = [];
+  for (const slot of userSentSlots) {
+    const p =
+      slot.area === 'starter'
+        ? state.starters[slot.index]
+        : state.bench[slot.index];
+    if (!p) return state;
+    userSentPlayers.push(p);
+  }
+
+  const allIncomingRaw = [...aiTargetPlayers, ...aiFillerPlayers];
+  if (userSentPlayers.length !== allIncomingRaw.length || userSentPlayers.length === 0) {
+    return state;
+  }
+
+  // Re-tag club & league metadata cleanly while keeping exact Player ID for cumulative stats
+  const allIncomingForUser: Player[] = allIncomingRaw.map((p) => ({
+    ...p,
+    club: state.userClub.name,
+    leagueId: season.leagueId,
+  }));
+  const allSentForPartner: Player[] = userSentPlayers.map((p) => ({
+    ...p,
+    club: partnerClub.name,
+    leagueId: partnerLeagueId,
+  }));
+
+  // 1) Update user starters & bench (exact 16-player Option 3 invariant)
+  const nextStarters = [...state.starters];
+  const nextBench = [...state.bench];
+  userSentSlots.forEach((slot, idx) => {
+    const incoming = allIncomingForUser[idx];
+    if (slot.area === 'starter') nextStarters[slot.index] = incoming;
+    else nextBench[slot.index] = incoming;
+  });
+
+  const nextFilledStarters = nextStarters.filter((p): p is Player => p !== null);
+  const incomingIds = new Set(allIncomingRaw.map((p) => p.id));
+  const sentIds = new Set(userSentPlayers.map((p) => p.id));
+
+  // 2) Update departedPlayerIds (remove sent players so they stay live on partner club; add incoming so they don't re-spawn on old club)
+  const nextDepartedPlayerIds = Array.from(
+    new Set([
+      ...(season.departedPlayerIds ?? []).filter((id) => !sentIds.has(id)),
+      ...allIncomingRaw.map((p) => p.id),
+    ]),
+  );
+
+  // 3) 100% Bidirectional AI Club Roster Sync (0 world duplicates across 5 leagues + UCL)
+  const nextAiRosters: Record<string, Player[]> = {};
+  for (const [cid, roster] of Object.entries(season.aiRosters)) {
+    // Scrub any moved IDs from every club first to guarantee zero duplicates
+    let cleaned = roster.filter(
+      (p) => !incomingIds.has(p.id) && !sentIds.has(p.id),
+    );
+    if (partnerLeagueId === season.leagueId && cid === partnerClub.id) {
+      cleaned = [...cleaned, ...allSentForPartner];
+    }
+    nextAiRosters[cid] = cleaned;
+  }
+
+  const nextOtherLeagues: SeasonState['otherLeagues'] = {
+    ...(season.otherLeagues ?? {}),
+  };
+  for (const lid of Object.keys(nextOtherLeagues) as LeagueId[]) {
+      const ol = nextOtherLeagues[lid];
+      if (!ol || !ol.aiRosters) continue;
+      const updatedOlRosters: Record<string, Player[]> = {};
+      for (const [cid, roster] of Object.entries(ol.aiRosters)) {
+        let cleaned = roster.filter(
+          (p) => !incomingIds.has(p.id) && !sentIds.has(p.id),
+        );
+        if (lid === partnerLeagueId && cid === partnerClub.id) {
+          cleaned = [...cleaned, ...allSentForPartner];
+        }
+        updatedOlRosters[cid] = cleaned;
+      }
+    nextOtherLeagues[lid] = {
+      ...ol,
+      aiRosters: updatedOlRosters,
+    };
+  }
+
+  // 4) Cumulative Stats Continuity & 🔄 트레이드 Transfer History on BOTH sides
+  const transferComp: 'league' | 'ucl' = tm.isUclSpecial ? 'ucl' : 'league';
+  const windowLabel = tm.isUclSpecial
+    ? 'UCL 특별 트레이드'
+    : `${tm.windowIndex}차 이적시장 (${season.currentRound}R)`;
+
+  const userClubMeta = {
+    id: USER_CLUB_ID,
+    name: state.userClub.name,
+    shortName: state.userClub.shortName,
+    primaryColor: state.userClub.primaryColor,
+    secondaryColor: state.userClub.secondaryColor,
+  };
+  const partnerClubMeta = {
+    id: partnerClub.id,
+    name: partnerClub.name,
+    shortName: partnerClub.shortName,
+    primaryColor: partnerClub.primaryColor,
+    secondaryColor: partnerClub.secondaryColor,
+  };
+
+  const applyRecordToStats = (
+    sourceMap: Record<string, PlayerSeasonStats>,
+    player: Player,
+    toClub: typeof userClubMeta,
+    isToUser: boolean,
+    record: PlayerTransferRecord,
+    seedFromStats?: PlayerSeasonStats | null,
+  ): Record<string, PlayerSeasonStats> => {
+    const nextMap = { ...sourceMap };
+    const existing =
+      nextMap[player.id] ??
+      nextMap[`user::${player.id}`] ??
+      seedFromStats ??
+      null;
+    delete nextMap[`user::${player.id}`];
+
+    if (existing) {
+      const prevHist = existing.transferHistory ?? [];
+      nextMap[player.id] = {
+        ...existing,
+        teamId: toClub.id,
+        teamName: toClub.name,
+        teamShortName: toClub.shortName,
+        teamPrimaryColor: toClub.primaryColor,
+        teamSecondaryColor: toClub.secondaryColor,
+        isUserTeam: isToUser,
+        transferHistory: [...prevHist, record],
+      };
+    } else {
+      nextMap[player.id] = {
+        playerId: player.id,
+        playerName: player.name,
+        teamId: toClub.id,
+        teamName: toClub.name,
+        teamShortName: toClub.shortName,
+        teamPrimaryColor: toClub.primaryColor,
+        teamSecondaryColor: toClub.secondaryColor,
+        isUserTeam: isToUser,
+        position: player.position,
+        mainPositions: [...player.mainPositions],
+        ovr: player.ovr,
+        appearances: 0,
+        starts: 0,
+        subAppearances: 0,
+        minutesPlayed: 0,
+        goals: 0,
+        assists: 0,
+        xgSum: 0,
+        cleanSheets: 0,
+        momCount: 0,
+        ratingSum: 0,
+        avgRating: 0,
+        positionCounts: {},
+        isLegend: player.isLegend,
+        transferHistory: [record],
+      };
+    }
+    return nextMap;
+  };
+
+  let nextStats = { ...season.allPlayerStats };
+  let nextCupStats = { ...season.cupPlayerStats };
+  let nextUclStats = { ...season.uclPlayerStats };
+  const partnerOtherStats =
+    partnerLeagueId !== season.leagueId
+      ? nextOtherLeagues?.[partnerLeagueId]?.playerStats
+      : undefined;
+  let updatedPartnerOtherStats = partnerOtherStats
+    ? { ...partnerOtherStats }
+    : null;
+
+  for (const incomingPlayer of allIncomingRaw) {
+    const rec: PlayerTransferRecord = {
+      fromClubId: partnerClub.id,
+      fromClubName: partnerClub.name,
+      toClubId: USER_CLUB_ID,
+      toClubName: state.userClub.name,
+      round: season.currentRound,
+      competition: transferComp,
+      type: 'trade',
+      counterpartyClub: partnerClub.name,
+      windowLabel,
+    };
+    const otherLeaguePrior = updatedPartnerOtherStats?.[incomingPlayer.id] ?? null;
+    nextStats = applyRecordToStats(
+      nextStats,
+      incomingPlayer,
+      userClubMeta,
+      true,
+      rec,
+      otherLeaguePrior,
+    );
+    nextCupStats = applyRecordToStats(
+      nextCupStats,
+      incomingPlayer,
+      userClubMeta,
+      true,
+      rec,
+    );
+    if (season.ucl) {
+      nextUclStats = applyRecordToStats(
+        nextUclStats,
+        incomingPlayer,
+        userClubMeta,
+        true,
+        rec,
+      );
+    }
+  }
+
+  for (const sentPlayer of userSentPlayers) {
+    const rec: PlayerTransferRecord = {
+      fromClubId: USER_CLUB_ID,
+      fromClubName: state.userClub.name,
+      toClubId: partnerClub.id,
+      toClubName: partnerClub.name,
+      round: season.currentRound,
+      competition: transferComp,
+      type: 'trade',
+      counterpartyClub: partnerClub.name,
+      windowLabel,
+    };
+    const userPriorStats =
+      nextStats[sentPlayer.id] ?? nextStats[`user::${sentPlayer.id}`] ?? null;
+    nextStats = applyRecordToStats(
+      nextStats,
+      sentPlayer,
+      partnerClubMeta,
+      false,
+      rec,
+    );
+    nextCupStats = applyRecordToStats(
+      nextCupStats,
+      sentPlayer,
+      partnerClubMeta,
+      false,
+      rec,
+    );
+    if (updatedPartnerOtherStats) {
+      updatedPartnerOtherStats = applyRecordToStats(
+        updatedPartnerOtherStats,
+        sentPlayer,
+        partnerClubMeta,
+        false,
+        rec,
+        userPriorStats,
+      );
+    }
+    if (season.ucl) {
+      nextUclStats = applyRecordToStats(
+        nextUclStats,
+        sentPlayer,
+        partnerClubMeta,
+        false,
+        rec,
+      );
+    }
+  }
+
+  if (
+    updatedPartnerOtherStats &&
+    nextOtherLeagues &&
+    partnerLeagueId !== season.leagueId &&
+    nextOtherLeagues[partnerLeagueId]
+  ) {
+    nextOtherLeagues[partnerLeagueId] = {
+      ...nextOtherLeagues[partnerLeagueId]!,
+      playerStats: updatedPartnerOtherStats,
+    };
+  }
+
+  // 5) Sync UCL rosters & user UCL ratings if UCL is active
+  let nextUcl = season.ucl;
+  if (nextUcl) {
+    const nextUclAiRosters: Record<string, Player[]> = {};
+    for (const [cid, roster] of Object.entries(nextUcl.aiRosters)) {
+      if (cid === USER_CLUB_ID) continue;
+      let cleaned = roster.filter(
+        (p) => !incomingIds.has(p.id) && !sentIds.has(p.id),
+      );
+      if (cid === partnerClub.id) {
+        cleaned = [...cleaned, ...allSentForPartner];
+      }
+      nextUclAiRosters[cid] = cleaned;
+    }
+    nextUclAiRosters[USER_CLUB_ID] = nextFilledStarters.slice(0, 11);
+
+    const chemAfter = calculateChemistry(
+      state.formation,
+      nextFilledStarters,
+      season.defaultTactic,
+      state.manager.traitId,
+    );
+    const ratingsAfter = calculateTeamRatings(
+      state.formation,
+      nextFilledStarters,
+      chemAfter.total,
+      state.manager.traitId,
+    );
+    nextUcl = {
+      ...nextUcl,
+      aiRosters: nextUclAiRosters,
+      clubs: nextUcl.clubs.map((c) =>
+        c.id === USER_CLUB_ID
+          ? {
+              ...c,
+              formation: state.formation,
+              defaultTactic: season.defaultTactic,
+              att: ratingsAfter.att,
+              mid: ratingsAfter.mid,
+              def: ratingsAfter.def,
+            }
+          : c,
+      ),
+    };
+  }
+
+  // 6) Prune injuryAutoReturns for any traded-out players so ghosts never return
+  const nextInjuryAutoReturns = (season.injuryAutoReturns ?? []).filter(
+    (entry) =>
+      !sentIds.has(entry.injuredPlayerId) &&
+      !(entry.replacementPlayerId && sentIds.has(entry.replacementPlayerId)),
+  );
+
+  // 7) Update rolledClubs squads (remove traded-in players, add sent players if partner club is rolled)
+  const nextRolledClubs = tm.rolledClubs.map((offer) => {
+    if (offer.isLegendSlot || !offer.club) return offer;
+    const filteredSquad = offer.squad.filter((t) => !incomingIds.has(t.player.id));
+    if (offer.club.id === partnerClub.id) {
+      const updatedRoster =
+        partnerLeagueId === season.leagueId
+          ? nextAiRosters[partnerClub.id] ?? filteredSquad.map((s) => s.player)
+          : nextOtherLeagues?.[partnerLeagueId]?.aiRosters?.[partnerClub.id] ??
+            filteredSquad.map((s) => s.player);
+      return {
+        ...offer,
+        squad: filteredSquad,
+        clubNeeds: analyzeClubPositionNeeds(updatedRoster),
+      };
+    }
+    return { ...offer, squad: filteredSquad };
+  });
+
+  // 8) Update incomingOffers status (mark accepted & invalidate conflicting pending offers)
+  const nextIncomingOffers = (tm.incomingOffers ?? []).map((off) => {
+    if (acceptedIncomingOfferId && off.id === acceptedIncomingOfferId) {
+      return { ...off, status: 'accepted' as const };
+    }
+    if (off.status !== 'pending') return off;
+    const conflictsUser = off.userRequestedPlayers.some((p) => sentIds.has(p.id));
+    const conflictsAi = off.aiOffersPlayers.some((p) => incomingIds.has(p.id));
+    if (conflictsUser || conflictsAi) {
+      return { ...off, status: 'rejected' as const };
+    }
+    return off;
+  });
+
+  const sentNames = userSentPlayers.map((p) => p.name).join(' + ');
+  const recNames = allIncomingRaw.map((p) => p.name).join(' + ');
+
+  const nextTradeHistory = [
+    ...(tm.tradeHistory ?? []),
+    {
+      windowIndex: tm.windowIndex,
+      round: season.currentRound,
+      partnerClubName: partnerClub.name,
+      sentPlayers: userSentPlayers,
+      receivedPlayers: allIncomingRaw,
+      acceptanceChance,
+      isIncomingOffer,
+    },
+  ];
+
+  // Keep legacy transfer history populated with the headline pair for season summary compatibility
+  const nextHistory = [
+    ...tm.history,
+    {
+      windowIndex: tm.windowIndex,
+      round: season.currentRound,
+      outPlayer: userSentPlayers[0],
+      inPlayer: aiTargetPlayers[0],
+      marketValueM: Math.round(aiTargetPlayers[0].ovr),
+      successChance: acceptanceChance,
+    },
+  ];
+
+  const prevTrackers =
+    season.achievementTrackers ?? createInitialTrackers();
+  const nextTrackers: SeasonAchievementTrackers = {
+    ...prevTrackers,
+    signedUnder20PctSuccess:
+      prevTrackers.signedUnder20PctSuccess ||
+      (!isIncomingOffer && acceptanceChance > 0 && acceptanceChance <= 20),
+  };
+
+  return {
+    ...state,
+    starters: nextStarters,
+    bench: nextBench,
+    season: {
+      ...season,
+      aiRosters: nextAiRosters,
+      otherLeagues: nextOtherLeagues,
+      departedPlayerIds: nextDepartedPlayerIds,
+      allPlayerStats: nextStats,
+      cupPlayerStats: nextCupStats,
+      ucl: nextUcl,
+      uclPlayerStats: nextUclStats,
+      injuryAutoReturns: nextInjuryAutoReturns,
+      achievementTrackers: nextTrackers,
+      transferMarket: {
+        ...tm,
+        attemptsRemaining: nextAttempts,
+        attemptedPlayerIds: [
+          ...tm.attemptedPlayerIds,
+          ...aiTargetPlayers.map((p) => p.id),
+        ],
+        signedPlayerIds: [
+          ...tm.signedPlayerIds,
+          ...allIncomingRaw.map((p) => p.id),
+        ],
+        rolledClubs: nextRolledClubs,
+        incomingOffers: nextIncomingOffers,
+        history: nextHistory,
+        tradeHistory: nextTradeHistory,
+        lastOfferResult: {
+          success: true,
+          isTrade: true,
+          targetPlayer: aiTargetPlayers[0],
+          outPlayer: userSentPlayers[0],
+          sentPlayers: userSentPlayers,
+          receivedPlayers: allIncomingRaw,
+          probability: acceptanceChance,
+          marketValueM: 0,
+          gmReaction,
+          message: `🔄 트레이드 성사! [${partnerClub.name}] ${recNames} 합류 ↔ ${sentNames} 이적 완료!`,
+        },
+      },
+    },
+  };
 }
 
 function coreGameReducer(state: GameState, action: GameAction): GameState {
@@ -3621,12 +4171,15 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       if (trigger) {
         nextSeason = {
           ...nextSeason,
-          transferMarket: createOpenTransferState(
-            trigger.windowIndex,
-            trigger.triggerRound,
-            getUserRank(nextSeason.standings, USER_CLUB_ID),
-            nextSeason.transferMarket,
-          ),
+          transferMarket: openTransferWindowWithIncomingOffers({
+            season: nextSeason,
+            starters: state.starters,
+            bench: state.bench,
+            windowIndex: trigger.windowIndex,
+            triggerRound: trigger.triggerRound,
+            userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
+            allowedLeagueIds: state.draftLeaguePool,
+          }),
         };
       }
 
@@ -3718,12 +4271,15 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         if (action.payload.stopAtTransfer) {
           nextSeason = {
             ...nextSeason,
-            transferMarket: createOpenTransferState(
-              trigger.windowIndex,
-              trigger.triggerRound,
-              getUserRank(nextSeason.standings, USER_CLUB_ID),
-              nextSeason.transferMarket,
-            ),
+            transferMarket: openTransferWindowWithIncomingOffers({
+              season: nextSeason,
+              starters: state.starters,
+              bench: state.bench,
+              windowIndex: trigger.windowIndex,
+              triggerRound: trigger.triggerRound,
+              userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
+              allowedLeagueIds: state.draftLeaguePool,
+            }),
           };
         } else {
           // Skipping to season end: mark passed windows as completed without opening modal
@@ -3737,6 +4293,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
                 ]),
               ),
               nextSeason.transferMarket.history,
+              nextSeason.transferMarket.tradeHistory ?? [],
             ),
           };
         }
@@ -3811,12 +4368,15 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         if (trigger) {
           currentSeason = {
             ...currentSeason,
-            transferMarket: createOpenTransferState(
-              trigger.windowIndex,
-              trigger.triggerRound,
-              getUserRank(currentSeason.standings, USER_CLUB_ID),
-              currentSeason.transferMarket,
-            ),
+            transferMarket: openTransferWindowWithIncomingOffers({
+              season: currentSeason,
+              starters: state.starters,
+              bench: state.bench,
+              windowIndex: trigger.windowIndex,
+              triggerRound: trigger.triggerRound,
+              userRank: getUserRank(currentSeason.standings, USER_CLUB_ID),
+              allowedLeagueIds: state.draftLeaguePool,
+            }),
           };
           break;
         }
@@ -4287,6 +4847,228 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'TRADE_SUBMIT_PACKAGE': {
+      if (!state.season || !state.season.transferMarket.isOpen) return state;
+      const tm = state.season.transferMarket;
+      if (tm.attemptsRemaining <= 0) return state;
+
+      const {
+        partnerClub,
+        partnerLeagueId,
+        partnerClubRank,
+        partnerLeagueSize,
+        userSentSlots,
+        aiTargetPlayers,
+        aiFillerPlayers: passedFillers,
+        overrideRoll,
+      } = action.payload;
+
+      if (userSentSlots.length === 0 || aiTargetPlayers.length === 0) return state;
+      // Prevent targeting players already signed in this window
+      if (aiTargetPlayers.some((p) => tm.signedPlayerIds.includes(p.id))) {
+        return state;
+      }
+
+      const userSentPlayers: Player[] = [];
+      for (const slot of userSentSlots) {
+        const p =
+          slot.area === 'starter'
+            ? state.starters[slot.index]
+            : state.bench[slot.index];
+        if (!p) return state;
+        userSentPlayers.push(p);
+      }
+
+      const userSquad = [
+        ...state.starters.filter((p): p is Player => p !== null),
+        ...state.bench.filter((p): p is Player => p !== null),
+      ];
+      const liveAiRoster =
+        partnerLeagueId === state.season.leagueId
+          ? state.season.aiRosters[partnerClub.id] ?? []
+          : state.season.otherLeagues?.[partnerLeagueId]?.aiRosters?.[
+              partnerClub.id
+            ] ?? [];
+      const aiNeeds = analyzeClubPositionNeeds(
+        liveAiRoster.length >= 11 ? liveAiRoster : aiTargetPlayers,
+      );
+
+      // Option 3: Auto-match rotation fillers when user sends more players than AI targets (2:1 / 3:1)
+      const neededFillers = Math.max(
+        0,
+        userSentPlayers.length - aiTargetPlayers.length,
+      );
+      let resolvedFillers: Player[] = passedFillers ? [...passedFillers] : [];
+      if (resolvedFillers.length < neededFillers) {
+        const excludeSet = new Set<string>([
+          ...userSquad.map((p) => p.id),
+          ...resolvedFillers.map((p) => p.id),
+        ]);
+        const autoFillers = selectAutoFillerPlayers({
+          aiRoster: liveAiRoster,
+          aiTargetIds: new Set(aiTargetPlayers.map((p) => p.id)),
+          userSentPlayers,
+          neededCount: neededFillers - resolvedFillers.length,
+          club: partnerClub,
+          leagueId: partnerLeagueId,
+          excludeIds: excludeSet,
+        });
+        resolvedFillers = [...resolvedFillers, ...autoFillers];
+      } else if (resolvedFillers.length > neededFillers) {
+        resolvedFillers = resolvedFillers.slice(0, neededFillers);
+      }
+
+      const evaluation = evaluateTradePackage({
+        userSentPlayers,
+        aiTargetPlayers,
+        aiFillerPlayers: resolvedFillers,
+        aiClub: partnerClub,
+        aiRoster: liveAiRoster,
+        aiNeeds,
+        userSquad,
+        userRank: getUserRank(state.season.standings, USER_CLUB_ID),
+        userLeagueSize: state.season.standings.length || 20,
+        aiClubRank: partnerClubRank,
+        aiLeagueSize: partnerLeagueSize,
+        allPlayerStats: state.season.allPlayerStats,
+        conditionMap: state.season.playerConditions,
+        championBonusActive: Boolean(tm.championBonusActive),
+      });
+
+      if (evaluation.blockedReason || userSentPlayers.length !== aiTargetPlayers.length + resolvedFillers.length) {
+        return {
+          ...state,
+          season: {
+            ...state.season,
+            transferMarket: {
+              ...tm,
+              lastOfferResult: {
+                success: false,
+                isTrade: true,
+                targetPlayer: aiTargetPlayers[0],
+                outPlayer: userSentPlayers[0],
+                sentPlayers: userSentPlayers,
+                receivedPlayers: [...aiTargetPlayers, ...resolvedFillers],
+                probability: 0,
+                marketValueM: 0,
+                gmReaction: evaluation.gmReaction,
+                message:
+                  evaluation.blockedReason ??
+                  '양 팀 로스터 인원 균형이 맞지 않아 트레이드를 진행할 수 없습니다.',
+              },
+            },
+          },
+        };
+      }
+
+      const roll = overrideRoll !== undefined ? overrideRoll : Math.random() * 100;
+      const accepted = roll < evaluation.acceptanceChance;
+      const nextAttempts = Math.max(0, tm.attemptsRemaining - 1);
+
+      if (!accepted) {
+        return {
+          ...state,
+          season: {
+            ...state.season,
+            transferMarket: {
+              ...tm,
+              attemptsRemaining: nextAttempts,
+              attemptedPlayerIds: [
+                ...tm.attemptedPlayerIds,
+                ...aiTargetPlayers.map((p) => p.id),
+              ],
+              lastOfferResult: {
+                success: false,
+                isTrade: true,
+                targetPlayer: aiTargetPlayers[0],
+                outPlayer: userSentPlayers[0],
+                sentPlayers: userSentPlayers,
+                receivedPlayers: [...aiTargetPlayers, ...resolvedFillers],
+                probability: evaluation.acceptanceChance,
+                marketValueM: 0,
+                gmReaction: evaluation.gmReaction,
+                message: `${partnerClub.name} 측이 트레이드 제안을 거절했습니다. (성사 확률 ${evaluation.acceptanceChance}%${nextAttempts > 0 ? ' · 조건을 보강해 재협상 가능' : ''})`,
+              },
+            },
+          },
+        };
+      }
+
+      return executeBidirectionalTrade({
+        state,
+        partnerClub,
+        partnerLeagueId,
+        userSentSlots,
+        aiTargetPlayers,
+        aiFillerPlayers: resolvedFillers,
+        acceptanceChance: evaluation.acceptanceChance,
+        gmReaction: evaluation.gmReaction,
+        isIncomingOffer: false,
+        nextAttempts,
+      });
+    }
+
+    case 'TRADE_ACCEPT_INCOMING': {
+      if (!state.season || !state.season.transferMarket.isOpen) return state;
+      const tm = state.season.transferMarket;
+      if (tm.attemptsRemaining <= 0) return state;
+
+      const offer = (tm.incomingOffers ?? []).find(
+        (o) => o.id === action.payload.offerId && o.status === 'pending',
+      );
+      if (!offer) return state;
+
+      // Locate user slots for every requested player
+      const userSentSlots: { area: 'starter' | 'bench'; index: number }[] = [];
+      for (const reqPlayer of offer.userRequestedPlayers) {
+        const sIdx = state.starters.findIndex((p) => p?.id === reqPlayer.id);
+        if (sIdx !== -1) {
+          userSentSlots.push({ area: 'starter', index: sIdx });
+          continue;
+        }
+        const bIdx = state.bench.findIndex((p) => p?.id === reqPlayer.id);
+        if (bIdx !== -1) {
+          userSentSlots.push({ area: 'bench', index: bIdx });
+        }
+      }
+      if (userSentSlots.length !== offer.userRequestedPlayers.length) {
+        return state;
+      }
+
+      return executeBidirectionalTrade({
+        state,
+        partnerClub: offer.club,
+        partnerLeagueId: offer.leagueId,
+        userSentSlots,
+        aiTargetPlayers: offer.aiOffersPlayers,
+        aiFillerPlayers: [],
+        acceptanceChance: 100,
+        gmReaction: `${offer.club.shortName} 단장: "트레이드를 수락해 주셔서 감사합니다! 양 팀 모두에게 최고의 윈-윈 딜이 될 겁니다."`,
+        isIncomingOffer: true,
+        acceptedIncomingOfferId: offer.id,
+        nextAttempts: Math.max(0, tm.attemptsRemaining - 1),
+      });
+    }
+
+    case 'TRADE_REJECT_INCOMING': {
+      if (!state.season || !state.season.transferMarket.isOpen) return state;
+      const tm = state.season.transferMarket;
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          transferMarket: {
+            ...tm,
+            incomingOffers: (tm.incomingOffers ?? []).map((o) =>
+              o.id === action.payload.offerId
+                ? { ...o, status: 'rejected' as const }
+                : o,
+            ),
+          },
+        },
+      };
+    }
+
     case 'TRANSFER_CLOSE_WINDOW': {
       if (!state.season || !state.season.transferMarket.isOpen) return state;
       const tm = state.season.transferMarket;
@@ -4308,7 +5090,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         season: {
           ...state.season,
           ucl: nextUcl,
-          transferMarket: createClosedTransferState(nextCompleted, tm.history),
+          transferMarket: createClosedTransferState(
+            nextCompleted,
+            tm.history,
+            tm.tradeHistory ?? [],
+          ),
         },
       };
     }
@@ -4363,16 +5149,19 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         userParticipated: true,
       });
 
-      const specialTransfer = createOpenTransferState(
-        4,
-        state.season.totalRounds,
+      const specialTransfer = openTransferWindowWithIncomingOffers({
+        season: state.season,
+        starters: state.starters,
+        bench: state.bench,
+        windowIndex: 4,
+        triggerRound: state.season.totalRounds,
         userRank,
-        state.season.transferMarket,
-        {
+        allowedLeagueIds: state.draftLeaguePool,
+        options: {
           isUclSpecial: true,
           championBonusActive: userRank === 1,
         },
-      );
+      });
 
       return {
         ...state,
@@ -5226,6 +6015,17 @@ interface GameContextValue {
     target: TransferTargetPlayer,
     outSlot: { area: 'starter' | 'bench'; index: number },
   ) => void;
+  tradeSubmitPackage: (payload: {
+    partnerClub: Club;
+    partnerLeagueId: LeagueId;
+    partnerClubRank: number;
+    partnerLeagueSize: number;
+    userSentSlots: { area: 'starter' | 'bench'; index: number }[];
+    aiTargetPlayers: Player[];
+    aiFillerPlayers?: Player[];
+  }) => void;
+  tradeAcceptIncoming: (offerId: string) => void;
+  tradeRejectIncoming: (offerId: string) => void;
   transferCloseWindow: () => void;
   markCupCelebrated: () => void;
   enterUclMode: () => void;
@@ -5532,6 +6332,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dispatch({
           type: 'TRANSFER_SUBMIT_OFFER',
           payload: { target, outSlot },
+        }),
+      tradeSubmitPackage: (payload) =>
+        dispatch({
+          type: 'TRADE_SUBMIT_PACKAGE',
+          payload,
+        }),
+      tradeAcceptIncoming: (offerId) =>
+        dispatch({
+          type: 'TRADE_ACCEPT_INCOMING',
+          payload: { offerId },
+        }),
+      tradeRejectIncoming: (offerId) =>
+        dispatch({
+          type: 'TRADE_REJECT_INCOMING',
+          payload: { offerId },
         }),
       transferCloseWindow: () => dispatch({ type: 'TRANSFER_CLOSE_WINDOW' }),
       markCupCelebrated: () => dispatch({ type: 'MARK_CUP_CELEBRATED' }),

@@ -261,6 +261,63 @@ export interface TransferTargetPlayer {
   isLegendFa: boolean;
 }
 
+export interface ClubPositionNeeds {
+  neededPositions: ('GK' | 'DF' | 'MF' | 'FW')[];
+  saturatedPositions: ('GK' | 'DF' | 'MF' | 'FW')[];
+  avgOvrByPos: Record<'GK' | 'DF' | 'MF' | 'FW', number>;
+  countByPos: Record<'GK' | 'DF' | 'MF' | 'FW', number>;
+  summaryText: string;
+}
+
+export interface TradeAssetValuation {
+  playerId: string;
+  baseTp: number;
+  ageModPct: number;
+  formModPct: number;
+  injuryModPct: number;
+  moraleModPct: number;
+  needModPct: number;
+  effectiveTp: number;
+}
+
+export interface TradePackageEvaluation {
+  userRawTp: number;
+  userEffectiveTp: number;
+  aiEffectiveTp: number;
+  ratio: number;
+  acceptanceChance: number;
+  blockedReason: string | null;
+  gmReaction: string;
+  gmTone: 'eager' | 'considering' | 'hesitant' | 'offended';
+  userValuations: TradeAssetValuation[];
+  aiValuations: TradeAssetValuation[];
+  requiredAutoFillers: number;
+  requiredUserReleaseCount: number;
+}
+
+export interface IncomingTradeOffer {
+  id: string;
+  club: Club;
+  leagueId: LeagueId;
+  clubRank: number;
+  leagueSize: number;
+  clubNeeds: ClubPositionNeeds;
+  aiOffersPlayers: Player[];
+  userRequestedPlayers: Player[];
+  aiPitch: string;
+  status: 'pending' | 'accepted' | 'rejected';
+}
+
+export interface TradeHistoryRecord {
+  windowIndex: number;
+  round: number;
+  partnerClubName: string;
+  sentPlayers: Player[];
+  receivedPlayers: Player[];
+  acceptanceChance: number;
+  isIncomingOffer?: boolean;
+}
+
 export interface TransferClubOffer {
   reelIndex: number; // 0, 1, 2
   isLegendSlot: boolean;
@@ -269,6 +326,7 @@ export interface TransferClubOffer {
   clubRank: number;
   leagueSize: number;
   squad: TransferTargetPlayer[];
+  clubNeeds?: ClubPositionNeeds;
 }
 
 export interface TransferAttemptResult {
@@ -278,6 +336,10 @@ export interface TransferAttemptResult {
   probability: number;
   marketValueM: number;
   message: string;
+  isTrade?: boolean;
+  sentPlayers?: Player[];
+  receivedPlayers?: Player[];
+  gmReaction?: string;
 }
 
 export interface TransferMarketState {
@@ -292,10 +354,12 @@ export interface TransferMarketState {
   userRankAtOpen: number;
   hasSpunClubs: boolean;
   rolledClubs: TransferClubOffer[];
+  incomingOffers?: IncomingTradeOffer[];
   attemptedPlayerIds: string[];
   signedPlayerIds: string[];
   lastOfferResult: TransferAttemptResult | null;
   history: TransferHistoryEntry[];
+  tradeHistory?: TradeHistoryRecord[];
   completedWindows: number[];
 }
 

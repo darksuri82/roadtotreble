@@ -1,4 +1,10 @@
+import type { PlayerConditionMap } from '../types/condition';
 import type {
+  ClubPositionNeeds,
+  IncomingTradeOffer,
+  TradeAssetValuation,
+  TradeHistoryRecord,
+  TradePackageEvaluation,
   TransferClubOffer,
   TransferFormTrend,
   TransferMarketState,
@@ -10,8 +16,9 @@ import type {
   PlayerSeasonStats,
   StandingRow,
 } from '../types/league';
-import type { Player, SubPosition } from '../types/player';
+import type { Player, Position, SubPosition } from '../types/player';
 import { getCardTier } from '../types/player';
+import { getMoraleTier, isPlayerActivelyInjured } from './conditionEngine';
 import {
   ACTIVE_PLAYERS,
   ALL_CLUBS_WITH_LEAGUE,
@@ -47,6 +54,7 @@ function seededUnit(seedKey: string): number {
 export function createClosedTransferState(
   completedWindows: number[] = [],
   history: TransferMarketState['history'] = [],
+  tradeHistory: TradeHistoryRecord[] = [],
 ): TransferMarketState {
   return {
     isOpen: false,
@@ -60,10 +68,12 @@ export function createClosedTransferState(
     userRankAtOpen: 0,
     hasSpunClubs: false,
     rolledClubs: [],
+    incomingOffers: [],
     attemptedPlayerIds: [],
     signedPlayerIds: [],
     lastOfferResult: null,
     history,
+    tradeHistory,
     completedWindows,
   };
 }
@@ -102,7 +112,11 @@ export function createOpenTransferState(
   triggerRound: number,
   userRank: number,
   prev: TransferMarketState,
-  options?: { isUclSpecial?: boolean; championBonusActive?: boolean },
+  options?: {
+    isUclSpecial?: boolean;
+    championBonusActive?: boolean;
+    incomingOffers?: IncomingTradeOffer[];
+  },
 ): TransferMarketState {
   const isUclSpecial = Boolean(options?.isUclSpecial);
   const championBonusActive = Boolean(options?.championBonusActive);
@@ -118,10 +132,12 @@ export function createOpenTransferState(
     userRankAtOpen: userRank,
     hasSpunClubs: false,
     rolledClubs: [],
+    incomingOffers: options?.incomingOffers ?? [],
     attemptedPlayerIds: [],
     signedPlayerIds: [],
     lastOfferResult: null,
     history: prev.history,
+    tradeHistory: prev.tradeHistory ?? [],
     completedWindows: prev.completedWindows,
   };
 }
@@ -493,36 +509,52 @@ export function buildTransferClubSquad(params: {
     return true;
   };
 
-  // 1) All real 2026-27 players from activePlayers.json belonging to this club, sorted by OVR desc
-  const realClubPlayers = ACTIVE_PLAYERS.filter(
-    (p) => p.club === club.name && !usedIds.has(p.id),
-  ).sort(
-    (a, b) =>
-      b.ovr - a.ovr || b.att + b.mid + b.def - (a.att + a.mid + a.def),
-  );
-
-  // 1a) Guarantee Top-3 OVR per broad position (GK/DF/MF/FW) first so no star is hidden by club cap
-  for (const pos of ['GK', 'DF', 'MF', 'FW'] as const) {
-    const posTop3 = realClubPlayers
-      .filter((p) => p.position === pos)
-      .slice(0, 3);
-    for (const p of posTop3) {
+  // 1) If live season aiRoster is provided, treat it as the authoritative squad (reflects all trades!)
+  if (aiRoster && aiRoster.length >= 11) {
+    const sortedLive = [...aiRoster]
+      .filter((p) => !usedIds.has(p.id))
+      .sort(
+        (a, b) =>
+          b.ovr - a.ovr || b.att + b.mid + b.def - (a.att + a.mid + a.def),
+      );
+    for (const pos of ['GK', 'DF', 'MF', 'FW'] as const) {
+      for (const p of sortedLive.filter((x) => x.position === pos).slice(0, 3)) {
+        pushUnique(p);
+      }
+    }
+    for (const p of sortedLive) {
+      if (squadPlayers.length >= 18) break;
       pushUnique(p);
     }
-  }
+  } else {
+    // 2) Static real 2026-27 players belonging to this club, sorted by OVR desc
+    const realClubPlayers = ACTIVE_PLAYERS.filter(
+      (p) => p.club === club.name && !usedIds.has(p.id),
+    ).sort(
+      (a, b) =>
+        b.ovr - a.ovr || b.att + b.mid + b.def - (a.att + a.mid + a.def),
+    );
 
-  // 1b) Fill remaining real club players up to 16
-  for (const p of realClubPlayers) {
-    if (squadPlayers.length >= 16) break;
-    pushUnique(p);
-  }
+    for (const pos of ['GK', 'DF', 'MF', 'FW'] as const) {
+      const posTop3 = realClubPlayers
+        .filter((p) => p.position === pos)
+        .slice(0, 3);
+      for (const p of posTop3) {
+        pushUnique(p);
+      }
+    }
 
-  // 2) Pull additional AI starters if this club is in user's league (e.g., traded-in players)
-  if (aiRoster && squadPlayers.length < 16) {
-    const sortedAi = [...aiRoster].sort((a, b) => b.ovr - a.ovr);
-    for (const p of sortedAi) {
+    for (const p of realClubPlayers) {
       if (squadPlayers.length >= 16) break;
       pushUnique(p);
+    }
+
+    if (aiRoster && squadPlayers.length < 16) {
+      const sortedAi = [...aiRoster].sort((a, b) => b.ovr - a.ovr);
+      for (const p of sortedAi) {
+        if (squadPlayers.length >= 16) break;
+        pushUnique(p);
+      }
     }
   }
 
@@ -584,7 +616,16 @@ export interface SpinTransferClubsParams {
   userLeagueId: LeagueId;
   userRank: number;
   standings: StandingRow[];
-  otherLeagues?: Partial<Record<LeagueId, { standings: StandingRow[] }>>;
+  otherLeagues?: Partial<
+    Record<
+      LeagueId,
+      {
+        standings: StandingRow[];
+        aiRosters?: Record<string, Player[]>;
+        playerStats?: Record<string, PlayerSeasonStats>;
+      }
+    >
+  >;
   allPlayerStats: Record<string, PlayerSeasonStats>;
   aiRosters: Record<string, Player[]>;
   ownedIds: Set<string>;
@@ -734,12 +775,19 @@ export function spinTransferClubs(
       }
     }
 
+    const liveClubRoster = isUserLeague
+      ? aiRosters[picked.club.id]
+      : otherLeagues?.[picked.leagueId]?.aiRosters?.[picked.club.id];
+    const clubStatsMap = isUserLeague
+      ? allPlayerStats
+      : otherLeagues?.[picked.leagueId]?.playerStats ?? allPlayerStats;
+
     const squad = buildTransferClubSquad({
       club: picked.club,
       leagueId: picked.leagueId,
       ownedIds,
       excludeIds,
-      aiRoster: isUserLeague ? aiRosters[picked.club.id] : undefined,
+      aiRoster: liveClubRoster,
       clubRank,
       leagueSize,
       currentRound,
@@ -747,10 +795,16 @@ export function spinTransferClubs(
       windowIndex,
       userRank,
       userLeagueSize,
-      allPlayerStats,
+      allPlayerStats: clubStatsMap,
       isUserLeague,
       championBonusActive,
     });
+
+    const clubNeeds = analyzeClubPositionNeeds(
+      liveClubRoster && liveClubRoster.length >= 11
+        ? liveClubRoster
+        : squad.map((t) => t.player),
+    );
 
     offers.push({
       reelIndex,
@@ -760,8 +814,781 @@ export function spinTransferClubs(
       clubRank,
       leagueSize,
       squad,
+      clubNeeds,
     });
   }
 
   return offers;
 }
+
+// =============================================================================
+// NBA-STYLE TRADE ENGINE (v3.2 — Option 3 Roster Rule + Exponential TP Curve)
+// =============================================================================
+
+const POS_LABEL_KO: Record<Position, string> = {
+  GK: 'GK(골키퍼)',
+  DF: 'DF(수비)',
+  MF: 'MF(미드필더)',
+  FW: 'FW(공격수)',
+};
+
+const IDEAL_SQUAD_COUNT: Record<Position, number> = {
+  GK: 2,
+  DF: 5,
+  MF: 5,
+  FW: 4,
+};
+
+/**
+ * Analyzes an actual club roster to identify its weakest/thinnest positions (Needs)
+ * and overstocked positions (Saturated).
+ */
+export function analyzeClubPositionNeeds(roster: Player[]): ClubPositionNeeds {
+  const positions: Position[] = ['GK', 'DF', 'MF', 'FW'];
+  const countByPos: Record<Position, number> = { GK: 0, DF: 0, MF: 0, FW: 0 };
+  const avgOvrByPos: Record<Position, number> = { GK: 0, DF: 0, MF: 0, FW: 0 };
+
+  const sortedAll = [...roster].sort((a, b) => b.ovr - a.ovr);
+  const top11 = sortedAll.slice(0, Math.min(11, sortedAll.length));
+  const teamAvgOvr =
+    top11.length > 0
+      ? top11.reduce((acc, p) => acc + p.ovr, 0) / top11.length
+      : 78;
+
+  const needScores: { pos: Position; score: number }[] = [];
+  const saturatedPositions: Position[] = [];
+
+  for (const pos of positions) {
+    const group = roster
+      .filter((p) => p.position === pos)
+      .sort((a, b) => b.ovr - a.ovr);
+    countByPos[pos] = group.length;
+    const starterSliceCount = pos === 'GK' ? 1 : pos === 'FW' ? 2 : 3;
+    const starters = group.slice(0, starterSliceCount);
+    const posAvg =
+      starters.length > 0
+        ? starters.reduce((acc, p) => acc + p.ovr, 0) / starters.length
+        : teamAvgOvr - 8;
+    avgOvrByPos[pos] = Math.round(posAvg * 10) / 10;
+
+    const depthDeficit = IDEAL_SQUAD_COUNT[pos] - group.length;
+    const qualityDeficit = teamAvgOvr - posAvg;
+    const urgencyScore = depthDeficit * 3.8 + qualityDeficit * 1.15;
+    needScores.push({ pos, score: urgencyScore });
+
+    if (
+      (pos === 'GK' && group.length >= 3) ||
+      (pos !== 'GK' &&
+        group.length >= IDEAL_SQUAD_COUNT[pos] + 2 &&
+        posAvg >= teamAvgOvr - 0.5)
+    ) {
+      saturatedPositions.push(pos);
+    }
+  }
+
+  needScores.sort((a, b) => b.score - a.score);
+  const neededPositions = needScores
+    .filter((entry, idx) => idx === 0 || entry.score > 0.5)
+    .slice(0, 2)
+    .map((entry) => entry.pos);
+
+  const summaryParts = neededPositions.map(
+    (p, idx) => `${idx === 0 ? '최우선' : '보강'} ${POS_LABEL_KO[p]}`,
+  );
+  const summaryText =
+    summaryParts.length > 0
+      ? `보강 필요: ${summaryParts.join(' · ')}`
+      : '균형 잡힌 스쿼드';
+
+  return {
+    neededPositions,
+    saturatedPositions,
+    avgOvrByPos,
+    countByPos,
+    summaryText,
+  };
+}
+
+/**
+ * Exponential Trade Point (TP) formula preventing low-OVR quantity abuse:
+ * Base TP = 10 * 1.185^(ovr - 70)
+ * - OVR 75 ≈ 23.4 | OVR 80 ≈ 54.6 | OVR 84 ≈ 107.7 | OVR 88 ≈ 212.4 | OVR 90 ≈ 298.2
+ */
+export function computePlayerTradePoints(params: {
+  player: Player;
+  receivingClubNeeds?: ClubPositionNeeds | null;
+  stats?: PlayerSeasonStats | null;
+  conditionMap?: PlayerConditionMap;
+}): TradeAssetValuation {
+  const { player, receivingClubNeeds = null, stats = null, conditionMap } = params;
+
+  const baseRaw = 10 * Math.pow(1.185, Math.max(-4, player.ovr - 70));
+  const baseTp = Math.round(baseRaw * (player.isLegend ? 1.12 : 1) * 10) / 10;
+
+  // Athleticism & versatility upside modifier (replaces age since Player schema tracks stamina + multi-pos)
+  let ageModPct = 0;
+  if (!player.isLegend) {
+    const posCoverage =
+      player.mainPositions.length + player.secondaryPositions.length;
+    if (player.stamina >= 88 && posCoverage >= 3) ageModPct = 10;
+    else if (player.stamina >= 84 || posCoverage >= 3) ageModPct = 5;
+    else if (player.stamina <= 70) ageModPct = -6;
+  }
+
+  // Current season form modifier
+  let formModPct = 0;
+  if (stats && stats.appearances >= 2) {
+    const expectedRating = 6.52 + (player.ovr - 74) * 0.044;
+    formModPct = clamp(Math.round((stats.avgRating - expectedRating) * 20), -15, 18);
+  }
+
+  // Condition (Injury + Morale) modifier
+  let injuryModPct = 0;
+  let moraleModPct = 0;
+  const cond = conditionMap?.[player.id];
+  if (cond) {
+    if (isPlayerActivelyInjured(cond) && cond.injury) {
+      if (cond.injury.severity === 'severe') injuryModPct = -35;
+      else if (cond.injury.severity === 'moderate') injuryModPct = -15;
+      else injuryModPct = -3;
+    }
+    const mt = getMoraleTier(cond.morale);
+    if (mt === 'ecstatic') moraleModPct = 4;
+    else if (mt === 'frozen') moraleModPct = -6;
+  }
+
+  // Receiving club positional need modifier
+  let needModPct = 0;
+  if (receivingClubNeeds) {
+    if (receivingClubNeeds.neededPositions[0] === player.position) {
+      needModPct = 18;
+    } else if (receivingClubNeeds.neededPositions[1] === player.position) {
+      needModPct = 10;
+    } else if (receivingClubNeeds.saturatedPositions.includes(player.position)) {
+      needModPct = -15;
+    }
+  }
+
+  const totalPct = ageModPct + formModPct + injuryModPct + moraleModPct + needModPct;
+  const effectiveTp = Math.max(
+    4,
+    Math.round(baseTp * (1 + totalPct / 100) * 10) / 10,
+  );
+
+  return {
+    playerId: player.id,
+    baseTp,
+    ageModPct,
+    formModPct,
+    injuryModPct,
+    moraleModPct,
+    needModPct,
+    effectiveTp,
+  };
+}
+
+/**
+ * Option 3 Roster Safety Rule:
+ * For 2:1 or 3:1 deals (user sends more players than AI targets), automatically selects
+ * real low-OVR rotation backups from the AI club so user stays at exact 16 players
+ * and AI keeps >= 15 players & >= 1 GK. Only generates a club youth player if AI pool is short.
+ */
+export function selectAutoFillerPlayers(params: {
+  aiRoster: Player[];
+  aiTargetIds: Set<string>;
+  userSentPlayers: Player[];
+  neededCount: number;
+  club: Club;
+  leagueId: LeagueId;
+  excludeIds: Set<string>;
+}): Player[] {
+  const {
+    aiRoster,
+    aiTargetIds,
+    userSentPlayers,
+    neededCount,
+    club,
+    leagueId,
+    excludeIds,
+  } = params;
+  if (neededCount <= 0) return [];
+
+  const fillers: Player[] = [];
+  const pickedIds = new Set<string>(aiTargetIds);
+  const usedNames = new Set<string>(aiRoster.map((p) => p.name));
+
+  // Count how many GKs AI will have after losing targets and gaining userSentPlayers
+  const incomingGkCount = userSentPlayers.filter((p) => p.position === 'GK').length;
+  const remainingAiPlayers = aiRoster.filter((p) => !aiTargetIds.has(p.id));
+  let remainingGkCount =
+    remainingAiPlayers.filter((p) => p.position === 'GK').length + incomingGkCount;
+
+  // Prefer lowest-OVR rotation players (ideally OVR 70..78) from AI club
+  const candidates = [...remainingAiPlayers].sort(
+    (a, b) => a.ovr - b.ovr || a.stamina - b.stamina,
+  );
+
+  for (const cand of candidates) {
+    if (fillers.length >= neededCount) break;
+    if (pickedIds.has(cand.id) || excludeIds.has(cand.id)) continue;
+    // Never strip AI club of its last GK
+    if (cand.position === 'GK' && remainingGkCount <= 1) continue;
+    fillers.push(cand);
+    pickedIds.add(cand.id);
+    if (cand.position === 'GK') remainingGkCount -= 1;
+  }
+
+  // Rare fallback: synthesize club academy backup (OVR 71..73) if AI roster lacked spares
+  const fallbackSubs: SubPosition[] = ['CM', 'CB', 'ST'];
+  let genIdx = 0;
+  while (fillers.length < neededCount) {
+    const sub = fallbackSubs[genIdx % fallbackSubs.length];
+    const seedKey = `trade-youth-${club.id}-${sub}-${genIdx}`;
+    const detRng = () => ((hashSeed(seedKey) + genIdx * 23) % 97) / 97;
+    const youth = generateClubRotationPlayer({
+      club,
+      leagueId,
+      subPosition: sub,
+      seedKey,
+      excludeNames: usedNames,
+      rng: detRng,
+    });
+    const clampedOvr = clamp(youth.ovr, 71, 73);
+    const academyPlayer: Player = {
+      ...youth,
+      ovr: clampedOvr,
+    };
+    fillers.push(academyPlayer);
+    usedNames.add(academyPlayer.name);
+    genIdx += 1;
+  }
+
+  return fillers;
+}
+
+export interface EvaluateTradePackageParams {
+  userSentPlayers: Player[];
+  aiTargetPlayers: Player[];
+  aiFillerPlayers?: Player[];
+  aiClub: Club;
+  aiRoster: Player[];
+  aiNeeds: ClubPositionNeeds;
+  userSquad: Player[];
+  userRank: number;
+  userLeagueSize: number;
+  aiClubRank: number;
+  aiLeagueSize: number;
+  allPlayerStats: Record<string, PlayerSeasonStats>;
+  conditionMap?: PlayerConditionMap;
+  championBonusActive?: boolean;
+}
+
+/**
+ * Evaluates an NBA-style 1:1 / 2:1 / 3:1 / multi-player trade package with:
+ * - Exponential TP curve
+ * - Multi-player Consolidation Tax (100% / 78% / 60%, +10% relief on needy positions)
+ * - Star Min Quality Guard (87+ target requires maxUserOvr >= targetOvr - 7)
+ * - Positional need bonuses (+18% / +10% / -15%)
+ * - GK minimum & roster safety checks
+ */
+export function evaluateTradePackage(
+  params: EvaluateTradePackageParams,
+): TradePackageEvaluation {
+  const {
+    userSentPlayers,
+    aiTargetPlayers,
+    aiFillerPlayers = [],
+    aiClub,
+    aiRoster,
+    aiNeeds,
+    userSquad,
+    userRank,
+    userLeagueSize,
+    aiClubRank,
+    aiLeagueSize,
+    allPlayerStats,
+    conditionMap,
+    championBonusActive = false,
+  } = params;
+
+  const requiredAutoFillers = Math.max(
+    0,
+    userSentPlayers.length - aiTargetPlayers.length,
+  );
+  const requiredUserReleaseCount = Math.max(
+    0,
+    aiTargetPlayers.length - userSentPlayers.length,
+  );
+
+  const userValuations = userSentPlayers.map((player) =>
+    computePlayerTradePoints({
+      player,
+      receivingClubNeeds: aiNeeds,
+      stats: allPlayerStats[player.id] ?? allPlayerStats[`user::${player.id}`] ?? null,
+      conditionMap,
+    }),
+  );
+
+  const allAiOutgoing = [...aiTargetPlayers, ...aiFillerPlayers];
+  const aiValuations = allAiOutgoing.map((player) =>
+    computePlayerTradePoints({
+      player,
+      receivingClubNeeds: null,
+      stats: allPlayerStats[player.id] ?? null,
+      conditionMap,
+    }),
+  );
+
+  // Consolidation Tax on user's multi-player package (prevents 3 mediocre players > 1 star)
+  const sortedUserVals = [...userValuations].sort(
+    (a, b) => b.effectiveTp - a.effectiveTp,
+  );
+  const taxSteps = [1.0, 0.78, 0.6];
+  let userRawTp = 0;
+  let userEffectiveTp = 0;
+
+  sortedUserVals.forEach((val, idx) => {
+    userRawTp += val.effectiveTp;
+    const baseMult = taxSteps[Math.min(idx, taxSteps.length - 1)];
+    const needRelief = idx > 0 && val.needModPct > 0 ? 0.1 : 0;
+    userEffectiveTp += val.effectiveTp * Math.min(1, baseMult + needRelief);
+  });
+  userRawTp = Math.round(userRawTp * 10) / 10;
+  userEffectiveTp = Math.round(userEffectiveTp * 10) / 10;
+
+  // Fillers are rotation throw-ins (valued at 65% TP so 2:1 / 3:1 deals stay realistic)
+  const fillerIds = new Set(aiFillerPlayers.map((p) => p.id));
+  const aiEffectiveTp =
+    Math.round(
+      aiValuations.reduce(
+        (acc, v) => acc + v.effectiveTp * (fillerIds.has(v.playerId) ? 0.65 : 1),
+        0,
+      ) * 10,
+    ) / 10;
+
+  const ratio =
+    aiEffectiveTp > 0 ? Math.round((userEffectiveTp / aiEffectiveTp) * 100) / 100 : 0;
+
+  const makeBlocked = (reason: string, reaction: string): TradePackageEvaluation => ({
+    userRawTp,
+    userEffectiveTp,
+    aiEffectiveTp,
+    ratio,
+    acceptanceChance: 0,
+    blockedReason: reason,
+    gmReaction: reaction,
+    gmTone: 'offended',
+    userValuations,
+    aiValuations,
+    requiredAutoFillers,
+    requiredUserReleaseCount,
+  });
+
+  if (userSentPlayers.length === 0 || aiTargetPlayers.length === 0) {
+    return makeBlocked(
+      '양 팀에서 최소 1명 이상의 트레이드 선수를 선택해 주세요.',
+      `${aiClub.shortName} 단장: "구체적인 트레이드 카드를 올려주시면 검토하겠습니다."`,
+    );
+  }
+
+  if (userSentPlayers.length > 3 || aiTargetPlayers.length > 3) {
+    return makeBlocked(
+      '트레이드는 한 번에 최대 3명까지 구성할 수 있습니다.',
+      `${aiClub.shortName} 단장: "한 번에 너무 많은 선수를 움직이는 건 무리입니다."`,
+    );
+  }
+
+  // User GK minimum guard
+  const sentIds = new Set(userSentPlayers.map((p) => p.id));
+  const postUserGks =
+    userSquad.filter((p) => !sentIds.has(p.id) && p.position === 'GK').length +
+    allAiOutgoing.filter((p) => p.position === 'GK').length;
+  if (postUserGks < 1) {
+    return makeBlocked(
+      '우리 팀 로스터에 최소 1명의 골키퍼(GK)를 유지해야 합니다.',
+      '수석코치: "골키퍼가 0명이 되면 다음 경기를 치를 수 없습니다!"',
+    );
+  }
+
+  // AI GK minimum guard
+  const aiOutIds = new Set(allAiOutgoing.map((p) => p.id));
+  const postAiGks =
+    aiRoster.filter((p) => !aiOutIds.has(p.id) && p.position === 'GK').length +
+    userSentPlayers.filter((p) => p.position === 'GK').length;
+  if (aiRoster.length > 0 && postAiGks < 1) {
+    return makeBlocked(
+      `${aiClub.name}은(는) 마지막 골키퍼를 대체 없이 보낼 수 없습니다.`,
+      `${aiClub.shortName} 단장: "우리 주전 골키퍼를 데려가려면 GK 자원을 포함해 주셔야 합니다."`,
+    );
+  }
+
+  // Anti-Cheese Star Min Quality Guard (OVR 87+ target requires core piece within 7 OVR)
+  const maxAiTargetOvr = Math.max(...aiTargetPlayers.map((p) => p.ovr));
+  const maxUserSentOvr = Math.max(...userSentPlayers.map((p) => p.ovr));
+  if (maxAiTargetOvr >= 87 && maxUserSentOvr < maxAiTargetOvr - 7) {
+    const starName =
+      aiTargetPlayers.find((p) => p.ovr === maxAiTargetOvr)?.name ?? '핵심 스타';
+    return makeBlocked(
+      `OVR ${maxAiTargetOvr} 슈퍼스타(${starName}) 영입에는 최소 OVR ${maxAiTargetOvr - 7} 이상의 핵심 선수가 포함되어야 합니다.`,
+      `${aiClub.shortName} 단장: "장난하십니까? ${starName} 같은 프랜차이즈 스타를 로테이션 선수들 묶음으로 바꿀 순 없습니다!"`,
+    );
+  }
+
+  // Prestige & standing gentle shift
+  let prestigeShift = 0;
+  if (userRank === 1) prestigeShift += 0.04;
+  else if (userRank <= 4) prestigeShift += 0.025;
+  else if (userRank >= userLeagueSize - 3) prestigeShift -= 0.03;
+  if (championBonusActive) prestigeShift += 0.03;
+  if (aiClubRank <= 3) prestigeShift -= 0.03;
+  else if (aiClubRank >= aiLeagueSize - 4) prestigeShift += 0.04;
+
+  const adjRatio = ratio + prestigeShift;
+  let chance = 0;
+  if (adjRatio < 0.72) {
+    chance = 0;
+  } else if (adjRatio < 0.88) {
+    chance = 5 + ((adjRatio - 0.72) / 0.16) * 23; // 5..28%
+  } else if (adjRatio < 1.0) {
+    chance = 28 + ((adjRatio - 0.88) / 0.12) * 34; // 28..62%
+  } else if (adjRatio < 1.14) {
+    chance = 62 + ((adjRatio - 1.0) / 0.14) * 24; // 62..86%
+  } else {
+    chance = 86 + Math.min(9, ((adjRatio - 1.14) / 0.2) * 9); // 86..95%
+  }
+
+  const acceptanceChance = clamp(Math.round(chance), 0, 95);
+  const fillsTopNeed = userSentPlayers.some(
+    (p) => p.position === aiNeeds.neededPositions[0],
+  );
+  const topTarget = [...aiTargetPlayers].sort((a, b) => b.ovr - a.ovr)[0];
+  const topSent = [...userSentPlayers].sort((a, b) => b.ovr - a.ovr)[0];
+
+  let gmTone: TradePackageEvaluation['gmTone'];
+  let gmReaction: string;
+  if (acceptanceChance >= 78) {
+    gmTone = 'eager';
+    gmReaction = fillsTopNeed
+      ? `${aiClub.shortName} 단장: "딱 우리가 찾던 ${POS_LABEL_KO[topSent.position]} 보강 카드입니다! ${topSent.name} 포함 패키지라면 당장 서명하고 싶네요."`
+      : `${aiClub.shortName} 단장: "매우 매력적인 제안입니다. 이 조건이라면 이사회 승인이 거의 확실합니다!"`;
+  } else if (acceptanceChance >= 48) {
+    gmTone = 'considering';
+    gmReaction = fillsTopNeed
+      ? `${aiClub.shortName} 단장: "${topSent.name}이(가) 우리 취약 포지션에 잘 맞긴 한데, ${topTarget.name}을(를) 내주기엔 조금 더 고민이 필요합니다."`
+      : `${aiClub.shortName} 단장: "나쁘지 않은 테이블입니다. 다만 우리가 급한 ${POS_LABEL_KO[aiNeeds.neededPositions[0] ?? 'MF']} 자원이 포함되면 확률이 크게 올라갈 겁니다."`;
+  } else if (acceptanceChance >= 15) {
+    gmTone = 'hesitant';
+    gmReaction = `${aiClub.shortName} 단장: "${topTarget.name}의 위상을 생각하면 아직 가치가 부족합니다. 더 확실한 주전급 카드나 필요 포지션 선수를 보태주세요."`;
+  } else {
+    gmTone = 'offended';
+    gmReaction = `${aiClub.shortName} 단장: "이건 너무 일방적인 제안입니다. ${topTarget.name}을(를) 영입하려면 훨씬 진지한 패키지를 가져오셔야 합니다."`;
+  }
+
+  return {
+    userRawTp,
+    userEffectiveTp,
+    aiEffectiveTp,
+    ratio,
+    acceptanceChance,
+    blockedReason: null,
+    gmReaction,
+    gmTone,
+    userValuations,
+    aiValuations,
+    requiredAutoFillers,
+    requiredUserReleaseCount,
+  };
+}
+
+/**
+ * Builds a browseable TransferClubOffer for any specific club (used when user clicks
+ * [역제안 / 조건 수정] on an incoming AI trade offer whose club wasn't in the 3 rolled reels).
+ */
+export function buildTradeClubOfferForClub(params: {
+  club: Club;
+  leagueId: LeagueId;
+  clubRank: number;
+  leagueSize: number;
+  currentRound: number;
+  totalRounds: number;
+  windowIndex: number;
+  userRank: number;
+  userLeagueSize: number;
+  isUserLeague: boolean;
+  aiRoster?: Player[];
+  allPlayerStats: Record<string, PlayerSeasonStats>;
+  ownedIds: Set<string>;
+  excludeIds?: Set<string>;
+  championBonusActive?: boolean;
+}): TransferClubOffer {
+  const {
+    club,
+    leagueId,
+    clubRank,
+    leagueSize,
+    currentRound,
+    totalRounds,
+    windowIndex,
+    userRank,
+    userLeagueSize,
+    isUserLeague,
+    aiRoster,
+    allPlayerStats,
+    ownedIds,
+    excludeIds,
+    championBonusActive = false,
+  } = params;
+
+  const squad = buildTransferClubSquad({
+    club,
+    leagueId,
+    ownedIds,
+    excludeIds,
+    aiRoster,
+    clubRank,
+    leagueSize,
+    currentRound,
+    totalRounds,
+    windowIndex,
+    userRank,
+    userLeagueSize,
+    allPlayerStats,
+    isUserLeague,
+    championBonusActive,
+  });
+
+  const clubNeeds = analyzeClubPositionNeeds(
+    aiRoster && aiRoster.length >= 11 ? aiRoster : squad.map((s) => s.player),
+  );
+
+  return {
+    reelIndex: 99,
+    isLegendSlot: false,
+    club,
+    leagueId,
+    clubRank,
+    leagueSize,
+    squad,
+    clubNeeds,
+  };
+}
+
+export interface GenerateIncomingTradeOffersParams {
+  windowIndex: number;
+  currentRound: number;
+  userLeagueId: LeagueId;
+  userStarters: (Player | null)[];
+  userBench: (Player | null)[];
+  standings: StandingRow[];
+  otherLeagues?: Partial<
+    Record<
+      LeagueId,
+      {
+        standings: StandingRow[];
+        aiRosters?: Record<string, Player[]>;
+        playerStats?: Record<string, PlayerSeasonStats>;
+      }
+    >
+  >;
+  aiRosters: Record<string, Player[]>;
+  allPlayerStats: Record<string, PlayerSeasonStats>;
+  conditionMap?: PlayerConditionMap;
+  departedPlayerIds?: string[];
+  allowedLeagueIds?: LeagueId[];
+  rng?: () => number;
+}
+
+/**
+ * Generates 0 to 5 realistic incoming AI trade offers per transfer window.
+ * Each AI club analyzes its actual position needs, targets a fitting player on the user's squad,
+ * and constructs a fair 1:1 or 2:1 trade offer.
+ */
+export function generateIncomingTradeOffers(
+  params: GenerateIncomingTradeOffersParams,
+): IncomingTradeOffer[] {
+  const {
+    windowIndex,
+    currentRound,
+    userLeagueId,
+    userStarters,
+    userBench,
+    standings,
+    otherLeagues,
+    aiRosters,
+    allPlayerStats,
+    conditionMap,
+    departedPlayerIds = [],
+    allowedLeagueIds,
+    rng = Math.random,
+  } = params;
+
+  const userSquad = [
+    ...userStarters.filter((p): p is Player => p !== null),
+    ...userBench.filter((p): p is Player => p !== null),
+  ];
+  if (userSquad.length < 11) return [];
+
+  // Weighted 0..5 offer count distribution (average ~2.3 offers, can be 0 or up to 5)
+  const rollCount = rng();
+  let targetCount: number;
+  if (rollCount < 0.1) targetCount = 0;
+  else if (rollCount < 0.28) targetCount = 1;
+  else if (rollCount < 0.56) targetCount = 2;
+  else if (rollCount < 0.8) targetCount = 3;
+  else if (rollCount < 0.94) targetCount = 4;
+  else targetCount = 5;
+
+  if (targetCount === 0) return [];
+
+  const ownedIds = new Set(userSquad.map((p) => p.id));
+  const globalExclude = new Set<string>([...ownedIds, ...departedPlayerIds]);
+  const userGkCount = userSquad.filter((p) => p.position === 'GK').length;
+
+  const allowedSet =
+    allowedLeagueIds && allowedLeagueIds.length > 0
+      ? new Set<LeagueId>(allowedLeagueIds)
+      : null;
+  const candidateClubs = (
+    allowedSet
+      ? ALL_CLUBS_WITH_LEAGUE.filter((c) => allowedSet.has(c.leagueId))
+      : ALL_CLUBS_WITH_LEAGUE
+  ).filter((c) => !c.club.isUser);
+
+  // Shuffle clubs (slight preference for user's own league so rivalries feel alive)
+  const shuffled = [...candidateClubs].sort((a, b) => {
+    const aBonus = a.leagueId === userLeagueId ? 0.18 : 0;
+    const bBonus = b.leagueId === userLeagueId ? 0.18 : 0;
+    return rng() + bBonus - (rng() + aBonus);
+  });
+
+  const offers: IncomingTradeOffer[] = [];
+  const usedClubIds = new Set<string>();
+  const usedAiPlayerIds = new Set<string>();
+
+  for (const entry of shuffled) {
+    if (offers.length >= targetCount) break;
+    if (usedClubIds.has(entry.club.id)) continue;
+
+    const isUserLeague = entry.leagueId === userLeagueId;
+    const liveRoster = isUserLeague
+      ? aiRosters[entry.club.id]
+      : otherLeagues?.[entry.leagueId]?.aiRosters?.[entry.club.id];
+    const clubRoster = (
+      liveRoster && liveRoster.length >= 11
+        ? liveRoster
+        : ACTIVE_PLAYERS.filter((p) => p.club === entry.club.name)
+    ).filter((p) => !globalExclude.has(p.id) && !usedAiPlayerIds.has(p.id));
+
+    if (clubRoster.length < 11) continue;
+
+    const clubNeeds = analyzeClubPositionNeeds(clubRoster);
+    const wantedPos = clubNeeds.neededPositions[0] ?? 'MF';
+
+    // Pick an appealing user player matching AI's needed position (prefer OVR >= 77)
+    const userCandidates = userSquad
+      .filter((p) => {
+        if (p.position === 'GK' && userGkCount <= 1) return false;
+        return clubNeeds.neededPositions.includes(p.position) && p.ovr >= 76;
+      })
+      .sort((a, b) => b.ovr - a.ovr);
+
+    const fallbackUserCandidates =
+      userCandidates.length > 0
+        ? userCandidates
+        : userSquad
+            .filter((p) => !(p.position === 'GK' && userGkCount <= 1) && p.ovr >= 78)
+            .sort((a, b) => b.ovr - a.ovr);
+
+    if (fallbackUserCandidates.length === 0) continue;
+
+    const pickIdx = Math.min(
+      fallbackUserCandidates.length - 1,
+      Math.floor(rng() * Math.min(4, fallbackUserCandidates.length)),
+    );
+    const requestedPlayer = fallbackUserCandidates[pickIdx];
+    const requestedVal = computePlayerTradePoints({
+      player: requestedPlayer,
+      receivingClubNeeds: clubNeeds,
+      stats: allPlayerStats[requestedPlayer.id] ?? null,
+      conditionMap,
+    });
+
+    // Find a fair 1:1 trade chip from AI's roster (prefer non-need or surplus position, keeping AI GK >= 1)
+    const aiGkCount = clubRoster.filter((p) => p.position === 'GK').length;
+    const aiChips = clubRoster
+      .filter((p) => {
+        if (p.position === 'GK' && aiGkCount <= 1 && requestedPlayer.position !== 'GK') {
+          return false;
+        }
+        return Math.abs(p.ovr - requestedPlayer.ovr) <= 4;
+      })
+      .map((p) => ({
+        player: p,
+        val: computePlayerTradePoints({
+          player: p,
+          receivingClubNeeds: null,
+          stats: allPlayerStats[p.id] ?? null,
+          conditionMap,
+        }),
+      }))
+      .sort(
+        (a, b) =>
+          Math.abs(a.val.effectiveTp - requestedVal.effectiveTp) -
+          Math.abs(b.val.effectiveTp - requestedVal.effectiveTp),
+      );
+
+    if (aiChips.length === 0) continue;
+
+    const chosenAiPlayer = aiChips[0].player;
+    const ratio = aiChips[0].val.effectiveTp / Math.max(1, requestedVal.effectiveTp);
+    // Keep offers realistically fair (0.82 .. 1.24 TP ratio)
+    if (ratio < 0.8 || ratio > 1.28) continue;
+
+    let clubRank = 10;
+    let leagueSize = 20;
+    const table = isUserLeague
+      ? standings
+      : otherLeagues?.[entry.leagueId]?.standings;
+    if (table && table.length > 0) {
+      const idx = table.findIndex((s) => s.teamId === entry.club.id);
+      if (idx !== -1) {
+        clubRank = idx + 1;
+        leagueSize = table.length;
+      }
+    } else {
+      const est = estimateVirtualClubRank(
+        entry.club,
+        entry.leagueId,
+        currentRound,
+        windowIndex,
+      );
+      clubRank = est.rank;
+      leagueSize = est.leagueSize;
+    }
+
+    const pitches = [
+      `"우리 구단은 지금 ${POS_LABEL_KO[wantedPos]} 보강이 절실합니다. ${chosenAiPlayer.name} (OVR ${chosenAiPlayer.ovr}) 카드를 드릴 테니 ${requestedPlayer.name} 트레이드를 논의해 보시죠."`,
+      `"${requestedPlayer.name} 선수를 오래 지켜봤습니다. ${chosenAiPlayer.name}과의 맞트레이드라면 양 팀 모두 전력 보강이 될 겁니다!"`,
+      `"스카우트 팀에서 ${requestedPlayer.name} 영입을 강력 추천했습니다. ${chosenAiPlayer.name}을(를) 내어드리는 진지한 제안입니다."`,
+    ];
+
+    usedClubIds.add(entry.club.id);
+    usedAiPlayerIds.add(chosenAiPlayer.id);
+
+    offers.push({
+      id: `inc-w${windowIndex}-r${currentRound}-${entry.club.id}-${offers.length}`,
+      club: entry.club,
+      leagueId: entry.leagueId,
+      clubRank,
+      leagueSize,
+      clubNeeds,
+      aiOffersPlayers: [chosenAiPlayer],
+      userRequestedPlayers: [requestedPlayer],
+      aiPitch: pitches[offers.length % pitches.length],
+      status: 'pending',
+    });
+  }
+
+  return offers;
+}
+

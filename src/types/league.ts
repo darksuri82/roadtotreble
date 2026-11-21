@@ -270,6 +270,9 @@ export interface PlayerTransferRecord {
   toClubName: string;
   round: number;
   competition?: 'league' | 'ucl';
+  type?: 'transfer' | 'trade';
+  counterpartyClub?: string;
+  windowLabel?: string;
 }
 
 export interface PlayerSeasonStats {
