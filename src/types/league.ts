@@ -223,8 +223,17 @@ export interface LiveHalftimeState {
   preMatchFormation?: FormationId;
   userTacticAtKickoff: TacticId;
   userFormationAtKickoff: FormationId;
-  phase: 'first_half' | 'halftime' | 'second_half' | 'extra_time_break' | 'extra_time' | 'penalties';
+  phase:
+    | 'first_half'
+    | 'halftime'
+    | 'second_half'
+    | 'extra_time_break'
+    | 'extra_time'
+    | 'extra_time_ht'
+    | 'extra_time_2'
+    | 'penalties';
   fullMatchResult?: MatchResult;
+  etFirstHalfResult?: MatchResult;
 }
 
 export interface Fixture {
@@ -321,9 +330,12 @@ export interface GlobalSeasonAwards {
 }
 
 export interface TeamSeasonAnalytics {
+  competitionScope?: 'league' | 'cup' | 'ucl' | 'combined';
   finalRank: number;
   rankLabel?: string; // e.g. '1위', '우승', '4강' for cup/UCL/combined displays
-  points: number;
+  points: number; // Strictly regular league points (0 for knockout-only cup/UCL tabs)
+  leaguePoints?: number | null; // Explicit pure regular league points reference
+  winRatePct?: number; // 0..100
   played: number;
   won: number;
   drawn: number;

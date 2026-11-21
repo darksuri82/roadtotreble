@@ -315,6 +315,7 @@ export function createUclTournamentState(params: {
         league.id,
         `${LEAGUE_SHORT_LABEL[league.id]} ${idx + 1}위`,
         idx === 0,
+        bg?.aiRosters?.[club.id],
       );
     });
   }

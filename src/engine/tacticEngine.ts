@@ -73,39 +73,39 @@ export const TACTIC_LIST: TacticMeta[] = [
 
 /**
  * Symmetric 5-tactic rock-paper-scissors matrix (in effective OVR points).
- * Strong advantage: +2.2, slight advantage: +0.9, neutral: 0.
+ * Strong advantage: +2.8, slight advantage: +1.1, neutral: 0.
  */
 const TACTIC_MATRIX: Record<TacticId, Record<TacticId, number>> = {
   possession: {
     possession: 0,
-    gegenpressing: -2.2,
+    gegenpressing: -2.8,
     counter: 0,
-    wingplay: 2.2,
-    balanced: 0.9,
+    wingplay: 2.8,
+    balanced: 1.1,
   },
   gegenpressing: {
-    possession: 2.2,
+    possession: 2.8,
     gegenpressing: 0,
-    counter: -2.2,
+    counter: -2.8,
     wingplay: 0,
     balanced: 0,
   },
   counter: {
     possession: 0,
-    gegenpressing: 2.2,
+    gegenpressing: 2.8,
     counter: 0,
-    wingplay: -2.2,
+    wingplay: -2.8,
     balanced: 0,
   },
   wingplay: {
-    possession: -2.2,
+    possession: -2.8,
     gegenpressing: 0,
-    counter: 2.2,
+    counter: 2.8,
     wingplay: 0,
     balanced: 0,
   },
   balanced: {
-    possession: -0.9,
+    possession: -1.1,
     gegenpressing: 0,
     counter: 0,
     wingplay: 0,
@@ -117,6 +117,44 @@ export interface MatchupEvaluation {
   delta: number; // positive = advantageous
   verdict: 'advantage' | 'slight_advantage' | 'neutral' | 'slight_disadvantage' | 'disadvantage';
   label: string;
+  reason: string;
+}
+
+export function getTacticMatchupReason(
+  myTactic: TacticId,
+  oppTactic: TacticId,
+): string {
+  if (myTactic === 'possession' && oppTactic === 'wingplay') {
+    return '중원 점유로 상대의 측면 전개와 크로스 공급 자체를 차단합니다.';
+  }
+  if (myTactic === 'possession' && oppTactic === 'gegenpressing') {
+    return '상대의 강한 전방 압박에 빌드업 실수가 유발될 위험이 큽니다.';
+  }
+  if (myTactic === 'possession' && oppTactic === 'balanced') {
+    return '안정적인 패스 점유로 밸런스 전술 상대로 경기 주도권을 잡습니다.';
+  }
+  if (myTactic === 'gegenpressing' && oppTactic === 'possession') {
+    return '상대의 짧은 후방 빌드업을 높은 위치에서 강하게 압박해 탈취합니다.';
+  }
+  if (myTactic === 'gegenpressing' && oppTactic === 'counter') {
+    return '높은 압박 라인 배후 공간을 상대 역습에 정면으로 노출할 위험이 큽니다.';
+  }
+  if (myTactic === 'counter' && oppTactic === 'gegenpressing') {
+    return '낮은 블록으로 압박을 무력화하고 상대 높은 라인의 뒷공간을 역습으로 찌릅니다.';
+  }
+  if (myTactic === 'counter' && oppTactic === 'wingplay') {
+    return '낮게 내려앉은 밀집 수비가 측면 오버래핑과 반복 크로스에 흔들립니다.';
+  }
+  if (myTactic === 'wingplay' && oppTactic === 'counter') {
+    return '양 측면 폭을 넓혀 상대의 중앙 밀집 로우블록을 효과적으로 분산시킵니다.';
+  }
+  if (myTactic === 'wingplay' && oppTactic === 'possession') {
+    return '상대가 공을 오래 소유해 측면 돌파와 크로스 시도 횟수가 줄어듭니다.';
+  }
+  if (myTactic === 'balanced' && oppTactic === 'possession') {
+    return '큰 약점은 없으나 상대의 점유율 전개에 주도권을 소폭 내줍니다.';
+  }
+  return '전술 상성이 호각이므로 선수 시너지와 플레이스타일·포메이션 조합이 승부를 가릅니다.';
 }
 
 export function evaluateTacticMatchup(
@@ -124,11 +162,13 @@ export function evaluateTacticMatchup(
   oppTactic: TacticId,
 ): MatchupEvaluation {
   const delta = TACTIC_MATRIX[myTactic][oppTactic];
+  const reason = getTacticMatchupReason(myTactic, oppTactic);
   if (delta >= 2.0) {
     return {
       delta,
       verdict: 'advantage',
       label: `${TACTICS[myTactic].name} > ${TACTICS[oppTactic].name} (상성 우위 +${delta.toFixed(1)})`,
+      reason,
     };
   }
   if (delta > 0) {
@@ -136,6 +176,7 @@ export function evaluateTacticMatchup(
       delta,
       verdict: 'slight_advantage',
       label: `${TACTICS[myTactic].name} > ${TACTICS[oppTactic].name} (약우위 +${delta.toFixed(1)})`,
+      reason,
     };
   }
   if (delta <= -2.0) {
@@ -143,6 +184,7 @@ export function evaluateTacticMatchup(
       delta,
       verdict: 'disadvantage',
       label: `${TACTICS[myTactic].name} < ${TACTICS[oppTactic].name} (상성 열세 ${delta.toFixed(1)})`,
+      reason,
     };
   }
   if (delta < 0) {
@@ -150,12 +192,14 @@ export function evaluateTacticMatchup(
       delta,
       verdict: 'slight_disadvantage',
       label: `${TACTICS[myTactic].name} < ${TACTICS[oppTactic].name} (약열세 ${delta.toFixed(1)})`,
+      reason,
     };
   }
   return {
     delta: 0,
     verdict: 'neutral',
     label: '전술 상성 호각 (0.0)',
+    reason,
   };
 }
 
@@ -241,6 +285,7 @@ export function evaluateFormationMatchup(
       possessionDelta,
       verdict: 'advantage',
       label: `${myFormation} vs ${oppFormation} (포메이션 우세 +${delta.toFixed(1)})`,
+      reason: `${myFormation} 배치가 상대 ${oppFormation}의 빈 공간을 효과적으로 점유합니다.`,
     };
   }
   if (delta > 0) {
@@ -249,6 +294,7 @@ export function evaluateFormationMatchup(
       possessionDelta,
       verdict: 'slight_advantage',
       label: `${myFormation} vs ${oppFormation} (소폭 우세 +${delta.toFixed(1)})`,
+      reason: `${myFormation} 배치가 상대 ${oppFormation} 상대로 소폭 유리한 간격을 만듭니다.`,
     };
   }
   if (delta <= -1.1) {
@@ -257,6 +303,7 @@ export function evaluateFormationMatchup(
       possessionDelta,
       verdict: 'disadvantage',
       label: `${myFormation} vs ${oppFormation} (포메이션 취약 ${delta.toFixed(1)})`,
+      reason: `상대 ${oppFormation}의 수적 우위 구간에 공간이 열릴 수 있습니다.`,
     };
   }
   if (delta < 0) {
@@ -265,6 +312,7 @@ export function evaluateFormationMatchup(
       possessionDelta,
       verdict: 'slight_disadvantage',
       label: `${myFormation} vs ${oppFormation} (소폭 열세 ${delta.toFixed(1)})`,
+      reason: `상대 ${oppFormation}에 대해 중원·측면 간격이 다소 불리합니다.`,
     };
   }
   return {
@@ -272,6 +320,7 @@ export function evaluateFormationMatchup(
     possessionDelta,
     verdict: 'neutral',
     label: `${myFormation} vs ${oppFormation} (호각)`,
+    reason: `${myFormation}과 ${oppFormation}의 구조적 상성은 대등합니다.`,
   };
 }
 
@@ -381,7 +430,7 @@ export function buildHalftimeTacticalHint(params: {
  * - vs wingplay (측면 크로스): stopper_cb, ball_playing_cb, shot_stopper, sweeper_keeper, ball_winner
  * - vs balanced: all-around impact (complete_forward, box_to_box, playmaker_10)
  */
-const STYLE_VS_OPP_TACTIC: Record<
+export const STYLE_VS_OPP_TACTIC: Record<
   TacticId,
   Partial<Record<PlaystyleId, { att?: number; mid?: number; def?: number; label: string }>>
 > = {
@@ -553,17 +602,19 @@ export function evaluatePlaystyleTacticMatchup(params: {
   const clampVal = (v: number, min: number, max: number) =>
     Math.max(min, Math.min(max, v));
 
-  const attBonus = Math.round(clampVal((attSum - 0.72) * 0.65, -0.45, 1.1) * 100) / 100;
-  const midBonus = Math.round(clampVal((midSum - 0.66) * 0.65, -0.45, 1.0) * 100) / 100;
-  const defBonus = Math.round(clampVal((defSum - 0.66) * 0.68, -0.45, 1.1) * 100) / 100;
+  const attBonus = Math.round(clampVal((attSum - 0.72) * 0.92, -0.6, 1.6) * 100) / 100;
+  const midBonus = Math.round(clampVal((midSum - 0.66) * 0.9, -0.6, 1.5) * 100) / 100;
+  const defBonus = Math.round(clampVal((defSum - 0.66) * 0.95, -0.6, 1.6) * 100) / 100;
 
-  let xgBonus = attSum >= 1.35 ? 0.08 : attSum >= 1.0 ? 0.04 : 0;
-  let oppXgPenalty = defSum >= 1.25 ? 0.08 : defSum >= 0.92 ? 0.04 : 0;
+  let xgBonus =
+    attSum >= 1.55 ? 0.14 : attSum >= 1.2 ? 0.09 : attSum >= 0.92 ? 0.05 : 0;
+  let oppXgPenalty =
+    defSum >= 1.45 ? 0.14 : defSum >= 1.1 ? 0.09 : defSum >= 0.85 ? 0.05 : 0;
 
   if (isSecondHalf && scoreDiff < 0 && attSum >= 0.95) {
-    xgBonus += 0.05;
+    xgBonus += 0.06;
   } else if (isSecondHalf && scoreDiff > 0 && defSum >= 0.9) {
-    oppXgPenalty += 0.05;
+    oppXgPenalty += 0.06;
   }
 
   return {
@@ -880,4 +931,147 @@ export function buildHalftimeCoachRecommendations(params: {
   }
 
   return picked;
+}
+
+export interface ExtraTimeCoachBriefing {
+  headline: string;
+  adviceLines: string[];
+  exhaustedPlayers: { name: string; staminaPct: number }[];
+  recommendedPkKickers: { name: string; att: number; ovr: number }[];
+  recommendations: HalftimeSubRecommendation[];
+}
+
+/**
+ * Generates Extra Time specific Assistant Coach briefing (at 90' and 105' ET halftime):
+ * - Explains the 6th extra substitution rule and remaining subs
+ * - Highlights exhausted starters (<52% stamina)
+ * - Recommends fresh bench jokers & strong penalty shootout kickers
+ */
+export function buildExtraTimeCoachBriefing(params: {
+  stage: 'before_et1' | 'et_halftime';
+  starters: (Player | null)[];
+  bench: (Player | null)[];
+  formation: FormationId;
+  oppTactic: TacticId;
+  userAggGoals: number;
+  oppAggGoals: number;
+  staminaByPlayerId: Record<string, number>;
+  eventsSoFar: MatchEvent[];
+  disabledBenchIds: Set<string>;
+  subsRemaining: number;
+  managerTraitId: ManagerTraitId | null;
+}): ExtraTimeCoachBriefing {
+  const {
+    stage,
+    starters,
+    bench,
+    formation,
+    oppTactic,
+    userAggGoals,
+    oppAggGoals,
+    staminaByPlayerId,
+    eventsSoFar,
+    disabledBenchIds,
+    subsRemaining,
+    managerTraitId,
+  } = params;
+
+  const filledStarters = starters.filter((p): p is Player => p !== null);
+  const exhaustedPlayers = filledStarters
+    .filter((p) => p.position !== 'GK' && (staminaByPlayerId[p.id] ?? 60) < 52)
+    .map((p) => ({
+      name: p.name,
+      staminaPct: staminaByPlayerId[p.id] ?? 50,
+    }))
+    .sort((a, b) => a.staminaPct - b.staminaPct);
+
+  const availableBench = bench.filter(
+    (p): p is Player => p !== null && !disabledBenchIds.has(p.id),
+  );
+  const topBenchPkKickers = availableBench
+    .filter((p) => p.position !== 'GK')
+    .sort((a, b) => b.att * 0.65 + b.ovr * 0.35 - (a.att * 0.65 + a.ovr * 0.35))
+    .slice(0, 2);
+
+  const recommendedPkKickers = [
+    ...filledStarters.filter((p) => p.position !== 'GK'),
+    ...topBenchPkKickers,
+  ]
+    .sort((a, b) => b.att * 0.65 + b.ovr * 0.35 - (a.att * 0.65 + a.ovr * 0.35))
+    .slice(0, 5)
+    .map((p) => ({ name: p.name, att: p.att, ovr: p.ovr }));
+
+  const recommendations =
+    subsRemaining > 0
+      ? buildHalftimeCoachRecommendations({
+          starters,
+          bench,
+          formation,
+          oppTactic,
+          userGoals: userAggGoals,
+          oppGoals: oppAggGoals,
+          staminaByPlayerId,
+          firstHalfEvents: eventsSoFar,
+          disabledBenchIds,
+          managerTraitId,
+          maxRecommendations: Math.min(2, subsRemaining),
+        })
+      : [];
+
+  const adviceLines: string[] = [];
+  if (stage === 'before_et1') {
+    adviceLines.push(
+      `연장전 특별 규정으로 교체 카드가 +1장 추가되어 총 6명까지 교체할 수 있습니다. (현재 잔여 ${subsRemaining}장)`,
+    );
+  } else {
+    adviceLines.push(
+      `연장 후반 15분만 남았습니다! 잔여 교체 ${subsRemaining}장을 활용해 승부를 결정짓거나 승부차기를 대비하세요.`,
+    );
+  }
+
+  if (exhaustedPlayers.length > 0) {
+    const names = exhaustedPlayers
+      .slice(0, 3)
+      .map((e) => `${e.name}(${e.staminaPct}%)`)
+      .join(', ');
+    adviceLines.push(
+      `⚠️ 체력 방전 위험: ${names}의 활동량이 급격히 떨어져 실점 빌미가 될 수 있습니다. 벤치의 신선한 자원으로 교체를 권장합니다.`,
+    );
+  } else {
+    adviceLines.push(
+      '현재 그라운드 선수단의 체력이 비교적 안정적입니다. 상대의 피로 누적을 공략할 조커 투입을 노려보세요.',
+    );
+  }
+
+  const scoreDiff = userAggGoals - oppAggGoals;
+  if (scoreDiff === 0) {
+    const pkBenchTip =
+      topBenchPkKickers.length > 0 && subsRemaining > 0
+        ? ` 벤치의 ${topBenchPkKickers[0].name}(ATT ${topBenchPkKickers[0].att}) 투입도 승부차기 대비에 유리합니다.`
+        : '';
+    adviceLines.push(
+      `🎯 승부차기 대비: 현재 동점입니다. 120분 종료 시 그라운드 위 선수들이 키커로 나서므로 결정력이 높은 자원을 유지하세요.${pkBenchTip}`,
+    );
+  } else if (scoreDiff > 0) {
+    adviceLines.push(
+      '🛡️ 리드 수성: 연장 후반 리드를 지키기 위해 수비·활동량 자원과 [선수비 후역습] 또는 [밸런스] 전환을 고려하세요.',
+    );
+  } else {
+    adviceLines.push(
+      '🔥 총공세 필요: 한 골이 절실합니다! 체력이 신선한 공격수·윙어 조커를 투입하고 공격적 전술로 전환하세요.',
+    );
+  }
+
+  const headline =
+    stage === 'before_et1'
+      ? '연장전(91\'~120\') 돌입 · 수석코치 긴급 브리핑'
+      : '연장 하프타임(105\') · 마지막 15분 & PK 대비 브리핑';
+
+  return {
+    headline,
+    adviceLines,
+    exhaustedPlayers,
+    recommendedPkKickers,
+    recommendations,
+  };
 }

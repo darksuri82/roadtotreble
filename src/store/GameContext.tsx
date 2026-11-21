@@ -58,6 +58,7 @@ import {
   advanceOtherLeaguesToProgress,
   buildFiveLeagueUclQualifiers,
   createOtherLeaguesState,
+  syncTransferToOtherLeagues,
 } from '../engine/otherLeaguesEngine';
 import {
   buildPhase2HandoffState,
@@ -247,6 +248,7 @@ function simulateFullSingleRound(
     starters,
     chem.total,
     managerTraitId,
+    chem.slotSynergies,
   );
 
   const updatedClubs = season.clubs.map((c) =>
@@ -309,7 +311,9 @@ function simulateFullSingleRound(
             tactic,
             chemistry: chem.total,
             ratings,
+            slotSynergies: chem.slotSynergies,
             managerTraitId,
+            competition: 'league' as const,
             opponentRank: oppRank,
             allowAutoSubs: true,
           }
@@ -342,10 +346,17 @@ function simulateFullSingleRound(
       ? updateTrackersForUserMatch(season.achievementTrackers, userMatchResult)
       : season.achievementTrackers;
 
+  const excludeIds = new Set<string>([
+    ...starters.map((p) => p.id),
+    ...bench.map((p) => p.id),
+    ...(season.departedPlayerIds ?? []),
+  ]);
   const syncedOtherLeagues = advanceOtherLeaguesToProgress(
-    season.otherLeagues ?? createOtherLeaguesState(season.leagueId),
+    season.otherLeagues ?? createOtherLeaguesState(season.leagueId, excludeIds),
     nextRound,
     season.totalRounds,
+    Math.random,
+    excludeIds,
   );
 
   return {
@@ -453,6 +464,7 @@ function syncCupAfterRound(params: {
       starters,
       chem.total,
       managerTraitId,
+      chem.slotSynergies,
     );
     const clubsById: Record<string, Club> = Object.fromEntries(
       current.clubs.map((c) => [
@@ -485,7 +497,9 @@ function syncCupAfterRound(params: {
             tactic,
             chemistry: chem.total,
             ratings,
+            slotSynergies: chem.slotSynergies,
             managerTraitId,
+            competition: 'cup',
             allowAutoSubs: true,
           }
         : undefined,
@@ -522,6 +536,7 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
     filledStarters,
     chem.total,
     state.manager.traitId,
+    chem.slotSynergies,
   );
   const userRow = state.season.standings.find((r) => r.teamId === USER_CLUB_ID);
   const finalRank = getUserRank(state.season.standings, USER_CLUB_ID);
@@ -561,10 +576,19 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
     });
   }
 
+  const excludeIds = new Set<string>([
+    ...filledStarters.map((p) => p.id),
+    ...filledBench.map((p) => p.id),
+    ...(finalSeason.departedPlayerIds ?? []),
+  ]);
+
   const finalOtherLeagues = advanceOtherLeaguesToProgress(
-    finalSeason.otherLeagues ?? createOtherLeaguesState(finalSeason.leagueId),
+    finalSeason.otherLeagues ??
+      createOtherLeaguesState(finalSeason.leagueId, excludeIds),
     finalSeason.totalRounds,
     finalSeason.totalRounds,
+    Math.random,
+    excludeIds,
   );
 
   const uclQualifiedSummary = buildFiveLeagueUclQualifiers({
@@ -581,11 +605,6 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
   );
 
   const finalRank = getUserRank(finalSeason.standings, USER_CLUB_ID);
-  const excludeIds = new Set<string>([
-    ...filledStarters.map((p) => p.id),
-    ...filledBench.map((p) => p.id),
-    ...(finalSeason.departedPlayerIds ?? []),
-  ]);
 
   let finalUcl = finalSeason.ucl;
   let finalUclPlayerStats = finalSeason.uclPlayerStats;
@@ -605,6 +624,7 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
       filledStarters,
       chem.total,
       state.manager.traitId,
+      chem.slotSynergies,
     );
     const userClubEntry = buildUserClubEntry(
       state.userClub,
@@ -957,10 +977,17 @@ function commitLiveMatchResult(
     USER_CLUB_ID,
   );
 
+  const excludeIds = new Set<string>([
+    ...filledStarters.map((p) => p.id),
+    ...filledBench.map((p) => p.id),
+    ...(season.departedPlayerIds ?? []),
+  ]);
   const syncedOtherLeagues = advanceOtherLeaguesToProgress(
-    season.otherLeagues ?? createOtherLeaguesState(season.leagueId),
+    season.otherLeagues ?? createOtherLeaguesState(season.leagueId, excludeIds),
     nextRound,
     season.totalRounds,
+    Math.random,
+    excludeIds,
   );
 
   let nextSeason: SeasonState = {
@@ -1534,6 +1561,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
       );
       const userClubEntry = buildUserClubEntry(
         state.userClub,
@@ -1587,7 +1615,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         totalRounds: league.totalRounds,
         transferWindows: league.transferWindows,
         standings,
-        otherLeagues: createOtherLeaguesState(league.id),
+        otherLeagues: createOtherLeaguesState(league.id, userSquadIds),
         lastUserMatch: null,
         liveHalftime: null,
         userMatchHistory: [],
@@ -1648,6 +1676,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
       );
 
       let userFixture: SeasonState['fixtures'][number] | null = null;
@@ -1755,7 +1784,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           tactic: activeTactic,
           chemistry: chem.total,
           ratings,
+          slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
         },
       });
@@ -1821,6 +1852,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
       );
 
       const activeClubs =
@@ -1873,7 +1905,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           tactic: secondHalfTactic,
           chemistry: chem.total,
           ratings,
+          slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          competition: halftime.competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
           halftimeSubIds: subPlayerIds,
           firstHalfStarters,
@@ -2005,6 +2039,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
       );
 
       const activeClubs =
@@ -2062,7 +2097,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           tactic: userTactic,
           chemistry: chem.total,
           ratings,
+          slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          competition: halftime.competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
           halftimeSubIds,
           firstHalfStarters,
@@ -2444,6 +2481,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           filledStarters,
           chem.total,
           state.manager.traitId,
+          chem.slotSynergies,
         );
         const syncedUcl = {
           ...ucl,
@@ -2468,7 +2506,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           tactic: activeTactic,
           chemistry: chem.total,
           ratings,
+          slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          competition: 'ucl' as const,
           allowAutoSubs: true,
         };
 
@@ -3164,6 +3204,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           prevTrackers.signedUnder20PctSuccess || target.successChance <= 20,
       };
 
+      const nextOtherLeagues = syncTransferToOtherLeagues({
+        otherLeagues: state.season.otherLeagues,
+        signedPlayerId: incomingPlayer.id,
+        excludeIds: globalExcludeIds,
+      });
+
       const swapSuffix = swappedToOriginClub
         ? ` (${outPlayer.name} ↔ ${swappedToOriginClub.name} 스왑)`
         : ` (${outPlayer.name} 방출)`;
@@ -3175,6 +3221,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         season: {
           ...state.season,
           aiRosters: nextAiRosters,
+          otherLeagues: nextOtherLeagues,
           departedPlayerIds: nextDepartedPlayerIds,
           allPlayerStats: nextStats,
           cupPlayerStats: nextCupStats,
@@ -3341,6 +3388,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
       );
       const syncedUcl = {
         ...state.season.ucl,
@@ -3369,7 +3417,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           tactic: activeTactic,
           chemistry: chem.total,
           ratings,
+          slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          competition: 'ucl',
           allowAutoSubs: true,
         },
       });
@@ -3441,6 +3491,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
       );
       const syncedUcl = {
         ...state.season.ucl,
@@ -3469,7 +3520,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           tactic: activeTactic,
           chemistry: chem.total,
           ratings,
+          slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          competition: 'ucl',
           allowAutoSubs: true,
         },
       });
@@ -3958,8 +4011,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
         state.starters,
         chemistry.total,
         state.manager.traitId,
+        chemistry.slotSynergies,
       ),
-    [state.formation, state.starters, chemistry.total, state.manager.traitId],
+    [
+      state.formation,
+      state.starters,
+      chemistry.total,
+      chemistry.slotSynergies,
+      state.manager.traitId,
+    ],
   );
 
   // Real-time 24 Hidden Achievements evaluation + instant unlock toast notifications

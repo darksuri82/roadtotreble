@@ -61,18 +61,74 @@ export function TeamAnalyticsTab({
       {/* Top KPI Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 tabular-nums">
         <div className="rounded-xl border border-slate-800 bg-[#111822] p-4">
-          <div className="text-[11px] text-slate-400">최종 성적 · 승점</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="font-display text-2xl font-bold text-amber-300">
-              {t.rankLabel ?? (t.finalRank > 0 ? `${t.finalRank}위` : '-')}
-            </span>
-            <span className="font-display text-lg font-bold text-white">
-              {t.points}점
-            </span>
-          </div>
-          <div className="mt-1 text-[11px] text-slate-400">
-            {t.won}승 {t.drawn}무 {t.lost}패 ({t.played}경기)
-          </div>
+          {t.competitionScope === 'combined' ? (
+            <>
+              <div className="text-[11px] text-slate-400">
+                전체 대회 전적 · 승률
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="font-display text-2xl font-bold text-amber-300">
+                  {(
+                    t.winRatePct ??
+                    (t.played > 0 ? Math.round((t.won / t.played) * 1000) / 10 : 0)
+                  ).toFixed(1)}
+                  %
+                </span>
+                {typeof t.leaguePoints === 'number' && (
+                  <span className="text-xs font-bold text-emerald-300">
+                    리그 승점 {t.leaguePoints}점
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">
+                총 {t.won}승 {t.drawn}무 {t.lost}패 ({t.played}경기)
+              </div>
+            </>
+          ) : t.competitionScope === 'cup' || t.competitionScope === 'ucl' ? (
+            <>
+              <div className="text-[11px] text-slate-400">
+                대회 최종 성적 · 승률
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="font-display text-2xl font-bold text-amber-300">
+                  {t.rankLabel ?? '-'}
+                </span>
+                <span className="font-display text-sm font-bold text-emerald-300">
+                  승률{' '}
+                  {(
+                    t.winRatePct ??
+                    (t.played > 0 ? Math.round((t.won / t.played) * 1000) / 10 : 0)
+                  ).toFixed(1)}
+                  %
+                </span>
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">
+                {t.won}승 {t.drawn}무 {t.lost}패 ({t.played}경기)
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-[11px] text-slate-400">
+                정규 리그 순위 · 리그 승점
+              </div>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="font-display text-2xl font-bold text-amber-300">
+                  {t.rankLabel ?? (t.finalRank > 0 ? `${t.finalRank}위` : '-')}
+                </span>
+                <span className="font-display text-lg font-bold text-white">
+                  {t.points}점
+                </span>
+              </div>
+              <div className="mt-1 text-[11px] text-slate-400">
+                {t.won}승 {t.drawn}무 {t.lost}패 ({t.played}경기 · 승률{' '}
+                {(
+                  t.winRatePct ??
+                  (t.played > 0 ? Math.round((t.won / t.played) * 1000) / 10 : 0)
+                ).toFixed(1)}
+                %)
+              </div>
+            </>
+          )}
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-[#111822] p-4">

@@ -251,6 +251,14 @@ export function SeasonSummary() {
     ? getUserRank(season.standings, USER_CLUB_ID)
     : 1;
 
+  const pureLeaguePoints = useMemo(() => {
+    if (!season) return 0;
+    return (
+      season.standings.find((r) => r.teamId === USER_CLUB_ID || r.isUser)
+        ?.points ?? 0
+    );
+  }, [season]);
+
   const combinedTeamAnalytics = useMemo(() => {
     if (!season) return null;
     return computeMatchesOnlyAnalytics({
@@ -263,8 +271,10 @@ export function SeasonSummary() {
       userClubId: USER_CLUB_ID,
       finalRank: leagueRankForAnalytics,
       rankLabel: `리그 ${leagueRankForAnalytics}위`,
+      competitionScope: 'combined',
+      leaguePoints: pureLeaguePoints,
     });
-  }, [season, allKnownClubs, leagueRankForAnalytics]);
+  }, [season, allKnownClubs, leagueRankForAnalytics, pureLeaguePoints]);
 
   const leagueTeamAnalytics = useMemo(() => {
     if (!season) return null;
@@ -284,6 +294,7 @@ export function SeasonSummary() {
       userClubId: USER_CLUB_ID,
       finalRank: leagueRankForAnalytics,
       rankLabel: getUserCupResultLabel(season.cup, USER_CLUB_ID),
+      competitionScope: 'cup',
     });
   }, [season, leagueRankForAnalytics]);
 
@@ -295,6 +306,7 @@ export function SeasonSummary() {
       userClubId: USER_CLUB_ID,
       finalRank: leagueRankForAnalytics,
       rankLabel: getUserUclResultLabel(season.ucl, USER_CLUB_ID),
+      competitionScope: 'ucl',
     });
   }, [season, allKnownClubs, leagueRankForAnalytics]);
 

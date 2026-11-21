@@ -1,6 +1,7 @@
 import {
   ACTIVE_PLAYERS,
   buildAiClubRoster,
+  getLeagueById,
   LEGEND_PLAYERS,
 } from '../engine/dataLoader';
 import { USER_CLUB_ID } from '../engine/matchEngine';
@@ -22,6 +23,7 @@ export interface PlayerCompetitionStatsBreakdown {
   total: PlayerSeasonStats | null;
   transferHistory: PlayerTransferRecord[];
   currentClubName?: string;
+  clubSeasonHonors?: string[];
 }
 
 const ALL_REAL_BY_ID: Map<string, Player> = (() => {
@@ -48,9 +50,8 @@ function fallbackPlaystylesForPosition(sub: SubPosition): PlaystyleId[] {
 }
 
 /**
- * Resolves a Player object by `playerId` from user squad, season AI rosters, UCL AI rosters,
- * static 2026-27/Legend/UCL databases, or falls back to a synthesized Player from `fallbackStats`
- * so clicking any player name anywhere always opens a complete PlayerDetailModal.
+ * Resolves a Player object by `playerId` from user squad, season AI rosters, other 4 Big-5 leagues'
+ * rosters, UCL AI rosters, static 2026-27/Legend/UCL databases, or falls back to `fallbackStats`.
  */
 export function resolvePlayerById(params: {
   playerId: string;
@@ -71,6 +72,15 @@ export function resolvePlayerById(params: {
     for (const roster of Object.values(season.aiRosters)) {
       const found = roster.find((p) => p.id === playerId);
       if (found) return found;
+    }
+    if (season.otherLeagues) {
+      for (const bg of Object.values(season.otherLeagues)) {
+        if (!bg?.aiRosters) continue;
+        for (const roster of Object.values(bg.aiRosters)) {
+          const found = roster.find((p) => p.id === playerId);
+          if (found) return found;
+        }
+      }
     }
     if (season.ucl) {
       for (const roster of Object.values(season.ucl.aiRosters)) {
@@ -159,18 +169,101 @@ function mergeTwoStats(
   };
 }
 
+function collectClubSeasonHonors(
+  teamId: string | undefined,
+  season: SeasonState | null | undefined,
+): string[] {
+  if (!teamId || !season) return [];
+  const honors: string[] = [];
+
+  // User league placement
+  const uIdx = season.standings.findIndex((r) => r.teamId === teamId);
+  if (uIdx >= 0) {
+    const leagueMeta = getLeagueById(season.leagueId);
+    if (uIdx === 0) honors.push(`${leagueMeta.koreanName} 우승 (1위)`);
+    else honors.push(`${leagueMeta.koreanName} ${uIdx + 1}위`);
+  }
+  if (season.cup?.completed && season.cup.championTeamId === teamId) {
+    honors.push(`${season.cup.meta.koreanName} 우승`);
+  }
+
+  // Other 4 Big-5 leagues placement + cup
+  if (season.otherLeagues) {
+    for (const bg of Object.values(season.otherLeagues)) {
+      if (!bg) continue;
+      const idx = bg.standings.findIndex((r) => r.teamId === teamId);
+      if (idx >= 0) {
+        const meta = getLeagueById(bg.leagueId);
+        if (idx === 0) honors.push(`${meta.koreanName} 우승 (1위)`);
+        else honors.push(`${meta.koreanName} ${idx + 1}위`);
+      }
+      if (bg.cup?.completed && bg.cup.championTeamId === teamId) {
+        honors.push(`${bg.cup.meta.koreanName} 우승`);
+      }
+    }
+  }
+
+  // UCL honors
+  if (season.ucl?.completed) {
+    if (season.ucl.championTeamId === teamId) {
+      honors.push('UEFA 챔피언스리그 우승');
+    } else if (
+      season.ucl.ties.final.some(
+        (t) => t.teamAId === teamId || t.teamBId === teamId,
+      )
+    ) {
+      honors.push('UCL 준우승');
+    } else if (
+      season.ucl.ties.sf.some(
+        (t) => t.teamAId === teamId || t.teamBId === teamId,
+      )
+    ) {
+      honors.push('UCL 4강');
+    } else if (
+      season.ucl.ties.qf.some(
+        (t) => t.teamAId === teamId || t.teamBId === teamId,
+      )
+    ) {
+      honors.push('UCL 8강');
+    } else if (
+      season.ucl.ties.r16.some(
+        (t) => t.teamAId === teamId || t.teamBId === teamId,
+      )
+    ) {
+      honors.push('UCL 16강');
+    }
+  }
+
+  return honors;
+}
+
 /**
- * Builds the 4-row competition breakdown (League / Domestic Cup / UCL / Season Total)
- * and deduplicated mid-season transfer history for a player.
+ * Builds the 4-row competition breakdown (League / Domestic Cup / UCL / Season Total),
+ * club season honors, and deduplicated mid-season transfer history for ANY player across all 5 leagues.
  */
 export function buildPlayerCompetitionBreakdown(
   playerId: string,
   season: SeasonState | null | undefined,
   fallbackStats?: PlayerSeasonStats | null,
 ): PlayerCompetitionStatsBreakdown {
-  const leagueRaw = getPlayerStatById(season?.allPlayerStats, playerId) ?? null;
-  const cupRaw = getPlayerStatById(season?.cupPlayerStats, playerId) ?? null;
+  let leagueRaw = getPlayerStatById(season?.allPlayerStats, playerId) ?? null;
+  let cupRaw = getPlayerStatById(season?.cupPlayerStats, playerId) ?? null;
   const uclRaw = getPlayerStatById(season?.uclPlayerStats, playerId) ?? null;
+
+  // Also merge stats from the 4 background Big-5 leagues (handles both foreign stars & cross-league transfers!)
+  if (season?.otherLeagues) {
+    for (const bg of Object.values(season.otherLeagues)) {
+      if (!bg) continue;
+      const bgLeague = getPlayerStatById(bg.playerStats, playerId);
+      if (bgLeague && bgLeague.appearances > 0) {
+        leagueRaw = mergeTwoStats(bgLeague, leagueRaw);
+      }
+      const bgCup = getPlayerStatById(bg.cupPlayerStats, playerId);
+      if (bgCup && bgCup.appearances > 0) {
+        cupRaw = mergeTwoStats(bgCup, cupRaw);
+      }
+    }
+  }
 
   const league = leagueRaw && leagueRaw.appearances > 0 ? leagueRaw : null;
   const cup = cupRaw && cupRaw.appearances > 0 ? cupRaw : null;
@@ -178,14 +271,6 @@ export function buildPlayerCompetitionBreakdown(
 
   let total = mergeTwoStats(mergeTwoStats(league, cup), ucl);
   if (!total && fallbackStats && fallbackStats.appearances > 0) {
-    total = fallbackStats;
-  } else if (
-    total &&
-    fallbackStats &&
-    fallbackStats.appearances > total.appearances &&
-    !league
-  ) {
-    // Player from another Big-5 league in Ballon d'Or / World Best XI (includes synthetic domestic stats)
     total = fallbackStats;
   }
 
@@ -209,7 +294,15 @@ export function buildPlayerCompetitionBreakdown(
     }
   }
 
-  const latestStat = uclRaw ?? cupRaw ?? leagueRaw ?? fallbackStats ?? null;
+  const latestStat =
+    (league?.isUserTeam ? league : null) ??
+    ucl ??
+    cup ??
+    league ??
+    fallbackStats ??
+    null;
+  const clubSeasonHonors = collectClubSeasonHonors(latestStat?.teamId, season);
+
   return {
     league,
     cup,
@@ -217,6 +310,7 @@ export function buildPlayerCompetitionBreakdown(
     total,
     transferHistory,
     currentClubName: latestStat?.teamName || undefined,
+    clubSeasonHonors,
   };
 }
 
@@ -247,6 +341,12 @@ export function resolveClubRoster(params: {
   }
   if (season?.aiRosters[clubId] && season.aiRosters[clubId].length > 0) {
     return season.aiRosters[clubId];
+  }
+  if (season?.otherLeagues) {
+    for (const bg of Object.values(season.otherLeagues)) {
+      const bgRoster = bg?.aiRosters?.[clubId];
+      if (bgRoster && bgRoster.length > 0) return bgRoster;
+    }
   }
   if (
     season?.ucl?.aiRosters[clubId] &&

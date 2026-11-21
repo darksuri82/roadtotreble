@@ -119,18 +119,27 @@ export function computeTeamSeasonAnalytics(params: {
   }
 
   const played = ordered.length || userRow?.played || 0;
+  const won = userRow?.won ?? homeRecord.won + awayRecord.won;
+  const drawn = userRow?.drawn ?? homeRecord.drawn + awayRecord.drawn;
+  const lost = userRow?.lost ?? homeRecord.lost + awayRecord.lost;
   const goalsFor = userRow?.goalsFor ?? homeRecord.gf + awayRecord.gf;
   const goalsAgainst = userRow?.goalsAgainst ?? homeRecord.ga + awayRecord.ga;
   const roundedXg = Math.round(totalXg * 100) / 100;
   const roundedXga = Math.round(totalXga * 100) / 100;
+  const pureLeaguePoints = userRow?.points ?? 0;
+  const winRatePct =
+    played > 0 ? Math.round((won / played) * 1000) / 10 : 0;
 
   return {
+    competitionScope: 'league',
     finalRank,
-    points: userRow?.points ?? 0,
+    points: pureLeaguePoints,
+    leaguePoints: pureLeaguePoints,
+    winRatePct,
     played,
-    won: userRow?.won ?? homeRecord.won + awayRecord.won,
-    drawn: userRow?.drawn ?? homeRecord.drawn + awayRecord.drawn,
-    lost: userRow?.lost ?? homeRecord.lost + awayRecord.lost,
+    won,
+    drawn,
+    lost,
     homeRecord,
     awayRecord,
     goalsFor,
@@ -280,6 +289,7 @@ export function mergePlayerStatsMaps(
 
 /**
  * Computes team match analytics solely from a MatchResult[] list (for Domestic Cup, UCL, or Combined Season).
+ * Strictly NEVER aggregates knockout/cup/UCL results into League Points!
  */
 export function computeMatchesOnlyAnalytics(params: {
   matches: MatchResult[];
@@ -287,6 +297,8 @@ export function computeMatchesOnlyAnalytics(params: {
   userClubId?: string;
   finalRank?: number;
   rankLabel?: string;
+  competitionScope?: 'cup' | 'ucl' | 'combined';
+  leaguePoints?: number | null;
 }): TeamSeasonAnalytics {
   const {
     matches,
@@ -294,6 +306,8 @@ export function computeMatchesOnlyAnalytics(params: {
     userClubId = USER_CLUB_ID,
     finalRank,
     rankLabel,
+    competitionScope = 'combined',
+    leaguePoints = null,
   } = params;
   const synthetic = computeTeamSeasonAnalytics({
     standings: [],
@@ -304,14 +318,22 @@ export function computeMatchesOnlyAnalytics(params: {
   const won = synthetic.homeRecord.won + synthetic.awayRecord.won;
   const drawn = synthetic.homeRecord.drawn + synthetic.awayRecord.drawn;
   const lost = synthetic.homeRecord.lost + synthetic.awayRecord.lost;
+  const played = won + drawn + lost;
   const gf = synthetic.homeRecord.gf + synthetic.awayRecord.gf;
   const ga = synthetic.homeRecord.ga + synthetic.awayRecord.ga;
+  const winRatePct =
+    played > 0 ? Math.round((won / played) * 1000) / 10 : 0;
 
   return {
     ...synthetic,
+    competitionScope,
     finalRank: finalRank && finalRank > 0 ? finalRank : synthetic.finalRank,
     rankLabel,
-    points: won * 3 + drawn,
+    // Strictly regular league points only (never won*3+drawn across cup/UCL!)
+    points: competitionScope === 'combined' ? (leaguePoints ?? 0) : 0,
+    leaguePoints: leaguePoints ?? null,
+    winRatePct,
+    played,
     won,
     drawn,
     lost,

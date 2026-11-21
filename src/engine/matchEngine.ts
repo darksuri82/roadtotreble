@@ -1,5 +1,10 @@
 import { FORMATIONS } from '../data/formations';
-import type { FormationId, ManagerTraitId, TeamRatings } from '../types/game';
+import type {
+  FormationId,
+  ManagerTraitId,
+  PlayerSlotSynergy,
+  TeamRatings,
+} from '../types/game';
 import type {
   Club,
   ExtraTimeInfo,
@@ -8,6 +13,7 @@ import type {
   HighlightPatternId,
   LiveHalftimeState,
   LiveSubRecord,
+  MatchCompetitionType,
   MatchEvent,
   MatchPlayerRating,
   MatchResult,
@@ -16,6 +22,7 @@ import type {
   TacticId,
 } from '../types/league';
 import type { Player, SubPosition } from '../types/player';
+import { applySlotSynergiesToStarters } from './chemistryEngine';
 import { getPrimaryPosition } from './positionEngine';
 import {
   computeLineupStaminaImpact,
@@ -39,7 +46,9 @@ export interface UserMatchContext {
   tactic: TacticId;
   chemistry: number;
   ratings: TeamRatings;
+  slotSynergies?: Record<number, PlayerSlotSynergy>;
   managerTraitId: ManagerTraitId | null;
+  competition?: MatchCompetitionType;
   opponentRank?: number; // 1..20 (for big_game_hunter)
   halftimeAdjusted?: boolean;
   halftimeSubsMade?: number;
@@ -139,59 +148,59 @@ function computeManagerTraitModifiers(params: {
   switch (traitId) {
     case 'tiki_taka':
       if (userTactic === 'possession') {
-        out.attDelta += 1.0;
-        out.midDelta += 1.5;
-        out.defDelta += 1.0;
+        out.attDelta += 0.85;
+        out.midDelta += 1.25;
+        out.defDelta += 0.85;
         out.possessionBonus += 3;
       }
       break;
     case 'gegenpress_guru':
       if (userTactic === 'gegenpressing') {
-        out.attDelta += 1.4;
-        out.midDelta += 1.3;
-        out.defDelta += 1.0;
+        out.attDelta += 1.15;
+        out.midDelta += 1.05;
+        out.defDelta += 0.85;
       }
       break;
     case 'catenaccio':
       if (userTactic === 'counter') {
-        out.defDelta += 2.2;
-        out.oppXgPenalty += 0.1;
+        out.defDelta += 1.8;
+        out.oppXgPenalty += 0.08;
       } else {
-        out.defDelta += 0.8;
+        out.defDelta += 0.6;
       }
       break;
     case 'wing_bomber':
       if (userTactic === 'wingplay') {
-        out.attDelta += 1.8;
-        out.xgBonus += 0.1;
+        out.attDelta += 1.4;
+        out.xgBonus += 0.08;
       }
       break;
     case 'halftime_wizard':
       if (isSecondHalf && halftimeAdjusted) {
         out.halftimeTacticMultiplier = 1.5;
-        out.xgBonus += 0.12;
+        out.xgBonus += 0.1;
       }
       break;
     case 'big_game_hunter':
-      if ((opponentRank !== undefined && opponentRank <= 6) || oppAvgOvr >= 83) {
+      if ((opponentRank !== undefined && opponentRank <= 6) || oppAvgOvr >= 84) {
+        out.attDelta += 1.4;
+        out.midDelta += 1.4;
+        out.defDelta += 1.4;
+      }
+      break;
+    case 'set_piece_master':
+      out.xgBonus += 0.13;
+      break;
+    case 'underdog_killer':
+      if (userAvgOvr < oppAvgOvr) {
         out.attDelta += 1.8;
         out.midDelta += 1.8;
         out.defDelta += 1.8;
       }
       break;
-    case 'set_piece_master':
-      out.xgBonus += 0.18;
-      break;
-    case 'underdog_killer':
-      if (userAvgOvr < oppAvgOvr) {
-        out.attDelta += 2.2;
-        out.midDelta += 2.2;
-        out.defDelta += 2.2;
-      }
-      break;
     case 'galactico_manager': {
       const stars = starters.filter((p) => p.isLegend || p.ovr >= 91).length;
-      const bonus = Math.min(2.2, stars * 0.45);
+      const bonus = Math.min(1.8, stars * 0.35);
       out.attDelta += bonus;
       out.midDelta += bonus;
       out.defDelta += bonus;
@@ -204,25 +213,25 @@ function computeManagerTraitModifiers(params: {
         ),
       ).length;
       if (directFw > 0) {
-        out.attDelta += Math.min(1.8, 0.8 + directFw * 0.35);
+        out.attDelta += Math.min(1.4, 0.6 + directFw * 0.28);
       }
       break;
     }
     case 'defensive_architect':
-      out.defDelta += 1.6;
-      out.oppXgPenalty += 0.14;
+      out.defDelta += 1.2;
+      out.oppXgPenalty += 0.1;
       break;
     case 'midfield_maestro':
-      out.midDelta += 1.8;
+      out.midDelta += 1.4;
       out.possessionBonus += 4;
       break;
     case 'super_sub':
       if (isSecondHalf && halftimeSubsMade > 0) {
-        out.attDelta += 2.0;
-        out.midDelta += 1.8;
-        out.defDelta += 1.5;
+        out.attDelta += 1.7;
+        out.midDelta += 1.5;
+        out.defDelta += 1.2;
       } else if (!isSecondHalf) {
-        out.attDelta += 0.5;
+        out.attDelta += 0.35;
       }
       break;
     case 'total_football':
@@ -374,13 +383,21 @@ function resolveMatchStrengths(params: {
   const tacticMatchHome = evaluateTacticMatchup(homeTactic, awayTactic);
   const formMatchHome = evaluateFormationMatchup(homeFormation, awayFormation);
 
+  const userSynergyRoster =
+    userContext && userContext.starters.length > 0
+      ? applySlotSynergiesToStarters(
+          userContext.starters,
+          userContext.slotSynergies,
+        )
+      : [];
+
   const effectiveHomeRoster =
-    isHomeUser && userContext && userContext.starters.length > 0
-      ? userContext.starters
+    isHomeUser && userSynergyRoster.length > 0
+      ? userSynergyRoster
       : homeRoster;
   const effectiveAwayRoster =
-    isAwayUser && userContext && userContext.starters.length > 0
-      ? userContext.starters
+    isAwayUser && userSynergyRoster.length > 0
+      ? userSynergyRoster
       : awayRoster;
 
   const homeStyleMatch =
@@ -411,6 +428,24 @@ function resolveMatchStrengths(params: {
       ? computeIndividualRosterImpact(effectiveAwayRoster)
       : null;
 
+  // Fair AI Club Coaching & Tactical Organization Bonus:
+  // Real elite clubs also have tactical cohesion, chemistry, and squad coaching!
+  const computeAiClubOrgBonus = (club: Club): number => {
+    const avg = (club.att + club.mid + club.def) / 3;
+    let bonus = 0;
+    if (avg >= 86) bonus = 1.5;
+    else if (avg >= 83) bonus = 1.05;
+    else if (avg >= 80) bonus = 0.6;
+    else if (avg >= 77) bonus = 0.25;
+    if (userContext?.competition === 'ucl' && avg >= 82) {
+      bonus += 0.5;
+    }
+    return bonus;
+  };
+
+  const homeAiOrgBonus = isHomeUser ? 0 : computeAiClubOrgBonus(homeClub);
+  const awayAiOrgBonus = isAwayUser ? 0 : computeAiClubOrgBonus(awayClub);
+
   const homeBase =
     isHomeUser && userContext
       ? {
@@ -418,7 +453,11 @@ function resolveMatchStrengths(params: {
           mid: userContext.ratings.effectiveMid,
           def: userContext.ratings.effectiveDef,
         }
-      : { att: homeClub.att, mid: homeClub.mid, def: homeClub.def };
+      : {
+          att: homeClub.att + homeAiOrgBonus,
+          mid: homeClub.mid + homeAiOrgBonus,
+          def: homeClub.def + homeAiOrgBonus,
+        };
 
   const awayBase =
     isAwayUser && userContext
@@ -427,7 +466,11 @@ function resolveMatchStrengths(params: {
           mid: userContext.ratings.effectiveMid,
           def: userContext.ratings.effectiveDef,
         }
-      : { att: awayClub.att, mid: awayClub.mid, def: awayClub.def };
+      : {
+          att: awayClub.att + awayAiOrgBonus,
+          mid: awayClub.mid + awayAiOrgBonus,
+          def: awayClub.def + awayAiOrgBonus,
+        };
 
   const homeAvgOvr = (homeBase.att + homeBase.mid + homeBase.def) / 3;
   const awayAvgOvr = (awayBase.att + awayBase.mid + awayBase.def) / 3;
@@ -447,7 +490,11 @@ function resolveMatchStrengths(params: {
         })
       : null;
 
-  // Stamina impact relative to AI baseline fatigue (keeps 20-season calibration centered while rewarding STA + subs)
+  // Stamina impact relative to AI baseline fatigue (elite AI clubs with deep benches stay fresher in 2nd half)
+  const oppRawAvg = isHomeUser
+    ? (awayClub.att + awayClub.mid + awayClub.def) / 3
+    : (homeClub.att + homeClub.mid + homeClub.def) / 3;
+
   const userStaminaMod =
     (isHomeUser || isAwayUser) && userContext && userContext.starters.length > 0
       ? (() => {
@@ -458,11 +505,12 @@ function resolveMatchStrengths(params: {
             minute: evalMinute,
             enteredAtMinute,
           });
-          const aiBaseline = evalMinute >= 60 ? -1.05 : -0.15;
+          const aiBaseline =
+            evalMinute >= 60 ? (oppRawAvg >= 85 ? -0.75 : -0.95) : -0.15;
           return {
-            attDelta: clamp((impact.attDelta - aiBaseline) * 0.65, -4.2, 2.2),
-            midDelta: clamp((impact.midDelta - aiBaseline) * 0.65, -4.2, 2.2),
-            defDelta: clamp((impact.defDelta - aiBaseline) * 0.65, -4.2, 2.2),
+            attDelta: clamp((impact.attDelta - aiBaseline) * 0.65, -4.2, 1.8),
+            midDelta: clamp((impact.midDelta - aiBaseline) * 0.65, -4.2, 1.8),
+            defDelta: clamp((impact.defDelta - aiBaseline) * 0.65, -4.2, 1.8),
             freshSubXgBonus: isSecondHalf ? impact.freshSubXgBonus : 0,
             oppXgFatigueLeak:
               impact.avgStaminaPct < 48
@@ -477,7 +525,7 @@ function resolveMatchStrengths(params: {
   // Halftime tactical adaptation boost in 2nd half (makes reading the game at HT rewarding)
   const htSwingMultiplier =
     isSecondHalf && userContext?.halftimeAdjusted
-      ? 1.35 * (userTraitMod?.halftimeTacticMultiplier ?? 1.0)
+      ? 1.3 * (userTraitMod?.halftimeTacticMultiplier ?? 1.0)
       : 1.0;
 
   const homeTacticTotal =
@@ -584,10 +632,8 @@ function resolveMatchStrengths(params: {
 
 /**
  * Calibrated Exponential Poisson expected goals model:
- * - Scales cleanly across large OVR gaps without unrealistic 105-point AI seasons.
- * - Ensures OVR 89-91 dominates (~85-98 pts), 84-86 fights Top 2-4 (~70-82 pts),
- *   78-80 finishes mid-table (~46-56 pts), and full tactical+chemistry synergy (+5~6 OVR)
- *   genuinely enables 83-85 OVR teams to upset mismatched 88-89 OVR giants.
+ * - Rewards tailored tactical counters, playstyle matchups, and individual synergy OVR.
+ * - Keeps title races competitive against organized AI giants and tough away grounds.
  */
 export function computeExpectedGoals(
   home: EffectiveTeamStrength,
@@ -602,12 +648,12 @@ export function computeExpectedGoals(
     kAtt * (away.att - home.def) + kMid * (away.mid - home.mid);
 
   const lambdaHome = clamp(
-    1.38 * Math.exp(homeExp) + home.xgBonus - away.oppXgPenalty,
+    1.40 * Math.exp(homeExp) + home.xgBonus - away.oppXgPenalty,
     0.18,
     4.1,
   );
   const lambdaAway = clamp(
-    1.15 * Math.exp(awayExp) + away.xgBonus - home.oppXgPenalty,
+    1.11 * Math.exp(awayExp) + away.xgBonus - home.oppXgPenalty,
     0.16,
     3.85,
   );
@@ -2906,6 +2952,8 @@ export function simulateExtraTimeAndPenalties(params: {
   const resolved = resolveMatchStrengths({
     homeClub,
     awayClub,
+    homeRoster,
+    awayRoster,
     isHomeUser,
     isAwayUser,
     userContext,
@@ -3120,5 +3168,480 @@ export function simulateExtraTimeAndPenalties(params: {
     momPlayerId: mom?.playerId ?? baseResult.momPlayerId,
     momPlayerName: mom?.playerName ?? baseResult.momPlayerName,
     momRating: mom?.rating ?? baseResult.momRating,
+  };
+}
+
+/**
+ * Simulates Extra Time 1st Half (91'~105') only, pausing at 105' ET Halftime
+ * so the manager can adjust tactics/formation or make an additional substitution before 106'~120'.
+ */
+export function simulateExtraTimeFirstHalf(params: {
+  baseResult: MatchResult;
+  homeClub: Club;
+  awayClub: Club;
+  homeRoster: Player[];
+  awayRoster: Player[];
+  userContext?: UserMatchContext;
+  extraTimeSubIds?: string[];
+  rng?: () => number;
+}): MatchResult {
+  const {
+    baseResult,
+    homeClub,
+    awayClub,
+    homeRoster,
+    awayRoster,
+    userContext,
+    extraTimeSubIds = [],
+    rng = Math.random,
+  } = params;
+
+  const home90 = baseResult.homeGoals90 ?? baseResult.homeGoals;
+  const away90 = baseResult.awayGoals90 ?? baseResult.awayGoals;
+
+  const isHomeUser = Boolean(
+    userContext && baseResult.homeTeamId === userContext.userClubId,
+  );
+  const isAwayUser = Boolean(
+    userContext && baseResult.awayTeamId === userContext.userClubId,
+  );
+
+  const enteredAtMinute: Record<string, number> = {};
+  const freshSubEntryMap = new Map<string, number>();
+  for (const id of userContext?.halftimeSubIds ?? []) {
+    enteredAtMinute[id] = 45;
+    freshSubEntryMap.set(id, 45);
+  }
+  for (const rec of userContext?.liveSubs ?? []) {
+    enteredAtMinute[rec.inPlayerId] = rec.minute;
+    freshSubEntryMap.set(rec.inPlayerId, rec.minute);
+  }
+  for (const id of extraTimeSubIds) {
+    enteredAtMinute[id] = 90;
+    freshSubEntryMap.set(id, 90);
+  }
+
+  const resolved = resolveMatchStrengths({
+    homeClub,
+    awayClub,
+    homeRoster,
+    awayRoster,
+    isHomeUser,
+    isAwayUser,
+    userContext,
+    isSecondHalf: true,
+    evalMinute: 98,
+    enteredAtMinute,
+  });
+
+  const { lambdaHome, lambdaAway } = computeExpectedGoals(
+    resolved.home,
+    resolved.away,
+  );
+
+  // 15 minutes of ET 1st half (~0.155x of 90-min xG)
+  const homeEt1Xg = Math.round(lambdaHome * 0.155 * 100) / 100;
+  const awayEt1Xg = Math.round(lambdaAway * 0.155 * 100) / 100;
+
+  const homeEt1Goals = samplePoisson(homeEt1Xg, rng);
+  const awayEt1Goals = samplePoisson(awayEt1Xg, rng);
+
+  const et1Events: MatchEvent[] = [
+    {
+      minute: 91,
+      half: 2,
+      type: 'kickoff',
+      teamId: homeClub.id,
+      description: '⏱️ 연장전 전반 킥오프! 체력 한계의 승부가 시작됩니다.',
+    },
+    ...generateHalfGoalEvents({
+      goals: homeEt1Goals,
+      half: 2,
+      club: homeClub,
+      roster: homeRoster,
+      tactic: resolved.homeTactic,
+      managerTraitId: userContext?.managerTraitId,
+      isUser: isHomeUser,
+      minStart: 92,
+      maxMinute: 104,
+      freshSubEntryMinute: isHomeUser ? freshSubEntryMap : undefined,
+      rng,
+    }),
+    ...generateHalfGoalEvents({
+      goals: awayEt1Goals,
+      half: 2,
+      club: awayClub,
+      roster: awayRoster,
+      tactic: resolved.awayTactic,
+      managerTraitId: userContext?.managerTraitId,
+      isUser: isAwayUser,
+      minStart: 92,
+      maxMinute: 104,
+      freshSubEntryMinute: isAwayUser ? freshSubEntryMap : undefined,
+      rng,
+    }),
+  ];
+
+  const flavor1 = generateHalfFlavorEvents({
+    half: 2,
+    homeClub,
+    awayClub,
+    homeRoster,
+    awayRoster,
+    homeTactic: resolved.homeTactic,
+    awayTactic: resolved.awayTactic,
+    isHomeUser,
+    isAwayUser,
+    managerTraitId: userContext?.managerTraitId,
+    minStart: 93,
+    maxMinute: 104,
+    rng,
+  }).slice(0, 1);
+  et1Events.push(...flavor1);
+
+  et1Events.sort((a, b) => {
+    if (a.minute !== b.minute) return a.minute - b.minute;
+    if (a.type === 'kickoff') return -1;
+    if (b.type === 'kickoff') return 1;
+    return 0;
+  });
+
+  et1Events.push({
+    minute: 105,
+    half: 2,
+    type: 'halftime',
+    teamId: homeClub.id,
+    description: `연장 전반 종료 (${homeClub.shortName} ${home90 + homeEt1Goals} - ${away90 + awayEt1Goals} ${awayClub.shortName}). 짧은 휴식 후 연장 후반으로 이어집니다.`,
+  });
+
+  return {
+    ...baseResult,
+    homeGoals: home90 + homeEt1Goals,
+    awayGoals: away90 + awayEt1Goals,
+    homeGoals90: home90,
+    awayGoals90: away90,
+    homeTactic: resolved.homeTactic,
+    awayTactic: resolved.awayTactic,
+    homeFormation: resolved.homeFormation,
+    awayFormation: resolved.awayFormation,
+    homeXg: Math.round((baseResult.homeXg + homeEt1Xg) * 100) / 100,
+    awayXg: Math.round((baseResult.awayXg + awayEt1Xg) * 100) / 100,
+    homeShots:
+      baseResult.homeShots + Math.max(homeEt1Goals, Math.round(homeEt1Xg * 6)),
+    awayShots:
+      baseResult.awayShots + Math.max(awayEt1Goals, Math.round(awayEt1Xg * 6)),
+    homeShotsOnTarget:
+      baseResult.homeShotsOnTarget +
+      Math.max(homeEt1Goals, Math.round(homeEt1Xg * 2.4)),
+    awayShotsOnTarget:
+      baseResult.awayShotsOnTarget +
+      Math.max(awayEt1Goals, Math.round(awayEt1Xg * 2.4)),
+    extraTime: {
+      homeEtGoals: homeEt1Goals,
+      awayEtGoals: awayEt1Goals,
+      etEvents: et1Events,
+      winnerTeamId: homeClub.id,
+    },
+    events: [
+      ...baseResult.events.filter((e) => e.type !== 'fulltime'),
+      ...et1Events,
+    ],
+  };
+}
+
+/**
+ * Simulates Extra Time 2nd Half (106'~120') from a completed ET 1st Half result,
+ * reflecting any 105' ET halftime tactics/formation/substitution changes, and runs Penalty Shootout if still tied.
+ */
+export function simulateExtraTimeSecondHalfAndPenalties(params: {
+  et1Result: MatchResult;
+  homeClub: Club;
+  awayClub: Club;
+  homeRoster: Player[];
+  awayRoster: Player[];
+  userContext?: UserMatchContext;
+  aggHomeBeforeMatch?: number;
+  aggAwayBeforeMatch?: number;
+  extraTimeSubIds?: string[];
+  rng?: () => number;
+}): MatchResult {
+  const {
+    et1Result,
+    homeClub,
+    awayClub,
+    homeRoster,
+    awayRoster,
+    userContext,
+    aggHomeBeforeMatch,
+    aggAwayBeforeMatch,
+    extraTimeSubIds = [],
+    rng = Math.random,
+  } = params;
+
+  const home90 = et1Result.homeGoals90 ?? et1Result.homeGoals;
+  const away90 = et1Result.awayGoals90 ?? et1Result.awayGoals;
+  const homeEt1Goals = et1Result.extraTime?.homeEtGoals ?? 0;
+  const awayEt1Goals = et1Result.extraTime?.awayEtGoals ?? 0;
+  const et1Events = et1Result.extraTime?.etEvents ?? [];
+  const aggBeforeH = aggHomeBeforeMatch ?? 0;
+  const aggBeforeA = aggAwayBeforeMatch ?? 0;
+
+  const isHomeUser = Boolean(
+    userContext && et1Result.homeTeamId === userContext.userClubId,
+  );
+  const isAwayUser = Boolean(
+    userContext && et1Result.awayTeamId === userContext.userClubId,
+  );
+
+  const enteredAtMinute: Record<string, number> = {};
+  const freshSubEntryMap = new Map<string, number>();
+  for (const id of userContext?.halftimeSubIds ?? []) {
+    enteredAtMinute[id] = 45;
+    freshSubEntryMap.set(id, 45);
+  }
+  for (const rec of userContext?.liveSubs ?? []) {
+    enteredAtMinute[rec.inPlayerId] = rec.minute;
+    freshSubEntryMap.set(rec.inPlayerId, rec.minute);
+  }
+  for (const id of extraTimeSubIds) {
+    if (enteredAtMinute[id] === undefined) {
+      enteredAtMinute[id] = 105;
+      freshSubEntryMap.set(id, 105);
+    }
+  }
+
+  const scoreDiffHome =
+    aggBeforeH + home90 + homeEt1Goals - (aggBeforeA + away90 + awayEt1Goals);
+
+  const resolved = resolveMatchStrengths({
+    homeClub,
+    awayClub,
+    homeRoster,
+    awayRoster,
+    isHomeUser,
+    isAwayUser,
+    userContext,
+    isSecondHalf: true,
+    scoreDiffHome,
+    evalMinute: 114,
+    enteredAtMinute,
+  });
+
+  const { lambdaHome, lambdaAway } = computeExpectedGoals(
+    resolved.home,
+    resolved.away,
+  );
+
+  const homeEt2Xg = Math.round(lambdaHome * 0.16 * 100) / 100;
+  const awayEt2Xg = Math.round(lambdaAway * 0.16 * 100) / 100;
+
+  const homeEt2Goals = samplePoisson(homeEt2Xg, rng);
+  const awayEt2Goals = samplePoisson(awayEt2Xg, rng);
+
+  const et2Events: MatchEvent[] = [
+    {
+      minute: 106,
+      half: 2,
+      type: 'kickoff',
+      teamId: awayClub.id,
+      description: '⏱️ 연장전 후반 킥오프! 운명의 마지막 15분이 시작됩니다.',
+    },
+    ...generateHalfGoalEvents({
+      goals: homeEt2Goals,
+      half: 2,
+      club: homeClub,
+      roster: homeRoster,
+      tactic: resolved.homeTactic,
+      managerTraitId: userContext?.managerTraitId,
+      isUser: isHomeUser,
+      minStart: 107,
+      maxMinute: 119,
+      freshSubEntryMinute: isHomeUser ? freshSubEntryMap : undefined,
+      rng,
+    }),
+    ...generateHalfGoalEvents({
+      goals: awayEt2Goals,
+      half: 2,
+      club: awayClub,
+      roster: awayRoster,
+      tactic: resolved.awayTactic,
+      managerTraitId: userContext?.managerTraitId,
+      isUser: isAwayUser,
+      minStart: 107,
+      maxMinute: 119,
+      freshSubEntryMinute: isAwayUser ? freshSubEntryMap : undefined,
+      rng,
+    }),
+  ];
+
+  const flavor2 = generateHalfFlavorEvents({
+    half: 2,
+    homeClub,
+    awayClub,
+    homeRoster,
+    awayRoster,
+    homeTactic: resolved.homeTactic,
+    awayTactic: resolved.awayTactic,
+    isHomeUser,
+    isAwayUser,
+    managerTraitId: userContext?.managerTraitId,
+    minStart: 108,
+    maxMinute: 119,
+    rng,
+  }).slice(0, 1);
+  et2Events.push(...flavor2);
+
+  et2Events.sort((a, b) => {
+    if (a.minute !== b.minute) return a.minute - b.minute;
+    if (a.type === 'kickoff') return -1;
+    if (b.type === 'kickoff') return 1;
+    return 0;
+  });
+
+  const totalEtEvents = [...et1Events, ...et2Events];
+  const totalHomeEtGoals = homeEt1Goals + homeEt2Goals;
+  const totalAwayEtGoals = awayEt1Goals + awayEt2Goals;
+  const totalHomeGoals = home90 + totalHomeEtGoals;
+  const totalAwayGoals = away90 + totalAwayEtGoals;
+  const finalAggHome = aggBeforeH + totalHomeGoals;
+  const finalAggAway = aggBeforeA + totalAwayGoals;
+
+  let penalties: ExtraTimeInfo['penalties'] | undefined;
+  let winnerTeamId: string;
+
+  if (finalAggHome > finalAggAway) {
+    winnerTeamId = homeClub.id;
+  } else if (finalAggAway > finalAggHome) {
+    winnerTeamId = awayClub.id;
+  } else {
+    penalties = simulatePenaltyShootoutOnly({
+      homeClub,
+      awayClub,
+      homeRoster,
+      awayRoster,
+      rng,
+    });
+    winnerTeamId = penalties.winnerTeamId;
+  }
+
+  totalEtEvents.push({
+    minute: 120,
+    half: 2,
+    type: 'fulltime',
+    teamId: winnerTeamId,
+    description: penalties
+      ? `연장전 종료 (${homeClub.shortName} ${totalHomeGoals} - ${totalAwayGoals} ${awayClub.shortName})! 운명의 승부차기(${penalties.homePenGoals}-${penalties.awayPenGoals})로 돌입합니다!`
+      : `연장전 종료! ${homeClub.shortName} ${totalHomeGoals} - ${totalAwayGoals} ${awayClub.shortName} (${winnerTeamId === homeClub.id ? homeClub.shortName : awayClub.shortName} 승리!)`,
+  });
+
+  // Update player ratings across full ET (ET1 + ET2)
+  const etGoalCounts = new Map<string, number>();
+  const etAssistCounts = new Map<string, number>();
+  for (const ev of totalEtEvents) {
+    if (ev.type === 'goal') {
+      if (ev.scorerId) {
+        const k = `${ev.teamId}:${ev.scorerId}`;
+        etGoalCounts.set(k, (etGoalCounts.get(k) ?? 0) + 1);
+      }
+      if (ev.assistId) {
+        const k = `${ev.teamId}:${ev.assistId}`;
+        etAssistCounts.set(k, (etAssistCounts.get(k) ?? 0) + 1);
+      }
+    }
+  }
+
+  const updatedRatings: MatchPlayerRating[] = et1Result.playerRatings.map((pr) => {
+    const key = `${pr.teamId}:${pr.playerId}`;
+    const g = etGoalCounts.get(key) ?? 0;
+    const a = etAssistCounts.get(key) ?? 0;
+    const ratingBoost = g * 0.9 + a * 0.55;
+    return {
+      ...pr,
+      goals: pr.goals + g,
+      assists: pr.assists + a,
+      minutesPlayed: pr.minutesPlayed + (pr.isSub ? 20 : 30),
+      rating: Math.round(clamp(pr.rating + ratingBoost, 4.2, 10.0) * 10) / 10,
+    };
+  });
+
+  if (userContext && extraTimeSubIds.length > 0) {
+    const existingUserIds = new Set(
+      updatedRatings
+        .filter((r) => r.teamId === userContext.userClubId)
+        .map((r) => r.playerId),
+    );
+    const activeUserRoster = isHomeUser ? homeRoster : awayRoster;
+    for (const subId of extraTimeSubIds) {
+      if (existingUserIds.has(subId)) continue;
+      const p = activeUserRoster.find((x) => x.id === subId);
+      if (!p) continue;
+      const key = `${userContext.userClubId}:${p.id}`;
+      const g = etGoalCounts.get(key) ?? 0;
+      const a = etAssistCounts.get(key) ?? 0;
+      updatedRatings.push({
+        playerId: p.id,
+        playerName: p.name,
+        teamId: userContext.userClubId,
+        position: p.position,
+        subPosition: getPrimaryPosition(p),
+        rating: Math.round(clamp(6.8 + g * 1.1 + a * 0.65, 5.5, 10.0) * 10) / 10,
+        goals: g,
+        assists: a,
+        xg: g > 0 ? 0.45 : 0.12,
+        minutesPlayed: enteredAtMinute[subId] === 105 ? 15 : 30,
+        isSub: true,
+        isLegend: p.isLegend,
+      });
+    }
+  }
+
+  let mom = updatedRatings[0];
+  for (const r of updatedRatings) {
+    if (
+      r.rating > mom.rating ||
+      (r.rating === mom.rating && r.goals + r.assists > mom.goals + mom.assists)
+    ) {
+      mom = r;
+    }
+  }
+
+  const basePreEtEvents = et1Result.events.filter(
+    (e) => e.minute <= 90 && e.type !== 'fulltime',
+  );
+
+  return {
+    ...et1Result,
+    homeGoals: totalHomeGoals,
+    awayGoals: totalAwayGoals,
+    homeGoals90: home90,
+    awayGoals90: away90,
+    homeTactic: resolved.homeTactic,
+    awayTactic: resolved.awayTactic,
+    homeFormation: resolved.homeFormation,
+    awayFormation: resolved.awayFormation,
+    homeXg: Math.round((et1Result.homeXg + homeEt2Xg) * 100) / 100,
+    awayXg: Math.round((et1Result.awayXg + awayEt2Xg) * 100) / 100,
+    homeShots:
+      et1Result.homeShots + Math.max(homeEt2Goals, Math.round(homeEt2Xg * 6)),
+    awayShots:
+      et1Result.awayShots + Math.max(awayEt2Goals, Math.round(awayEt2Xg * 6)),
+    homeShotsOnTarget:
+      et1Result.homeShotsOnTarget +
+      Math.max(homeEt2Goals, Math.round(homeEt2Xg * 2.4)),
+    awayShotsOnTarget:
+      et1Result.awayShotsOnTarget +
+      Math.max(awayEt2Goals, Math.round(awayEt2Xg * 2.4)),
+    extraTime: {
+      homeEtGoals: totalHomeEtGoals,
+      awayEtGoals: totalAwayEtGoals,
+      etEvents: totalEtEvents,
+      penalties,
+      winnerTeamId,
+    },
+    events: [...basePreEtEvents, ...totalEtEvents],
+    playerRatings: updatedRatings,
+    momPlayerId: mom?.playerId ?? et1Result.momPlayerId,
+    momPlayerName: mom?.playerName ?? et1Result.momPlayerName,
+    momRating: mom?.rating ?? et1Result.momRating,
   };
 }

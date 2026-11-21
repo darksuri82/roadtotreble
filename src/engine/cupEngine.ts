@@ -91,9 +91,9 @@ export function createDomesticCupState(
   const others = shuffleArray(
     clubs.filter((c) => c.id !== userClubId),
     rng,
-  ).slice(0, 15);
+  ).slice(0, userClub ? 15 : 16);
 
-  const selected = userClub ? [userClub, ...others] : others.slice(0, 16);
+  const selected = userClub ? [userClub, ...others] : others;
   const seededDraw = shuffleArray(selected, rng);
   const participantIds = seededDraw.map((c) => c.id);
 

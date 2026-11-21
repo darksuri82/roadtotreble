@@ -96,6 +96,7 @@ export interface TeamRatings {
   ovr: number;
   rawOvr: number;
   chemistryBonus: number; // -1.5 .. +2.5
+  synergyOvrBonus?: number; // avg individual player synergy OVR boost
   effectiveAtt: number;
   effectiveMid: number;
   effectiveDef: number;
@@ -125,12 +126,24 @@ export interface ChemistryBreakdown {
   roleBalance: number; // 0..15 (Squad Role Balance)
 }
 
+export interface PlayerSlotSynergy {
+  slotIndex: number;
+  playerId: string;
+  totalBonus: number; // 0..3 individual synergy OVR gain
+  managerBonus: number; // 0..1
+  neighborBonus: number; // 0..2
+  reasons: string[];
+  baseEffectiveOvr: number; // base OVR + position fit penalty
+  effectiveOvrWithSynergy: number; // base OVR + position fit penalty + totalBonus
+}
+
 export interface ChemistryResult {
   total: number; // 0..100
   breakdown: ChemistryBreakdown;
   chemistryOvrBonus: number; // -1.5 .. +2.5
   links: ChemistryLink[];
   slotQuality: Record<number, ChemistryLinkStatus>;
+  slotSynergies: Record<number, PlayerSlotSynergy>;
   matchedStyleCount: number;
 }
 
@@ -281,6 +294,10 @@ export interface OtherLeagueSeasonState {
   currentRound: number;
   totalRounds: number;
   standings: StandingRow[];
+  aiRosters?: Record<string, Player[]>;
+  playerStats?: Record<string, PlayerSeasonStats>;
+  cup?: DomesticCupState | null;
+  cupPlayerStats?: Record<string, PlayerSeasonStats>;
 }
 
 export interface SeasonState {
