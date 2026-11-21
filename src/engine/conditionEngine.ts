@@ -361,6 +361,71 @@ export function getPlayerConditionOvrBreakdown(
   return { injuryPenalty, moraleBonus, totalDelta };
 }
 
+export interface FullPlayerOvrBreakdown {
+  baseOvr: number;
+  positionPenalty: number;
+  synergyBonus: number;
+  moraleBonus: number;
+  injuryPenalty: number;
+  isUnavailableInjured: boolean;
+  finalEffectiveOvr: number;
+  summaryLine: string;
+}
+
+/**
+ * Computes a unified one-glance OVR breakdown:
+ * 기본 OVR / (포지션) / 시너지 / 사기 / 부상 -> 최종 실효 OVR
+ */
+export function computeFullPlayerOvrBreakdown(params: {
+  baseOvr: number;
+  positionPenalty?: number;
+  synergyBonus?: number;
+  condition?: PlayerConditionState | null;
+}): FullPlayerOvrBreakdown {
+  const {
+    baseOvr,
+    positionPenalty = 0,
+    synergyBonus = 0,
+    condition = null,
+  } = params;
+  const condBr = getPlayerConditionOvrBreakdown(condition);
+  const isUnavailableInjured = isPlayerUnavailable(condition);
+  const finalEffectiveOvr = Math.max(
+    50,
+    Math.min(
+      99,
+      Math.round(
+        baseOvr +
+          positionPenalty +
+          synergyBonus +
+          condBr.moraleBonus +
+          condBr.injuryPenalty,
+      ),
+    ),
+  );
+  const posPart = positionPenalty < 0 ? ` / 포지션 ${positionPenalty}` : '';
+  const synPart = ` / 시너지 +${synergyBonus}`;
+  const moraleStr =
+    condBr.moraleBonus > 0
+      ? `+${condBr.moraleBonus}`
+      : `${condBr.moraleBonus}`;
+  const injStr = isUnavailableInjured
+    ? `출전불가(${condBr.injuryPenalty})`
+    : `${condBr.injuryPenalty}`;
+  const summaryLine = `기본 OVR ${baseOvr}${posPart}${synPart} / 사기 ${moraleStr} / 부상 ${injStr} → 최종 실효 OVR ${finalEffectiveOvr}`;
+
+  return {
+    baseOvr,
+    positionPenalty,
+    synergyBonus,
+    moraleBonus: condBr.moraleBonus,
+    injuryPenalty: condBr.injuryPenalty,
+    isUnavailableInjured,
+    finalEffectiveOvr,
+    summaryLine,
+  };
+}
+
 /**
  * Returns shallow-cloned players with ovr/att/mid/def adjusted by
  * minor-injury play-through penalty, post-injury rust, and individual + team morale.

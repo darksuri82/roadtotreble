@@ -2,6 +2,7 @@ import { Crown, Diamond, Info } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { BENCH_SLOTS, FORMATIONS } from '../../data/formations';
 import {
+  computeFullPlayerOvrBreakdown,
   getInjuryTooltip,
   getMoraleLabel,
   getMoraleTier,
@@ -339,8 +340,17 @@ export function PitchBoard({
 
           const synTooltipText =
             slotSyn && slotSyn.reasons.length > 0
-              ? ` · 시너지 +${slotSyn.totalBonus} (${slotSyn.reasons.join(', ')})`
+              ? ` · 시너지 사유: ${slotSyn.reasons.join(', ')}`
               : '';
+          const starterCond = player ? conditionByPlayerId?.[player.id] : undefined;
+          const starterOvrBr = player
+            ? computeFullPlayerOvrBreakdown({
+                baseOvr: player.ovr,
+                positionPenalty: fit?.penalty ?? 0,
+                synergyBonus: synBonus,
+                condition: starterCond ?? null,
+              })
+            : null;
 
           return (
             <div
@@ -373,8 +383,8 @@ export function PitchBoard({
               onTouchCancel={clearLongPress}
               style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
               title={
-                player
-                  ? `${player.name} (${formatMainPositions(player)}) · ${player.club}${synTooltipText}${staminaPct !== null ? ` · 체력 ${staminaPct}%` : ''} (우클릭/ⓘ 상세)`
+                player && starterOvrBr
+                  ? `${player.name} (${formatMainPositions(player)}) · ${player.club}\n[${starterOvrBr.summaryLine}]${synTooltipText}${staminaPct !== null ? ` · 체력 ${staminaPct}%` : ''} (우클릭/ⓘ 상세)`
                   : `${slot.label} 빈 슬롯`
               }
               className={`group absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center select-none ${
@@ -441,10 +451,10 @@ export function PitchBoard({
                   </button>
                 )}
 
-                {player && fit ? (
+                {player && fit && starterOvrBr ? (
                   <>
                     {(() => {
-                      const cond = conditionByPlayerId?.[player.id];
+                      const cond = starterCond;
                       const injured = isPlayerActivelyInjured(cond);
                       const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
                       return (
@@ -474,30 +484,60 @@ export function PitchBoard({
                               )}
                             </div>
                           )}
-                          <div className="flex items-center gap-1 leading-none tabular-nums">
+                          <div className="flex flex-wrap items-center justify-center gap-0.5 leading-none tabular-nums">
                             <span
                               className={`font-display text-sm sm:text-base font-bold ${
-                                hasPenalty
-                                  ? fit.fit === 'secondary'
-                                    ? 'text-amber-300'
-                                    : fit.fit === 'out_of_pos'
-                                      ? 'text-orange-400'
-                                      : 'text-rose-400'
-                                  : isLegend
-                                    ? 'text-amber-300'
-                                    : isSuperstar
-                                      ? 'text-cyan-200'
-                                      : 'text-white'
+                                starterOvrBr.injuryPenalty < 0
+                                  ? 'text-rose-300'
+                                  : hasPenalty
+                                    ? fit.fit === 'secondary'
+                                      ? 'text-amber-300'
+                                      : fit.fit === 'out_of_pos'
+                                        ? 'text-orange-400'
+                                        : 'text-rose-400'
+                                    : isLegend
+                                      ? 'text-amber-300'
+                                      : isSuperstar
+                                        ? 'text-cyan-200'
+                                        : 'text-white'
                               }`}
                             >
                               {fit.effectiveOvr}
                             </span>
                             {synBonus > 0 && (
                               <span
-                                title={slotSyn?.reasons.join(' · ')}
+                                title={`시너지 +${synBonus} (${slotSyn?.reasons.join(' · ')})`}
                                 className="rounded bg-emerald-500/25 border border-emerald-400/50 px-1 py-0.5 text-[8px] sm:text-[9px] font-black text-emerald-300 leading-none"
                               >
                                 +{synBonus}
+                              </span>
+                            )}
+                            {starterOvrBr.moraleBonus !== 0 && (
+                              <span
+                                title={`사기 ${cond ? getMoraleLabel(cond.morale) : ''} (${starterOvrBr.moraleBonus > 0 ? `+${starterOvrBr.moraleBonus}` : starterOvrBr.moraleBonus} OVR)`}
+                                className={`rounded px-1 py-0.5 text-[8px] sm:text-[9px] font-black leading-none ${
+                                  starterOvrBr.moraleBonus > 0
+                                    ? 'bg-amber-500/25 border border-amber-400/50 text-amber-200'
+                                    : 'bg-sky-500/25 border border-sky-400/50 text-sky-200'
+                                }`}
+                              >
+                                {starterOvrBr.moraleBonus > 0
+                                  ? `+${starterOvrBr.moraleBonus}`
+                                  : starterOvrBr.moraleBonus}
+                              </span>
+                            )}
+                            {starterOvrBr.injuryPenalty < 0 && (
+                              <span
+                                title={
+                                  cond?.injury
+                                    ? getInjuryTooltip(cond.injury)
+                                    : `부상 페널티 ${starterOvrBr.injuryPenalty} OVR`
+                                }
+                                className="rounded bg-rose-500/30 border border-rose-400/60 px-1 py-0.5 text-[8px] sm:text-[9px] font-black text-rose-200 leading-none"
+                              >
+                                {starterOvrBr.isUnavailableInjured
+                                  ? '결장'
+                                  : starterOvrBr.injuryPenalty}
                               </span>
                             )}
                             <CountryFlagSvg
@@ -732,20 +772,49 @@ export function PitchBoard({
                       const cond = conditionByPlayerId?.[player.id];
                       const injured = isPlayerActivelyInjured(cond);
                       const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
+                      const benchOvrBr = computeFullPlayerOvrBreakdown({
+                        baseOvr: player.ovr,
+                        condition: cond ?? null,
+                      });
                       return (
                         <>
-                          <div className="flex items-center justify-center gap-1">
+                          <div
+                            title={`${player.name} (${formatMainPositions(player)})\n[${benchOvrBr.summaryLine}]`}
+                            className="flex flex-wrap items-center justify-center gap-0.5 tabular-nums"
+                          >
                             <span
                               className={`font-display text-sm font-bold leading-tight ${
-                                isLegend
-                                  ? 'text-amber-300'
-                                  : isSuperstar
-                                    ? 'text-cyan-200'
-                                    : 'text-white'
+                                benchOvrBr.injuryPenalty < 0
+                                  ? 'text-rose-300'
+                                  : isLegend
+                                    ? 'text-amber-300'
+                                    : isSuperstar
+                                      ? 'text-cyan-200'
+                                      : 'text-white'
                               }`}
                             >
                               {player.ovr}
                             </span>
+                            {benchOvrBr.moraleBonus !== 0 && (
+                              <span
+                                className={`rounded px-1 py-0.5 text-[8px] font-black leading-none ${
+                                  benchOvrBr.moraleBonus > 0
+                                    ? 'bg-amber-500/25 border border-amber-400/50 text-amber-200'
+                                    : 'bg-sky-500/25 border border-sky-400/50 text-sky-200'
+                                }`}
+                              >
+                                {benchOvrBr.moraleBonus > 0
+                                  ? `+${benchOvrBr.moraleBonus}`
+                                  : benchOvrBr.moraleBonus}
+                              </span>
+                            )}
+                            {benchOvrBr.injuryPenalty < 0 && (
+                              <span className="rounded bg-rose-500/30 border border-rose-400/60 px-1 py-0.5 text-[8px] font-black text-rose-200 leading-none">
+                                {benchOvrBr.isUnavailableInjured
+                                  ? '결장'
+                                  : benchOvrBr.injuryPenalty}
+                              </span>
+                            )}
                             <CountryFlagSvg
                               code={player.nationalityCode}
                               nationality={player.nationality}

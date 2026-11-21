@@ -11,6 +11,7 @@ import {
 import { useMemo, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import {
+  computeFullPlayerOvrBreakdown,
   getInjuryTooltip,
   getMoraleLabel,
   getMoraleTier,
@@ -240,6 +241,7 @@ export function UclDashboard() {
           managerTraitId={state.manager.traitId}
           seasonStats={inspectedBreakdown?.total ?? null}
           competitionStats={inspectedBreakdown}
+          condition={season.playerConditions?.[inspected.player.id] ?? null}
           onClose={() => setInspected(null)}
         />
       )}
@@ -1214,6 +1216,7 @@ export function UclDashboard() {
                 bench={state.bench}
                 chemistry={chemistry}
                 managerTraitId={state.manager.traitId}
+                conditionByPlayerId={season.playerConditions}
                 selectedSlot={swapPick}
                 onSlotClick={handleSquadSlotClick}
                 onSlotSwap={swapSquadPositions}
@@ -1306,6 +1309,12 @@ export function UclDashboard() {
                     const slotSyn = isStarter
                       ? chemistry.slotSynergies[idx]
                       : undefined;
+                    const cond = season.playerConditions?.[p.id] ?? null;
+                    const ovrBreakdown = computeFullPlayerOvrBreakdown({
+                      baseOvr: p.ovr,
+                      synergyBonus: slotSyn?.totalBonus ?? 0,
+                      condition: cond,
+                    });
                     return (
                       <div
                         key={`ucl-sq-${p.id}-${idx}`}
@@ -1335,7 +1344,6 @@ export function UclDashboard() {
                                 {p.name}
                               </PlayerNameButton>
                               {(() => {
-                                const cond = season.playerConditions?.[p.id];
                                 if (!cond) return null;
                                 const inj = isPlayerActivelyInjured(cond);
                                 const mt = getMoraleTier(cond.morale);
@@ -1366,12 +1374,41 @@ export function UclDashboard() {
                                 );
                               })()}
                             </div>
-                            <div className="text-[10px] text-slate-500">
-                              {formatMainPositions(p)} · OVR {p.ovr}
-                              {slotSyn && slotSyn.totalBonus > 0 && (
-                                <span className="ml-1 font-bold text-emerald-300">
-                                  (+{slotSyn.totalBonus})
+                            <div
+                              className="text-[10px] text-slate-500 flex flex-wrap items-center gap-1"
+                              title={ovrBreakdown.summaryLine}
+                            >
+                              <span>
+                                {formatMainPositions(p)} · OVR {p.ovr}
+                              </span>
+                              {ovrBreakdown.synergyBonus > 0 && (
+                                <span className="font-bold text-emerald-300">
+                                  +{ovrBreakdown.synergyBonus}
                                 </span>
+                              )}
+                              {ovrBreakdown.moraleBonus !== 0 && (
+                                <span
+                                  className={`font-bold ${
+                                    ovrBreakdown.moraleBonus > 0
+                                      ? 'text-amber-300'
+                                      : 'text-sky-300'
+                                  }`}
+                                >
+                                  {ovrBreakdown.moraleBonus > 0
+                                    ? `+${ovrBreakdown.moraleBonus}`
+                                    : ovrBreakdown.moraleBonus}
+                                </span>
+                              )}
+                              {ovrBreakdown.isUnavailableInjured ? (
+                                <span className="font-bold text-rose-400">
+                                  (결장)
+                                </span>
+                              ) : (
+                                ovrBreakdown.injuryPenalty < 0 && (
+                                  <span className="font-bold text-rose-400">
+                                    {ovrBreakdown.injuryPenalty}
+                                  </span>
+                                )
                               )}
                             </div>
                           </div>

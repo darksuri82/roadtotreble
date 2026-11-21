@@ -448,3 +448,204 @@ export function pickReplacementForAiClub(params: {
     rng: detRng,
   });
 }
+
+export interface AiClubSquad16 {
+  starters: Player[];
+  starterSlotLabels: string[];
+  bench: Player[];
+  benchSlotLabels: string[];
+  all16: Player[];
+}
+
+/**
+ * Builds an AI club's standardized 16-man squad matching the user's 16-man structure:
+ * - Starting 11 assigned to `club.formation` slots by highest OVR & positional fit
+ * - Core Bench 5 sorted by highest OVR:
+ *   1 GK (키퍼 1) + 2 DF (수비 2) + 2 FW/MF (공격·중원 2: FW 1 + MF 1 preferred)
+ * Strictly excludes user-owned and departed players while preserving live mid-season trade arrivals.
+ */
+export function buildAiClubSquad16(params: {
+  club: Club;
+  leagueId: LeagueId;
+  liveAiRoster?: Player[];
+  ownedIds?: Set<string>;
+  excludeIds?: Set<string>;
+}): AiClubSquad16 {
+  const { club, leagueId, liveAiRoster, ownedIds, excludeIds } = params;
+  const formation = FORMATIONS[club.formation] ?? FORMATIONS['4-3-3'];
+
+  const userOwned = ownedIds ?? new Set<string>();
+  const globalBlocked = excludeIds ?? userOwned;
+
+  const poolMap = new Map<string, Player>();
+  const usedNames = new Set<string>();
+  for (const p of ALL_PLAYERS) {
+    if (globalBlocked.has(p.id) || userOwned.has(p.id)) {
+      usedNames.add(p.name);
+    }
+  }
+
+  // 1) Include live season roster players first (reflects mid-season trade arrivals!)
+  if (liveAiRoster && liveAiRoster.length > 0) {
+    for (const p of liveAiRoster) {
+      if (userOwned.has(p.id)) continue;
+      if (!poolMap.has(p.id)) {
+        poolMap.set(p.id, p);
+        usedNames.add(p.name);
+      }
+    }
+  }
+
+  // 2) Include all remaining real 2026-27 players of this club from ACTIVE_PLAYERS
+  for (const p of ACTIVE_PLAYERS) {
+    if (p.club !== club.name) continue;
+    if (globalBlocked.has(p.id) || userOwned.has(p.id)) continue;
+    if (!poolMap.has(p.id)) {
+      poolMap.set(p.id, p);
+      usedNames.add(p.name);
+    }
+  }
+
+  const candidatePool = Array.from(poolMap.values()).sort(
+    (a, b) =>
+      b.ovr - a.ovr || b.att + b.mid + b.def - (a.att + a.mid + a.def),
+  );
+
+  const pickedIds = new Set<string>();
+  const starters: Player[] = [];
+  const starterSlotLabels: string[] = [];
+
+  for (let i = 0; i < formation.slots.length; i += 1) {
+    const slot = formation.slots[i];
+    starterSlotLabels.push(slot.label);
+
+    let found = candidatePool.find(
+      (p) => !pickedIds.has(p.id) && p.mainPositions.includes(slot.subPosition),
+    );
+    if (!found) {
+      found = candidatePool.find(
+        (p) =>
+          !pickedIds.has(p.id) &&
+          p.secondaryPositions.includes(slot.subPosition),
+      );
+    }
+    if (!found) {
+      found = candidatePool.find(
+        (p) => !pickedIds.has(p.id) && p.position === slot.position,
+      );
+    }
+
+    if (found) {
+      pickedIds.add(found.id);
+      starters.push(found);
+      continue;
+    }
+
+    const seedVal = hashString(`${club.id}-s16-slot-${i}-${slot.subPosition}`);
+    const detRng = () => (seedVal % 97) / 97;
+    const gen = generateClubRotationPlayer({
+      club,
+      leagueId,
+      subPosition: slot.subPosition,
+      seedKey: `${club.id}-s16-slot-${i}`,
+      excludeNames: usedNames,
+      rng: detRng,
+    });
+    pickedIds.add(gen.id);
+    usedNames.add(gen.name);
+    starters.push(gen);
+  }
+
+  // Remaining pool for Core Bench 5: [GK 1, DF 2, MF/FW 2]
+  const remaining = candidatePool.filter((p) => !pickedIds.has(p.id));
+  const bench: Player[] = [];
+  const benchSlotLabels: string[] = [];
+
+  const makeFallbackBench = (sub: SubPosition, tag: string): Player => {
+    const seedVal = hashString(`${club.id}-b5-${tag}-${sub}`);
+    const detRng = () => (seedVal % 97) / 97;
+    const gen = generateClubRotationPlayer({
+      club,
+      leagueId,
+      subPosition: sub,
+      seedKey: `${club.id}-b5-${tag}`,
+      excludeNames: usedNames,
+      rng: detRng,
+    });
+    pickedIds.add(gen.id);
+    usedNames.add(gen.name);
+    return gen;
+  };
+
+  // Bench Slot 1: 1 GK (키퍼 1명)
+  const benchGk = remaining.find(
+    (p) => !pickedIds.has(p.id) && p.position === 'GK',
+  );
+  if (benchGk) {
+    pickedIds.add(benchGk.id);
+    bench.push(benchGk);
+  } else {
+    bench.push(makeFallbackBench('GK', 'gk1'));
+  }
+  benchSlotLabels.push('벤치 GK');
+
+  // Bench Slots 2 & 3: 2 DF (수비 2명, highest OVR)
+  for (let dIdx = 0; dIdx < 2; dIdx += 1) {
+    const benchDf = remaining.find(
+      (p) => !pickedIds.has(p.id) && p.position === 'DF',
+    );
+    if (benchDf) {
+      pickedIds.add(benchDf.id);
+      bench.push(benchDf);
+    } else {
+      bench.push(makeFallbackBench(dIdx === 0 ? 'CB' : 'RB', `df${dIdx + 1}`));
+    }
+    benchSlotLabels.push('벤치 DF');
+  }
+
+  // Bench Slots 4 & 5: 2 FW/MF (공격·중원 2명: highest OVR MF 1 + highest OVR FW 1, or top 2 across MF/FW)
+  const topMf = remaining.find(
+    (p) => !pickedIds.has(p.id) && p.position === 'MF',
+  );
+  const topFw = remaining.find(
+    (p) => !pickedIds.has(p.id) && p.position === 'FW',
+  );
+
+  if (topMf && topFw) {
+    pickedIds.add(topMf.id);
+    pickedIds.add(topFw.id);
+    // Order by higher OVR first between the two, or MF then FW
+    bench.push(topMf);
+    benchSlotLabels.push('벤치 MF');
+    bench.push(topFw);
+    benchSlotLabels.push('벤치 FW');
+  } else {
+    const mfFwPool = remaining
+      .filter(
+        (p) =>
+          !pickedIds.has(p.id) && (p.position === 'MF' || p.position === 'FW'),
+      )
+      .sort((a, b) => b.ovr - a.ovr);
+    for (let aIdx = 0; aIdx < 2; aIdx += 1) {
+      const cand = mfFwPool[aIdx];
+      if (cand) {
+        pickedIds.add(cand.id);
+        bench.push(cand);
+        benchSlotLabels.push(cand.position === 'FW' ? '벤치 FW' : '벤치 MF');
+      } else {
+        const sub: SubPosition = aIdx === 0 ? 'CM' : 'ST';
+        const gen = makeFallbackBench(sub, `attmid${aIdx + 1}`);
+        bench.push(gen);
+        benchSlotLabels.push(sub === 'ST' ? '벤치 FW' : '벤치 MF');
+      }
+    }
+  }
+
+  return {
+    starters,
+    starterSlotLabels,
+    bench,
+    benchSlotLabels,
+    all16: [...starters, ...bench],
+  };
+}

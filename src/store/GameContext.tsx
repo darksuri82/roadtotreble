@@ -38,6 +38,7 @@ import {
 } from '../engine/cupEngine';
 import {
   buildAiClubRoster,
+  buildAiClubSquad16,
   getLeagueById,
   getWeakestClub,
   pickReplacementForAiClub,
@@ -93,9 +94,11 @@ import {
 } from '../engine/standingsEngine';
 import {
   analyzeClubPositionNeeds,
+  buildTransferClubSquad,
   checkTransferWindowTrigger,
   createClosedTransferState,
   createOpenTransferState,
+  evaluateShockBargainStatus,
   evaluateTradePackage,
   generateIncomingTradeOffers,
   selectAutoFillerPlayers,
@@ -2217,22 +2220,49 @@ function executeBidirectionalTrade(params: {
       !(entry.replacementPlayerId && sentIds.has(entry.replacementPlayerId)),
   );
 
-  // 7) Update rolledClubs squads (remove traded-in players, add sent players if partner club is rolled)
+  // 7) Update rolledClubs squads (rebuild partner club's 16-man squad so new arrivals & bench promotions reflect immediately)
+  const postTradeOwnedIds = new Set<string>([
+    ...nextStarters.filter((p): p is Player => p !== null).map((p) => p.id),
+    ...nextBench.filter((p): p is Player => p !== null).map((p) => p.id),
+  ]);
+  const postTradeExcludeIds = new Set<string>([
+    ...postTradeOwnedIds,
+    ...nextDepartedPlayerIds,
+  ]);
+
   const nextRolledClubs = tm.rolledClubs.map((offer) => {
-    if (offer.isLegendSlot || !offer.club) return offer;
-    const filteredSquad = offer.squad.filter((t) => !incomingIds.has(t.player.id));
+    if (offer.isLegendSlot || !offer.club || offer.leagueId === 'LEGEND') {
+      return offer;
+    }
     if (offer.club.id === partnerClub.id) {
-      const updatedRoster =
+      const updatedLiveRoster =
         partnerLeagueId === season.leagueId
-          ? nextAiRosters[partnerClub.id] ?? filteredSquad.map((s) => s.player)
-          : nextOtherLeagues?.[partnerLeagueId]?.aiRosters?.[partnerClub.id] ??
-            filteredSquad.map((s) => s.player);
+          ? nextAiRosters[partnerClub.id]
+          : nextOtherLeagues?.[partnerLeagueId]?.aiRosters?.[partnerClub.id];
+      const rebuiltSquad = buildTransferClubSquad({
+        club: offer.club,
+        leagueId: offer.leagueId,
+        ownedIds: postTradeOwnedIds,
+        excludeIds: postTradeExcludeIds,
+        aiRoster: updatedLiveRoster,
+        clubRank: offer.clubRank,
+        leagueSize: offer.leagueSize,
+        currentRound: season.currentRound,
+        totalRounds: season.totalRounds,
+        windowIndex: tm.windowIndex,
+        userRank: getUserRank(season.standings, USER_CLUB_ID),
+        userLeagueSize: season.standings.length || 20,
+        allPlayerStats: nextStats,
+        isUserLeague: offer.leagueId === season.leagueId,
+        championBonusActive: Boolean(tm.championBonusActive),
+      });
       return {
         ...offer,
-        squad: filteredSquad,
-        clubNeeds: analyzeClubPositionNeeds(updatedRoster),
+        squad: rebuiltSquad,
+        clubNeeds: analyzeClubPositionNeeds(rebuiltSquad.map((s) => s.player)),
       };
     }
+    const filteredSquad = offer.squad.filter((t) => !incomingIds.has(t.player.id));
     return { ...offer, squad: filteredSquad };
   });
 
@@ -4883,15 +4913,39 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         ...state.starters.filter((p): p is Player => p !== null),
         ...state.bench.filter((p): p is Player => p !== null),
       ];
+      const ownedIds = new Set(userSquad.map((p) => p.id));
+      const globalExcludeIds = new Set<string>([
+        ...ownedIds,
+        ...(state.season.departedPlayerIds ?? []),
+      ]);
       const liveAiRoster =
         partnerLeagueId === state.season.leagueId
           ? state.season.aiRosters[partnerClub.id] ?? []
           : state.season.otherLeagues?.[partnerLeagueId]?.aiRosters?.[
               partnerClub.id
             ] ?? [];
-      const aiNeeds = analyzeClubPositionNeeds(
-        liveAiRoster.length >= 11 ? liveAiRoster : aiTargetPlayers,
-      );
+      const partnerSquad16 = buildAiClubSquad16({
+        club: partnerClub,
+        leagueId: partnerLeagueId,
+        liveAiRoster,
+        ownedIds,
+        excludeIds: globalExcludeIds,
+      }).all16;
+      const aiNeeds = analyzeClubPositionNeeds(partnerSquad16);
+
+      const shockBargainIds = new Set<string>();
+      for (const p of partnerSquad16) {
+        const sb = evaluateShockBargainStatus({
+          player: p,
+          clubId: partnerClub.id,
+          windowIndex: tm.windowIndex,
+          currentRound: state.season.currentRound,
+        });
+        if (sb.isShockBargain) {
+          shockBargainIds.add(p.id);
+          break;
+        }
+      }
 
       // Option 3: Auto-match rotation fillers when user sends more players than AI targets (2:1 / 3:1)
       const neededFillers = Math.max(
@@ -4905,7 +4959,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           ...resolvedFillers.map((p) => p.id),
         ]);
         const autoFillers = selectAutoFillerPlayers({
-          aiRoster: liveAiRoster,
+          aiRoster: partnerSquad16,
           aiTargetIds: new Set(aiTargetPlayers.map((p) => p.id)),
           userSentPlayers,
           neededCount: neededFillers - resolvedFillers.length,
@@ -4923,7 +4977,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         aiTargetPlayers,
         aiFillerPlayers: resolvedFillers,
         aiClub: partnerClub,
-        aiRoster: liveAiRoster,
+        aiRoster: partnerSquad16,
         aiNeeds,
         userSquad,
         userRank: getUserRank(state.season.standings, USER_CLUB_ID),
@@ -4933,6 +4987,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         allPlayerStats: state.season.allPlayerStats,
         conditionMap: state.season.playerConditions,
         championBonusActive: Boolean(tm.championBonusActive),
+        shockBargainIds,
       });
 
       if (evaluation.blockedReason || userSentPlayers.length !== aiTargetPlayers.length + resolvedFillers.length) {

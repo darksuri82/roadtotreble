@@ -12,8 +12,9 @@ import { useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import { MANAGER_TRAIT_LIST } from '../../data/managerTraits';
 import { TACTIC_LIST } from '../../engine/tacticEngine';
+import { InjuryMoraleGuideContent } from './InjuryMoraleGuideContent';
 
-type GuideTab = 'ovr' | 'chemistry' | 'tactics' | 'manager';
+type GuideTab = 'ovr' | 'chemistry' | 'tactics' | 'manager' | 'condition';
 
 export function SystemGuideContent() {
   const [tab, setTab] = useState<GuideTab>('ovr');
@@ -23,18 +24,19 @@ export function SystemGuideContent() {
     { id: 'chemistry', label: '2. 케미스트리 · 병렬선' },
     { id: 'tactics', label: '3. 전술 · 포메이션 상성' },
     { id: 'manager', label: '4. 감독 강점 · 실시간 중계' },
+    { id: 'condition', label: '5. 🩺 부상 & 사기 가이드' },
   ];
 
   return (
     <div className="space-y-4">
       {/* Tab Navigation */}
-      <div className="grid grid-cols-2 gap-1 sm:grid-cols-4 rounded-xl border border-slate-800 bg-[#0b1018] p-1">
+      <div className="grid grid-cols-2 gap-1 sm:grid-cols-5 rounded-xl border border-slate-800 bg-[#0b1018] p-1">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`rounded-lg px-2.5 py-2 text-xs font-bold transition-colors cursor-pointer ${
+            className={`rounded-lg px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
               tab === t.id
                 ? 'bg-emerald-500 text-slate-950'
                 : 'text-slate-400 hover:text-slate-200'
@@ -266,6 +268,9 @@ export function SystemGuideContent() {
           </div>
         </div>
       )}
+
+      {/* Tab 5: Injury & Morale System Guide */}
+      {tab === 'condition' && <InjuryMoraleGuideContent />}
     </div>
   );
 }

@@ -175,7 +175,7 @@ export function HeaderNav() {
                   type="button"
                   onClick={() => setShowTacticsGuide(true)}
                   className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-sky-300 hover:border-sky-500/50 hover:text-sky-200 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                  title="전술 & 플레이스타일 상성 도감 열기"
+                  title="전술 & 플레이스타일 상성 도감 · 부상 & 사기 가이드 열기"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   <span className="hidden sm:inline">전술 도감</span>
@@ -186,7 +186,7 @@ export function HeaderNav() {
                   type="button"
                   onClick={() => setShowGuide(true)}
                   className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                  title="게임 시스템 가이드 열기"
+                  title="게임 시스템 & 부상·사기 가이드 열기"
                 >
                   <HelpCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span className="hidden sm:inline">가이드</span>

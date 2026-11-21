@@ -1,5 +1,5 @@
-import { ArrowRight, BookOpen, Compass, Shield, Sparkles, Swords, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { ArrowRight, BookOpen, Compass, HeartPulse, Shield, Sparkles, Swords, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { PLAYSTYLES } from '../../data/playstyles';
 import { COMPLEMENTARY_STYLE_PAIRS } from '../../engine/chemistryEngine';
 import {
@@ -10,10 +10,12 @@ import {
 } from '../../engine/tacticEngine';
 import type { TacticId } from '../../types/league';
 import type { PlaystyleId } from '../../types/player';
+import { InjuryMoraleGuideContent } from '../guide/InjuryMoraleGuideContent';
 
 interface TacticsGuideModalProps {
   open: boolean;
   onClose: () => void;
+  initialTab?: 'tactics' | 'condition';
 }
 
 const TACTIC_ORDER: TacticId[] = [
@@ -31,7 +33,13 @@ const CYCLE_ORDER: { id: TacticId; color: string; shortNote: string }[] = [
   { id: 'gegenpressing', color: 'border-orange-400/50 bg-orange-500/15 text-orange-200', shortNote: '후방 빌드업 압박' },
 ];
 
-export function TacticsGuideModal({ open, onClose }: TacticsGuideModalProps) {
+export function TacticsGuideModal({
+  open,
+  onClose,
+  initialTab = 'tactics',
+}: TacticsGuideModalProps) {
+  const [activeTab, setActiveTab] = useState<'tactics' | 'condition'>(initialTab);
+
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -58,10 +66,10 @@ export function TacticsGuideModal({ open, onClose }: TacticsGuideModalProps) {
             <BookOpen className="h-4 w-4 text-emerald-400" />
             <div>
               <h2 className="text-sm sm:text-base font-extrabold text-white">
-                전술 &amp; 플레이스타일 상성 도감 (1페이지 핵심 가이드)
+                전술 상성 &amp; 부상 · 사기 시스템 가이드
               </h2>
               <p className="text-[11px] text-slate-400">
-                상대 전술에 맞춘 카운터 전술·선발 플레이스타일을 조합하면 강팀 상대로도 경기력과 xG를 크게 끌어올릴 수 있습니다.
+                전술·플레이스타일 상성표와 부상·사기 실효 OVR 보정 수치를 한눈에 확인할 수 있습니다.
               </p>
             </div>
           </div>
@@ -75,13 +83,47 @@ export function TacticsGuideModal({ open, onClose }: TacticsGuideModalProps) {
           </button>
         </div>
 
-        <div className="max-h-[82vh] overflow-y-auto p-4 sm:p-5 space-y-5">
-          {/* Section 1: 4-Tactic Rock-Paper-Scissors Cycle + Balanced */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-300">
-              <Compass className="w-4 h-4" />
-              1. 5대 팀 전술 상성 순환도 &amp; 상성표
-            </div>
+        {/* Top Tab Switcher */}
+        <div className="border-b border-slate-800 bg-[#0a1018] px-4 sm:px-5 py-2.5">
+          <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-slate-950/80 p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('tactics')}
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-colors cursor-pointer ${
+                activeTab === 'tactics'
+                  ? 'bg-emerald-500 text-slate-950'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Compass className="h-3.5 w-3.5" />
+              ⚔️ 전술 &amp; 플레이스타일 상성
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('condition')}
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-colors cursor-pointer ${
+                activeTab === 'condition'
+                  ? 'bg-emerald-500 text-slate-950'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <HeartPulse className="h-3.5 w-3.5" />
+              🩺 부상 &amp; 사기 가이드
+            </button>
+          </div>
+        </div>
+
+        <div className="max-h-[76vh] overflow-y-auto p-4 sm:p-5 space-y-5">
+          {activeTab === 'condition' ? (
+            <InjuryMoraleGuideContent />
+          ) : (
+            <>
+              {/* Section 1: 4-Tactic Rock-Paper-Scissors Cycle + Balanced */}
+              <section className="space-y-3">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold text-emerald-300">
+                  <Compass className="w-4 h-4" />
+                  1. 5대 팀 전술 상성 순환도 &amp; 상성표
+                </div>
 
             {/* Visual Cycle */}
             <div className="rounded-xl border border-slate-800 bg-[#0a1019] p-3.5 space-y-2.5">
@@ -271,6 +313,8 @@ export function TacticsGuideModal({ open, onClose }: TacticsGuideModalProps) {
               </div>
             </div>
           </section>
+            </>
+          )}
         </div>
       </div>
     </div>

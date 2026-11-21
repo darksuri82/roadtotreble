@@ -10,12 +10,16 @@ import {
 import { useState } from 'react';
 import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
 import {
+  computeFullPlayerOvrBreakdown,
   getInjuryTooltip,
   getMoraleLabel,
   getMoraleTier,
   isPlayerActivelyInjured,
 } from '../../engine/conditionEngine';
-import { formatMainPositions } from '../../engine/positionEngine';
+import {
+  evaluatePositionFit,
+  formatMainPositions,
+} from '../../engine/positionEngine';
 import { TACTIC_LIST } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
 import { getCardTier } from '../../types/player';
@@ -308,6 +312,23 @@ export function SquadManagerModal({
                 const cond = state.season?.playerConditions?.[r.player.id];
                 const injured = isPlayerActivelyInjured(cond);
                 const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
+                const fit = r.slotSubPosition
+                  ? evaluatePositionFit(
+                      r.player,
+                      r.slotSubPosition,
+                      state.manager.traitId,
+                    )
+                  : null;
+                const slotSyn = Object.values(chemistry.slotSynergies).find(
+                  (s) => s.playerId === r.player.id,
+                );
+                const synBonus = slotSyn?.totalBonus ?? 0;
+                const ovrBr = computeFullPlayerOvrBreakdown({
+                  baseOvr: r.player.ovr,
+                  positionPenalty: fit?.penalty ?? 0,
+                  synergyBonus: synBonus,
+                  condition: cond ?? null,
+                });
                 return (
                   <tr
                     key={r.player.id}
@@ -368,8 +389,46 @@ export function SquadManagerModal({
                     <td className="py-2 px-2 text-center text-[11px] font-semibold text-slate-300">
                       {formatMainPositions(r.player)}
                     </td>
-                    <td className="py-2 px-2 text-center font-display text-sm font-bold text-emerald-300">
-                      {r.player.ovr}
+                    <td
+                      className="py-2 px-2 text-center"
+                      title={ovrBr.summaryLine}
+                    >
+                      <div className="inline-flex flex-wrap items-center justify-center gap-1">
+                        <span
+                          className={`font-display text-sm font-bold ${
+                            ovrBr.injuryPenalty < 0
+                              ? 'text-rose-300'
+                              : 'text-emerald-300'
+                          }`}
+                        >
+                          {r.player.ovr}
+                        </span>
+                        {synBonus > 0 && (
+                          <span className="rounded bg-emerald-500/20 border border-emerald-400/45 px-1 py-px text-[9px] font-black text-emerald-300">
+                            +{synBonus}
+                          </span>
+                        )}
+                        {ovrBr.moraleBonus !== 0 && (
+                          <span
+                            className={`rounded px-1 py-px text-[9px] font-black ${
+                              ovrBr.moraleBonus > 0
+                                ? 'bg-amber-500/20 border border-amber-400/45 text-amber-200'
+                                : 'bg-sky-500/20 border border-sky-400/45 text-sky-200'
+                            }`}
+                          >
+                            {ovrBr.moraleBonus > 0
+                              ? `+${ovrBr.moraleBonus}`
+                              : ovrBr.moraleBonus}
+                          </span>
+                        )}
+                        {ovrBr.injuryPenalty < 0 && (
+                          <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1 py-px text-[9px] font-black text-rose-200">
+                            {ovrBr.isUnavailableInjured
+                              ? '결장'
+                              : ovrBr.injuryPenalty}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td
                       className={`py-2 px-2 text-center font-bold ${

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
+  computeFullPlayerOvrBreakdown,
   getInjuryOvrPenalty,
   getInjuryTooltip,
   getMoraleLabel,
@@ -75,13 +76,19 @@ export function PlayerDetailModal({
     ? evaluatePositionFit(player, slotSubPosition, managerTraitId)
     : null;
   const mgrSynergy = evaluateManagerPlayerSynergy(player, managerTraitId);
-  const synBonus = slotSynergy?.totalBonus ?? 0;
-  const displayOvr =
-    slotSynergy
-      ? slotSynergy.effectiveOvrWithSynergy
-      : fit
-        ? fit.effectiveOvr
-        : player.ovr;
+  const synBonus = slotSynergy?.totalBonus ?? (mgrSynergy.isMatch ? 1 : 0);
+  const ovrBr = computeFullPlayerOvrBreakdown({
+    baseOvr: player.ovr,
+    positionPenalty: fit?.penalty ?? 0,
+    synergyBonus: synBonus,
+    condition,
+  });
+  const displayOvr = ovrBr.finalEffectiveOvr;
+  const hasAnyOvrMod =
+    ovrBr.positionPenalty !== 0 ||
+    ovrBr.synergyBonus !== 0 ||
+    ovrBr.moraleBonus !== 0 ||
+    ovrBr.injuryPenalty !== 0;
   const clubHonors = competitionStats?.clubSeasonHonors ?? [];
 
   const transferHistory =
@@ -257,20 +264,22 @@ export function PlayerDetailModal({
           <div className="flex items-start gap-2.5 shrink-0">
             <div className="rounded-xl border border-slate-700/80 bg-[#111822] px-3 py-1.5 text-center tabular-nums">
               <div className="text-[9px] font-bold text-slate-400">
-                {fit || synBonus > 0 ? '실효 OVR' : 'OVR'}
+                {hasAnyOvrMod ? '최종 실효 OVR' : 'OVR'}
               </div>
-              <div className="flex items-baseline justify-center gap-1">
+              <div className="flex flex-wrap items-baseline justify-center gap-1">
                 <span
                   className={`font-display text-2xl font-bold leading-none ${
-                    fit && fit.penalty < 0 && synBonus === 0
-                      ? fit.fit === 'secondary'
-                        ? 'text-amber-300'
-                        : 'text-rose-400'
-                      : isLegend
-                        ? 'text-amber-300'
-                        : isSuperstar
-                          ? 'text-cyan-200'
-                          : 'text-emerald-300'
+                    ovrBr.injuryPenalty < 0
+                      ? 'text-rose-300'
+                      : fit && fit.penalty < 0 && synBonus === 0
+                        ? fit.fit === 'secondary'
+                          ? 'text-amber-300'
+                          : 'text-rose-400'
+                        : isLegend
+                          ? 'text-amber-300'
+                          : isSuperstar
+                            ? 'text-cyan-200'
+                            : 'text-emerald-300'
                   }`}
                 >
                   {displayOvr}
@@ -280,13 +289,30 @@ export function PlayerDetailModal({
                     +{synBonus}
                   </span>
                 )}
+                {ovrBr.moraleBonus !== 0 && (
+                  <span
+                    className={`rounded px-1 py-0.5 text-[10px] font-black ${
+                      ovrBr.moraleBonus > 0
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : 'bg-sky-500/20 text-sky-300'
+                    }`}
+                  >
+                    {ovrBr.moraleBonus > 0
+                      ? `+${ovrBr.moraleBonus}`
+                      : ovrBr.moraleBonus}
+                  </span>
+                )}
+                {ovrBr.injuryPenalty < 0 && (
+                  <span className="rounded bg-rose-500/25 px-1 py-0.5 text-[10px] font-black text-rose-300">
+                    {ovrBr.isUnavailableInjured ? '결장' : ovrBr.injuryPenalty}
+                  </span>
+                )}
               </div>
-              {(fit && fit.penalty < 0) || synBonus > 0 ? (
+              {hasAnyOvrMod && (
                 <div className="mt-0.5 text-[9px] font-bold text-slate-400">
                   기본 {player.ovr}
-                  {fit && fit.penalty < 0 ? ` (${fit.penalty})` : ''}
                 </div>
-              ) : null}
+              )}
             </div>
 
             <button
@@ -302,6 +328,71 @@ export function PlayerDetailModal({
 
         {/* Body */}
         <div className="space-y-4 p-5 max-h-[75vh] overflow-y-auto">
+          {/* Unified OVR Calculation Breakdown Strip (기본 OVR / 시너지 / 사기 / 부상 -> 최종 실효 OVR) */}
+          <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2 tabular-nums">
+            <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-200">
+              <span>📐 실효 OVR 상세 계산 내역</span>
+              <span className="font-mono text-emerald-300">
+                최종 실효 OVR {ovrBr.finalEffectiveOvr}
+              </span>
+            </div>
+            <div className="grid grid-cols-5 gap-1.5 text-center text-[10px]">
+              <div className="rounded-lg border border-slate-800 bg-[#111822] py-1.5 px-1">
+                <div className="text-slate-400">기본 OVR</div>
+                <div className="mt-0.5 font-display text-sm font-black text-white">
+                  {ovrBr.baseOvr}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-800 bg-[#111822] py-1.5 px-1">
+                <div className="text-emerald-300/90">시너지</div>
+                <div className="mt-0.5 font-display text-sm font-black text-emerald-300">
+                  +{ovrBr.synergyBonus}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-800 bg-[#111822] py-1.5 px-1">
+                <div className="text-amber-300/90">사기</div>
+                <div
+                  className={`mt-0.5 font-display text-sm font-black ${
+                    ovrBr.moraleBonus > 0
+                      ? 'text-amber-300'
+                      : ovrBr.moraleBonus < 0
+                        ? 'text-sky-300'
+                        : 'text-slate-300'
+                  }`}
+                >
+                  {ovrBr.moraleBonus > 0
+                    ? `+${ovrBr.moraleBonus}`
+                    : ovrBr.moraleBonus}
+                </div>
+              </div>
+              <div className="rounded-lg border border-slate-800 bg-[#111822] py-1.5 px-1">
+                <div className="text-rose-300/90">부상</div>
+                <div
+                  className={`mt-0.5 font-display text-sm font-black ${
+                    ovrBr.injuryPenalty < 0
+                      ? 'text-rose-400'
+                      : 'text-slate-300'
+                  }`}
+                >
+                  {ovrBr.isUnavailableInjured
+                    ? '결장'
+                    : ovrBr.injuryPenalty}
+                </div>
+              </div>
+              <div className="rounded-lg border border-emerald-500/40 bg-emerald-950/25 py-1.5 px-1">
+                <div className="font-bold text-emerald-300">최종 실효</div>
+                <div className="mt-0.5 font-display text-sm font-black text-emerald-200">
+                  {ovrBr.finalEffectiveOvr}
+                </div>
+              </div>
+            </div>
+            {ovrBr.positionPenalty < 0 && (
+              <div className="text-[10px] text-amber-300/90 text-right">
+                * 현재 배치 슬롯 포지션 적합도 보정 ({ovrBr.positionPenalty} OVR) 포함
+              </div>
+            )}
+          </div>
+
           {/* Condition: Morale & Injury */}
           {condition && (
             <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2.5">

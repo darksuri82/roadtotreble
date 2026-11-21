@@ -259,6 +259,11 @@ export interface TransferTargetPlayer {
   formSummary: string;
   breakdown: TransferValuationBreakdown;
   isLegendFa: boolean;
+  isStarter?: boolean;
+  slotLabel?: string;
+  isShockBargain?: boolean;
+  bargainDiscountPct?: number;
+  bargainReason?: string;
 }
 
 export interface ClubPositionNeeds {
@@ -277,6 +282,8 @@ export interface TradeAssetValuation {
   injuryModPct: number;
   moraleModPct: number;
   needModPct: number;
+  bargainModPct?: number;
+  isShockBargain?: boolean;
   effectiveTp: number;
 }
 
@@ -306,6 +313,8 @@ export interface IncomingTradeOffer {
   userRequestedPlayers: Player[];
   aiPitch: string;
   status: 'pending' | 'accepted' | 'rejected';
+  isBlockbusterBargain?: boolean;
+  bargainHeadline?: string;
 }
 
 export interface TradeHistoryRecord {

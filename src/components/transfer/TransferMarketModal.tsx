@@ -92,8 +92,8 @@ function shortPitchName(name: string): string {
 }
 
 /**
- * Assigns a club's browseable squad into 11 formation starter slots + remaining bench players
- * so the Trade Room can display an authentic Formation Pitch + Bench below it.
+ * Assigns a club's 16-player squad into 11 formation starter slots + 5 core bench players
+ * (1 GK, 2 DF, 2 FW/MF) so the Trade Room displays an authentic Formation Pitch + 5-man Bench below it.
  */
 function assignPartnerSquadToFormation(
   formationId: FormationId,
@@ -104,6 +104,17 @@ function assignPartnerSquadToFormation(
 } {
   const config = FORMATIONS[formationId] ?? FORMATIONS['4-3-3'];
   const slots = config.slots;
+
+  // Fast path: if targets were built by buildTransferClubSquad (11 tagged starters in slot order + 5 core bench)
+  const taggedStarters = targets.filter((t) => t.isStarter === true);
+  const taggedBench = targets.filter((t) => t.isStarter === false);
+  if (taggedStarters.length === slots.length) {
+    return {
+      starters: taggedStarters,
+      bench: taggedBench,
+    };
+  }
+
   const assigned: (TransferTargetPlayer | null)[] = Array.from(
     { length: slots.length },
     () => null,
@@ -146,9 +157,7 @@ function assignPartnerSquadToFormation(
     }
   }
 
-  const bench = targets
-    .filter((t) => !usedIds.has(t.player.id))
-    .sort((a, b) => b.player.ovr - a.player.ovr);
+  const bench = targets.filter((t) => !usedIds.has(t.player.id));
 
   return { starters: assigned, bench };
 }
@@ -279,6 +288,13 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     return tm.rolledClubs[activeReelIdx] ?? tm.rolledClubs[0] ?? null;
   }, [counterOfferClub, tm.hasSpunClubs, tm.rolledClubs, activeReelIdx]);
 
+  // All available (not-yet-signed) targets on the active partner club (16-man squad: 11 starters + 5 core bench)
+  const availablePartnerTargets = useMemo(() => {
+    if (!activeClubOffer) return [] as TransferTargetPlayer[];
+    const signedSet = new Set(tm.signedPlayerIds);
+    return activeClubOffer.squad.filter((t) => !signedSet.has(t.player.id));
+  }, [activeClubOffer, tm.signedPlayerIds]);
+
   const activePartnerAiRoster = useMemo(() => {
     if (
       !activeClubOffer ||
@@ -287,16 +303,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     ) {
       return [] as Player[];
     }
-    const cid = activeClubOffer.club.id;
-    const lid = activeClubOffer.leagueId;
-    if (lid === 'LEGEND') return [];
-    const live =
-      lid === season.leagueId
-        ? season.aiRosters[cid]
-        : season.otherLeagues?.[lid]?.aiRosters?.[cid];
-    if (live && live.length >= 11) return live;
-    return activeClubOffer.squad.map((t) => t.player);
-  }, [season, activeClubOffer]);
+    return availablePartnerTargets.map((t) => t.player);
+  }, [activeClubOffer, availablePartnerTargets]);
 
   const activeClubNeeds = useMemo(() => {
     if (!activeClubOffer || activeClubOffer.isLegendSlot) return null;
@@ -304,12 +312,13 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     return analyzeClubPositionNeeds(activePartnerAiRoster);
   }, [activeClubOffer, activePartnerAiRoster]);
 
-  // All available (not-yet-signed) targets on the active partner club
-  const availablePartnerTargets = useMemo(() => {
-    if (!activeClubOffer) return [] as TransferTargetPlayer[];
-    const signedSet = new Set(tm.signedPlayerIds);
-    return activeClubOffer.squad.filter((t) => !signedSet.has(t.player.id));
-  }, [activeClubOffer, tm.signedPlayerIds]);
+  const activeShockBargainIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const t of availablePartnerTargets) {
+      if (t.isShockBargain) ids.add(t.player.id);
+    }
+    return ids;
+  }, [availablePartnerTargets]);
 
   const filteredPartnerSquad = useMemo(() => {
     return availablePartnerTargets.filter((t) => {
@@ -331,11 +340,15 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       formId,
       availablePartnerTargets,
     );
+    const starterIdSet = new Set(
+      starters.filter((t): t is TransferTargetPlayer => t !== null).map((t) => t.player.id),
+    );
     return {
       formationId: formId,
       slots: (FORMATIONS[formId] ?? FORMATIONS['4-3-3']).slots,
       starters,
       bench,
+      starterIdSet,
     };
   }, [activeClubOffer, availablePartnerTargets]);
 
@@ -452,6 +465,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       allPlayerStats: season.allPlayerStats,
       conditionMap: season.playerConditions,
       championBonusActive: Boolean(tm.championBonusActive),
+      shockBargainIds: activeShockBargainIds,
     });
   }, [
     season,
@@ -463,6 +477,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     activePartnerAiRoster,
     userSquadPlayers,
     tm.championBonusActive,
+    activeShockBargainIds,
   ]);
 
   const inspectedBreakdown = useMemo(() => {
@@ -847,6 +862,12 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                         )}
                       </div>
 
+                      {offer.isBlockbusterBargain && (
+                        <div className="flex items-center gap-1.5 rounded-lg border border-rose-400/50 bg-rose-500/15 px-2.5 py-1 text-[11px] font-black text-rose-200">
+                          <span>{offer.bargainHeadline ?? '🚨 충격의 급매물 · 보드진 파격 제안'}</span>
+                        </div>
+                      )}
+
                       {/* Swap visual with clickable player names */}
                       <div className="grid grid-cols-11 items-center gap-2 rounded-xl border border-slate-800 bg-[#0b1019] p-3">
                         <div className="col-span-5 space-y-1.5">
@@ -856,6 +877,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                           {offer.aiOffersPlayers.map((p) => {
                             const val = computePlayerTradePoints({
                               player: p,
+                              sellingClubNeeds: offer.clubNeeds,
+                              isShockBargain: Boolean(offer.isBlockbusterBargain),
                               stats: season.allPlayerStats[p.id] ?? null,
                               conditionMap: season.playerConditions,
                             });
@@ -882,7 +905,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                     {formatMainPositions(p)} · STA {p.stamina}
                                   </span>
                                   <span className="font-black text-emerald-300">
-                                    OVR {p.ovr} · {val.effectiveTp}TP
+                                    OVR {p.ovr} · 가치 {val.effectiveTp}
                                   </span>
                                 </div>
                               </div>
@@ -928,7 +951,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                     {formatMainPositions(p)} · STA {p.stamina}
                                   </span>
                                   <span className="font-black text-rose-300">
-                                    OVR {p.ovr} · {val.effectiveTp}TP
+                                    OVR {p.ovr} · 가치 {val.effectiveTp}
                                   </span>
                                 </div>
                               </div>
@@ -1365,7 +1388,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               </span>
                               {tradeEval && (
                                 <span className="font-mono font-bold text-emerald-200 tabular-nums">
-                                  요구 {tradeEval.aiEffectiveTp} TP
+                                  요구 가치 {tradeEval.aiEffectiveTp}
                                 </span>
                               )}
                             </div>
@@ -1399,11 +1422,16 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         <span className="text-[10px] text-slate-400">
                                           {p.position} · {p.ovr}
                                         </span>
+                                        {val?.isShockBargain && (
+                                          <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1 py-px text-[9px] font-black text-rose-200">
+                                            🚨 급매 -35%
+                                          </span>
+                                        )}
                                       </div>
                                       <div className="flex items-center gap-1.5 shrink-0">
                                         {val && (
                                           <span className="font-mono text-[10px] font-bold text-emerald-300 tabular-nums">
-                                            {val.effectiveTp}TP
+                                            가치 {val.effectiveTp}
                                           </span>
                                         )}
                                         <button
@@ -1468,7 +1496,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               </span>
                               {tradeEval && (
                                 <span className="font-mono font-bold text-rose-200 tabular-nums">
-                                  실효 {tradeEval.userEffectiveTp} TP
+                                  제시 가치 {tradeEval.userEffectiveTp}
                                 </span>
                               )}
                             </div>
@@ -1516,7 +1544,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       <div className="flex items-center gap-1.5 shrink-0">
                                         {val && (
                                           <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
-                                            {val.effectiveTp}TP
+                                            가치 {val.effectiveTp}
                                           </span>
                                         )}
                                         <button
@@ -1580,7 +1608,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       {tradeEval.acceptanceChance}%
                                     </span>
                                     <span className="text-[11px] font-mono text-slate-400 tabular-nums">
-                                      가치 비율 {Math.round(tradeEval.ratio * 100)}%
+                                      트레이드 가치 비교 {Math.round(tradeEval.ratio * 100)}%
                                     </span>
                                   </div>
                                   <p className="text-xs text-slate-200 leading-relaxed">
@@ -1606,7 +1634,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                       {pickerViewMode === 'formation' &&
                         partnerFormationLayout && (
                           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                            {/* LEFT: Partner Club Formation Pitch + Bench Below */}
+                            {/* LEFT: Partner Club Formation Pitch + 5 Core Bench Below */}
                             <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
@@ -1624,7 +1652,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   <div className="min-w-0">
                                     <div className="truncate text-xs font-black text-white">
                                       📥 {activeClubOffer.club.name} (
-                                      {partnerFormationLayout.formationId})
+                                      {partnerFormationLayout.formationId} · 주전 11 + 벤치 {partnerFormationLayout.bench.length})
                                     </div>
                                     {activeClubNeeds && (
                                       <div className="text-[10px] font-bold text-sky-300">
@@ -1658,6 +1686,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       selectedAiPlayerIds.includes(p.id);
                                     const tpVal = computePlayerTradePoints({
                                       player: p,
+                                      sellingClubNeeds: activeClubNeeds,
+                                      isShockBargain: Boolean(t.isShockBargain),
                                       stats: season.allPlayerStats[p.id] ?? null,
                                       conditionMap: season.playerConditions,
                                     });
@@ -1679,12 +1709,24 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           left: `${slot.x}%`,
                                           top: `${slot.y}%`,
                                         }}
-                                        className={`absolute -translate-x-1/2 -translate-y-1/2 w-[78px] sm:w-[84px] rounded-lg border px-1.5 py-1 text-center transition cursor-pointer select-none ${
+                                        title={
+                                          t.isShockBargain
+                                            ? `${p.name} · ${t.bargainReason ?? '프런트 급매 -35%'}`
+                                            : `${p.name} (주전 ${slot.label} · OVR ${p.ovr} · 가치 ${Math.round(tpVal.effectiveTp)})`
+                                        }
+                                        className={`absolute -translate-x-1/2 -translate-y-1/2 w-[78px] sm:w-[86px] rounded-lg border px-1.5 py-1 text-center transition cursor-pointer select-none ${
                                           isPicked
                                             ? 'border-emerald-300 bg-emerald-950/95 ring-2 ring-emerald-400 shadow-lg z-20'
-                                            : 'border-slate-700/90 bg-slate-950/90 hover:border-emerald-400/70 z-10'
+                                            : t.isShockBargain
+                                              ? 'border-rose-400/90 bg-rose-950/90 ring-1 ring-rose-400/60 hover:border-emerald-400 z-15'
+                                              : 'border-slate-700/90 bg-slate-950/90 hover:border-emerald-400/70 z-10'
                                         }`}
                                       >
+                                        {t.isShockBargain && (
+                                          <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-500 px-1 py-px text-[7px] font-black text-white shadow">
+                                            🚨급매-35%
+                                          </span>
+                                        )}
                                         <div className="flex items-center justify-between text-[9px] tabular-nums leading-none">
                                           <span className="font-bold text-slate-400">
                                             {slot.label}
@@ -1708,7 +1750,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         </div>
                                         <div className="mt-0.5 flex items-center justify-center gap-1 text-[9px] tabular-nums leading-none">
                                           <span className="font-mono text-sky-300">
-                                            {Math.round(tpVal.effectiveTp)}TP
+                                            가치 {Math.round(tpVal.effectiveTp)}
                                           </span>
                                           {inj && cond?.injury && (
                                             <PixelStatusIcon
@@ -1740,10 +1782,15 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                 )}
                               </div>
 
-                              {/* Partner Club Bench Below Pitch */}
+                              {/* Partner Club 5 Core Bench Below Pitch */}
                               <div className="space-y-1.5">
-                                <div className="text-[10px] font-extrabold text-slate-400">
-                                  후보 / 로테이션 벤치 ({partnerFormationLayout.bench.length}명)
+                                <div className="flex items-center justify-between text-[10px]">
+                                  <span className="font-extrabold text-slate-300">
+                                    상대 팀 핵심 벤치 ({partnerFormationLayout.bench.length}명 · 키퍼 1 / 수비 2 / 공격·중원 2)
+                                  </span>
+                                  <span className="text-slate-500">
+                                    클릭하여 트레이드 선택
+                                  </span>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                                   {partnerFormationLayout.bench.map((t) => {
@@ -1752,6 +1799,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       selectedAiPlayerIds.includes(p.id);
                                     const tpVal = computePlayerTradePoints({
                                       player: p,
+                                      sellingClubNeeds: activeClubNeeds,
+                                      isShockBargain: Boolean(t.isShockBargain),
                                       stats: season.allPlayerStats[p.id] ?? null,
                                       conditionMap: season.playerConditions,
                                     });
@@ -1764,15 +1813,17 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         className={`rounded-lg border px-2 py-1.5 transition cursor-pointer ${
                                           isPicked
                                             ? 'border-emerald-400 bg-emerald-950/45 ring-1 ring-emerald-400/50'
-                                            : 'border-slate-800 bg-[#101826] hover:border-slate-600'
+                                            : t.isShockBargain
+                                              ? 'border-rose-400/70 bg-rose-950/30 hover:border-emerald-400'
+                                              : 'border-slate-800 bg-[#101826] hover:border-slate-600'
                                         }`}
                                       >
                                         <div className="flex items-center justify-between text-[9px] tabular-nums">
-                                          <span className="font-bold text-slate-400">
-                                            {p.mainPositions[0] ?? p.position}
+                                          <span className="rounded bg-slate-800 px-1 py-px font-bold text-sky-300">
+                                            {t.slotLabel ?? `벤치 ${p.position}`}
                                           </span>
                                           <span className="font-black text-amber-300">
-                                            {p.ovr} · {Math.round(tpVal.effectiveTp)}TP
+                                            {p.ovr} · 가치 {Math.round(tpVal.effectiveTp)}
                                           </span>
                                         </div>
                                         <div className="mt-0.5 flex items-center gap-1 min-w-0">
@@ -1787,6 +1838,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           >
                                             {p.name}
                                           </PlayerNameButton>
+                                          {t.isShockBargain && (
+                                            <span className="rounded bg-rose-500/25 px-1 text-[8px] font-black text-rose-200 shrink-0">
+                                              급매
+                                            </span>
+                                          )}
                                         </div>
                                       </div>
                                     );
@@ -1810,10 +1866,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   />
                                   <div className="min-w-0">
                                     <div className="truncate text-xs font-black text-emerald-300">
-                                      📤 {state.userClub.name} ({state.formation})
+                                      📤 {state.userClub.name} ({state.formation} · 주전 11 + 벤치 5)
                                     </div>
                                     <div className="text-[10px] text-slate-400">
-                                      🔥 상대 최우선 니즈 +18% · ✨ 보강 니즈 +10%
+                                      🔥 상대 최우선 니즈 +32% · ✨ 보강 니즈 +18% · ⚠️ 포화 -25%
                                     </div>
                                   </div>
                                 </div>
@@ -1866,7 +1922,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         left: `${slot.x}%`,
                                         top: `${slot.y}%`,
                                       }}
-                                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-[78px] sm:w-[84px] rounded-lg border px-1.5 py-1 text-center transition cursor-pointer select-none ${
+                                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-[78px] sm:w-[86px] rounded-lg border px-1.5 py-1 text-center transition cursor-pointer select-none ${
                                         isPicked
                                           ? 'border-rose-400 bg-rose-950/95 ring-2 ring-rose-400 shadow-lg z-20'
                                           : 'border-slate-700/90 bg-slate-950/90 hover:border-rose-400/70 z-10'
@@ -1895,14 +1951,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       </div>
                                       <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[9px] tabular-nums leading-none">
                                         <span className="font-mono text-rose-300">
-                                          {Math.round(tpVal.effectiveTp)}TP
+                                          가치 {Math.round(tpVal.effectiveTp)}
                                         </span>
-                                        {tpVal.needModPct >= 18 && (
+                                        {tpVal.needModPct >= 30 && (
                                           <span className="text-[8px] font-black text-amber-300">
                                             🔥
                                           </span>
                                         )}
-                                        {tpVal.needModPct === 10 && (
+                                        {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
                                           <span className="text-[8px] font-black text-sky-300">
                                             ✨
                                           </span>
@@ -1936,8 +1992,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
                               {/* User Bench Below Pitch */}
                               <div className="space-y-1.5">
-                                <div className="text-[10px] font-extrabold text-slate-400">
-                                  우리 팀 벤치 멤버 (5명)
+                                <div className="text-[10px] font-extrabold text-slate-300">
+                                  우리 팀 핵심 벤치 (5명 · 키퍼 1 / 수비 1 / 중원 2 / 공격 1)
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                                   {state.bench.map((p, idx) => {
@@ -1969,17 +2025,16 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         }`}
                                       >
                                         <div className="flex items-center justify-between text-[9px] tabular-nums">
-                                          <span className="font-bold text-slate-400">
-                                            {BENCH_SLOTS[idx]?.label ??
-                                              p.position}
+                                          <span className="rounded bg-slate-800 px-1 py-px font-bold text-slate-300">
+                                            벤치 {BENCH_SLOTS[idx]?.label ?? p.position}
                                           </span>
                                           <span className="font-black text-white">
                                             {p.ovr} ·{' '}
                                             <span className="text-rose-300">
-                                              {Math.round(tpVal.effectiveTp)}TP
+                                              가치 {Math.round(tpVal.effectiveTp)}
                                             </span>
                                             {tpVal.needModPct > 0
-                                              ? tpVal.needModPct >= 18
+                                              ? tpVal.needModPct >= 30
                                                 ? ' 🔥'
                                                 : ' ✨'
                                               : ''}
@@ -2010,11 +2065,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                       {/* LIST VIEW (OPTIONAL TOGGLE) */}
                       {pickerViewMode === 'list' && (
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                          {/* Left: Partner List */}
+                          {/* Left: Partner List (16-man: Starters 11 + Core Bench 5) */}
                           <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="text-xs font-black text-white">
-                                📥 {activeClubOffer.club.name} 선수단
+                                📥 {activeClubOffer.club.name} 스쿼드 (16인 · 선발 11 + 벤치 5)
                               </div>
                               <div className="flex items-center gap-1">
                                 {(['ALL', 'GK', 'DF', 'MF', 'FW'] as const).map(
@@ -2042,8 +2097,21 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                 const isPicked = selectedAiPlayerIds.includes(
                                   p.id,
                                 );
+                                const isStarterTarget =
+                                  target.isStarter !== undefined
+                                    ? target.isStarter
+                                    : Boolean(
+                                        partnerFormationLayout?.starterIdSet.has(
+                                          p.id,
+                                        ),
+                                      );
+                                const roleBadgeLabel = isStarterTarget
+                                  ? `선발 · ${target.slotLabel ?? p.position}`
+                                  : target.slotLabel ?? `벤치 ${p.position}`;
                                 const tpVal = computePlayerTradePoints({
                                   player: p,
+                                  sellingClubNeeds: activeClubNeeds,
+                                  isShockBargain: Boolean(target.isShockBargain),
                                   stats: season.allPlayerStats[p.id] ?? null,
                                   conditionMap: season.playerConditions,
                                 });
@@ -2055,11 +2123,22 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                     className={`w-full rounded-xl border px-3 py-2 text-left transition cursor-pointer flex items-center justify-between gap-2 ${
                                       isPicked
                                         ? 'border-emerald-400 bg-emerald-950/35 ring-1 ring-emerald-400/40'
-                                        : 'border-slate-800 bg-[#101826] hover:border-slate-600'
+                                        : target.isShockBargain
+                                          ? 'border-rose-400/60 bg-rose-950/25 hover:border-emerald-400'
+                                          : 'border-slate-800 bg-[#101826] hover:border-slate-600'
                                     }`}
                                   >
                                     <div className="min-w-0">
-                                      <div className="flex items-center gap-1.5">
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        <span
+                                          className={`rounded px-1.5 py-0.5 text-[9px] font-black ${
+                                            isStarterTarget
+                                              ? 'bg-emerald-500/20 text-emerald-300'
+                                              : 'bg-sky-500/15 text-sky-300'
+                                          }`}
+                                        >
+                                          {roleBadgeLabel}
+                                        </span>
                                         <CountryFlagSvg
                                           code={p.nationalityCode}
                                           nationality={p.nationality}
@@ -2073,6 +2152,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         </PlayerNameButton>
                                         {tier === 'superstar' && (
                                           <Sparkles className="h-3 w-3 text-cyan-300 shrink-0" />
+                                        )}
+                                        {target.isShockBargain && (
+                                          <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1.5 py-px text-[9px] font-black text-rose-200">
+                                            🚨 급매 -35%
+                                          </span>
                                         )}
                                       </div>
                                       <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
@@ -2095,7 +2179,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           OVR {p.ovr}
                                         </div>
                                         <div className="text-[10px] font-mono text-sky-300">
-                                          {tpVal.effectiveTp} TP
+                                          가치 {tpVal.effectiveTp}
                                         </div>
                                       </div>
                                       <span
@@ -2118,7 +2202,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                           <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-black text-emerald-300">
-                                📤 {state.userClub.name} 스쿼드 (16인)
+                                📤 {state.userClub.name} 스쿼드 (16인 · 선발 11 + 벤치 5)
                               </div>
                               <span className="rounded bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-slate-300">
                                 {selectedUserSlots.length} / 3 선택
@@ -2161,7 +2245,9 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                               : 'bg-slate-800 text-slate-400'
                                           }`}
                                         >
-                                          {entry.slotLabel}
+                                          {entry.isStarter
+                                            ? `선발 · ${entry.slotLabel}`
+                                            : `벤치 ${entry.slotLabel}`}
                                         </span>
                                         <CountryFlagSvg
                                           code={p.nationalityCode}
@@ -2180,19 +2266,19 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           {formatMainPositions(p)} · STA{' '}
                                           {p.stamina}
                                         </span>
-                                        {tpVal.needModPct >= 18 && (
+                                        {tpVal.needModPct >= 30 && (
                                           <span className="rounded bg-amber-500/20 px-1.5 py-px text-[9px] font-black text-amber-200">
-                                            🔥 최우선 니즈 +18%
+                                            🔥 최우선 니즈 +32%
                                           </span>
                                         )}
-                                        {tpVal.needModPct === 10 && (
+                                        {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
                                           <span className="rounded bg-sky-500/15 px-1.5 py-px text-[9px] font-black text-sky-200">
-                                            ✨ 보강 니즈 +10%
+                                            ✨ 보강 니즈 +18%
                                           </span>
                                         )}
                                         {tpVal.needModPct < 0 && (
                                           <span className="rounded bg-slate-800 px-1.5 py-px text-[9px] font-bold text-slate-400">
-                                            ⚠️ 포화 -15%
+                                            ⚠️ 포화 -25%
                                           </span>
                                         )}
                                       </div>
@@ -2203,7 +2289,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           OVR {p.ovr}
                                         </div>
                                         <div className="text-[10px] font-mono text-rose-300">
-                                          {tpVal.effectiveTp} TP
+                                          가치 {tpVal.effectiveTp}
                                         </div>
                                       </div>
                                       <span
@@ -2284,6 +2370,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           managerTraitId={state.manager.traitId}
           seasonStats={inspectedBreakdown?.total ?? null}
           competitionStats={inspectedBreakdown}
+          condition={season.playerConditions?.[inspectedPlayer.id] ?? null}
           onClose={() => setInspectedPlayer(null)}
         />
       )}

@@ -1,6 +1,7 @@
 import {
   ACTIVE_PLAYERS,
   buildAiClubRoster,
+  buildAiClubSquad16,
   getLeagueById,
   LEGEND_PLAYERS,
 } from '../engine/dataLoader';
@@ -326,7 +327,8 @@ export function buildPlayerCompetitionBreakdown(
 }
 
 /**
- * Resolves the 11-player (or full user 16-player) squad for any club clicked in standings or brackets.
+ * Resolves the 16-player squad (11 starters + 5 core bench: 1 GK, 2 DF, 2 MF/FW)
+ * for any club clicked in standings or brackets.
  */
 export function resolveClubRoster(params: {
   clubId: string;
@@ -350,31 +352,59 @@ export function resolveClubRoster(params: {
       (p): p is Player => p !== null,
     );
   }
-  if (season?.aiRosters[clubId] && season.aiRosters[clubId].length > 0) {
-    return season.aiRosters[clubId];
-  }
-  if (season?.otherLeagues) {
-    for (const bg of Object.values(season.otherLeagues)) {
-      const bgRoster = bg?.aiRosters?.[clubId];
-      if (bgRoster && bgRoster.length > 0) return bgRoster;
-    }
-  }
-  if (
-    season?.ucl?.aiRosters[clubId] &&
-    season.ucl.aiRosters[clubId].length > 0
-  ) {
-    return season.ucl.aiRosters[clubId];
-  }
+
   const ext = UCL_EXTERNAL_TEAMS.find((t) => t.club.id === clubId);
   if (ext) return ext.roster;
 
+  let liveRoster: Player[] | undefined;
+  let resolvedLeagueId: LeagueId = leagueId ?? season?.leagueId ?? 'epl';
+
+  if (season?.aiRosters[clubId] && season.aiRosters[clubId].length > 0) {
+    liveRoster = season.aiRosters[clubId];
+    resolvedLeagueId = season.leagueId;
+  } else if (season?.otherLeagues) {
+    for (const bg of Object.values(season.otherLeagues)) {
+      const bgRoster = bg?.aiRosters?.[clubId];
+      if (bgRoster && bgRoster.length > 0) {
+        liveRoster = bgRoster;
+        resolvedLeagueId = bg!.leagueId;
+        break;
+      }
+    }
+  }
+  if (
+    !liveRoster &&
+    season?.ucl?.aiRosters[clubId] &&
+    season.ucl.aiRosters[clubId].length > 0
+  ) {
+    liveRoster = season.ucl.aiRosters[clubId];
+  }
+
+  const ownedIds = new Set<string>([
+    ...userStarters.filter((p): p is Player => p !== null).map((p) => p.id),
+    ...userBench.filter((p): p is Player => p !== null).map((p) => p.id),
+  ]);
+  const excludeIds = new Set<string>([
+    ...ownedIds,
+    ...(season?.departedPlayerIds ?? []),
+  ]);
+
   if (club) {
-    const excludeIds = new Set<string>([
-      ...userStarters.filter((p): p is Player => p !== null).map((p) => p.id),
-      ...userBench.filter((p): p is Player => p !== null).map((p) => p.id),
-      ...(season?.departedPlayerIds ?? []),
-    ]);
-    return buildAiClubRoster(club, leagueId ?? season?.leagueId ?? 'epl', excludeIds);
+    return buildAiClubSquad16({
+      club,
+      leagueId: resolvedLeagueId,
+      liveAiRoster: liveRoster,
+      ownedIds,
+      excludeIds,
+    }).all16;
+  }
+
+  if (liveRoster && liveRoster.length > 0) {
+    return liveRoster;
+  }
+
+  if (club) {
+    return buildAiClubRoster(club, resolvedLeagueId, excludeIds);
   }
   return [];
 }

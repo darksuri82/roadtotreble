@@ -2,6 +2,7 @@ import { Crown, Diamond, Star } from 'lucide-react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
+  computeFullPlayerOvrBreakdown,
   getInjuryTooltip,
   getMoraleLabel,
   getMoraleTier,
@@ -99,6 +100,12 @@ export function PlayerCard({
     : null;
   const hasPenalty = Boolean(fit && fit.penalty < 0);
   const mgrSynergy = evaluateManagerPlayerSynergy(player, managerTraitId);
+  const ovrBr = computeFullPlayerOvrBreakdown({
+    baseOvr: player.ovr,
+    positionPenalty: fit?.penalty ?? 0,
+    synergyBonus: mgrSynergy.isMatch ? 1 : 0,
+    condition,
+  });
 
   const penaltyBadgeColor =
     fit?.fit === 'secondary'
@@ -113,6 +120,7 @@ export function PlayerCard({
         type="button"
         onClick={onClick}
         disabled={disabled}
+        title={ovrBr.summaryLine}
         className={`relative w-full overflow-hidden rounded-xl p-3 text-left transition-colors duration-150 ${style.wrapper} ${
           selected ? 'ring-2 ring-emerald-400' : ''
         } ${
@@ -161,6 +169,26 @@ export function PlayerCard({
                     title={`사기 ${getMoraleLabel(condition!.morale)} (-2 OVR)`}
                   />
                 )}
+                {ovrBr.moraleBonus !== 0 && (
+                  <span
+                    className={`rounded px-1 py-0.5 text-[9px] font-black leading-none ${
+                      ovrBr.moraleBonus > 0
+                        ? 'bg-amber-500/20 text-amber-300'
+                        : 'bg-sky-500/20 text-sky-300'
+                    }`}
+                  >
+                    {ovrBr.moraleBonus > 0
+                      ? `+${ovrBr.moraleBonus}`
+                      : ovrBr.moraleBonus}
+                  </span>
+                )}
+                {ovrBr.injuryPenalty < 0 && (
+                  <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1 py-0.5 text-[9px] font-black text-rose-200 leading-none">
+                    {ovrBr.isUnavailableInjured
+                      ? '결장'
+                      : ovrBr.injuryPenalty}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-slate-400 truncate mt-0.5">
                 <CountryFlagSvg
@@ -208,6 +236,7 @@ export function PlayerCard({
     <div
       role="button"
       tabIndex={disabled ? -1 : 0}
+      title={ovrBr.summaryLine}
       onClick={() => {
         if (!disabled) onClick?.();
       }}
@@ -237,13 +266,29 @@ export function PlayerCard({
       {/* Top Row: OVR + Multi Main Positions + Minimal Tier */}
       <div className="relative z-10 flex items-start justify-between gap-2">
         <div>
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex flex-wrap items-baseline gap-1.5">
             <span className={`font-display text-2xl font-bold leading-none ${style.ovrText}`}>
               {player.ovr}
             </span>
             {hasPenalty && fit && (
               <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${penaltyBadgeColor}`}>
                 → {fit.effectiveOvr} ({fit.penalty})
+              </span>
+            )}
+            {ovrBr.moraleBonus !== 0 && (
+              <span
+                className={`rounded px-1.5 py-0.5 text-[10px] font-black ${
+                  ovrBr.moraleBonus > 0
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40'
+                    : 'bg-sky-500/20 text-sky-300 border border-sky-400/40'
+                }`}
+              >
+                사기 {ovrBr.moraleBonus > 0 ? `+${ovrBr.moraleBonus}` : ovrBr.moraleBonus}
+              </span>
+            )}
+            {ovrBr.injuryPenalty < 0 && (
+              <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1.5 py-0.5 text-[10px] font-black text-rose-200">
+                부상 {ovrBr.isUnavailableInjured ? '결장' : ovrBr.injuryPenalty}
               </span>
             )}
           </div>

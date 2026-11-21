@@ -53239,5 +53239,459 @@
     ],
     "scoutNote": "툴루즈 FC 소속 LW 스쿼드 자원",
     "isLegend": false
+  },
+  {
+    "id": "p-om-rulli",
+    "name": "헤로니모 루이",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 80,
+    "nationality": "아르헨티나",
+    "nationalityCode": "AR",
+    "leagueId": "ligue1",
+    "club": "올랭피크 마르세유",
+    "att": 28,
+    "mid": 63,
+    "def": 81,
+    "stamina": 77,
+    "playstyles": [
+      "sweeper_keeper",
+      "shot_stopper"
+    ],
+    "scoutNote": "올랭피크 마르세유 주전 수문장 · 반사신경과 후방 빌드업 안정감 겸비",
+    "isLegend": false
+  },
+  {
+    "id": "p-om-blanco",
+    "name": "루벤 블랑코",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 72,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "ligue1",
+    "club": "올랭피크 마르세유",
+    "att": 25,
+    "mid": 55,
+    "def": 73,
+    "stamina": 74,
+    "playstyles": [
+      "shot_stopper"
+    ],
+    "scoutNote": "올랭피크 마르세유 백업 골키퍼 · 라리가와 리그1 경험 풍부",
+    "isLegend": false
+  },
+  {
+    "id": "p-rom-shomurodov",
+    "name": "엘도르 쇼무로도프",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [
+      "LW",
+      "RW"
+    ],
+    "ovr": 75,
+    "nationality": "우즈베키스탄",
+    "nationalityCode": "UZ",
+    "leagueId": "seriea",
+    "club": "AS 로마",
+    "att": 76,
+    "mid": 68,
+    "def": 45,
+    "stamina": 81,
+    "playstyles": [
+      "line_breaker",
+      "pressing_forward"
+    ],
+    "scoutNote": "AS 로마 로테이션 스트라이커 · 왕성한 전방 압박과 배후 침투",
+    "isLegend": false
+  },
+  {
+    "id": "p-rom-solbakken",
+    "name": "올라 솔바켄",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "LW"
+    ],
+    "secondaryPositions": [
+      "ST"
+    ],
+    "ovr": 73,
+    "nationality": "노르웨이",
+    "nationalityCode": "NO",
+    "leagueId": "seriea",
+    "club": "AS 로마",
+    "att": 74,
+    "mid": 68,
+    "def": 44,
+    "stamina": 80,
+    "playstyles": [
+      "inverted_winger"
+    ],
+    "scoutNote": "AS 로마 측면 공격 옵션 · 왼발 컷인과 직선적인 드리블 돌파",
+    "isLegend": false
+  },
+  {
+    "id": "p-ala-cvicente",
+    "name": "카를로스 비센테",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "RM"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 76,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "laliga",
+    "club": "알라베스",
+    "att": 77,
+    "mid": 73,
+    "def": 52,
+    "stamina": 84,
+    "playstyles": [
+      "classic_winger"
+    ],
+    "scoutNote": "알라베스 우측면 핵심 윙어 · 날카로운 크로스와 측면 돌파력",
+    "isLegend": false
+  },
+  {
+    "id": "p-ala-villalibre",
+    "name": "아시에르 비얄리브레",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 73,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "laliga",
+    "club": "알라베스",
+    "att": 74,
+    "mid": 64,
+    "def": 43,
+    "stamina": 77,
+    "playstyles": [
+      "poacher"
+    ],
+    "scoutNote": "알라베스 타깃형 스트라이커 · 박스 안 몸싸움과 헤더 마무리",
+    "isLegend": false
+  },
+  {
+    "id": "p-ala-conechny",
+    "name": "토마스 코네치니",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "LM"
+    ],
+    "secondaryPositions": [
+      "CAM"
+    ],
+    "ovr": 73,
+    "nationality": "아르헨티나",
+    "nationalityCode": "AR",
+    "leagueId": "laliga",
+    "club": "알라베스",
+    "att": 74,
+    "mid": 70,
+    "def": 48,
+    "stamina": 82,
+    "playstyles": [
+      "inverted_winger",
+      "pressing_forward"
+    ],
+    "scoutNote": "알라베스 좌측면 로테이션 자원 · 왕성한 활동량과 세컨드 볼 침투",
+    "isLegend": false
+  },
+  {
+    "id": "p-ang-aholou",
+    "name": "장외드 아올루",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 73,
+    "nationality": "코트디부아르",
+    "nationalityCode": "CI",
+    "leagueId": "ligue1",
+    "club": "앙제 SCO",
+    "att": 62,
+    "mid": 74,
+    "def": 72,
+    "stamina": 83,
+    "playstyles": [
+      "ball_winner"
+    ],
+    "scoutNote": "앙제 SCO 중원 수비형 미드필더 · 피지컬 경합과 중원 커팅",
+    "isLegend": false
+  },
+  {
+    "id": "p-ang-capelle",
+    "name": "피에릭 카펠",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "LM"
+    ],
+    "secondaryPositions": [
+      "CDM",
+      "LB"
+    ],
+    "ovr": 72,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "ligue1",
+    "club": "앙제 SCO",
+    "att": 66,
+    "mid": 73,
+    "def": 68,
+    "stamina": 81,
+    "playstyles": [
+      "box_to_box"
+    ],
+    "scoutNote": "앙제 SCO 베테랑 멀티 미드필더 · 헌신적인 공수 연결고리",
+    "isLegend": false
+  },
+  {
+    "id": "p-sun-dneil",
+    "name": "대니얼 닐",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CDM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 76,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB-ENG",
+    "leagueId": "epl",
+    "club": "선덜랜드",
+    "att": 68,
+    "mid": 77,
+    "def": 71,
+    "stamina": 85,
+    "playstyles": [
+      "deep_playmaker",
+      "box_to_box"
+    ],
+    "scoutNote": "선덜랜드 성골 중원 사령관 · 탈압박과 전진 패스 템포 조율",
+    "isLegend": false
+  },
+  {
+    "id": "p-ips-hclarke",
+    "name": "해리 클라크",
+    "position": "DF",
+    "mainPositions": [
+      "RB",
+      "RWB"
+    ],
+    "secondaryPositions": [
+      "CB"
+    ],
+    "ovr": 74,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB-ENG",
+    "leagueId": "epl",
+    "club": "입스위치 타운",
+    "att": 61,
+    "mid": 68,
+    "def": 75,
+    "stamina": 83,
+    "playstyles": [
+      "attacking_wingback"
+    ],
+    "scoutNote": "입스위치 타운 우측 수비 로테이션 · 대인 마크와 오버래핑",
+    "isLegend": false
+  },
+  {
+    "id": "p-get-asola",
+    "name": "알렉스 솔라",
+    "position": "MF",
+    "mainPositions": [
+      "RM",
+      "RW"
+    ],
+    "secondaryPositions": [
+      "RB",
+      "RWB"
+    ],
+    "ovr": 74,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "laliga",
+    "club": "헤타페",
+    "att": 71,
+    "mid": 75,
+    "def": 67,
+    "stamina": 84,
+    "playstyles": [
+      "classic_winger",
+      "attacking_wingback"
+    ],
+    "scoutNote": "헤타페 우측면 멀티 미드필더 · 직선적인 돌파와 성실한 수비 가담",
+    "isLegend": false
+  },
+  {
+    "id": "p-mal-scastel",
+    "name": "세르히오 카스텔",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 71,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "laliga",
+    "club": "말라가",
+    "att": 72,
+    "mid": 63,
+    "def": 41,
+    "stamina": 76,
+    "playstyles": [
+      "poacher"
+    ],
+    "scoutNote": "말라가 최전방 백업 스트라이커 · 포스트 플레이와 세컨드 볼 슈팅",
+    "isLegend": false
+  },
+  {
+    "id": "p-ata-vvlahovic",
+    "name": "바냐 블라호비치",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 73,
+    "nationality": "세르비아",
+    "nationalityCode": "RS",
+    "leagueId": "seriea",
+    "club": "아탈란타",
+    "att": 74,
+    "mid": 65,
+    "def": 40,
+    "stamina": 79,
+    "playstyles": [
+      "poacher",
+      "line_breaker"
+    ],
+    "scoutNote": "아탈란타 유스 출신 유망주 스트라이커 · 침착한 박스 안 골 결정력",
+    "isLegend": false
+  },
+  {
+    "id": "p-par-balogh",
+    "name": "보톤드 발로그",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 74,
+    "nationality": "헝가리",
+    "nationalityCode": "HU",
+    "leagueId": "seriea",
+    "club": "파르마",
+    "att": 46,
+    "mid": 64,
+    "def": 75,
+    "stamina": 79,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "파르마 중앙 수비 로테이션 핵심 · 제공권 경합과 침착한 커버",
+    "isLegend": false
+  },
+  {
+    "id": "p-fcb-irankunda",
+    "name": "네스토리 이란쿤다",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "LW"
+    ],
+    "secondaryPositions": [
+      "ST"
+    ],
+    "ovr": 74,
+    "nationality": "호주",
+    "nationalityCode": "AU",
+    "leagueId": "bundesliga",
+    "club": "바이에른 뮌헨",
+    "att": 75,
+    "mid": 69,
+    "def": 43,
+    "stamina": 82,
+    "playstyles": [
+      "classic_winger",
+      "line_breaker"
+    ],
+    "scoutNote": "바이에른 뮌헨 초신성 윙어 · 폭발적인 스프린트와 강력한 슈팅",
+    "isLegend": false
+  },
+  {
+    "id": "p-bvb-ccampbell",
+    "name": "콜 캠벨",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "LW"
+    ],
+    "secondaryPositions": [],
+    "ovr": 73,
+    "nationality": "미국",
+    "nationalityCode": "US",
+    "leagueId": "bundesliga",
+    "club": "보루시아 도르트문트",
+    "att": 74,
+    "mid": 68,
+    "def": 41,
+    "stamina": 80,
+    "playstyles": [
+      "inverted_winger"
+    ],
+    "scoutNote": "보루시아 도르트문트 측면 유망주 · 빠른 발과 저돌적인 1대1 돌파",
+    "isLegend": false
+  },
+  {
+    "id": "p-m05-hanche",
+    "name": "안드레아스 한체올센",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [
+      "RB"
+    ],
+    "ovr": 75,
+    "nationality": "노르웨이",
+    "nationalityCode": "NO",
+    "leagueId": "bundesliga",
+    "club": "마인츠 05",
+    "att": 48,
+    "mid": 65,
+    "def": 76,
+    "stamina": 80,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "마인츠 05 스리백 핵심 수비수 · 투지 넘치는 태클과 대인 방어",
+    "isLegend": false
   }
 ]

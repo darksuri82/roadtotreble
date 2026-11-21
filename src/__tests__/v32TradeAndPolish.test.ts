@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIVE_PLAYERS, getLeagueById } from '../engine/dataLoader';
+import { computeFullPlayerOvrBreakdown } from '../engine/conditionEngine';
+import {
+  ACTIVE_PLAYERS,
+  buildAiClubSquad16,
+  getLeagueById,
+  LEAGUES,
+} from '../engine/dataLoader';
 import { simulateFirstHalf } from '../engine/matchEngine';
 import {
   analyzeClubPositionNeeds,
+  buildTransferClubSquad,
   computePlayerTradePoints,
   evaluateTradePackage,
   generateIncomingTradeOffers,
@@ -47,7 +54,7 @@ function makeSyntheticPlayer(
   };
 }
 
-describe('v3.2 / v3.2.1 NBA-Style Trade System (Option 3), Position Coherence, No-0% Curve & Full-Season Stress Verification', () => {
+describe('v3.2 / v3.3 NBA-Style Trade System, 16-Player AI Squad (11 Starters + 5 Core Bench), Shock Bargain & Condition OVR Breakdown', () => {
   it('heavily penalizes 3x low-OVR cheese for an 89 superstar without ever showing 0%', () => {
     const epl = getLeagueById('epl');
     const aiClub = epl.clubs[0];
@@ -106,7 +113,7 @@ describe('v3.2 / v3.2.1 NBA-Style Trade System (Option 3), Position Coherence, N
     expect(evalCheese.gmTone).toBe('offended');
   });
 
-  it('rewards positional needs (+18%) and evaluates realistic 2:1 star packages generously', () => {
+  it('rewards positional needs (+32% #1 need) and evaluates realistic 2:1 star packages generously', () => {
     const epl = getLeagueById('epl');
     const aiClub = epl.clubs[1];
     // Weak in FW (only 2 low-OVR FWs) so FW is top need
@@ -136,7 +143,7 @@ describe('v3.2 / v3.2.1 NBA-Style Trade System (Option 3), Position Coherence, N
       player: uFw,
       receivingClubNeeds: aiNeeds,
     });
-    expect(tpNeed.needModPct).toBe(18);
+    expect(tpNeed.needModPct).toBe(32);
 
     const fillers = selectAutoFillerPlayers({
       aiRoster: aiRosterWithStar,
@@ -550,5 +557,193 @@ describe('v3.2 / v3.2.1 NBA-Style Trade System (Option 3), Position Coherence, N
 
     expect(totalHomeShots).toBeGreaterThan(totalAwayShots * 1.8);
     expect(homeChances).toBeGreaterThan(awayChances * 1.8);
+  });
+
+  it('guarantees all 96 clubs across 5 leagues have full activePlayers depth and buildAiClubSquad16 / buildTransferClubSquad produce 11 starters + 5 core bench (GK 1, DF 2, FW/MF 2)', () => {
+    for (const league of LEAGUES) {
+      for (const club of league.clubs) {
+        const clubPlayers = ACTIVE_PLAYERS.filter(
+          (p) => p.leagueId === league.id && p.club === club.name,
+        );
+        expect(clubPlayers.length).toBeGreaterThanOrEqual(20);
+        expect(
+          clubPlayers.filter((p) => p.position === 'GK').length,
+        ).toBeGreaterThanOrEqual(2);
+        expect(
+          clubPlayers.filter((p) => p.position === 'DF').length,
+        ).toBeGreaterThanOrEqual(6);
+        expect(
+          clubPlayers.filter((p) => p.position === 'MF').length,
+        ).toBeGreaterThanOrEqual(5);
+        expect(
+          clubPlayers.filter((p) => p.position === 'FW').length,
+        ).toBeGreaterThanOrEqual(4);
+
+        const sq16 = buildAiClubSquad16({
+          club,
+          leagueId: league.id,
+          excludeIds: new Set(),
+        });
+        expect(sq16.starters).toHaveLength(11);
+        expect(sq16.bench).toHaveLength(5);
+        expect(sq16.all16).toHaveLength(16);
+
+        // Verify 5-man core bench composition: 1 GK, 2 DF, 2 FW/MF
+        expect(sq16.bench[0].position).toBe('GK');
+        expect(sq16.bench[1].position).toBe('DF');
+        expect(sq16.bench[2].position).toBe('DF');
+        expect(['MF', 'FW']).toContain(sq16.bench[3].position);
+        expect(['MF', 'FW']).toContain(sq16.bench[4].position);
+
+        // Verify trade market buildTransferClubSquad also exposes all 16 (11 starters + 5 bench) even when live aiRoster has 11 players
+        const tradeSquad = buildTransferClubSquad({
+          club,
+          leagueId: league.id,
+          ownedIds: new Set(),
+          excludeIds: new Set(),
+          aiRoster: sq16.starters, // simulate 11-player live aiRoster
+          clubRank: 5,
+          leagueSize: league.clubs.length,
+          currentRound: 9,
+          totalRounds: 38,
+          windowIndex: 1,
+          userRank: 1,
+          userLeagueSize: 20,
+          allPlayerStats: {},
+          isUserLeague: true,
+        });
+        expect(tradeSquad).toHaveLength(16);
+        expect(tradeSquad.filter((t) => t.isStarter)).toHaveLength(11);
+        expect(tradeSquad.filter((t) => !t.isStarter)).toHaveLength(5);
+      }
+    }
+  });
+
+  it('applies -35% shock bargain discount and waives 87+ star guard when a superstar is on shock fire-sale', () => {
+    const epl = getLeagueById('epl');
+    const aiClub = epl.clubs[0];
+    const starTarget = makeSyntheticPlayer('ai-donic-star', 90, 'FW', 'ST');
+    const aiRoster = [
+      makeSyntheticPlayer('ai-gk1', 84, 'GK', 'GK'),
+      makeSyntheticPlayer('ai-gk2', 75, 'GK', 'GK'),
+      starTarget,
+      ...Array.from({ length: 13 }, (_, i) =>
+        makeSyntheticPlayer(
+          `ai-p${i}`,
+          78 + (i % 4),
+          i < 5 ? 'DF' : i < 10 ? 'MF' : 'FW',
+          i < 5 ? 'CB' : i < 10 ? 'CM' : 'ST',
+        ),
+      ),
+    ];
+    const aiNeeds = analyzeClubPositionNeeds(aiRoster);
+
+    const normalValuation = computePlayerTradePoints({
+      player: starTarget,
+      isShockBargain: false,
+    });
+    const bargainValuation = computePlayerTradePoints({
+      player: starTarget,
+      isShockBargain: true,
+    });
+    expect(bargainValuation.isShockBargain).toBe(true);
+    expect(bargainValuation.bargainModPct).toBe(-35);
+    expect(bargainValuation.effectiveTp).toBeLessThan(
+      normalValuation.effectiveTp * 0.72,
+    );
+
+    const u1 = makeSyntheticPlayer('u-p1', 82, 'DF', 'CB');
+    const u2 = makeSyntheticPlayer('u-p2', 81, 'MF', 'CM');
+    const uGk = makeSyntheticPlayer('u-gk', 82, 'GK', 'GK');
+    const fillers = selectAutoFillerPlayers({
+      aiRoster,
+      aiTargetIds: new Set([starTarget.id]),
+      userSentPlayers: [u1, u2],
+      neededCount: 1,
+      club: aiClub,
+      leagueId: 'epl',
+      excludeIds: new Set([u1.id, u2.id, uGk.id]),
+    });
+
+    const evalNormal = evaluateTradePackage({
+      userSentPlayers: [u1, u2],
+      aiTargetPlayers: [starTarget],
+      aiFillerPlayers: fillers,
+      aiClub,
+      aiRoster,
+      aiNeeds,
+      userSquad: [uGk, u1, u2],
+      userRank: 3,
+      userLeagueSize: 20,
+      aiClubRank: 6,
+      aiLeagueSize: 20,
+      allPlayerStats: {},
+    });
+    const evalShock = evaluateTradePackage({
+      userSentPlayers: [u1, u2],
+      aiTargetPlayers: [starTarget],
+      aiFillerPlayers: fillers,
+      aiClub,
+      aiRoster,
+      aiNeeds,
+      userSquad: [uGk, u1, u2],
+      userRank: 3,
+      userLeagueSize: 20,
+      aiClubRank: 6,
+      aiLeagueSize: 20,
+      allPlayerStats: {},
+      shockBargainIds: new Set([starTarget.id]),
+    });
+
+    expect(evalShock.acceptanceChance).toBeGreaterThan(
+      evalNormal.acceptanceChance + 20,
+    );
+  });
+
+  it('computes full player OVR breakdown (base + position + synergy + morale + injury -> finalEffectiveOvr)', () => {
+    const healthyFlame = computeFullPlayerOvrBreakdown({
+      baseOvr: 86,
+      positionPenalty: 0,
+      synergyBonus: 2,
+      condition: {
+        morale: 4, // 최상 (+2)
+        injury: null,
+        consecutiveBenchMatches: 0,
+        consecutiveMatchesPlayed: 3,
+        recentGoalDrought: 0,
+      },
+    });
+    expect(healthyFlame.moraleBonus).toBe(2);
+    expect(healthyFlame.injuryPenalty).toBe(0);
+    expect(healthyFlame.finalEffectiveOvr).toBe(90);
+    expect(healthyFlame.summaryLine).toContain('최종 실효 OVR 90');
+
+    const minorInjuredFrozen = computeFullPlayerOvrBreakdown({
+      baseOvr: 85,
+      positionPenalty: -3,
+      synergyBonus: 1,
+      condition: {
+        morale: -4, // 최악 (-2)
+        injury: {
+          id: 'inj-1',
+          name: '발목 타박상',
+          severity: 'minor',
+          matchesRemaining: 2,
+          initialMatches: 2,
+          canPlayThrough: true,
+          playThroughPenalty: -3,
+          recoveryMatchesRemaining: 0,
+          occurredRound: 5,
+          occurredCompetition: 'league',
+        },
+        consecutiveBenchMatches: 0,
+        consecutiveMatchesPlayed: 1,
+        recentGoalDrought: 0,
+      },
+    });
+    expect(minorInjuredFrozen.moraleBonus).toBe(-2);
+    expect(minorInjuredFrozen.injuryPenalty).toBe(-3);
+    expect(minorInjuredFrozen.isUnavailableInjured).toBe(false);
+    expect(minorInjuredFrozen.finalEffectiveOvr).toBe(85 - 3 + 1 - 2 - 3);
   });
 });

@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v3.2.1)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v3.3)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,10 +9,14 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **20개 파일 / 76개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **20개 파일 / 79개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
+- **v3.3 주요 신규 모듈·기능**:
+  - **상대 AI 구단 벤치 누락 해결 · 5대 리그 96구단 풀스쿼드 보강 & 핵심 벤치 5인(16인 규격) 표준화 (`dataLoader.ts`, `transferEngine.ts`, `playerLookup.ts`, `GameContext.tsx`, `activePlayers.json`)**: `buildAiClubRoster`가 선발 11명만 생성한 뒤 `buildTransferClubSquad`가 `aiRoster.length >= 11` 분기에서 후보 풀을 건너뛰어 벤치가 0명으로 나오던 버그를 해결. `buildAiClubSquad16`을 도입해 모든 AI 구단을 우리 팀과 동일한 **16인 규격(선발 11명 + 핵심 벤치 5명: OVR 높은 순 `GK 1 / DF 2 / FW·MF 2`)**으로 표준화하고, FotMob 2026-27 실존 선수 18명 보강으로 96개 전 구단 `총원 ≥ 20, GK ≥ 2, DF ≥ 6, MF ≥ 5, FW ≥ 4`(총 현역 2,206명, 전 세계 중복 0건, 레벤수 레전드 유지) 완비
+  - **트레이드 `가치` 한국어 표기 통일 · 포지션 니즈 비중 강화 & 루카 돈치치급 `🚨 충격 급매물` (`TransferMarketModal.tsx`, `transferEngine.ts`)**: `TP` 표기를 전부 **`가치`**로 통일, 상대 구단 포지션 니즈 비중 대폭 강화(`#1 최우선 니즈 +32% & 성사율 +8%p`, `#2 보강 니즈 +18% & +4%p`, `포화 포지션 -25% & -10%p`, 상대 포화 포지션 영입 `-12%`), 선수당 ~4.5% 확률(구단당 최대 1명)로 요구 가치 `-35%` 할인 및 87+ 가드 면제가 적용되는 **`🚨 충격 급매물(evaluateShockBargainStatus)`** 및 타 구단 먼저 오는 **`🚨 블록버스터 급매 제안(isBlockbusterBargain)`** 추가
+  - **부상·사기 OVR 증감 직관적 표시 & `[🩺 부상 & 사기 가이드]` 탭 추가 (`conditionEngine.ts`, `PitchBoard.tsx`, `SquadManagerModal.tsx`, `UclDashboard.tsx`, `PlayerCard.tsx`, `PlayerDetailModal.tsx`, `InjuryMoraleGuideContent.tsx`, `SystemGuideModal.tsx`, `TacticsGuideModal.tsx`)**: `computeFullPlayerOvrBreakdown`으로 피치·스쿼드·선수 카드에 사기(`+2/+1/-1/-2`)·부상(`-1~-4` / `결장`) OVR 배지 표시, 호버 툴팁 및 상세 카드 상단에 **`기본 OVR / (포지션) / 시너지 / 사기 / 부상 → 최종 실효 OVR`** 5단 계산 패널 추가, `[가이드]` 및 `[전술 도감]` 모달에 코드 100% 일치 **`[🩺 부상 & 사기 가이드]`** 탭 신설
 - **v3.2.1 주요 핫픽스·UX 개선**:
   - **이적시장 닫기 검은 화면 크래시 근본 수정 (`TransferMarketModal.tsx`)**: Wrapper/Inner 분리로 조건부 훅 실행(`Rendered fewer hooks than expected`) 원천 제거 및 이적시장 창 전환 시 로컬 상태 자동 리셋
   - **타 구단 제안 포지션 모순 제거 & 선수 상세 카드 연동 (`transferEngine.ts`, `GameContext.tsx`, `TransferMarketModal.tsx`)**: 요청 포지션·최우선 필요 포지션 제시 차단(GK≤2·GK 필요 시 GK 판매 불가), `TRADE_ACCEPT_INCOMING` 최소 GK 가드 추가, 트레이드 전 화면 선수 이름 클릭 시 `PlayerDetailModal` 즉시 표시
