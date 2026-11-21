@@ -34,6 +34,11 @@
   - UCL `[내 스쿼드 / 전술]` 탭 피치를 정규 리그 스쿼드 관리 창과 동일한 비율(`lg:col-span-5` + `max-w-[460px]` + `compact`)로 정규화하고 우측에 16인 UCL 스탯 요약 리스트 추가.
   - UCL `[1경기 스킵]` 클릭 시 라운드명, 양 팀 스코어, 승/무/패(PK) 배지, 득점자 요약, `[상세 기록]` 버튼이 포함된 결과 스코어 배너 즉시 표시.
 
+### 6. 모바일 브라우저 터치 좌표(Hit-Test) 밀림 현상 해결 및 뷰포트 안정화 (Hotfix)
+- **모바일 뷰포트·터치 히트박스 정상화** (`index.html`, `src/index.css`, `src/App.tsx`, `HeaderNav.tsx`, `MatchDayTacticsRoom.tsx`, `OpponentPitchView.tsx`, `RouletteReelsView.tsx`, `PlayerCard.tsx`, `PitchBoard.tsx`, `TransferMarketModal.tsx`):
+  - `html`, `body`, `#root`에 단일 문서 스크롤 기반 `overflow-x: clip` 및 `100dvh`(`min-h-dvh`)를 적용하고 상단 `sticky` 헤더의 모바일 가로폭 초과·`backdrop-blur` 합성 레이어와 내부 `sticky bottom-2 backdrop-blur` 래퍼를 제거해 모바일 주소창 변화 시 터치 좌표가 위쪽으로 밀리던 문제 해결.
+  - 드래프트 프리뷰 바 선택 전/후 높이 고정(`min-h-[84px]`), 카드/피치 노드의 `hover:-translate-y-0.5`·`scale-105` 제거, 전역 인터랙티브 요소 `touch-action: manipulation` 적용.
+
 ---
 
 ## v2.7 — 시너지 OVR · 매치 데이 전술실 & 상성 도감 · 연장 라커룸 통일 · 도트 감독 리뉴얼 · 5대 리그 구체화 & 난이도 상향

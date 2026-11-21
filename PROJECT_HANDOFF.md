@@ -18,6 +18,7 @@
   - **이적시장 원스톱 협상 모달**: `TransferMarketModal.tsx` 스크롤 왕복 없이 한 화면에서 `[IN 영입 대상] ↔ [OUT 방출 선수 선택(⚡ AI 추천 Top 5 / 선발 11인 / 벤치 5인)] ↔ [오퍼 제출]` 완료
   - **정규 리그 최종 라운드 시즌 결과 팝업 배너 & 5대 리그 전용 도트 우승 트로피**: `LeagueFinaleBannerModal.tsx`, `PixelTrophySvg.tsx`(`epl_league`, `laliga_league`, `seriea_league`, `bundesliga_league` 마이스터샬레, `ligue1_league` 헥사고알 + `getLeagueTrophyVariant`), 1위 우승 / 2~4위 챔스 진출 / 하위 강등권 분기 배너
   - **우측 상단 헤더 1줄 고정 · UCL 스쿼드 피치 비율 정규화 · UCL 1경기 스킵 결과 배너**: `HeaderNav.tsx` 전 버튼 `whitespace-nowrap shrink-0` 1줄 정렬, `UclDashboard.tsx` 내 스쿼드 탭 피치 `lg:col-span-5` + `max-w-[460px]` + `compact` 정규화 및 `[1경기 스킵]` 상단 결과 스코어 배너 추가
+  - **모바일 브라우저 터치 좌표(Hit-Test) 밀림 해결 & 뷰포트 안정화**: `html`/`body`/`#root` 단일 문서 스크롤 `overflow-x: clip` + `100dvh`(`min-h-dvh`), `sticky` 헤더 모바일 폭 정상화 및 `backdrop-blur` 제거, 드래프트 프리뷰 바 높이 고정(`min-h-[84px]`), 카드/피치 노드 `scale`/`translate` 제거 및 전역 `touch-action: manipulation` 적용
 - **v2.7 주요 신규 모듈·기능**:
   - **드래프트 감독 시너지 가이드 & 선수 단위 시너지 OVR**: `evaluateManagerPlayerSynergy`, `slotSynergies`(+0~+3), `applySlotSynergiesToStarters`, 드래프트 가이드 바, 피치 녹색 `(+N)` 배지 & 상세 내역
   - **매치 데이 전술실 & 상성 도감**: `MatchDayTacticsRoom.tsx`(상대 예상 XI 스카우팅 + 인라인 전술/포메이션/선발 편집 + 실시간 상성 진단 배지), `TacticsGuideModal.tsx`(1페이지 전술/플레이스타일 상성 도감), 강화된 `TACTIC_MATRIX`(±2.8) & 플레이스타일 상성
