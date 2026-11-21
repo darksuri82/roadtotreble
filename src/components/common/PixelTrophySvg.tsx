@@ -2,6 +2,11 @@ import type { LeagueId } from '../../types/league';
 
 export type PixelTrophyVariant =
   | 'league'
+  | 'epl_league'
+  | 'laliga_league'
+  | 'seriea_league'
+  | 'bundesliga_league'
+  | 'ligue1_league'
   | 'cup'
   | 'fa_cup'
   | 'copa_del_rey'
@@ -16,6 +21,25 @@ interface PixelTrophySvgProps {
   size?: number;
   className?: string;
   animate?: boolean;
+}
+
+export function getLeagueTrophyVariant(
+  leagueId: LeagueId | string,
+): PixelTrophyVariant {
+  switch (leagueId) {
+    case 'epl':
+      return 'epl_league';
+    case 'laliga':
+      return 'laliga_league';
+    case 'seriea':
+      return 'seriea_league';
+    case 'bundesliga':
+      return 'bundesliga_league';
+    case 'ligue1':
+      return 'ligue1_league';
+    default:
+      return 'league';
+  }
 }
 
 export function getDomesticCupTrophyVariant(
@@ -59,6 +83,61 @@ const PALETTES: Record<PixelTrophyVariant, Palette> = {
     A: '#38bdf8',
     B: '#262b36',
     P: '#fde047',
+    W: '#ffffff',
+  },
+  epl_league: {
+    O: '#141016',
+    H: '#f8fafc',
+    M: '#e2e8f0',
+    S: '#94a3b8',
+    D: '#475569',
+    A: '#f59e0b', // Golden Crown & Trim
+    B: '#1e1b4b', // Royal Purple/Navy Plinth
+    P: '#10b981', // Premier Emerald Band
+    W: '#ffffff',
+  },
+  laliga_league: {
+    O: '#141016',
+    H: '#ffffff',
+    M: '#e2e8f0',
+    S: '#94a3b8',
+    D: '#475569',
+    A: '#ef4444', // LaLiga Coral/Crimson Accent
+    B: '#27272a',
+    P: '#fbbf24', // Gold Plaque
+    W: '#ffffff',
+  },
+  seriea_league: {
+    O: '#141016',
+    H: '#fef08a',
+    M: '#facc15',
+    S: '#ca8a04',
+    D: '#854d0e',
+    A: '#16a34a', // Italian Green Ring
+    B: '#1e293b',
+    P: '#ef4444', // Italian Red Ring
+    W: '#ffffff',
+  },
+  bundesliga_league: {
+    O: '#141016',
+    H: '#f8fafc',
+    M: '#cbd5e1',
+    S: '#94a3b8',
+    D: '#475569',
+    A: '#f59e0b', // Tourmaline Gold Gems
+    B: '#7f1d1d', // Bundesliga Crimson Core
+    P: '#fde047',
+    W: '#ffffff',
+  },
+  ligue1_league: {
+    O: '#141016',
+    H: '#fef08a',
+    M: '#eab308',
+    S: '#a16207',
+    D: '#713f12',
+    A: '#38bdf8', // Hexagoal Blue Accent
+    B: '#1e293b',
+    P: '#e2e8f0',
     W: '#ffffff',
   },
   cup: {
@@ -155,9 +234,9 @@ const PALETTES: Record<PixelTrophyVariant, Palette> = {
 const LEAGUE_GRID = [
   '........................',
   '........O..OO..O........',
-  '.......OHOOHHOOH0.......'.replace('0', 'O'),
-  '.......OHMHHHHMHO.......',
-  '......OOHMMMMMMHOO......',
+  '.......OAOOHHOOAO.......',
+  '.......OAAWWWWAAO.......',
+  '......OOAAAAAAAHOO......',
   '......O.OHOOOOH.O.......',
   '....OOOOHWHMMMMSO.OOO...',
   '...OHO.OHWMMMMMSSO.OHO..',
@@ -180,6 +259,70 @@ const LEAGUE_GRID = [
   '.....OBBPPPPPPPPBBO.....',
   '....OBBBBBBBBBBBBBBO....',
   '....OOOOOOOOOOOOOOOO....',
+  '........................',
+];
+
+// Bundesliga Meisterschale (Iconic Circular Shield Platter)
+const MEISTERSCHALE_GRID = [
+  '........................',
+  '........OOOOOOOO........',
+  '......OOHWWWWMMSSO......',
+  '.....OHWMMAAAAMMSSSO....',
+  '....OHWMMAOOOOAAMSSSO...',
+  '...OHWMMAOOHHHOAMMSSSO..',
+  '...OHWMMOHWAAAWOMMSSSO..',
+  '..OHWMMOOWAAAAAOOMMSSSO.',
+  '..OHWMMOHAAWPPAAOMMSSSO.',
+  '..OHWMMOHAAWPPAAOMMSSSO.',
+  '..OHWMMOOWAAAAAOOMMSSSO.',
+  '...OHWMMOHWAAAWOMMSSSO..',
+  '...OHWMMAOOHHHOAMMSSSO..',
+  '....OHWMMAOOOOAAMSSSO...',
+  '.....OHWMMAAAAMMSSSO....',
+  '......OOHMMMMMMSSO......',
+  '........OOOOOOOO........',
+  '.........OOHMSOO........',
+  '........OOHMMMSOO.......',
+  '.......OOOOOOOOOOO......',
+  '......OBBBBBBBBBBBO.....',
+  '.....OBBBPPPPPPBBBBO....',
+  '.....OBBBBBBBBBBBBBO....',
+  '....OOOOOOOOOOOOOOOOO...',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
+];
+
+// Ligue 1 Hexagoal (Modern Sculpted Hexagonal Crest Trophy)
+const HEXAGOAL_GRID = [
+  '........................',
+  '........OOOOOOOO........',
+  '.......OHWWWWMMSSO......',
+  '......OHWMMMMMMSSSO.....',
+  '.....OHWMMOOOOOMSSSO....',
+  '....OHWMMOAAAAOOMSSSO...',
+  '...OHWMMOAAWWAAOOMSSSO..',
+  '...OHWMMOAAWWAAOOMSSSO..',
+  '....OHWMMOAAAAOOMSSSO...',
+  '.....OHWMMOOOOOMSSSO....',
+  '......OHWMMMMMMSSSO.....',
+  '.......OHMMMMMMSSO......',
+  '........OHMMMMSSO.......',
+  '.........OHMMSSO........',
+  '.........OHMMSSO........',
+  '........OHWMMMSSO.......',
+  '.......OHWMMMMMSSO......',
+  '......OHWMMMMMMMSSO.....',
+  '......OOOOOOOOOOOO......',
+  '.....OBBBBBBBBBBBBO.....',
+  '.....OBBPPPPPPPPBBO.....',
+  '....OBBBBBBBBBBBBBBO....',
+  '....OOOOOOOOOOOOOOOO....',
+  '........................',
+  '........................',
+  '........................',
+  '........................',
   '........................',
 ];
 
@@ -310,7 +453,15 @@ const BALLON_DOR_GRID = [
 function getGridForVariant(variant: PixelTrophyVariant): string[] {
   switch (variant) {
     case 'league':
+    case 'epl_league':
       return LEAGUE_GRID;
+    case 'laliga_league':
+    case 'seriea_league':
+      return DFB_POKAL_GRID;
+    case 'bundesliga_league':
+      return MEISTERSCHALE_GRID;
+    case 'ligue1_league':
+      return HEXAGOAL_GRID;
     case 'ucl':
       return UCL_GRID;
     case 'ballon_dor':

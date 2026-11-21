@@ -6,10 +6,12 @@ import {
   Sparkles,
   Trophy,
   Users,
+  X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
+import { formatMainPositions } from '../../engine/positionEngine';
 import { getUserRank } from '../../engine/standingsEngine';
 import { TACTIC_LIST } from '../../engine/tacticEngine';
 import {
@@ -68,6 +70,7 @@ export function UclDashboard() {
 
   const [tab, setTab] = useState<UclTab>('match');
   const [showLpSummary, setShowLpSummary] = useState(false);
+  const [showSkipResultBanner, setShowSkipResultBanner] = useState(false);
   const [swapPick, setSwapPick] = useState<SlotRef | null>(null);
   const [inspected, setInspected] = useState<{
     player: Player;
@@ -80,6 +83,14 @@ export function UclDashboard() {
 
   const season = state.season;
   const ucl = season?.ucl ?? null;
+
+  useEffect(() => {
+    if (!showSkipResultBanner) return;
+    const timer = window.setTimeout(() => {
+      setShowSkipResultBanner(false);
+    }, 6000);
+    return () => window.clearTimeout(timer);
+  }, [showSkipResultBanner, season?.userUclMatchHistory.length]);
 
   const openPlayerById = (
     playerId: string,
@@ -310,6 +321,129 @@ export function UclDashboard() {
         </div>
       </div>
 
+      {/* UCL 1-Match Skip Result Score Banner (Toast + Top Card) */}
+      {showSkipResultBanner &&
+        season.userUclMatchHistory.length > 0 &&
+        (() => {
+          const lastMatch =
+            season.userUclMatchHistory[season.userUclMatchHistory.length - 1];
+          const homeClub = clubsById[lastMatch.homeTeamId];
+          const awayClub = clubsById[lastMatch.awayTeamId];
+          const isUserHome = lastMatch.homeTeamId === USER_CLUB_ID;
+          const userGoals = isUserHome
+            ? lastMatch.homeGoals
+            : lastMatch.awayGoals;
+          const oppGoals = isUserHome
+            ? lastMatch.awayGoals
+            : lastMatch.homeGoals;
+          const pk = lastMatch.extraTime?.penalties;
+          const userWonPk = pk
+            ? (isUserHome && pk.winnerTeamId === lastMatch.homeTeamId) ||
+              (!isUserHome && pk.winnerTeamId === lastMatch.awayTeamId)
+            : false;
+
+          const outcome =
+            userGoals > oppGoals || (pk && userWonPk)
+              ? {
+                  label: pk ? '승 (PK)' : '승리',
+                  badgeCls: 'bg-emerald-500 text-slate-950',
+                  borderCls:
+                    'border-emerald-400/60 bg-gradient-to-r from-emerald-950/90 via-[#101926] to-[#0d1420]',
+                }
+              : userGoals < oppGoals || (pk && !userWonPk)
+                ? {
+                    label: pk ? '패 (PK)' : '패배',
+                    badgeCls: 'bg-rose-500 text-white',
+                    borderCls:
+                      'border-rose-400/60 bg-gradient-to-r from-rose-950/90 via-[#101926] to-[#0d1420]',
+                  }
+                : {
+                    label: '무승부',
+                    badgeCls: 'bg-slate-600 text-white',
+                    borderCls:
+                      'border-sky-400/50 bg-gradient-to-r from-sky-950/85 via-[#101926] to-[#0d1420]',
+                  };
+
+          const goalEvents = lastMatch.events
+            .filter((e) => e.type === 'goal')
+            .slice(0, 4);
+
+          return (
+            <div
+              className={`rounded-2xl border-2 px-4 py-3 shadow-xl transition-all ${outcome.borderCls}`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+                  <span
+                    className={`rounded-md px-2 py-0.5 text-xs font-black whitespace-nowrap ${outcome.badgeCls}`}
+                  >
+                    {outcome.label}
+                  </span>
+                  <span className="rounded bg-slate-900/90 px-2 py-0.5 text-[11px] font-bold text-sky-300 whitespace-nowrap">
+                    {lastMatch.competitionLabel ?? `UCL ${lastMatch.round}R`}
+                  </span>
+                  <div className="flex items-center gap-2 font-display text-base sm:text-lg font-black text-white tabular-nums">
+                    <span
+                      className={
+                        isUserHome ? 'text-emerald-300' : 'text-slate-100'
+                      }
+                    >
+                      {homeClub?.name ?? lastMatch.homeTeamId}
+                    </span>
+                    <span className="rounded-lg bg-slate-950/90 border border-slate-700 px-2.5 py-0.5 text-amber-300">
+                      {lastMatch.homeGoals} - {lastMatch.awayGoals}
+                    </span>
+                    <span
+                      className={
+                        !isUserHome ? 'text-emerald-300' : 'text-slate-100'
+                      }
+                    >
+                      {awayClub?.name ?? lastMatch.awayTeamId}
+                    </span>
+                    {pk && (
+                      <span className="text-xs font-bold text-amber-300">
+                        (PK {pk.homePenGoals}:{pk.awayPenGoals})
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setInspectedMatch(lastMatch)}
+                    className="rounded-lg border border-sky-400/40 bg-sky-500/15 px-2.5 py-1 text-xs font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer whitespace-nowrap"
+                  >
+                    상세 기록
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSkipResultBanner(false)}
+                    className="rounded-lg border border-slate-700 bg-slate-900 p-1 text-slate-400 hover:text-white cursor-pointer"
+                    title="배너 닫기"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {goalEvents.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
+                  <span className="font-bold text-slate-400">⚽ 득점:</span>
+                  {goalEvents.map((g, i) => (
+                    <span
+                      key={`${g.minute}-${g.scorerName}-${i}`}
+                      className="rounded bg-slate-950/60 px-1.5 py-0.5 text-[10px]"
+                    >
+                      {g.scorerName} ({g.minute}&apos;)
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
       {/* TAB 1: MATCH & PROGRESSION */}
       {tab === 'match' && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
@@ -457,8 +591,12 @@ export function UclDashboard() {
                         2D 실시간 중계 시작
                       </button>
                       <button
+                        id="ucl-skip-single-match-btn"
                         type="button"
-                        onClick={simulateSingleMatchInstant}
+                        onClick={() => {
+                          setShowSkipResultBanner(true);
+                          simulateSingleMatchInstant();
+                        }}
                         className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white cursor-pointer"
                       >
                         <FastForward className="h-4 w-4" />
@@ -837,31 +975,38 @@ export function UclDashboard() {
         </div>
       )}
 
-      {/* TAB 5: SQUAD & TACTICS */}
+      {/* TAB 5: SQUAD & TACTICS (Normalized Pitch Proportions matching Regular League SquadManagerModal) */}
       {tab === 'squad' && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          <div className="lg:col-span-8">
-            <PitchBoard
-              formation={state.formation}
-              starters={state.starters}
-              bench={state.bench}
-              chemistry={chemistry}
-              managerTraitId={state.manager.traitId}
-              selectedSlot={swapPick}
-              onSlotClick={handleSquadSlotClick}
-              onSlotSwap={swapSquadPositions}
-              onInspectPlayer={(player, slotSubPosition) =>
-                setInspected({ player, slotSubPosition })
-              }
-            />
+          {/* Left: Compact Formation Pitch (5 cols, max-w-[460px]) */}
+          <div className="lg:col-span-5">
+            <div className="mx-auto max-w-[460px]">
+              <PitchBoard
+                formation={state.formation}
+                starters={state.starters}
+                bench={state.bench}
+                chemistry={chemistry}
+                managerTraitId={state.manager.traitId}
+                selectedSlot={swapPick}
+                onSlotClick={handleSquadSlotClick}
+                onSlotSwap={swapSquadPositions}
+                onInspectPlayer={(player, slotSubPosition) =>
+                  setInspected({ player, slotSubPosition })
+                }
+                showBench
+                showChemBreakdown
+                compact
+              />
+            </div>
           </div>
-          <div className="lg:col-span-4 space-y-4">
-            <ManagerTraitBadgeCard traitId={state.manager.traitId} compact />
+
+          {/* Right: Formation & Tactic Controls + Manager Trait + 16-Player UCL Squad Summary (7 cols) */}
+          <div className="lg:col-span-7 space-y-4">
             <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4 space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="inline-flex items-center gap-1.5 text-xs font-black text-white">
                   <Users className="h-4 w-4 text-sky-400" />
-                  포메이션 & 기본 전술
+                  포메이션 &amp; 기본 전술
                 </span>
                 <button
                   type="button"
@@ -871,7 +1016,7 @@ export function UclDashboard() {
                   자동 최적 배치
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
                 {FORMATION_LIST.map((f) => (
                   <button
                     key={f.id}
@@ -880,7 +1025,7 @@ export function UclDashboard() {
                     className={`rounded-lg py-1.5 text-xs font-bold cursor-pointer ${
                       state.formation === f.id
                         ? 'bg-sky-400 text-slate-950'
-                        : 'border border-slate-800 bg-slate-950 text-slate-300'
+                        : 'border border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600'
                     }`}
                   >
                     {f.id}
@@ -901,13 +1046,88 @@ export function UclDashboard() {
                       className={`rounded-lg py-1.5 text-[11px] font-bold cursor-pointer ${
                         season.defaultTactic === t.id
                           ? 'bg-emerald-500 text-slate-950'
-                          : 'border border-slate-800 bg-slate-950 text-slate-300'
+                          : 'border border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600'
                       }`}
                     >
                       {t.shortName}
                     </button>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            <ManagerTraitBadgeCard traitId={state.manager.traitId} compact />
+
+            {/* Compact 16-Player UCL Squad Stats List */}
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4 space-y-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-black text-white">
+                  내 16인 스쿼드 UCL 기록 요약
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  이름 클릭 시 대회별 상세 기록
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 max-h-72 overflow-y-auto pr-1">
+                {[...state.starters, ...state.bench]
+                  .filter((p): p is Player => p !== null)
+                  .map((p, idx) => {
+                    const st =
+                      season.uclPlayerStats[p.id] ??
+                      season.uclPlayerStats[`${USER_CLUB_ID}::${p.id}`];
+                    const isStarter = idx < 11;
+                    const slotSyn = isStarter
+                      ? chemistry.slotSynergies[idx]
+                      : undefined;
+                    return (
+                      <div
+                        key={`ucl-sq-${p.id}-${idx}`}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-slate-950/70 px-2.5 py-1.5 text-xs tabular-nums"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-extrabold ${
+                              isStarter
+                                ? 'bg-sky-500/20 text-sky-300'
+                                : 'bg-slate-800 text-slate-400'
+                            }`}
+                          >
+                            {isStarter ? '선발' : '벤치'}
+                          </span>
+                          <div className="min-w-0">
+                            <PlayerNameButton
+                              onClick={() => openPlayerById(p.id, st)}
+                              className="font-bold text-slate-100"
+                            >
+                              {p.name}
+                            </PlayerNameButton>
+                            <div className="text-[10px] text-slate-500">
+                              {formatMainPositions(p)} · OVR {p.ovr}
+                              {slotSyn && slotSyn.totalBonus > 0 && (
+                                <span className="ml-1 font-bold text-emerald-300">
+                                  (+{slotSyn.totalBonus})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right text-[11px] text-slate-300 shrink-0">
+                          <div>
+                            {st?.appearances ?? 0}경기 ·{' '}
+                            <strong className="text-amber-300">
+                              {st?.goals ?? 0}G {st?.assists ?? 0}A
+                            </strong>
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            평점{' '}
+                            {st && st.appearances > 0
+                              ? st.avgRating.toFixed(1)
+                              : '-'}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>

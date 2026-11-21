@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.7)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.8)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,9 +9,15 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **18개 파일 / 61개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **18개 파일 / 62개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
+- **v2.8 주요 신규 모듈·기능**:
+  - **매치 데이 전술실 전면 정돈 & 상대팀 포메이션 피치 시각화**: `OpponentPitchView.tsx`(상대 선발 11인 컴팩트 포메이션 피치 + 핵심 경계 TOP 3), `MatchDayTacticsRoom.tsx` 양 팀 전력 비교 바 + 상시 노출 전술·포메이션 선택기 + 하단 고정(`sticky`) 액션 바 + 3모드 피치 전환(`[상대 포메이션]` / `[내 선발 편집]` / `[양 팀 피치 비교]`)
+  - **드래프트 임시 배치(시너지 실시간 프리뷰) & 시너지 공식 가이드**: `PitchBoard.tsx`(`previewSlot`), `RouletteReelsView.tsx`, `DraftScreen.tsx` 후보 1회 클릭 시 피치 임시 배치 및 개인 시너지 OVR(`+1~+3`)·3색 케미선·팀 케미/스탯 증감 실시간 프리뷰 + 코드 수식(`chemistryEngine.ts`) 100% 일치 `[📐 시너지 & OVR 상승 공식 가이드]` 탭
+  - **이적시장 원스톱 협상 모달**: `TransferMarketModal.tsx` 스크롤 왕복 없이 한 화면에서 `[IN 영입 대상] ↔ [OUT 방출 선수 선택(⚡ AI 추천 Top 5 / 선발 11인 / 벤치 5인)] ↔ [오퍼 제출]` 완료
+  - **정규 리그 최종 라운드 시즌 결과 팝업 배너 & 5대 리그 전용 도트 우승 트로피**: `LeagueFinaleBannerModal.tsx`, `PixelTrophySvg.tsx`(`epl_league`, `laliga_league`, `seriea_league`, `bundesliga_league` 마이스터샬레, `ligue1_league` 헥사고알 + `getLeagueTrophyVariant`), 1위 우승 / 2~4위 챔스 진출 / 하위 강등권 분기 배너
+  - **우측 상단 헤더 1줄 고정 · UCL 스쿼드 피치 비율 정규화 · UCL 1경기 스킵 결과 배너**: `HeaderNav.tsx` 전 버튼 `whitespace-nowrap shrink-0` 1줄 정렬, `UclDashboard.tsx` 내 스쿼드 탭 피치 `lg:col-span-5` + `max-w-[460px]` + `compact` 정규화 및 `[1경기 스킵]` 상단 결과 스코어 배너 추가
 - **v2.7 주요 신규 모듈·기능**:
   - **드래프트 감독 시너지 가이드 & 선수 단위 시너지 OVR**: `evaluateManagerPlayerSynergy`, `slotSynergies`(+0~+3), `applySlotSynergiesToStarters`, 드래프트 가이드 바, 피치 녹색 `(+N)` 배지 & 상세 내역
   - **매치 데이 전술실 & 상성 도감**: `MatchDayTacticsRoom.tsx`(상대 예상 XI 스카우팅 + 인라인 전술/포메이션/선발 편집 + 실시간 상성 진단 배지), `TacticsGuideModal.tsx`(1페이지 전술/플레이스타일 상성 도감), 강화된 `TACTIC_MATRIX`(±2.8) & 플레이스타일 상성

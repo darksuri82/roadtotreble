@@ -48,6 +48,7 @@ import { MatchDetailModal } from '../common/MatchDetailModal';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import {
   getDomesticCupTrophyVariant,
+  getLeagueTrophyVariant,
   PixelTrophySvg,
 } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
@@ -55,6 +56,10 @@ import { PlayerNameButton } from '../common/PlayerNameButton';
 import { UclBracketTree } from '../ucl/UclBracketTree';
 import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
+import {
+  getLeagueTrophyDisplayName,
+  LeagueFinaleBannerModal,
+} from './LeagueFinaleBannerModal';
 import { StandingsTable } from './StandingsTable';
 import { TeamAnalyticsTab } from './TeamAnalyticsTab';
 
@@ -202,6 +207,9 @@ export function SeasonSummary() {
   const [rankTab, setRankTab] = useState<AwardRankTab>('goals');
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('all');
   const [summaryLeagueId, setSummaryLeagueId] = useState<LeagueId | null>(null);
+  const [showLeagueFinaleBanner, setShowLeagueFinaleBanner] = useState(
+    () => !state.season?.ucl,
+  );
   const [inspectedPlayer, setInspectedPlayer] = useState<{
     playerId: string;
     fallbackStats?: PlayerSeasonStats | null;
@@ -484,6 +492,30 @@ export function SeasonSummary() {
           />
         )}
 
+      {/* Regular League Final Round Result Popup Banner (shows when cup celebration is not blocking) */}
+      {showLeagueFinaleBanner &&
+        !(
+          season.cup?.completed &&
+          wonCup &&
+          !season.cupChampionCelebrated
+        ) &&
+        userRow && (
+          <LeagueFinaleBannerModal
+            leagueId={season.leagueId}
+            leagueName={league.koreanName}
+            totalRounds={season.totalRounds}
+            totalTeams={season.standings.length}
+            uclSpots={league.uclSpots}
+            relegationSpots={league.relegationSpots}
+            userClub={state.userClub}
+            userStanding={userRow}
+            finalRank={finalRank}
+            canEnterUcl={canStartUcl}
+            onEnterUcl={enterUclMode}
+            onClose={() => setShowLeagueFinaleBanner(false)}
+          />
+        )}
+
       {/* Main Season Result Hero */}
       <section className="rounded-2xl border border-slate-800 bg-[#0e141d] p-5 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -492,7 +524,7 @@ export function SeasonSummary() {
               <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-300">
                 <Trophy className="w-3.5 h-3.5" />
                 {finalRank === 1
-                  ? `${league.koreanName} 우승`
+                  ? `${league.koreanName} 우승 (${getLeagueTrophyDisplayName(season.leagueId)})`
                   : `${league.koreanName} 최종 ${finalRank}위`}
               </span>
               {season.cup && (
@@ -511,6 +543,13 @@ export function SeasonSummary() {
                   👑 트레블 달성
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => setShowLeagueFinaleBanner(true)}
+                className="rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-[11px] font-bold text-slate-300 hover:border-emerald-400/50 hover:text-emerald-300 cursor-pointer"
+              >
+                정규리그 결과 배너 보기
+              </button>
             </div>
 
             <h1 className="font-display text-3xl sm:text-4xl font-bold text-white">
@@ -592,8 +631,20 @@ export function SeasonSummary() {
             </div>
           </div>
 
-          {/* Club + Manager Pixel Avatar Card */}
+          {/* Club + Manager Pixel Avatar + League Champion Pixel Trophy Card */}
           <div className="flex items-center gap-3.5 rounded-xl border border-slate-800 bg-[#090e15] p-4 shrink-0">
+            {finalRank === 1 && (
+              <div
+                title={getLeagueTrophyDisplayName(season.leagueId)}
+                className="flex h-16 w-14 items-center justify-center rounded-xl border border-amber-400/40 bg-amber-500/10"
+              >
+                <PixelTrophySvg
+                  variant={getLeagueTrophyVariant(season.leagueId)}
+                  size={44}
+                  animate
+                />
+              </div>
+            )}
             <JerseySvg
               primaryColor={state.userClub.primaryColor}
               secondaryColor={state.userClub.secondaryColor}

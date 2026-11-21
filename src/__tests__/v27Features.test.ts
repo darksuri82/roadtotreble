@@ -349,4 +349,22 @@ describe('v2.7 Stage 1 Core Engine: Synergy OVR, Strict League Points, Concrete 
       expect(et2.extraTime?.penalties?.winnerTeamId).toBeTruthy();
     }
   });
+
+  it('maps all 5 European leagues to distinct championship trophy pixel variants and display titles', async () => {
+    const { getLeagueTrophyVariant } = await import(
+      '../components/common/PixelTrophySvg'
+    );
+    const { getLeagueTrophyDisplayName } = await import(
+      '../components/league/LeagueFinaleBannerModal'
+    );
+
+    const leagues = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1'] as const;
+    const variants = new Set(leagues.map((l) => getLeagueTrophyVariant(l)));
+    const names = new Set(leagues.map((l) => getLeagueTrophyDisplayName(l)));
+
+    expect(variants.size).toBe(5);
+    expect(names.size).toBe(5);
+    expect(getLeagueTrophyVariant('bundesliga')).toBe('bundesliga_league');
+    expect(getLeagueTrophyVariant('ligue1')).toBe('ligue1_league');
+  });
 });
