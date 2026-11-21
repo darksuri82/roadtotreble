@@ -38,6 +38,17 @@ const ALL_REAL_BY_ID: Map<string, Player> = (() => {
   return m;
 })();
 
+export function getPlayerNationalityMeta(
+  playerId: string,
+): { nationality: string; nationalityCode: string } | null {
+  const found = ALL_REAL_BY_ID.get(playerId);
+  if (!found) return null;
+  return {
+    nationality: found.nationality,
+    nationalityCode: found.nationalityCode,
+  };
+}
+
 function fallbackPlaystylesForPosition(sub: SubPosition): PlaystyleId[] {
   if (sub === 'GK') return ['shot_stopper'];
   if (sub === 'CB') return ['stopper_cb'];
