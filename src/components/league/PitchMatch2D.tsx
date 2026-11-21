@@ -7,6 +7,7 @@ import type {
   HighlightPatternId,
   MatchEvent,
   ShotAngleType,
+  TacticId,
 } from '../../types/league';
 
 export interface DramaticHighlightPayload {
@@ -25,6 +26,12 @@ interface PitchMatch2DProps {
   isFullTime: boolean;
   speed: 1 | 2 | 4;
   homePossession: number;
+  homeShots?: number;
+  awayShots?: number;
+  homeXg?: number;
+  awayXg?: number;
+  homeTactic?: TacticId;
+  awayTactic?: TacticId;
   dramaticEvent: DramaticHighlightPayload | null;
 }
 
@@ -151,6 +158,12 @@ export function PitchMatch2D({
   isFullTime,
   speed,
   homePossession,
+  homeShots = 0,
+  awayShots = 0,
+  homeXg = 0,
+  awayXg = 0,
+  homeTactic = 'balanced',
+  awayTactic = 'balanced',
   dramaticEvent,
 }: PitchMatch2DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -166,6 +179,12 @@ export function PitchMatch2D({
     isFullTime,
     speed,
     homePossession,
+    homeShots,
+    awayShots,
+    homeXg,
+    awayXg,
+    homeTactic,
+    awayTactic,
   });
 
   useEffect(() => {
@@ -179,6 +198,12 @@ export function PitchMatch2D({
       isFullTime,
       speed,
       homePossession,
+      homeShots,
+      awayShots,
+      homeXg,
+      awayXg,
+      homeTactic,
+      awayTactic,
     };
   }, [
     homeClub,
@@ -190,6 +215,12 @@ export function PitchMatch2D({
     isFullTime,
     speed,
     homePossession,
+    homeShots,
+    awayShots,
+    homeXg,
+    awayXg,
+    homeTactic,
+    awayTactic,
   ]);
 
   const sequenceRef = useRef<ActiveSequence | null>(null);
@@ -329,6 +360,7 @@ export function PitchMatch2D({
     let simClock = 0;
     let possessionIsHome = true;
     let carrierIdx = 6;
+    let attackPhase = 1; // 0=buildup(DEF), 1=midfield, 2=final-third(ATT/WING), 3=box probe
     let nextPassClock = 0.6;
 
     const drawPitch = (
@@ -1132,22 +1164,105 @@ export function PitchMatch2D({
           }
         }
       } else if (isLiveRunning) {
+        const curHomeTactic = propsRef.current.homeTactic;
+        const curAwayTactic = propsRef.current.awayTactic;
+        const curHomeShots = propsRef.current.homeShots;
+        const curAwayShots = propsRef.current.awayShots;
+        const curHomeXg = propsRef.current.homeXg;
+        const curAwayXg = propsRef.current.awayXg;
+
+        const atkTactic = possessionIsHome ? curHomeTactic : curAwayTactic;
         if (simClock >= nextPassClock) {
+          const baseDelay =
+            atkTactic === 'counter' || atkTactic === 'gegenpressing'
+              ? 0.42
+              : atkTactic === 'possession'
+                ? 0.56
+                : 0.5;
           nextPassClock =
-            simClock + 0.55 + Math.abs(Math.sin(simClock * 3.1)) * 0.55;
-          const keepHome = Math.random() * 100 < curPoss;
-          if (keepHome !== possessionIsHome) {
-            possessionIsHome = keepHome;
-            carrierIdx = 4 + Math.floor(Math.random() * 5);
+            simClock + baseDelay + Math.abs(Math.sin(simClock * 2.9)) * 0.42;
+
+          // Keep realistic multi-pass chains weighted by possession + shot/xG pressure
+          const shotShare =
+            (curHomeShots + 1.5) / (curHomeShots + curAwayShots + 3);
+          const xgShare = (curHomeXg + 0.3) / (curHomeXg + curAwayXg + 0.6);
+          const homeHoldChance =
+            (curPoss / 100) * 0.62 + shotShare * 0.2 + xgShare * 0.18;
+          const ownKeepProb = possessionIsHome
+            ? 0.58 + (homeHoldChance - 0.5) * 0.55
+            : 0.58 + (0.5 - homeHoldChance) * 0.55;
+          const keepCurrent =
+            Math.random() < Math.max(0.28, Math.min(0.84, ownKeepProb));
+
+          if (!keepCurrent) {
+            possessionIsHome = !possessionIsHome;
+            const newTactic = possessionIsHome ? curHomeTactic : curAwayTactic;
+            // High press wins the ball higher up; counter wins it deeper
+            attackPhase =
+              newTactic === 'gegenpressing'
+                ? 1
+                : newTactic === 'counter'
+                  ? 0
+                  : Math.random() < 0.5
+                    ? 0
+                    : 1;
           } else {
-            const nextIdx = 1 + Math.floor(Math.random() * 10);
-            carrierIdx = nextIdx === carrierIdx ? (nextIdx % 10) + 1 : nextIdx;
+            // Structured progression: buildup(0) -> midfield(1) -> final-third(2) -> probe/recycle(3)
+            if (atkTactic === 'counter' && attackPhase === 0) {
+              attackPhase = 2; // Direct vertical transition!
+            } else if (attackPhase < 3) {
+              const advanceProb =
+                atkTactic === 'possession' ? 0.62 : 0.76;
+              attackPhase =
+                Math.random() < advanceProb
+                  ? attackPhase + 1
+                  : Math.max(0, attackPhase - 1);
+            } else {
+              // Recycle back to midfield/buildup after box probe
+              attackPhase = atkTactic === 'possession' ? 1 : 0;
+            }
           }
+
+          const activeBase = possessionIsHome ? homeBase : awayBase;
+          const activeTacticNow = possessionIsHome
+            ? curHomeTactic
+            : curAwayTactic;
+          const pool =
+            attackPhase === 0
+              ? [1, 2, 3, 4]
+              : attackPhase === 1
+                ? [4, 5, 6, 7]
+                : [7, 8, 9, 10];
+          // Wingplay strongly prefers wide flank players (closest to top/bottom touchline)
+          let chosen = pool[Math.floor(Math.random() * pool.length)];
+          if (activeTacticNow === 'wingplay' && attackPhase >= 1) {
+            const wideSorted = [...pool].sort(
+              (a, b) =>
+                Math.abs(activeBase[b].y - 0.5) -
+                Math.abs(activeBase[a].y - 0.5),
+            );
+            chosen =
+              Math.random() < 0.74
+                ? wideSorted[0]
+                : wideSorted[Math.min(1, wideSorted.length - 1)];
+          }
+          if (chosen === carrierIdx) {
+            chosen = pool[(pool.indexOf(chosen) + 1) % pool.length];
+          }
+          carrierIdx = chosen;
         }
         const carrier = possessionIsHome
           ? homePos[carrierIdx]
           : awayPos[carrierIdx];
-        ballTargetX = carrier.x + (possessionIsHome ? 0.015 : -0.015);
+        const forwardProbe =
+          attackPhase >= 2 ? (possessionIsHome ? 0.04 : -0.04) : 0;
+        ballTargetX = Math.max(
+          0.08,
+          Math.min(
+            0.92,
+            carrier.x + (possessionIsHome ? 0.016 : -0.016) + forwardProbe,
+          ),
+        );
         ballTargetY = carrier.y;
       } else {
         ballTargetX = 0.5;
@@ -1158,12 +1273,39 @@ export function PitchMatch2D({
         ? inSlowMo
           ? 1 - Math.exp(-8.5 * dt)
           : 1 - Math.exp(-18 * dt)
-        : 1 - Math.exp(-8 * dt * speedMult);
+        : 1 - Math.exp(-8.5 * dt * speedMult);
       ball.x = lerp(ball.x, ballTargetX, ballLerp);
       ball.y = lerp(ball.y, ballTargetY, ballLerp);
 
       ballTrail.push({ x: ball.x, y: ball.y, lift: ballLift });
       if (ballTrail.length > (inSlowMo ? 15 : 9)) ballTrail.shift();
+
+      // Stat-coherent territorial shift: dominant possession + shots + xG visibly pins opponent back
+      const liveShotShare =
+        (propsRef.current.homeShots + 1.5) /
+        (propsRef.current.homeShots + propsRef.current.awayShots + 3);
+      const liveXgShare =
+        (propsRef.current.homeXg + 0.3) /
+        (propsRef.current.homeXg + propsRef.current.awayXg + 0.6);
+      const territorialHome =
+        (curPoss / 100) * 0.5 + liveShotShare * 0.25 + liveXgShare * 0.25;
+      const territorialShiftX = (territorialHome - 0.5) * 0.26;
+      const homeLineOffset =
+        propsRef.current.homeTactic === 'gegenpressing'
+          ? 0.04
+          : propsRef.current.homeTactic === 'possession'
+            ? 0.025
+            : propsRef.current.homeTactic === 'counter' && !possessionIsHome
+              ? -0.04
+              : 0;
+      const awayLineOffset =
+        propsRef.current.awayTactic === 'gegenpressing'
+          ? -0.04
+          : propsRef.current.awayTactic === 'possession'
+            ? -0.025
+            : propsRef.current.awayTactic === 'counter' && possessionIsHome
+              ? 0.04
+              : 0;
 
       const ballShiftX = (ball.x - 0.5) * 0.34;
       const ballShiftY = (ball.y - 0.5) * 0.14;
@@ -1187,15 +1329,16 @@ export function PitchMatch2D({
             Math.min(
               0.9,
               hx +
-                ballShiftX * lineFactor +
-                Math.sin(simClock * 1.4 + i * 1.7) * 0.014,
+                (ballShiftX + territorialShiftX * 0.65) * lineFactor +
+                homeLineOffset +
+                Math.sin(simClock * 1.4 + i * 1.7) * 0.013,
             ),
           );
           hy = Math.max(
             0.07,
             Math.min(
               0.93,
-              hy + ballShiftY + Math.cos(simClock * 1.2 + i * 2.1) * 0.018,
+              hy + ballShiftY + Math.cos(simClock * 1.2 + i * 2.1) * 0.017,
             ),
           );
         }
@@ -1229,15 +1372,16 @@ export function PitchMatch2D({
             Math.min(
               0.88,
               ax +
-                ballShiftX * lineFactor +
-                Math.cos(simClock * 1.3 + i * 1.9) * 0.014,
+                (ballShiftX + territorialShiftX * 0.65) * lineFactor +
+                awayLineOffset +
+                Math.cos(simClock * 1.3 + i * 1.9) * 0.013,
             ),
           );
           ay = Math.max(
             0.07,
             Math.min(
               0.93,
-              ay + ballShiftY + Math.sin(simClock * 1.1 + i * 2.3) * 0.018,
+              ay + ballShiftY + Math.sin(simClock * 1.1 + i * 2.3) * 0.017,
             ),
           );
         }

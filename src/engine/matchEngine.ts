@@ -1217,6 +1217,14 @@ function generateHalfFlavorEvents(params: {
   managerTraitId?: ManagerTraitId | null;
   minStart?: number;
   maxMinute?: number;
+  homeShots?: number;
+  awayShots?: number;
+  homeShotsOnTarget?: number;
+  awayShotsOnTarget?: number;
+  homeXg?: number;
+  awayXg?: number;
+  homeGoals?: number;
+  awayGoals?: number;
   rng: () => number;
 }): MatchEvent[] {
   const {
@@ -1232,6 +1240,14 @@ function generateHalfFlavorEvents(params: {
     managerTraitId = null,
     minStart = half === 1 ? 5 : 49,
     maxMinute = half === 1 ? 43 : 88,
+    homeShots,
+    awayShots,
+    homeShotsOnTarget,
+    awayShotsOnTarget,
+    homeXg,
+    awayXg,
+    homeGoals,
+    awayGoals,
     rng,
   } = params;
   const span = Math.max(4, maxMinute - minStart);
@@ -1243,10 +1259,33 @@ function generateHalfFlavorEvents(params: {
     'near_miss',
   ];
 
-  // 1) Two varied attacking chances (woodwork / blocked / near_miss)
-  const chanceCount = span >= 22 ? 2 : 1;
+  // Align highlight ownership and volume with actual shots & xG stats
+  const effHomeShots = homeShots ?? 5;
+  const effAwayShots = awayShots ?? 5;
+  const effHomeXg = homeXg ?? 0.65;
+  const effAwayXg = awayXg ?? 0.6;
+  const homePressure =
+    Math.max(0.4, effHomeShots) * 0.55 + Math.max(0.08, effHomeXg) * 4.5 * 0.45;
+  const awayPressure =
+    Math.max(0.4, effAwayShots) * 0.55 + Math.max(0.08, effAwayXg) * 4.5 * 0.45;
+  const homeAttackShare = clamp(
+    homePressure / Math.max(0.5, homePressure + awayPressure),
+    0.14,
+    0.86,
+  );
+
+  // 1) Stat-coherent attacking chances (woodwork / blocked / near_miss)
+  const totalHalfShots = effHomeShots + effAwayShots;
+  const chanceCount =
+    span >= 22
+      ? totalHalfShots >= 14
+        ? 3
+        : totalHalfShots >= 6
+          ? 2
+          : 1
+      : 1;
   for (let cIdx = 0; cIdx < chanceCount; cIdx += 1) {
-    const chanceIsHome = cIdx === 0 ? rng() < 0.54 : rng() < 0.46;
+    const chanceIsHome = rng() < homeAttackShare;
     const cClub = chanceIsHome ? homeClub : awayClub;
     const cRoster = chanceIsHome ? homeRoster : awayRoster;
     const cTactic = chanceIsHome ? homeTactic : awayTactic;
@@ -1256,7 +1295,7 @@ function generateHalfFlavorEvents(params: {
       tactic: cTactic,
       roster: cRoster,
       managerTraitId: cIsUser ? managerTraitId : null,
-      allowPenalty: cIdx === 0 && rng() < 0.25,
+      allowPenalty: cIdx === 0 && rng() < 0.22,
       rng,
     });
     const outcome: HighlightOutcomeType =
@@ -1301,63 +1340,94 @@ function generateHalfFlavorEvents(params: {
     });
   }
 
-  // 2) Goalkeeper super save (weighted by actual GK OVR & shot_stopper/sweeper_keeper stats!)
+  // 2) Goalkeeper super saves (aligned with actual saved shots-on-target + GK rating)
   if (span >= 8) {
     const homeGkImpact = computeIndividualRosterImpact(homeRoster).gkSaveMod;
     const awayGkImpact = computeIndividualRosterImpact(awayRoster).gkSaveMod;
-    const homeDefProb = clamp(0.5 + (homeGkImpact - awayGkImpact) * 0.9, 0.3, 0.7);
-    const defIsHome = rng() < homeDefProb;
-    const defClub = defIsHome ? homeClub : awayClub;
-    const defRoster = defIsHome ? homeRoster : awayRoster;
-    const atkRoster = defIsHome ? awayRoster : homeRoster;
-    const atkTactic = defIsHome ? awayTactic : homeTactic;
-    const atkIsUser = defIsHome ? isAwayUser : isHomeUser;
+    const awaySavedShots =
+      awayShotsOnTarget !== undefined
+        ? Math.max(0, awayShotsOnTarget - (awayGoals ?? 0))
+        : 2;
+    const homeSavedShots =
+      homeShotsOnTarget !== undefined
+        ? Math.max(0, homeShotsOnTarget - (homeGoals ?? 0))
+        : 2;
+    const totalSaved = awaySavedShots + homeSavedShots;
+    const saveCount =
+      totalSaved <= 0
+        ? 0
+        : span >= 22 && totalSaved >= 5
+          ? 2
+          : 1;
 
-    const pattern = pickHighlightPattern({
-      tactic: atkTactic,
-      roster: atkRoster,
-      managerTraitId: atkIsUser ? managerTraitId : null,
-      allowPenalty: rng() < 0.3,
-      rng,
-    });
-    const shooter = pickScorerWithFreshBoost(atkRoster, new Set(), rng, pattern);
-    const gk = defRoster.find((p) => p.position === 'GK');
-    const shotAngle = pickShotAngleForPattern(pattern, rng);
-    const pkDirection = pattern === 'penalty_kick' ? pickPkDirection(rng) : undefined;
+    for (let sIdx = 0; sIdx < saveCount; sIdx += 1) {
+      const sotShareHomeDef =
+        totalSaved > 0 ? awaySavedShots / totalSaved : 1 - homeAttackShare;
+      const homeDefProb = clamp(
+        sotShareHomeDef * 0.82 +
+          (0.5 + (homeGkImpact - awayGkImpact) * 0.8) * 0.18,
+        awaySavedShots === 0 ? 0.05 : 0.12,
+        homeSavedShots === 0 ? 0.95 : 0.88,
+      );
+      const defIsHome = rng() < homeDefProb;
+      const defClub = defIsHome ? homeClub : awayClub;
+      const defRoster = defIsHome ? homeRoster : awayRoster;
+      const atkRoster = defIsHome ? awayRoster : homeRoster;
+      const atkTactic = defIsHome ? awayTactic : homeTactic;
+      const atkIsUser = defIsHome ? isAwayUser : isHomeUser;
 
-    events.push({
-      minute: clamp(
-        minStart + Math.floor(span * (0.45 + rng() * 0.45)),
-        minStart,
-        maxMinute,
-      ),
-      half,
-      type: 'save',
-      teamId: defClub.id,
-      teamShortName: defClub.shortName,
-      teamColor: defClub.primaryColor,
-      isUserTeam: defIsHome ? isHomeUser : isAwayUser,
-      scorerId: gk?.id,
-      scorerName: shooter.name,
-      highlightPattern: pattern,
-      highlightOutcome: 'save',
-      shotAngle,
-      isPenalty: pattern === 'penalty_kick' ? true : undefined,
-      pkDirection,
-      description: formatHighlightDescription({
-        pattern,
-        outcome: 'save',
+      const pattern = pickHighlightPattern({
+        tactic: atkTactic,
+        roster: atkRoster,
+        managerTraitId: atkIsUser ? managerTraitId : null,
+        allowPenalty: sIdx === 0 && rng() < 0.22,
+        rng,
+      });
+      const shooter = pickScorerWithFreshBoost(atkRoster, new Set(), rng, pattern);
+      const gk = defRoster.find((p) => p.position === 'GK');
+      const shotAngle = pickShotAngleForPattern(pattern, rng);
+      const pkDirection = pattern === 'penalty_kick' ? pickPkDirection(rng) : undefined;
+      const minFrac =
+        saveCount === 1
+          ? 0.45 + rng() * 0.45
+          : sIdx === 0
+            ? 0.2 + rng() * 0.3
+            : 0.58 + rng() * 0.34;
+
+      events.push({
+        minute: clamp(
+          minStart + Math.floor(span * minFrac),
+          minStart,
+          maxMinute,
+        ),
+        half,
+        type: 'save',
+        teamId: defClub.id,
+        teamShortName: defClub.shortName,
+        teamColor: defClub.primaryColor,
+        isUserTeam: defIsHome ? isHomeUser : isAwayUser,
+        scorerId: gk?.id,
         scorerName: shooter.name,
-        gkName: gk?.name,
-        pkDirection,
+        highlightPattern: pattern,
+        highlightOutcome: 'save',
         shotAngle,
-      }),
-    });
+        isPenalty: pattern === 'penalty_kick' ? true : undefined,
+        pkDirection,
+        description: formatHighlightDescription({
+          pattern,
+          outcome: 'save',
+          scorerName: shooter.name,
+          gkName: gk?.name,
+          pkDirection,
+          shotAngle,
+        }),
+      });
+    }
   }
 
-  // 2.5) Occasional VAR offside disallowed goal (~13% per half -> realistic low probability!)
+  // 2.5) Occasional VAR offside disallowed goal (~13% per half, weighted by attacking share)
   if (span >= 14 && rng() < 0.13) {
-    const varIsHome = rng() < 0.5;
+    const varIsHome = rng() < homeAttackShare;
     const vClub = varIsHome ? homeClub : awayClub;
     const vRoster = varIsHome ? homeRoster : awayRoster;
     const vIsUser = varIsHome ? isHomeUser : isAwayUser;
@@ -1798,6 +1868,14 @@ export function simulateFirstHalf(params: {
       isHomeUser,
       isAwayUser,
       managerTraitId: userContext.managerTraitId,
+      homeShots,
+      awayShots,
+      homeShotsOnTarget,
+      awayShotsOnTarget,
+      homeXg: h1Xg,
+      awayXg: a1Xg,
+      homeGoals,
+      awayGoals,
       rng,
     }),
     {
@@ -2067,6 +2145,14 @@ export function simulateSecondHalf(params: {
       isHomeUser,
       isAwayUser,
       managerTraitId: userContext.managerTraitId,
+      homeShots: h2Shots,
+      awayShots: a2Shots,
+      homeShotsOnTarget: h2Sot,
+      awayShotsOnTarget: a2Sot,
+      homeXg: h2Xg,
+      awayXg: a2Xg,
+      homeGoals: h2Goals,
+      awayGoals: a2Goals,
       rng,
     }),
     {

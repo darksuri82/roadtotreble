@@ -1214,7 +1214,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                               : `${minute}'`}
                   </span>
                   {isTwoLegSecond && (
-                    <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-300 tabular-nums">
+                    <span className="rounded bg-sky-500/20 border border-sky-400/40 px-2 py-0.5 text-[11px] font-black text-sky-200 tabular-nums">
                       합산 {liveAggHome}:{liveAggAway}
                     </span>
                   )}
@@ -1249,6 +1249,44 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                 </div>
               </div>
             </div>
+
+            {/* Prominent 1st-Leg & Live Aggregate Banner for 2-Legged UCL Ties */}
+            {isTwoLegSecond && (() => {
+              const userAgg = home.isUser ? liveAggHome : liveAggAway;
+              const oppAgg = home.isUser ? liveAggAway : liveAggHome;
+              const diff = userAgg - oppAgg;
+              const statusText =
+                diff > 0
+                  ? `합산 +${diff} 우위 · 진출권`
+                  : diff < 0
+                    ? `합산 ${diff} 열세 · ${Math.abs(diff)}골 필요`
+                    : '합산 동률 · 연장전 돌입권';
+              const statusCls =
+                diff > 0
+                  ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200'
+                  : diff < 0
+                    ? 'border-rose-400/45 bg-rose-500/15 text-rose-200'
+                    : 'border-amber-400/45 bg-amber-500/15 text-amber-200';
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-400/40 bg-sky-950/45 px-3 py-1.5 text-[11px] tabular-nums">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded bg-slate-950/80 border border-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-slate-300">
+                      1차전 {home.shortName} {halftime.aggHomeBeforeMatch} : {halftime.aggAwayBeforeMatch} {away.shortName}
+                    </span>
+                    <span className="font-extrabold text-sky-200">
+                      실시간 합산(AGG) {home.shortName}{' '}
+                      <span className="text-amber-300 text-xs font-black">
+                        {liveAggHome} : {liveAggAway}
+                      </span>{' '}
+                      {away.shortName}
+                    </span>
+                  </div>
+                  <span className={`rounded-md border px-2 py-0.5 text-[10px] font-extrabold ${statusCls}`}>
+                    {statusText}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Match Clock Progress Bar */}
             <div className="relative h-1.5 w-full rounded-full bg-slate-900 overflow-hidden">
@@ -1455,6 +1493,12 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                   isFullTime={isSecondHalfDone}
                   speed={speed}
                   homePossession={liveHomePoss}
+                  homeShots={liveHomeShots}
+                  awayShots={liveAwayShots}
+                  homeXg={liveHomeXg}
+                  awayXg={liveAwayXg}
+                  homeTactic={fullResult?.homeTactic ?? halftime.homeTactic}
+                  awayTactic={fullResult?.awayTactic ?? halftime.awayTactic}
                   dramaticEvent={dramaticEvent}
                 />
 
