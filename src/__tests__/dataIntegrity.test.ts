@@ -44,15 +44,27 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
     expect(donnarumma.club).toBe('맨체스터 시티');
     expect(donnarumma.ovr).toBe(91);
 
+    const raya = ACTIVE_PLAYERS.find((p) => p.name === '다비드 라야')!;
+    expect(raya.club).toBe('아스널');
+    expect(raya.position).toBe('GK');
+    expect(raya.ovr).toBe(90);
+    expect(getCardTier(raya)).toBe('worldclass');
+
     const dembele = ACTIVE_PLAYERS.find((p) => p.name === '우스만 뎀벨레')!;
     expect(dembele.mainPositions).toEqual(['RW', 'ST']);
 
     const valverde = ACTIVE_PLAYERS.find((p) => p.name === '페데리코 발베르데')!;
     expect(valverde.mainPositions).toEqual(['CM', 'RB', 'RW']);
 
+    const names = new Set<string>();
+    const clubCounts = new Map<string, number>();
+
     for (const p of ACTIVE_PLAYERS) {
       expect(ids.has(p.id)).toBe(false);
       ids.add(p.id);
+      expect(names.has(p.name)).toBe(false);
+      names.add(p.name);
+      clubCounts.set(p.club, (clubCounts.get(p.club) ?? 0) + 1);
       expect(p.isLegend).toBe(false);
       expect(Array.isArray(p.mainPositions)).toBe(true);
       expect(p.mainPositions.length).toBeGreaterThanOrEqual(1);
@@ -69,6 +81,11 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
       expect(p.scoutNote.length).toBeGreaterThan(4);
       expect(p.stamina).toBeGreaterThanOrEqual(60);
       expect(p.stamina).toBeLessThanOrEqual(99);
+    }
+
+    // Verify every single one of the 96 Big-5 clubs has >= 18 real FotMob players
+    for (const clubName of validClubNames) {
+      expect(clubCounts.get(clubName) ?? 0).toBeGreaterThanOrEqual(18);
     }
 
     expect(valverde.stamina).toBeGreaterThanOrEqual(95);

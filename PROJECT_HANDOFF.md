@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.5)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.6)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -12,8 +12,11 @@
 - **Testing & Lint**: Vitest (`npm run test` — **17개 파일 / 55개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
+- **v2.6 주요 신규 모듈·기능**:
+  - **FotMob(`fotmob.com/ko`) 2026-27 5대 리그 96/96 구단 100% 전수 교차검증**: 현역 2,188명(EPL 462 / 라리가 432 / 세리에A 472 / 분데스리가 424 / 리그1 398, 구단당 최소 18명) + 레전드 33명(레벤수 포함) + UCL 외곽 16팀 176명 = 전 세계 **2,397명** 중복 ID/이름 0건, 영문 미번역 0건 검증
+  - **근거 기반 OVR 전면 재조정 & 다비드 라야 월드클래스(90) 승격**: FotMob 시장가치 로그 곡선 + 나이 커브 + 포지션 보정 + 2계층 큐레이션(슈퍼스타 91~94 19명, 월드클래스 87~90 67명 — 다비드 라야 90 포함) 및 `leagues.json` 96구단 능력치/`topScorers` 동기화
 - **v2.5 주요 신규 모듈·기능**:
-  - **2026-27 전면 로스터 재검증 & '레벤수' 레전드 편입**: 5대 리그 96개 구단 현역 1,179명 + 레전드 33명(레반도프스키·벤제마·수아레스 편입) + UCL 외곽 16팀 176명 = 전 세계 1,388명 중복 ID/이름 0건 검증
+  - **2026-27 전면 로스터 재검증 & '레벤수' 레전드 편입**: 레반도프스키(94)·벤제마(93)·수아레스(94) 레전드 풀 편입
   - **드래프트·이적시장 OVR 상위 3명 노출 보장**: `pickClubCandidatesForSlot`(결정적 OVR 정렬), `buildTransferClubSquad`(포지션별 상위 3명 보장, 최대 16명)
   - **전 세계 고유 선수 & 시즌 중 이적 스탯 연속 합산**: 단일 `playerId` 키 통일(`normalizeLegacyPlayerStatsMap`), 원소속 AI 구단 제거+대체 자원 보충(`pickReplacementForAiClub`), `transferHistory` 이력 및 최종 소속팀 시상
   - **발롱도르 & 월드베스트 XI 시즌 완전 종료 시 1회 종합 시상**: TOP 4는 UCL 완료 후 1회, 5위 이하는 백그라운드 36팀 AI UCL 완료 후 1회 (`userParticipated: false` 가드)
@@ -49,7 +52,7 @@
 ```text
 .
 ├── .github/workflows/deploy.yml   # GitHub Pages 자동 배포 (push to main -> npm ci -> build -> deploy dist/)
-├── CHANGELOG.md                   # v1.0 ~ v2.5 전체 패치 이력
+├── CHANGELOG.md                   # v1.0 ~ v2.6 전체 패치 이력
 ├── PROJECT_HANDOFF.md             # 본 인수인계 문서
 ├── src/
 │   ├── App.tsx                    # 게임 페이즈 라우터 + LegacyHubModal + AchievementToast
@@ -64,7 +67,7 @@
 │   │   ├── legacy.ts              # LegacyStorageState, HallOfFameEntry, SeasonScoreBreakdown, HiddenAchievementDef
 │   │   └── phase2.ts              # Phase 1 -> Phase 2 핸드오프 요약 타입
 │   ├── data/
-│   │   ├── activePlayers.json     # 2026-27 유럽 5대 리그 96개 구단 현역 1,179명 (복수 주포지션·stamina·playstyles 포함)
+│   │   ├── activePlayers.json     # FotMob 2026-27 유럽 5대 리그 96개 구단 현역 2,188명 (복수 주포지션·stamina·playstyles 포함)
 │   │   ├── legendPlayers.json     # 레전드 33명 (레벤수 3인방 포함, stamina 포함)
 │   │   ├── leagues.json           # 유럽 5대 리그 96개 구단 (EPL 20, 라리가 20, 세리에 A 20, 분데스리가 18, 리그 1 18)
 │   │   ├── uclTeams.json          # 비5대 리그 유럽 강호 16개 구단 · 176명 풀 스쿼드 (5대 리그와 중복 0건)
@@ -73,7 +76,7 @@
 │   │   ├── playstyles.ts          # 14종 플레이스타일 및 스타일 시너지 쌍
 │   │   ├── achievements.ts        # 24종 히든 도전과제 (힌트/해금 제목/역사적 모티브/조건)
 │   │   ├── historicalTeams.ts     # 역대 최강 14팀 벤치마크 데이터
-│   │   └── patchNotes.ts          # 인게임 패치노트 데이터 (v1.0 ~ v2.5)
+│   │   └── patchNotes.ts          # 인게임 패치노트 데이터 (v1.0 ~ v2.6)
 │   ├── engine/
 │   │   ├── dataLoader.ts          # JSON 로더, AI 11인 로스터 생성(buildAiClubRoster + excludeIds), 대체 자원 보충(pickReplacementForAiClub)
 │   │   ├── positionEngine.ts      # 복수 주포지션/부포지션 적합도 & 실효 OVR 계산

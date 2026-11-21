@@ -3092,22 +3092,22 @@
       },
       {
         "id": "ucl-salzburg-p8",
-        "name": "케림 알라이베고비치",
+        "name": "에드문드 바이두",
         "position": "MF",
         "mainPositions": [
           "CAM",
           "LW"
         ],
-        "secondaryPositions": [],
+        "secondaryPositions": ["RW"],
         "ovr": 76,
-        "nationality": "보스니아 헤르체고비나",
-        "nationalityCode": "BA",
+        "nationality": "가나",
+        "nationalityCode": "GH",
         "leagueId": "epl",
         "club": "RB 잘츠부르크",
-        "att": 74,
-        "mid": 77,
-        "def": 54,
-        "stamina": 84,
+        "att": 75,
+        "mid": 76,
+        "def": 52,
+        "stamina": 86,
         "playstyles": [
           "playmaker_10"
         ],
