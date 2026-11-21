@@ -14,10 +14,10 @@
 - **하프타임 수석코치 추천 교체 브리핑** (`buildHalftimeCoachRecommendations`, `src/components/league/LiveMatchBroadcast.tsx`):
   - 전반 스코어, 상대 전술, 실시간 체력·평점, 벤치 상성을 종합 분석해 `OUT → IN` 추천 카드 1~2개와 전술적 사유 제시 및 원클릭 적용 지원.
 
-### 하프타임 교체 UX & 스쿼드 감독 강점 카드
-- **선발 11명 자유 포지션 스왑 & 벤치 교체 안전 확인창** (`LiveMatchBroadcast.tsx`):
-  - 하프타임 선발 ↔ 선발 클릭/드래그는 교체 횟수 차감 없이 즉시 위치 변경.
-  - 선발 ↔ 벤치 교체 시 재출전 불가 경고와 함께 `[교체 확정]` 확인 모달을 거쳐 오클릭 방지.
+### 하프타임 · 후반 교체 UX & 스쿼드 감독 강점 카드
+- **선발 11명 자유 포지션 스왑 & 벤치 교체 안전 확인창** (`LiveMatchBroadcast.tsx`, `GameContext.tsx`):
+  - 하프타임 및 후반전 실시간 교체 모달 모두에서 선발 ↔ 선발 클릭·드래그 위치 변경 지원 (교체 횟수 차감 없음, 5명 교체 완료 후에도 포지션 조정 가능).
+  - 하프타임 선발 ↔ 벤치 교체 시 재출전 불가 경고와 함께 `[교체 확정]` 확인 모달을 거쳐 오클릭 방지.
 - **하프타임 `[빠른 선발]` 버튼** (`optimizeCurrentStartersForFormation`, `GameContext.tsx`):
   - 포메이션 변경 시 교체 아웃된 선수를 건드리지 않고 현재 그라운드 11명만으로 최적 포지션 자동 재배치.
 - **스쿼드/전술 탭 감독 강점 상시 확인** (`src/components/common/ManagerTraitBadgeCard.tsx`, `SquadManagerModal.tsx`, `UclDashboard.tsx`):

@@ -648,7 +648,14 @@ type GameAction =
       type: 'APPLY_SECOND_HALF_LIVE_SUB';
       payload: {
         minute: number;
-        subs: { starterIndex: number; benchIndex: number }[];
+        subs: {
+          starterIndex?: number;
+          benchIndex?: number;
+          outPlayerId?: string;
+          inPlayerId?: string;
+        }[];
+        nextStarters?: (Player | null)[];
+        nextBench?: (Player | null)[];
         firstHalfStarters: Player[];
         halftimeSubIds: string[];
       };
@@ -1770,37 +1777,85 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         return state;
       }
 
-      const { minute, subs, firstHalfStarters, halftimeSubIds } = action.payload;
-      if (subs.length === 0) return state;
+      const {
+        minute,
+        subs,
+        nextStarters: payloadStarters,
+        nextBench: payloadBench,
+        firstHalfStarters,
+        halftimeSubIds,
+      } = action.payload;
 
       const remainingAllowed = Math.max(
         0,
         MAX_MATCH_SUBS - halftime.halftimeSubsMade,
       );
       const validSubs = subs.slice(0, remainingAllowed);
-      if (validSubs.length === 0) return state;
 
-      const nextStarters = [...state.starters];
-      const nextBench = [...state.bench];
+      let nextStarters = [...state.starters];
+      let nextBench = [...state.bench];
       const newSubRecords: LiveSubRecord[] = [];
 
-      for (const s of validSubs) {
-        const outP = nextStarters[s.starterIndex];
-        const inP = nextBench[s.benchIndex];
-        if (!outP || !inP) continue;
-        nextStarters[s.starterIndex] = inP;
-        nextBench[s.benchIndex] = outP;
-        newSubRecords.push({
-          minute,
-          outPlayerId: outP.id,
-          outPlayerName: outP.name,
-          inPlayerId: inP.id,
-          inPlayerName: inP.name,
-          slotIndex: s.starterIndex,
-        });
+      const hasExplicitLineup =
+        Array.isArray(payloadStarters) &&
+        payloadStarters.length === 11 &&
+        Array.isArray(payloadBench) &&
+        payloadBench.length === 5;
+
+      if (hasExplicitLineup) {
+        const playerById = new Map<string, Player>();
+        for (const p of [...state.starters, ...state.bench]) {
+          if (p) playerById.set(p.id, p);
+        }
+        nextStarters = [...payloadStarters];
+        nextBench = [...payloadBench];
+
+        for (const s of validSubs) {
+          const outP = s.outPlayerId
+            ? playerById.get(s.outPlayerId)
+            : s.starterIndex !== undefined
+              ? state.starters[s.starterIndex]
+              : null;
+          const inP = s.inPlayerId
+            ? playerById.get(s.inPlayerId)
+            : s.benchIndex !== undefined
+              ? state.bench[s.benchIndex]
+              : null;
+          if (!outP || !inP) continue;
+          const finalSlotIdx = nextStarters.findIndex((p) => p?.id === inP.id);
+          newSubRecords.push({
+            minute,
+            outPlayerId: outP.id,
+            outPlayerName: outP.name,
+            inPlayerId: inP.id,
+            inPlayerName: inP.name,
+            slotIndex: finalSlotIdx >= 0 ? finalSlotIdx : (s.starterIndex ?? 0),
+          });
+        }
+      } else {
+        if (validSubs.length === 0) return state;
+        for (const s of validSubs) {
+          if (s.starterIndex === undefined || s.benchIndex === undefined) continue;
+          const outP = nextStarters[s.starterIndex];
+          const inP = nextBench[s.benchIndex];
+          if (!outP || !inP) continue;
+          nextStarters[s.starterIndex] = inP;
+          nextBench[s.benchIndex] = outP;
+          newSubRecords.push({
+            minute,
+            outPlayerId: outP.id,
+            outPlayerName: outP.name,
+            inPlayerId: inP.id,
+            inPlayerName: inP.name,
+            slotIndex: s.starterIndex,
+          });
+        }
       }
 
-      if (newSubRecords.length === 0) return state;
+      const lineupPositionsChanged = nextStarters.some(
+        (p, idx) => p?.id !== state.starters[idx]?.id,
+      );
+      if (newSubRecords.length === 0 && !lineupPositionsChanged) return state;
 
       const filledStarters = nextStarters.filter((p): p is Player => p !== null);
       const filledBench = nextBench.filter((p): p is Player => p !== null);
@@ -3094,7 +3149,14 @@ interface GameContextValue {
   }) => void;
   applySecondHalfLiveSub: (params: {
     minute: number;
-    subs: { starterIndex: number; benchIndex: number }[];
+    subs: {
+      starterIndex?: number;
+      benchIndex?: number;
+      outPlayerId?: string;
+      inPlayerId?: string;
+    }[];
+    nextStarters?: (Player | null)[];
+    nextBench?: (Player | null)[];
     firstHalfStarters: Player[];
     halftimeSubIds: string[];
   }) => void;

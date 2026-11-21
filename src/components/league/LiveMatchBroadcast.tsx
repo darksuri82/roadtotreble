@@ -126,7 +126,12 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   const [draftStarters, setDraftStarters] = useState<(Player | null)[]>([]);
   const [draftBench, setDraftBench] = useState<(Player | null)[]>([]);
   const [pendingLiveSubs, setPendingLiveSubs] = useState<
-    { starterIndex: number; benchIndex: number }[]
+    {
+      outPlayerId: string;
+      outPlayerName: string;
+      inPlayerId: string;
+      inPlayerName: string;
+    }[]
   >([]);
 
   // Extra Time 6th sub selection & Penalty Shootout sequential reveal
@@ -746,7 +751,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   };
 
   const handleOpenLiveSub = () => {
-    if (phase !== 'second_half' || isSecondHalfDone || subsRemaining <= 0) return;
+    if (phase !== 'second_half' || isSecondHalfDone) return;
     setDramaticEvent(null);
     setPendingLiveSubs([]);
     setLiveSubPick(null);
@@ -758,14 +763,32 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   // Disabled bench IDs inside the 2nd-half pause preview (already subbed off earlier OR in current draft queue)
   const draftDisabledBenchIds = new Set<string>(subbedOutIdSet);
   for (const s of pendingLiveSubs) {
-    const outOrig = state.starters[s.starterIndex];
-    if (outOrig) draftDisabledBenchIds.add(outOrig.id);
+    draftDisabledBenchIds.add(s.outPlayerId);
   }
 
-  const performDraftLiveSubSwap = (from: SlotRef, to: SlotRef) => {
-    const isBenchSub = from.area !== to.area;
-    if (!isBenchSub) return; // Keep 2nd-half live pause strictly starter <-> bench swaps
+  const hasDraftLineupChanges =
+    liveSubOpen &&
+    draftStarters.some((p, idx) => p?.id !== state.starters[idx]?.id);
 
+  const performDraftLiveSubSwap = (from: SlotRef, to: SlotRef) => {
+    if (from.area === to.area && from.index === to.index) return;
+
+    // 1) Starter <-> Starter free positional swap (zero substitution count used!)
+    if (from.area === 'starter' && to.area === 'starter') {
+      const pA = draftStarters[from.index];
+      const pB = draftStarters[to.index];
+      if (!pA || !pB) return;
+      const nextS = [...draftStarters];
+      nextS[from.index] = pB;
+      nextS[to.index] = pA;
+      setDraftStarters(nextS);
+      return;
+    }
+
+    // 2) Ignore bench <-> bench swaps
+    if (from.area === 'bench' && to.area === 'bench') return;
+
+    // 3) Starter <-> Bench substitution
     const starterIdx = from.area === 'starter' ? from.index : to.index;
     const benchIdx = from.area === 'bench' ? from.index : to.index;
     const outP = draftStarters[starterIdx];
@@ -773,14 +796,8 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     if (!outP || !inP) return;
     if (draftDisabledBenchIds.has(inP.id)) return;
     if (pendingLiveSubs.length >= subsRemaining) return;
-    // Prevent chaining multiple subs on the exact same slot in a single batch
-    if (
-      pendingLiveSubs.some(
-        (s) => s.starterIndex === starterIdx || s.benchIndex === benchIdx,
-      )
-    ) {
-      return;
-    }
+    // Prevent chaining a second bench sub onto a player just brought in during this same pause
+    if (pendingLiveSubs.some((s) => s.inPlayerId === outP.id)) return;
 
     const nextS = [...draftStarters];
     const nextB = [...draftBench];
@@ -790,7 +807,12 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     setDraftBench(nextB);
     setPendingLiveSubs((prev) => [
       ...prev,
-      { starterIndex: starterIdx, benchIndex: benchIdx },
+      {
+        outPlayerId: outP.id,
+        outPlayerName: outP.name,
+        inPlayerId: inP.id,
+        inPlayerName: inP.name,
+      },
     ]);
   };
 
@@ -808,44 +830,52 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
       setLiveSubPick(null);
       return;
     }
-    if (liveSubPick.area === area) {
-      // Clicking another player in the same zone switches selection cleanly
+    if (liveSubPick.area === 'bench' && area === 'bench') {
+      // Clicking another bench player switches selection cleanly
       setLiveSubPick({ area, index });
       return;
     }
+    // Starter <-> Starter OR Starter <-> Bench executes immediately in draft preview
     performDraftLiveSubSwap(liveSubPick, { area, index });
     setLiveSubPick(null);
   };
 
   const handleRemovePendingSub = (idxToRemove: number) => {
-    const remaining = pendingLiveSubs.filter((_, i) => i !== idxToRemove);
-    // Rebuild preview draft cleanly from live state
-    const rebuiltS = [...state.starters];
-    const rebuiltB = [...state.bench];
-    for (const s of remaining) {
-      const tmp = rebuiltS[s.starterIndex];
-      rebuiltS[s.starterIndex] = rebuiltB[s.benchIndex];
-      rebuiltB[s.benchIndex] = tmp;
+    const target = pendingLiveSubs[idxToRemove];
+    if (!target) return;
+    const nextS = [...draftStarters];
+    const nextB = [...draftBench];
+    const inIdx = nextS.findIndex((p) => p?.id === target.inPlayerId);
+    const outIdx = nextB.findIndex((p) => p?.id === target.outPlayerId);
+    if (inIdx >= 0 && outIdx >= 0) {
+      const tmp = nextS[inIdx];
+      nextS[inIdx] = nextB[outIdx];
+      nextB[outIdx] = tmp;
     }
-    setDraftStarters(rebuiltS);
-    setDraftBench(rebuiltB);
-    setPendingLiveSubs(remaining);
+    setDraftStarters(nextS);
+    setDraftBench(nextB);
+    setPendingLiveSubs((prev) => prev.filter((_, i) => i !== idxToRemove));
     setLiveSubPick(null);
   };
 
   const handleConfirmLiveSubs = () => {
-    if (pendingLiveSubs.length === 0) {
+    if (pendingLiveSubs.length === 0 && !hasDraftLineupChanges) {
       setLiveSubOpen(false);
       return;
     }
-    const newInIds = pendingLiveSubs
-      .map((s) => state.bench[s.benchIndex]?.id)
-      .filter((id): id is string => Boolean(id));
-    setSubbedInIds((prev) => Array.from(new Set([...prev, ...newInIds])));
+    const newInIds = pendingLiveSubs.map((s) => s.inPlayerId);
+    if (newInIds.length > 0) {
+      setSubbedInIds((prev) => Array.from(new Set([...prev, ...newInIds])));
+    }
 
     applySecondHalfLiveSub({
       minute,
-      subs: pendingLiveSubs,
+      subs: pendingLiveSubs.map((s) => ({
+        outPlayerId: s.outPlayerId,
+        inPlayerId: s.inPlayerId,
+      })),
+      nextStarters: draftStarters,
+      nextBench: draftBench,
       firstHalfStarters: firstHalfStartersRef.current,
       halftimeSubIds: subbedInIds,
     });
@@ -1001,16 +1031,13 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
             {phase === 'second_half' && !isSecondHalfDone && (
               <button
                 type="button"
-                disabled={subsRemaining <= 0}
                 onClick={handleOpenLiveSub}
-                className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-extrabold transition-colors ${
-                  subsRemaining > 0
-                    ? 'border-sky-400/60 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25 cursor-pointer'
-                    : 'border-slate-800 bg-slate-900 text-slate-500 cursor-not-allowed'
-                }`}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400/60 bg-sky-500/15 px-2.5 py-1.5 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 transition-colors cursor-pointer"
               >
                 <ArrowLeftRight className="w-3.5 h-3.5" />
-                선수 교체 ({subsUsed}/{MAX_MATCH_SUBS})
+                {subsRemaining > 0
+                  ? `선수 교체 · 위치 (${subsUsed}/${MAX_MATCH_SUBS})`
+                  : `포지션 변경 (${subsUsed}/${MAX_MATCH_SUBS})`}
               </button>
             )}
 
@@ -1914,7 +1941,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                   </span>
                 </div>
                 <h3 className="mt-1 text-sm font-extrabold text-white">
-                  포메이션 체력바를 보고 바로 클릭·드래그로 교체하세요
+                  선발끼리 클릭·드래그로 위치 변경 (교체 차감 없음) · 벤치와 교체
                 </h3>
               </div>
               <button
@@ -1939,29 +1966,36 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                   <span className="text-orange-300">40~54% -3.5</span>
                   <span className="text-rose-400 font-bold">40%↓ -6.0</span>
                 </div>
-                <span>경기 종료 후 원래 선발 라인업 자동 복원</span>
+                <span>선발끼리 자유 스왑 가능 · 경기 종료 후 원래 라인업 복원</span>
               </div>
 
-              {pendingLiveSubs.length > 0 && (
+              {(pendingLiveSubs.length > 0 || hasDraftLineupChanges) && (
                 <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/20 p-3 space-y-1.5">
-                  <div className="text-[11px] font-bold text-emerald-300">
-                    대기 중인 교체 ({pendingLiveSubs.length}명)
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-emerald-300">
+                    <span>
+                      {pendingLiveSubs.length > 0
+                        ? `대기 중인 교체 (${pendingLiveSubs.length}명)`
+                        : '선발 포지션 위치 변경 대기 중'}
+                    </span>
+                    {hasDraftLineupChanges && pendingLiveSubs.length === 0 && (
+                      <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[10px] text-sky-200">
+                        교체 횟수 차감 없음
+                      </span>
+                    )}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {pendingLiveSubs.map((sub, idx) => {
-                      const outP = state.starters[sub.starterIndex];
-                      const inP = state.bench[sub.benchIndex];
-                      return (
+                  {pendingLiveSubs.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {pendingLiveSubs.map((sub, idx) => (
                         <span
-                          key={`${sub.starterIndex}-${sub.benchIndex}`}
+                          key={`${sub.outPlayerId}-${sub.inPlayerId}`}
                           className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-[#0b1018] px-2.5 py-1 text-xs"
                         >
                           <span className="text-rose-300 line-through">
-                            {outP?.name}
+                            {sub.outPlayerName}
                           </span>
                           <span className="text-slate-500">→</span>
                           <span className="font-bold text-emerald-300">
-                            {inP?.name}
+                            {sub.inPlayerName}
                           </span>
                           <button
                             type="button"
@@ -1971,9 +2005,9 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                             <X className="w-3 h-3" />
                           </button>
                         </span>
-                      );
-                    })}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2011,12 +2045,14 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
               </button>
               <button
                 type="button"
-                disabled={pendingLiveSubs.length === 0}
+                disabled={pendingLiveSubs.length === 0 && !hasDraftLineupChanges}
                 onClick={handleConfirmLiveSubs}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Check className="w-4 h-4" />
-                교체 확정 ({pendingLiveSubs.length}명) · 경기 재개
+                {pendingLiveSubs.length > 0
+                  ? `교체 확정 (${pendingLiveSubs.length}명) · 경기 재개`
+                  : '포지션 변경 적용 · 경기 재개'}
               </button>
             </div>
           </div>
