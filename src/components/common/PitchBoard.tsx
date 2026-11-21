@@ -298,6 +298,8 @@ export function PitchBoard({
           const fit = player
             ? evaluatePositionFit(player, slot.subPosition, managerTraitId)
             : null;
+          const slotSyn = player ? chemistry.slotSynergies?.[slot.index] : undefined;
+          const synBonus = slotSyn?.totalBonus ?? 0;
           const hasPenalty = Boolean(fit && fit.penalty < 0);
           const staminaPct =
             player && staminaByPlayerId !== undefined
@@ -310,6 +312,11 @@ export function PitchBoard({
               : fit?.fit === 'out_of_pos'
                 ? 'bg-orange-500 text-white'
                 : 'bg-rose-600 text-white';
+
+          const synTooltipText =
+            slotSyn && slotSyn.reasons.length > 0
+              ? ` · 시너지 +${slotSyn.totalBonus} (${slotSyn.reasons.join(', ')})`
+              : '';
 
           return (
             <div
@@ -343,7 +350,7 @@ export function PitchBoard({
               style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
               title={
                 player
-                  ? `${player.name} (${formatMainPositions(player)}) · ${player.club}${staminaPct !== null ? ` · 체력 ${staminaPct}%` : ''} (우클릭/ⓘ 상세)`
+                  ? `${player.name} (${formatMainPositions(player)}) · ${player.club}${synTooltipText}${staminaPct !== null ? ` · 체력 ${staminaPct}%` : ''} (우클릭/ⓘ 상세)`
                   : `${slot.label} 빈 슬롯`
               }
               className={`group absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center select-none transition-transform duration-150 ${
@@ -351,7 +358,7 @@ export function PitchBoard({
               }`}
             >
               <div
-                className={`relative flex flex-col items-center justify-center rounded-xl px-1.5 py-1 min-w-[56px] sm:min-w-[68px] text-center shadow-md transition-all ${
+                className={`relative flex flex-col items-center justify-center rounded-xl px-1.5 py-1 min-w-[60px] sm:min-w-[74px] text-center shadow-md transition-all ${
                   player
                     ? isLegend
                       ? 'bg-gradient-to-b from-amber-950 via-stone-900 to-amber-950 border-2 border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.5)]'
@@ -401,7 +408,7 @@ export function PitchBoard({
 
                 {player && fit ? (
                   <>
-                    <div className="flex items-center gap-1 leading-none">
+                    <div className="flex items-center gap-0.5 leading-none tabular-nums">
                       <span
                         className={`font-display text-sm sm:text-base font-bold ${
                           hasPenalty
@@ -419,11 +426,19 @@ export function PitchBoard({
                       >
                         {fit.effectiveOvr}
                       </span>
+                      {synBonus > 0 && (
+                        <span
+                          title={slotSyn?.reasons.join(' · ')}
+                          className="rounded bg-emerald-500/25 border border-emerald-400/50 px-1 py-0.5 text-[8px] sm:text-[9px] font-black text-emerald-300 leading-none"
+                        >
+                          +{synBonus}
+                        </span>
+                      )}
                       <span className="text-[10px]">
                         {getCountryFlag(player.nationalityCode)}
                       </span>
                     </div>
-                    <span className="mt-0.5 max-w-[64px] sm:max-w-[78px] truncate text-[9px] sm:text-[10px] font-bold text-slate-100 leading-tight">
+                    <span className="mt-0.5 max-w-[66px] sm:max-w-[82px] truncate text-[9px] sm:text-[10px] font-bold text-slate-100 leading-tight">
                       {player.name}
                     </span>
                     {staminaPct !== null && (

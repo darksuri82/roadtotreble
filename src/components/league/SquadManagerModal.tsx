@@ -380,6 +380,13 @@ export function SquadManagerModal({
       <PlayerDetailModal
         player={inspected?.player ?? null}
         slotSubPosition={inspected?.slotSubPosition}
+        slotSynergy={
+          inspected?.player
+            ? Object.values(chemistry.slotSynergies).find(
+                (s) => s.playerId === inspected.player.id,
+              ) ?? null
+            : null
+        }
         managerTraitId={state.manager.traitId}
         seasonStats={
           inspected

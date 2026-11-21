@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Crown,
   HelpCircle,
   RotateCcw,
@@ -15,6 +16,7 @@ import { SystemGuideModal } from '../guide/SystemGuideModal';
 import { JerseySvg } from './JerseySvg';
 import { PatchNotesModal } from './PatchNotesModal';
 import { PixelManagerAvatar } from './PixelManagerAvatar';
+import { TacticsGuideModal } from './TacticsGuideModal';
 
 const STEPS: { phase: GamePhase; label: string }[] = [
   { phase: 'setup', label: '구단' },
@@ -37,6 +39,7 @@ export function HeaderNav() {
   } = useGame();
   const [confirmReset, setConfirmReset] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const [showTacticsGuide, setShowTacticsGuide] = useState(false);
   const [showPatchNotes, setShowPatchNotes] = useState(false);
 
   const currentStepIdx = STEPS.findIndex((s) => s.phase === state.phase);
@@ -168,6 +171,17 @@ export function HeaderNav() {
                 </button>
 
                 <button
+                  id="open-tactics-guide-btn"
+                  type="button"
+                  onClick={() => setShowTacticsGuide(true)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] px-2.5 py-1.5 text-xs font-semibold text-sky-300 hover:border-sky-500/50 hover:text-sky-200 transition-colors cursor-pointer"
+                  title="전술 & 플레이스타일 상성 도감 열기"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="hidden sm:inline">전술 도감</span>
+                </button>
+
+                <button
                   id="open-guide-btn"
                   type="button"
                   onClick={() => setShowGuide(true)}
@@ -218,6 +232,10 @@ export function HeaderNav() {
       </header>
 
       {showGuide && <SystemGuideModal onClose={() => setShowGuide(false)} />}
+      <TacticsGuideModal
+        open={showTacticsGuide}
+        onClose={() => setShowTacticsGuide(false)}
+      />
       {showPatchNotes && (
         <PatchNotesModal onClose={() => setShowPatchNotes(false)} />
       )}

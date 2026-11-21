@@ -49,6 +49,8 @@ import {
 import {
   resimulateRemainingSecondHalf,
   simulateExtraTimeAndPenalties,
+  simulateExtraTimeFirstHalf,
+  simulateExtraTimeSecondHalfAndPenalties,
   simulateFirstHalf,
   simulateMatch,
   simulateSecondHalf,
@@ -772,7 +774,17 @@ type GameAction =
   | {
       type: 'START_EXTRA_TIME_BROADCAST';
       payload?: {
+        etTactic?: TacticId;
         extraSub?: { starterIndex: number; benchIndex: number };
+        firstHalfStarters?: Player[];
+        halftimeSubIds?: string[];
+      };
+    }
+  | { type: 'ENTER_ET_HALFTIME_LOCKER' }
+  | {
+      type: 'START_ET_SECOND_HALF_BROADCAST';
+      payload?: {
+        etTactic?: TacticId;
         firstHalfStarters?: Player[];
         halftimeSubIds?: string[];
       };
@@ -1498,25 +1510,39 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         }
       }
 
-      // Track halftime sub count & sub record if a starter <-> bench swap occurred during live halftime
+      // Track locker-room sub count & sub record if a starter <-> bench swap occurred during halftime or extra time breaks
       const isBenchSub = from.area !== to.area;
       let nextSeason = state.season;
+      const livePhase = state.season?.liveHalftime?.phase;
       if (
         state.season &&
         state.season.liveHalftime &&
-        state.season.liveHalftime.phase === 'halftime' &&
+        (livePhase === 'halftime' ||
+          livePhase === 'extra_time_break' ||
+          livePhase === 'extra_time_ht') &&
         isBenchSub
       ) {
+        const maxSubs =
+          livePhase === 'halftime' ? MAX_MATCH_SUBS : MAX_MATCH_SUBS + 1;
+        if (state.season.liveHalftime.halftimeSubsMade >= maxSubs) {
+          return state;
+        }
         const starterIdx = from.area === 'starter' ? from.index : to.index;
         const benchIdx = from.area === 'bench' ? from.index : to.index;
         const outP = state.starters[starterIdx];
         const inP = state.bench[benchIdx];
         const prevSubs = state.season.liveHalftime.liveSubs ?? [];
+        const subMinute =
+          livePhase === 'halftime'
+            ? 45
+            : livePhase === 'extra_time_break'
+              ? 90
+              : 105;
         const addedSub: LiveSubRecord[] =
           outP && inP
             ? [
                 {
-                  minute: 45,
+                  minute: subMinute,
                   outPlayerId: outP.id,
                   outPlayerName: outP.name,
                   inPlayerId: inP.id,
@@ -2148,9 +2174,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const nextStarters = [...state.starters];
       const nextBench = [...state.bench];
       const extraSubRecords: LiveSubRecord[] = [];
-      const extraSubIds: string[] = [];
+      const extraSubIds: string[] = (halftime.liveSubs ?? [])
+        .filter((r) => r.minute >= 90)
+        .map((r) => r.inPlayerId);
 
-      // Allow 1 extra substitution in Extra Time (up to MAX_MATCH_SUBS + 1 = 6 total)
+      // Legacy fallback: allow passing a direct extraSub if caller supplied one
       const extraSub = action.payload?.extraSub;
       if (extraSub && halftime.halftimeSubsMade < MAX_MATCH_SUBS + 1) {
         const outP = nextStarters[extraSub.starterIndex];
@@ -2172,9 +2200,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       const filledStarters = nextStarters.filter((p): p is Player => p !== null);
       const filledBench = nextBench.filter((p): p is Player => p !== null);
-      const userTactic = halftime.isUserHome
-        ? baseResult.homeTactic
-        : baseResult.awayTactic;
+      const userTactic =
+        action.payload?.etTactic ??
+        (halftime.isUserHome ? baseResult.homeTactic : baseResult.awayTactic);
 
       const chem = calculateChemistry(
         state.formation,
@@ -2187,6 +2215,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
       );
 
       const activeClubs =
@@ -2213,7 +2242,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       const allSubsSoFar = [...(halftime.liveSubs ?? []), ...extraSubRecords];
-      const etResult = simulateExtraTimeAndPenalties({
+      const et1Result = simulateExtraTimeFirstHalf({
         baseResult,
         homeClub: clubsById[halftime.homeTeamId],
         awayClub: clubsById[halftime.awayTeamId],
@@ -2231,13 +2260,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           tactic: userTactic,
           chemistry: chem.total,
           ratings,
+          slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          competition: halftime.competition,
           halftimeSubIds: action.payload?.halftimeSubIds,
           firstHalfStarters: action.payload?.firstHalfStarters,
           liveSubs: allSubsSoFar,
         },
-        aggHomeBeforeMatch: halftime.aggHomeBeforeMatch,
-        aggAwayBeforeMatch: halftime.aggAwayBeforeMatch,
         extraTimeSubIds: extraSubIds,
       });
 
@@ -2252,7 +2281,122 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             halftimeSubsMade: halftime.halftimeSubsMade + extraSubRecords.length,
             liveSubs: allSubsSoFar,
             phase: 'extra_time',
-            fullMatchResult: etResult,
+            etFirstHalfResult: et1Result,
+            fullMatchResult: et1Result,
+          },
+        },
+      };
+    }
+
+    case 'ENTER_ET_HALFTIME_LOCKER': {
+      const season = state.season;
+      const halftime = season?.liveHalftime ?? null;
+      if (!season || !halftime || !halftime.fullMatchResult) return state;
+      return {
+        ...state,
+        season: {
+          ...season,
+          liveHalftime: {
+            ...halftime,
+            phase: 'extra_time_ht',
+          },
+        },
+      };
+    }
+
+    case 'START_ET_SECOND_HALF_BROADCAST': {
+      const season = state.season;
+      const halftime = season?.liveHalftime ?? null;
+      const et1Result =
+        halftime?.etFirstHalfResult ?? halftime?.fullMatchResult ?? null;
+      if (!season || !halftime || !et1Result) return state;
+
+      const filledStarters = state.starters.filter((p): p is Player => p !== null);
+      const filledBench = state.bench.filter((p): p is Player => p !== null);
+      const userTactic =
+        action.payload?.etTactic ??
+        (halftime.isUserHome ? et1Result.homeTactic : et1Result.awayTactic);
+
+      const chem = calculateChemistry(
+        state.formation,
+        filledStarters,
+        userTactic,
+        state.manager.traitId,
+      );
+      const ratings = calculateTeamRatings(
+        state.formation,
+        filledStarters,
+        chem.total,
+        state.manager.traitId,
+        chem.slotSynergies,
+      );
+
+      const activeClubs =
+        halftime.competition === 'ucl' && season.ucl
+          ? season.ucl.clubs
+          : season.clubs;
+      const activeAiRosters =
+        halftime.competition === 'ucl' && season.ucl
+          ? season.ucl.aiRosters
+          : season.aiRosters;
+
+      const clubsById: Record<string, Club> = {};
+      for (const c of activeClubs) {
+        clubsById[c.id] =
+          c.id === USER_CLUB_ID
+            ? {
+                ...c,
+                formation: state.formation,
+                att: ratings.att,
+                mid: ratings.mid,
+                def: ratings.def,
+              }
+            : c;
+      }
+
+      const allSubsSoFar = halftime.liveSubs ?? [];
+      const extraTimeSubIds = allSubsSoFar
+        .filter((r) => r.minute >= 90)
+        .map((r) => r.inPlayerId);
+
+      const et2FullResult = simulateExtraTimeSecondHalfAndPenalties({
+        et1Result,
+        homeClub: clubsById[halftime.homeTeamId],
+        awayClub: clubsById[halftime.awayTeamId],
+        homeRoster: halftime.isUserHome
+          ? filledStarters
+          : activeAiRosters[halftime.homeTeamId] ?? [],
+        awayRoster: halftime.isUserHome
+          ? activeAiRosters[halftime.awayTeamId] ?? []
+          : filledStarters,
+        userContext: {
+          userClubId: USER_CLUB_ID,
+          starters: filledStarters,
+          bench: filledBench,
+          formation: state.formation,
+          tactic: userTactic,
+          chemistry: chem.total,
+          ratings,
+          slotSynergies: chem.slotSynergies,
+          managerTraitId: state.manager.traitId,
+          competition: halftime.competition,
+          halftimeSubIds: action.payload?.halftimeSubIds,
+          firstHalfStarters: action.payload?.firstHalfStarters,
+          liveSubs: allSubsSoFar,
+        },
+        aggHomeBeforeMatch: halftime.aggHomeBeforeMatch,
+        aggAwayBeforeMatch: halftime.aggAwayBeforeMatch,
+        extraTimeSubIds,
+      });
+
+      return {
+        ...state,
+        season: {
+          ...season,
+          liveHalftime: {
+            ...halftime,
+            phase: 'extra_time_2',
+            fullMatchResult: et2FullResult,
           },
         },
       };
@@ -2319,14 +2463,67 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       if (halftime.fullMatchResult) {
         let finalRes = halftime.fullMatchResult;
-        // If user clicked instant finish while a knockout decider was drawn at 90', resolve ET/PK cleanly!
-        if (halftime.isKnockoutDecider && !finalRes.extraTime) {
+        // If user clicked instant finish during ET 1st Half or 105' ET Halftime, complete ET 2nd Half + Penalties!
+        if (
+          halftime.phase === 'extra_time' ||
+          halftime.phase === 'extra_time_ht'
+        ) {
+          const et1Base = halftime.etFirstHalfResult ?? finalRes;
+          const userTactic =
+            action.payload?.secondHalfTactic ??
+            (halftime.isUserHome ? et1Base.homeTactic : et1Base.awayTactic);
+          const chem = calculateChemistry(
+            state.formation,
+            filledStarters,
+            userTactic,
+            state.manager.traitId,
+          );
+          const ratings = calculateTeamRatings(
+            state.formation,
+            filledStarters,
+            chem.total,
+            state.manager.traitId,
+            chem.slotSynergies,
+          );
+          const clubsById = buildClubsById(ratings);
+          const allSubsSoFar = halftime.liveSubs ?? [];
+          finalRes = simulateExtraTimeSecondHalfAndPenalties({
+            et1Result: et1Base,
+            homeClub: clubsById[halftime.homeTeamId],
+            awayClub: clubsById[halftime.awayTeamId],
+            homeRoster: halftime.isUserHome
+              ? filledStarters
+              : activeAiRosters[halftime.homeTeamId] ?? [],
+            awayRoster: halftime.isUserHome
+              ? activeAiRosters[halftime.awayTeamId] ?? []
+              : filledStarters,
+            userContext: {
+              userClubId: USER_CLUB_ID,
+              starters: filledStarters,
+              bench: filledBench,
+              formation: state.formation,
+              tactic: userTactic,
+              chemistry: chem.total,
+              ratings,
+              slotSynergies: chem.slotSynergies,
+              managerTraitId: state.manager.traitId,
+              competition: halftime.competition,
+              liveSubs: allSubsSoFar,
+            },
+            aggHomeBeforeMatch: halftime.aggHomeBeforeMatch,
+            aggAwayBeforeMatch: halftime.aggAwayBeforeMatch,
+            extraTimeSubIds: allSubsSoFar
+              .filter((r) => r.minute >= 90)
+              .map((r) => r.inPlayerId),
+          });
+        } else if (halftime.isKnockoutDecider && !finalRes.extraTime) {
+          // If user clicked instant finish while a knockout decider was drawn at 90', resolve ET/PK cleanly!
           const aggH = (halftime.aggHomeBeforeMatch ?? 0) + finalRes.homeGoals;
           const aggA = (halftime.aggAwayBeforeMatch ?? 0) + finalRes.awayGoals;
           if (aggH === aggA) {
-            const userTactic = halftime.isUserHome
-              ? finalRes.homeTactic
-              : finalRes.awayTactic;
+            const userTactic =
+              action.payload?.secondHalfTactic ??
+              (halftime.isUserHome ? finalRes.homeTactic : finalRes.awayTactic);
             const chem = calculateChemistry(
               state.formation,
               filledStarters,
@@ -2338,6 +2535,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
               filledStarters,
               chem.total,
               state.manager.traitId,
+              chem.slotSynergies,
             );
             const clubsById = buildClubsById(ratings);
             finalRes = simulateExtraTimeAndPenalties({
@@ -2358,7 +2556,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 tactic: userTactic,
                 chemistry: chem.total,
                 ratings,
+                slotSynergies: chem.slotSynergies,
                 managerTraitId: state.manager.traitId,
+                competition: halftime.competition,
                 liveSubs: halftime.liveSubs ?? [],
               },
               aggHomeBeforeMatch: halftime.aggHomeBeforeMatch,
@@ -3938,7 +4138,14 @@ interface GameContextValue {
   }) => void;
   enterExtraTimeBreak: () => void;
   startExtraTimeBroadcast: (params?: {
+    etTactic?: TacticId;
     extraSub?: { starterIndex: number; benchIndex: number };
+    firstHalfStarters?: Player[];
+    halftimeSubIds?: string[];
+  }) => void;
+  enterEtHalftimeLocker: () => void;
+  startEtSecondHalfBroadcast: (params?: {
+    etTactic?: TacticId;
     firstHalfStarters?: Player[];
     halftimeSubIds?: string[];
   }) => void;
@@ -4218,6 +4425,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       enterExtraTimeBreak: () => dispatch({ type: 'ENTER_EXTRA_TIME_BREAK' }),
       startExtraTimeBroadcast: (payload) =>
         dispatch({ type: 'START_EXTRA_TIME_BROADCAST', payload }),
+      enterEtHalftimeLocker: () => dispatch({ type: 'ENTER_ET_HALFTIME_LOCKER' }),
+      startEtSecondHalfBroadcast: (payload) =>
+        dispatch({ type: 'START_ET_SECOND_HALF_BROADCAST', payload }),
       enterPenaltyShootout: () => dispatch({ type: 'ENTER_PENALTY_SHOOTOUT' }),
       commitLiveMatch: (secondHalfTactic) =>
         dispatch({ type: 'COMMIT_LIVE_MATCH', payload: { secondHalfTactic } }),

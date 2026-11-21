@@ -1,4 +1,5 @@
-import { Crown, Diamond } from 'lucide-react';
+import { Crown, Diamond, Star } from 'lucide-react';
+import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
   evaluatePositionFit,
@@ -86,6 +87,7 @@ export function PlayerCard({
     ? evaluatePositionFit(player, targetSubPosition, managerTraitId)
     : null;
   const hasPenalty = Boolean(fit && fit.penalty < 0);
+  const mgrSynergy = evaluateManagerPlayerSynergy(player, managerTraitId);
 
   const penaltyBadgeColor =
     fit?.fit === 'secondary'
@@ -143,6 +145,15 @@ export function PlayerCard({
           </div>
 
           <div className="flex flex-col items-end gap-1 shrink-0">
+            {mgrSynergy.isMatch && (
+              <span
+                title={mgrSynergy.reason}
+                className="inline-flex items-center gap-0.5 rounded bg-amber-400/20 border border-amber-400/45 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-200"
+              >
+                <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                감독 시너지
+              </span>
+            )}
             {hasPenalty && fit && (
               <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${penaltyBadgeColor}`}>
                 {fit.penalty}
@@ -261,16 +272,32 @@ export function PlayerCard({
         </div>
       </div>
 
-      {/* Playstyles */}
+      {/* Playstyles + Manager Synergy Badge */}
       <div className="relative z-10 mb-2.5 flex flex-wrap gap-1">
-        {player.playstyles.map((ps) => (
+        {mgrSynergy.isMatch && (
           <span
-            key={ps}
-            className="rounded bg-slate-900/90 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300/90"
+            title={mgrSynergy.reason}
+            className="inline-flex items-center gap-1 rounded border border-amber-400/50 bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-200"
           >
-            {PLAYSTYLES[ps]?.name ?? ps}
+            <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+            감독 시너지 +1
           </span>
-        ))}
+        )}
+        {player.playstyles.map((ps) => {
+          const isMatchedStyle = mgrSynergy.matchedPlaystyles.includes(ps);
+          return (
+            <span
+              key={ps}
+              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                isMatchedStyle
+                  ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/35'
+                  : 'bg-slate-900/90 text-emerald-300/90'
+              }`}
+            >
+              {PLAYSTYLES[ps]?.name ?? ps}
+            </span>
+          );
+        })}
       </div>
 
       {/* Clean Compact ATT / MID / DEF */}

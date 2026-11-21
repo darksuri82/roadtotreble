@@ -12,6 +12,7 @@ import {
   LayoutGrid,
   List,
   Sparkles,
+  Star,
   TrendingDown,
   TrendingUp,
   Users,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { BENCH_SLOTS, FORMATIONS } from '../../data/formations';
+import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import { ALL_CLUBS_WITH_LEAGUE } from '../../engine/dataLoader';
 import {
@@ -1126,6 +1128,10 @@ export function TransferMarketModal({
                     const isNegotiatingThis =
                       negotiatingTarget?.player.id === p.id;
                     const disabled = isSigned || tm.attemptsRemaining <= 0;
+                    const mgrSynergy = evaluateManagerPlayerSynergy(
+                      p,
+                      state.manager.traitId,
+                    );
 
                     const probColor =
                       target.successChance >= 65
@@ -1169,6 +1175,15 @@ export function TransferMarketModal({
                                 <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-slate-200">
                                   {formatMainPositions(p)}
                                 </span>
+                                {mgrSynergy.isMatch && (
+                                  <span
+                                    title={mgrSynergy.reason}
+                                    className="inline-flex items-center gap-0.5 rounded border border-amber-400/45 bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-200"
+                                  >
+                                    <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                                    감독 시너지
+                                  </span>
+                                )}
                                 {failCount > 0 && !isSigned && (
                                   <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-bold text-rose-300">
                                     결렬 {failCount}회 · 재도전 가능

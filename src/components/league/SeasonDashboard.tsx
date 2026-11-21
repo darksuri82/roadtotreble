@@ -3,7 +3,6 @@ import {
   ArrowLeftRight,
   Award,
   Calendar,
-  Compass,
   FastForward,
   Globe,
   Play,
@@ -15,7 +14,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { FORMATION_LIST } from '../../data/formations';
 import {
   CUP_STAGE_LABELS,
   didUserWinCup,
@@ -25,12 +23,7 @@ import {
 import { getLeagueById, LEAGUES } from '../../engine/dataLoader';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { getUserRank } from '../../engine/standingsEngine';
-import {
-  evaluateFormationMatchup,
-  evaluateTacticMatchup,
-  TACTIC_LIST,
-  TACTICS,
-} from '../../engine/tacticEngine';
+import { TACTICS } from '../../engine/tacticEngine';
 import { getNextTransferWindowRound } from '../../engine/transferEngine';
 import { useGame } from '../../store/GameContext';
 import type {
@@ -55,6 +48,7 @@ import { CupChampionModal } from './CupChampionModal';
 import { FastSimModal } from './FastSimModal';
 import type { FastSimMode } from './FastSimModal';
 import { LiveMatchBroadcast } from './LiveMatchBroadcast';
+import { MatchDayTacticsRoom } from './MatchDayTacticsRoom';
 import { MatchReportPanel } from './MatchReportPanel';
 import { SquadManagerModal } from './SquadManagerModal';
 import { StandingsTable } from './StandingsTable';
@@ -69,6 +63,8 @@ export function SeasonDashboard() {
     chemistry,
     ratings,
     changeFormation,
+    autoOptimizeLineup,
+    swapSquadPositions,
     setNextMatchTactic,
     startLiveMatch,
     simulateSingleMatchInstant,
@@ -157,12 +153,16 @@ export function SeasonDashboard() {
     ? pendingCupNode.homeTeamId === USER_CLUB_ID
     : nextLeagueFixture?.homeTeamId === USER_CLUB_ID;
 
-  const tacticMatchup = nextOpponent
-    ? evaluateTacticMatchup(activeTactic, nextOpponent.defaultTactic)
-    : null;
-  const formationMatchup = nextOpponent
-    ? evaluateFormationMatchup(state.formation, nextOpponent.formation)
-    : null;
+  const nextOpponentRoster = nextOpponent
+    ? resolveClubRoster({
+        clubId: nextOpponent.id,
+        club: nextOpponent,
+        leagueId: season.leagueId,
+        season,
+        userStarters: state.starters,
+        userBench: state.bench,
+      })
+    : [];
 
   const nextTransferRound = getNextTransferWindowRound(
     season.currentRound,
@@ -346,176 +346,36 @@ export function SeasonDashboard() {
           {/* Left: Next Match Preview & Live Controls (7 cols) */}
           <div className="lg:col-span-7 space-y-5">
             {nextOpponent && (
-              <div
-                className={`rounded-2xl border p-4 sm:p-5 space-y-4 ${
-                  isNextCupMatch
-                    ? 'border-amber-500/50 bg-gradient-to-b from-amber-950/20 to-[#111822]'
-                    : 'border-slate-800 bg-[#111822]'
-                }`}
+              <MatchDayTacticsRoom
+                opponent={nextOpponent}
+                opponentRoster={nextOpponentRoster}
+                isHome={isNextHome}
+                headerBadge={
+                  isNextCupMatch && season.cup && pendingCupStage
+                    ? `🏆 ${season.cup.meta.koreanName} ${CUP_STAGE_LABELS[pendingCupStage]} (단판 승부 · 동점 시 연장/PK)`
+                    : `매치 데이 전술실 · ROUND ${nextRoundNumber}`
+                }
+                headerAccent={isNextCupMatch ? 'cup' : 'league'}
+                activeTactic={activeTactic}
+                defaultTactic={season.defaultTactic}
+                formation={state.formation}
+                starters={state.starters}
+                bench={state.bench}
+                chemistry={chemistry}
+                managerTraitId={state.manager.traitId}
+                onSelectTactic={(tId) =>
+                  setNextMatchTactic(tId === season.defaultTactic ? null : tId)
+                }
+                onChangeFormation={changeFormation}
+                onSwapSquad={swapSquadPositions}
+                onAutoOptimize={autoOptimizeLineup}
+                onInspectPlayer={(p) =>
+                  setInspectedPlayer({ playerId: p.id })
+                }
+                onClickOpponentPlayerName={(pid) =>
+                  setInspectedPlayer({ playerId: pid })
+                }
               >
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`text-xs font-extrabold ${
-                      isNextCupMatch ? 'text-amber-300' : 'text-slate-400'
-                    }`}
-                  >
-                    {isNextCupMatch && season.cup && pendingCupStage
-                      ? `🏆 ${season.cup.meta.koreanName} ${CUP_STAGE_LABELS[pendingCupStage]} (단판 승부 · 동점 시 연장/PK)`
-                      : `다음 경기 · ROUND ${nextRoundNumber}`}
-                  </span>
-                  <span
-                    className={`rounded px-2 py-0.5 text-[11px] font-bold ${
-                      isNextHome
-                        ? 'bg-emerald-500/15 text-emerald-300'
-                        : 'bg-sky-500/15 text-sky-300'
-                    }`}
-                  >
-                    {isNextCupMatch && pendingCupStage === 'final'
-                      ? 'FINAL · 중립'
-                      : isNextHome
-                        ? 'HOME'
-                        : 'AWAY'}
-                  </span>
-                </div>
-
-                {/* Opponent Summary */}
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-[#0b1018] p-3.5">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <JerseySvg
-                      primaryColor={nextOpponent.primaryColor}
-                      secondaryColor={nextOpponent.secondaryColor}
-                      pattern={nextOpponent.pattern}
-                      label={nextOpponent.shortName}
-                      size={44}
-                    />
-                    <div className="min-w-0">
-                      <div className="truncate text-base font-extrabold text-white">
-                        {nextOpponent.name}
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
-                        <span className="font-bold text-sky-300">
-                          {nextOpponent.formation}
-                        </span>
-                        <span>·</span>
-                        <span className="font-semibold text-amber-300">
-                          {TACTICS[nextOpponent.defaultTactic].name}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-[11px] text-slate-500 truncate">
-                        핵심: {nextOpponent.topScorers.join(' · ')}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-1.5 text-center tabular-nums">
-                    <div className="rounded-lg bg-[#111822] px-2.5 py-1.5">
-                      <div className="text-[9px] text-slate-500">ATT</div>
-                      <div className="font-display text-sm font-bold text-white">
-                        {nextOpponent.att}
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-[#111822] px-2.5 py-1.5">
-                      <div className="text-[9px] text-slate-500">MID</div>
-                      <div className="font-display text-sm font-bold text-white">
-                        {nextOpponent.mid}
-                      </div>
-                    </div>
-                    <div className="rounded-lg bg-[#111822] px-2.5 py-1.5">
-                      <div className="text-[9px] text-slate-500">DEF</div>
-                      <div className="font-display text-sm font-bold text-white">
-                        {nextOpponent.def}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Pre-Match Tactic & Formation */}
-                <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
-                      <Compass className="w-3.5 h-3.5 text-emerald-400" />
-                      이번 경기 전술
-                    </span>
-                    {tacticMatchup && (
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                          tacticMatchup.delta > 0
-                            ? 'bg-emerald-500/15 text-emerald-300'
-                            : tacticMatchup.delta < 0
-                              ? 'bg-rose-500/15 text-rose-300'
-                              : 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {tacticMatchup.delta > 0
-                          ? `전술 +${tacticMatchup.delta.toFixed(1)}`
-                          : tacticMatchup.delta < 0
-                            ? `전술 ${tacticMatchup.delta.toFixed(1)}`
-                            : '전술 호각'}
-                      </span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {TACTIC_LIST.map((t) => {
-                      const active = activeTactic === t.id;
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() =>
-                            setNextMatchTactic(
-                              t.id === season.defaultTactic ? null : t.id,
-                            )
-                          }
-                          className={`rounded-lg py-1.5 text-xs font-bold transition-colors cursor-pointer ${
-                            active
-                              ? 'bg-emerald-500 text-slate-950'
-                              : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
-                          }`}
-                        >
-                          {t.shortName}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <span className="font-bold text-slate-300">포메이션</span>
-                    {formationMatchup && (
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                          formationMatchup.delta > 0
-                            ? 'bg-emerald-500/15 text-emerald-300'
-                            : formationMatchup.delta < 0
-                              ? 'bg-rose-500/15 text-rose-300'
-                              : 'bg-slate-800 text-slate-400'
-                        }`}
-                      >
-                        {formationMatchup.delta > 0
-                          ? `포메이션 +${formationMatchup.delta.toFixed(1)}`
-                          : formationMatchup.delta < 0
-                            ? `포메이션 ${formationMatchup.delta.toFixed(1)}`
-                            : '포메이션 호각'}
-                      </span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-6 gap-1">
-                    {FORMATION_LIST.map((f) => (
-                      <button
-                        key={f.id}
-                        type="button"
-                        onClick={() => changeFormation(f.id)}
-                        className={`rounded-lg py-1.5 text-[11px] font-bold cursor-pointer ${
-                          state.formation === f.id
-                            ? 'bg-sky-400 text-slate-950'
-                            : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
-                        }`}
-                      >
-                        {f.id}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {/* Match Actions */}
                 <div className="space-y-2">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
@@ -568,7 +428,7 @@ export function SeasonDashboard() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </MatchDayTacticsRoom>
             )}
 
             {/* Recent Match History Strip */}
@@ -1274,10 +1134,16 @@ export function SeasonDashboard() {
           season,
           inspectedPlayer.fallbackStats,
         );
+        const starterIdx = resolved
+          ? state.starters.findIndex((p) => p?.id === resolved.id)
+          : -1;
+        const matchedSlotSynergy =
+          starterIdx >= 0 ? chemistry.slotSynergies?.[starterIdx] ?? null : null;
         return (
           <PlayerDetailModal
             player={resolved}
             managerTraitId={state.manager.traitId}
+            slotSynergy={matchedSlotSynergy}
             seasonStats={breakdown.total}
             competitionStats={breakdown}
             onClose={() => setInspectedPlayer(null)}

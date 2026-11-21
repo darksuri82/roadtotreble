@@ -11,7 +11,7 @@ import { useMemo, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { getUserRank } from '../../engine/standingsEngine';
-import { TACTIC_LIST, TACTICS } from '../../engine/tacticEngine';
+import { TACTIC_LIST } from '../../engine/tacticEngine';
 import {
   didUserWinUcl,
   findNextUserUclLeaguePhaseFixture,
@@ -34,13 +34,13 @@ import {
   resolvePlayerById,
 } from '../../utils/playerLookup';
 import { ClubSquadModal } from '../common/ClubSquadModal';
-import { JerseySvg } from '../common/JerseySvg';
 import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { MatchDetailModal } from '../common/MatchDetailModal';
 import { PitchBoard, type SlotRef } from '../common/PitchBoard';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
+import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
 import { UclBracketTree } from './UclBracketTree';
 
@@ -217,6 +217,11 @@ export function UclDashboard() {
         <PlayerDetailModal
           player={inspected.player}
           slotSubPosition={inspected.slotSubPosition}
+          slotSynergy={
+            Object.values(chemistry.slotSynergies).find(
+              (s) => s.playerId === inspected.player.id,
+            ) ?? null
+          }
           managerTraitId={state.manager.traitId}
           seasonStats={inspectedBreakdown?.total ?? null}
           competitionStats={inspectedBreakdown}
@@ -393,167 +398,95 @@ export function UclDashboard() {
                 </button>
               </div>
             ) : isUserNextMatch && nextHome && nextAway ? (
-              <div className="rounded-2xl border border-slate-800 bg-[#0e1520] p-5 space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <span className="rounded-md bg-sky-500/20 px-2.5 py-1 text-xs font-black text-sky-300">
-                      {nextKnockoutInfo
+              (() => {
+                const isUserHomeUcl = nextHome.id === USER_CLUB_ID;
+                const uclOpponent = isUserHomeUcl ? nextAway : nextHome;
+                const uclOppEntry = teamEntryById[uclOpponent.id];
+                const uclOppRoster = resolveClubRoster({
+                  clubId: uclOpponent.id,
+                  club: uclOpponent,
+                  season,
+                  userStarters: state.starters,
+                  userBench: state.bench,
+                });
+                const aggNote =
+                  nextKnockoutInfo?.aggHomeBeforeMatch !== undefined
+                    ? ` · 1차전 합산 ${nextHome.shortName} ${nextKnockoutInfo.aggHomeBeforeMatch}:${nextKnockoutInfo.aggAwayBeforeMatch} ${nextAway.shortName}`
+                    : '';
+                return (
+                  <MatchDayTacticsRoom
+                    opponent={uclOpponent}
+                    opponentRoster={uclOppRoster}
+                    opponentSubtitle={
+                      uclOppEntry
+                        ? `Pot ${uclOppEntry.pot} · ${uclOppEntry.originLabel}`
+                        : undefined
+                    }
+                    isHome={isUserHomeUcl}
+                    headerBadge={`${
+                      nextKnockoutInfo
                         ? nextKnockoutInfo.competitionLabel
-                        : `UCL 스위스 리그 페이즈 ${ucl.leaguePhaseRound + 1} / 8R`}
-                    </span>
-                    {nextKnockoutInfo?.aggHomeBeforeMatch !== undefined && (
-                      <span className="ml-2 rounded-md bg-amber-500/20 px-2 py-1 text-xs font-bold text-amber-300">
-                        1차전 종료 합산 {nextHome.shortName}{' '}
-                        {nextKnockoutInfo.aggHomeBeforeMatch} :{' '}
-                        {nextKnockoutInfo.aggAwayBeforeMatch} {nextAway.shortName}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-slate-400">
-                    {nextHome.id === USER_CLUB_ID ? '홈 경기' : '원정 경기'}
-                  </span>
-                </div>
-
-                {/* Matchup Display */}
-                <div className="grid grid-cols-3 items-center gap-3 rounded-2xl border border-slate-800 bg-[#0b1018] p-5 text-center">
-                  <div className="flex flex-col items-center">
-                    <JerseySvg
-                      primaryColor={nextHome.primaryColor}
-                      secondaryColor={nextHome.secondaryColor}
-                      pattern={nextHome.pattern}
-                      label={nextHome.shortName}
-                      size={52}
-                    />
-                    <div
-                      className={`mt-2 text-sm font-black ${
-                        nextHome.isUser ? 'text-emerald-300' : 'text-white'
-                      }`}
-                    >
-                      {nextHome.name}
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      Pot {teamEntryById[nextHome.id]?.pot ?? '-'} ·{' '}
-                      {teamEntryById[nextHome.id]?.originLabel ?? ''}
-                    </div>
-                    <div className="mt-1 font-mono text-[11px] text-slate-300">
-                      ATT {nextHome.att} · MID {nextHome.mid} · DEF {nextHome.def}
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <div className="font-display text-2xl font-black text-sky-400">
-                      VS
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      {nextKnockoutInfo?.isDecider
-                        ? '동점 시 연장전 · 승부차기'
-                        : '90분 정규 경기'}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-center">
-                    <JerseySvg
-                      primaryColor={nextAway.primaryColor}
-                      secondaryColor={nextAway.secondaryColor}
-                      pattern={nextAway.pattern}
-                      label={nextAway.shortName}
-                      size={52}
-                    />
-                    <div
-                      className={`mt-2 text-sm font-black ${
-                        nextAway.isUser ? 'text-emerald-300' : 'text-white'
-                      }`}
-                    >
-                      {nextAway.name}
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      Pot {teamEntryById[nextAway.id]?.pot ?? '-'} ·{' '}
-                      {teamEntryById[nextAway.id]?.originLabel ?? ''}
-                    </div>
-                    <div className="mt-1 font-mono text-[11px] text-slate-300">
-                      ATT {nextAway.att} · MID {nextAway.mid} · DEF {nextAway.def}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Match Tactic Picker */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-300">
-                      이번 경기 전술 선택 (상대 기본 전술:{' '}
-                      <strong className="text-sky-300">
-                        {
-                          TACTICS[
-                            nextHome.id === USER_CLUB_ID
-                              ? nextAway.defaultTactic
-                              : nextHome.defaultTactic
-                          ].name
-                        }
-                      </strong>
-                      )
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {TACTIC_LIST.map((t) => {
-                      const active = activeTactic === t.id;
-                      return (
+                        : `UCL 스위스 리그 페이즈 ${ucl.leaguePhaseRound + 1} / 8R`
+                    }${aggNote}`}
+                    headerAccent="ucl"
+                    activeTactic={activeTactic}
+                    defaultTactic={season.defaultTactic}
+                    formation={state.formation}
+                    starters={state.starters}
+                    bench={state.bench}
+                    chemistry={chemistry}
+                    managerTraitId={state.manager.traitId}
+                    onSelectTactic={(tId) => setNextMatchTactic(tId)}
+                    onChangeFormation={changeFormation}
+                    onSwapSquad={swapSquadPositions}
+                    onAutoOptimize={autoOptimizeLineup}
+                    onInspectPlayer={(player, slotSubPosition) =>
+                      setInspected({ player, slotSubPosition })
+                    }
+                    onClickOpponentPlayerName={(pid) => openPlayerById(pid)}
+                  >
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={startLiveMatch}
+                        className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 cursor-pointer"
+                      >
+                        <Play className="h-4 w-4 fill-current" />
+                        2D 실시간 중계 시작
+                      </button>
+                      <button
+                        type="button"
+                        onClick={simulateSingleMatchInstant}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white cursor-pointer"
+                      >
+                        <FastForward className="h-4 w-4" />
+                        1경기 스킵
+                      </button>
+                      {ucl.stage === 'league_phase' && ucl.leaguePhaseRound < 8 && (
                         <button
-                          key={t.id}
                           type="button"
-                          onClick={() => setNextMatchTactic(t.id)}
-                          className={`rounded-xl py-2 text-xs font-bold transition cursor-pointer ${
-                            active
-                              ? 'bg-sky-400 text-slate-950'
-                              : 'border border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600'
-                          }`}
+                          onClick={() => {
+                            setShowLpSummary(true);
+                            simulateUclLeaguePhaseToEnd();
+                          }}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-500/45 bg-sky-500/15 px-4 py-3 text-xs font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
                         >
-                          {t.shortName}
+                          <FastForward className="h-4 w-4" />
+                          리그 페이즈 끝까지 고속진행
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={startLiveMatch}
-                    className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 cursor-pointer"
-                  >
-                    <Play className="h-4 w-4 fill-current" />
-                    2D 실시간 중계 시작
-                  </button>
-                  <button
-                    type="button"
-                    onClick={simulateSingleMatchInstant}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white cursor-pointer"
-                  >
-                    <FastForward className="h-4 w-4" />
-                    1경기 스킵
-                  </button>
-                  {ucl.stage === 'league_phase' && ucl.leaguePhaseRound < 8 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowLpSummary(true);
-                        simulateUclLeaguePhaseToEnd();
-                      }}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-500/45 bg-sky-500/15 px-4 py-3 text-xs font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
-                    >
-                      <FastForward className="h-4 w-4" />
-                      리그 페이즈 끝까지 고속진행
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={simulateUclToEnd}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-xs font-bold text-slate-300 hover:border-amber-400/60 hover:text-amber-300 cursor-pointer"
-                  >
-                    대회 끝까지 고속 진행
-                  </button>
-                </div>
-              </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={simulateUclToEnd}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-xs font-bold text-slate-300 hover:border-amber-400/60 hover:text-amber-300 cursor-pointer"
+                      >
+                        대회 끝까지 고속 진행
+                      </button>
+                    </div>
+                  </MatchDayTacticsRoom>
+                );
+              })()
             ) : (
               /* User Eliminated or Bye (Top 8 skipping Playoff!) */
               <div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-6 text-center space-y-4">

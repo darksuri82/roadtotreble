@@ -2,6 +2,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeftRight,
+  BookOpen,
   Check,
   Compass,
   FastForward,
@@ -28,6 +29,7 @@ import {
   MAX_MATCH_SUBS,
 } from '../../engine/staminaEngine';
 import {
+  buildExtraTimeCoachBriefing,
   buildHalftimeCoachRecommendations,
   evaluateFormationMatchup,
   evaluateTacticMatchup,
@@ -43,6 +45,7 @@ import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
+import { TacticsGuideModal } from '../common/TacticsGuideModal';
 import {
   DRAMATIC_REVEAL_MS,
   DRAMATIC_TOTAL_MS,
@@ -95,6 +98,8 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     applySecondHalfLiveSub,
     enterExtraTimeBreak,
     startExtraTimeBroadcast,
+    enterEtHalftimeLocker,
+    startEtSecondHalfBroadcast,
     enterPenaltyShootout,
     commitLiveMatch,
   } = useGame();
@@ -116,6 +121,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     slotLabel: string;
   } | null>(null);
   const [htNotice, setHtNotice] = useState<string | null>(null);
+  const [showTacticsGuide, setShowTacticsGuide] = useState(false);
   const [inspected, setInspected] = useState<{
     player: Player;
     slotSubPosition?: SubPosition;
@@ -135,12 +141,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     }[]
   >([]);
 
-  // Extra Time 6th sub selection & Penalty Shootout sequential reveal
-  const [etSubPick, setEtSubPick] = useState<SlotRef | null>(null);
-  const [selectedEtSub, setSelectedEtSub] = useState<{
-    starterIndex: number;
-    benchIndex: number;
-  } | null>(null);
+  // Penalty Shootout sequential reveal
   const [revealedPenKicks, setRevealedPenKicks] = useState<number>(0);
 
   // Spoiler-free dramatic slow-motion state for goals, saves, and decisive chances
@@ -171,17 +172,20 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
       setMinute(0);
       setSubbedInIds([]);
       setSwapPick(null);
+      setPendingHtSubConfirm(null);
+      setHtNotice(null);
       setLiveSubOpen(false);
       setLiveSubPick(null);
       setPendingLiveSubs([]);
-      setEtSubPick(null);
-      setSelectedEtSub(null);
       setRevealedPenKicks(0);
       setDramaticEvent(null);
       setHandledHighlightKeys([]);
       if (halftime) setSelectedTactic(halftime.userTacticAtKickoff);
     } else if (phase === 'halftime') {
       setMinute(45);
+      setSwapPick(null);
+      setPendingHtSubConfirm(null);
+      setHtNotice(null);
       setLiveSubOpen(false);
       setDramaticEvent(null);
     } else if (phase === 'second_half') {
@@ -192,12 +196,23 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
       setDramaticEvent(null);
     } else if (phase === 'extra_time_break') {
       setMinute(90);
+      setSwapPick(null);
+      setPendingHtSubConfirm(null);
+      setHtNotice(null);
       setLiveSubOpen(false);
-      setEtSubPick(null);
-      setSelectedEtSub(null);
       setDramaticEvent(null);
     } else if (phase === 'extra_time') {
       setMinute(91);
+      setDramaticEvent(null);
+    } else if (phase === 'extra_time_ht') {
+      setMinute(105);
+      setSwapPick(null);
+      setPendingHtSubConfirm(null);
+      setHtNotice(null);
+      setLiveSubOpen(false);
+      setDramaticEvent(null);
+    } else if (phase === 'extra_time_2') {
+      setMinute(106);
       setDramaticEvent(null);
     } else if (phase === 'penalties') {
       setMinute(120);
@@ -213,6 +228,8 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
       (phase === 'second_half' ||
         phase === 'extra_time_break' ||
         phase === 'extra_time' ||
+        phase === 'extra_time_ht' ||
+        phase === 'extra_time_2' ||
         phase === 'penalties') &&
       halftime.fullMatchResult
     ) {
@@ -255,20 +272,27 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dramaticEvent?.key]);
 
-  // Progressive match clock ticker (1st half 0'->45', 2nd half 46'->90', Extra Time 91'->120')
+  // Progressive match clock ticker (1st 0'->45', 2nd 46'->90', ET1 91'->105', ET2 106'->120')
   useEffect(() => {
     if (!halftime) return;
     if (
       phase !== 'first_half' &&
       phase !== 'second_half' &&
-      phase !== 'extra_time'
+      phase !== 'extra_time' &&
+      phase !== 'extra_time_2'
     ) {
       return;
     }
     if (dramaticEvent || liveSubOpen) return;
 
     const targetEnd =
-      phase === 'first_half' ? 45 : phase === 'second_half' ? 90 : 120;
+      phase === 'first_half'
+        ? 45
+        : phase === 'second_half'
+          ? 90
+          : phase === 'extra_time'
+            ? 105
+            : 120;
 
     // Check if there is an unhandled highlight event at the current minute first
     const unhandledNow = indexedEvents.find(
@@ -320,8 +344,14 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
           return () => window.clearTimeout(etTimer);
         }
       }
+      if (phase === 'extra_time') {
+        const etHtTimer = window.setTimeout(() => {
+          enterEtHalftimeLocker();
+        }, 480);
+        return () => window.clearTimeout(etHtTimer);
+      }
       if (
-        phase === 'extra_time' &&
+        phase === 'extra_time_2' &&
         halftime.fullMatchResult?.extraTime?.penalties
       ) {
         const pkTimer = window.setTimeout(() => {
@@ -333,7 +363,9 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     }
 
     const tickDelay =
-      phase === 'extra_time' ? Math.max(55, SPEED_MS[speed] * 0.9) : SPEED_MS[speed];
+      phase === 'extra_time' || phase === 'extra_time_2'
+        ? Math.max(55, SPEED_MS[speed] * 0.9)
+        : SPEED_MS[speed];
     const timer = window.setTimeout(() => {
       const nextMin = Math.min(targetEnd, minute + 1);
       const nextHighlight = indexedEvents.find(
@@ -369,6 +401,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     handledHighlightKeys,
     enterHalftimeLocker,
     enterExtraTimeBreak,
+    enterEtHalftimeLocker,
     enterPenaltyShootout,
   ]);
 
@@ -432,7 +465,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     penaltiesData !== null &&
     revealedPenKicks >= penaltiesData.kicks.length;
   const isExtraTimeDone =
-    phase === 'extra_time' &&
+    phase === 'extra_time_2' &&
     minute >= 120 &&
     !dramaticEvent &&
     !penaltiesData;
@@ -544,10 +577,14 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   const liveHomeFormation = fullResult?.homeFormation ?? halftime.homeFormation;
   const liveAwayFormation = fullResult?.awayFormation ?? halftime.awayFormation;
 
+  const isEtBreakPhase =
+    phase === 'extra_time_break' || phase === 'extra_time_ht';
+  const isLockerPhase = phase === 'halftime' || isEtBreakPhase;
+
   const userActiveTactic: TacticId =
     phase === 'first_half'
       ? halftime.userTacticAtKickoff
-      : phase === 'halftime'
+      : isLockerPhase
         ? selectedTactic
         : halftime.isUserHome
           ? fullResult?.homeTactic ?? selectedTactic
@@ -617,11 +654,43 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     }
   }
 
+  const maxSubsAllowed =
+    phase === 'extra_time_break' ||
+    phase === 'extra_time' ||
+    phase === 'extra_time_ht' ||
+    phase === 'extra_time_2'
+      ? MAX_MATCH_SUBS + 1
+      : MAX_MATCH_SUBS;
   const subsUsed = halftime.halftimeSubsMade;
-  const subsRemaining = Math.max(0, MAX_MATCH_SUBS - subsUsed);
+  const subsRemaining = Math.max(0, maxSubsAllowed - subsUsed);
 
-  const coachRecommendations =
-    phase === 'halftime' && subsRemaining > 0
+  const liveAggHomeForBrief = (halftime.aggHomeBeforeMatch ?? 0) + liveHomeGoals;
+  const liveAggAwayForBrief = (halftime.aggAwayBeforeMatch ?? 0) + liveAwayGoals;
+
+  const extraTimeBriefing = isEtBreakPhase
+    ? buildExtraTimeCoachBriefing({
+        stage: phase === 'extra_time_break' ? 'before_et1' : 'et_halftime',
+        starters: state.starters,
+        bench: state.bench,
+        formation: state.formation,
+        oppTactic,
+        userAggGoals: halftime.isUserHome
+          ? liveAggHomeForBrief
+          : liveAggAwayForBrief,
+        oppAggGoals: halftime.isUserHome
+          ? liveAggAwayForBrief
+          : liveAggHomeForBrief,
+        staminaByPlayerId,
+        eventsSoFar: visibleEvents,
+        disabledBenchIds: subbedOutIdSet,
+        subsRemaining,
+        managerTraitId: state.manager.traitId,
+      })
+    : null;
+
+  const coachRecommendations = isEtBreakPhase
+    ? (extraTimeBriefing?.recommendations ?? [])
+    : phase === 'halftime' && subsRemaining > 0
       ? buildHalftimeCoachRecommendations({
           starters: state.starters,
           bench: state.bench,
@@ -653,7 +722,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
       return;
     }
 
-    if (subsUsed >= MAX_MATCH_SUBS) return;
+    if (subsUsed >= maxSubsAllowed) return;
     const starterIdx = from.area === 'starter' ? from.index : to.index;
     const benchIdx = from.area === 'bench' ? from.index : to.index;
     const outPlayer = state.starters[starterIdx];
@@ -673,7 +742,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   const confirmPendingHalftimeSub = () => {
     if (!pendingHtSubConfirm) return;
     const { from, to, outPlayer, inPlayer } = pendingHtSubConfirm;
-    if (subsUsed >= MAX_MATCH_SUBS) {
+    if (subsUsed >= maxSubsAllowed) {
       setPendingHtSubConfirm(null);
       return;
     }
@@ -689,7 +758,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
     starterIndex: number,
     benchIndex: number,
   ) => {
-    if (subsUsed >= MAX_MATCH_SUBS) return;
+    if (subsUsed >= maxSubsAllowed) return;
     const outPlayer = state.starters[starterIndex];
     const inPlayer = state.bench[benchIndex];
     if (!outPlayer || !inPlayer || subbedOutIdSet.has(inPlayer.id)) return;
@@ -903,36 +972,21 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   const liveAggHome = (halftime.aggHomeBeforeMatch ?? 0) + liveHomeGoals;
   const liveAggAway = (halftime.aggAwayBeforeMatch ?? 0) + liveAwayGoals;
 
-  const canMakeEtExtraSub = subsUsed < MAX_MATCH_SUBS + 1;
-
-  const handleEtSlotClick = (area: 'starter' | 'bench', index: number) => {
-    if (!canMakeEtExtraSub) return;
-    const clicked =
-      area === 'starter' ? state.starters[index] : state.bench[index];
-    if (!clicked) return;
-    if (area === 'bench' && subbedOutIdSet.has(clicked.id)) return;
-
-    if (!etSubPick) {
-      setEtSubPick({ area, index });
-      return;
-    }
-    if (etSubPick.area === area && etSubPick.index === index) {
-      setEtSubPick(null);
-      return;
-    }
-    if (etSubPick.area === area) {
-      setEtSubPick({ area, index });
-      return;
-    }
-    const starterIndex = etSubPick.area === 'starter' ? etSubPick.index : index;
-    const benchIndex = etSubPick.area === 'bench' ? etSubPick.index : index;
-    setSelectedEtSub({ starterIndex, benchIndex });
-    setEtSubPick(null);
+  const handleStartExtraTime = () => {
+    setPendingHtSubConfirm(null);
+    setHtNotice(null);
+    startExtraTimeBroadcast({
+      etTactic: selectedTactic,
+      firstHalfStarters: firstHalfStartersRef.current,
+      halftimeSubIds: subbedInIds,
+    });
   };
 
-  const handleStartExtraTime = () => {
-    startExtraTimeBroadcast({
-      extraSub: selectedEtSub ?? undefined,
+  const handleStartEtSecondHalf = () => {
+    setPendingHtSubConfirm(null);
+    setHtNotice(null);
+    startEtSecondHalfBroadcast({
+      etTactic: selectedTactic,
       firstHalfStarters: firstHalfStartersRef.current,
       halftimeSubIds: subbedInIds,
     });
@@ -941,7 +995,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
   const pitchPhase: 'first_half' | 'halftime' | 'second_half' =
     phase === 'first_half'
       ? 'first_half'
-      : phase === 'halftime'
+      : isLockerPhase
         ? 'halftime'
         : 'second_half';
 
@@ -964,7 +1018,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
           <div className="flex items-center gap-2.5">
             <span
               className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-black tracking-wide ${
-                phase === 'halftime' || phase === 'extra_time_break'
+                isLockerPhase
                   ? 'bg-amber-400 text-slate-950'
                   : phase === 'penalties'
                     ? 'bg-purple-400 text-slate-950'
@@ -978,7 +1032,9 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
               {phase === 'halftime' ? (
                 'HALF TIME'
               ) : phase === 'extra_time_break' ? (
-                'EXTRA TIME'
+                'ET BREAK'
+              ) : phase === 'extra_time_ht' ? (
+                'ET HALF TIME'
               ) : phase === 'penalties' ? (
                 'PENALTIES'
               ) : liveSubOpen ? (
@@ -1009,7 +1065,8 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
           <div className="flex flex-wrap items-center gap-1.5">
             {(phase === 'first_half' ||
               phase === 'second_half' ||
-              phase === 'extra_time') &&
+              phase === 'extra_time' ||
+              phase === 'extra_time_2') &&
               !isSecondHalfDone && (
                 <div className="flex items-center rounded-lg border border-slate-800 bg-[#111822] p-0.5 text-[11px]">
                   {([1, 2, 4] as BroadcastSpeed[]).map((spd) => (
@@ -1053,6 +1110,20 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                 className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-200 hover:border-amber-400/50 hover:text-amber-200 cursor-pointer"
               >
                 하프타임으로
+              </button>
+            )}
+
+            {phase === 'extra_time' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDramaticEvent(null);
+                  setMinute(105);
+                  enterEtHalftimeLocker();
+                }}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-200 hover:border-amber-400/50 hover:text-amber-200 cursor-pointer"
+              >
+                연장 하프타임으로
               </button>
             )}
 
@@ -1129,16 +1200,18 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                     {phase === 'halftime'
                       ? "45' HT"
                       : phase === 'extra_time_break'
-                        ? "90' 연장 대기"
-                        : phase === 'penalties'
-                          ? isPenaltiesDone
-                            ? 'PK 종료'
-                            : '승부차기 진행 중'
-                          : isSecondHalfDone
-                            ? minute > 90
-                              ? "120' AET"
-                              : "90' FT"
-                            : `${minute}'`}
+                        ? "90' 연장 라커룸"
+                        : phase === 'extra_time_ht'
+                          ? "105' 연장 HT"
+                          : phase === 'penalties'
+                            ? isPenaltiesDone
+                              ? 'PK 종료'
+                              : '승부차기 진행 중'
+                            : isSecondHalfDone
+                              ? minute > 90
+                                ? "120' AET"
+                                : "90' FT"
+                              : `${minute}'`}
                   </span>
                   {isTwoLegSecond && (
                     <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-300 tabular-nums">
@@ -1218,71 +1291,6 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
               </div>
             </div>
           </div>
-
-          {/* EXTRA TIME BREAK PANEL (90' Draw in Knockout Decider — 1 Extra Sub Allowed!) */}
-          {phase === 'extra_time_break' && (
-            <div className="rounded-2xl border border-amber-500/40 bg-amber-950/15 p-4 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-base font-black text-amber-300">
-                    ⏱️ 90분 종료 동점! 연장전 (30분) 돌입
-                  </h3>
-                  <p className="mt-0.5 text-xs text-slate-300">
-                    현재 체력 소모가 그대로 이어지며, 연장전 특별 규정으로{' '}
-                    <strong className="text-sky-300">추가 교체 1장 (최대 6명)</strong>이 허용됩니다.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleStartExtraTime}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-5 py-2.5 text-sm font-black text-slate-950 shadow-lg hover:bg-amber-300 cursor-pointer"
-                >
-                  <Play className="w-4 h-4 fill-current" />
-                  {selectedEtSub ? '교체 적용 후 연장전 킥오프 →' : '연장전 (91\'~120\') 킥오프 →'}
-                </button>
-              </div>
-
-              {canMakeEtExtraSub && (
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                    <span className="font-bold text-slate-200">
-                      연장전 추가 교체 선택 (선택 사항 · 선발 ↔ 벤치 클릭)
-                    </span>
-                    {selectedEtSub && (
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-lg bg-sky-500/20 px-2.5 py-1 font-bold text-sky-200">
-                          예약: OUT {state.starters[selectedEtSub.starterIndex]?.name} → IN{' '}
-                          {state.bench[selectedEtSub.benchIndex]?.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedEtSub(null)}
-                          className="text-slate-400 hover:text-white underline"
-                        >
-                          취소
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <PitchBoard
-                    formation={state.formation}
-                    starters={state.starters}
-                    bench={state.bench}
-                    chemistry={chemistry}
-                    managerTraitId={state.manager.traitId}
-                    selectedSlot={etSubPick}
-                    onSlotClick={handleEtSlotClick}
-                    onInspectPlayer={(player, slotSubPosition) =>
-                      setInspected({ player, slotSubPosition })
-                    }
-                    staminaByPlayerId={staminaByPlayerId}
-                    disabledBenchIds={subbedOutIdSet}
-                    compact
-                  />
-                </div>
-              )}
-            </div>
-          )}
 
           {/* PENALTY SHOOTOUT INTERACTIVE PANEL */}
           {phase === 'penalties' && penaltiesData && (
@@ -1433,7 +1441,8 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
           {/* LIVE 2-COLUMN DESKTOP LAYOUT: Left (2D Pitch + Stamina) / Right (Live Commentary) */}
           {(phase === 'first_half' ||
             phase === 'second_half' ||
-            phase === 'extra_time') && (
+            phase === 'extra_time' ||
+            phase === 'extra_time_2') && (
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
               <div className="lg:col-span-8 space-y-2.5">
                 <PitchMatch2D
@@ -1564,8 +1573,8 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
             </div>
           )}
 
-          {/* HALFTIME LOCKER ROOM PANEL (auto-shown at 45') */}
-          {phase === 'halftime' && (
+          {/* UNIFIED LOCKER ROOM PANEL (45' Halftime, 90' Extra Time Break, 105' ET Halftime) */}
+          {isLockerPhase && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
               <div className="lg:col-span-6 space-y-3">
                 <div className="flex items-center justify-between gap-2">
@@ -1580,35 +1589,106 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                     </div>
                     <div>
                       <h3 className="text-sm font-extrabold text-white">
-                        {state.manager.name} 감독 · 하프타임 라커룸
+                        {state.manager.name} 감독 ·{' '}
+                        {phase === 'halftime'
+                          ? '하프타임 라커룸'
+                          : phase === 'extra_time_break'
+                            ? "90' 연장전 돌입 라커룸"
+                            : "105' 연장 하프타임 라커룸"}
                       </h3>
                       <p className="text-[11px] text-slate-400">
-                        전술 수정 · 선발 스왑 · 후반 교체 지시
+                        {isEtBreakPhase
+                          ? '연장 특별 교체(+1장 · 최대 6명) · 전술/포메이션 수정 · PK 대비'
+                          : '전술 수정 · 선발 스왑 · 후반 교체 지시'}
                       </p>
                     </div>
                   </div>
-                  {isWizard && activeTrait && (
-                    <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                      <Sparkles className="w-3 h-3" />
-                      {activeTrait.name} 1.5x
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setShowTacticsGuide(true)}
+                      className="inline-flex items-center gap-1 rounded-md border border-sky-500/35 bg-sky-500/10 px-2 py-1 text-[10px] font-bold text-sky-200 hover:bg-sky-500/20 cursor-pointer"
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      상성 도감
+                    </button>
+                    {isWizard && activeTrait && (
+                      <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                        <Sparkles className="w-3 h-3" />
+                        {activeTrait.name} 1.5x
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Assistant Coach Tactical Analysis + Recommended Subs */}
+                {/* Assistant Coach Tactical Analysis + Recommended Subs (HT or ET Briefing) */}
                 <div className="rounded-xl border border-amber-500/30 bg-amber-950/15 p-3 space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
                       <Lightbulb className="w-3.5 h-3.5" />
-                      수석코치 전반 분석 & 추천 교체
+                      {isEtBreakPhase && extraTimeBriefing
+                        ? extraTimeBriefing.headline
+                        : '수석코치 전반 분석 & 추천 교체'}
                     </div>
                     <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-200">
                       상대: {TACTICS[oppTactic].shortName} · {oppFormation}
                     </span>
                   </div>
-                  <p className="text-xs leading-relaxed text-slate-300">
-                    {halftime.tacticalHint}
-                  </p>
+
+                  {isEtBreakPhase && extraTimeBriefing ? (
+                    <div className="space-y-2">
+                      <ul className="space-y-1 text-xs leading-relaxed text-slate-200">
+                        {extraTimeBriefing.adviceLines.map((line, i) => (
+                          <li key={`et-adv-${i}`} className="flex items-start gap-1.5">
+                            <span className="text-amber-300 shrink-0">•</span>
+                            <span>{line}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {extraTimeBriefing.exhaustedPlayers.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                          <span className="text-[10px] font-bold text-rose-300">
+                            체력 방전 주의:
+                          </span>
+                          {extraTimeBriefing.exhaustedPlayers.slice(0, 4).map((ep) => (
+                            <span
+                              key={`exh-${ep.name}`}
+                              className="rounded border border-rose-500/35 bg-rose-950/40 px-1.5 py-0.5 text-[10px] font-bold text-rose-200 tabular-nums"
+                            >
+                              {ep.name} {ep.staminaPct}%
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {extraTimeBriefing.recommendedPkKickers.length > 0 && (
+                        <div className="rounded-lg border border-purple-500/25 bg-purple-950/20 px-2.5 py-1.5">
+                          <div className="text-[10px] font-bold text-purple-200 mb-1">
+                            🎯 승부차기 예상 최우선 키커 TOP 5 (결정력·OVR 기준)
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {extraTimeBriefing.recommendedPkKickers.map((k, idx) => (
+                              <span
+                                key={`pk-rec-${k.name}-${idx}`}
+                                className="rounded bg-slate-900/90 border border-slate-700/80 px-1.5 py-0.5 text-[10px] text-slate-200 tabular-nums"
+                              >
+                                <span className="text-purple-300 font-bold mr-1">
+                                  {idx + 1}.
+                                </span>
+                                {k.name}{' '}
+                                <span className="text-slate-400">ATT {k.att}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs leading-relaxed text-slate-300">
+                      {halftime.tacticalHint}
+                    </p>
+                  )}
 
                   {coachRecommendations.length > 0 ? (
                     <div className="space-y-2 pt-1 border-t border-amber-500/20">
@@ -1664,8 +1744,10 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                   ) : (
                     <div className="pt-1 border-t border-amber-500/20 text-[11px] text-slate-400">
                       {subsRemaining <= 0
-                        ? '이미 교체 카드 5장을 모두 사용했습니다. 전술과 포메이션 조정으로 후반을 준비하세요.'
-                        : '현재 선발 11명의 체력과 상성이 양호합니다. 후반 흐름을 보며 60분 이후 교체를 활용해도 좋습니다.'}
+                        ? `교체 카드 ${maxSubsAllowed}장을 모두 사용했습니다. 선발 포지션 스왑과 전술 조정으로 승부를 걸어보세요.`
+                        : isEtBreakPhase
+                          ? '우측 피치보드에서 선발 ↔ 벤치를 클릭/드래그해 연장 승부수를 직접 투입할 수 있습니다.'
+                          : '현재 선발 11명의 체력과 상성이 양호합니다. 후반 흐름을 보며 60분 이후 교체를 활용해도 좋습니다.'}
                     </div>
                   )}
                 </div>
@@ -1675,7 +1757,12 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                   <div className="flex items-center justify-between text-xs">
                     <span className="inline-flex items-center gap-1.5 font-bold text-white">
                       <Compass className="w-3.5 h-3.5 text-emerald-400" />
-                      후반전 전술 (상대: {TACTICS[oppTactic].shortName})
+                      {phase === 'halftime'
+                        ? '후반전 전술'
+                        : phase === 'extra_time_break'
+                          ? '연장 전반 전술'
+                          : '연장 후반 전술'}{' '}
+                      (상대: {TACTICS[oppTactic].shortName})
                     </span>
                     <span
                       className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
@@ -1689,6 +1776,9 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                       {tacticMatch.label}
                     </span>
                   </div>
+                  <p className="text-[11px] text-slate-400 leading-snug">
+                    {tacticMatch.reason}
+                  </p>
                   <div className="grid grid-cols-5 gap-1">
                     {TACTIC_LIST.map((t) => {
                       const active = selectedTactic === t.id;
@@ -1718,7 +1808,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                   <div className="pt-2 border-t border-slate-800 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs">
                       <span className="font-bold text-white">
-                        후반 포메이션 (상대: {oppFormation})
+                        {isEtBreakPhase ? '연장 포메이션' : '후반 포메이션'} (상대: {oppFormation})
                       </span>
                       <div className="flex items-center gap-1.5">
                         <span
@@ -1781,13 +1871,33 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                 </div>
 
                 <button
-                  id="start-second-half-btn"
+                  id={
+                    phase === 'halftime'
+                      ? 'start-second-half-btn'
+                      : phase === 'extra_time_break'
+                        ? 'start-extra-time-btn'
+                        : 'start-et-second-half-btn'
+                  }
                   type="button"
-                  onClick={handleStartSecondHalf}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                  onClick={
+                    phase === 'halftime'
+                      ? handleStartSecondHalf
+                      : phase === 'extra_time_break'
+                        ? handleStartExtraTime
+                        : handleStartEtSecondHalf
+                  }
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-extrabold text-slate-950 cursor-pointer ${
+                    isEtBreakPhase
+                      ? 'bg-amber-400 hover:bg-amber-300'
+                      : 'bg-emerald-500 hover:bg-emerald-400'
+                  }`}
                 >
                   <Play className="w-4 h-4 fill-current" />
-                  후반전 46&apos; → 90&apos; 중계 시작
+                  {phase === 'halftime'
+                    ? "후반전 46' → 90' 중계 시작"
+                    : phase === 'extra_time_break'
+                      ? "연장 전반 91' → 105' 중계 시작"
+                      : "연장 후반 106' → 120' 중계 시작"}
                 </button>
               </div>
 
@@ -1795,7 +1905,8 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                 <div className="flex items-center justify-between text-xs">
                   <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300">
                     <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
-                    선수 교체 ({subsUsed} / {MAX_MATCH_SUBS}명) · 선발끼리 자유 스왑 가능
+                    선수 교체 ({subsUsed} / {maxSubsAllowed}명
+                    {isEtBreakPhase ? ' · 연장 +1' : ''}) · 선발끼리 자유 스왑 가능
                   </span>
                   {swapPick && (
                     <button
@@ -1829,8 +1940,8 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
             </div>
           )}
 
-          {/* Commentary fallback for extra_time_break / penalties phases */}
-          {(phase === 'extra_time_break' || phase === 'penalties') && (
+          {/* Commentary fallback for penalties phase */}
+          {phase === 'penalties' && (
             <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3">
               <div className="mb-1.5 flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-300">경기 주요 기록</span>
@@ -1866,7 +1977,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
         </div>
       </div>
 
-      {/* Halftime Bench Substitution Safety Confirmation Modal */}
+      {/* Locker Room Bench Substitution Safety Confirmation Modal (HT & ET) */}
       {pendingHtSubConfirm && (
         <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl border border-amber-500/45 bg-[#101824] p-5 shadow-2xl space-y-4">
@@ -1889,7 +2000,7 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
                   선수를 투입합니다.
                 </p>
                 <p className="mt-1 text-[11px] font-semibold text-amber-300/90">
-                  교체 아웃된 선수는 이번 경기에 다시 출전할 수 없습니다. (교체 {subsUsed + 1}/{MAX_MATCH_SUBS})
+                  교체 아웃된 선수는 이번 경기에 다시 출전할 수 없습니다. (교체 {subsUsed + 1}/{maxSubsAllowed})
                 </p>
               </div>
             </div>
@@ -2079,6 +2190,16 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
         player={inspected?.player ?? null}
         slotSubPosition={inspected?.slotSubPosition}
         managerTraitId={state.manager.traitId}
+        slotSynergy={
+          inspected
+            ? (() => {
+                const idx = state.starters.findIndex(
+                  (p) => p?.id === inspected.player.id,
+                );
+                return idx >= 0 ? chemistry.slotSynergies?.[idx] ?? null : null;
+              })()
+            : null
+        }
         seasonStats={
           inspected
             ? allStats[inspected.player.id] ??
@@ -2087,6 +2208,11 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
             : null
         }
         onClose={() => setInspected(null)}
+      />
+
+      <TacticsGuideModal
+        open={showTacticsGuide}
+        onClose={() => setShowTacticsGuide(false)}
       />
     </div>
   );

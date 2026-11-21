@@ -1,12 +1,13 @@
-import { ArrowRight, Crown, Diamond, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
+import { ArrowRight, Crown, Diamond, Shield, Sparkles, Star, TrendingUp, Trophy, X } from 'lucide-react';
 import { useEffect } from 'react';
+import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
   evaluatePositionFit,
   formatMainPositions,
 } from '../../engine/positionEngine';
 import { TACTICS } from '../../engine/tacticEngine';
-import type { ManagerTraitId } from '../../types/game';
+import type { ManagerTraitId, PlayerSlotSynergy } from '../../types/game';
 import type { PlayerSeasonStats } from '../../types/league';
 import {
   getCardTier,
@@ -20,6 +21,7 @@ import type { PlayerCompetitionStatsBreakdown } from '../../utils/playerLookup';
 interface PlayerDetailModalProps {
   player: Player | null;
   slotSubPosition?: SubPosition;
+  slotSynergy?: PlayerSlotSynergy | null;
   managerTraitId?: ManagerTraitId | null;
   seasonStats?: PlayerSeasonStats | null;
   competitionStats?: PlayerCompetitionStatsBreakdown | null;
@@ -29,6 +31,7 @@ interface PlayerDetailModalProps {
 export function PlayerDetailModal({
   player,
   slotSubPosition,
+  slotSynergy = null,
   managerTraitId = null,
   seasonStats = null,
   competitionStats = null,
@@ -52,6 +55,15 @@ export function PlayerDetailModal({
   const fit = slotSubPosition
     ? evaluatePositionFit(player, slotSubPosition, managerTraitId)
     : null;
+  const mgrSynergy = evaluateManagerPlayerSynergy(player, managerTraitId);
+  const synBonus = slotSynergy?.totalBonus ?? 0;
+  const displayOvr =
+    slotSynergy
+      ? slotSynergy.effectiveOvrWithSynergy
+      : fit
+        ? fit.effectiveOvr
+        : player.ovr;
+  const clubHonors = competitionStats?.clubSeasonHonors ?? [];
 
   const transferHistory =
     competitionStats?.transferHistory ??
@@ -129,6 +141,15 @@ export function PlayerDetailModal({
               <span className="text-xs text-slate-400">
                 {LEAGUE_LABELS[player.leagueId]}
               </span>
+              {mgrSynergy.isMatch && (
+                <span
+                  title={mgrSynergy.reason}
+                  className="inline-flex items-center gap-0.5 rounded bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-200"
+                >
+                  <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                  감독 시너지
+                </span>
+              )}
             </div>
 
             <h3 className="truncate text-lg font-extrabold text-white">
@@ -142,6 +163,27 @@ export function PlayerDetailModal({
               <span className="text-slate-600">·</span>
               <span className="font-semibold text-slate-200">{displayClub}</span>
             </div>
+
+            {/* Season Club Honors (League rank / Cup / UCL) */}
+            {clubHonors.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                {clubHonors.map((honor) => (
+                  <span
+                    key={honor}
+                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                      honor.includes('우승')
+                        ? 'bg-amber-500/20 text-amber-200 border border-amber-400/35'
+                        : 'bg-slate-800/90 text-slate-300'
+                    }`}
+                  >
+                    {honor.includes('우승') && (
+                      <Trophy className="w-2.5 h-2.5 text-amber-300" />
+                    )}
+                    {honor}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Mid-season Transfer History Badge */}
             {transferHistory.length > 0 && (
@@ -166,28 +208,36 @@ export function PlayerDetailModal({
           <div className="flex items-start gap-2.5 shrink-0">
             <div className="rounded-xl border border-slate-700/80 bg-[#111822] px-3 py-1.5 text-center tabular-nums">
               <div className="text-[9px] font-bold text-slate-400">
-                {fit ? '실효 OVR' : 'OVR'}
+                {fit || synBonus > 0 ? '실효 OVR' : 'OVR'}
               </div>
-              <div
-                className={`font-display text-2xl font-bold leading-none ${
-                  fit && fit.penalty < 0
-                    ? fit.fit === 'secondary'
-                      ? 'text-amber-300'
-                      : 'text-rose-400'
-                    : isLegend
-                      ? 'text-amber-300'
-                      : isSuperstar
-                        ? 'text-cyan-200'
-                        : 'text-emerald-300'
-                }`}
-              >
-                {fit ? fit.effectiveOvr : player.ovr}
+              <div className="flex items-baseline justify-center gap-1">
+                <span
+                  className={`font-display text-2xl font-bold leading-none ${
+                    fit && fit.penalty < 0 && synBonus === 0
+                      ? fit.fit === 'secondary'
+                        ? 'text-amber-300'
+                        : 'text-rose-400'
+                      : isLegend
+                        ? 'text-amber-300'
+                        : isSuperstar
+                          ? 'text-cyan-200'
+                          : 'text-emerald-300'
+                  }`}
+                >
+                  {displayOvr}
+                </span>
+                {synBonus > 0 && (
+                  <span className="rounded bg-emerald-500/20 px-1 py-0.5 text-[10px] font-black text-emerald-300">
+                    +{synBonus}
+                  </span>
+                )}
               </div>
-              {fit && fit.penalty < 0 && (
+              {(fit && fit.penalty < 0) || synBonus > 0 ? (
                 <div className="mt-0.5 text-[9px] font-bold text-slate-400">
-                  기본 {player.ovr} ({fit.penalty})
+                  기본 {player.ovr}
+                  {fit && fit.penalty < 0 ? ` (${fit.penalty})` : ''}
                 </div>
-              )}
+              ) : null}
             </div>
 
             <button
@@ -203,6 +253,30 @@ export function PlayerDetailModal({
 
         {/* Body */}
         <div className="space-y-4 p-5 max-h-[75vh] overflow-y-auto">
+          {/* Individual Synergy OVR Breakdown Banner */}
+          {((slotSynergy && slotSynergy.reasons.length > 0) || mgrSynergy.isMatch) && (
+            <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/20 px-3.5 py-2.5 space-y-1">
+              <div className="flex items-center justify-between text-xs font-extrabold text-emerald-300">
+                <span className="inline-flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  개인 시너지 OVR 상승 내역
+                </span>
+                {synBonus > 0 && (
+                  <span className="rounded bg-emerald-500/25 px-1.5 py-0.5 text-[11px] font-black text-emerald-200">
+                    총 +{synBonus} OVR
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] text-slate-200 space-y-0.5">
+                {slotSynergy && slotSynergy.reasons.length > 0 ? (
+                  slotSynergy.reasons.map((r) => <div key={r}>• {r}</div>)
+                ) : (
+                  <div>• {mgrSynergy.reason}</div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Positions & Current Slot Fit */}
           <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2">
             <div className="flex items-center justify-between text-xs">
