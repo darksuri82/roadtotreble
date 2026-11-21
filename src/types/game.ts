@@ -2,6 +2,7 @@ import type { DomesticCupState } from './cup';
 import type {
   Club,
   Fixture,
+  GlobalSeasonAwards,
   JerseyPattern,
   LeagueId,
   LiveHalftimeState,
@@ -141,7 +142,35 @@ export interface RouletteReelResult {
   candidates: Player[]; // 2..3 position-compatible players per rolled club or Legend slot
 }
 
+export type ManagerSkinToneId = 'light' | 'peach' | 'warm' | 'tan' | 'deep';
+export type ManagerHairStyleId = 'fluffy' | 'parted' | 'slick' | 'buzz';
+export type ManagerHairColorId = 'brown' | 'black' | 'silver' | 'blonde';
+export type ManagerOutfitId =
+  | 'classic_suit'
+  | 'navy_coat'
+  | 'team_tracksuit'
+  | 'casual_shirt'
+  | 'puffer_jacket';
+
+export interface ManagerAvatarConfig {
+  skinTone: ManagerSkinToneId;
+  hairStyle: ManagerHairStyleId;
+  hairColor: ManagerHairColorId;
+  outfit: ManagerOutfitId;
+}
+
+export const DEFAULT_MANAGER_NAME = '신임 감독';
+
+export const DEFAULT_MANAGER_AVATAR: ManagerAvatarConfig = {
+  skinTone: 'peach',
+  hairStyle: 'fluffy',
+  hairColor: 'brown',
+  outfit: 'classic_suit',
+};
+
 export interface ManagerRouletteState {
+  name: string;
+  avatar: ManagerAvatarConfig;
   traitId: ManagerTraitId | null;
   rerollsRemaining: number; // starts at 2
   hasSpun: boolean;
@@ -262,9 +291,11 @@ export interface SeasonState {
   allPlayerStats: Record<string, PlayerSeasonStats>;
   transferMarket: TransferMarketState;
   awards: SeasonAwards | null;
+  globalAwards?: GlobalSeasonAwards | null;
   uclQualifiedSummary?: UclQualifiedLeagueEntry[];
   // Phase 2: Domestic Cup + 36-Team UCL + Legacy Trackers
   cup: DomesticCupState | null;
+  cupChampionCelebrated?: boolean;
   cupPlayerStats: Record<string, PlayerSeasonStats>;
   userCupMatchHistory: MatchResult[];
   ucl: UclTournamentState | null;

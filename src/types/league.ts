@@ -296,6 +296,20 @@ export interface SeasonAwards {
   poty: PlayerSeasonStats | null;
 }
 
+export interface BallonDorCandidate {
+  rank: number; // 1..5
+  stats: PlayerSeasonStats;
+  ballonScore: number;
+  trophies: string[];
+  reason: string;
+}
+
+export interface GlobalSeasonAwards {
+  ballonDorWinner: BallonDorCandidate | null;
+  ballonDorTop5: BallonDorCandidate[];
+  worldBestXi: BestXiEntry[]; // 4-3-3 global best 11
+}
+
 export interface TeamSeasonAnalytics {
   finalRank: number;
   points: number;

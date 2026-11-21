@@ -1,4 +1,9 @@
-import type { FormationId, ManagerTraitId, UserClubProfile } from './game';
+import type {
+  FormationId,
+  ManagerAvatarConfig,
+  ManagerTraitId,
+  UserClubProfile,
+} from './game';
 import type { LeagueId, TacticId } from './league';
 import type { Player } from './player';
 
@@ -44,6 +49,8 @@ export interface SeasonScoreBreakdown {
   uclBonus: number;
   honorsBonus: number; // Treble / Double / Unbeaten
   underdogBonus: number; // Low avg OVR + high achievement
+  awardsBonus?: number; // Ballon d'Or, World Best XI, League MVP, League Best XI
+  awardsBonusDetails?: string[];
   totalScore: number;
   grade: 'S+' | 'S' | 'A+' | 'A' | 'B+' | 'B' | 'C';
 }
@@ -60,10 +67,24 @@ export interface HallOfFameSquadMember {
   avgRating: number;
 }
 
+export interface HallOfFameMatchSummary {
+  competition: 'league' | 'cup' | 'ucl';
+  label: string;
+  opponentName: string;
+  isHome: boolean;
+  userGoals: number;
+  oppGoals: number;
+  outcome: 'W' | 'D' | 'L';
+  scorers: string[];
+  note?: string;
+}
+
 export interface HallOfFameEntry {
   id: string;
   completedAt: string;
   userClub: UserClubProfile;
+  managerName?: string;
+  managerAvatar?: ManagerAvatarConfig;
   managerTraitId: ManagerTraitId | null;
   leagueId: LeagueId;
   leagueKoreanName: string;
@@ -85,6 +106,12 @@ export interface HallOfFameEntry {
   seasonScore: SeasonScoreBreakdown;
   trophies: string[];
   topScorerSummary: string;
+  ballonDorWinnerName?: string;
+  ballonDorWinnerClub?: string;
+  ballonDorIsUser?: boolean;
+  worldBestXiUserCount?: number;
+  leagueBestXiUserCount?: number;
+  matchHistory?: HallOfFameMatchSummary[];
   starters: HallOfFameSquadMember[];
   bench: HallOfFameSquadMember[];
   unlockedAchievementIds: string[];

@@ -41,6 +41,7 @@ import { ClubTag } from '../common/ClubTag';
 import { JerseySvg } from '../common/JerseySvg';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
+import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import {
   DRAMATIC_REVEAL_MS,
@@ -1567,10 +1568,25 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
           {phase === 'halftime' && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
               <div className="lg:col-span-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-extrabold text-white">
-                    하프타임 라커룸 전술 지시
-                  </h3>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-10 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-[#111822]">
+                      <PixelManagerAvatar
+                        avatar={state.manager.avatar}
+                        clubPrimaryColor={state.userClub.primaryColor}
+                        clubSecondaryColor={state.userClub.secondaryColor}
+                        size={28}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-white">
+                        {state.manager.name} 감독 · 하프타임 라커룸
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        전술 수정 · 선발 스왑 · 후반 교체 지시
+                      </p>
+                    </div>
+                  </div>
                   {isWizard && activeTrait && (
                     <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                       <Sparkles className="w-3 h-3" />

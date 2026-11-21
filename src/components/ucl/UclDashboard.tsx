@@ -17,120 +17,21 @@ import {
   findNextUserUclLeaguePhaseFixture,
   getUserKnockoutFixtureInfo,
   getUserUclResultLabel,
-  UCL_KNOCKOUT_ORDER,
   UCL_STAGE_LABELS,
 } from '../../engine/uclEngine';
 import { useGame } from '../../store/GameContext';
 import type { Club, TacticId } from '../../types/league';
 import type { Player, SubPosition } from '../../types/player';
-import type { UclKnockoutTie } from '../../types/ucl';
 import { JerseySvg } from '../common/JerseySvg';
 import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { PitchBoard, type SlotRef } from '../common/PitchBoard';
+import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
+import { UclBracketTree } from './UclBracketTree';
 
 type UclTab = 'match' | 'standings' | 'bracket' | 'stats' | 'squad';
-
-function KnockoutTieCard({
-  tie,
-  clubsById,
-}: {
-  tie: UclKnockoutTie;
-  clubsById: Record<string, Club>;
-}) {
-  const teamA = clubsById[tie.teamAId];
-  const teamB = clubsById[tie.teamBId];
-  const involvesUser =
-    tie.teamAId === USER_CLUB_ID || tie.teamBId === USER_CLUB_ID;
-  const isFinal = tie.stage === 'final';
-
-  return (
-    <div
-      className={`rounded-xl border p-3 text-xs ${
-        involvesUser
-          ? 'border-sky-400/60 bg-sky-950/30 shadow-sm shadow-sky-900/20'
-          : 'border-slate-800 bg-slate-900/75'
-      }`}
-    >
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
-              style={{ backgroundColor: teamA?.primaryColor ?? '#64748b' }}
-            />
-            <span
-              className={`truncate ${
-                tie.teamAId === USER_CLUB_ID
-                  ? 'font-black text-emerald-300'
-                  : tie.winnerId === tie.teamAId
-                    ? 'font-bold text-white'
-                    : tie.winnerId
-                      ? 'text-slate-400'
-                      : 'text-slate-200'
-              }`}
-            >
-              {teamA?.name ?? tie.teamAId}
-            </span>
-          </div>
-          <span className="font-mono font-black text-white">
-            {tie.leg1 ? tie.aggTeamA : '-'}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span
-              className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/20"
-              style={{ backgroundColor: teamB?.primaryColor ?? '#64748b' }}
-            />
-            <span
-              className={`truncate ${
-                tie.teamBId === USER_CLUB_ID
-                  ? 'font-black text-emerald-300'
-                  : tie.winnerId === tie.teamBId
-                    ? 'font-bold text-white'
-                    : tie.winnerId
-                      ? 'text-slate-400'
-                      : 'text-slate-200'
-              }`}
-            >
-              {teamB?.name ?? tie.teamBId}
-            </span>
-          </div>
-          <span className="font-mono font-black text-white">
-            {tie.leg1 ? tie.aggTeamB : '-'}
-          </span>
-        </div>
-      </div>
-
-      {tie.leg1 && (
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-1 border-t border-slate-800/80 pt-1.5 text-[10px] text-slate-400">
-          {isFinal ? (
-            <span>단판 결승</span>
-          ) : (
-            <span>
-              1차전 {tie.leg1.homeGoals}-{tie.leg1.awayGoals}
-              {tie.leg2 ? ` · 2차전 ${tie.leg2.homeGoals}-${tie.leg2.awayGoals}` : ' · 2차전 대기'}
-            </span>
-          )}
-          {tie.decidedBy === 'penalties' &&
-            tie.penaltyScoreA !== undefined &&
-            tie.penaltyScoreB !== undefined && (
-              <span className="font-bold text-purple-300">
-                PK {tie.penaltyScoreA}-{tie.penaltyScoreB}
-              </span>
-            )}
-          {tie.decidedBy === 'et' && (
-            <span className="font-bold text-amber-300">AET</span>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function UclDashboard() {
   const {
@@ -145,11 +46,13 @@ export function UclDashboard() {
     swapSquadPositions,
     startLiveMatch,
     simulateSingleMatchInstant,
+    simulateUclLeaguePhaseToEnd,
     simulateUclToEnd,
     finishUclToSummary,
   } = useGame();
 
   const [tab, setTab] = useState<UclTab>('match');
+  const [showLpSummary, setShowLpSummary] = useState(false);
   const [swapPick, setSwapPick] = useState<SlotRef | null>(null);
   const [inspected, setInspected] = useState<{
     player: Player;
@@ -327,16 +230,70 @@ export function UclDashboard() {
       {tab === 'match' && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
           <div className="lg:col-span-8 space-y-4">
+            {showLpSummary && ucl.leaguePhaseRound >= 8 && (() => {
+              const finalRank = ucl.userLeaguePhaseRank ?? userUclRank;
+              const uRow = ucl.standings.find((r) => r.teamId === USER_CLUB_ID);
+              const badge =
+                finalRank <= 8
+                  ? { label: '16강 직행 확정!', cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' }
+                  : finalRank <= 24
+                    ? { label: '16강 플레이오프 진출', cls: 'bg-amber-500/20 text-amber-300 border-amber-500/40' }
+                    : { label: '리그 페이즈 탈락', cls: 'bg-rose-500/20 text-rose-300 border-rose-500/40' };
+              return (
+                <div className="rounded-2xl border border-sky-500/35 bg-[#101929] p-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] font-bold text-sky-300">
+                        스위스 리그 페이즈 8경기 완료
+                      </span>
+                      <span className={`rounded-md border px-2 py-0.5 text-[11px] font-bold ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm font-bold text-white">
+                      최종 <span className="text-sky-300">{finalRank}위 / 36팀</span> ·{' '}
+                      {uRow ? `${uRow.won}승 ${uRow.drawn}무 ${uRow.lost}패 (승점 ${uRow.points}점, 득실 ${uRow.goalDifference >= 0 ? `+${uRow.goalDifference}` : uRow.goalDifference})` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTab('standings')}
+                      className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
+                    >
+                      36팀 순위표
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTab('bracket')}
+                      className="rounded-lg border border-sky-500/40 bg-sky-500/15 px-3 py-1.5 text-xs font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                    >
+                      대진표 보기
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowLpSummary(false)}
+                      className="text-xs text-slate-500 hover:text-slate-300 px-1 cursor-pointer"
+                    >
+                      닫기
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
             {ucl.completed ? (
-              <div className="rounded-3xl border border-amber-400/50 bg-gradient-to-br from-amber-950/35 via-slate-900 to-slate-950 p-6 text-center space-y-4">
-                <Trophy className="mx-auto h-14 w-14 text-amber-400" />
+              <div className="rounded-2xl border border-amber-400/45 bg-[#111926] p-6 text-center space-y-4">
+                <div className="flex justify-center">
+                  <PixelTrophySvg variant="ucl" size={76} animate />
+                </div>
                 <div>
-                  <div className="text-xs font-black tracking-widest text-amber-300">
+                  <div className="text-xs font-bold tracking-widest text-amber-300 uppercase">
                     UEFA CHAMPIONS LEAGUE FINAL RESULT
                   </div>
-                  <h2 className="mt-1 text-2xl sm:text-3xl font-black text-white">
+                  <h2 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-white">
                     {userWonUcl
-                      ? `🎉 ${state.userClub.name}, 빅이어(Big Ears) 정복!`
+                      ? `${state.userClub.name}, 빅이어(Big Ears) 정복!`
                       : `챔피언스리그 우승: ${championClub?.name ?? '미정'}`}
                   </h2>
                   <p className="mt-1.5 text-sm text-slate-300">
@@ -351,14 +308,14 @@ export function UclDashboard() {
                 <button
                   type="button"
                   onClick={finishUclToSummary}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-300 px-6 py-3 text-sm font-black text-slate-950 shadow-lg hover:brightness-105 cursor-pointer"
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-6 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-amber-300 cursor-pointer"
                 >
                   <Sparkles className="h-4 w-4" />
-                  시즌 최종 결산 · 시즌 스코어 & 명예의 전당 확인 →
+                  시즌 최종 결산 · 발롱도르 &amp; 명예의 전당 확인 →
                 </button>
               </div>
             ) : isUserNextMatch && nextHome && nextAway ? (
-              <div className="rounded-2xl border border-sky-500/35 bg-slate-900/80 p-5 space-y-5">
+              <div className="rounded-2xl border border-slate-800 bg-[#0e1520] p-5 space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <span className="rounded-md bg-sky-500/20 px-2.5 py-1 text-xs font-black text-sky-300">
@@ -480,11 +437,11 @@ export function UclDashboard() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={startLiveMatch}
-                    className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-400 to-emerald-400 px-5 py-3 text-sm font-black text-slate-950 shadow-lg hover:brightness-105 cursor-pointer"
+                    className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 cursor-pointer"
                   >
                     <Play className="h-4 w-4 fill-current" />
                     2D 실시간 중계 시작
@@ -497,6 +454,19 @@ export function UclDashboard() {
                     <FastForward className="h-4 w-4" />
                     1경기 스킵
                   </button>
+                  {ucl.stage === 'league_phase' && ucl.leaguePhaseRound < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLpSummary(true);
+                        simulateUclLeaguePhaseToEnd();
+                      }}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-500/45 bg-sky-500/15 px-4 py-3 text-xs font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                    >
+                      <FastForward className="h-4 w-4" />
+                      리그 페이즈 끝까지 고속진행
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={simulateUclToEnd}
@@ -751,35 +721,9 @@ export function UclDashboard() {
         </div>
       )}
 
-      {/* TAB 3: KNOCKOUT BRACKET */}
+      {/* TAB 3: AUTHENTIC ORTHOGONAL KNOCKOUT BRACKET TREE */}
       {tab === 'bracket' && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
-          {UCL_KNOCKOUT_ORDER.map((stage) => {
-            const ties = ucl.ties[stage];
-            return (
-              <div key={stage} className="space-y-2.5">
-                <div className="border-b border-slate-800 pb-1.5 text-xs font-black text-sky-300">
-                  {UCL_STAGE_LABELS[stage]}
-                </div>
-                {ties.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950/40 p-4 text-center text-xs text-slate-500">
-                    이전 라운드 종료 후 확정
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {ties.map((tie) => (
-                      <KnockoutTieCard
-                        key={tie.id}
-                        tie={tie}
-                        clubsById={clubsById}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <UclBracketTree ucl={ucl} clubsById={clubsById} />
       )}
 
       {/* TAB 4: UCL INDIVIDUAL STATS */}

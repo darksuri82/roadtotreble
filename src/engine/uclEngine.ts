@@ -1131,6 +1131,82 @@ export function simulateUclToCompletion(params: {
   };
 }
 
+export interface UclLeaguePhaseSummary {
+  finalRank: number;
+  points: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  outcome: 'r16' | 'playoff' | 'eliminated';
+}
+
+/**
+ * Fast-simulates all remaining rounds of the 8-match UCL Swiss League Phase,
+ * cleanly transitioning into Playoff / R16 / Eliminated with a structured summary.
+ */
+export function simulateUclLeaguePhaseToEnd(params: {
+  ucl: UclTournamentState;
+  uclPlayerStats: Record<string, PlayerSeasonStats>;
+  userContext?: UserMatchContext;
+  userClubId?: string;
+  rng?: () => number;
+}): {
+  ucl: UclTournamentState;
+  uclPlayerStats: Record<string, PlayerSeasonStats>;
+  newUserMatches: MatchResult[];
+  summary: UclLeaguePhaseSummary;
+} {
+  const userClubId = params.userClubId ?? USER_CLUB_ID;
+  const rng = params.rng ?? Math.random;
+  let curUcl: UclTournamentState =
+    params.ucl.stage === 'special_transfer'
+      ? { ...params.ucl, stage: 'league_phase' }
+      : params.ucl;
+  let curStats = params.uclPlayerStats;
+  const newUserMatches: MatchResult[] = [];
+
+  let guard = 0;
+  while (curUcl.stage === 'league_phase' && curUcl.leaguePhaseRound < 8 && guard < 10) {
+    guard += 1;
+    const res = simulateUclLeaguePhaseRound({
+      ucl: curUcl,
+      uclPlayerStats: curStats,
+      userContext: params.userContext,
+      userClubId,
+      rng,
+    });
+    curUcl = res.ucl;
+    curStats = res.uclPlayerStats;
+    if (res.userResult) {
+      newUserMatches.push(res.userResult);
+    }
+  }
+
+  const finalRank =
+    curUcl.userLeaguePhaseRank ?? getUserRank(curUcl.standings, userClubId);
+  const userRow = curUcl.standings.find((r) => r.teamId === userClubId);
+  const outcome: UclLeaguePhaseSummary['outcome'] =
+    finalRank <= 8 ? 'r16' : finalRank <= 24 ? 'playoff' : 'eliminated';
+
+  return {
+    ucl: curUcl,
+    uclPlayerStats: curStats,
+    newUserMatches,
+    summary: {
+      finalRank,
+      points: userRow?.points ?? 0,
+      won: userRow?.won ?? 0,
+      drawn: userRow?.drawn ?? 0,
+      lost: userRow?.lost ?? 0,
+      goalsFor: userRow?.goalsFor ?? 0,
+      goalsAgainst: userRow?.goalsAgainst ?? 0,
+      outcome,
+    },
+  };
+}
+
 export function getUserUclResultLabel(
   ucl: UclTournamentState | null,
   userClubId = USER_CLUB_ID,

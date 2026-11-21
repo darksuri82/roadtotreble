@@ -1,10 +1,18 @@
+import type { DomesticCupState } from '../types/cup';
+import type { OtherLeagueSeasonState } from '../types/game';
 import type {
+  BallonDorCandidate,
   BestXiEntry,
+  GlobalSeasonAwards,
+  LeagueId,
   PlayerSeasonStats,
   SeasonAwards,
   StandingRow,
 } from '../types/league';
 import type { Position, SubPosition } from '../types/player';
+import type { UclTournamentState } from '../types/ucl';
+import { buildAiClubRoster, getLeagueById, LEAGUES } from './dataLoader';
+import { USER_CLUB_ID } from './matchEngine';
 
 function computeAwardScore(
   st: PlayerSeasonStats,
@@ -154,3 +162,358 @@ export function computeSeasonAwards(
     poty,
   };
 }
+
+function mergeStatsMaps(
+  maps: Record<string, PlayerSeasonStats>[],
+): Map<string, PlayerSeasonStats> {
+  const merged = new Map<string, PlayerSeasonStats>();
+  for (const map of maps) {
+    for (const st of Object.values(map)) {
+      if (st.appearances <= 0) continue;
+      const key = `${st.teamId}::${st.playerId}`;
+      const cur = merged.get(key);
+      if (!cur) {
+        merged.set(key, {
+          ...st,
+          positionCounts: { ...st.positionCounts },
+        });
+      } else {
+        const appearances = cur.appearances + st.appearances;
+        const ratingSum = cur.ratingSum + st.ratingSum;
+        merged.set(key, {
+          ...cur,
+          appearances,
+          starts: cur.starts + st.starts,
+          subAppearances: cur.subAppearances + st.subAppearances,
+          minutesPlayed: cur.minutesPlayed + st.minutesPlayed,
+          goals: cur.goals + st.goals,
+          assists: cur.assists + st.assists,
+          xgSum: cur.xgSum + st.xgSum,
+          cleanSheets: cur.cleanSheets + st.cleanSheets,
+          momCount: cur.momCount + st.momCount,
+          ratingSum,
+          avgRating:
+            appearances > 0
+              ? Math.round((ratingSum / appearances) * 100) / 100
+              : 0,
+        });
+      }
+    }
+  }
+  return merged;
+}
+
+/**
+ * Computes global end-of-season awards: Ballon d'Or (Winner + TOP 5) and 4-3-3 World Best XI
+ * combining user's league, domestic cup, UCL stats, and top stars from all 5 European leagues.
+ */
+export function computeGlobalSeasonAwards(params: {
+  allLeaguePlayerStats: Record<string, PlayerSeasonStats>;
+  cupPlayerStats: Record<string, PlayerSeasonStats>;
+  uclPlayerStats: Record<string, PlayerSeasonStats>;
+  leagueStandings: StandingRow[];
+  cup: DomesticCupState | null;
+  ucl: UclTournamentState | null;
+  otherLeagues: Partial<Record<LeagueId, OtherLeagueSeasonState>>;
+  userLeagueId: LeagueId;
+  userClubId?: string;
+}): GlobalSeasonAwards {
+  const {
+    allLeaguePlayerStats,
+    cupPlayerStats,
+    uclPlayerStats,
+    leagueStandings,
+    cup,
+    ucl,
+    otherLeagues,
+    userLeagueId,
+    userClubId = USER_CLUB_ID,
+  } = params;
+
+  // 1) Collect trophy honors per team across all competitions
+  const teamTrophies = new Map<string, string[]>();
+  const teamTrophyPoints = new Map<string, number>();
+
+  const addHonor = (teamId: string | null | undefined, label: string, pts: number) => {
+    if (!teamId) return;
+    const list = teamTrophies.get(teamId) ?? [];
+    if (!list.includes(label)) {
+      list.push(label);
+      teamTrophies.set(teamId, list);
+      teamTrophyPoints.set(teamId, (teamTrophyPoints.get(teamId) ?? 0) + pts);
+    }
+  };
+
+  const userLeague = getLeagueById(userLeagueId);
+  const userLeagueWinnerId = leagueStandings[0]?.teamId;
+  addHonor(userLeagueWinnerId, `${userLeague.koreanName} 우승`, 18);
+
+  if (cup?.completed && cup.championTeamId) {
+    addHonor(cup.championTeamId, `${cup.meta.koreanName} 우승`, 9);
+  }
+
+  if (ucl?.completed && ucl.championTeamId) {
+    addHonor(ucl.championTeamId, 'UEFA 챔피언스리그 우승', 30);
+    const finalTie = ucl.ties.final[0];
+    if (finalTie) {
+      const runnerUp =
+        finalTie.teamAId === ucl.championTeamId ? finalTie.teamBId : finalTie.teamAId;
+      addHonor(runnerUp, 'UCL 준우승', 9);
+    }
+  }
+
+  // Other 4 leagues champions & top-2 synthetic domestic stats
+  const merged = mergeStatsMaps([
+    allLeaguePlayerStats,
+    cupPlayerStats,
+    uclPlayerStats,
+  ]);
+
+  const userLeagueClubIds = new Set(leagueStandings.map((r) => r.teamId));
+
+  for (const league of LEAGUES) {
+    if (league.id === userLeagueId) continue;
+    const bg = otherLeagues[league.id];
+    if (!bg || bg.standings.length === 0) continue;
+
+    const champId = bg.standings[0]?.teamId;
+    addHonor(champId, `${league.koreanName} 우승`, 17);
+
+    // Synthesize realistic domestic season production for Top-3 clubs in each other league
+    // so stars like Mbappe/Bellingham/Kane/Lautaro compete fairly with user's full-season stats.
+    const topClubs = bg.standings.slice(0, 3);
+    for (let rankIdx = 0; rankIdx < topClubs.length; rankIdx += 1) {
+      const row = topClubs[rankIdx];
+      if (userLeagueClubIds.has(row.teamId)) continue;
+      const club = bg.clubs.find((c) => c.id === row.teamId);
+      if (!club) continue;
+
+      const roster =
+        ucl?.aiRosters[club.id] ?? buildAiClubRoster(club, league.id);
+      const played = Math.max(1, row.played);
+      const teamGf = Math.max(30, row.goalsFor);
+      const teamCs = Math.max(6, Math.round(played * Math.max(0.22, 0.54 - row.goalsAgainst / (played * 2.5))));
+
+      const fwList = roster.filter((p) => p.position === 'FW').sort((a, b) => b.ovr - a.ovr);
+      const mfList = roster.filter((p) => p.position === 'MF').sort((a, b) => b.ovr - a.ovr);
+      const dfList = roster.filter((p) => p.position === 'DF').sort((a, b) => b.ovr - a.ovr);
+      const gkList = roster.filter((p) => p.position === 'GK').sort((a, b) => b.ovr - a.ovr);
+
+      const addDomesticStats = (
+        p: (typeof roster)[number],
+        goalShare: number,
+        assistShare: number,
+        ratingBoost: number,
+      ) => {
+        const key = `${club.id}::${p.id}`;
+        const domApps = Math.max(24, played - 3);
+        const domGoals = Math.max(0, Math.round(teamGf * goalShare));
+        const domAssists = Math.max(0, Math.round(teamGf * assistShare));
+        const domCs = p.position === 'GK' || p.position === 'DF' ? teamCs : 0;
+        const baseAvg =
+          6.85 +
+          Math.max(0, (p.ovr - 82) * 0.055) +
+          (rankIdx === 0 ? 0.18 : rankIdx === 1 ? 0.1 : 0.04) +
+          ratingBoost;
+        const clampedAvg = Math.min(8.15, Math.max(6.7, baseAvg));
+        const domRatingSum = clampedAvg * domApps;
+        const domMom = Math.max(
+          1,
+          Math.round((domGoals * 0.22 + domAssists * 0.16 + (p.position === 'GK' ? domCs * 0.18 : 0)) * (rankIdx === 0 ? 1.1 : 0.9)),
+        );
+
+        const existing = merged.get(key);
+        if (!existing) {
+          merged.set(key, {
+            playerId: p.id,
+            playerName: p.name,
+            teamId: club.id,
+            teamName: club.name,
+            teamShortName: club.shortName,
+            teamPrimaryColor: club.primaryColor,
+            teamSecondaryColor: club.secondaryColor,
+            isUserTeam: false,
+            position: p.position,
+            mainPositions: p.mainPositions,
+            ovr: p.ovr,
+            appearances: domApps,
+            starts: domApps,
+            subAppearances: 0,
+            minutesPlayed: domApps * 84,
+            goals: domGoals,
+            assists: domAssists,
+            xgSum: Math.round(domGoals * 0.92 * 10) / 10,
+            cleanSheets: domCs,
+            momCount: domMom,
+            ratingSum: domRatingSum,
+            avgRating: Math.round(clampedAvg * 100) / 100,
+            positionCounts: { [p.mainPositions[0] ?? 'CM']: domApps },
+            isLegend: p.isLegend,
+          });
+        } else {
+          // Existing entry had only UCL stats -> add domestic league contribution
+          const appearances = existing.appearances + domApps;
+          const ratingSum = existing.ratingSum + domRatingSum;
+          merged.set(key, {
+            ...existing,
+            appearances,
+            starts: existing.starts + domApps,
+            minutesPlayed: existing.minutesPlayed + domApps * 84,
+            goals: existing.goals + domGoals,
+            assists: existing.assists + domAssists,
+            xgSum: existing.xgSum + Math.round(domGoals * 0.92 * 10) / 10,
+            cleanSheets: existing.cleanSheets + domCs,
+            momCount: existing.momCount + domMom,
+            ratingSum,
+            avgRating: Math.round((ratingSum / appearances) * 100) / 100,
+          });
+        }
+      };
+
+      if (fwList[0]) addDomesticStats(fwList[0], 0.30, 0.09, 0.18);
+      if (fwList[1]) addDomesticStats(fwList[1], 0.18, 0.13, 0.10);
+      if (fwList[2]) addDomesticStats(fwList[2], 0.13, 0.10, 0.05);
+      if (mfList[0]) addDomesticStats(mfList[0], 0.11, 0.17, 0.16);
+      if (mfList[1]) addDomesticStats(mfList[1], 0.07, 0.12, 0.08);
+      if (mfList[2]) addDomesticStats(mfList[2], 0.05, 0.09, 0.04);
+      dfList.slice(0, 4).forEach((d, idx) =>
+        addDomesticStats(d, idx < 2 ? 0.035 : 0.02, idx >= 2 ? 0.09 : 0.03, idx === 0 ? 0.1 : 0.04),
+      );
+      if (gkList[0]) addDomesticStats(gkList[0], 0, 0, 0.14);
+    }
+  }
+
+  // Treble bonus check
+  for (const [tid, list] of teamTrophies.entries()) {
+    const majorWins = list.filter((t) => t.endsWith('우승')).length;
+    if (majorWins >= 3) {
+      teamTrophyPoints.set(tid, (teamTrophyPoints.get(tid) ?? 0) + 14);
+    }
+  }
+
+  // 2) Score every candidate globally
+  const allCandidates = Array.from(merged.values()).filter(
+    (p) => p.appearances >= 12,
+  );
+  const pool = allCandidates.length >= 11 ? allCandidates : Array.from(merged.values());
+
+  const scored = pool.map((st) => {
+    const trophies = teamTrophies.get(st.teamId) ?? [];
+    const trophyPts = teamTrophyPoints.get(st.teamId) ?? 0;
+
+    let perfScore = 0;
+    if (st.position === 'GK') {
+      perfScore =
+        st.avgRating * 15.5 +
+        st.cleanSheets * 2.1 +
+        st.momCount * 2.8 +
+        Math.max(0, st.ovr - 80) * 0.9;
+    } else if (st.position === 'DF') {
+      perfScore =
+        st.avgRating * 14.5 +
+        st.cleanSheets * 1.45 +
+        st.goals * 2.2 +
+        st.assists * 1.8 +
+        st.momCount * 2.8 +
+        Math.max(0, st.ovr - 80) * 0.85;
+    } else if (st.position === 'MF') {
+      perfScore =
+        st.avgRating * 14.5 +
+        st.goals * 1.85 +
+        st.assists * 1.95 +
+        st.momCount * 2.8 +
+        Math.max(0, st.ovr - 80) * 0.85;
+    } else {
+      perfScore =
+        st.avgRating * 13.8 +
+        st.goals * 1.95 +
+        st.assists * 1.45 +
+        st.momCount * 2.8 +
+        Math.max(0, st.ovr - 80) * 0.85;
+    }
+
+    // Slight prestige weighting toward attacking/midfield stars for Ballon d'Or race,
+    // while keeping World Best XI strictly position-balanced
+    const ballonRoleBias =
+      st.position === 'FW' ? 5 : st.position === 'MF' ? 3 : st.position === 'DF' ? 0 : -2;
+    const ballonScore = Math.round((perfScore + trophyPts + ballonRoleBias) * 10) / 10;
+    const xiScore = Math.round((perfScore + trophyPts * 0.85) * 10) / 10;
+
+    const reasonParts: string[] = [];
+    if (trophies.length > 0) {
+      reasonParts.push(trophies.slice(0, 2).join(' · '));
+    }
+    if (st.position === 'GK') {
+      reasonParts.push(`클린시트 ${st.cleanSheets}회 · 평점 ${st.avgRating.toFixed(2)}`);
+    } else {
+      reasonParts.push(`${st.goals}골 ${st.assists}도움 · 평점 ${st.avgRating.toFixed(2)}`);
+    }
+    if (st.teamId === userClubId && trophies.some((t) => t.includes('챔피언스리그 우승'))) {
+      reasonParts.unshift('유럽 정상 핵심 주역');
+    }
+
+    return {
+      st,
+      trophies,
+      ballonScore,
+      xiScore,
+      reason: reasonParts.join(' / '),
+    };
+  });
+
+  // Ballon d'Or TOP 5
+  const ballonSorted = [...scored].sort(
+    (a, b) => b.ballonScore - a.ballonScore || b.st.avgRating - a.st.avgRating,
+  );
+  const ballonDorTop5: BallonDorCandidate[] = ballonSorted
+    .slice(0, 5)
+    .map((item, idx) => ({
+      rank: idx + 1,
+      stats: item.st,
+      ballonScore: item.ballonScore,
+      trophies: item.trophies,
+      reason: item.reason,
+    }));
+
+  // World Best XI (4-3-3)
+  const xiSorted = [...scored].sort(
+    (a, b) => b.xiScore - a.xiScore || b.st.avgRating - a.st.avgRating,
+  );
+  const chosenIds = new Set<string>();
+  const worldBestXi: BestXiEntry[] = [];
+
+  for (const slot of BEST_XI_SLOTS) {
+    let pick = xiSorted.find(
+      (x) =>
+        !chosenIds.has(`${x.st.teamId}:${x.st.playerId}`) &&
+        x.st.mainPositions.some((mp) => slot.preferredSubs.includes(mp)),
+    );
+    if (!pick) {
+      pick = xiSorted.find(
+        (x) =>
+          !chosenIds.has(`${x.st.teamId}:${x.st.playerId}`) &&
+          x.st.position === slot.broadFallback,
+      );
+    }
+    if (!pick) {
+      pick = xiSorted.find(
+        (x) => !chosenIds.has(`${x.st.teamId}:${x.st.playerId}`),
+      );
+    }
+    if (pick) {
+      chosenIds.add(`${pick.st.teamId}:${pick.st.playerId}`);
+      worldBestXi.push({
+        slotIndex: slot.slotIndex,
+        slotLabel: slot.slotLabel,
+        stats: pick.st,
+      });
+    }
+  }
+
+  return {
+    ballonDorWinner: ballonDorTop5[0] ?? null,
+    ballonDorTop5,
+    worldBestXi,
+  };
+}
+

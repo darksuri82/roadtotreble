@@ -5,6 +5,38 @@
 
 ---
 
+## v2.3 — 도트 감독 커스터마이징 · 발롱도르 & 월드베스트 XI · 챔스 트리 대진표 & 트로피 개편
+
+### 도트 아바타 & 도트 트로피 · 미니멀 UI 리뉴얼
+- **2등신 도트 감독 캐릭터 & 감독 이름 커스터마이징** (`src/components/common/PixelManagerAvatar.tsx`, `src/components/setup/ManagerRouletteScreen.tsx`):
+  - 감독 이름(최대 14자) 입력 + 피부톤(5종) · 헤어스타일(4종) · 머리색(4종) · 감독 의상(5종, 팀 컬러 트레이닝복 포함) 실시간 도트 커스터마이징 구현.
+  - 헤더, 스쿼드/전술(`ManagerTraitBadgeCard`), 하프타임 라커룸(`LiveMatchBroadcast`), 자국 컵 우승 축하 모달, 시즌 결산(`SeasonSummary`), 명예의 전당(`LegacyHubModal`) 전역 연동 및 기존 세이브 하위호환 백필.
+- **고퀄리티 도트 트로피 SVG 3종 + 발롱도르** (`src/components/common/PixelTrophySvg.tsx`, `src/components/setup/TitleScreen.tsx`):
+  - 5대 리그 트로피, 5개국 자국 컵 트로피(FA컵·코파 델 레이·코파 이탈리아·DFB 포칼·쿠프 드 프랑스), UCL 빅이어, 발롱도르 황금 공 도트 SVG 구현.
+  - 첫 페이지 히어로를 **"PITCH MANAGER · ROAD TO TREBLE"** + 3종 도트 트로피 중심으로 현대적 미니멀 리뉴얼.
+
+### 자국 컵 고속진행 일시정지 & 도트 트로피 축하 모달
+- **고속진행 컵대회 자동 일시정지** (`FastSimModal.tsx`, `GameContext.tsx`):
+  - 고속진행 중 자국 컵 토너먼트(16강·8강·4강·결승) 도달 시 자동 일시정지 후 `[직접 경기 진행]` / `[이 경기 스킵하고 계속]` 선택 카드 제공.
+- **자국 컵 우승 도트 트로피 축하 모달** (`src/components/league/CupChampionModal.tsx`, `SeasonDashboard.tsx`, `SeasonSummary.tsx`):
+  - 직접 경기·1경기 스킵·고속진행 어느 경로로 우승하더라도 우승 축하 모달 1회 보장 (`cupChampionCelebrated` 상태 추적).
+
+### 챔피언스리그 스위스 페이즈 고속진행 & 정통 트리형 대진표
+- **UCL 리그 페이즈 끝까지 고속진행** (`simulateUclLeaguePhaseToEnd` in `uclEngine.ts`, `UclDashboard.tsx`):
+  - 남은 리그 페이즈(최대 8R) 일괄 진행 및 완료 직후 36팀 최종 순위·전적·16강 직행/플레이오프/탈락 결과 요약 배너 제공.
+- **정통 좌→우 직각 연결선 토너먼트 브래킷 트리** (`src/components/ucl/UclBracketTree.tsx`):
+  - SVG 직각 엘보 연결선으로 `16강 → 8강 → 4강 → 결승 → 빅이어 우승 카드`를 연결하고, 1·2차전/합산 스코어·ET/PK 배지·모바일 가로 스크롤 지원.
+
+### 발롱도르 · 월드베스트 XI · 개인 수상 시즌 스코어 보너스 · 전체 기록 보존
+- **발롱도르 & 월드베스트 XI 시상식** (`computeGlobalSeasonAwards` in `awardsEngine.ts`, `SeasonSummary.tsx`):
+  - 5대 리그·자국 컵·UCL 성적 및 우승 가산점을 종합해 발롱도르 최종 수상자 + TOP 5 후보와 4-3-3 월드베스트 XI 발표.
+- **시즌 스코어(강팀 점수) 개인 수상 보너스 반영** (`computeSeasonScore` in `legacyEngine.ts`):
+  - 발롱도르 수상 `+600`, 월드베스트 XI `1명당 +120`, 리그 MVP `+350`, 리그 베스트 11 `1명당 +60` 가산점 및 세부 내역 표시.
+- **5탭 전체 대회 기록 보존 & 명예의 전당 히스토리** (`SeasonSummary.tsx`, `LegacyHubModal.tsx`, `buildCompactMatchHistory`):
+  - UCL 종료 후에도 `[통합 요약·어워즈 | 리그 기록 | 자국 컵 | 챔피언스리그 | 전체 경기]` 5탭과 명예의 전당 상세 경기 로그로 모든 순위표·대진표·득점자 기록 영구 열람 가능.
+
+---
+
 ## v2.2 — 전술·스타일 상성 엔진 · 하프타임 수석코치 · 2D 중계 고도화
 
 ### 전술·스타일 상성 & 하프타임 수석코치

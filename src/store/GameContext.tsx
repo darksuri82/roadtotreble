@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 import { BENCH_SLOTS, FORMATIONS } from '../data/formations';
 import { MANAGER_TRAIT_LIST } from '../data/managerTraits';
 import { mergePlayerStatsMaps } from '../engine/analyticsEngine';
-import { computeSeasonAwards } from '../engine/awardsEngine';
+import { computeGlobalSeasonAwards, computeSeasonAwards } from '../engine/awardsEngine';
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
 import {
   advanceCupStage,
@@ -33,6 +33,7 @@ import {
 } from '../engine/draftEngine';
 import {
   archiveSeasonToHallOfFame,
+  buildCompactMatchHistory,
   computeSeasonScore,
   deleteHallOfFameEntry,
   evaluateAchievements,
@@ -83,17 +84,21 @@ import {
   findNextUserUclLeaguePhaseFixture,
   getUserKnockoutFixtureInfo,
   simulateUclLeaguePhaseRound,
+  simulateUclLeaguePhaseToEnd,
   simulateUclToCompletion,
 } from '../engine/uclEngine';
-import type {
-  ChemistryResult,
-  FormationId,
-  GameState,
-  ManagerTraitId,
-  SeasonState,
-  TeamRatings,
-  TransferTargetPlayer,
-  UserClubProfile,
+import {
+  DEFAULT_MANAGER_AVATAR,
+  DEFAULT_MANAGER_NAME,
+  type ChemistryResult,
+  type FormationId,
+  type GameState,
+  type ManagerAvatarConfig,
+  type ManagerTraitId,
+  type SeasonState,
+  type TeamRatings,
+  type TransferTargetPlayer,
+  type UserClubProfile,
 } from '../types/game';
 import type {
   Club,
@@ -153,6 +158,8 @@ function createInitialState(): GameState {
     phase: 'title',
     userClub: DEFAULT_USER_CLUB,
     manager: {
+      name: DEFAULT_MANAGER_NAME,
+      avatar: { ...DEFAULT_MANAGER_AVATAR },
       traitId: null,
       rerollsRemaining: 2,
       hasSpun: false,
@@ -522,6 +529,8 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
     cup: state.season.cup,
     ucl: state.season.ucl,
     teamAvgOvr: ratings.rawOvr,
+    awards: state.season.awards,
+    globalAwards: state.season.globalAwards ?? null,
   });
 }
 
@@ -565,6 +574,17 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
     finalSeason.totalRounds,
   );
 
+  const globalAwards = computeGlobalSeasonAwards({
+    allLeaguePlayerStats: finalSeason.allPlayerStats,
+    cupPlayerStats: finalSeason.cupPlayerStats,
+    uclPlayerStats: finalSeason.uclPlayerStats,
+    leagueStandings: finalSeason.standings,
+    cup: finalSeason.cup,
+    ucl: finalSeason.ucl,
+    otherLeagues: finalOtherLeagues,
+    userLeagueId: finalSeason.leagueId,
+  });
+
   const handoff = buildPhase2HandoffState({
     userClub: state.userClub,
     managerTraitId: state.manager.traitId,
@@ -594,6 +614,7 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
       uclQualifiedSummary,
       liveHalftime: null,
       awards,
+      globalAwards,
       transferMarket: createClosedTransferState(
         finalSeason.transferMarket.completedWindows,
         finalSeason.transferMarket.history,
@@ -617,6 +638,10 @@ type GameAction =
   | { type: 'PROCEED_TO_MANAGER_ROULETTE' }
   | { type: 'BACK_TO_CLUB_SETUP' }
   | { type: 'GO_TO_MANAGER_ROULETTE' }
+  | {
+      type: 'UPDATE_MANAGER_PROFILE';
+      payload: { name?: string; avatar?: Partial<ManagerAvatarConfig> };
+    }
   | { type: 'SPIN_MANAGER_TRAIT' }
   | { type: 'CONFIRM_MANAGER_TRAIT' }
   | { type: 'UPDATE_CLUB_PROFILE'; payload: Partial<UserClubProfile> }
@@ -677,7 +702,7 @@ type GameAction =
   | { type: 'SIMULATE_SINGLE_MATCH_INSTANT' }
   | {
       type: 'SIMULATE_ONE_FAST_ROUND';
-      payload: { stopAtTransfer: boolean };
+      payload: { stopAtTransfer: boolean; stopAtCup?: boolean };
     }
   | { type: 'SIMULATE_TO_NEXT_TRANSFER' }
   | { type: 'SKIP_TO_SEASON_END' }
@@ -690,7 +715,9 @@ type GameAction =
       };
     }
   | { type: 'TRANSFER_CLOSE_WINDOW' }
+  | { type: 'MARK_CUP_CELEBRATED' }
   | { type: 'ENTER_UCL_MODE' }
+  | { type: 'SIMULATE_UCL_LEAGUE_PHASE_TO_END' }
   | { type: 'SIMULATE_UCL_TO_END' }
   | { type: 'FINISH_UCL_TO_SUMMARY' }
   | { type: 'MARK_LEGACY_ARCHIVED' }
@@ -957,6 +984,22 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'UPDATE_MANAGER_PROFILE': {
+      return {
+        ...state,
+        manager: {
+          ...state.manager,
+          name:
+            action.payload.name !== undefined
+              ? action.payload.name
+              : state.manager.name,
+          avatar: action.payload.avatar
+            ? { ...state.manager.avatar, ...action.payload.avatar }
+            : state.manager.avatar,
+        },
+      };
+    }
+
     case 'SPIN_MANAGER_TRAIT': {
       if (state.manager.hasSpun && state.manager.rerollsRemaining <= 0) {
         return state;
@@ -972,6 +1015,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return {
         ...state,
         manager: {
+          ...state.manager,
           traitId: chosen.id,
           rerollsRemaining: nextRerolls,
           hasSpun: true,
@@ -2451,8 +2495,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         return finalizeSeasonIfEnded(state);
       }
 
+      const stopAtCup = Boolean(action.payload.stopAtCup);
       const filledStarters = state.starters.filter((p): p is Player => p !== null);
       const filledBench = state.bench.filter((p): p is Player => p !== null);
+
+      // If stopAtCup is enabled and the user has a pending cup match, pause here!
+      if (
+        stopAtCup &&
+        state.season.cup?.pendingStage &&
+        findUserCupMatch(state.season.cup, state.season.cup.pendingStage)
+      ) {
+        return state;
+      }
 
       // Resolve any pending cup stage first so cup stays strictly synchronized with league
       let workingSeason = state.season;
@@ -2464,7 +2518,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           managerTraitId: state.manager.traitId,
           starters: filledStarters,
           bench: filledBench,
-          autoResolveUserMatches: true,
+          autoResolveUserMatches: !stopAtCup,
         });
       }
 
@@ -2484,7 +2538,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         managerTraitId: state.manager.traitId,
         starters: filledStarters,
         bench: filledBench,
-        autoResolveUserMatches: true,
+        autoResolveUserMatches: !stopAtCup,
       });
 
       const trigger = checkTransferWindowTrigger(
@@ -2519,6 +2573,18 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             ),
           };
         }
+      }
+
+      // If stopAtCup triggered a user cup match right on the final round, let the user decide before ending the season!
+      if (
+        stopAtCup &&
+        nextSeason.cup?.pendingStage &&
+        findUserCupMatch(nextSeason.cup, nextSeason.cup.pendingStage)
+      ) {
+        return {
+          ...state,
+          season: nextSeason,
+        };
       }
 
       return finalizeSeasonIfEnded({
@@ -2917,6 +2983,102 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'MARK_CUP_CELEBRATED': {
+      if (!state.season) return state;
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          cupChampionCelebrated: true,
+        },
+      };
+    }
+
+    case 'SIMULATE_UCL_LEAGUE_PHASE_TO_END': {
+      if (state.phase !== 'ucl' || !state.season || !state.season.ucl) {
+        return state;
+      }
+      if (state.season.transferMarket.isOpen || state.season.liveHalftime) {
+        return state;
+      }
+      if (
+        state.season.ucl.stage !== 'league_phase' ||
+        state.season.ucl.leaguePhaseRound >= 8
+      ) {
+        return state;
+      }
+
+      const filledStarters = state.starters.filter((p): p is Player => p !== null);
+      const filledBench = state.bench.filter((p): p is Player => p !== null);
+      const activeTactic =
+        state.season.nextMatchTactic ?? state.season.defaultTactic;
+      const chem = calculateChemistry(
+        state.formation,
+        filledStarters,
+        activeTactic,
+        state.manager.traitId,
+      );
+      const ratings = calculateTeamRatings(
+        state.formation,
+        filledStarters,
+        chem.total,
+        state.manager.traitId,
+      );
+      const syncedUcl = {
+        ...state.season.ucl,
+        clubs: state.season.ucl.clubs.map((c) =>
+          c.id === USER_CLUB_ID
+            ? {
+                ...c,
+                formation: state.formation,
+                defaultTactic: state.season!.defaultTactic,
+                att: ratings.att,
+                mid: ratings.mid,
+                def: ratings.def,
+              }
+            : c,
+        ),
+      };
+
+      const res = simulateUclLeaguePhaseToEnd({
+        ucl: syncedUcl,
+        uclPlayerStats: state.season.uclPlayerStats,
+        userContext: {
+          userClubId: USER_CLUB_ID,
+          starters: filledStarters,
+          bench: filledBench,
+          formation: state.formation,
+          tactic: activeTactic,
+          chemistry: chem.total,
+          ratings,
+          managerTraitId: state.manager.traitId,
+          allowAutoSubs: true,
+        },
+      });
+
+      let nextTrackers = state.season.achievementTrackers;
+      for (const m of res.newUserMatches) {
+        nextTrackers = updateTrackersForUserMatch(nextTrackers, m);
+      }
+
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          ucl: res.ucl,
+          uclPlayerStats: res.uclPlayerStats,
+          userUclMatchHistory: [
+            ...state.season.userUclMatchHistory,
+            ...res.newUserMatches,
+          ],
+          lastUserMatch:
+            res.newUserMatches[res.newUserMatches.length - 1] ??
+            state.season.lastUserMatch,
+          achievementTrackers: nextTrackers,
+        },
+      };
+    }
+
     case 'SIMULATE_UCL_TO_END': {
       if (state.phase !== 'ucl' || !state.season || !state.season.ucl) {
         return state;
@@ -2998,11 +3160,23 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'FINISH_UCL_TO_SUMMARY': {
       if (!state.season) return state;
+      const globalAwards = computeGlobalSeasonAwards({
+        allLeaguePlayerStats: state.season.allPlayerStats,
+        cupPlayerStats: state.season.cupPlayerStats,
+        uclPlayerStats: state.season.uclPlayerStats,
+        leagueStandings: state.season.standings,
+        cup: state.season.cup,
+        ucl: state.season.ucl,
+        otherLeagues: state.season.otherLeagues,
+        userLeagueId: state.season.leagueId,
+      });
+
       const updated: GameState = {
         ...state,
         phase: 'season_end',
         season: {
           ...state.season,
+          globalAwards,
           liveHalftime: null,
           transferMarket: createClosedTransferState(
             state.season.transferMarket.completedWindows,
@@ -3065,6 +3239,13 @@ function loadSavedGameState(): GameState {
       parsed.manager &&
       Array.isArray(parsed.starters)
     ) {
+      // Backfill v2.3 manager profile fields for existing saves
+      if (typeof parsed.manager.name !== 'string') {
+        parsed.manager.name = DEFAULT_MANAGER_NAME;
+      }
+      if (!parsed.manager.avatar) {
+        parsed.manager.avatar = { ...DEFAULT_MANAGER_AVATAR };
+      }
       if (
         !Array.isArray(parsed.draftLeaguePool) ||
         parsed.draftLeaguePool.length === 0
@@ -3097,6 +3278,9 @@ function loadSavedGameState(): GameState {
         if (parsed.season.seasonScore === undefined) {
           parsed.season.seasonScore = null;
         }
+        if (parsed.season.cupChampionCelebrated === undefined) {
+          parsed.season.cupChampionCelebrated = false;
+        }
       }
       return parsed;
     }
@@ -3122,6 +3306,10 @@ interface GameContextValue {
   proceedToManagerRoulette: () => void;
   backToClubSetup: () => void;
   goToManagerRoulette: () => void;
+  updateManagerProfile: (patch: {
+    name?: string;
+    avatar?: Partial<ManagerAvatarConfig>;
+  }) => void;
   spinManagerTrait: () => void;
   confirmManagerTrait: () => void;
   updateClubProfile: (patch: Partial<UserClubProfile>) => void;
@@ -3169,7 +3357,7 @@ interface GameContextValue {
   enterPenaltyShootout: () => void;
   commitLiveMatch: (secondHalfTactic?: TacticId) => void;
   simulateSingleMatchInstant: () => void;
-  simulateOneFastRound: (stopAtTransfer: boolean) => void;
+  simulateOneFastRound: (stopAtTransfer: boolean, stopAtCup?: boolean) => void;
   simulateToNextTransfer: () => void;
   skipToSeasonEnd: () => void;
   transferSpinClubs: () => void;
@@ -3178,7 +3366,9 @@ interface GameContextValue {
     outSlot: { area: 'starter' | 'bench'; index: number },
   ) => void;
   transferCloseWindow: () => void;
+  markCupCelebrated: () => void;
   enterUclMode: () => void;
+  simulateUclLeaguePhaseToEnd: () => void;
   simulateUclToEnd: () => void;
   finishUclToSummary: () => void;
   resetGame: () => void;
@@ -3311,8 +3501,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       trackers: state.season.achievementTrackers ?? createInitialTrackers(),
     });
 
+    const clubNameById: Record<string, string> = {};
+    for (const c of state.season.clubs) clubNameById[c.id] = c.name;
+    if (state.season.ucl) {
+      for (const c of state.season.ucl.clubs) clubNameById[c.id] = c.name;
+    }
+    const matchHistory = buildCompactMatchHistory({
+      leagueMatches: state.season.userMatchHistory,
+      cupMatches: state.season.userCupMatchHistory,
+      uclMatches: state.season.userUclMatchHistory,
+      clubNameById,
+    });
+
     const updated = archiveSeasonToHallOfFame({
       userClub: state.userClub,
+      managerName: state.manager.name,
+      managerAvatar: state.manager.avatar,
       managerTraitId: state.manager.traitId,
       leagueId: state.season.leagueId,
       formation: state.formation,
@@ -3324,6 +3528,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       teamAvgOvr: ratings.rawOvr,
       chemistry: chemistry.total,
       seasonScore: score,
+      awards: state.season.awards,
+      globalAwards: state.season.globalAwards ?? null,
+      matchHistory,
       starters: state.starters,
       bench: state.bench,
       combinedPlayerStats: combinedStats,
@@ -3378,6 +3585,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'PROCEED_TO_MANAGER_ROULETTE' }),
       backToClubSetup: () => dispatch({ type: 'BACK_TO_CLUB_SETUP' }),
       goToManagerRoulette: () => dispatch({ type: 'GO_TO_MANAGER_ROULETTE' }),
+      updateManagerProfile: (patch) =>
+        dispatch({ type: 'UPDATE_MANAGER_PROFILE', payload: patch }),
       spinManagerTrait: () => dispatch({ type: 'SPIN_MANAGER_TRAIT' }),
       confirmManagerTrait: () => dispatch({ type: 'CONFIRM_MANAGER_TRAIT' }),
       updateClubProfile: (patch) =>
@@ -3416,10 +3625,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'COMMIT_LIVE_MATCH', payload: { secondHalfTactic } }),
       simulateSingleMatchInstant: () =>
         dispatch({ type: 'SIMULATE_SINGLE_MATCH_INSTANT' }),
-      simulateOneFastRound: (stopAtTransfer) =>
+      simulateOneFastRound: (stopAtTransfer, stopAtCup = false) =>
         dispatch({
           type: 'SIMULATE_ONE_FAST_ROUND',
-          payload: { stopAtTransfer },
+          payload: { stopAtTransfer, stopAtCup },
         }),
       simulateToNextTransfer: () =>
         dispatch({ type: 'SIMULATE_TO_NEXT_TRANSFER' }),
@@ -3431,7 +3640,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
           payload: { target, outSlot },
         }),
       transferCloseWindow: () => dispatch({ type: 'TRANSFER_CLOSE_WINDOW' }),
+      markCupCelebrated: () => dispatch({ type: 'MARK_CUP_CELEBRATED' }),
       enterUclMode: () => dispatch({ type: 'ENTER_UCL_MODE' }),
+      simulateUclLeaguePhaseToEnd: () =>
+        dispatch({ type: 'SIMULATE_UCL_LEAGUE_PHASE_TO_END' }),
       simulateUclToEnd: () => dispatch({ type: 'SIMULATE_UCL_TO_END' }),
       finishUclToSummary: () => dispatch({ type: 'FINISH_UCL_TO_SUMMARY' }),
       resetGame: () => dispatch({ type: 'RESET_GAME' }),

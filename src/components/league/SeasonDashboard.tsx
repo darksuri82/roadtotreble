@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import {
   CUP_STAGE_LABELS,
+  didUserWinCup,
   findUserCupMatch,
   getUserCupResultLabel,
 } from '../../engine/cupEngine';
@@ -37,6 +38,7 @@ import { ClubTag } from '../common/ClubTag';
 import { JerseySvg } from '../common/JerseySvg';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
 import { CupBracketView } from './CupBracketView';
+import { CupChampionModal } from './CupChampionModal';
 import { FastSimModal } from './FastSimModal';
 import type { FastSimMode } from './FastSimModal';
 import { LiveMatchBroadcast } from './LiveMatchBroadcast';
@@ -57,6 +59,7 @@ export function SeasonDashboard() {
     setNextMatchTactic,
     startLiveMatch,
     simulateSingleMatchInstant,
+    markCupCelebrated,
   } = useGame();
 
   const [activeTab, setActiveTab] = useState<SeasonTab>('match');
@@ -1099,6 +1102,24 @@ export function SeasonDashboard() {
           </div>
         );
       })()}
+
+      {/* Domestic Cup Victory Pixel Trophy Celebration Modal (live match, 1-match skip, or fast-sim) */}
+      {season.cup?.completed &&
+        didUserWinCup(season.cup, USER_CLUB_ID) &&
+        !season.cupChampionCelebrated &&
+        !season.liveHalftime &&
+        fastSimMode === null &&
+        !quickSkipModalOpen && (
+          <CupChampionModal
+            cup={season.cup}
+            leagueId={season.leagueId}
+            userClub={state.userClub}
+            managerName={state.manager.name}
+            managerAvatar={state.manager.avatar}
+            clubsById={clubsById}
+            onClose={markCupCelebrated}
+          />
+        )}
 
       {/* Mid-Season Transfer Market Modal (auto-pops when opened outside transfer tab & not in fast-sim/quick-skip) */}
       {activeTab !== 'transfer' &&

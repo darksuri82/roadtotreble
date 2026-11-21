@@ -2,18 +2,22 @@ import { HIDDEN_ACHIEVEMENTS } from '../data/achievements';
 import type { DomesticCupState } from '../types/cup';
 import type {
   FormationId,
+  ManagerAvatarConfig,
   ManagerTraitId,
   UserClubProfile,
 } from '../types/game';
 import type {
+  GlobalSeasonAwards,
   LeagueId,
   MatchResult,
   PlayerSeasonStats,
+  SeasonAwards,
   StandingRow,
   TacticId,
 } from '../types/league';
 import type {
   HallOfFameEntry,
+  HallOfFameMatchSummary,
   LegacyStorageState,
   SeasonAchievementTrackers,
   SeasonScoreBreakdown,
@@ -67,6 +71,13 @@ export function saveLegacyState(state: LegacyStorageState): void {
   }
 }
 
+export const AWARD_SCORE_WEIGHTS = {
+  ballonDor: 600,
+  worldBestXiPerPlayer: 120,
+  leagueMvp: 350,
+  leagueBestXiPerPlayer: 60,
+} as const;
+
 export interface SeasonScoreInput {
   leaguePoints: number;
   leaguePlayed: number;
@@ -76,12 +87,14 @@ export interface SeasonScoreInput {
   cup: DomesticCupState | null;
   ucl: UclTournamentState | null;
   teamAvgOvr: number;
+  awards?: SeasonAwards | null;
+  globalAwards?: GlobalSeasonAwards | null;
   userClubId?: string;
 }
 
 /**
  * Computes a fair cross-league Season Score normalizing 34-round (Bundesliga / Ligue 1)
- * and 38-round (EPL / La Liga / Serie A) leagues via PPG * 38!
+ * and 38-round (EPL / La Liga / Serie A) leagues via PPG * 38, plus individual awards bonuses!
  */
 export function computeSeasonScore(
   input: SeasonScoreInput,
@@ -95,6 +108,8 @@ export function computeSeasonScore(
     cup,
     ucl,
     teamAvgOvr,
+    awards = null,
+    globalAwards = null,
     userClubId = USER_CLUB_ID,
   } = input;
 
@@ -159,13 +174,51 @@ export function computeSeasonScore(
     underdogBonus = Math.min(900, Math.round(ovrGap * achievementMult));
   }
 
+  // Individual Awards Bonus (Ballon d'Or, World Best XI, League MVP, League Best XI)
+  let awardsBonus = 0;
+  const awardsBonusDetails: string[] = [];
+
+  if (globalAwards?.ballonDorWinner?.stats.teamId === userClubId) {
+    awardsBonus += AWARD_SCORE_WEIGHTS.ballonDor;
+    awardsBonusDetails.push(
+      `발롱도르 수상 (${globalAwards.ballonDorWinner.stats.playerName}) +${AWARD_SCORE_WEIGHTS.ballonDor}`,
+    );
+  }
+  if (globalAwards?.worldBestXi) {
+    const worldXiUserCount = globalAwards.worldBestXi.filter(
+      (x) => x.stats.teamId === userClubId,
+    ).length;
+    if (worldXiUserCount > 0) {
+      const pts = worldXiUserCount * AWARD_SCORE_WEIGHTS.worldBestXiPerPlayer;
+      awardsBonus += pts;
+      awardsBonusDetails.push(`월드베스트 XI ${worldXiUserCount}명 +${pts}`);
+    }
+  }
+  if (awards?.poty?.teamId === userClubId) {
+    awardsBonus += AWARD_SCORE_WEIGHTS.leagueMvp;
+    awardsBonusDetails.push(
+      `리그 MVP (${awards.poty.playerName}) +${AWARD_SCORE_WEIGHTS.leagueMvp}`,
+    );
+  }
+  if (awards?.bestXi) {
+    const leagueXiUserCount = awards.bestXi.filter(
+      (x) => x.stats.teamId === userClubId,
+    ).length;
+    if (leagueXiUserCount > 0) {
+      const pts = leagueXiUserCount * AWARD_SCORE_WEIGHTS.leagueBestXiPerPlayer;
+      awardsBonus += pts;
+      awardsBonusDetails.push(`리그 베스트 11 ${leagueXiUserCount}명 +${pts}`);
+    }
+  }
+
   const totalScore =
     leagueConvertedScore +
     leagueRankBonus +
     cupBonus +
     uclBonus +
     honorsBonus +
-    underdogBonus;
+    underdogBonus +
+    awardsBonus;
 
   let grade: SeasonScoreBreakdown['grade'];
   if (totalScore >= 7200) grade = 'S+';
@@ -183,6 +236,8 @@ export function computeSeasonScore(
     uclBonus,
     honorsBonus,
     underdogBonus,
+    awardsBonus,
+    awardsBonusDetails,
     totalScore,
     grade,
   };
@@ -416,8 +471,71 @@ export function unlockAchievementsInStorage(params: {
   return { legacyState: updated, newlyUnlockedIds };
 }
 
+export function buildCompactMatchHistory(params: {
+  leagueMatches: MatchResult[];
+  cupMatches: MatchResult[];
+  uclMatches: MatchResult[];
+  clubNameById: Record<string, string>;
+  userClubId?: string;
+}): HallOfFameMatchSummary[] {
+  const userClubId = params.userClubId ?? USER_CLUB_ID;
+  const convert = (
+    m: MatchResult,
+    fallbackComp: 'league' | 'cup' | 'ucl',
+  ): HallOfFameMatchSummary => {
+    const comp = m.competition ?? fallbackComp;
+    const isHome = m.homeTeamId === userClubId;
+    const oppId = isHome ? m.awayTeamId : m.homeTeamId;
+    const userGoals = isHome ? m.homeGoals : m.awayGoals;
+    const oppGoals = isHome ? m.awayGoals : m.homeGoals;
+    let outcome: 'W' | 'D' | 'L' =
+      userGoals > oppGoals ? 'W' : userGoals < oppGoals ? 'L' : 'D';
+    let note: string | undefined;
+    if (m.extraTime?.penalties) {
+      const penWon = m.extraTime.penalties.winnerTeamId === userClubId;
+      outcome = penWon ? 'W' : 'L';
+      const uPen = isHome
+        ? m.extraTime.penalties.homePenGoals
+        : m.extraTime.penalties.awayPenGoals;
+      const oPen = isHome
+        ? m.extraTime.penalties.awayPenGoals
+        : m.extraTime.penalties.homePenGoals;
+      note = `PK ${uPen}-${oPen}`;
+    } else if (m.extraTime) {
+      note = '연장';
+    }
+    const allEvents = [
+      ...m.events,
+      ...(m.extraTime?.etEvents ?? []),
+    ];
+    const scorers = allEvents
+      .filter((e) => e.type === 'goal' && e.teamId === userClubId && e.scorerName)
+      .map((e) => `${e.scorerName} ${e.minute}'`);
+
+    return {
+      competition: comp,
+      label: m.competitionLabel ?? (comp === 'league' ? `리그 ${m.round}R` : comp === 'cup' ? '자국 컵' : 'UCL'),
+      opponentName: params.clubNameById[oppId] ?? oppId,
+      isHome,
+      userGoals,
+      oppGoals,
+      outcome,
+      scorers,
+      note,
+    };
+  };
+
+  return [
+    ...params.leagueMatches.map((m) => convert(m, 'league')),
+    ...params.cupMatches.map((m) => convert(m, 'cup')),
+    ...params.uclMatches.map((m) => convert(m, 'ucl')),
+  ];
+}
+
 export function archiveSeasonToHallOfFame(params: {
   userClub: UserClubProfile;
+  managerName?: string;
+  managerAvatar?: ManagerAvatarConfig;
   managerTraitId: ManagerTraitId | null;
   leagueId: LeagueId;
   formation: FormationId;
@@ -429,6 +547,9 @@ export function archiveSeasonToHallOfFame(params: {
   teamAvgOvr: number;
   chemistry: number;
   seasonScore: SeasonScoreBreakdown;
+  awards?: SeasonAwards | null;
+  globalAwards?: GlobalSeasonAwards | null;
+  matchHistory?: HallOfFameMatchSummary[];
   starters: (Player | null)[];
   bench: (Player | null)[];
   combinedPlayerStats: Record<string, PlayerSeasonStats>;
@@ -437,6 +558,8 @@ export function archiveSeasonToHallOfFame(params: {
 }): LegacyStorageState {
   const {
     userClub,
+    managerName,
+    managerAvatar,
     managerTraitId,
     leagueId,
     formation,
@@ -448,6 +571,9 @@ export function archiveSeasonToHallOfFame(params: {
     teamAvgOvr,
     chemistry,
     seasonScore,
+    awards = null,
+    globalAwards = null,
+    matchHistory,
     starters,
     bench,
     combinedPlayerStats,
@@ -489,10 +615,20 @@ export function archiveSeasonToHallOfFame(params: {
     (a, b) => b.goals - a.goals || b.assists - a.assists,
   )[0];
 
+  const ballonWinner = globalAwards?.ballonDorWinner ?? null;
+  const worldBestXiUserCount = globalAwards
+    ? globalAwards.worldBestXi.filter((x) => x.stats.teamId === userClubId).length
+    : undefined;
+  const leagueBestXiUserCount = awards
+    ? awards.bestXi.filter((x) => x.stats.teamId === userClubId).length
+    : undefined;
+
   const entry: HallOfFameEntry = {
     id: `hof-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
     completedAt: new Date().toISOString(),
     userClub: { ...userClub },
+    managerName,
+    managerAvatar: managerAvatar ? { ...managerAvatar } : undefined,
     managerTraitId,
     leagueId,
     leagueKoreanName: league.koreanName,
@@ -516,6 +652,12 @@ export function archiveSeasonToHallOfFame(params: {
     topScorerSummary: topScorer
       ? `${topScorer.name} (${topScorer.goals}골 ${topScorer.assists}도움)`
       : '-',
+    ballonDorWinnerName: ballonWinner?.stats.playerName,
+    ballonDorWinnerClub: ballonWinner?.stats.teamName,
+    ballonDorIsUser: ballonWinner ? ballonWinner.stats.teamId === userClubId : undefined,
+    worldBestXiUserCount,
+    leagueBestXiUserCount,
+    matchHistory,
     starters: starterMembers,
     bench: benchMembers,
     unlockedAchievementIds,

@@ -1,60 +1,74 @@
-import { Award, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import { TACTICS } from '../../engine/tacticEngine';
-import type { ManagerTraitId } from '../../types/game';
+import { useGame } from '../../store/GameContext';
+import type { ManagerAvatarConfig, ManagerTraitId } from '../../types/game';
+import { PixelManagerAvatar } from './PixelManagerAvatar';
 
 interface ManagerTraitBadgeCardProps {
   traitId: ManagerTraitId | null;
+  managerName?: string;
+  managerAvatar?: ManagerAvatarConfig;
   compact?: boolean;
 }
 
 export function ManagerTraitBadgeCard({
   traitId,
+  managerName,
+  managerAvatar,
   compact = false,
 }: ManagerTraitBadgeCardProps) {
+  const { state } = useGame();
   if (!traitId) return null;
   const trait = MANAGER_TRAITS[traitId];
   if (!trait) return null;
 
+  const displayName = managerName ?? state.manager.name;
+  const displayAvatar = managerAvatar ?? state.manager.avatar;
+
   return (
     <div
-      className={`rounded-xl border border-slate-800 bg-gradient-to-br from-[#0e1522] to-[#0b1018] ${
+      className={`rounded-xl border border-slate-800/90 bg-[#0e141d] ${
         compact ? 'p-3' : 'p-3.5'
-      } space-y-2`}
+      } space-y-2.5`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10"
-            style={{ backgroundColor: `${trait.badgeColor}22`, color: trait.badgeColor }}
-          >
-            <Award className="w-4 h-4" />
-          </span>
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-[#131c28]">
+            <PixelManagerAvatar
+              avatar={displayAvatar}
+              clubPrimaryColor={state.userClub.primaryColor}
+              clubSecondaryColor={state.userClub.secondaryColor}
+              size={30}
+            />
+          </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                감독 강점
+              <span className="text-xs font-bold text-white truncate">
+                {displayName} 감독
               </span>
               <span
-                className="text-xs font-extrabold truncate"
-                style={{ color: trait.badgeColor }}
+                className="rounded px-1.5 py-0.5 text-[10px] font-extrabold text-slate-950"
+                style={{ backgroundColor: trait.badgeColor }}
               >
                 {trait.name}
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 truncate">{trait.tagline}</p>
+            <p className="mt-0.5 text-[11px] text-slate-400 truncate">
+              {trait.tagline}
+            </p>
           </div>
         </div>
         {trait.synergyTactic && (
           <span className="shrink-0 inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
             <Sparkles className="w-2.5 h-2.5" />
-            추천 전술: {TACTICS[trait.synergyTactic].shortName}
+            {TACTICS[trait.synergyTactic].shortName}
           </span>
         )}
       </div>
 
-      <p className="rounded-lg border border-slate-800/80 bg-[#090e16] px-2.5 py-2 text-[11px] leading-relaxed text-slate-200">
+      <p className="rounded-lg border border-slate-800/80 bg-[#090e15] px-2.5 py-2 text-[11px] leading-relaxed text-slate-300">
         {trait.effectSummary}
       </p>
 

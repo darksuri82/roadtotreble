@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.2)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.3)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -7,16 +7,20 @@
 ## 1. 기술 스택 및 실행 환경
 
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
-- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 다크 스포츠 대시보드 테마 (`#090e14`, `#111822`, emerald/amber/sky 악센트)
-- **Icons**: `lucide-react`
-- **Testing & Lint**: Vitest (`npm run test` — **14개 파일 / 42개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
+- **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`)
+- **Testing & Lint**: Vitest (`npm run test` — **15개 파일 / 46+개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **v2.2 주요 신규 모듈·기능**:
+- **v2.3 주요 신규 모듈·기능**:
+  - 2등신 도트 감독 아바타(`PixelManagerAvatar.tsx`) & 이름 커스터마이징(피부5/헤어4×4/의상5) 전역 연동 + 도트 트로피 SVG(`PixelTrophySvg.tsx`) + 첫 화면 미니멀 리뉴얼
+  - 자국 컵 고속진행 자동 일시정지(`FastSimModal.tsx` `stopAtCup`) + 우승 도트 트로피 축하 모달(`CupChampionModal.tsx`, 라이브/스킵/고속진행 전 경로 보장)
+  - UCL 스위스 리그 페이즈 고속진행(`simulateUclLeaguePhaseToEnd`) + 정통 좌→우 SVG 직각 연결선 브래킷 트리(`UclBracketTree.tsx`)
+  - 글로벌 시즌 시상식(`computeGlobalSeasonAwards`: 발롱도르 TOP 5 & 월드베스트 XI 4-3-3) + 시즌 스코어 개인 수상 보너스(발롱 +600 / 월베 +120 / 리그 MVP +350 / 리그 베스트 +60) + 5탭 전체 대회 기록 & 명예의 전당 경기 히스토리 보존
+- **v2.2 주요 모듈·기능**:
   - 전술 vs 플레이스타일 상성(`evaluatePlaystyleTacticMatchup`) + 후반 스코어 상황 보정 + 하프타임 수석코치 교체 추천(`buildHalftimeCoachRecommendations`)
-  - 하프타임 선발 ↔ 선발 자유 스왑, 벤치 교체 안전 확인창, 하프타임 `[빠른 선발]`(`optimizeCurrentStartersForFormation`)
-  - 2D 시뮬 10종 패턴(U자 빌드업 & 반대전환, 세컨찬스 리바운드, 인게임 PK, VAR 오프사이드 취소) + 개별 선수 능력치 직접 반영(`computeIndividualRosterImpact`) + 노트북/PC 2단 중계 레이아웃
-  - 스쿼드/전술 탭 감독 강점 상시 카드(`src/components/common/ManagerTraitBadgeCard.tsx`)
+  - 하프타임/후반 선발 ↔ 선발 자유 스왑, 벤치 교체 안전 확인창, 하프타임 `[빠른 선발]`(`optimizeCurrentStartersForFormation`)
+  - 2D 시뮬 10종 패턴 + 개별 선수 능력치 직접 반영(`computeIndividualRosterImpact`) + 2단 중계 레이아웃 + `ManagerTraitBadgeCard.tsx`
 - **중요 TypeScript 컴파일러 제약 (`tsconfig.app.json`)**:
   - `verbatimModuleSyntax: true` (타입은 반드시 `import type` 사용)
   - `erasableSyntaxOnly: true` (enum / parameter properties 금지)
