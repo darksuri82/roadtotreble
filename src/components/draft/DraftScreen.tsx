@@ -42,11 +42,18 @@ export function DraftScreen() {
   const [guideOpen, setGuideOpen] = useState(true);
   const [guideTab, setGuideTab] = useState<'manager' | 'formula'>('manager');
   const [previewCandidate, setPreviewCandidate] = useState<Player | null>(null);
+  const [previewSwaps, setPreviewSwaps] = useState<[SlotRef, SlotRef][]>([]);
   const [inspected, setInspected] = useState<{
     player: Player;
     slotSubPosition?: SubPosition;
     slotIndex?: number;
   } | null>(null);
+
+  const handleSelectPreviewCandidate = (candidate: Player | null) => {
+    setPreviewCandidate(candidate);
+    setPreviewSwaps([]);
+    setSelectedSlot(null);
+  };
 
   const { draft, formation, starters, bench } = state;
   const formationConfig = FORMATIONS[formation];
@@ -63,20 +70,66 @@ export function DraftScreen() {
     starters.filter(Boolean).length + bench.filter(Boolean).length;
   const progressPct = Math.round((completedCount / 16) * 100);
 
-  // Build live preview starters & bench when a candidate is clicked once
-  const displayedStarters = useMemo(() => {
-    if (!previewCandidate || !isStarterPick) return starters;
-    const next = [...starters];
-    next[draft.currentSlotIndex] = previewCandidate;
-    return next;
-  }, [previewCandidate, isStarterPick, starters, draft.currentSlotIndex]);
+  // Build live preview starters & bench + track candidate's moved slot across previewSwaps
+  const { displayedStarters, displayedBench, previewCurrentSlot } = useMemo(() => {
+    if (!previewCandidate) {
+      return {
+        displayedStarters: starters,
+        displayedBench: bench,
+        previewCurrentSlot: null as SlotRef | null,
+      };
+    }
+    const nextStarters = [...starters];
+    const nextBench = [...bench];
+    if (isStarterPick) {
+      nextStarters[draft.currentSlotIndex] = previewCandidate;
+    } else {
+      nextBench[draft.currentSlotIndex] = previewCandidate;
+    }
 
-  const displayedBench = useMemo(() => {
-    if (!previewCandidate || isStarterPick) return bench;
-    const next = [...bench];
-    next[draft.currentSlotIndex] = previewCandidate;
-    return next;
-  }, [previewCandidate, isStarterPick, bench, draft.currentSlotIndex]);
+    let trackedSlot: SlotRef = {
+      area: draft.currentSlotType,
+      index: draft.currentSlotIndex,
+    };
+
+    for (const [from, to] of previewSwaps) {
+      const fromVal =
+        from.area === 'starter'
+          ? nextStarters[from.index]
+          : nextBench[from.index];
+      const toVal =
+        to.area === 'starter' ? nextStarters[to.index] : nextBench[to.index];
+
+      if (from.area === 'starter') nextStarters[from.index] = toVal;
+      else nextBench[from.index] = toVal;
+
+      if (to.area === 'starter') nextStarters[to.index] = fromVal;
+      else nextBench[to.index] = fromVal;
+
+      if (trackedSlot.area === from.area && trackedSlot.index === from.index) {
+        trackedSlot = { ...to };
+      } else if (
+        trackedSlot.area === to.area &&
+        trackedSlot.index === to.index
+      ) {
+        trackedSlot = { ...from };
+      }
+    }
+
+    return {
+      displayedStarters: nextStarters,
+      displayedBench: nextBench,
+      previewCurrentSlot: trackedSlot,
+    };
+  }, [
+    previewCandidate,
+    isStarterPick,
+    starters,
+    bench,
+    draft.currentSlotType,
+    draft.currentSlotIndex,
+    previewSwaps,
+  ]);
 
   const displayedChemistry = useMemo(() => {
     if (!previewCandidate) return chemistry;
@@ -114,15 +167,16 @@ export function DraftScreen() {
   ]);
 
   const previewSlotSynergy =
-    previewCandidate && isStarterPick
-      ? (displayedChemistry.slotSynergies[draft.currentSlotIndex] ?? null)
+    previewCandidate && previewCurrentSlot?.area === 'starter'
+      ? (displayedChemistry.slotSynergies[previewCurrentSlot.index] ?? null)
       : null;
   const previewChemDelta = previewCandidate
     ? displayedChemistry.total - chemistry.total
     : 0;
 
   const handleSlotClick = (area: 'starter' | 'bench', index: number) => {
-    const clickedPlayer = area === 'starter' ? starters[index] : bench[index];
+    const clickedPlayer =
+      area === 'starter' ? displayedStarters[index] : displayedBench[index];
 
     if (!selectedSlot) {
       if (!clickedPlayer) return;
@@ -135,11 +189,23 @@ export function DraftScreen() {
       return;
     }
 
+    if (previewCandidate) {
+      // Live preview-mode swap without committing until user confirms pick!
+      setPreviewSwaps((prev) => [...prev, [selectedSlot, { area, index }]]);
+      setSelectedSlot(null);
+      return;
+    }
+
     swapSquadPositions(selectedSlot, { area, index });
     setSelectedSlot(null);
   };
 
   const handleSlotSwap = (from: SlotRef, to: SlotRef) => {
+    if (previewCandidate) {
+      setPreviewSwaps((prev) => [...prev, [from, to]]);
+      setSelectedSlot(null);
+      return;
+    }
     swapSquadPositions(from, to);
     setSelectedSlot(null);
   };
@@ -401,17 +467,24 @@ export function DraftScreen() {
               managerTraitId={state.manager.traitId}
               allowedLeagueIds={state.draftLeaguePool}
               previewCandidate={previewCandidate}
-              onSelectPreviewCandidate={setPreviewCandidate}
+              onSelectPreviewCandidate={handleSelectPreviewCandidate}
               previewSlotSynergy={previewSlotSynergy}
               previewChemDelta={previewChemDelta}
               onSpin={() => {
                 setPreviewCandidate(null);
+                setPreviewSwaps([]);
+                setSelectedSlot(null);
                 spinDraftRoulette();
               }}
               onPickPlayer={(p) => {
+                const swapsToCommit = [...previewSwaps];
                 setPreviewCandidate(null);
+                setPreviewSwaps([]);
                 setSelectedSlot(null);
                 pickDraftPlayer(p);
+                for (const [from, to] of swapsToCommit) {
+                  swapSquadPositions(from, to);
+                }
               }}
               pickActionLabel="영입"
             />
@@ -510,16 +583,28 @@ export function DraftScreen() {
 
         {/* Left: Interactive Live Pitch with Free Swapping & Quick Lineup (5 cols) */}
         <div className="lg:col-span-5 order-2 lg:order-1 space-y-2">
-          <div className="flex items-center justify-between gap-2 px-1 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
             <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300 truncate">
               <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              {previewCandidate
-                ? `프리뷰 배치 중: ${previewCandidate.name}`
-                : selectedSlot
-                  ? '이동/교환할 슬롯 클릭'
+              {selectedSlot
+                ? '이동/교환할 슬롯 클릭'
+                : previewCandidate
+                  ? `프리뷰(${previewCandidate.name}): 클릭-클릭으로 자리 이동 가능`
                   : '클릭·드래그 교환 / 우클릭·ⓘ 상세'}
             </span>
             <div className="flex items-center gap-2 shrink-0">
+              {previewCandidate && previewSwaps.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewSwaps([]);
+                    setSelectedSlot(null);
+                  }}
+                  className="rounded-md border border-sky-400/40 bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                >
+                  배치 원복
+                </button>
+              )}
               {selectedSlot && (
                 <button
                   type="button"
@@ -534,6 +619,7 @@ export function DraftScreen() {
                   type="button"
                   onClick={() => {
                     setPreviewCandidate(null);
+                    setPreviewSwaps([]);
                     setSelectedSlot(null);
                     autoOptimizeLineup();
                   }}
@@ -557,14 +643,7 @@ export function DraftScreen() {
               area: draft.currentSlotType,
               index: draft.currentSlotIndex,
             }}
-            previewSlot={
-              previewCandidate
-                ? {
-                    area: draft.currentSlotType,
-                    index: draft.currentSlotIndex,
-                  }
-                : null
-            }
+            previewSlot={previewCurrentSlot}
             selectedSlot={selectedSlot}
             onSlotClick={handleSlotClick}
             onSlotSwap={handleSlotSwap}
