@@ -1,0 +1,787 @@
+[
+  {
+    "id": "leg-gk-01",
+    "name": "레프 야신",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 94,
+    "nationality": "러시아",
+    "nationalityCode": "RU",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 32,
+    "mid": 68,
+    "def": 95,
+    "playstyles": [
+      "shot_stopper",
+      "sweeper_keeper"
+    ],
+    "scoutNote": "발롱도르를 수상한 축구사 유일의 골키퍼, 검은 거미",
+    "isLegend": true,
+    "stamina": 82
+  },
+  {
+    "id": "leg-gk-02",
+    "name": "잔루이지 부폰",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 93,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 30,
+    "mid": 66,
+    "def": 94,
+    "playstyles": [
+      "shot_stopper"
+    ],
+    "scoutNote": "완벽한 위치 선정과 리더십을 겸비한 아주리 수호신",
+    "isLegend": true,
+    "stamina": 80
+  },
+  {
+    "id": "leg-gk-03",
+    "name": "이케르 카시야스",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 31,
+    "mid": 70,
+    "def": 93,
+    "playstyles": [
+      "shot_stopper",
+      "sweeper_keeper"
+    ],
+    "scoutNote": "결승전마다 기적의 반사신경을 뽐낸 성 이케르",
+    "isLegend": true,
+    "stamina": 81
+  },
+  {
+    "id": "leg-df-01",
+    "name": "프란츠 베켄바워",
+    "position": "DF",
+    "mainPositions": [
+      "CB",
+      "CDM"
+    ],
+    "secondaryPositions": [
+      "CM"
+    ],
+    "ovr": 95,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 78,
+    "mid": 92,
+    "def": 95,
+    "playstyles": [
+      "ball_playing_cb",
+      "deep_playmaker"
+    ],
+    "scoutNote": "리베로의 개념을 창시한 후방 빌드업의 황제",
+    "isLegend": true,
+    "stamina": 91
+  },
+  {
+    "id": "leg-df-02",
+    "name": "파올로 말디니",
+    "position": "DF",
+    "mainPositions": [
+      "LB",
+      "CB"
+    ],
+    "secondaryPositions": [
+      "LWB"
+    ],
+    "ovr": 95,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 68,
+    "mid": 83,
+    "def": 96,
+    "playstyles": [
+      "ball_playing_cb",
+      "stopper_cb"
+    ],
+    "scoutNote": "태클이 필요 없는 완벽한 수비 지능의 정점",
+    "isLegend": true,
+    "stamina": 93
+  },
+  {
+    "id": "leg-df-03",
+    "name": "프랑코 바레시",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [
+      "CDM"
+    ],
+    "ovr": 94,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 62,
+    "mid": 81,
+    "def": 96,
+    "playstyles": [
+      "ball_playing_cb",
+      "stopper_cb"
+    ],
+    "scoutNote": "밀란 제네레이션의 오프사이드 트랩을 지휘한 캡틴",
+    "isLegend": true,
+    "stamina": 91
+  },
+  {
+    "id": "leg-df-04",
+    "name": "알레산드로 네스타",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 93,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 56,
+    "mid": 76,
+    "def": 95,
+    "playstyles": [
+      "stopper_cb",
+      "ball_playing_cb"
+    ],
+    "scoutNote": "우아하고 정확한 슬라이딩 태클의 예술가",
+    "isLegend": true,
+    "stamina": 87
+  },
+  {
+    "id": "leg-df-05",
+    "name": "세르히오 라모스",
+    "position": "DF",
+    "mainPositions": [
+      "CB",
+      "RB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 93,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 74,
+    "mid": 79,
+    "def": 94,
+    "playstyles": [
+      "stopper_cb",
+      "ball_playing_cb"
+    ],
+    "scoutNote": "92분 48초의 기적, 클러치 헤더와 투지의 화신",
+    "isLegend": true,
+    "stamina": 90
+  },
+  {
+    "id": "leg-df-06",
+    "name": "호베르투 카를루스",
+    "position": "DF",
+    "mainPositions": [
+      "LB",
+      "LWB"
+    ],
+    "secondaryPositions": [
+      "LM"
+    ],
+    "ovr": 93,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 86,
+    "mid": 85,
+    "def": 90,
+    "playstyles": [
+      "attacking_wingback"
+    ],
+    "scoutNote": "UFO 프리킥과 폭발적 오버래핑의 악마의 왼발",
+    "isLegend": true,
+    "stamina": 96
+  },
+  {
+    "id": "leg-df-07",
+    "name": "카푸",
+    "position": "DF",
+    "mainPositions": [
+      "RB",
+      "RWB"
+    ],
+    "secondaryPositions": [
+      "RM"
+    ],
+    "ovr": 93,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 82,
+    "mid": 86,
+    "def": 91,
+    "playstyles": [
+      "attacking_wingback",
+      "box_to_box"
+    ],
+    "scoutNote": "90분 내내 측면을 지배하는 지치지 않는 고속 열차",
+    "isLegend": true,
+    "stamina": 97
+  },
+  {
+    "id": "leg-df-08",
+    "name": "필립 람",
+    "position": "DF",
+    "mainPositions": [
+      "RB",
+      "LB",
+      "CDM"
+    ],
+    "secondaryPositions": [
+      "RWB",
+      "LWB"
+    ],
+    "ovr": 93,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 76,
+    "mid": 90,
+    "def": 93,
+    "playstyles": [
+      "attacking_wingback",
+      "deep_playmaker"
+    ],
+    "scoutNote": "역대 가장 영리한 전술 지능의 멀티 풀백·수미",
+    "isLegend": true,
+    "stamina": 95
+  },
+  {
+    "id": "leg-df-09",
+    "name": "카를레스 푸욜",
+    "position": "DF",
+    "mainPositions": [
+      "CB",
+      "RB"
+    ],
+    "secondaryPositions": [
+      "LB"
+    ],
+    "ovr": 92,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 60,
+    "mid": 77,
+    "def": 94,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "몸을 사리지 않는 헌신과 카리스마의 바르사 심장",
+    "isLegend": true,
+    "stamina": 94
+  },
+  {
+    "id": "leg-mf-01",
+    "name": "디에고 마라도나",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "RW"
+    ],
+    "ovr": 96,
+    "nationality": "아르헨티나",
+    "nationalityCode": "AR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 96,
+    "mid": 96,
+    "def": 52,
+    "playstyles": [
+      "playmaker_10",
+      "inverted_winger"
+    ],
+    "scoutNote": "혼자서 월드컵을 들어 올린 불멸의 드리블 마법사",
+    "isLegend": true,
+    "stamina": 81
+  },
+  {
+    "id": "leg-mf-02",
+    "name": "요한 크루이프",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 95,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 94,
+    "mid": 95,
+    "def": 60,
+    "playstyles": [
+      "playmaker_10",
+      "complete_forward"
+    ],
+    "scoutNote": "현대 토탈 풋볼의 철학을 구현한 경기장의 지휘자",
+    "isLegend": true,
+    "stamina": 90
+  },
+  {
+    "id": "leg-mf-03",
+    "name": "지네딘 지단",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "CM"
+    ],
+    "secondaryPositions": [
+      "LM"
+    ],
+    "ovr": 95,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 90,
+    "mid": 96,
+    "def": 74,
+    "playstyles": [
+      "playmaker_10",
+      "deep_playmaker"
+    ],
+    "scoutNote": "마르세유 턴과 압도적 탈압박의 중원 마에스트로",
+    "isLegend": true,
+    "stamina": 84
+  },
+  {
+    "id": "leg-mf-04",
+    "name": "로타어 마테우스",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [
+      "CB"
+    ],
+    "ovr": 94,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 85,
+    "mid": 94,
+    "def": 91,
+    "playstyles": [
+      "box_to_box",
+      "ball_winner"
+    ],
+    "scoutNote": "공수 모든 구역을 파괴하는 역대 최강 박스투박스",
+    "isLegend": true,
+    "stamina": 98
+  },
+  {
+    "id": "leg-mf-05",
+    "name": "사비 에르난데스",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CDM"
+    ],
+    "secondaryPositions": [
+      "CAM"
+    ],
+    "ovr": 94,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 82,
+    "mid": 96,
+    "def": 78,
+    "playstyles": [
+      "deep_playmaker"
+    ],
+    "scoutNote": "360도 시야와 95% 패스 정확도의 티키타카 두뇌",
+    "isLegend": true,
+    "stamina": 92
+  },
+  {
+    "id": "leg-mf-06",
+    "name": "안드레스 이니에스타",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "LW",
+      "LM"
+    ],
+    "ovr": 94,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 86,
+    "mid": 96,
+    "def": 72,
+    "playstyles": [
+      "playmaker_10",
+      "deep_playmaker"
+    ],
+    "scoutNote": "좁은 공간을 물 흐르듯 빠져나오는 라 크로케타의 달인",
+    "isLegend": true,
+    "stamina": 86
+  },
+  {
+    "id": "leg-mf-07",
+    "name": "파트리크 비에이라",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 93,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 79,
+    "mid": 91,
+    "def": 92,
+    "playstyles": [
+      "ball_winner",
+      "box_to_box"
+    ],
+    "scoutNote": "무패 우승을 이끈 압도적 피지컬과 전진성의 중원 지배자",
+    "isLegend": true,
+    "stamina": 94
+  },
+  {
+    "id": "leg-mf-08",
+    "name": "안드레아 피를로",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [
+      "CAM"
+    ],
+    "ovr": 92,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 79,
+    "mid": 95,
+    "def": 75,
+    "playstyles": [
+      "deep_playmaker"
+    ],
+    "scoutNote": "레지스타의 교과서, 한 번의 롱패스로 경기를 여는 건축가",
+    "isLegend": true,
+    "stamina": 79
+  },
+  {
+    "id": "leg-mf-09",
+    "name": "박지성",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "LW",
+      "RW"
+    ],
+    "secondaryPositions": [
+      "CDM",
+      "LM",
+      "RM"
+    ],
+    "ovr": 91,
+    "nationality": "대한민국",
+    "nationalityCode": "KR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 82,
+    "mid": 90,
+    "def": 86,
+    "playstyles": [
+      "box_to_box",
+      "ball_winner"
+    ],
+    "scoutNote": "두 개의 심장, 빅매치 전술 이해도와 압박의 정석",
+    "isLegend": true,
+    "stamina": 99
+  },
+  {
+    "id": "leg-fw-01",
+    "name": "리오넬 메시",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "ST"
+    ],
+    "ovr": 99,
+    "nationality": "아르헨티나",
+    "nationalityCode": "AR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 99,
+    "mid": 98,
+    "def": 44,
+    "playstyles": [
+      "inverted_winger",
+      "playmaker_10"
+    ],
+    "scoutNote": "득점·플레이메이킹·드리블 모두 역사를 초월한 축구의 신",
+    "isLegend": true,
+    "stamina": 78
+  },
+  {
+    "id": "leg-fw-02",
+    "name": "크리스티아누 호날두",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "RW"
+    ],
+    "ovr": 98,
+    "nationality": "포르투갈",
+    "nationalityCode": "PT",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 99,
+    "mid": 86,
+    "def": 45,
+    "playstyles": [
+      "complete_forward",
+      "poacher"
+    ],
+    "scoutNote": "압도적 신체능력과 결정력을 갖춘 역대 최다 득점자",
+    "isLegend": true,
+    "stamina": 86
+  },
+  {
+    "id": "leg-fw-03",
+    "name": "펠레",
+    "position": "FW",
+    "mainPositions": [
+      "ST",
+      "CAM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 96,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 97,
+    "mid": 92,
+    "def": 60,
+    "playstyles": [
+      "complete_forward",
+      "playmaker_10"
+    ],
+    "scoutNote": "월드컵 3회 우승, 모든 공격 기술의 완성형 황제",
+    "isLegend": true,
+    "stamina": 90
+  },
+  {
+    "id": "leg-fw-04",
+    "name": "호나우두 (R9)",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 95,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 97,
+    "mid": 84,
+    "def": 44,
+    "playstyles": [
+      "line_breaker",
+      "poacher"
+    ],
+    "scoutNote": "수비수들을 무력화시키는 폭발적 가속력과 골 결정력",
+    "isLegend": true,
+    "stamina": 77
+  },
+  {
+    "id": "leg-fw-05",
+    "name": "티에리 앙리",
+    "position": "FW",
+    "mainPositions": [
+      "ST",
+      "LW"
+    ],
+    "secondaryPositions": [],
+    "ovr": 94,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 95,
+    "mid": 86,
+    "def": 50,
+    "playstyles": [
+      "line_breaker",
+      "complete_forward"
+    ],
+    "scoutNote": "왼쪽 하프스페이스 감아차기의 교과서, 킹 앙리",
+    "isLegend": true,
+    "stamina": 88
+  },
+  {
+    "id": "leg-fw-06",
+    "name": "호나우지뉴",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "LM"
+    ],
+    "ovr": 94,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 93,
+    "mid": 94,
+    "def": 50,
+    "playstyles": [
+      "inverted_winger",
+      "playmaker_10"
+    ],
+    "scoutNote": "상상을 현실로 바꾸는 외계인의 드리블과 노룩 패스",
+    "isLegend": true,
+    "stamina": 78
+  },
+  {
+    "id": "leg-fw-07",
+    "name": "가린샤",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "RM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 94,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 94,
+    "mid": 89,
+    "def": 46,
+    "playstyles": [
+      "classic_winger",
+      "inverted_winger"
+    ],
+    "scoutNote": "오른쪽 측면을 홀로 초토화시킨 역대 최고 드리블러",
+    "isLegend": true,
+    "stamina": 84
+  },
+  {
+    "id": "leg-fw-08",
+    "name": "차범근",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "RM"
+    ],
+    "ovr": 92,
+    "nationality": "대한민국",
+    "nationalityCode": "KR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 93,
+    "mid": 82,
+    "def": 58,
+    "playstyles": [
+      "line_breaker",
+      "classic_winger"
+    ],
+    "scoutNote": "분데스리가를 호령한 갈색 폭격기, 폭발적 돌파와 양발 슈팅",
+    "isLegend": true,
+    "stamina": 93
+  },
+  {
+    "id": "leg-fw-09",
+    "name": "손흥민",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "RW"
+    ],
+    "ovr": 91,
+    "nationality": "대한민국",
+    "nationalityCode": "KR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 92,
+    "mid": 84,
+    "def": 52,
+    "playstyles": [
+      "line_breaker",
+      "inverted_winger"
+    ],
+    "scoutNote": "아시아 최초 EPL 득점왕, 역대 최고 양발 감아차기 스나이퍼",
+    "isLegend": true,
+    "stamina": 90
+  }
+]

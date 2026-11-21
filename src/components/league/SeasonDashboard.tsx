@@ -1,0 +1,1150 @@
+import {
+  AlertTriangle,
+  ArrowLeftRight,
+  Award,
+  Calendar,
+  Compass,
+  FastForward,
+  Globe,
+  Play,
+  SkipForward,
+  Star,
+  Trophy,
+  Users,
+  X,
+  Zap,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { FORMATION_LIST } from '../../data/formations';
+import {
+  CUP_STAGE_LABELS,
+  findUserCupMatch,
+  getUserCupResultLabel,
+} from '../../engine/cupEngine';
+import { getLeagueById, LEAGUES } from '../../engine/dataLoader';
+import { USER_CLUB_ID } from '../../engine/matchEngine';
+import { getUserRank } from '../../engine/standingsEngine';
+import {
+  evaluateFormationMatchup,
+  evaluateTacticMatchup,
+  TACTIC_LIST,
+  TACTICS,
+} from '../../engine/tacticEngine';
+import { getNextTransferWindowRound } from '../../engine/transferEngine';
+import { useGame } from '../../store/GameContext';
+import type { Club, LeagueId } from '../../types/league';
+import { ClubTag } from '../common/ClubTag';
+import { JerseySvg } from '../common/JerseySvg';
+import { TransferMarketModal } from '../transfer/TransferMarketModal';
+import { CupBracketView } from './CupBracketView';
+import { FastSimModal } from './FastSimModal';
+import type { FastSimMode } from './FastSimModal';
+import { LiveMatchBroadcast } from './LiveMatchBroadcast';
+import { MatchReportPanel } from './MatchReportPanel';
+import { SquadManagerModal } from './SquadManagerModal';
+import { StandingsTable } from './StandingsTable';
+
+type SeasonTab = 'match' | 'cup' | 'squad' | 'standings' | 'transfer';
+type RecordSubTab = 'goals' | 'assists' | 'cleanSheets' | 'rating';
+
+export function SeasonDashboard() {
+  const {
+    state,
+    activeTactic,
+    chemistry,
+    ratings,
+    changeFormation,
+    setNextMatchTactic,
+    startLiveMatch,
+    simulateSingleMatchInstant,
+  } = useGame();
+
+  const [activeTab, setActiveTab] = useState<SeasonTab>('match');
+  const [recordTab, setRecordTab] = useState<RecordSubTab>('goals');
+  const [confirmSkipModal, setConfirmSkipModal] = useState(false);
+  const [fastSimMode, setFastSimMode] = useState<FastSimMode | null>(null);
+  const [quickSkipModalOpen, setQuickSkipModalOpen] = useState(false);
+  const [standingsLeagueId, setStandingsLeagueId] = useState<LeagueId | null>(
+    null,
+  );
+
+  const season = state.season;
+
+  const clubsById = useMemo(() => {
+    const map: Record<string, Club> = {};
+    if (season) {
+      for (const c of season.clubs) map[c.id] = c;
+    }
+    return map;
+  }, [season]);
+
+  if (!season) return null;
+
+  const league = getLeagueById(season.leagueId);
+  const viewedLeagueId: LeagueId = standingsLeagueId ?? season.leagueId;
+  const viewedLeagueMeta = getLeagueById(viewedLeagueId);
+  const isViewingUserLeague = viewedLeagueId === season.leagueId;
+  const viewedBgLeague = !isViewingUserLeague
+    ? season.otherLeagues?.[viewedLeagueId]
+    : undefined;
+  const viewedClubsById: Record<string, Club> = isViewingUserLeague
+    ? clubsById
+    : Object.fromEntries(
+        (viewedBgLeague?.clubs ?? viewedLeagueMeta.clubs).map((c) => [c.id, c]),
+      );
+  const viewedStandings = isViewingUserLeague
+    ? season.standings
+    : viewedBgLeague?.standings ?? [];
+
+  const userRank = getUserRank(season.standings, USER_CLUB_ID);
+  const userRow = season.standings.find((r) => r.teamId === USER_CLUB_ID);
+  const inUclZone = userRank <= 4;
+
+  // Check if a Domestic Cup match is pending right now (takes priority over next league round)
+  const pendingCupStage = season.cup?.pendingStage ?? null;
+  const pendingCupNode =
+    season.cup && pendingCupStage
+      ? findUserCupMatch(season.cup, pendingCupStage, USER_CLUB_ID)
+      : null;
+
+  const nextRoundNumber = season.currentRound + 1;
+  const nextLeagueFixture = season.fixtures.find(
+    (f) =>
+      f.round === nextRoundNumber &&
+      (f.homeTeamId === USER_CLUB_ID || f.awayTeamId === USER_CLUB_ID),
+  );
+
+  const isNextCupMatch = Boolean(pendingCupNode && season.cup && pendingCupStage);
+  const nextOpponent = isNextCupMatch && pendingCupNode
+    ? clubsById[
+        pendingCupNode.homeTeamId === USER_CLUB_ID
+          ? pendingCupNode.awayTeamId
+          : pendingCupNode.homeTeamId
+      ]
+    : nextLeagueFixture
+      ? clubsById[
+          nextLeagueFixture.homeTeamId === USER_CLUB_ID
+            ? nextLeagueFixture.awayTeamId
+            : nextLeagueFixture.homeTeamId
+        ]
+      : null;
+  const isNextHome = isNextCupMatch && pendingCupNode
+    ? pendingCupNode.homeTeamId === USER_CLUB_ID
+    : nextLeagueFixture?.homeTeamId === USER_CLUB_ID;
+
+  const tacticMatchup = nextOpponent
+    ? evaluateTacticMatchup(activeTactic, nextOpponent.defaultTactic)
+    : null;
+  const formationMatchup = nextOpponent
+    ? evaluateFormationMatchup(state.formation, nextOpponent.formation)
+    : null;
+
+  const nextTransferRound = getNextTransferWindowRound(
+    season.currentRound,
+    season.transferWindows,
+    season.transferMarket.completedWindows,
+  );
+
+  const allStatsList = Object.values(season.allPlayerStats).filter(
+    (s) => s.appearances > 0,
+  );
+  const activeLeaderboard = [...allStatsList]
+    .filter((s) =>
+      recordTab === 'goals'
+        ? s.goals > 0
+        : recordTab === 'assists'
+          ? s.assists > 0
+          : recordTab === 'cleanSheets'
+            ? (s.position === 'GK' || s.position === 'DF') && s.cleanSheets > 0
+            : s.appearances >= Math.max(1, Math.floor(season.currentRound * 0.4)),
+    )
+    .sort((a, b) => {
+      if (recordTab === 'goals') return b.goals - a.goals || b.assists - a.assists;
+      if (recordTab === 'assists') return b.assists - a.assists || b.goals - a.goals;
+      if (recordTab === 'cleanSheets') return b.cleanSheets - a.cleanSheets || b.avgRating - a.avgRating;
+      return b.avgRating - a.avgRating || b.momCount - a.momCount;
+    })
+    .slice(0, 10);
+
+  const handleSkipSeasonClick = () => {
+    if (nextTransferRound !== null) {
+      setConfirmSkipModal(true);
+    } else {
+      setFastSimMode('to_season_end');
+    }
+  };
+
+  const handleSingleMatchSkip = () => {
+    simulateSingleMatchInstant();
+    setQuickSkipModalOpen(true);
+  };
+
+  const progressPct = Math.round(
+    (season.currentRound / season.totalRounds) * 100,
+  );
+
+  const controlsBlocked =
+    season.transferMarket.isOpen ||
+    Boolean(season.liveHalftime) ||
+    fastSimMode !== null ||
+    quickSkipModalOpen;
+
+  const navTabs: { id: SeasonTab; label: string; icon: React.ReactNode; badge?: string }[] = [
+    {
+      id: 'match',
+      label: '경기장/일정',
+      icon: <Play className="w-3.5 h-3.5" />,
+      badge: isNextCupMatch ? 'CUP' : undefined,
+    },
+    {
+      id: 'cup',
+      label: season.cup?.meta.koreanName ?? '자국 컵',
+      icon: <Award className="w-3.5 h-3.5" />,
+      badge: isNextCupMatch ? 'NOW' : undefined,
+    },
+    { id: 'squad', label: '스쿼드/전술', icon: <Users className="w-3.5 h-3.5" /> },
+    { id: 'standings', label: '순위/기록', icon: <Trophy className="w-3.5 h-3.5" /> },
+    {
+      id: 'transfer',
+      label: '이적시장',
+      icon: <ArrowLeftRight className="w-3.5 h-3.5" />,
+      badge: season.transferMarket.isOpen ? 'OPEN' : undefined,
+    },
+  ];
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-5 space-y-5">
+      {/* Compact Season Status + Clean Top 5-Tab Navigation */}
+      <section className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-3.5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="rounded px-2 py-0.5 text-[11px] font-extrabold text-slate-950"
+                style={{ backgroundColor: league.accentColor }}
+              >
+                {league.koreanName}
+              </span>
+              <span className="font-display text-xs font-bold text-slate-200 tabular-nums">
+                {season.currentRound} / {season.totalRounds}R
+              </span>
+              <span
+                className={`rounded px-2 py-0.5 text-[11px] font-bold ${
+                  inUclZone
+                    ? 'bg-emerald-500/15 text-emerald-300'
+                    : 'bg-slate-800 text-slate-300'
+                }`}
+              >
+                {userRank}위 · {userRow?.points ?? 0}점 ({userRow?.won ?? 0}승{' '}
+                {userRow?.drawn ?? 0}무 {userRow?.lost ?? 0}패)
+              </span>
+              {season.cup && (
+                <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-300">
+                  🏆 {season.cup.meta.koreanName}: {getUserCupResultLabel(season.cup, USER_CLUB_ID)}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 tabular-nums">
+              <span>
+                실전 A <strong className="text-slate-200">{ratings.effectiveAtt}</strong> · M{' '}
+                <strong className="text-slate-200">{ratings.effectiveMid}</strong> · D{' '}
+                <strong className="text-slate-200">{ratings.effectiveDef}</strong>
+              </span>
+              <span className="inline-flex items-center gap-1 text-emerald-300 font-semibold">
+                <Zap className="w-3 h-3" />
+                케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
+                {chemistry.chemistryOvrBonus.toFixed(1)})
+              </span>
+              {nextTransferRound !== null && (
+                <span className="inline-flex items-center gap-1 text-amber-300/90">
+                  <Calendar className="w-3 h-3" />
+                  이적시장 {nextTransferRound}R
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* 5-Tab Clean Navigation */}
+          <nav className="grid grid-cols-5 gap-1 rounded-xl border border-slate-800 bg-[#0b1018] p-1">
+            {navTabs.map((t) => {
+              const active = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveTab(t.id)}
+                  className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] sm:text-xs font-bold transition-colors cursor-pointer ${
+                    active
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {t.icon}
+                  <span className="truncate">{t.label}</span>
+                  {t.badge && (
+                    <span className="rounded bg-amber-400 px-1 py-0.5 text-[8px] font-black text-slate-950">
+                      {t.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* Minimal Season Progress Bar */}
+        <div className="relative h-1.5 w-full rounded-full bg-slate-900">
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+            style={{ width: `${progressPct}%` }}
+          />
+          {season.transferWindows.map((winRound, i) => {
+            const leftPct = (winRound / season.totalRounds) * 100;
+            const done = season.transferMarket.completedWindows.includes(i + 1);
+            return (
+              <div
+                key={winRound}
+                style={{ left: `${leftPct}%` }}
+                title={`제 ${i + 1}차 이적시장 (${winRound}R 종료 후)`}
+                className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full border border-slate-950 ${
+                  done ? 'bg-emerald-400' : 'bg-amber-400'
+                }`}
+              />
+            );
+          })}
+        </div>
+      </section>
+
+      {/* TAB 1: 경기장/일정 */}
+      {activeTab === 'match' && (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+          {/* Left: Next Match Preview & Live Controls (7 cols) */}
+          <div className="lg:col-span-7 space-y-5">
+            {nextOpponent && (
+              <div
+                className={`rounded-2xl border p-4 sm:p-5 space-y-4 ${
+                  isNextCupMatch
+                    ? 'border-amber-500/50 bg-gradient-to-b from-amber-950/20 to-[#111822]'
+                    : 'border-slate-800 bg-[#111822]'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className={`text-xs font-extrabold ${
+                      isNextCupMatch ? 'text-amber-300' : 'text-slate-400'
+                    }`}
+                  >
+                    {isNextCupMatch && season.cup && pendingCupStage
+                      ? `🏆 ${season.cup.meta.koreanName} ${CUP_STAGE_LABELS[pendingCupStage]} (단판 승부 · 동점 시 연장/PK)`
+                      : `다음 경기 · ROUND ${nextRoundNumber}`}
+                  </span>
+                  <span
+                    className={`rounded px-2 py-0.5 text-[11px] font-bold ${
+                      isNextHome
+                        ? 'bg-emerald-500/15 text-emerald-300'
+                        : 'bg-sky-500/15 text-sky-300'
+                    }`}
+                  >
+                    {isNextCupMatch && pendingCupStage === 'final'
+                      ? 'FINAL · 중립'
+                      : isNextHome
+                        ? 'HOME'
+                        : 'AWAY'}
+                  </span>
+                </div>
+
+                {/* Opponent Summary */}
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-[#0b1018] p-3.5">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <JerseySvg
+                      primaryColor={nextOpponent.primaryColor}
+                      secondaryColor={nextOpponent.secondaryColor}
+                      pattern={nextOpponent.pattern}
+                      label={nextOpponent.shortName}
+                      size={44}
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate text-base font-extrabold text-white">
+                        {nextOpponent.name}
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+                        <span className="font-bold text-sky-300">
+                          {nextOpponent.formation}
+                        </span>
+                        <span>·</span>
+                        <span className="font-semibold text-amber-300">
+                          {TACTICS[nextOpponent.defaultTactic].name}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-500 truncate">
+                        핵심: {nextOpponent.topScorers.join(' · ')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-1.5 text-center tabular-nums">
+                    <div className="rounded-lg bg-[#111822] px-2.5 py-1.5">
+                      <div className="text-[9px] text-slate-500">ATT</div>
+                      <div className="font-display text-sm font-bold text-white">
+                        {nextOpponent.att}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-[#111822] px-2.5 py-1.5">
+                      <div className="text-[9px] text-slate-500">MID</div>
+                      <div className="font-display text-sm font-bold text-white">
+                        {nextOpponent.mid}
+                      </div>
+                    </div>
+                    <div className="rounded-lg bg-[#111822] px-2.5 py-1.5">
+                      <div className="text-[9px] text-slate-500">DEF</div>
+                      <div className="font-display text-sm font-bold text-white">
+                        {nextOpponent.def}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Pre-Match Tactic & Formation */}
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
+                      <Compass className="w-3.5 h-3.5 text-emerald-400" />
+                      이번 경기 전술
+                    </span>
+                    {tacticMatchup && (
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                          tacticMatchup.delta > 0
+                            ? 'bg-emerald-500/15 text-emerald-300'
+                            : tacticMatchup.delta < 0
+                              ? 'bg-rose-500/15 text-rose-300'
+                              : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        {tacticMatchup.delta > 0
+                          ? `전술 +${tacticMatchup.delta.toFixed(1)}`
+                          : tacticMatchup.delta < 0
+                            ? `전술 ${tacticMatchup.delta.toFixed(1)}`
+                            : '전술 호각'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {TACTIC_LIST.map((t) => {
+                      const active = activeTactic === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() =>
+                            setNextMatchTactic(
+                              t.id === season.defaultTactic ? null : t.id,
+                            )
+                          }
+                          className={`rounded-lg py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                            active
+                              ? 'bg-emerald-500 text-slate-950'
+                              : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
+                          }`}
+                        >
+                          {t.shortName}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="font-bold text-slate-300">포메이션</span>
+                    {formationMatchup && (
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                          formationMatchup.delta > 0
+                            ? 'bg-emerald-500/15 text-emerald-300'
+                            : formationMatchup.delta < 0
+                              ? 'bg-rose-500/15 text-rose-300'
+                              : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        {formationMatchup.delta > 0
+                          ? `포메이션 +${formationMatchup.delta.toFixed(1)}`
+                          : formationMatchup.delta < 0
+                            ? `포메이션 ${formationMatchup.delta.toFixed(1)}`
+                            : '포메이션 호각'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-6 gap-1">
+                    {FORMATION_LIST.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => changeFormation(f.id)}
+                        className={`rounded-lg py-1.5 text-[11px] font-bold cursor-pointer ${
+                          state.formation === f.id
+                            ? 'bg-sky-400 text-slate-950'
+                            : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
+                        }`}
+                      >
+                        {f.id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Match Actions */}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
+                    <button
+                      id="play-next-round-btn"
+                      type="button"
+                      onClick={startLiveMatch}
+                      disabled={controlsBlocked}
+                      className="sm:col-span-8 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-colors cursor-pointer"
+                    >
+                      <Play className="w-4 h-4 fill-current" />
+                      경기 진행 (2D 중계 · 하프타임)
+                    </button>
+
+                    <button
+                      id="skip-one-match-btn"
+                      type="button"
+                      onClick={handleSingleMatchSkip}
+                      disabled={controlsBlocked}
+                      className="sm:col-span-4 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-500/45 bg-emerald-500/12 px-3 py-3 text-xs sm:text-sm font-extrabold text-emerald-200 hover:bg-emerald-500/22 disabled:opacity-50 transition-colors cursor-pointer"
+                    >
+                      <FastForward className="w-4 h-4" />
+                      1경기 스킵
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      id="sim-to-transfer-btn"
+                      type="button"
+                      onClick={() => setFastSimMode('to_transfer')}
+                      disabled={controlsBlocked || nextTransferRound === null}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40 cursor-pointer"
+                    >
+                      <FastForward className="w-3.5 h-3.5" />
+                      {nextTransferRound !== null
+                        ? `이적시장(${nextTransferRound}R)까지`
+                        : '이적시장 완료'}
+                    </button>
+
+                    <button
+                      id="skip-season-btn"
+                      type="button"
+                      onClick={handleSkipSeasonClick}
+                      disabled={controlsBlocked}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:border-slate-500 hover:text-white disabled:opacity-50 cursor-pointer"
+                    >
+                      <SkipForward className="w-3.5 h-3.5" />
+                      시즌 끝까지 진행
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Recent Match History Strip */}
+            {season.userMatchHistory.length > 0 && (
+              <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-2.5">
+                <div className="text-xs font-bold text-slate-400">
+                  최근 경기 결과
+                </div>
+                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                  {[...season.userMatchHistory]
+                    .reverse()
+                    .slice(0, 6)
+                    .map((m) => {
+                      const isHome = m.homeTeamId === USER_CLUB_ID;
+                      const opp = clubsById[isHome ? m.awayTeamId : m.homeTeamId];
+                      const ug = isHome ? m.homeGoals : m.awayGoals;
+                      const og = isHome ? m.awayGoals : m.homeGoals;
+                      const badge =
+                        ug > og
+                          ? 'bg-emerald-500/15 text-emerald-300'
+                          : ug < og
+                            ? 'bg-rose-500/15 text-rose-300'
+                            : 'bg-slate-800 text-slate-300';
+                      return (
+                        <div
+                          key={m.fixtureId}
+                          className="flex items-center justify-between rounded-lg bg-[#0b1018] px-3 py-2 text-xs tabular-nums"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-[10px] text-slate-500">
+                              {m.round}R
+                            </span>
+                            <span className="truncate font-semibold text-slate-200">
+                              {isHome ? 'vs' : '@'} {opp?.name ?? '상대'}
+                            </span>
+                          </div>
+                          <span className={`rounded px-2 py-0.5 font-display font-bold ${badge}`}>
+                            {ug} - {og}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Right: Latest Match Report (5 cols) */}
+          <div className="lg:col-span-5 space-y-5">
+            {season.lastUserMatch ? (
+              <MatchReportPanel
+                match={season.lastUserMatch}
+                clubsById={clubsById}
+              />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-800 bg-[#111822]/70 p-6 text-center text-xs text-slate-400">
+                <strong className="block text-sm text-white mb-1">
+                  {league.koreanName} 2026-27 개막 준비 완료
+                </strong>
+                <span>
+                  {season.replacedClubName}을(를) 대신해 참가했습니다. 상대 전술과 포메이션을 확인하고 개막전을 지휘하세요.
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: 스쿼드/전술 */}
+      {activeTab === 'squad' && <SquadManagerModal embedded />}
+
+      {/* TAB 3: 순위/기록 (5대 리그 전환 지원) */}
+      {activeTab === 'standings' && (
+        <div className="space-y-4">
+          {/* 5대 리그 전환 탭 */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800 bg-[#111822] p-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+              <Globe className="w-4 h-4 text-emerald-400" />
+              유럽 5대 리그 실시간 순위표
+            </div>
+            <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-800 bg-[#0b1018] p-1">
+              {LEAGUES.map((lg) => {
+                const active = viewedLeagueId === lg.id;
+                const isMine = lg.id === season.leagueId;
+                return (
+                  <button
+                    key={lg.id}
+                    type="button"
+                    onClick={() => setStandingsLeagueId(lg.id)}
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                      active
+                        ? 'bg-emerald-500 text-slate-950'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <span>{lg.koreanName}</span>
+                    {isMine && (
+                      <span
+                        className={`rounded px-1 text-[8px] font-black ${
+                          active
+                            ? 'bg-slate-950 text-emerald-300'
+                            : 'bg-emerald-500/20 text-emerald-300'
+                        }`}
+                      >
+                        MY
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+            <div className="lg:col-span-7">
+              <StandingsTable
+                standings={viewedStandings}
+                clubsById={viewedClubsById}
+                uclSpots={viewedLeagueMeta.uclSpots}
+                relegationSpots={viewedLeagueMeta.relegationSpots}
+              />
+            </div>
+
+            <div className="lg:col-span-5">
+              {isViewingUserLeague ? (
+                <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-3">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                    <Award className="w-4 h-4 text-amber-400" />
+                    리그 개인 기록 TOP 10
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-1 rounded-lg bg-[#0b1018] p-1 text-[11px]">
+                    {(
+                      [
+                        ['goals', '득점'],
+                        ['assists', '도움'],
+                        ['cleanSheets', '클린시트'],
+                        ['rating', '평점'],
+                      ] as [RecordSubTab, string][]
+                    ).map(([id, label]) => (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setRecordTab(id)}
+                        className={`rounded-md py-1.5 font-bold cursor-pointer ${
+                          recordTab === id
+                            ? 'bg-emerald-500 text-slate-950'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {activeLeaderboard.length === 0 ? (
+                    <p className="py-6 text-center text-xs text-slate-500">
+                      아직 집계된 기록이 없습니다.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {activeLeaderboard.map((entry, idx) => (
+                        <div
+                          key={`${entry.teamId}-${entry.playerId}`}
+                          className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs tabular-nums ${
+                            entry.isUserTeam
+                              ? 'bg-emerald-500/15 border border-emerald-500/35'
+                              : 'bg-[#0b1018]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-display w-4 text-slate-500 font-bold text-center">
+                              {idx + 1}
+                            </span>
+                            <span className="truncate font-bold text-slate-100">
+                              {entry.playerName}
+                            </span>
+                            <ClubTag
+                              shortName={entry.teamShortName}
+                              primaryColor={entry.teamPrimaryColor}
+                              isUserTeam={entry.isUserTeam}
+                            />
+                          </div>
+                          <span className="font-display text-sm font-bold text-emerald-300 shrink-0">
+                            {recordTab === 'goals' && `${entry.goals}골`}
+                            {recordTab === 'assists' && `${entry.assists}도움`}
+                            {recordTab === 'cleanSheets' && `${entry.cleanSheets}CS`}
+                            {recordTab === 'rating' && entry.avgRating.toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="rounded px-2 py-0.5 text-[11px] font-extrabold text-slate-950"
+                        style={{ backgroundColor: viewedLeagueMeta.accentColor }}
+                      >
+                        {viewedLeagueMeta.koreanName}
+                      </span>
+                      <span className="text-xs font-bold text-slate-300 tabular-nums">
+                        {viewedBgLeague?.currentRound ?? 0} /{' '}
+                        {viewedLeagueMeta.totalRounds}R 진행 중
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs leading-relaxed text-slate-400">
+                    동일한 구단 평점·포아송 엔진으로 백그라운드 시뮬레이션이 진행 중입니다. 시즌 종료 시 상위 4팀은 Phase 2 챔피언스리그에 합류합니다.
+                  </p>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-300">
+                      <Trophy className="w-3.5 h-3.5" />
+                      현재 챔피언스리그 진출권 TOP 4
+                    </div>
+                    <div className="space-y-1.5">
+                      {viewedStandings.slice(0, 4).map((row, idx) => (
+                        <div
+                          key={row.teamId}
+                          className="flex items-center justify-between rounded-xl border border-emerald-500/25 bg-[#0b1018] px-3 py-2.5 text-xs tabular-nums"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="font-display text-sm font-bold text-emerald-400 w-4 text-center">
+                              {idx + 1}
+                            </span>
+                            <span
+                              className="h-2.5 w-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: row.primaryColor }}
+                            />
+                            <span className="truncate font-bold text-white">
+                              {row.teamName}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] text-slate-400">
+                              {row.won}승 {row.drawn}무 {row.lost}패
+                            </span>
+                            <span className="font-display text-sm font-bold text-emerald-300">
+                              {row.points}점
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: 자국 컵 토너먼트 */}
+      {activeTab === 'cup' && season.cup && (
+        <div className="space-y-4">
+          {isNextCupMatch && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/50 bg-amber-950/20 p-4">
+              <div>
+                <div className="text-xs font-black text-amber-300">
+                  🏆 {season.cup.meta.koreanName}{' '}
+                  {pendingCupStage ? CUP_STAGE_LABELS[pendingCupStage] : ''} 경기 대기 중
+                </div>
+                <p className="mt-0.5 text-xs text-slate-300">
+                  상대: <strong className="text-white">{nextOpponent?.name}</strong> · 단판 토너먼트 (90분 동점 시 연장전·승부차기)
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={startLiveMatch}
+                  disabled={controlsBlocked}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-300 cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  2D 컵 중계 시작
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSingleMatchSkip}
+                  disabled={controlsBlocked}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/40 bg-amber-500/15 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/25 cursor-pointer"
+                >
+                  <FastForward className="w-3.5 h-3.5" />
+                  1경기 스킵
+                </button>
+              </div>
+            </div>
+          )}
+          <CupBracketView cup={season.cup} clubs={season.clubs} />
+        </div>
+      )}
+
+      {/* TAB 4: 이적시장 */}
+      {activeTab === 'transfer' && (
+        <div className="space-y-5">
+          {season.transferMarket.isOpen ? (
+            <TransferMarketModal embedded />
+          ) : (
+            <div className="rounded-2xl border border-slate-800 bg-[#111822] p-6 text-center space-y-2">
+              <ArrowLeftRight className="mx-auto w-7 h-7 text-slate-500" />
+              <h3 className="text-base font-bold text-white">
+                {nextTransferRound !== null
+                  ? `다음 이적시장: ${nextTransferRound}라운드 종료 후 개장`
+                  : '이번 시즌 이적시장이 모두 마감되었습니다'}
+              </h3>
+              <p className="text-xs text-slate-400">
+                이적시장 개장 시 3구단 룰렛으로 추첨된 구단의 2026-27 스쿼드를 탐색하고 최대 3회 영입 협상을 시도할 수 있습니다. (리그 4위 이내 시 레전드 FA 4.0%)
+              </p>
+            </div>
+          )}
+
+          {/* Transfer History */}
+          <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-3">
+            <div className="text-xs font-bold text-slate-300">
+              시즌 이적 내역 ({season.transferMarket.history.length}건)
+            </div>
+            {season.transferMarket.history.length === 0 ? (
+              <p className="text-xs text-slate-500">아직 완료된 이적이 없습니다.</p>
+            ) : (
+              <div className="space-y-2">
+                {season.transferMarket.history.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#0b1018] px-3 py-2.5 text-xs"
+                  >
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      제 {item.windowIndex}차 ({item.round}R)
+                      {item.marketValueM ? ` · €${item.marketValueM}M` : ''}
+                    </span>
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="text-rose-300 line-through">
+                        {item.outPlayer.name} ({item.outPlayer.ovr})
+                      </span>
+                      <span className="text-slate-600">→</span>
+                      <span className="font-bold text-emerald-300">
+                        {item.inPlayer.name} ({item.inPlayer.ovr})
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Real-Time Match Broadcast Modal (0' -> 45' HT -> 90' FT -> ET/PK) */}
+      <LiveMatchBroadcast clubsById={clubsById} />
+
+      {/* Fast-Forward Animated Simulation Modal */}
+      <FastSimModal
+        mode={fastSimMode}
+        clubsById={clubsById}
+        onClose={() => setFastSimMode(null)}
+      />
+
+      {/* 1-Match Instant Skip Summary Modal */}
+      {quickSkipModalOpen && season.lastUserMatch && (() => {
+        const m = season.lastUserMatch;
+        const home = clubsById[m.homeTeamId];
+        const away = clubsById[m.awayTeamId];
+        if (!home || !away) return null;
+        const isHome = m.homeTeamId === USER_CLUB_ID;
+        const ug = isHome ? m.homeGoals : m.awayGoals;
+        const og = isHome ? m.awayGoals : m.homeGoals;
+        const userWonPk =
+          m.extraTime?.penalties &&
+          m.extraTime.penalties.winnerTeamId === USER_CLUB_ID;
+        const userLostPk =
+          m.extraTime?.penalties &&
+          m.extraTime.penalties.winnerTeamId !== USER_CLUB_ID;
+        const outcome = userWonPk
+          ? '승부차기 승'
+          : userLostPk
+            ? '승부차기 패'
+            : ug > og
+              ? '승리'
+              : ug < og
+                ? '패배'
+                : '무승부';
+        const outcomeCls =
+          userWonPk || ug > og
+            ? 'bg-emerald-500 text-slate-950'
+            : userLostPk || ug < og
+              ? 'bg-rose-500 text-white'
+              : 'bg-slate-600 text-white';
+        const goalEvents = m.events.filter((e) => e.type === 'goal');
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/88 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700 bg-[#0f1621] shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a0f17] px-5 py-3.5">
+                <div className="flex items-center gap-2">
+                  <span className={`rounded px-2 py-0.5 text-[11px] font-black ${outcomeCls}`}>
+                    {outcome}
+                  </span>
+                  <span className="font-display text-sm font-bold text-white">
+                    {m.competitionLabel ?? `ROUND ${m.round}`} 경기 결과 요약
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setQuickSkipModalOpen(false)}
+                  className="rounded-lg border border-slate-700 bg-slate-900 p-1 text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Scoreboard */}
+                <div className="grid grid-cols-3 items-center text-center gap-2 rounded-xl border border-slate-800 bg-[#0b1018] p-4">
+                  <div className="flex flex-col items-center">
+                    <JerseySvg
+                      primaryColor={home.primaryColor}
+                      secondaryColor={home.secondaryColor}
+                      pattern={home.pattern}
+                      label={home.shortName}
+                      size={42}
+                    />
+                    <span
+                      className={`mt-1.5 text-xs font-bold ${
+                        home.isUser ? 'text-emerald-300' : 'text-white'
+                      }`}
+                    >
+                      {home.name}
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {m.homeFormation} · {TACTICS[m.homeTactic].shortName}
+                    </span>
+                  </div>
+
+                  <div className="font-display text-4xl font-bold text-white tabular-nums">
+                    {m.homeGoals} <span className="text-slate-600">:</span>{' '}
+                    {m.awayGoals}
+                  </div>
+
+                  <div className="flex flex-col items-center">
+                    <JerseySvg
+                      primaryColor={away.primaryColor}
+                      secondaryColor={away.secondaryColor}
+                      pattern={away.pattern}
+                      label={away.shortName}
+                      size={42}
+                    />
+                    <span
+                      className={`mt-1.5 text-xs font-bold ${
+                        away.isUser ? 'text-emerald-300' : 'text-white'
+                      }`}
+                    >
+                      {away.name}
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {m.awayFormation} · {TACTICS[m.awayTactic].shortName}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Goal & Assist List */}
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-1.5">
+                  <div className="text-[11px] font-bold text-slate-400">
+                    득점 · 도움 기록
+                  </div>
+                  {goalEvents.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      양 팀 득점 없이 무승부로 종료되었습니다.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {goalEvents.map((ev, idx) => {
+                        const evClub = clubsById[ev.teamId];
+                        return (
+                          <div
+                            key={`${ev.minute}-${idx}`}
+                            className="flex items-center gap-2 text-xs"
+                          >
+                            <span className="w-7 font-display font-bold text-slate-500 tabular-nums">
+                              {ev.minute}&apos;
+                            </span>
+                            {evClub && (
+                              <ClubTag
+                                shortName={evClub.shortName}
+                                primaryColor={evClub.primaryColor}
+                                isUserTeam={evClub.id === USER_CLUB_ID}
+                              />
+                            )}
+                            <span className="font-bold text-white">
+                              ⚽ {ev.scorerName}
+                            </span>
+                            {ev.assistName && (
+                              <span className="text-[11px] text-slate-400">
+                                (도움: {ev.assistName})
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats Strip */}
+                <div className="grid grid-cols-4 gap-2 text-center tabular-nums">
+                  <div className="rounded-lg bg-[#0b1018] p-2">
+                    <div className="text-[10px] text-slate-500">점유율</div>
+                    <div className="font-display text-sm font-bold text-white">
+                      {m.homePossession}%:{100 - m.homePossession}%
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-[#0b1018] p-2">
+                    <div className="text-[10px] text-slate-500">xG</div>
+                    <div className="font-display text-sm font-bold text-emerald-300">
+                      {m.homeXg.toFixed(2)}:{m.awayXg.toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-[#0b1018] p-2">
+                    <div className="text-[10px] text-slate-500">슈팅</div>
+                    <div className="font-display text-sm font-bold text-white">
+                      {m.homeShots}:{m.awayShots}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-[#0b1018] p-2">
+                    <div className="text-[10px] text-slate-500">유효슈팅</div>
+                    <div className="font-display text-sm font-bold text-sky-300">
+                      {m.homeShotsOnTarget}:{m.awayShotsOnTarget}
+                    </div>
+                  </div>
+                </div>
+
+                {/* MOM + Confirm CTA */}
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/30 bg-amber-950/20 px-3.5 py-2.5 text-xs">
+                  <span className="inline-flex items-center gap-1.5 font-bold text-amber-200">
+                    <Star className="w-3.5 h-3.5 text-amber-300 fill-current" />
+                    MOM: {m.momPlayerName} ({m.momRating.toFixed(1)})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuickSkipModalOpen(false)}
+                    className="rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                  >
+                    {season.transferMarket.isOpen
+                      ? '이적시장 입장 →'
+                      : '다음 라운드로 →'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Mid-Season Transfer Market Modal (auto-pops when opened outside transfer tab & not in fast-sim/quick-skip) */}
+      {activeTab !== 'transfer' &&
+        fastSimMode === null &&
+        !quickSkipModalOpen && <TransferMarketModal />}
+
+      {/* Confirm Skip Season Modal */}
+      {confirmSkipModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#111822] p-5 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-white">
+                  시즌 끝까지 고속 진행할까요?
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                  남아있는 이적시장(다음: {nextTransferRound}R 종료 후)을 건너뛰고 기본 전술({TACTICS[season.defaultTactic].name})로 {season.totalRounds}R까지 고속 시뮬레이션을 진행합니다.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmSkipModal(false)}
+                className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmSkipModal(false);
+                  setFastSimMode('to_season_end');
+                }}
+                className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+              >
+                고속 진행 시작
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
