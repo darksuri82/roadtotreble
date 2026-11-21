@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { FORMATIONS } from '../../data/formations';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
-  getFatigueLabel,
   getInjuryTooltip,
   getMoraleLabel,
   getMoraleTier,
@@ -306,19 +305,10 @@ export function OpponentPitchView({
                   <span className="mt-0.5 text-[9px] text-slate-500">미정</span>
                 )}
 
-                {player && (conditionMap?.[player.id]?.fatigue ?? 0) >= 50 ? (
-                  <span
-                    title={`누적 피로 ${conditionMap?.[player.id]?.fatigue ?? 0}% (${getFatigueLabel(conditionMap?.[player.id]?.fatigue ?? 0)})`}
-                    className="mt-0.5 rounded bg-orange-500/20 px-1 text-[8px] font-bold text-orange-200 leading-tight"
-                  >
-                    피로 {conditionMap?.[player.id]?.fatigue}%
+                {primaryStyle && (
+                  <span className="mt-0.5 max-w-[74px] truncate rounded bg-slate-900/90 px-1 text-[8px] font-semibold text-slate-300 leading-tight">
+                    {primaryStyle}
                   </span>
-                ) : (
-                  primaryStyle && (
-                    <span className="mt-0.5 max-w-[74px] truncate rounded bg-slate-900/90 px-1 text-[8px] font-semibold text-slate-300 leading-tight">
-                      {primaryStyle}
-                    </span>
-                  )
                 )}
               </div>
             </div>

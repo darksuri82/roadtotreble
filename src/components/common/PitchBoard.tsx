@@ -2,8 +2,6 @@ import { Crown, Diamond, Info } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { BENCH_SLOTS, FORMATIONS } from '../../data/formations';
 import {
-  getFatigueLabel,
-  getFatigueTier,
   getInjuryTooltip,
   getMoraleLabel,
   getMoraleTier,
@@ -42,6 +40,7 @@ interface PitchBoardProps {
   previewSlot?: SlotRef | null;
   staminaByPlayerId?: Record<string, number>;
   conditionByPlayerId?: PlayerConditionMap;
+  highlightedPlayerIds?: Set<string>;
   disabledBenchIds?: Set<string>;
   onSlotClick?: (area: 'starter' | 'bench', index: number) => void;
   onSlotSwap?: (from: SlotRef, to: SlotRef) => void;
@@ -82,6 +81,7 @@ export function PitchBoard({
   previewSlot = null,
   staminaByPlayerId,
   conditionByPlayerId: conditionProp,
+  highlightedPlayerIds,
   disabledBenchIds,
   onSlotClick,
   onSlotSwap,
@@ -312,6 +312,9 @@ export function PitchBoard({
           const isDragOver =
             dragOverSlot?.area === 'starter' &&
             dragOverSlot.index === slot.index;
+          const isHighlightedInjury = Boolean(
+            player && highlightedPlayerIds?.has(player.id),
+          );
           const tier = player ? getCardTier(player) : null;
           const isLegend = tier === 'legend';
           const isSuperstar = tier === 'superstar';
@@ -380,26 +383,32 @@ export function PitchBoard({
             >
               <div
                 className={`relative flex flex-col items-center justify-center rounded-xl px-1.5 py-1 min-w-[60px] sm:min-w-[74px] text-center shadow-md transition-colors ${
-                  isPreview && player
-                    ? 'bg-emerald-950/95 border-2 border-emerald-300 ring-2 ring-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.55)]'
-                    : player
-                      ? isLegend
-                        ? 'bg-gradient-to-b from-amber-950 via-stone-900 to-amber-950 border-2 border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.5)]'
-                        : isSuperstar
-                          ? 'bg-gradient-to-b from-cyan-950 via-slate-900 to-cyan-950 border-2 border-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.42)]'
-                          : staminaPct !== null && staminaPct < 40
-                            ? 'bg-[#251018]/95 border-2 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.45)]'
-                            : staminaPct !== null && staminaPct < 55
-                              ? 'bg-[#22170e]/95 border border-orange-400/90'
-                              : 'bg-[#101822]/95 border border-slate-600/75'
-                      : isActive
-                        ? 'bg-emerald-500/20 border-2 border-emerald-400'
-                        : 'bg-slate-950/70 border border-dashed border-slate-600/60'
+                  isHighlightedInjury && player
+                    ? 'bg-rose-950/95 border-2 border-rose-500 ring-2 ring-rose-400/90 shadow-[0_0_18px_rgba(244,63,94,0.65)]'
+                    : isPreview && player
+                      ? 'bg-emerald-950/95 border-2 border-emerald-300 ring-2 ring-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.55)]'
+                      : player
+                        ? isLegend
+                          ? 'bg-gradient-to-b from-amber-950 via-stone-900 to-amber-950 border-2 border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.5)]'
+                          : isSuperstar
+                            ? 'bg-gradient-to-b from-cyan-950 via-slate-900 to-cyan-950 border-2 border-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.42)]'
+                            : staminaPct !== null && staminaPct < 40
+                              ? 'bg-[#251018]/95 border-2 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.45)]'
+                              : staminaPct !== null && staminaPct < 55
+                                ? 'bg-[#22170e]/95 border border-orange-400/90'
+                                : 'bg-[#101822]/95 border border-slate-600/75'
+                        : isActive
+                          ? 'bg-emerald-500/20 border-2 border-emerald-400'
+                          : 'bg-slate-950/70 border border-dashed border-slate-600/60'
                 } ${isSelected ? 'ring-2 ring-emerald-400' : ''} ${
                   isDragOver ? 'ring-2 ring-sky-400' : ''
                 }`}
               >
-                {isPreview && player ? (
+                {isHighlightedInjury && player ? (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-500 px-1.5 py-0.2 text-[8px] font-black text-white shadow">
+                    부상 발생
+                  </span>
+                ) : isPreview && player ? (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-400 px-1 py-0.2 text-[8px] font-black text-slate-950 shadow">
                     프리뷰
                   </span>
@@ -438,8 +447,6 @@ export function PitchBoard({
                       const cond = conditionByPlayerId?.[player.id];
                       const injured = isPlayerActivelyInjured(cond);
                       const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
-                      const fat = cond?.fatigue ?? 0;
-                      const fatTier = getFatigueTier(fat);
                       return (
                         <>
                           {(injured || mTier === 'ecstatic' || mTier === 'frozen') && (
@@ -516,19 +523,6 @@ export function PitchBoard({
                                 {staminaPct}
                               </span>
                             </div>
-                          ) : fat >= 40 ? (
-                            <span
-                              title={`누적 피로 ${fat}% (${getFatigueLabel(fat)})`}
-                              className={`mt-0.5 rounded px-1 text-[8px] font-extrabold leading-tight tabular-nums ${
-                                fatTier === 'burnout'
-                                  ? 'bg-rose-500/30 text-rose-200'
-                                  : fatTier === 'danger'
-                                    ? 'bg-orange-500/25 text-orange-200'
-                                    : 'bg-amber-500/20 text-amber-200'
-                              }`}
-                            >
-                              피로 {fat}%
-                            </span>
                           ) : null}
                         </>
                       );

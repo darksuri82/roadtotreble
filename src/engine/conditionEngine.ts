@@ -1,6 +1,8 @@
+import { FORMATIONS } from '../data/formations';
 import type {
-  FatigueTier,
   InjuryAlertItem,
+  InjuryAutoReturnEntry,
+  InjuryReturnNotification,
   InjurySeverity,
   ManagerEventsState,
   MoraleTier,
@@ -9,10 +11,11 @@ import type {
   PlayerInjury,
   PositionGroupId,
 } from '../types/condition';
+import type { FormationId, ManagerTraitId } from '../types/game';
 import type { Club, TacticId } from '../types/league';
 import type { Player, Position, SubPosition } from '../types/player';
 import { getClubRealDepthPool } from './dataLoader';
-import { getPlayerStaminaStat } from './staminaEngine';
+import { evaluatePositionFit } from './positionEngine';
 
 // ── Injury Catalogs ──────────────────────────────────────────────────────────
 
@@ -58,7 +61,6 @@ export const SEVERITY_LABELS: Record<InjurySeverity, string> = {
 
 export function createDefaultCondition(): PlayerConditionState {
   return {
-    fatigue: 0,
     morale: 0,
     injury: null,
     consecutiveBenchMatches: 0,
@@ -90,102 +92,8 @@ export function getPlayerCondition(
   return existing;
 }
 
-export function clampFatigue(value: number): number {
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
-
 export function clampMorale(value: number): number {
   return Math.max(-5, Math.min(5, Math.round(value)));
-}
-
-// ── Fatigue Evaluation ───────────────────────────────────────────────────────
-
-const POSITION_FATIGUE_MULT: Record<SubPosition, number> = {
-  GK: 0.45,
-  CB: 0.85,
-  LB: 1.08,
-  RB: 1.08,
-  LWB: 1.12,
-  RWB: 1.12,
-  CDM: 1.08,
-  CM: 1.12,
-  CAM: 1.04,
-  LM: 1.08,
-  RM: 1.08,
-  LW: 1.06,
-  RW: 1.06,
-  ST: 0.95,
-};
-
-const TACTIC_FATIGUE_MULT: Record<TacticId, number> = {
-  gegenpressing: 1.25,
-  wingplay: 1.1,
-  balanced: 1.0,
-  possession: 1.0,
-  counter: 0.9,
-};
-
-export function getFatigueTier(fatigue: number): FatigueTier {
-  if (fatigue >= 80) return 'burnout';
-  if (fatigue >= 60) return 'danger';
-  if (fatigue >= 40) return 'caution';
-  return 'fresh';
-}
-
-export function getFatigueOvrPenalty(fatigue: number): number {
-  if (fatigue >= 80) return -4.5;
-  if (fatigue >= 60) return -2.5;
-  if (fatigue >= 40) return -1.0;
-  return 0;
-}
-
-export function getFatigueInitialStaminaCap(fatigue: number): number {
-  if (fatigue >= 80) return 74;
-  if (fatigue >= 60) return 84;
-  if (fatigue >= 40) return 93;
-  return 100;
-}
-
-export function getFatigueInjuryRiskMultiplier(fatigue: number): number {
-  if (fatigue >= 80) return 2.8;
-  if (fatigue >= 60) return 1.9;
-  if (fatigue >= 40) return 1.3;
-  return 1.0;
-}
-
-export function getFatigueLabel(fatigue: number): string {
-  const tier = getFatigueTier(fatigue);
-  if (tier === 'burnout') return '방전 (혹사)';
-  if (tier === 'danger') return '혹사 위험';
-  if (tier === 'caution') return '피로 주의';
-  return '양호';
-}
-
-/**
- * Computes raw fatigue gained in a single match (before between-round recovery).
- */
-export function computeMatchFatigueGain(params: {
-  player: Pick<Player, 'stamina' | 'mainPositions' | 'position'>;
-  subPosition?: SubPosition;
-  tactic: TacticId;
-  minutesPlayed: number; // 0..120
-}): number {
-  const { player, subPosition, tactic, minutesPlayed } = params;
-  if (minutesPlayed <= 0) return 0;
-
-  const sta = getPlayerStaminaStat(player);
-  // STA 60 => 1.25x, STA 82 => 1.0x, STA 99 => 0.80x
-  const staFactor = 1.25 - ((sta - 60) / 39) * 0.45;
-  const posKey: SubPosition =
-    subPosition ?? player.mainPositions[0] ?? (player.position === 'GK' ? 'GK' : 'CM');
-  const posMult = POSITION_FATIGUE_MULT[posKey] ?? 1.0;
-  const tacticMult = TACTIC_FATIGUE_MULT[tactic] ?? 1.0;
-  const minRatio =
-    minutesPlayed >= 90
-      ? minutesPlayed / 90
-      : Math.max(0.35, minutesPlayed / 90);
-
-  return Math.round(16 * staFactor * posMult * tacticMult * minRatio);
 }
 
 // ── Injury Evaluation & Rolling ──────────────────────────────────────────────
@@ -283,16 +191,15 @@ export function getInjuryMoralePenalty(severity: InjurySeverity): number {
 
 /**
  * Rolls whether a player who played in a match sustains a new injury (or aggravates a minor injury).
- * Base probabilities (per player per 90-min match at fresh fatigue < 40):
- * - minor: 0.30% (~2-3 minor injuries per full season across entire squad)
- * - moderate: 0.020% (~0.12-0.15 per season — genuinely uncommon)
- * - severe: 0.004% (~0.02-0.03 per season — truly rare season-ending event)
- * Scaled by fatigue risk multiplier (1.0x / 1.3x / 1.9x / 2.8x), minutes ratio, and GK factor (0.35x).
+ * Standalone base probabilities per player per 90-min match (no cumulative fatigue dependency):
+ * - minor: 0.42% (~2-2.5 minor injuries per full season across entire squad)
+ * - moderate: 0.030% (~0.16 per season — roughly 1 in 6 seasons, genuinely uncommon)
+ * - severe: 0.006% (~0.03 per season — truly rare season-ending event)
+ * Scaled by minutes ratio and GK factor (0.35x).
  */
 export function rollPlayerMatchInjury(params: {
   player: Pick<Player, 'position'>;
   currentCondition: PlayerConditionState;
-  postMatchFatigue: number;
   minutesPlayed: number;
   round?: number;
   competition?: 'league' | 'cup' | 'ucl';
@@ -301,7 +208,6 @@ export function rollPlayerMatchInjury(params: {
   const {
     player,
     currentCondition,
-    postMatchFatigue,
     minutesPlayed,
     round,
     competition,
@@ -309,14 +215,13 @@ export function rollPlayerMatchInjury(params: {
   } = params;
   if (minutesPlayed <= 0) return { injury: null, wasAggravated: false };
 
-  // Playing through an existing minor injury => +6% aggravation risk
+  // Playing through an existing minor injury => fixed 6% aggravation risk
   if (
     currentCondition.injury &&
     currentCondition.injury.matchesRemaining > 0 &&
     currentCondition.injury.canPlayThrough
   ) {
-    const aggravationChance = 0.06 * (postMatchFatigue >= 60 ? 1.3 : 1.0);
-    if (rng() < aggravationChance) {
+    if (rng() < 0.06) {
       // 30% escalate to moderate, 70% extend minor by +2 matches
       if (rng() < 0.3) {
         return {
@@ -343,14 +248,13 @@ export function rollPlayerMatchInjury(params: {
     return { injury: null, wasAggravated: false };
   }
 
-  const riskMult = getFatigueInjuryRiskMultiplier(postMatchFatigue);
   const gkMult = player.position === 'GK' ? 0.35 : 1.0;
   const minMult = Math.min(1.25, Math.max(0.35, minutesPlayed / 90));
-  const totalMult = riskMult * gkMult * minMult;
+  const totalMult = gkMult * minMult;
 
-  const severeProb = 0.00004 * totalMult;
-  const moderateProb = 0.0002 * totalMult;
-  const minorProb = 0.003 * totalMult;
+  const severeProb = 0.00006 * totalMult;
+  const moderateProb = 0.0003 * totalMult;
+  const minorProb = 0.0042 * totalMult;
 
   const roll = rng();
   if (roll < severeProb) {
@@ -440,7 +344,6 @@ export const POSITION_GROUP_LABELS: Record<PositionGroupId, string> = {
 // ── Integrated Player OVR Adjustment ─────────────────────────────────────────
 
 export interface PlayerConditionOvrBreakdown {
-  fatiguePenalty: number;
   injuryPenalty: number;
   moraleBonus: number;
   totalDelta: number;
@@ -450,17 +353,16 @@ export function getPlayerConditionOvrBreakdown(
   condition: PlayerConditionState | undefined | null,
 ): PlayerConditionOvrBreakdown {
   if (!condition) {
-    return { fatiguePenalty: 0, injuryPenalty: 0, moraleBonus: 0, totalDelta: 0 };
+    return { injuryPenalty: 0, moraleBonus: 0, totalDelta: 0 };
   }
-  const fatiguePenalty = getFatigueOvrPenalty(condition.fatigue);
   const injuryPenalty = getInjuryOvrPenalty(condition);
   const moraleBonus = getMoraleOvrBonus(condition.morale);
-  const totalDelta = Math.round((fatiguePenalty + injuryPenalty + moraleBonus) * 10) / 10;
-  return { fatiguePenalty, injuryPenalty, moraleBonus, totalDelta };
+  const totalDelta = Math.round((injuryPenalty + moraleBonus) * 10) / 10;
+  return { injuryPenalty, moraleBonus, totalDelta };
 }
 
 /**
- * Returns shallow-cloned players with ovr/att/mid/def adjusted by cumulative fatigue,
+ * Returns shallow-cloned players with ovr/att/mid/def adjusted by
  * minor-injury play-through penalty, post-injury rust, and individual + team morale.
  * Used cleanly right before match simulation without mutating base squad cards.
  */
@@ -496,11 +398,11 @@ export interface PostMatchTeamUpdateInput {
   starterIds: Set<string>;
   minutesByPlayerId: Record<string, number>;
   subPositionByPlayerId?: Record<string, SubPosition>;
-  tactic: TacticId;
+  tactic?: TacticId;
   conditionMap: PlayerConditionMap;
   competition: 'league' | 'cup' | 'ucl';
   round?: number;
-  isShortRest?: boolean; // true for midweek cup / UCL fixtures
+  isShortRest?: boolean;
   // Optional match performance signals for morale update
   outcome?: 'W' | 'D' | 'L';
   goalDiff?: number;
@@ -526,8 +428,8 @@ export interface PostMatchTeamUpdateResult {
 }
 
 /**
- * Updates cumulative fatigue, ticks existing injuries, rolls new injuries,
- * and updates player morale for an entire squad (works identically for User & AI clubs).
+ * Ticks existing injuries, rolls standalone new injuries, and updates player morale
+ * for an entire squad (works identically for User & AI clubs).
  */
 export function updateSquadConditionsAfterMatch(
   input: PostMatchTeamUpdateInput,
@@ -536,12 +438,9 @@ export function updateSquadConditionsAfterMatch(
     squad,
     starterIds,
     minutesByPlayerId,
-    subPositionByPlayerId = {},
-    tactic,
     conditionMap,
     competition,
     round,
-    isShortRest = competition !== 'league',
     outcome,
     goalDiff = 0,
     isBigMatch = false,
@@ -621,8 +520,6 @@ export function updateSquadConditionsAfterMatch(
     }
   }
 
-  const playedRecovery = isShortRest ? 5 : 10;
-  const restedRecovery = isShortRest ? 18 : 24;
   let teamFreshInjuriesThisMatch = 0;
   let severeInjuryOccurred = false;
 
@@ -633,21 +530,7 @@ export function updateSquadConditionsAfterMatch(
     const isStarter = starterIds.has(player.id);
     const wasUnavailable = isPlayerUnavailable(prev);
 
-    // 1. Fatigue update
-    let nextFatigue: number;
-    if (played) {
-      const gain = computeMatchFatigueGain({
-        player,
-        subPosition: subPositionByPlayerId[player.id],
-        tactic,
-        minutesPlayed: minutes,
-      });
-      nextFatigue = clampFatigue(prev.fatigue + gain - playedRecovery);
-    } else {
-      nextFatigue = clampFatigue(prev.fatigue - restedRecovery);
-    }
-
-    // 2. Injury roll (if played) or tick down existing injury
+    // 1. Injury roll (if played) or tick down existing injury
     // Cap fresh injuries at max 1 per team per match to avoid multi-injury pileups
     let nextInjury = tickInjuryOneMatch(prev.injury);
     let newInjuryThisMatch: PlayerInjury | null = null;
@@ -658,7 +541,6 @@ export function updateSquadConditionsAfterMatch(
       const rolled = rollPlayerMatchInjury({
         player,
         currentCondition: prev,
-        postMatchFatigue: nextFatigue,
         minutesPlayed: minutes,
         round,
         competition,
@@ -798,7 +680,6 @@ export function updateSquadConditionsAfterMatch(
         : prev.recentGoalDrought;
 
     nextMap[player.id] = {
-      fatigue: nextFatigue,
       morale: clampMorale(nextMorale),
       injury: nextInjury,
       consecutiveBenchMatches: nextBenchStreak,
@@ -820,12 +701,11 @@ export function updateSquadConditionsAfterMatch(
   };
 }
 
-// ── AI Condition-Aware Lineup Selection (Rotation & Injury Substitution) ─────
+// ── AI Condition-Aware Lineup Selection (Injury Substitution) ────────────────
 
 /**
  * Given a full club squad (18+ players) or base roster (11+ players) and global condition map,
- * selects the best available 11 starters respecting injuries (unavailable players sit out)
- * and rotating fatigued players (fatigue >= 65) when a decent backup exists.
+ * selects the best available 11 starters respecting injuries (unavailable players sit out).
  */
 export function selectConditionAwareAiLineup(params: {
   baseRoster: Player[];
@@ -875,12 +755,8 @@ export function selectConditionAwareAiLineup(params: {
       else score -= 6;
     }
     if (cond) {
-      score += getFatigueOvrPenalty(cond.fatigue);
       score += getInjuryOvrPenalty(cond);
       score += getMoraleOvrBonus(cond.morale) * 0.5;
-      // Encourage AI rotation when fatigue >= 65
-      if (cond.fatigue >= 65) score -= 4;
-      if (cond.fatigue >= 80) score -= 4;
     }
     return score;
   };
@@ -888,9 +764,8 @@ export function selectConditionAwareAiLineup(params: {
   for (const basePlayer of baseRoster.slice(0, 11)) {
     const baseCond = conditionMap[basePlayer.id];
     const baseUnavailable = isPlayerUnavailable(baseCond);
-    const baseNeedsRest = (baseCond?.fatigue ?? 0) >= 65;
 
-    if (!baseUnavailable && !baseNeedsRest && !usedIds.has(basePlayer.id)) {
+    if (!baseUnavailable && !usedIds.has(basePlayer.id)) {
       selected.push(basePlayer);
       usedIds.add(basePlayer.id);
       continue;
@@ -932,50 +807,206 @@ export function selectConditionAwareAiLineup(params: {
   };
 }
 
+export interface BenchReplacementRecommendation {
+  player: Player;
+  benchIndex: number;
+  fit: 'main' | 'secondary' | 'out_of_pos' | 'severe';
+  fitLabel: string;
+  positionPenalty: number;
+  effectiveScore: number;
+  isUnavailable: boolean;
+  isGkMismatch: boolean;
+}
+
 /**
- * Recommends top bench replacements for an injured user starter, sorted by effective fit + freshness.
+ * Evaluates all bench players against a target formation slot (subPosition + position),
+ * sorted by effective position-fit + condition OVR so the injury pitch modal shows clear recommendations.
  */
 export function recommendBenchReplacements(params: {
   injuredSlotPosition: Position;
+  injuredSlotSubPosition?: SubPosition;
   bench: (Player | null)[];
   conditionMap: PlayerConditionMap | undefined | null;
-}): { player: Player; benchIndex: number; fitLabel: string; fatigue: number; effectiveScore: number }[] {
-  const { injuredSlotPosition, bench, conditionMap } = params;
-  const results: {
-    player: Player;
-    benchIndex: number;
-    fitLabel: string;
-    fatigue: number;
-    effectiveScore: number;
-  }[] = [];
+  managerTraitId?: ManagerTraitId | null;
+  includeUnavailable?: boolean;
+}): BenchReplacementRecommendation[] {
+  const {
+    injuredSlotPosition,
+    injuredSlotSubPosition,
+    bench,
+    conditionMap,
+    managerTraitId = null,
+    includeUnavailable = false,
+  } = params;
+  const results: BenchReplacementRecommendation[] = [];
+
+  const fallbackSub: SubPosition =
+    injuredSlotSubPosition ??
+    (injuredSlotPosition === 'GK'
+      ? 'GK'
+      : injuredSlotPosition === 'DF'
+        ? 'CB'
+        : injuredSlotPosition === 'MF'
+          ? 'CM'
+          : 'ST');
 
   bench.forEach((p, idx) => {
     if (!p) return;
     const cond = conditionMap?.[p.id];
-    if (isPlayerUnavailable(cond)) return;
+    const unavailable = isPlayerUnavailable(cond);
+    if (unavailable && !includeUnavailable) return;
 
-    const samePos = p.position === injuredSlotPosition;
-    const isGkMismatch = (injuredSlotPosition === 'GK') !== (p.position === 'GK');
-    const posPenalty = isGkMismatch ? -20 : samePos ? 0 : -4;
-    const fatigue = cond?.fatigue ?? 0;
+    const posFit = evaluatePositionFit(p, fallbackSub, managerTraitId);
     const condDelta = getPlayerConditionOvrBreakdown(cond).totalDelta;
-    const effectiveScore = Math.round(p.ovr + posPenalty + condDelta);
+    const isGkMismatch = (fallbackSub === 'GK') !== (p.position === 'GK');
+    const effectiveScore = unavailable
+      ? -99
+      : Math.round(posFit.effectiveOvr + condDelta);
+
+    const fitLabel = isGkMismatch
+      ? 'GK 불일치'
+      : posFit.fit === 'main'
+        ? '주포지션 최적'
+        : posFit.fit === 'secondary'
+          ? '부포지션 가능'
+          : posFit.fit === 'out_of_pos'
+            ? '유사 라인 대체'
+            : '포지션 불일치';
 
     results.push({
       player: p,
       benchIndex: idx,
-      fitLabel: samePos ? '적정 포지션' : isGkMismatch ? 'GK 불일치' : '멀티 대체',
-      fatigue,
+      fit: posFit.fit,
+      fitLabel,
+      positionPenalty: posFit.penalty,
       effectiveScore,
+      isUnavailable: unavailable,
+      isGkMismatch,
     });
   });
 
-  return results.sort((a, b) => b.effectiveScore - a.effectiveScore);
+  return results.sort((a, b) => {
+    if (a.isUnavailable !== b.isUnavailable) return a.isUnavailable ? 1 : -1;
+    if (a.isGkMismatch !== b.isGkMismatch) return a.isGkMismatch ? 1 : -1;
+    return b.effectiveScore - a.effectiveScore;
+  });
+}
+
+/**
+ * Automatically returns fully recovered original starters from the bench back to their
+ * recorded starting slots, moving the temporary replacement back to the bench.
+ * Safely handles departed players, manually already-returned players, and rotated slots.
+ */
+export function resolveAutoReturnInjuredStarters(params: {
+  starters: (Player | null)[];
+  bench: (Player | null)[];
+  conditionMap: PlayerConditionMap;
+  autoReturns: InjuryAutoReturnEntry[];
+  formation: FormationId;
+}): {
+  starters: (Player | null)[];
+  bench: (Player | null)[];
+  remainingAutoReturns: InjuryAutoReturnEntry[];
+  returnedNotifications: InjuryReturnNotification[];
+} {
+  const { starters, bench, conditionMap, autoReturns, formation } = params;
+  if (!autoReturns || autoReturns.length === 0) {
+    return {
+      starters,
+      bench,
+      remainingAutoReturns: [],
+      returnedNotifications: [],
+    };
+  }
+
+  const nextStarters = [...starters];
+  const nextBench = [...bench];
+  const remainingAutoReturns: InjuryAutoReturnEntry[] = [];
+  const returnedNotifications: InjuryReturnNotification[] = [];
+  const formCfg = FORMATIONS[formation] ?? FORMATIONS['4-3-3'];
+
+  for (const entry of autoReturns) {
+    // 1. Already manually returned to starters? Drop entry safely without duplicating.
+    const alreadyInStarters = nextStarters.some(
+      (p) => p?.id === entry.injuredPlayerId,
+    );
+    if (alreadyInStarters) {
+      continue;
+    }
+
+    // 2. Check if still on the bench (if not in starters or bench, player left via transfer).
+    const benchIdx = nextBench.findIndex(
+      (p) => p?.id === entry.injuredPlayerId,
+    );
+    if (benchIdx === -1) {
+      continue;
+    }
+
+    const cond = conditionMap[entry.injuredPlayerId];
+    const stillOutInjured = Boolean(
+      cond?.injury && cond.injury.matchesRemaining > 0,
+    );
+    if (stillOutInjured) {
+      remainingAutoReturns.push(entry);
+      continue;
+    }
+
+    // 3. Fully healed (matchesRemaining === 0): restore to originalSlotIndex safely
+    const healedPlayer = nextBench[benchIdx];
+    if (!healedPlayer) continue;
+
+    const slotIdx =
+      entry.originalSlotIndex >= 0 &&
+      entry.originalSlotIndex < nextStarters.length
+        ? entry.originalSlotIndex
+        : -1;
+    if (slotIdx === -1) {
+      continue;
+    }
+
+    const occupant = nextStarters[slotIdx];
+    const repStarterIdx = entry.replacementPlayerId
+      ? nextStarters.findIndex((p) => p?.id === entry.replacementPlayerId)
+      : -1;
+
+    if (
+      repStarterIdx !== -1 &&
+      repStarterIdx !== slotIdx &&
+      occupant &&
+      occupant.id !== entry.replacementPlayerId
+    ) {
+      // Multi-step rotation reversal:
+      // healed -> originalSlotIndex, current occupant -> repStarterIdx, replacement -> benchIdx
+      const replacementPlayer = nextStarters[repStarterIdx];
+      nextStarters[slotIdx] = healedPlayer;
+      nextStarters[repStarterIdx] = occupant;
+      nextBench[benchIdx] = replacementPlayer;
+    } else {
+      // Direct restore: healed -> originalSlotIndex, current slot occupant (usually replacement) -> benchIdx
+      nextStarters[slotIdx] = healedPlayer;
+      nextBench[benchIdx] = occupant;
+    }
+
+    const slotLabel = formCfg.slots[slotIdx]?.subPosition;
+    returnedNotifications.push({
+      id: `ret_${healedPlayer.id}_${Date.now()}_${slotIdx}`,
+      playerId: healedPlayer.id,
+      playerName: healedPlayer.name,
+      slotLabel,
+    });
+  }
+
+  return {
+    starters: nextStarters,
+    bench: nextBench,
+    remainingAutoReturns,
+    returnedNotifications,
+  };
 }
 
 /**
  * Prepares an AI club's condition-adjusted 11 starters for a match,
- * sitting out injured players and rotating heavily fatigued players using real club depth.
+ * sitting out unavailable injured players using real club depth.
  */
 export function prepareAiClubLineupForMatch(params: {
   club: Club;
@@ -1010,7 +1041,7 @@ export function prepareAiClubLineupForMatch(params: {
 }
 
 /**
- * Updates an AI club's full squad conditions (cumulative fatigue, injury ticks/rolls, morale)
+ * Updates an AI club's full squad conditions (injury ticks/rolls, morale)
  * directly into the mutable working conditionMap after a match.
  */
 export function commitAiClubPostMatchConditions(params: {
@@ -1034,7 +1065,6 @@ export function commitAiClubPostMatchConditions(params: {
     conditionMap,
     competition,
     round,
-    isShortRest = competition !== 'league',
     isExtraTime = false,
     outcome,
     goalDiff = 0,
@@ -1058,7 +1088,6 @@ export function commitAiClubPostMatchConditions(params: {
     conditionMap,
     competition,
     round,
-    isShortRest,
     outcome,
     goalDiff,
     cleanSheet,
@@ -1084,7 +1113,6 @@ export function compactConditionMapForStorage(
   const out: PlayerConditionMap = {};
   for (const [id, c] of Object.entries(map)) {
     if (
-      c.fatigue > 0 ||
       c.morale !== 0 ||
       c.injury !== null ||
       c.consecutiveBenchMatches > 0 ||

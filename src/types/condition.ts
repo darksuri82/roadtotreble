@@ -2,8 +2,6 @@ import type { Position, SubPosition } from './player';
 
 export type InjurySeverity = 'minor' | 'moderate' | 'severe';
 
-export type FatigueTier = 'fresh' | 'caution' | 'danger' | 'burnout';
-
 export type MoraleTier = 'ecstatic' | 'high' | 'normal' | 'low' | 'frozen';
 
 export interface PlayerInjury {
@@ -20,7 +18,6 @@ export interface PlayerInjury {
 }
 
 export interface PlayerConditionState {
-  fatigue: number; // 0..100
   morale: number; // -5..+5
   injury: PlayerInjury | null;
   consecutiveBenchMatches: number;
@@ -43,6 +40,20 @@ export interface InjuryAlertItem {
   starterSlotIndex: number | null;
   injury: PlayerInjury;
   wasAggravated?: boolean;
+}
+
+export interface InjuryAutoReturnEntry {
+  injuredPlayerId: string;
+  injuredPlayerName: string;
+  originalSlotIndex: number;
+  replacementPlayerId: string | null;
+}
+
+export interface InjuryReturnNotification {
+  id: string;
+  playerId: string;
+  playerName: string;
+  slotLabel?: string;
 }
 
 export type ManagerEventCategory = 'press_conference' | 'locker_room';

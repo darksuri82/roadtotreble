@@ -289,14 +289,14 @@ export function pickNextManagerEvent(
   if (lastMatch && userXg >= 1.9 && userGoals <= 1) {
     triggerCandidates.push({ trigger: 'xg_underperform', priority: 8 });
   }
-  const fatiguedStarters = activeStarters.filter(
-    (p) => (conditionMap[p.id]?.fatigue ?? 0) >= 55,
+  const ironmanStarters = activeStarters.filter(
+    (p) => (conditionMap[p.id]?.consecutiveMatchesPlayed ?? 0) >= 4,
   );
-  if (fatiguedStarters.length >= 3) {
+  if (ironmanStarters.length >= 3) {
     triggerCandidates.push({
       trigger: 'fatigue_overload',
       priority: 7,
-      player: fatiguedStarters[0],
+      player: ironmanStarters[0],
     });
   }
   if (userRank <= 4 && nextOpponentRank <= 4) {

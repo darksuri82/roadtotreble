@@ -1,8 +1,6 @@
 import { Crown, Diamond, Users, X } from 'lucide-react';
 import { useEffect } from 'react';
 import {
-  getFatigueLabel,
-  getFatigueTier,
   getInjuryTooltip,
   getMoraleLabel,
   getMoraleTier,
@@ -118,8 +116,6 @@ export function ClubSquadModal({
               const cond = conditionMap?.[p.id];
               const injured = isPlayerActivelyInjured(cond);
               const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
-              const fat = cond?.fatigue ?? 0;
-              const fatTier = getFatigueTier(fat);
               return (
                 <div
                   key={p.id}
@@ -186,17 +182,6 @@ export function ClubSquadModal({
                         <span>
                           {formatMainPositions(p)} · STA {p.stamina ?? 82}
                         </span>
-                        {fat >= 40 && (
-                          <span
-                            className={
-                              fatTier === 'burnout' || fatTier === 'danger'
-                                ? 'text-rose-400 font-semibold'
-                                : 'text-amber-300'
-                            }
-                          >
-                            · 피로 {fat}% ({getFatigueLabel(fat)})
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>

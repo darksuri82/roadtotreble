@@ -10,8 +10,6 @@ import {
 import { useState } from 'react';
 import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
 import {
-  getFatigueLabel,
-  getFatigueTier,
   getInjuryTooltip,
   getMoraleLabel,
   getMoraleTier,
@@ -310,8 +308,6 @@ export function SquadManagerModal({
                 const cond = state.season?.playerConditions?.[r.player.id];
                 const injured = isPlayerActivelyInjured(cond);
                 const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
-                const fat = cond?.fatigue ?? 0;
-                const fatTier = getFatigueTier(fat);
                 return (
                   <tr
                     key={r.player.id}
@@ -367,18 +363,6 @@ export function SquadManagerModal({
                       </div>
                       <span className="text-[10px] text-slate-500">
                         {r.label} · {r.player.club}
-                        {fat >= 40 && (
-                          <span
-                            title={`누적 피로 ${fat}% (${getFatigueLabel(fat)})`}
-                            className={`ml-1.5 font-semibold ${
-                              fatTier === 'burnout' || fatTier === 'danger'
-                                ? 'text-rose-400'
-                                : 'text-amber-300'
-                            }`}
-                          >
-                            · 피로 {fat}%
-                          </span>
-                        )}
                       </span>
                     </td>
                     <td className="py-2 px-2 text-center text-[11px] font-semibold text-slate-300">

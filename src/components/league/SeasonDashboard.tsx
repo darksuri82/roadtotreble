@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
-  getFatigueTier,
   getMoraleLabel,
   getMoraleTier,
   isPlayerActivelyInjured,
@@ -300,19 +299,6 @@ export function SeasonDashboard() {
                 const condMap = season.playerConditions;
                 const teamMorale = season.managerEvents?.teamMorale ?? 0;
                 const mTier = getMoraleTier(teamMorale);
-                const startersFilled = state.starters.filter(
-                  (p): p is NonNullable<typeof p> => Boolean(p),
-                );
-                const avgFatigue =
-                  startersFilled.length > 0
-                    ? Math.round(
-                        startersFilled.reduce(
-                          (acc, p) => acc + (condMap?.[p.id]?.fatigue ?? 0),
-                          0,
-                        ) / startersFilled.length,
-                      )
-                    : 0;
-                const fatTier = getFatigueTier(avgFatigue);
                 const injuredCount = [...state.starters, ...state.bench].filter(
                   (p) => p && isPlayerActivelyInjured(condMap?.[p.id]),
                 ).length;
@@ -336,18 +322,6 @@ export function SeasonDashboard() {
                         <PixelStatusIcon variant="morale_low" size={12} />
                       )}
                       사기 {getMoraleLabel(teamMorale)}
-                    </span>
-                    <span
-                      title="선발 11인 평균 누적 피로도"
-                      className={`font-semibold ${
-                        fatTier === 'burnout' || fatTier === 'danger'
-                          ? 'text-rose-400'
-                          : fatTier === 'caution'
-                            ? 'text-amber-300'
-                            : 'text-slate-300'
-                      }`}
-                    >
-                      피로 {avgFatigue}%
                     </span>
                     {injuredCount > 0 && (
                       <span

@@ -1,5 +1,6 @@
 import { HeaderNav } from './components/common/HeaderNav';
 import { InjuryAlertModal } from './components/common/InjuryAlertModal';
+import { InjuryReturnToast } from './components/common/InjuryReturnToast';
 import { ManagerEventModal } from './components/common/ManagerEventModal';
 import { DraftScreen } from './components/draft/DraftScreen';
 import { LeagueSelect } from './components/league/LeagueSelect';
@@ -16,15 +17,20 @@ import { GameProvider, useGame } from './store/GameContext';
 function GameRouter() {
   const {
     state,
+    chemistry,
+    ratings,
+    swapSquadPositions,
     resolveManagerEvent,
     dismissManagerEventResolution,
     dismissInjuryAlerts,
-    autoReplaceInjuredStarter,
+    dismissInjuryReturnToast,
   } = useGame();
 
   const isPlayableSeason = state.phase === 'season' || state.phase === 'ucl';
   const pendingInjuryAlerts =
     isPlayableSeason ? (state.season?.pendingInjuryAlerts ?? []) : [];
+  const injuryReturnToasts =
+    isPlayableSeason ? (state.season?.injuryReturnToasts ?? []) : [];
   const activeManagerEvent =
     isPlayableSeason && pendingInjuryAlerts.length === 0
       ? (state.season?.managerEvents?.activeEvent ?? null)
@@ -49,12 +55,21 @@ function GameRouter() {
       </main>
       <LegacyHubModal />
       <AchievementToast />
+      <InjuryReturnToast
+        toasts={injuryReturnToasts}
+        onDismiss={dismissInjuryReturnToast}
+      />
       <InjuryAlertModal
         alerts={pendingInjuryAlerts}
+        formation={state.formation}
+        starters={state.starters}
         bench={state.bench}
+        chemistry={chemistry}
+        ratings={ratings}
+        managerTraitId={state.manager.traitId}
         conditionMap={state.season?.playerConditions}
-        onAutoReplace={autoReplaceInjuredStarter}
-        onClose={dismissInjuryAlerts}
+        onSwapSlots={swapSquadPositions}
+        onConfirmClose={dismissInjuryAlerts}
       />
       <ManagerEventModal
         activeEvent={activeManagerEvent}

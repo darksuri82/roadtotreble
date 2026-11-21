@@ -24,6 +24,7 @@ import {
   compactConditionMapForStorage,
   createDefaultManagerEventsState,
   prepareAiClubLineupForMatch,
+  resolveAutoReturnInjuredStarters,
   updateSquadConditionsAfterMatch,
 } from '../engine/conditionEngine';
 import {
@@ -108,6 +109,7 @@ import {
 } from '../engine/uclEngine';
 import type {
   InjuryAlertItem,
+  InjuryAutoReturnEntry,
   ManagerEventsState,
   PlayerConditionMap,
 } from '../types/condition';
@@ -1370,11 +1372,15 @@ type GameAction =
   | { type: 'FINISH_UCL_TO_SUMMARY' }
   | { type: 'RESOLVE_MANAGER_EVENT'; payload: { choiceId: string } }
   | { type: 'DISMISS_MANAGER_EVENT_RESOLUTION' }
-  | { type: 'DISMISS_INJURY_ALERTS' }
+  | {
+      type: 'DISMISS_INJURY_ALERTS';
+      payload?: { autoReturnsToAdd?: InjuryAutoReturnEntry[] };
+    }
   | {
       type: 'AUTO_REPLACE_INJURED_STARTER';
       payload: { starterSlotIndex: number; benchIndex: number; playerId: string };
     }
+  | { type: 'DISMISS_INJURY_RETURN_TOAST'; payload?: { id?: string } }
   | { type: 'MARK_LEGACY_ARCHIVED' }
   | { type: 'RESET_GAME' };
 
@@ -1779,7 +1785,7 @@ function commitLiveMatchResult(
   });
 }
 
-export function gameReducer(state: GameState, action: GameAction): GameState {
+function coreGameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'START_NEW_CAREER': {
       return {
@@ -4908,11 +4914,20 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'DISMISS_INJURY_ALERTS': {
       if (!state.season) return state;
+      const toAdd = action.payload?.autoReturnsToAdd ?? [];
+      let nextAutoReturns = state.season.injuryAutoReturns ?? [];
+      if (toAdd.length > 0) {
+        const byId = new Map<string, InjuryAutoReturnEntry>();
+        for (const e of nextAutoReturns) byId.set(e.injuredPlayerId, e);
+        for (const e of toAdd) byId.set(e.injuredPlayerId, e);
+        nextAutoReturns = Array.from(byId.values());
+      }
       return {
         ...state,
         season: {
           ...state.season,
           pendingInjuryAlerts: [],
+          injuryAutoReturns: nextAutoReturns,
         },
       };
     }
@@ -4922,6 +4937,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const { starterSlotIndex, benchIndex, playerId } = action.payload;
       const nextStarters = [...state.starters];
       const nextBench = [...state.bench];
+      let nextAutoReturns = state.season.injuryAutoReturns ?? [];
       if (
         starterSlotIndex >= 0 &&
         starterSlotIndex < nextStarters.length &&
@@ -4933,6 +4949,17 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         if (replacement) {
           nextStarters[starterSlotIndex] = replacement;
           nextBench[benchIndex] = injuredPlayer;
+          if (injuredPlayer && injuredPlayer.id === playerId) {
+            const byId = new Map<string, InjuryAutoReturnEntry>();
+            for (const e of nextAutoReturns) byId.set(e.injuredPlayerId, e);
+            byId.set(injuredPlayer.id, {
+              injuredPlayerId: injuredPlayer.id,
+              injuredPlayerName: injuredPlayer.name,
+              originalSlotIndex: starterSlotIndex,
+              replacementPlayerId: replacement.id,
+            });
+            nextAutoReturns = Array.from(byId.values());
+          }
         }
       }
       const remainingAlerts = (state.season.pendingInjuryAlerts ?? []).filter(
@@ -4945,6 +4972,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         season: {
           ...state.season,
           pendingInjuryAlerts: remainingAlerts,
+          injuryAutoReturns: nextAutoReturns,
+        },
+      };
+    }
+
+    case 'DISMISS_INJURY_RETURN_TOAST': {
+      if (!state.season) return state;
+      const targetId = action.payload?.id;
+      const nextToasts = targetId
+        ? (state.season.injuryReturnToasts ?? []).filter((t) => t.id !== targetId)
+        : [];
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          injuryReturnToasts: nextToasts,
         },
       };
     }
@@ -4977,6 +5020,51 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     default:
       return state;
   }
+}
+
+export function gameReducer(state: GameState, action: GameAction): GameState {
+  const next = coreGameReducer(state, action);
+  if (
+    !next.season ||
+    next.season.liveHalftime ||
+    !next.season.injuryAutoReturns ||
+    next.season.injuryAutoReturns.length === 0 ||
+    !next.season.playerConditions
+  ) {
+    return next;
+  }
+
+  const res = resolveAutoReturnInjuredStarters({
+    starters: next.starters,
+    bench: next.bench,
+    conditionMap: next.season.playerConditions,
+    autoReturns: next.season.injuryAutoReturns,
+    formation: next.formation,
+  });
+
+  if (
+    res.returnedNotifications.length === 0 &&
+    res.remainingAutoReturns.length === next.season.injuryAutoReturns.length
+  ) {
+    return next;
+  }
+
+  return {
+    ...next,
+    starters: res.starters,
+    bench: res.bench,
+    season: {
+      ...next.season,
+      injuryAutoReturns: res.remainingAutoReturns,
+      injuryReturnToasts:
+        res.returnedNotifications.length > 0
+          ? [
+              ...(next.season.injuryReturnToasts ?? []),
+              ...res.returnedNotifications,
+            ]
+          : next.season.injuryReturnToasts,
+    },
+  };
 }
 
 function loadSavedGameState(): GameState {
@@ -5148,12 +5236,13 @@ interface GameContextValue {
   finishUclToSummary: () => void;
   resolveManagerEvent: (choiceId: string) => void;
   dismissManagerEventResolution: () => void;
-  dismissInjuryAlerts: () => void;
+  dismissInjuryAlerts: (autoReturnsToAdd?: InjuryAutoReturnEntry[]) => void;
   autoReplaceInjuredStarter: (
     starterSlotIndex: number,
     benchIndex: number,
     playerId: string,
   ) => void;
+  dismissInjuryReturnToast: (id?: string) => void;
   resetGame: () => void;
 }
 
@@ -5459,11 +5548,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'RESOLVE_MANAGER_EVENT', payload: { choiceId } }),
       dismissManagerEventResolution: () =>
         dispatch({ type: 'DISMISS_MANAGER_EVENT_RESOLUTION' }),
-      dismissInjuryAlerts: () => dispatch({ type: 'DISMISS_INJURY_ALERTS' }),
+      dismissInjuryAlerts: (autoReturnsToAdd) =>
+        dispatch({
+          type: 'DISMISS_INJURY_ALERTS',
+          payload: autoReturnsToAdd ? { autoReturnsToAdd } : undefined,
+        }),
       autoReplaceInjuredStarter: (starterSlotIndex, benchIndex, playerId) =>
         dispatch({
           type: 'AUTO_REPLACE_INJURED_STARTER',
           payload: { starterSlotIndex, benchIndex, playerId },
+        }),
+      dismissInjuryReturnToast: (id) =>
+        dispatch({
+          type: 'DISMISS_INJURY_RETURN_TOAST',
+          payload: id ? { id } : undefined,
         }),
       resetGame: () => dispatch({ type: 'RESET_GAME' }),
     }),

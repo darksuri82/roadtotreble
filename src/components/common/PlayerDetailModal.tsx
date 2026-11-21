@@ -3,9 +3,6 @@ import { useEffect } from 'react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
-  getFatigueLabel,
-  getFatigueOvrPenalty,
-  getFatigueTier,
   getInjuryOvrPenalty,
   getInjuryTooltip,
   getMoraleLabel,
@@ -280,82 +277,38 @@ export function PlayerDetailModal({
 
         {/* Body */}
         <div className="space-y-4 p-5 max-h-[75vh] overflow-y-auto">
-          {/* v3.0 Condition: Fatigue, Morale, Injury */}
+          {/* Condition: Morale & Injury */}
           {condition && (
             <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2.5">
-              <div className="grid grid-cols-2 gap-2.5 text-xs">
-                <div className="rounded-lg border border-slate-800/90 bg-[#0f1622] px-3 py-2">
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span>누적 피로도</span>
-                    <span
-                      className={`font-bold ${
-                        getFatigueTier(condition.fatigue) === 'burnout' ||
-                        getFatigueTier(condition.fatigue) === 'danger'
-                          ? 'text-rose-400'
-                          : getFatigueTier(condition.fatigue) === 'caution'
-                            ? 'text-amber-300'
-                            : 'text-emerald-300'
-                      }`}
-                    >
-                      {getFatigueLabel(condition.fatigue)}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2 tabular-nums">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-900">
-                      <div
-                        className={`h-full rounded-full ${
-                          condition.fatigue >= 80
-                            ? 'bg-rose-500'
-                            : condition.fatigue >= 60
-                              ? 'bg-orange-400'
-                              : condition.fatigue >= 40
-                                ? 'bg-amber-400'
-                                : 'bg-emerald-400'
-                        }`}
-                        style={{ width: `${Math.min(100, condition.fatigue)}%` }}
-                      />
-                    </div>
-                    <span className="font-bold text-slate-200">
-                      {condition.fatigue}%
-                    </span>
-                  </div>
-                  {getFatigueOvrPenalty(condition.fatigue) < 0 && (
-                    <div className="mt-1 text-[10px] text-rose-300">
-                      실효 OVR {getFatigueOvrPenalty(condition.fatigue)}
-                    </div>
-                  )}
+              <div className="rounded-lg border border-slate-800/90 bg-[#0f1622] px-3 py-2 text-xs">
+                <div className="flex items-center justify-between text-[10px] text-slate-400">
+                  <span>선수 사기</span>
+                  <span className="inline-flex items-center gap-1 font-bold text-slate-200">
+                    {getMoraleTier(condition.morale) === 'ecstatic' && (
+                      <PixelStatusIcon variant="morale_high" size={12} />
+                    )}
+                    {getMoraleTier(condition.morale) === 'frozen' && (
+                      <PixelStatusIcon variant="morale_low" size={12} />
+                    )}
+                    {getMoraleLabel(condition.morale)}
+                  </span>
                 </div>
-
-                <div className="rounded-lg border border-slate-800/90 bg-[#0f1622] px-3 py-2">
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span>선수 사기</span>
-                    <span className="inline-flex items-center gap-1 font-bold text-slate-200">
-                      {getMoraleTier(condition.morale) === 'ecstatic' && (
-                        <PixelStatusIcon variant="morale_high" size={12} />
-                      )}
-                      {getMoraleTier(condition.morale) === 'frozen' && (
-                        <PixelStatusIcon variant="morale_low" size={12} />
-                      )}
-                      {getMoraleLabel(condition.morale)}
-                    </span>
-                  </div>
-                  <div className="mt-1 flex items-baseline justify-between tabular-nums">
-                    <span className="font-display text-sm font-black text-white">
-                      {condition.morale > 0 ? `+${condition.morale}` : condition.morale} / 5
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold ${
-                        getMoraleOvrBonus(condition.morale) > 0
-                          ? 'text-emerald-300'
-                          : getMoraleOvrBonus(condition.morale) < 0
-                            ? 'text-sky-300'
-                            : 'text-slate-400'
-                      }`}
-                    >
-                      OVR {getMoraleOvrBonus(condition.morale) >= 0 ? '+' : ''}
-                      {getMoraleOvrBonus(condition.morale)}
-                    </span>
-                  </div>
+                <div className="mt-1 flex items-baseline justify-between tabular-nums">
+                  <span className="font-display text-sm font-black text-white">
+                    {condition.morale > 0 ? `+${condition.morale}` : condition.morale} / 5
+                  </span>
+                  <span
+                    className={`text-[10px] font-bold ${
+                      getMoraleOvrBonus(condition.morale) > 0
+                        ? 'text-emerald-300'
+                        : getMoraleOvrBonus(condition.morale) < 0
+                          ? 'text-sky-300'
+                          : 'text-slate-400'
+                    }`}
+                  >
+                    OVR {getMoraleOvrBonus(condition.morale) >= 0 ? '+' : ''}
+                    {getMoraleOvrBonus(condition.morale)}
+                  </span>
                 </div>
               </div>
 

@@ -1,5 +1,7 @@
 import type {
   InjuryAlertItem,
+  InjuryAutoReturnEntry,
+  InjuryReturnNotification,
   ManagerEventsState,
   PlayerConditionMap,
 } from './condition';
@@ -343,10 +345,12 @@ export interface SeasonState {
   seasonScore: SeasonScoreBreakdown | null;
   legacyArchived?: boolean;
   departedPlayerIds?: string[];
-  // v3.0: Cumulative fatigue, 3-tier injuries, morale & press/locker room events
+  // v3.0 / v3.1: 3-tier injuries, morale, press/locker room events & injury auto-return
   playerConditions?: PlayerConditionMap;
   managerEvents?: ManagerEventsState;
   pendingInjuryAlerts?: InjuryAlertItem[];
+  injuryAutoReturns?: InjuryAutoReturnEntry[];
+  injuryReturnToasts?: InjuryReturnNotification[];
 }
 
 export interface GameState {
