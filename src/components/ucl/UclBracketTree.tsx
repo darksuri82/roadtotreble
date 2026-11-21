@@ -6,6 +6,7 @@ import { PixelTrophySvg } from '../common/PixelTrophySvg';
 interface UclBracketTreeProps {
   ucl: UclTournamentState;
   clubsById: Record<string, Club>;
+  onSelectTie?: (tie: UclKnockoutTie) => void;
 }
 
 const SLOT_H = 74; // Base vertical slot height for 8-tie columns (R16 & Playoff)
@@ -35,10 +36,12 @@ function TieCard({
   tie,
   clubsById,
   placeholderLabel,
+  onSelectTie,
 }: {
   tie?: UclKnockoutTie;
   clubsById: Record<string, Club>;
   placeholderLabel: string;
+  onSelectTie?: (tie: UclKnockoutTie) => void;
 }) {
   if (!tie) {
     return (
@@ -56,6 +59,7 @@ function TieCard({
   const bWon = tie.winnerId === tie.teamBId;
   const hasPlayed = Boolean(tie.leg1 || tie.leg2);
   const involvesUser = aIsUser || bIsUser;
+  const clickable = Boolean(hasPlayed && onSelectTie);
 
   const badge =
     tie.decidedBy === 'penalties' &&
@@ -68,14 +72,8 @@ function TieCard({
           ? '1차전'
           : null;
 
-  return (
-    <div
-      className={`w-[188px] overflow-hidden rounded-xl border transition ${
-        involvesUser
-          ? 'border-emerald-500/55 bg-[#101e1c] shadow-sm shadow-emerald-500/10'
-          : 'border-slate-800 bg-[#121923]'
-      }`}
-    >
+  const inner = (
+    <>
       {/* Team A Row */}
       <div
         className={`flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-[11px] ${
@@ -166,8 +164,29 @@ function TieCard({
           </span>
         </div>
       </div>
-    </div>
+    </>
   );
+
+  const cls = `w-[188px] overflow-hidden rounded-xl border text-left transition ${
+    involvesUser
+      ? 'border-emerald-500/55 bg-[#101e1c] shadow-sm shadow-emerald-500/10'
+      : 'border-slate-800 bg-[#121923]'
+  } ${clickable ? 'hover:border-sky-400/75 hover:brightness-110 cursor-pointer' : ''}`;
+
+  if (clickable && onSelectTie) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelectTie(tie)}
+        title="클릭하여 1·2차전 경기 상세 리포트 보기"
+        className={cls}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return <div className={cls}>{inner}</div>;
 }
 
 /**
@@ -219,7 +238,11 @@ function BracketConnectorSvg({
   );
 }
 
-export function UclBracketTree({ ucl, clubsById }: UclBracketTreeProps) {
+export function UclBracketTree({
+  ucl,
+  clubsById,
+  onSelectTie,
+}: UclBracketTreeProps) {
   const playoffTies = ucl.ties.playoff;
   const r16Ties = ucl.ties.r16;
   const qfTies = ucl.ties.qf;
@@ -241,6 +264,7 @@ export function UclBracketTree({ ucl, clubsById }: UclBracketTreeProps) {
             </h4>
             <p className="text-[11px] text-slate-400">
               플레이오프 승자 8팀이 리그 페이즈 1~8위 시드 팀과 16강에서 격돌합니다
+              {onSelectTie ? ' · 종료된 경기 클릭 시 상세 리포트' : ''}
             </p>
           </div>
           <span className="rounded-md border border-slate-800 bg-slate-900 px-2.5 py-1 text-[10px] font-semibold text-slate-400">
@@ -254,6 +278,7 @@ export function UclBracketTree({ ucl, clubsById }: UclBracketTreeProps) {
                 tie={playoffTies[idx]}
                 clubsById={clubsById}
                 placeholderLabel={`플레이오프 #${idx + 1}`}
+                onSelectTie={onSelectTie}
               />
             </div>
           ))}
@@ -262,12 +287,12 @@ export function UclBracketTree({ ucl, clubsById }: UclBracketTreeProps) {
 
       {/* Main Authentic Orthogonal Knockout Tree: R16 -> QF -> SF -> FINAL -> BIG EARS */}
       <div className="rounded-2xl border border-slate-800/90 bg-[#0d141f] p-4">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300">
             UEFA 챔피언스리그 토너먼트 대진표 (16강 → 결승)
           </h4>
           <span className="text-[11px] text-slate-500">
-            ← 가로 스크롤로 전체 대진표 확인 →
+            ← 가로 스크롤 · 종료된 경기 클릭 시 1·2차전 상세 리포트 →
           </span>
         </div>
 
@@ -300,6 +325,7 @@ export function UclBracketTree({ ucl, clubsById }: UclBracketTreeProps) {
                       tie={r16Ties[idx]}
                       clubsById={clubsById}
                       placeholderLabel={`16강 #${idx + 1}`}
+                      onSelectTie={onSelectTie}
                     />
                   </div>
                 ))}
@@ -319,6 +345,7 @@ export function UclBracketTree({ ucl, clubsById }: UclBracketTreeProps) {
                       tie={qfTies[idx]}
                       clubsById={clubsById}
                       placeholderLabel={`8강 #${idx + 1}`}
+                      onSelectTie={onSelectTie}
                     />
                   </div>
                 ))}
@@ -338,6 +365,7 @@ export function UclBracketTree({ ucl, clubsById }: UclBracketTreeProps) {
                       tie={sfTies[idx]}
                       clubsById={clubsById}
                       placeholderLabel={`4강 #${idx + 1}`}
+                      onSelectTie={onSelectTie}
                     />
                   </div>
                 ))}
@@ -351,6 +379,7 @@ export function UclBracketTree({ ucl, clubsById }: UclBracketTreeProps) {
                   tie={finalTie}
                   clubsById={clubsById}
                   placeholderLabel="UCL 결승전 (단판)"
+                  onSelectTie={onSelectTie}
                 />
               </div>
 

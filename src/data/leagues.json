@@ -6,30 +6,374 @@
     "country": "잉글랜드",
     "accentColor": "#38bdf8",
     "totalRounds": 38,
-    "transferWindows": [10, 19, 28],
+    "transferWindows": [
+      10,
+      19,
+      28
+    ],
     "uclSpots": 4,
     "relegationSpots": 3,
     "clubs": [
-      { "id": "epl-mci", "name": "맨체스터 시티", "shortName": "MCI", "primaryColor": "#6CABDD", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 87, "mid": 86, "def": 86, "topScorers": ["엘링 홀란", "필 포든", "라얀 셰르키"] },
-      { "id": "epl-ars", "name": "아스널", "shortName": "ARS", "primaryColor": "#EF0107", "secondaryColor": "#FFFFFF", "pattern": "half", "formation": "4-3-3", "defaultTactic": "possession", "att": 87, "mid": 87, "def": 87, "topScorers": ["빅토르 요케레스", "부카요 사카", "에베레치 에제"] },
-      { "id": "epl-liv", "name": "리버풀", "shortName": "LIV", "primaryColor": "#C8102E", "secondaryColor": "#F6EB61", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 87, "mid": 86, "def": 85, "topScorers": ["알렉산데르 이삭", "플로리안 비르츠", "코디 각포"] },
-      { "id": "epl-che", "name": "첼시", "shortName": "CHE", "primaryColor": "#034694", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 84, "mid": 82, "def": 81, "topScorers": ["콜 파머", "주앙 페드루", "모건 로저스"] },
-      { "id": "epl-mun", "name": "맨체스터 유나이티드", "shortName": "MUN", "primaryColor": "#DA291C", "secondaryColor": "#111827", "pattern": "solid", "formation": "3-4-2-1", "defaultTactic": "counter", "att": 84, "mid": 82, "def": 81, "topScorers": ["마테우스 쿠냐", "브라이언 음뵈모", "베냐민 셰슈코"] },
-      { "id": "epl-tot", "name": "토트넘 홋스퍼", "shortName": "TOT", "primaryColor": "#F8FAFC", "secondaryColor": "#132257", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 83, "mid": 82, "def": 80, "topScorers": ["도미닉 솔란케", "사비 시몬스", "모하메드 쿠두스"] },
-      { "id": "epl-new", "name": "뉴캐슬 유나이티드", "shortName": "NEW", "primaryColor": "#1F2937", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-3-3", "defaultTactic": "gegenpressing", "att": 82, "mid": 81, "def": 81, "topScorers": ["요안 위사", "안토니 엘랑가", "하비 반스"] },
-      { "id": "epl-avl", "name": "아스톤 빌라", "shortName": "AVL", "primaryColor": "#670E36", "secondaryColor": "#95BFE5", "pattern": "half", "formation": "4-2-3-1", "defaultTactic": "counter", "att": 81, "mid": 81, "def": 80, "topScorers": ["올리 왓킨스", "도니얼 말런", "존 맥긴"] },
-      { "id": "epl-bha", "name": "브라이튼", "shortName": "BHA", "primaryColor": "#0057B8", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 80, "mid": 80, "def": 79, "topScorers": ["미토마 카오루", "대니 웰벡", "얀쿠바 민테"] },
-      { "id": "epl-nfo", "name": "노팅엄 포레스트", "shortName": "NFO", "primaryColor": "#DD0000", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "counter", "att": 80, "mid": 79, "def": 80, "topScorers": ["크리스 우드", "리암 델랍", "모건 깁스-화이트"] },
-      { "id": "epl-bou", "name": "본머스", "shortName": "BOU", "primaryColor": "#B50E12", "secondaryColor": "#111827", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 80, "mid": 79, "def": 78, "topScorers": ["에바니우송", "저스틴 클라위버르트", "마커스 태버니어"] },
-      { "id": "epl-ful", "name": "풀럼", "shortName": "FUL", "primaryColor": "#F1F5F9", "secondaryColor": "#111827", "pattern": "half", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 79, "mid": 79, "def": 78, "topScorers": ["라울 히메네스", "알렉스 이워비", "에밀 스미스 로우"] },
-      { "id": "epl-bre", "name": "브렌트포드", "shortName": "BRE", "primaryColor": "#E30613", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-3-3", "defaultTactic": "wingplay", "att": 79, "mid": 78, "def": 78, "topScorers": ["케빈 샤데", "미켈 담스고르", "이고르 티아고"] },
-      { "id": "epl-cry", "name": "크리스탈 팰리스", "shortName": "CRY", "primaryColor": "#1B458F", "secondaryColor": "#C4122E", "pattern": "stripes", "formation": "3-4-2-1", "defaultTactic": "counter", "att": 78, "mid": 78, "def": 78, "topScorers": ["장필리프 마테타", "이스마일라 사르", "다이치 카마다"] },
-      { "id": "epl-eve", "name": "에버턴", "shortName": "EVE", "primaryColor": "#003399", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "counter", "att": 77, "mid": 77, "def": 78, "topScorers": ["잭 그릴리시", "베투", "드와이트 맥닐"] },
-      { "id": "epl-sun", "name": "선덜랜드", "shortName": "SUN", "primaryColor": "#EB172B", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 76, "mid": 77, "def": 76, "topScorers": ["엔소 르 페", "윌손 이지도르", "그라니트 자카"] },
-      { "id": "epl-lee", "name": "리즈 유나이티드", "shortName": "LEE", "primaryColor": "#F8FAFC", "secondaryColor": "#FFCD00", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 76, "mid": 76, "def": 75, "topScorers": ["요엘 피루", "다니엘 제임스", "윌프리드 뇬토"] },
-      { "id": "epl-ips", "name": "입스위치 타운", "shortName": "IPS", "primaryColor": "#0055A4", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 74, "mid": 74, "def": 73, "topScorers": ["오마리 허친슨", "샘 스모딕스", "조지 허스트"] },
-      { "id": "epl-cov", "name": "코번트리 시티", "shortName": "COV", "primaryColor": "#38BDF8", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "counter", "att": 73, "mid": 73, "def": 73, "topScorers": ["하지 라이트", "엘리스 심스", "잭 루도니"] },
-      { "id": "epl-hul", "name": "헐 시티", "shortName": "HUL", "primaryColor": "#F59E0B", "secondaryColor": "#111827", "pattern": "stripes", "formation": "4-3-3", "defaultTactic": "balanced", "att": 72, "mid": 72, "def": 72, "topScorers": ["모하메드 벨루미", "조 겔하트", "리암 밀러"] }
+      {
+        "id": "epl-mci",
+        "name": "맨체스터 시티",
+        "shortName": "MCI",
+        "primaryColor": "#6CABDD",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 87,
+        "mid": 86,
+        "def": 86,
+        "topScorers": [
+          "엘링 홀란",
+          "제레미 도쿠",
+          "엔소 페르난데스"
+        ]
+      },
+      {
+        "id": "epl-ars",
+        "name": "아스널",
+        "shortName": "ARS",
+        "primaryColor": "#EF0107",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "half",
+        "formation": "4-3-3",
+        "defaultTactic": "possession",
+        "att": 87,
+        "mid": 87,
+        "def": 87,
+        "topScorers": [
+          "부카요 사카",
+          "데클런 라이스",
+          "빅토르 요케레스"
+        ]
+      },
+      {
+        "id": "epl-liv",
+        "name": "리버풀",
+        "shortName": "LIV",
+        "primaryColor": "#C8102E",
+        "secondaryColor": "#F6EB61",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 87,
+        "mid": 86,
+        "def": 85,
+        "topScorers": [
+          "알렉산데르 이삭",
+          "플로리안 비르츠",
+          "브래들리 바르콜라"
+        ]
+      },
+      {
+        "id": "epl-che",
+        "name": "첼시",
+        "shortName": "CHE",
+        "primaryColor": "#034694",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 84,
+        "mid": 82,
+        "def": 81,
+        "topScorers": [
+          "콜 파머",
+          "주앙 페드루",
+          "페드루 네투"
+        ]
+      },
+      {
+        "id": "epl-mun",
+        "name": "맨체스터 유나이티드",
+        "shortName": "MUN",
+        "primaryColor": "#DA291C",
+        "secondaryColor": "#111827",
+        "pattern": "solid",
+        "formation": "3-4-2-1",
+        "defaultTactic": "counter",
+        "att": 84,
+        "mid": 82,
+        "def": 81,
+        "topScorers": [
+          "브라이언 음뵈모",
+          "베냐민 셰슈코",
+          "브루누 페르난데스"
+        ]
+      },
+      {
+        "id": "epl-tot",
+        "name": "토트넘 홋스퍼",
+        "shortName": "TOT",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#132257",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 83,
+        "mid": 82,
+        "def": 80,
+        "topScorers": [
+          "데얀 쿨루셉스키",
+          "오마르 마르무시",
+          "모하메드 쿠두스"
+        ]
+      },
+      {
+        "id": "epl-new",
+        "name": "뉴캐슬 유나이티드",
+        "shortName": "NEW",
+        "primaryColor": "#1F2937",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-3-3",
+        "defaultTactic": "gegenpressing",
+        "att": 82,
+        "mid": 81,
+        "def": 81,
+        "topScorers": [
+          "요안 위사",
+          "안토니 엘랑가",
+          "하비 반스"
+        ]
+      },
+      {
+        "id": "epl-avl",
+        "name": "아스톤 빌라",
+        "shortName": "AVL",
+        "primaryColor": "#670E36",
+        "secondaryColor": "#95BFE5",
+        "pattern": "half",
+        "formation": "4-2-3-1",
+        "defaultTactic": "counter",
+        "att": 81,
+        "mid": 81,
+        "def": 80,
+        "topScorers": [
+          "니콜라 잭슨",
+          "알레한드로 가르나초",
+          "부바카르 카마라"
+        ]
+      },
+      {
+        "id": "epl-bha",
+        "name": "브라이튼",
+        "shortName": "BHA",
+        "primaryColor": "#0057B8",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 80,
+        "mid": 80,
+        "def": 79,
+        "topScorers": [
+          "미토마 카오루",
+          "얀쿠바 민테",
+          "조르지니오 뤼터"
+        ]
+      },
+      {
+        "id": "epl-nfo",
+        "name": "노팅엄 포레스트",
+        "shortName": "NFO",
+        "primaryColor": "#DD0000",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "counter",
+        "att": 80,
+        "mid": 79,
+        "def": 80,
+        "topScorers": [
+          "리암 델랍",
+          "크리스 우드",
+          "단 은도예"
+        ]
+      },
+      {
+        "id": "epl-bou",
+        "name": "본머스",
+        "shortName": "BOU",
+        "primaryColor": "#B50E12",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 80,
+        "mid": 79,
+        "def": 78,
+        "topScorers": [
+          "에바니우송",
+          "마커스 태버니어",
+          "엘리 주니오르 크루피"
+        ]
+      },
+      {
+        "id": "epl-ful",
+        "name": "풀럼",
+        "shortName": "FUL",
+        "primaryColor": "#F1F5F9",
+        "secondaryColor": "#111827",
+        "pattern": "half",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 79,
+        "mid": 79,
+        "def": 78,
+        "topScorers": [
+          "오스카르 보브",
+          "호드리구 무니스",
+          "케빈 마세두"
+        ]
+      },
+      {
+        "id": "epl-bre",
+        "name": "브렌트포드",
+        "shortName": "BRE",
+        "primaryColor": "#E30613",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-3-3",
+        "defaultTactic": "wingplay",
+        "att": 79,
+        "mid": 78,
+        "def": 78,
+        "topScorers": [
+          "이고르 티아고",
+          "케빈 샤데",
+          "당고 와타라"
+        ]
+      },
+      {
+        "id": "epl-cry",
+        "name": "크리스탈 팰리스",
+        "shortName": "CRY",
+        "primaryColor": "#1B458F",
+        "secondaryColor": "#C4122E",
+        "pattern": "stripes",
+        "formation": "3-4-2-1",
+        "defaultTactic": "counter",
+        "att": 78,
+        "mid": 78,
+        "def": 78,
+        "topScorers": [
+          "장필리프 마테타",
+          "예레미 피노",
+          "예르겐 스트란 라르센"
+        ]
+      },
+      {
+        "id": "epl-eve",
+        "name": "에버턴",
+        "shortName": "EVE",
+        "primaryColor": "#003399",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "counter",
+        "att": 77,
+        "mid": 77,
+        "def": 78,
+        "topScorers": [
+          "잭 그릴리시",
+          "브레넌 존슨",
+          "티에르노 바리"
+        ]
+      },
+      {
+        "id": "epl-sun",
+        "name": "선덜랜드",
+        "shortName": "SUN",
+        "primaryColor": "#EB172B",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 76,
+        "mid": 77,
+        "def": 76,
+        "topScorers": [
+          "브라이언 브로비",
+          "말릭 포파나",
+          "그라니트 자카"
+        ]
+      },
+      {
+        "id": "epl-lee",
+        "name": "리즈 유나이티드",
+        "shortName": "LEE",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#FFCD00",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 76,
+        "mid": 76,
+        "def": 75,
+        "topScorers": [
+          "노아 오카포르",
+          "해리 윌슨",
+          "도미닉 칼버트-르윈"
+        ]
+      },
+      {
+        "id": "epl-ips",
+        "name": "입스위치 타운",
+        "shortName": "IPS",
+        "primaryColor": "#0055A4",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 74,
+        "mid": 74,
+        "def": 73,
+        "topScorers": [
+          "마에다 다이젠",
+          "에세키엘 팔라시오스",
+          "압둘 파타우"
+        ]
+      },
+      {
+        "id": "epl-cov",
+        "name": "코번트리 시티",
+        "shortName": "COV",
+        "primaryColor": "#38BDF8",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "counter",
+        "att": 73,
+        "mid": 73,
+        "def": 73,
+        "topScorers": [
+          "타이워 아워니이",
+          "룸 차우나",
+          "구스타보 하머"
+        ]
+      },
+      {
+        "id": "epl-hul",
+        "name": "헐 시티",
+        "shortName": "HUL",
+        "primaryColor": "#F59E0B",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "4-3-3",
+        "defaultTactic": "balanced",
+        "att": 72,
+        "mid": 72,
+        "def": 72,
+        "topScorers": [
+          "모하메드-알리 쇼",
+          "모하메드 벨루미",
+          "모리타 히데마사"
+        ]
+      }
     ]
   },
   {
@@ -39,30 +383,374 @@
     "country": "스페인",
     "accentColor": "#f97316",
     "totalRounds": 38,
-    "transferWindows": [10, 19, 28],
+    "transferWindows": [
+      10,
+      19,
+      28
+    ],
     "uclSpots": 4,
     "relegationSpots": 3,
     "clubs": [
-      { "id": "lal-bar", "name": "FC 바르셀로나", "shortName": "BAR", "primaryColor": "#A50044", "secondaryColor": "#004D98", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 88, "mid": 88, "def": 84, "topScorers": ["라민 야말", "하피냐", "로베르트 레반도프스키"] },
-      { "id": "lal-rma", "name": "레알 마드리드", "shortName": "RMA", "primaryColor": "#F8FAFC", "secondaryColor": "#D4AF37", "pattern": "solid", "formation": "4-3-3", "defaultTactic": "balanced", "att": 88, "mid": 87, "def": 86, "topScorers": ["킬리안 음바페", "비니시우스 주니오르", "주드 벨링엄"] },
-      { "id": "lal-atm", "name": "아틀레티코 마드리드", "shortName": "ATM", "primaryColor": "#CB3524", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-4-2", "defaultTactic": "counter", "att": 85, "mid": 84, "def": 85, "topScorers": ["훌리안 알바레스", "알렉스 바에나", "아데몰라 루크먼"] },
-      { "id": "lal-ath", "name": "아틀레틱 빌바오", "shortName": "ATH", "primaryColor": "#EE2523", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 82, "mid": 81, "def": 81, "topScorers": ["오이안 산세트", "니코 윌리암스", "이냐키 윌리암스"] },
-      { "id": "lal-vil", "name": "비야레알", "shortName": "VIL", "primaryColor": "#FFE667", "secondaryColor": "#005187", "pattern": "solid", "formation": "4-4-2", "defaultTactic": "wingplay", "att": 81, "mid": 80, "def": 79, "topScorers": ["아요세 페레스", "제라르 모레노", "예레미 피노"] },
-      { "id": "lal-bet", "name": "레알 베티스", "shortName": "BET", "primaryColor": "#0BB363", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 81, "mid": 80, "def": 79, "topScorers": ["이스코", "지오바니 로 셀소", "쿠초 에르난데스"] },
-      { "id": "lal-rso", "name": "레알 소시에다드", "shortName": "RSO", "primaryColor": "#0067B1", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-3-3", "defaultTactic": "possession", "att": 79, "mid": 80, "def": 79, "topScorers": ["미켈 오야르사발", "쿠보 다케후사", "브라이스 멘데스"] },
-      { "id": "lal-cel", "name": "셀타 비고", "shortName": "CEL", "primaryColor": "#8AC3EE", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "3-4-3", "defaultTactic": "wingplay", "att": 78, "mid": 77, "def": 76, "topScorers": ["이아고 아스파스", "보르하 이글레시아스", "빌리오트 스베드베리"] },
-      { "id": "lal-sev", "name": "세비야", "shortName": "SEV", "primaryColor": "#F8FAFC", "secondaryColor": "#D40026", "pattern": "sash", "formation": "4-3-3", "defaultTactic": "balanced", "att": 78, "mid": 77, "def": 77, "topScorers": ["도디 루케바키오", "이사크 로메로", "루벤 바르가스"] },
-      { "id": "lal-osa", "name": "오사수나", "shortName": "OSA", "primaryColor": "#D91A21", "secondaryColor": "#0A346F", "pattern": "solid", "formation": "4-3-3", "defaultTactic": "wingplay", "att": 78, "mid": 77, "def": 76, "topScorers": ["안테 부디미르", "아이마르 오로스", "루벤 가르시아"] },
-      { "id": "lal-ray", "name": "라요 바예카노", "shortName": "RAY", "primaryColor": "#F8FAFC", "secondaryColor": "#E53027", "pattern": "sash", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 76, "mid": 76, "def": 76, "topScorers": ["이시 팔라손", "호르헤 데 프루토스", "세르히오 카메요"] },
-      { "id": "lal-val", "name": "발렌시아", "shortName": "VAL", "primaryColor": "#F8FAFC", "secondaryColor": "#F97316", "pattern": "solid", "formation": "4-4-2", "defaultTactic": "counter", "att": 76, "mid": 76, "def": 75, "topScorers": ["우고 두로", "디에고 로페스", "하비 게라"] },
-      { "id": "lal-get", "name": "헤타페", "shortName": "GET", "primaryColor": "#005999", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-4-2", "defaultTactic": "counter", "att": 75, "mid": 76, "def": 77, "topScorers": ["마우로 아람바리", "보르하 마요랄", "크리스탄투스 우체"] },
-      { "id": "lal-esp", "name": "에스파뇰", "shortName": "ESP", "primaryColor": "#007FC8", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-4-2", "defaultTactic": "counter", "att": 75, "mid": 74, "def": 74, "topScorers": ["하비 푸아도", "호프레 카레라스", "로베르토 페르난데스"] },
-      { "id": "lal-ala", "name": "알라베스", "shortName": "ALA", "primaryColor": "#00529F", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "balanced", "att": 74, "mid": 74, "def": 74, "topScorers": ["키케 가르시아", "카를로스 비센테", "토니 마르티네스"] },
-      { "id": "lal-elc", "name": "엘체", "shortName": "ELC", "primaryColor": "#F8FAFC", "secondaryColor": "#15803D", "pattern": "hoops", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 74, "mid": 74, "def": 73, "topScorers": ["토마 르마", "니코 페르난데스", "아구스틴 알바레스"] },
-      { "id": "lal-lev", "name": "레반테", "shortName": "LEV", "primaryColor": "#1D4ED8", "secondaryColor": "#DC2626", "pattern": "stripes", "formation": "4-4-2", "defaultTactic": "counter", "att": 73, "mid": 73, "def": 73, "topScorers": ["호세 루이스 모랄레스", "로헤르 브루게", "이반 로메로"] },
-      { "id": "lal-dep", "name": "데포르티보 라 코루냐", "shortName": "DEP", "primaryColor": "#005CA9", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 73, "mid": 73, "def": 74, "topScorers": ["예레마이 에르난데스", "다비드 메야", "루카스 페레스"] },
-      { "id": "lal-rac", "name": "라싱 산탄데르", "shortName": "RAC", "primaryColor": "#16A34A", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 72, "mid": 72, "def": 72, "topScorers": ["안드레스 마르틴", "이니고 비센테", "후안 카를로스 아라나"] },
-      { "id": "lal-mlg", "name": "말라가", "shortName": "MLG", "primaryColor": "#38BDF8", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-3-3", "defaultTactic": "balanced", "att": 71, "mid": 72, "def": 71, "topScorers": ["안토니오 코르데로", "다비드 라루비아", "디오니"] }
+      {
+        "id": "lal-bar",
+        "name": "FC 바르셀로나",
+        "shortName": "BAR",
+        "primaryColor": "#A50044",
+        "secondaryColor": "#004D98",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 88,
+        "mid": 88,
+        "def": 84,
+        "topScorers": [
+          "라민 야말",
+          "로드리",
+          "하피냐"
+        ]
+      },
+      {
+        "id": "lal-rma",
+        "name": "레알 마드리드",
+        "shortName": "RMA",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#D4AF37",
+        "pattern": "solid",
+        "formation": "4-3-3",
+        "defaultTactic": "balanced",
+        "att": 88,
+        "mid": 87,
+        "def": 86,
+        "topScorers": [
+          "킬리안 음바페",
+          "비니시우스 주니오르",
+          "주드 벨링엄"
+        ]
+      },
+      {
+        "id": "lal-atm",
+        "name": "아틀레티코 마드리드",
+        "shortName": "ATM",
+        "primaryColor": "#CB3524",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-4-2",
+        "defaultTactic": "counter",
+        "att": 85,
+        "mid": 84,
+        "def": 85,
+        "topScorers": [
+          "훌리안 알바레스",
+          "아데몰라 루크먼",
+          "조너선 데이비드"
+        ]
+      },
+      {
+        "id": "lal-ath",
+        "name": "아틀레틱 빌바오",
+        "shortName": "ATH",
+        "primaryColor": "#EE2523",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 82,
+        "mid": 81,
+        "def": 81,
+        "topScorers": [
+          "니코 윌리암스",
+          "이냐키 윌리암스",
+          "오이안 산세트"
+        ]
+      },
+      {
+        "id": "lal-vil",
+        "name": "비야레알",
+        "shortName": "VIL",
+        "primaryColor": "#FFE667",
+        "secondaryColor": "#005187",
+        "pattern": "solid",
+        "formation": "4-4-2",
+        "defaultTactic": "wingplay",
+        "att": 81,
+        "mid": 80,
+        "def": 79,
+        "topScorers": [
+          "조르주 미카우타제",
+          "아요세 페레스",
+          "제라르 모레노"
+        ]
+      },
+      {
+        "id": "lal-bet",
+        "name": "레알 베티스",
+        "shortName": "BET",
+        "primaryColor": "#0BB363",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 81,
+        "mid": 80,
+        "def": 79,
+        "topScorers": [
+          "안토니",
+          "쿠초 에르난데스",
+          "압데 에잘줄리"
+        ]
+      },
+      {
+        "id": "lal-rso",
+        "name": "레알 소시에다드",
+        "shortName": "RSO",
+        "primaryColor": "#0067B1",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-3-3",
+        "defaultTactic": "possession",
+        "att": 79,
+        "mid": 80,
+        "def": 79,
+        "topScorers": [
+          "쿠보 다케후사",
+          "미켈 오야르사발",
+          "오리 오스카르손"
+        ]
+      },
+      {
+        "id": "lal-cel",
+        "name": "셀타 비고",
+        "shortName": "CEL",
+        "primaryColor": "#8AC3EE",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "3-4-3",
+        "defaultTactic": "wingplay",
+        "att": 78,
+        "mid": 77,
+        "def": 76,
+        "topScorers": [
+          "이아고 아스파스",
+          "보르하 이글레시아스",
+          "페란 주트글라"
+        ]
+      },
+      {
+        "id": "lal-sev",
+        "name": "세비야",
+        "shortName": "SEV",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#D40026",
+        "pattern": "sash",
+        "formation": "4-3-3",
+        "defaultTactic": "balanced",
+        "att": 78,
+        "mid": 77,
+        "def": 77,
+        "topScorers": [
+          "이사크 로메로",
+          "루벤 바르가스",
+          "뤼카 스타생"
+        ]
+      },
+      {
+        "id": "lal-osa",
+        "name": "오사수나",
+        "shortName": "OSA",
+        "primaryColor": "#D91A21",
+        "secondaryColor": "#0A346F",
+        "pattern": "solid",
+        "formation": "4-3-3",
+        "defaultTactic": "wingplay",
+        "att": 78,
+        "mid": 77,
+        "def": 76,
+        "topScorers": [
+          "안테 부디미르",
+          "로맹 델 카스티요",
+          "라울 모로"
+        ]
+      },
+      {
+        "id": "lal-ray",
+        "name": "라요 바예카노",
+        "shortName": "RAY",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#E53027",
+        "pattern": "sash",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 76,
+        "mid": 76,
+        "def": 76,
+        "topScorers": [
+          "이시 팔라손",
+          "호르헤 데 프루토스",
+          "세르히오 카메요"
+        ]
+      },
+      {
+        "id": "lal-val",
+        "name": "발렌시아",
+        "shortName": "VAL",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#F97316",
+        "pattern": "solid",
+        "formation": "4-4-2",
+        "defaultTactic": "counter",
+        "att": 76,
+        "mid": 76,
+        "def": 75,
+        "topScorers": [
+          "우고 두로",
+          "디에고 로페스",
+          "아르나우트 단주마"
+        ]
+      },
+      {
+        "id": "lal-get",
+        "name": "헤타페",
+        "shortName": "GET",
+        "primaryColor": "#005999",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-4-2",
+        "defaultTactic": "counter",
+        "att": 75,
+        "mid": 76,
+        "def": 77,
+        "topScorers": [
+          "보르하 마요랄",
+          "에네스 위날",
+          "오렐 망갈라"
+        ]
+      },
+      {
+        "id": "lal-esp",
+        "name": "에스파뇰",
+        "shortName": "ESP",
+        "primaryColor": "#007FC8",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-4-2",
+        "defaultTactic": "counter",
+        "att": 75,
+        "mid": 74,
+        "def": 74,
+        "topScorers": [
+          "브리안 사라고사",
+          "하비 푸아도",
+          "로베르토 페르난데스"
+        ]
+      },
+      {
+        "id": "lal-ala",
+        "name": "알라베스",
+        "shortName": "ALA",
+        "primaryColor": "#00529F",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "balanced",
+        "att": 74,
+        "mid": 74,
+        "def": 74,
+        "topScorers": [
+          "루카스 보예",
+          "토니 마르티네스",
+          "안토니오 블랑코"
+        ]
+      },
+      {
+        "id": "lal-elc",
+        "name": "엘체",
+        "shortName": "ELC",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#15803D",
+        "pattern": "hoops",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 74,
+        "mid": 74,
+        "def": 73,
+        "topScorers": [
+          "에세키엘 폰세",
+          "테테 모렌테",
+          "파쿤도 부오나노테"
+        ]
+      },
+      {
+        "id": "lal-lev",
+        "name": "레반테",
+        "shortName": "LEV",
+        "primaryColor": "#1D4ED8",
+        "secondaryColor": "#DC2626",
+        "pattern": "stripes",
+        "formation": "4-4-2",
+        "defaultTactic": "counter",
+        "att": 73,
+        "mid": 73,
+        "def": 73,
+        "topScorers": [
+          "카를 에타 에용",
+          "페타르 라트코프",
+          "이반 로메로"
+        ]
+      },
+      {
+        "id": "lal-dep",
+        "name": "데포르티보 라 코루냐",
+        "shortName": "DEP",
+        "primaryColor": "#005CA9",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 73,
+        "mid": 73,
+        "def": 74,
+        "topScorers": [
+          "피에르-에메리크 오바메양",
+          "예레마이 에르난데스",
+          "아다마 트라오레"
+        ]
+      },
+      {
+        "id": "lal-rac",
+        "name": "라싱 산탄데르",
+        "shortName": "RAC",
+        "primaryColor": "#16A34A",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 72,
+        "mid": 72,
+        "def": 72,
+        "topScorers": [
+          "안드레스 마르틴",
+          "세르히오 카날레스",
+          "이니고 비센테"
+        ]
+      },
+      {
+        "id": "lal-mlg",
+        "name": "말라가",
+        "shortName": "MLG",
+        "primaryColor": "#38BDF8",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-3-3",
+        "defaultTactic": "balanced",
+        "att": 71,
+        "mid": 72,
+        "def": 71,
+        "topScorers": [
+          "다비드 라루비아",
+          "후안 크루스",
+          "아드리안 니뇨"
+        ]
+      }
     ]
   },
   {
@@ -72,30 +760,374 @@
     "country": "이탈리아",
     "accentColor": "#22c55e",
     "totalRounds": 38,
-    "transferWindows": [10, 19, 28],
+    "transferWindows": [
+      10,
+      19,
+      28
+    ],
     "uclSpots": 4,
     "relegationSpots": 3,
     "clubs": [
-      { "id": "ser-int", "name": "인테르 밀란", "shortName": "INT", "primaryColor": "#010E80", "secondaryColor": "#111827", "pattern": "stripes", "formation": "3-5-2", "defaultTactic": "counter", "att": 86, "mid": 86, "def": 86, "topScorers": ["라우타로 마르티네스", "마르퀴스 튀람", "하칸 찰하노글루"] },
-      { "id": "ser-nap", "name": "SSC 나폴리", "shortName": "NAP", "primaryColor": "#12A0D7", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-3-3", "defaultTactic": "possession", "att": 85, "mid": 85, "def": 83, "topScorers": ["라스무스 호일룬", "로멜루 루카쿠", "케빈 더 브라위너"] },
-      { "id": "ser-acm", "name": "AC 밀란", "shortName": "ACM", "primaryColor": "#FB090B", "secondaryColor": "#111827", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 85, "mid": 82, "def": 81, "topScorers": ["곤살루 하무스", "크리스천 풀리식", "하파엘 레앙"] },
-      { "id": "ser-juv", "name": "유벤투스", "shortName": "JUV", "primaryColor": "#F8FAFC", "secondaryColor": "#111827", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 84, "mid": 82, "def": 83, "topScorers": ["로이스 오펜다", "조너선 데이비드", "케난 일디즈"] },
-      { "id": "ser-ata", "name": "아탈란타", "shortName": "ATA", "primaryColor": "#1E71B8", "secondaryColor": "#111827", "pattern": "stripes", "formation": "3-4-2-1", "defaultTactic": "gegenpressing", "att": 83, "mid": 82, "def": 81, "topScorers": ["마테오 레테기", "샤를 더 케텔라러", "잔루카 스카마카"] },
-      { "id": "ser-rom", "name": "AS 로마", "shortName": "ROM", "primaryColor": "#8E1F2F", "secondaryColor": "#F0BC42", "pattern": "solid", "formation": "3-4-2-1", "defaultTactic": "balanced", "att": 81, "mid": 80, "def": 81, "topScorers": ["아르템 도우비크", "파울로 디발라", "마티아스 소울레"] },
-      { "id": "ser-laz", "name": "라치오", "shortName": "LAZ", "primaryColor": "#87D8F7", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 81, "mid": 80, "def": 79, "topScorers": ["발렌틴 카스테야노스", "마티아 자카니", "불라예 디아"] },
-      { "id": "ser-fio", "name": "피오렌티나", "shortName": "FIO", "primaryColor": "#482E92", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 81, "mid": 80, "def": 79, "topScorers": ["모이스 킨", "알베르트 그뷔드뮌손", "프랑코 마스탄투오노"] },
-      { "id": "ser-bol", "name": "볼로냐", "shortName": "BOL", "primaryColor": "#9F1F33", "secondaryColor": "#1A2F48", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 79, "mid": 79, "def": 79, "topScorers": ["리카르도 오르솔리니", "산티아고 카스트로", "단 은도예"] },
-      { "id": "ser-com", "name": "코모 1907", "shortName": "COM", "primaryColor": "#0055A4", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 78, "mid": 78, "def": 76, "topScorers": ["니코 파스", "아산 디아오", "파트리크 쿠트로네"] },
-      { "id": "ser-tor", "name": "토리노", "shortName": "TOR", "primaryColor": "#8A1E03", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "3-5-2", "defaultTactic": "counter", "att": 77, "mid": 77, "def": 78, "topScorers": ["체 애덤스", "두반 사파타", "니콜라 블라시치"] },
-      { "id": "ser-udi", "name": "우디네세", "shortName": "UDI", "primaryColor": "#F8FAFC", "secondaryColor": "#111827", "pattern": "stripes", "formation": "3-5-2", "defaultTactic": "counter", "att": 77, "mid": 76, "def": 77, "topScorers": ["로렌초 루카", "플로리앙 토뱅", "위르겐 에켈렌캄프"] },
-      { "id": "ser-gen", "name": "제노아", "shortName": "GEN", "primaryColor": "#AD1919", "secondaryColor": "#003263", "pattern": "half", "formation": "3-5-2", "defaultTactic": "balanced", "att": 76, "mid": 75, "def": 76, "topScorers": ["안드레아 피나몬티", "주니오르 메시아스", "파비오 미레티"] },
-      { "id": "ser-cag", "name": "칼리아리", "shortName": "CAG", "primaryColor": "#A50034", "secondaryColor": "#002350", "pattern": "half", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 75, "mid": 75, "def": 75, "topScorers": ["로베르토 피콜리", "나디르 조르테아", "마테오 프라티"] },
-      { "id": "ser-par", "name": "파르마", "shortName": "PAR", "primaryColor": "#F8FAFC", "secondaryColor": "#FFD100", "pattern": "hoops", "formation": "4-2-3-1", "defaultTactic": "counter", "att": 75, "mid": 74, "def": 74, "topScorers": ["데니스 만", "앙주-요안 보니", "아드리안 베르나베"] },
-      { "id": "ser-sas", "name": "사수올로", "shortName": "SAS", "primaryColor": "#00A752", "secondaryColor": "#111827", "pattern": "stripes", "formation": "4-3-3", "defaultTactic": "wingplay", "att": 75, "mid": 74, "def": 73, "topScorers": ["도메니코 베라르디", "아르망 로리앙테", "크리스티안 토르스트베트"] },
-      { "id": "ser-lec", "name": "US 레체", "shortName": "LEC", "primaryColor": "#FFE000", "secondaryColor": "#D50000", "pattern": "stripes", "formation": "4-3-3", "defaultTactic": "balanced", "att": 73, "mid": 73, "def": 73, "topScorers": ["니콜라 크르스토비치", "테테 모렌테", "라사나 쿨리발리"] },
-      { "id": "ser-mon", "name": "AC 몬차", "shortName": "MON", "primaryColor": "#E30613", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "3-4-2-1", "defaultTactic": "balanced", "att": 73, "mid": 73, "def": 72, "topScorers": ["다니 모타", "지안루카 카프라리", "마테오 페시나"] },
-      { "id": "ser-ven", "name": "베네치아", "shortName": "VEN", "primaryColor": "#111827", "secondaryColor": "#F97316", "pattern": "hoops", "formation": "3-5-2", "defaultTactic": "counter", "att": 72, "mid": 72, "def": 72, "topScorers": ["요엘 포흐얀팔로", "가에타노 오리스타니오", "한스 니콜루시"] },
-      { "id": "ser-fro", "name": "프로시노네", "shortName": "FRO", "primaryColor": "#FACC15", "secondaryColor": "#1D4ED8", "pattern": "solid", "formation": "4-3-3", "defaultTactic": "counter", "att": 71, "mid": 71, "def": 71, "topScorers": ["주세페 암브로시노", "파레스 게젬", "프란체스코 젤리"] }
+      {
+        "id": "ser-int",
+        "name": "인테르 밀란",
+        "shortName": "INT",
+        "primaryColor": "#010E80",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "3-5-2",
+        "defaultTactic": "counter",
+        "att": 86,
+        "mid": 86,
+        "def": 86,
+        "topScorers": [
+          "라우타로 마르티네스",
+          "마르퀴스 튀람",
+          "니콜로 바렐라"
+        ]
+      },
+      {
+        "id": "ser-nap",
+        "name": "SSC 나폴리",
+        "shortName": "NAP",
+        "primaryColor": "#12A0D7",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-3-3",
+        "defaultTactic": "possession",
+        "att": 85,
+        "mid": 85,
+        "def": 83,
+        "topScorers": [
+          "라스무스 호일룬",
+          "케빈 더 브라위너",
+          "다비드 네레스"
+        ]
+      },
+      {
+        "id": "ser-acm",
+        "name": "AC 밀란",
+        "shortName": "ACM",
+        "primaryColor": "#FB090B",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 85,
+        "mid": 82,
+        "def": 81,
+        "topScorers": [
+          "곤살루 하무스",
+          "크리스천 풀리식",
+          "루카 모드리치"
+        ]
+      },
+      {
+        "id": "ser-juv",
+        "name": "유벤투스",
+        "shortName": "JUV",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 84,
+        "mid": 82,
+        "def": 83,
+        "topScorers": [
+          "케난 일디즈",
+          "랑달 콜로 무아니",
+          "닉 볼테마데"
+        ]
+      },
+      {
+        "id": "ser-ata",
+        "name": "아탈란타",
+        "shortName": "ATA",
+        "primaryColor": "#1E71B8",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "3-4-2-1",
+        "defaultTactic": "gegenpressing",
+        "att": 83,
+        "mid": 82,
+        "def": 81,
+        "topScorers": [
+          "에데르송 (아탈란타)",
+          "잔루카 스카마카",
+          "자코모 라스파도리"
+        ]
+      },
+      {
+        "id": "ser-rom",
+        "name": "AS 로마",
+        "shortName": "ROM",
+        "primaryColor": "#8E1F2F",
+        "secondaryColor": "#F0BC42",
+        "pattern": "solid",
+        "formation": "3-4-2-1",
+        "defaultTactic": "balanced",
+        "att": 81,
+        "mid": 80,
+        "def": 81,
+        "topScorers": [
+          "도니얼 말런",
+          "마티아스 소울레",
+          "파울로 디발라"
+        ]
+      },
+      {
+        "id": "ser-laz",
+        "name": "라치오",
+        "shortName": "LAZ",
+        "primaryColor": "#87D8F7",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 81,
+        "mid": 80,
+        "def": 79,
+        "topScorers": [
+          "마티아 자카니",
+          "다비데 프라테시",
+          "구스타브 이삭센"
+        ]
+      },
+      {
+        "id": "ser-fio",
+        "name": "피오렌티나",
+        "shortName": "FIO",
+        "primaryColor": "#482E92",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 81,
+        "mid": 80,
+        "def": 79,
+        "topScorers": [
+          "프랑코 마스탄투오노",
+          "페드루 곤살베스",
+          "마테오 펠레그리노"
+        ]
+      },
+      {
+        "id": "ser-bol",
+        "name": "볼로냐",
+        "shortName": "BOL",
+        "primaryColor": "#9F1F33",
+        "secondaryColor": "#1A2F48",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 79,
+        "mid": 79,
+        "def": 79,
+        "topScorers": [
+          "리카르도 오르솔리니",
+          "아르템 도우비크",
+          "사무엘 음방굴라"
+        ]
+      },
+      {
+        "id": "ser-com",
+        "name": "코모 1907",
+        "shortName": "COM",
+        "primaryColor": "#0055A4",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 78,
+        "mid": 78,
+        "def": 76,
+        "topScorers": [
+          "모이스 킨",
+          "니코 파스",
+          "아산 디아오"
+        ]
+      },
+      {
+        "id": "ser-tor",
+        "name": "토리노",
+        "shortName": "TOR",
+        "primaryColor": "#8A1E03",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "3-5-2",
+        "defaultTactic": "counter",
+        "att": 77,
+        "mid": 77,
+        "def": 78,
+        "topScorers": [
+          "두반 사파타",
+          "체 애덤스",
+          "자카리아 아부클랄"
+        ]
+      },
+      {
+        "id": "ser-udi",
+        "name": "우디네세",
+        "shortName": "UDI",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "3-5-2",
+        "defaultTactic": "counter",
+        "att": 77,
+        "mid": 76,
+        "def": 77,
+        "topScorers": [
+          "니콜로 차니올로",
+          "키넌 데이비스",
+          "산디 로브리치"
+        ]
+      },
+      {
+        "id": "ser-gen",
+        "name": "제노아",
+        "shortName": "GEN",
+        "primaryColor": "#AD1919",
+        "secondaryColor": "#003263",
+        "pattern": "half",
+        "formation": "3-5-2",
+        "defaultTactic": "balanced",
+        "att": 76,
+        "mid": 75,
+        "def": 76,
+        "topScorers": [
+          "비토르 올리베이라",
+          "스테판 엘 샤라위",
+          "로렌초 콜롬보"
+        ]
+      },
+      {
+        "id": "ser-cag",
+        "name": "칼리아리",
+        "shortName": "CAG",
+        "primaryColor": "#A50034",
+        "secondaryColor": "#002350",
+        "pattern": "half",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 75,
+        "mid": 75,
+        "def": 75,
+        "topScorers": [
+          "음발라 은졸라",
+          "해리 윙크스",
+          "다니엘 말디니"
+        ]
+      },
+      {
+        "id": "ser-par",
+        "name": "파르마",
+        "shortName": "PAR",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#FFD100",
+        "pattern": "hoops",
+        "formation": "4-2-3-1",
+        "defaultTactic": "counter",
+        "att": 75,
+        "mid": 74,
+        "def": 74,
+        "topScorers": [
+          "엘 빌랄 투레",
+          "폰투스 알름크비스트",
+          "아드리안 베르나베"
+        ]
+      },
+      {
+        "id": "ser-sas",
+        "name": "사수올로",
+        "shortName": "SAS",
+        "primaryColor": "#00A752",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "4-3-3",
+        "defaultTactic": "wingplay",
+        "att": 75,
+        "mid": 74,
+        "def": 73,
+        "topScorers": [
+          "도메니코 베라르디",
+          "아르망 로리앙테",
+          "세바스티아노 에스포시토"
+        ]
+      },
+      {
+        "id": "ser-lec",
+        "name": "US 레체",
+        "shortName": "LEC",
+        "primaryColor": "#FFE000",
+        "secondaryColor": "#D50000",
+        "pattern": "stripes",
+        "formation": "4-3-3",
+        "defaultTactic": "balanced",
+        "att": 73,
+        "mid": 73,
+        "def": 73,
+        "topScorers": [
+          "니콜라 슈툴리치",
+          "산티아고 피에로티",
+          "이반 일리치"
+        ]
+      },
+      {
+        "id": "ser-mon",
+        "name": "AC 몬차",
+        "shortName": "MON",
+        "primaryColor": "#E30613",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "3-4-2-1",
+        "defaultTactic": "balanced",
+        "att": 73,
+        "mid": 73,
+        "def": 72,
+        "topScorers": [
+          "안드레아 콜파니",
+          "시릴 은곤게",
+          "다니 모타"
+        ]
+      },
+      {
+        "id": "ser-ven",
+        "name": "베네치아",
+        "shortName": "VEN",
+        "primaryColor": "#111827",
+        "secondaryColor": "#F97316",
+        "pattern": "hoops",
+        "formation": "3-5-2",
+        "defaultTactic": "counter",
+        "att": 72,
+        "mid": 72,
+        "def": 72,
+        "topScorers": [
+          "아코르 애덤스",
+          "알비온 라흐마니",
+          "잔루카 부시오"
+        ]
+      },
+      {
+        "id": "ser-fro",
+        "name": "프로시노네",
+        "shortName": "FRO",
+        "primaryColor": "#FACC15",
+        "secondaryColor": "#1D4ED8",
+        "pattern": "solid",
+        "formation": "4-3-3",
+        "defaultTactic": "counter",
+        "att": 71,
+        "mid": 71,
+        "def": 71,
+        "topScorers": [
+          "알레시오 체르빈",
+          "다니엘 비를리게아",
+          "로마노 슈미트"
+        ]
+      }
     ]
   },
   {
@@ -105,28 +1137,338 @@
     "country": "독일",
     "accentColor": "#ef4444",
     "totalRounds": 34,
-    "transferWindows": [9, 17, 25],
+    "transferWindows": [
+      9,
+      17,
+      25
+    ],
     "uclSpots": 4,
     "relegationSpots": 3,
     "clubs": [
-      { "id": "bun-bay", "name": "바이에른 뮌헨", "shortName": "BAY", "primaryColor": "#DC052D", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 89, "mid": 86, "def": 86, "topScorers": ["해리 케인", "자말 무시알라", "루이스 디아스"] },
-      { "id": "bun-bvb", "name": "보루시아 도르트문트", "shortName": "BVB", "primaryColor": "#FDE100", "secondaryColor": "#111827", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 83, "mid": 82, "def": 82, "topScorers": ["세루 기라시", "율리안 브란트", "막시밀리안 바이어"] },
-      { "id": "bun-lev", "name": "바이어 레버쿠젠", "shortName": "LEV", "primaryColor": "#111827", "secondaryColor": "#E32221", "pattern": "sash", "formation": "3-4-2-1", "defaultTactic": "possession", "att": 83, "mid": 82, "def": 81, "topScorers": ["파트리크 시크", "마르탱 테리에", "알레한드로 그리말도"] },
-      { "id": "bun-rbl", "name": "RB 라이프치히", "shortName": "RBL", "primaryColor": "#F8FAFC", "secondaryColor": "#DD0741", "pattern": "half", "formation": "4-4-2", "defaultTactic": "gegenpressing", "att": 81, "mid": 81, "def": 80, "topScorers": ["안토니오 누사", "크리스토프 바움가르트너", "요한 바카요코"] },
-      { "id": "bun-sge", "name": "아인트라흐트 프랑크푸르트", "shortName": "SGE", "primaryColor": "#111827", "secondaryColor": "#E1000F", "pattern": "stripes", "formation": "4-4-2", "defaultTactic": "counter", "att": 81, "mid": 80, "def": 79, "topScorers": ["조나탄 부르카르트", "잔 우준", "휴고 라르손"] },
-      { "id": "bun-vfb", "name": "VfB 슈투트가르트", "shortName": "VFB", "primaryColor": "#F8FAFC", "secondaryColor": "#E32219", "pattern": "hoops", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 80, "mid": 80, "def": 78, "topScorers": ["데니스 운다브", "에르메딘 데미로비치", "제이미 레벨링"] },
-      { "id": "bun-scf", "name": "SC 프라이부르크", "shortName": "SCF", "primaryColor": "#D51C24", "secondaryColor": "#111827", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 79, "mid": 79, "def": 79, "topScorers": ["빈첸초 그리포", "도안 리츠", "주니오르 아다무"] },
-      { "id": "bun-m05", "name": "마인츠 05", "shortName": "M05", "primaryColor": "#ED1C24", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "3-4-2-1", "defaultTactic": "gegenpressing", "att": 78, "mid": 78, "def": 78, "topScorers": ["이재성", "나딤 아미리", "파울 네벨"] },
-      { "id": "bun-bmg", "name": "보루시아 묀헨글라트바흐", "shortName": "BMG", "primaryColor": "#F8FAFC", "secondaryColor": "#111827", "pattern": "sash", "formation": "4-2-3-1", "defaultTactic": "balanced", "att": 78, "mid": 77, "def": 76, "topScorers": ["팀 클라인딘스트", "로빈 하크", "프랑크 오노라"] },
-      { "id": "bun-svw", "name": "베르더 브레멘", "shortName": "SVW", "primaryColor": "#1D9053", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "3-5-2", "defaultTactic": "wingplay", "att": 77, "mid": 77, "def": 76, "topScorers": ["마르빈 두크슈", "옌스 스타게", "로마노 슈미트"] },
-      { "id": "bun-tsg", "name": "TSG 호펜하임", "shortName": "TSG", "primaryColor": "#1C63B7", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "balanced", "att": 76, "mid": 75, "def": 75, "topScorers": ["안드레이 크라마리치", "아담 흘로제크", "톰 비쇼프"] },
-      { "id": "bun-fca", "name": "FC 아우크스부르크", "shortName": "FCA", "primaryColor": "#BA3733", "secondaryColor": "#FFFFFF", "pattern": "half", "formation": "3-5-2", "defaultTactic": "counter", "att": 76, "mid": 75, "def": 76, "topScorers": ["알렉시스 클로드-모리스", "필립 티츠", "사무엘 에센데"] },
-      { "id": "bun-fcu", "name": "우니온 베를린", "shortName": "FCU", "primaryColor": "#EB1923", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "3-4-3", "defaultTactic": "counter", "att": 75, "mid": 75, "def": 76, "topScorers": ["정우영", "베네딕트 홀러바흐", "안드레이 일리치"] },
-      { "id": "bun-koe", "name": "1. FC 쾰른", "shortName": "KOE", "primaryColor": "#ED1C24", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 75, "mid": 75, "def": 74, "topScorers": ["사이드 엘 말라", "팀 렘펄레", "플로리안 카인츠"] },
-      { "id": "bun-hsv", "name": "함부르크 SV", "shortName": "HSV", "primaryColor": "#005CA9", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-3-3", "defaultTactic": "possession", "att": 75, "mid": 75, "def": 74, "topScorers": ["파비우 비에이라", "다비 젤케", "장-뤼크 동페"] },
-      { "id": "bun-s04", "name": "샬케 04", "shortName": "S04", "primaryColor": "#004D9D", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "counter", "att": 73, "mid": 73, "def": 73, "topScorers": ["무사 실라", "케난 카라만", "파울 세긴"] },
-      { "id": "bun-elv", "name": "SV 엘버스베르크", "shortName": "ELV", "primaryColor": "#111827", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 72, "mid": 72, "def": 72, "topScorers": ["피스니크 아슬라니", "루카 슈넬바허", "무하메드 다마르"] },
-      { "id": "bun-scp", "name": "SC 파더보른 07", "shortName": "SCP", "primaryColor": "#005CA9", "secondaryColor": "#111827", "pattern": "stripes", "formation": "3-4-2-1", "defaultTactic": "counter", "att": 71, "mid": 72, "def": 71, "topScorers": ["필립 빌비야", "스벤 미헬", "아론 젠터"] }
+      {
+        "id": "bun-bay",
+        "name": "바이에른 뮌헨",
+        "shortName": "BAY",
+        "primaryColor": "#DC052D",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 89,
+        "mid": 86,
+        "def": 86,
+        "topScorers": [
+          "해리 케인",
+          "마이클 올리세",
+          "루이스 디아스"
+        ]
+      },
+      {
+        "id": "bun-bvb",
+        "name": "보루시아 도르트문트",
+        "shortName": "BVB",
+        "primaryColor": "#FDE100",
+        "secondaryColor": "#111827",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 83,
+        "mid": 82,
+        "def": 82,
+        "topScorers": [
+          "세루 기라시",
+          "막시밀리안 바이어",
+          "이선 은와네리"
+        ]
+      },
+      {
+        "id": "bun-lev",
+        "name": "바이어 레버쿠젠",
+        "shortName": "LEV",
+        "primaryColor": "#111827",
+        "secondaryColor": "#E32221",
+        "pattern": "sash",
+        "formation": "3-4-2-1",
+        "defaultTactic": "possession",
+        "att": 83,
+        "mid": 82,
+        "def": 81,
+        "topScorers": [
+          "파트리크 시크",
+          "무사 디아비",
+          "빅터 보니페이스"
+        ]
+      },
+      {
+        "id": "bun-rbl",
+        "name": "RB 라이프치히",
+        "shortName": "RBL",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#DD0741",
+        "pattern": "half",
+        "formation": "4-4-2",
+        "defaultTactic": "gegenpressing",
+        "att": 81,
+        "mid": 81,
+        "def": 80,
+        "topScorers": [
+          "안토니오 누사",
+          "요한 바카요코",
+          "브라얀 그루다"
+        ]
+      },
+      {
+        "id": "bun-sge",
+        "name": "아인트라흐트 프랑크푸르트",
+        "shortName": "SGE",
+        "primaryColor": "#111827",
+        "secondaryColor": "#E1000F",
+        "pattern": "stripes",
+        "formation": "4-4-2",
+        "defaultTactic": "counter",
+        "att": 81,
+        "mid": 80,
+        "def": 79,
+        "topScorers": [
+          "조나탄 부르카르트",
+          "도안 리츠",
+          "라파엘 오니에디카"
+        ]
+      },
+      {
+        "id": "bun-vfb",
+        "name": "VfB 슈투트가르트",
+        "shortName": "VFB",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#E32219",
+        "pattern": "hoops",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 80,
+        "mid": 80,
+        "def": 78,
+        "topScorers": [
+          "데니스 운다브",
+          "에르메딘 데미로비치",
+          "제이미 레벨링"
+        ]
+      },
+      {
+        "id": "bun-scf",
+        "name": "SC 프라이부르크",
+        "shortName": "SCF",
+        "primaryColor": "#D51C24",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 79,
+        "mid": 79,
+        "def": 79,
+        "topScorers": [
+          "빈첸초 그리포",
+          "니클라스 베스테",
+          "이고르 마타노비치"
+        ]
+      },
+      {
+        "id": "bun-m05",
+        "name": "마인츠 05",
+        "shortName": "M05",
+        "primaryColor": "#ED1C24",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "3-4-2-1",
+        "defaultTactic": "gegenpressing",
+        "att": 78,
+        "mid": 78,
+        "def": 78,
+        "topScorers": [
+          "베네딕트 홀러바흐",
+          "이재성",
+          "나딤 아미리"
+        ]
+      },
+      {
+        "id": "bun-bmg",
+        "name": "보루시아 묀헨글라트바흐",
+        "shortName": "BMG",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#111827",
+        "pattern": "sash",
+        "formation": "4-2-3-1",
+        "defaultTactic": "balanced",
+        "att": 78,
+        "mid": 77,
+        "def": 76,
+        "topScorers": [
+          "니콜라스 퀸",
+          "팀 클라인딘스트",
+          "프랑크 오노라"
+        ]
+      },
+      {
+        "id": "bun-svw",
+        "name": "베르더 브레멘",
+        "shortName": "SVW",
+        "primaryColor": "#1D9053",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "3-5-2",
+        "defaultTactic": "wingplay",
+        "att": 77,
+        "mid": 77,
+        "def": 76,
+        "topScorers": [
+          "니클라스 퓔크루크",
+          "마르코 그륄",
+          "저스틴 은진마"
+        ]
+      },
+      {
+        "id": "bun-tsg",
+        "name": "TSG 호펜하임",
+        "shortName": "TSG",
+        "primaryColor": "#1C63B7",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "balanced",
+        "att": 76,
+        "mid": 75,
+        "def": 75,
+        "topScorers": [
+          "아담 흘로제크",
+          "피스니크 아슬라니",
+          "안드레이 크라마리치"
+        ]
+      },
+      {
+        "id": "bun-fca",
+        "name": "FC 아우크스부르크",
+        "shortName": "FCA",
+        "primaryColor": "#BA3733",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "half",
+        "formation": "3-5-2",
+        "defaultTactic": "counter",
+        "att": 76,
+        "mid": 75,
+        "def": 76,
+        "topScorers": [
+          "미하엘 그레고리치",
+          "스티브 무니에",
+          "알렉시스 클로드-모리스"
+        ]
+      },
+      {
+        "id": "bun-fcu",
+        "name": "우니온 베를린",
+        "shortName": "FCU",
+        "primaryColor": "#EB1923",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "3-4-3",
+        "defaultTactic": "counter",
+        "att": 75,
+        "mid": 75,
+        "def": 76,
+        "topScorers": [
+          "에마누엘 라테 라스",
+          "안드레이 일리치",
+          "미셸 애비셔"
+        ]
+      },
+      {
+        "id": "bun-koe",
+        "name": "1. FC 쾰른",
+        "shortName": "KOE",
+        "primaryColor": "#ED1C24",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 75,
+        "mid": 75,
+        "def": 74,
+        "topScorers": [
+          "사이드 엘 말라",
+          "테이스 달링가",
+          "라그나르 아헤"
+        ]
+      },
+      {
+        "id": "bun-hsv",
+        "name": "함부르크 SV",
+        "shortName": "HSV",
+        "primaryColor": "#005CA9",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-3-3",
+        "defaultTactic": "possession",
+        "att": 75,
+        "mid": 75,
+        "def": 74,
+        "topScorers": [
+          "테렘 모피",
+          "파비우 비에이라",
+          "팻슨 다카"
+        ]
+      },
+      {
+        "id": "bun-s04",
+        "name": "샬케 04",
+        "shortName": "S04",
+        "primaryColor": "#004D9D",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "counter",
+        "att": 73,
+        "mid": 73,
+        "def": 73,
+        "topScorers": [
+          "황희찬",
+          "에딘 제코",
+          "무사 실라"
+        ]
+      },
+      {
+        "id": "bun-elv",
+        "name": "SV 엘버스베르크",
+        "shortName": "ELV",
+        "primaryColor": "#111827",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 72,
+        "mid": 72,
+        "def": 72,
+        "topScorers": [
+          "노엘 푸트코이",
+          "루카 슈넬바허",
+          "모리스 크라텐마허"
+        ]
+      },
+      {
+        "id": "bun-scp",
+        "name": "SC 파더보른 07",
+        "shortName": "SCP",
+        "primaryColor": "#005CA9",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "3-4-2-1",
+        "defaultTactic": "counter",
+        "att": 71,
+        "mid": 72,
+        "def": 71,
+        "topScorers": [
+          "라얀 필리프",
+          "마르빈 피링거",
+          "스벤 미헬"
+        ]
+      }
     ]
   },
   {
@@ -136,28 +1478,338 @@
     "country": "프랑스",
     "accentColor": "#eab308",
     "totalRounds": 34,
-    "transferWindows": [9, 17, 25],
+    "transferWindows": [
+      9,
+      17,
+      25
+    ],
     "uclSpots": 4,
     "relegationSpots": 3,
     "clubs": [
-      { "id": "lig-psg", "name": "파리 생제르맹", "shortName": "PSG", "primaryColor": "#004170", "secondaryColor": "#DA291C", "pattern": "stripes", "formation": "4-3-3", "defaultTactic": "possession", "att": 87, "mid": 87, "def": 85, "topScorers": ["우스만 뎀벨레", "흐비차 크바라츠헬리아", "데지레 두에"] },
-      { "id": "lig-om", "name": "올랭피크 마르세유", "shortName": "OM", "primaryColor": "#F8FAFC", "secondaryColor": "#2FAEE0", "pattern": "solid", "formation": "3-4-2-1", "defaultTactic": "possession", "att": 82, "mid": 81, "def": 79, "topScorers": ["메이슨 그린우드", "아민 구이리", "아드리앙 라비오"] },
-      { "id": "lig-asm", "name": "AS 모나코", "shortName": "ASM", "primaryColor": "#E30613", "secondaryColor": "#FFFFFF", "pattern": "sash", "formation": "4-2-3-1", "defaultTactic": "gegenpressing", "att": 82, "mid": 81, "def": 80, "topScorers": ["미카 비어레스", "안수 파티", "마그네스 아클리우슈"] },
-      { "id": "lig-lil", "name": "LOSC 릴", "shortName": "LIL", "primaryColor": "#E01E13", "secondaryColor": "#142442", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "balanced", "att": 80, "mid": 79, "def": 80, "topScorers": ["에돈 제그로바", "올리비에 지루", "마티아스 페르난데스-파르도"] },
-      { "id": "lig-ol", "name": "올랭피크 리옹", "shortName": "OL", "primaryColor": "#F8FAFC", "secondaryColor": "#14387F", "pattern": "hoops", "formation": "4-3-3", "defaultTactic": "wingplay", "att": 80, "mid": 79, "def": 78, "topScorers": ["조르주 미카우타제", "말릭 포파나", "코랑탱 톨리소"] },
-      { "id": "lig-nic", "name": "OGC 니스", "shortName": "NIC", "primaryColor": "#CC0000", "secondaryColor": "#111827", "pattern": "stripes", "formation": "3-4-3", "defaultTactic": "counter", "att": 79, "mid": 79, "def": 79, "topScorers": ["에반 게상", "가에탕 라보르드", "소피앙 디오프"] },
-      { "id": "lig-len", "name": "RC 랑스", "shortName": "LEN", "primaryColor": "#F6D100", "secondaryColor": "#D40026", "pattern": "half", "formation": "3-4-2-1", "defaultTactic": "gegenpressing", "att": 78, "mid": 78, "def": 78, "topScorers": ["플로리앙 소토카", "웨슬리 사이드", "아드리앙 토마송"] },
-      { "id": "lig-str", "name": "RC 스트라스부르", "shortName": "STR", "primaryColor": "#009FE3", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "3-4-3", "defaultTactic": "gegenpressing", "att": 78, "mid": 77, "def": 76, "topScorers": ["에마누엘 에메가", "세바스티안 나나시", "안드레이 산투스"] },
-      { "id": "lig-bre", "name": "스타드 브레스투아", "shortName": "SB29", "primaryColor": "#E2001A", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-3-3", "defaultTactic": "wingplay", "att": 77, "mid": 77, "def": 77, "topScorers": ["뤼도비크 아조르크", "로맹 델 카스티요", "카모리 둠비아"] },
-      { "id": "lig-ren", "name": "스타드 렌", "shortName": "REN", "primaryColor": "#E30613", "secondaryColor": "#111827", "pattern": "solid", "formation": "3-4-2-1", "defaultTactic": "balanced", "att": 77, "mid": 77, "def": 76, "topScorers": ["아르노 칼리뮈앙도", "뤼도비크 블라스", "세코 포파나"] },
-      { "id": "lig-tou", "name": "툴루즈 FC", "shortName": "TOU", "primaryColor": "#4D2C7A", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "3-4-3", "defaultTactic": "counter", "att": 76, "mid": 76, "def": 77, "topScorers": ["자카리아 아부클랄", "조슈아 킹", "얀 보호"] },
-      { "id": "lig-aux", "name": "AJ 오세르", "shortName": "AUX", "primaryColor": "#F8FAFC", "secondaryColor": "#005CA9", "pattern": "solid", "formation": "3-4-2-1", "defaultTactic": "counter", "att": 75, "mid": 75, "def": 75, "topScorers": ["하메드 트라오레", "가에탕 페랭", "라시네 시나요코"] },
-      { "id": "lig-pfc", "name": "파리 FC", "shortName": "PFC", "primaryColor": "#1E3A8A", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "possession", "att": 75, "mid": 75, "def": 74, "topScorers": ["장-필리프 크라소", "일란 케발", "막심 로페스"] },
-      { "id": "lig-lor", "name": "FC 로리앙", "shortName": "LOR", "primaryColor": "#F97316", "secondaryColor": "#111827", "pattern": "solid", "formation": "4-2-3-1", "defaultTactic": "wingplay", "att": 74, "mid": 74, "def": 74, "topScorers": ["엘리 주니오르 크루피", "모하메드 밤바", "아이예군 토신"] },
-      { "id": "lig-ang", "name": "앙제 SCO", "shortName": "ANG", "primaryColor": "#111827", "secondaryColor": "#FFFFFF", "pattern": "stripes", "formation": "4-2-3-1", "defaultTactic": "balanced", "att": 73, "mid": 73, "def": 73, "topScorers": ["에스테반 르폴", "힘아드 압델리", "파리드 엘 멜랄리"] },
-      { "id": "lig-hac", "name": "르 아브르 AC", "shortName": "HAC", "primaryColor": "#87CEFA", "secondaryColor": "#13294B", "pattern": "half", "formation": "4-4-2", "defaultTactic": "counter", "att": 72, "mid": 72, "def": 72, "topScorers": ["압둘라예 투레", "이사 수마레", "조슈아 카시미르"] },
-      { "id": "lig-tro", "name": "트루아 AC", "shortName": "TRO", "primaryColor": "#0284C7", "secondaryColor": "#FFFFFF", "pattern": "solid", "formation": "4-3-3", "defaultTactic": "counter", "att": 71, "mid": 72, "def": 71, "topScorers": ["라피키 사이드", "시리아크 이리에", "마르탱 아들린"] },
-      { "id": "lig-lma", "name": "르망 FC", "shortName": "LMA", "primaryColor": "#DC2626", "secondaryColor": "#FACC15", "pattern": "stripes", "formation": "4-4-2", "defaultTactic": "balanced", "att": 71, "mid": 71, "def": 71, "topScorers": ["다메 게예", "뱅상 뷔르레", "아르노 르보르뉴"] }
+      {
+        "id": "lig-psg",
+        "name": "파리 생제르맹",
+        "shortName": "PSG",
+        "primaryColor": "#004170",
+        "secondaryColor": "#DA291C",
+        "pattern": "stripes",
+        "formation": "4-3-3",
+        "defaultTactic": "possession",
+        "att": 87,
+        "mid": 87,
+        "def": 85,
+        "topScorers": [
+          "우스만 뎀벨레",
+          "흐비차 크바라츠헬리아",
+          "비티냐"
+        ]
+      },
+      {
+        "id": "lig-om",
+        "name": "올랭피크 마르세유",
+        "shortName": "OM",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#2FAEE0",
+        "pattern": "solid",
+        "formation": "3-4-2-1",
+        "defaultTactic": "possession",
+        "att": 82,
+        "mid": 81,
+        "def": 79,
+        "topScorers": [
+          "아민 구이리",
+          "이고르 파이샹",
+          "티모시 웨아"
+        ]
+      },
+      {
+        "id": "lig-asm",
+        "name": "AS 모나코",
+        "shortName": "ASM",
+        "primaryColor": "#E30613",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "sash",
+        "formation": "4-2-3-1",
+        "defaultTactic": "gegenpressing",
+        "att": 82,
+        "mid": 81,
+        "def": 80,
+        "topScorers": [
+          "미카 비어레스",
+          "폴라린 발로건",
+          "안수 파티"
+        ]
+      },
+      {
+        "id": "lig-lil",
+        "name": "LOSC 릴",
+        "shortName": "LIL",
+        "primaryColor": "#E01E13",
+        "secondaryColor": "#142442",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "balanced",
+        "att": 80,
+        "mid": 79,
+        "def": 80,
+        "topScorers": [
+          "올리비에 지루",
+          "우에다 아야세",
+          "딜란 바콰"
+        ]
+      },
+      {
+        "id": "lig-ol",
+        "name": "올랭피크 리옹",
+        "shortName": "OL",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#14387F",
+        "pattern": "hoops",
+        "formation": "4-3-3",
+        "defaultTactic": "wingplay",
+        "att": 80,
+        "mid": 79,
+        "def": 78,
+        "topScorers": [
+          "로이스 오펜다",
+          "나카무라 케이토",
+          "어니스트 누아마"
+        ]
+      },
+      {
+        "id": "lig-nic",
+        "name": "OGC 니스",
+        "shortName": "NIC",
+        "primaryColor": "#CC0000",
+        "secondaryColor": "#111827",
+        "pattern": "stripes",
+        "formation": "3-4-3",
+        "defaultTactic": "counter",
+        "att": 79,
+        "mid": 79,
+        "def": 79,
+        "topScorers": [
+          "모하메드 아무라",
+          "엘리 와히",
+          "소피앙 디오프"
+        ]
+      },
+      {
+        "id": "lig-len",
+        "name": "RC 랑스",
+        "shortName": "LEN",
+        "primaryColor": "#F6D100",
+        "secondaryColor": "#D40026",
+        "pattern": "half",
+        "formation": "3-4-2-1",
+        "defaultTactic": "gegenpressing",
+        "att": 78,
+        "mid": 78,
+        "def": 78,
+        "topScorers": [
+          "플로리앙 토뱅",
+          "오드손 에두아르",
+          "프라뇨 이바노비치"
+        ]
+      },
+      {
+        "id": "lig-str",
+        "name": "RC 스트라스부르",
+        "shortName": "STR",
+        "primaryColor": "#009FE3",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "3-4-3",
+        "defaultTactic": "gegenpressing",
+        "att": 78,
+        "mid": 77,
+        "def": 76,
+        "topScorers": [
+          "콘라드 하르데르",
+          "세바스티안 나나시",
+          "호아킨 파니첼리"
+        ]
+      },
+      {
+        "id": "lig-bre",
+        "name": "스타드 브레스투아",
+        "shortName": "SB29",
+        "primaryColor": "#E2001A",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-3-3",
+        "defaultTactic": "wingplay",
+        "att": 77,
+        "mid": 77,
+        "def": 77,
+        "topScorers": [
+          "뤼도비크 아조르크",
+          "마마 발데",
+          "위고 마녜티"
+        ]
+      },
+      {
+        "id": "lig-ren",
+        "name": "스타드 렌",
+        "shortName": "REN",
+        "primaryColor": "#E30613",
+        "secondaryColor": "#111827",
+        "pattern": "solid",
+        "formation": "3-4-2-1",
+        "defaultTactic": "balanced",
+        "att": 77,
+        "mid": 77,
+        "def": 76,
+        "topScorers": [
+          "불라예 디아",
+          "세바스티안 시만스키",
+          "에스테반 르폴"
+        ]
+      },
+      {
+        "id": "lig-tou",
+        "name": "툴루즈 FC",
+        "shortName": "TOU",
+        "primaryColor": "#4D2C7A",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "3-4-3",
+        "defaultTactic": "counter",
+        "att": 76,
+        "mid": 76,
+        "def": 77,
+        "topScorers": [
+          "카스페르 텡스테트",
+          "산티아고 이달고",
+          "크리스티안 카세레스"
+        ]
+      },
+      {
+        "id": "lig-aux",
+        "name": "AJ 오세르",
+        "shortName": "AUX",
+        "primaryColor": "#F8FAFC",
+        "secondaryColor": "#005CA9",
+        "pattern": "solid",
+        "formation": "3-4-2-1",
+        "defaultTactic": "counter",
+        "att": 75,
+        "mid": 75,
+        "def": 75,
+        "topScorers": [
+          "캐머런 아처",
+          "대니 나마소",
+          "로맹 페브르"
+        ]
+      },
+      {
+        "id": "lig-pfc",
+        "name": "파리 FC",
+        "shortName": "PFC",
+        "primaryColor": "#1E3A8A",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "possession",
+        "att": 75,
+        "mid": 75,
+        "def": 74,
+        "topScorers": [
+          "모지스 사이먼",
+          "일란 케발",
+          "장-필리프 크라소"
+        ]
+      },
+      {
+        "id": "lig-lor",
+        "name": "FC 로리앙",
+        "shortName": "LOR",
+        "primaryColor": "#F97316",
+        "secondaryColor": "#111827",
+        "pattern": "solid",
+        "formation": "4-2-3-1",
+        "defaultTactic": "wingplay",
+        "att": 74,
+        "mid": 74,
+        "def": 74,
+        "topScorers": [
+          "모하메드 밤바",
+          "아이예군 토신",
+          "장-빅토르 마켕고"
+        ]
+      },
+      {
+        "id": "lig-ang",
+        "name": "앙제 SCO",
+        "shortName": "ANG",
+        "primaryColor": "#111827",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "stripes",
+        "formation": "4-2-3-1",
+        "defaultTactic": "balanced",
+        "att": 73,
+        "mid": 73,
+        "def": 73,
+        "topScorers": [
+          "짐 알레비나",
+          "아민 엘 우아자니",
+          "브랑코 판 덴 보먼"
+        ]
+      },
+      {
+        "id": "lig-hac",
+        "name": "르 아브르 AC",
+        "shortName": "HAC",
+        "primaryColor": "#87CEFA",
+        "secondaryColor": "#13294B",
+        "pattern": "half",
+        "formation": "4-4-2",
+        "defaultTactic": "counter",
+        "att": 72,
+        "mid": 72,
+        "def": 72,
+        "topScorers": [
+          "조시 마자",
+          "음브와나 사마타",
+          "아미르 리차드슨"
+        ]
+      },
+      {
+        "id": "lig-tro",
+        "name": "트루아 AC",
+        "shortName": "TRO",
+        "primaryColor": "#0284C7",
+        "secondaryColor": "#FFFFFF",
+        "pattern": "solid",
+        "formation": "4-3-3",
+        "defaultTactic": "counter",
+        "att": 71,
+        "mid": 72,
+        "def": 71,
+        "topScorers": [
+          "제레미 르 두아롱",
+          "르노 리파르",
+          "위고 피카르"
+        ]
+      },
+      {
+        "id": "lig-lma",
+        "name": "르망 FC",
+        "shortName": "LMA",
+        "primaryColor": "#DC2626",
+        "secondaryColor": "#FACC15",
+        "pattern": "stripes",
+        "formation": "4-4-2",
+        "defaultTactic": "balanced",
+        "att": 71,
+        "mid": 71,
+        "def": 71,
+        "topScorers": [
+          "하비브 디알로",
+          "빌랄 브라히미",
+          "다우다 트라오레"
+        ]
+      }
     ]
   }
 ]

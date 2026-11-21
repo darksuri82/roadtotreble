@@ -439,14 +439,15 @@ const SQUAD_FILL_TEMPLATE: SubPosition[] = [
 ];
 
 /**
- * Builds a realistic browseable 2026-27 squad (8..11 players) for a rolled club,
- * combining real activePlayers.json players, current league AI roster members,
- * and deterministic rotation fills where needed.
+ * Builds a realistic browseable 2026-27 squad (up to 16 players) for a rolled club,
+ * guaranteeing that Top-3 OVR real players in every broad position (GK/DF/MF/FW) are always exposed,
+ * while excluding globally owned or departed players to preserve single-instance player uniqueness.
  */
 export function buildTransferClubSquad(params: {
   club: Club;
   leagueId: LeagueId;
   ownedIds: Set<string>;
+  excludeIds?: Set<string>;
   aiRoster?: Player[];
   clubRank: number;
   leagueSize: number;
@@ -463,6 +464,7 @@ export function buildTransferClubSquad(params: {
     club,
     leagueId,
     ownedIds,
+    excludeIds,
     aiRoster,
     clubRank,
     leagueSize,
@@ -478,34 +480,59 @@ export function buildTransferClubSquad(params: {
 
   const squadPlayers: Player[] = [];
   const usedIds = new Set<string>(ownedIds);
+  if (excludeIds) {
+    for (const id of excludeIds) usedIds.add(id);
+  }
   const usedNames = new Set<string>();
 
-  // 1) All real 2026-27 players from activePlayers.json belonging to this club
-  const realClubPlayers = ACTIVE_PLAYERS.filter(
-    (p) => p.club === club.name && !usedIds.has(p.id),
-  ).sort((a, b) => b.ovr - a.ovr);
-
-  for (const p of realClubPlayers) {
-    if (squadPlayers.length >= 11) break;
+  const pushUnique = (p: Player): boolean => {
+    if (usedIds.has(p.id) || usedNames.has(p.name)) return false;
     usedIds.add(p.id);
     usedNames.add(p.name);
     squadPlayers.push(p);
-  }
+    return true;
+  };
 
-  // 2) Pull additional AI starters if this club is in user's league
-  if (aiRoster && squadPlayers.length < 10) {
-    for (const p of aiRoster) {
-      if (squadPlayers.length >= 10) break;
-      if (usedIds.has(p.id) || usedNames.has(p.name)) continue;
-      usedIds.add(p.id);
-      usedNames.add(p.name);
-      squadPlayers.push(p);
+  // 1) All real 2026-27 players from activePlayers.json belonging to this club, sorted by OVR desc
+  const realClubPlayers = ACTIVE_PLAYERS.filter(
+    (p) => p.club === club.name && !usedIds.has(p.id),
+  ).sort(
+    (a, b) =>
+      b.ovr - a.ovr || b.att + b.mid + b.def - (a.att + a.mid + a.def),
+  );
+
+  // 1a) Guarantee Top-3 OVR per broad position (GK/DF/MF/FW) first so no star is hidden by club cap
+  for (const pos of ['GK', 'DF', 'MF', 'FW'] as const) {
+    const posTop3 = realClubPlayers
+      .filter((p) => p.position === pos)
+      .slice(0, 3);
+    for (const p of posTop3) {
+      pushUnique(p);
     }
   }
 
-  // 3) Fill remaining roles up to 9 players so every club (even smaller ones) has a rich, balanced squad
+  // 1b) Fill remaining real club players up to 16
+  for (const p of realClubPlayers) {
+    if (squadPlayers.length >= 16) break;
+    pushUnique(p);
+  }
+
+  // 2) Pull additional AI starters if this club is in user's league (e.g., traded-in players)
+  if (aiRoster && squadPlayers.length < 16) {
+    const sortedAi = [...aiRoster].sort((a, b) => b.ovr - a.ovr);
+    for (const p of sortedAi) {
+      if (squadPlayers.length >= 16) break;
+      pushUnique(p);
+    }
+  }
+
+  // 3) Fill remaining roles up to 9 players so every club has a balanced squad
   const targetCount = 9;
-  for (let i = 0; i < SQUAD_FILL_TEMPLATE.length && squadPlayers.length < targetCount; i += 1) {
+  for (
+    let i = 0;
+    i < SQUAD_FILL_TEMPLATE.length && squadPlayers.length < targetCount;
+    i += 1
+  ) {
     const neededSub = SQUAD_FILL_TEMPLATE[i];
     const alreadyCovered = squadPlayers.some((p) =>
       p.mainPositions.includes(neededSub),
@@ -522,10 +549,7 @@ export function buildTransferClubSquad(params: {
       excludeNames: usedNames,
       rng: detRng,
     });
-    if (usedIds.has(gen.id)) continue;
-    usedIds.add(gen.id);
-    usedNames.add(gen.name);
-    squadPlayers.push(gen);
+    pushUnique(gen);
   }
 
   const targets = squadPlayers.map((player) => {
@@ -564,6 +588,7 @@ export interface SpinTransferClubsParams {
   allPlayerStats: Record<string, PlayerSeasonStats>;
   aiRosters: Record<string, Player[]>;
   ownedIds: Set<string>;
+  departedPlayerIds?: string[];
   legendBonusActive: boolean;
   championBonusActive?: boolean;
   allowedLeagueIds?: LeagueId[];
@@ -591,11 +616,14 @@ export function spinTransferClubs(
     allPlayerStats,
     aiRosters,
     ownedIds,
+    departedPlayerIds = [],
     legendBonusActive,
     championBonusActive = false,
     allowedLeagueIds,
     rng = Math.random,
   } = params;
+
+  const excludeIds = new Set<string>([...ownedIds, ...departedPlayerIds]);
 
   const legendRate = championBonusActive
     ? UCL_CHAMPION_LEGEND_RATE
@@ -615,7 +643,7 @@ export function spinTransferClubs(
     filteredClubPool.length >= 3 ? filteredClubPool : ALL_CLUBS_WITH_LEAGUE;
 
   const pickedClubIds = new Set<string>();
-  const usedLegendIds = new Set<string>(ownedIds);
+  const usedLegendIds = new Set<string>(excludeIds);
   const offers: TransferClubOffer[] = [];
   let legendSlotCount = 0;
 
@@ -710,6 +738,7 @@ export function spinTransferClubs(
       club: picked.club,
       leagueId: picked.leagueId,
       ownedIds,
+      excludeIds,
       aiRoster: isUserLeague ? aiRosters[picked.club.id] : undefined,
       clubRank,
       leagueSize,

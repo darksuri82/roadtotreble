@@ -9,9 +9,16 @@ import { JerseySvg } from '../common/JerseySvg';
 interface MatchReportPanelProps {
   match: MatchResult;
   clubsById: Record<string, Club>;
+  onSelectPlayer?: (playerId: string) => void;
+  onOpenDetail?: (match: MatchResult) => void;
 }
 
-export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
+export function MatchReportPanel({
+  match,
+  clubsById,
+  onSelectPlayer,
+  onOpenDetail,
+}: MatchReportPanelProps) {
   const [subTab, setSubTab] = useState<'timeline' | 'ratings'>('timeline');
   const home = clubsById[match.homeTeamId];
   const away = clubsById[match.awayTeamId];
@@ -56,17 +63,28 @@ export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
             </span>
           )}
         </div>
-        <span
-          className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
-            outcome === 'WIN'
-              ? 'bg-emerald-500/15 text-emerald-300'
-              : outcome === 'DRAW'
-                ? 'bg-slate-800 text-slate-300'
-                : 'bg-rose-500/15 text-rose-300'
-          }`}
-        >
-          {outcome === 'WIN' ? '승리' : outcome === 'DRAW' ? '무승부' : '패배'}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {onOpenDetail && (
+            <button
+              type="button"
+              onClick={() => onOpenDetail(match)}
+              className="rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-sky-300 hover:border-sky-400/50 hover:text-sky-200 cursor-pointer"
+            >
+              상세 보기
+            </button>
+          )}
+          <span
+            className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
+              outcome === 'WIN'
+                ? 'bg-emerald-500/15 text-emerald-300'
+                : outcome === 'DRAW'
+                  ? 'bg-slate-800 text-slate-300'
+                  : 'bg-rose-500/15 text-rose-300'
+            }`}
+          >
+            {outcome === 'WIN' ? '승리' : outcome === 'DRAW' ? '무승부' : '패배'}
+          </span>
+        </div>
       </div>
 
       {/* Scoreboard */}
@@ -96,10 +114,16 @@ export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
             {match.homeGoals} <span className="text-slate-600">:</span>{' '}
             {match.awayGoals}
           </div>
-          <div className="mt-1 inline-flex items-center gap-1 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+          <button
+            type="button"
+            onClick={() => onSelectPlayer?.(match.momPlayerId)}
+            className={`mt-1 inline-flex items-center gap-1 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300 ${
+              onSelectPlayer ? 'hover:bg-amber-500/25 cursor-pointer' : ''
+            }`}
+          >
             <Star className="w-2.5 h-2.5 fill-current" />
             {match.momPlayerName} ({match.momRating.toFixed(1)})
-          </div>
+          </button>
         </div>
 
         <div className="flex flex-col items-center text-center">
@@ -160,7 +184,15 @@ export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
                 <span className="font-display text-emerald-400">
                   {ev.minute}&apos;
                 </span>
-                <span className="font-semibold">{ev.scorerName}</span>
+                <button
+                  type="button"
+                  onClick={() => ev.scorerId && onSelectPlayer?.(ev.scorerId)}
+                  className={`font-semibold ${
+                    ev.scorerId && onSelectPlayer ? 'hover:text-emerald-300 hover:underline cursor-pointer' : ''
+                  }`}
+                >
+                  {ev.scorerName}
+                </button>
                 {ev.assistName && (
                   <span className="text-slate-500">({ev.assistName})</span>
                 )}
@@ -170,7 +202,15 @@ export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
           <div className="space-y-1 text-right">
             {awayGoalEvents.map((ev, i) => (
               <div key={i} className="text-slate-200 flex items-center justify-end gap-1 flex-wrap">
-                <span className="font-semibold">{ev.scorerName}</span>
+                <button
+                  type="button"
+                  onClick={() => ev.scorerId && onSelectPlayer?.(ev.scorerId)}
+                  className={`font-semibold ${
+                    ev.scorerId && onSelectPlayer ? 'hover:text-amber-300 hover:underline cursor-pointer' : ''
+                  }`}
+                >
+                  {ev.scorerName}
+                </button>
                 {ev.assistName && (
                   <span className="text-slate-500">({ev.assistName})</span>
                 )}
@@ -262,13 +302,15 @@ export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
             </div>
             <div className="grid grid-cols-2 gap-1.5 text-xs">
               {userRatings.map((r) => (
-                <div
+                <button
                   key={`${r.teamId}-${r.playerId}`}
-                  className={`flex items-center justify-between rounded-lg px-2 py-1.5 border ${
+                  type="button"
+                  onClick={() => onSelectPlayer?.(r.playerId)}
+                  className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 border text-left ${
                     r.playerId === match.momPlayerId && r.teamId === USER_CLUB_ID
                       ? 'border-amber-400/50 bg-amber-500/10'
                       : 'border-slate-800/80 bg-[#0b1018]'
-                  }`}
+                  } ${onSelectPlayer ? 'hover:border-emerald-400/50 cursor-pointer' : ''}`}
                 >
                   <span className="truncate font-semibold text-slate-200">
                     {r.playerName}
@@ -286,7 +328,7 @@ export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
                   >
                     {r.rating.toFixed(1)}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -301,9 +343,13 @@ export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
             </div>
             <div className="grid grid-cols-2 gap-1.5 text-xs">
               {oppRatings.map((r) => (
-                <div
+                <button
                   key={`${r.teamId}-${r.playerId}`}
-                  className="flex items-center justify-between rounded-lg border border-slate-800/70 bg-[#0b1018] px-2 py-1.5"
+                  type="button"
+                  onClick={() => onSelectPlayer?.(r.playerId)}
+                  className={`flex w-full items-center justify-between rounded-lg border border-slate-800/70 bg-[#0b1018] px-2 py-1.5 text-left ${
+                    onSelectPlayer ? 'hover:border-sky-400/50 cursor-pointer' : ''
+                  }`}
                 >
                   <span className="truncate text-slate-300">
                     {r.playerName}
@@ -312,7 +358,7 @@ export function MatchReportPanel({ match, clubsById }: MatchReportPanelProps) {
                   <span className="font-display text-xs font-bold text-slate-200 tabular-nums">
                     {r.rating.toFixed(1)}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </div>

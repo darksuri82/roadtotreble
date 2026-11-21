@@ -15,7 +15,7 @@
       "topScorers": [
         "반겔리스 파블리디스",
         "안드레아스 셸데루프",
-        "조르지 수다코우"
+        "지안루카 프레스티아니"
       ]
     },
     "country": "포르투갈",
@@ -70,21 +70,23 @@
       },
       {
         "id": "ucl-benfica-p3",
-        "name": "안토니우 실바",
+        "name": "토마스 아라우주",
         "position": "DF",
         "mainPositions": [
           "CB"
         ],
-        "secondaryPositions": [],
-        "ovr": 82,
+        "secondaryPositions": [
+          "RB"
+        ],
+        "ovr": 81,
         "nationality": "포르투갈",
         "nationalityCode": "PT",
         "leagueId": "epl",
         "club": "SL 벤피카",
-        "att": 61,
-        "mid": 72,
-        "def": 83,
-        "stamina": 82,
+        "att": 59,
+        "mid": 71,
+        "def": 82,
+        "stamina": 84,
         "playstyles": [
           "ball_playing_cb"
         ],
@@ -141,23 +143,22 @@
       },
       {
         "id": "ucl-benfica-p6",
-        "name": "플로렌티누 루이스",
+        "name": "레안드루 바헤이루",
         "position": "MF",
         "mainPositions": [
-          "CDM"
-        ],
-        "secondaryPositions": [
+          "CDM",
           "CM"
         ],
-        "ovr": 81,
-        "nationality": "포르투갈",
-        "nationalityCode": "PT",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "룩셈부르크",
+        "nationalityCode": "LU",
         "leagueId": "epl",
         "club": "SL 벤피카",
-        "att": 75,
-        "mid": 82,
-        "def": 69,
-        "stamina": 90,
+        "att": 67,
+        "mid": 79,
+        "def": 77,
+        "stamina": 89,
         "playstyles": [
           "ball_winner"
         ],
@@ -307,8 +308,8 @@
       "def": 81,
       "topScorers": [
         "사무 아게호와",
-        "파비우 비에이라",
-        "페페 아키노"
+        "페페 아키노",
+        "알란 바렐라"
       ]
     },
     "country": "포르투갈",
@@ -486,26 +487,27 @@
       },
       {
         "id": "ucl-porto-p8",
-        "name": "로드리고 모라",
+        "name": "황인범",
         "position": "MF",
         "mainPositions": [
-          "CAM",
-          "CM"
+          "CM",
+          "CAM"
         ],
         "secondaryPositions": [
-          "LW"
+          "CDM"
         ],
         "ovr": 81,
-        "nationality": "포르투갈",
-        "nationalityCode": "PT",
+        "nationality": "대한민국",
+        "nationalityCode": "KR",
         "leagueId": "epl",
         "club": "FC 포르투",
         "att": 75,
         "mid": 82,
-        "def": 69,
-        "stamina": 84,
+        "def": 74,
+        "stamina": 89,
         "playstyles": [
-          "playmaker_10"
+          "deep_playmaker",
+          "box_to_box"
         ],
         "scoutNote": "FC 포르투 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -538,26 +540,24 @@
       },
       {
         "id": "ucl-porto-p10",
-        "name": "파비우 비에이라",
-        "position": "FW",
+        "name": "세코 포파나",
+        "position": "MF",
         "mainPositions": [
-          "RW",
-          "CAM"
+          "CM",
+          "CDM"
         ],
-        "secondaryPositions": [
-          "CM"
-        ],
+        "secondaryPositions": [],
         "ovr": 80,
-        "nationality": "포르투갈",
-        "nationalityCode": "PT",
+        "nationality": "코트디부아르",
+        "nationalityCode": "CI",
         "leagueId": "epl",
         "club": "FC 포르투",
-        "att": 81,
-        "mid": 70,
-        "def": 42,
-        "stamina": 81,
+        "att": 74,
+        "mid": 81,
+        "def": 73,
+        "stamina": 87,
         "playstyles": [
-          "playmaker_10"
+          "box_to_box"
         ],
         "scoutNote": "FC 포르투 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -602,9 +602,9 @@
       "mid": 82,
       "def": 81,
       "topScorers": [
-        "콘라드 하르데르",
-        "페드루 곤살베스",
-        "프란시스쿠 트린캉"
+        "프란시스쿠 트린캉",
+        "포티스 이오아니디스",
+        "제니 카타무"
       ]
     },
     "country": "포르투갈",
@@ -634,20 +634,22 @@
       },
       {
         "id": "ucl-sporting-p2",
-        "name": "우스만 디오망데",
+        "name": "에두아르두 쿠아레스마",
         "position": "DF",
         "mainPositions": [
           "CB"
         ],
-        "secondaryPositions": [],
-        "ovr": 82,
-        "nationality": "코트디부아르",
-        "nationalityCode": "CI",
+        "secondaryPositions": [
+          "RB"
+        ],
+        "ovr": 79,
+        "nationality": "포르투갈",
+        "nationalityCode": "PT",
         "leagueId": "epl",
         "club": "스포르팅 CP",
-        "att": 61,
-        "mid": 72,
-        "def": 83,
+        "att": 57,
+        "mid": 69,
+        "def": 80,
         "stamina": 84,
         "playstyles": [
           "ball_playing_cb"
@@ -706,76 +708,72 @@
       },
       {
         "id": "ucl-sporting-p5",
-        "name": "제오바니 켄다",
-        "position": "MF",
+        "name": "이반 프레스네다",
+        "position": "DF",
         "mainPositions": [
-          "RM",
-          "RW"
-        ],
-        "secondaryPositions": [
+          "RB",
           "RWB"
         ],
-        "ovr": 81,
-        "nationality": "포르투갈",
-        "nationalityCode": "PT",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "스페인",
+        "nationalityCode": "ES",
         "leagueId": "epl",
         "club": "스포르팅 CP",
-        "att": 75,
-        "mid": 82,
-        "def": 69,
-        "stamina": 90,
+        "att": 63,
+        "mid": 72,
+        "def": 80,
+        "stamina": 86,
         "playstyles": [
-          "classic_winger"
+          "attacking_wingback"
         ],
         "scoutNote": "스포르팅 CP UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-sporting-p6",
-        "name": "모르텐 히울만",
+        "name": "세르지 알티미라",
         "position": "MF",
         "mainPositions": [
           "CDM",
           "CM"
         ],
         "secondaryPositions": [],
-        "ovr": 83,
-        "nationality": "덴마크",
-        "nationalityCode": "DK",
+        "ovr": 80,
+        "nationality": "스페인",
+        "nationalityCode": "ES",
         "leagueId": "epl",
         "club": "스포르팅 CP",
-        "att": 77,
-        "mid": 84,
-        "def": 71,
-        "stamina": 93,
+        "att": 68,
+        "mid": 80,
+        "def": 78,
+        "stamina": 86,
         "playstyles": [
-          "ball_winner",
-          "box_to_box"
+          "deep_playmaker"
         ],
         "scoutNote": "스포르팅 CP UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-sporting-p7",
-        "name": "다니엘 브라간사",
+        "name": "호드리구 살라사르",
         "position": "MF",
         "mainPositions": [
-          "CM"
+          "CM",
+          "CAM"
         ],
-        "secondaryPositions": [
-          "CDM"
-        ],
+        "secondaryPositions": [],
         "ovr": 80,
-        "nationality": "포르투갈",
-        "nationalityCode": "PT",
+        "nationality": "우루과이",
+        "nationalityCode": "UY",
         "leagueId": "epl",
         "club": "스포르팅 CP",
         "att": 74,
         "mid": 81,
-        "def": 68,
+        "def": 73,
         "stamina": 86,
         "playstyles": [
-          "deep_playmaker"
+          "box_to_box"
         ],
         "scoutNote": "스포르팅 CP UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -834,50 +832,47 @@
       },
       {
         "id": "ucl-sporting-p10",
-        "name": "페드루 곤살베스",
+        "name": "제니 카타무",
         "position": "FW",
         "mainPositions": [
-          "LW",
-          "CAM"
+          "RW",
+          "RWB"
         ],
-        "secondaryPositions": [
-          "CM"
-        ],
-        "ovr": 83,
-        "nationality": "포르투갈",
-        "nationalityCode": "PT",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "모잠비크",
+        "nationalityCode": "MZ",
         "leagueId": "epl",
         "club": "스포르팅 CP",
-        "att": 84,
+        "att": 80,
         "mid": 73,
-        "def": 43,
-        "stamina": 86,
+        "def": 45,
+        "stamina": 87,
         "playstyles": [
-          "playmaker_10",
-          "inverted_winger"
+          "classic_winger"
         ],
         "scoutNote": "스포르팅 CP UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-sporting-p11",
-        "name": "콘라드 하르데르",
+        "name": "포티스 이오아니디스",
         "position": "FW",
         "mainPositions": [
           "ST"
         ],
         "secondaryPositions": [],
         "ovr": 80,
-        "nationality": "덴마크",
-        "nationalityCode": "DK",
+        "nationality": "그리스",
+        "nationalityCode": "GR",
         "leagueId": "epl",
         "club": "스포르팅 CP",
-        "att": 81,
-        "mid": 70,
+        "att": 82,
+        "mid": 68,
         "def": 42,
-        "stamina": 86,
+        "stamina": 85,
         "playstyles": [
-          "line_breaker"
+          "complete_forward"
         ],
         "scoutNote": "스포르팅 CP UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -898,30 +893,30 @@
       "mid": 80,
       "def": 79,
       "topScorers": [
-        "브라이언 브로비",
-        "미카 고츠",
-        "베르트랑 트라오레"
+        "빅토르 치한코우",
+        "베르트랑 트라오레",
+        "카스페르 돌베르"
       ]
     },
     "country": "네덜란드",
     "roster": [
       {
         "id": "ucl-ajax-p1",
-        "name": "렘코 파스베이르",
+        "name": "마르크-안드레 테어 슈테겐",
         "position": "GK",
         "mainPositions": [
           "GK"
         ],
         "secondaryPositions": [],
-        "ovr": 78,
-        "nationality": "네덜란드",
-        "nationalityCode": "NL",
+        "ovr": 84,
+        "nationality": "독일",
+        "nationalityCode": "DE",
         "leagueId": "epl",
         "club": "AFC 아약스",
         "att": 30,
-        "mid": 59,
-        "def": 79,
-        "stamina": 73,
+        "mid": 64,
+        "def": 85,
+        "stamina": 78,
         "playstyles": [
           "sweeper_keeper"
         ],
@@ -955,21 +950,23 @@
       },
       {
         "id": "ucl-ajax-p3",
-        "name": "요십 슈탈로",
+        "name": "틸로 케러",
         "position": "DF",
         "mainPositions": [
           "CB"
         ],
-        "secondaryPositions": [],
+        "secondaryPositions": [
+          "RB"
+        ],
         "ovr": 80,
-        "nationality": "크로아티아",
-        "nationalityCode": "HR",
+        "nationality": "독일",
+        "nationalityCode": "DE",
         "leagueId": "epl",
         "club": "AFC 아약스",
-        "att": 59,
+        "att": 58,
         "mid": 70,
         "def": 81,
-        "stamina": 81,
+        "stamina": 84,
         "playstyles": [
           "ball_playing_cb"
         ],
@@ -1027,71 +1024,71 @@
       },
       {
         "id": "ucl-ajax-p6",
-        "name": "조던 헨더슨",
+        "name": "소피앙 암라바트",
         "position": "MF",
         "mainPositions": [
-          "CDM",
+          "CDM"
+        ],
+        "secondaryPositions": [
           "CM"
         ],
-        "secondaryPositions": [],
-        "ovr": 79,
-        "nationality": "잉글랜드",
-        "nationalityCode": "GB",
+        "ovr": 81,
+        "nationality": "모로코",
+        "nationalityCode": "MA",
         "leagueId": "epl",
         "club": "AFC 아약스",
-        "att": 73,
-        "mid": 80,
-        "def": 67,
-        "stamina": 86,
+        "att": 69,
+        "mid": 81,
+        "def": 79,
+        "stamina": 87,
         "playstyles": [
-          "deep_playmaker"
+          "ball_winner"
         ],
         "scoutNote": "AFC 아약스 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-ajax-p7",
-        "name": "케네스 테일러",
+        "name": "율리안 브란트",
         "position": "MF",
         "mainPositions": [
+          "CAM",
           "CM"
         ],
-        "secondaryPositions": [
-          "CAM"
-        ],
-        "ovr": 80,
-        "nationality": "네덜란드",
-        "nationalityCode": "NL",
+        "secondaryPositions": [],
+        "ovr": 82,
+        "nationality": "독일",
+        "nationalityCode": "DE",
         "leagueId": "epl",
         "club": "AFC 아약스",
-        "att": 74,
-        "mid": 81,
-        "def": 68,
-        "stamina": 88,
+        "att": 80,
+        "mid": 83,
+        "def": 60,
+        "stamina": 85,
         "playstyles": [
-          "box_to_box"
+          "playmaker_10"
         ],
         "scoutNote": "AFC 아약스 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-ajax-p8",
-        "name": "키안 피츠짐",
+        "name": "오스카르 글로흐",
         "position": "MF",
         "mainPositions": [
-          "CM",
-          "CAM"
+          "CAM",
+          "LW"
         ],
         "secondaryPositions": [],
-        "ovr": 78,
-        "nationality": "네덜란드",
-        "nationalityCode": "NL",
+        "ovr": 81,
+        "nationality": "이스라엘",
+        "nationalityCode": "IL",
         "leagueId": "epl",
         "club": "AFC 아약스",
-        "att": 73,
-        "mid": 79,
-        "def": 66,
-        "stamina": 86,
+        "att": 79,
+        "mid": 82,
+        "def": 59,
+        "stamina": 85,
         "playstyles": [
           "playmaker_10"
         ],
@@ -1125,23 +1122,21 @@
       },
       {
         "id": "ucl-ajax-p10",
-        "name": "미카 고츠",
+        "name": "빅토르 치한코우",
         "position": "FW",
         "mainPositions": [
-          "LW"
+          "RW"
         ],
-        "secondaryPositions": [
-          "LM"
-        ],
-        "ovr": 79,
-        "nationality": "벨기에",
-        "nationalityCode": "BE",
+        "secondaryPositions": [],
+        "ovr": 81,
+        "nationality": "우크라이나",
+        "nationalityCode": "UA",
         "leagueId": "epl",
         "club": "AFC 아약스",
-        "att": 80,
-        "mid": 70,
-        "def": 41,
-        "stamina": 85,
+        "att": 82,
+        "mid": 75,
+        "def": 47,
+        "stamina": 84,
         "playstyles": [
           "inverted_winger"
         ],
@@ -1150,23 +1145,23 @@
       },
       {
         "id": "ucl-ajax-p11",
-        "name": "브라이언 브로비",
+        "name": "카스페르 돌베르",
         "position": "FW",
         "mainPositions": [
           "ST"
         ],
         "secondaryPositions": [],
-        "ovr": 80,
-        "nationality": "네덜란드",
-        "nationalityCode": "NL",
+        "ovr": 79,
+        "nationality": "덴마크",
+        "nationalityCode": "DK",
         "leagueId": "epl",
         "club": "AFC 아약스",
         "att": 81,
-        "mid": 70,
-        "def": 42,
-        "stamina": 83,
+        "mid": 67,
+        "def": 41,
+        "stamina": 82,
         "playstyles": [
-          "complete_forward"
+          "poacher"
         ],
         "scoutNote": "AFC 아약스 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -1189,30 +1184,30 @@
       "topScorers": [
         "리카르도 페피",
         "이반 페리시치",
-        "요한 바카요코"
+        "루벤 판 보멀"
       ]
     },
     "country": "네덜란드",
     "roster": [
       {
         "id": "ucl-psv-p1",
-        "name": "왈테르 베니테스",
+        "name": "마테이 코바르",
         "position": "GK",
         "mainPositions": [
           "GK"
         ],
         "secondaryPositions": [],
-        "ovr": 81,
-        "nationality": "아르헨티나",
-        "nationalityCode": "AR",
+        "ovr": 79,
+        "nationality": "체코",
+        "nationalityCode": "CZ",
         "leagueId": "epl",
         "club": "PSV 에인트호번",
         "att": 30,
-        "mid": 62,
-        "def": 82,
+        "mid": 59,
+        "def": 80,
         "stamina": 77,
         "playstyles": [
-          "shot_stopper"
+          "sweeper_keeper"
         ],
         "scoutNote": "PSV 에인트호번 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -1270,25 +1265,25 @@
       },
       {
         "id": "ucl-psv-p4",
-        "name": "올리비에 보스칼리",
+        "name": "뤼트샤럴 헤이르트라위다",
         "position": "DF",
         "mainPositions": [
+          "RB",
           "CB"
         ],
-        "secondaryPositions": [
-          "LB"
-        ],
-        "ovr": 80,
-        "nationality": "프랑스",
-        "nationalityCode": "FR",
+        "secondaryPositions": [],
+        "ovr": 81,
+        "nationality": "네덜란드",
+        "nationalityCode": "NL",
         "leagueId": "epl",
         "club": "PSV 에인트호번",
-        "att": 59,
-        "mid": 70,
-        "def": 81,
-        "stamina": 81,
+        "att": 65,
+        "mid": 74,
+        "def": 82,
+        "stamina": 87,
         "playstyles": [
-          "ball_playing_cb"
+          "ball_playing_cb",
+          "attacking_wingback"
         ],
         "scoutNote": "PSV 에인트호번 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -1347,50 +1342,47 @@
       },
       {
         "id": "ucl-psv-p7",
-        "name": "조이 페이르만",
+        "name": "코다이 사노",
         "position": "MF",
         "mainPositions": [
           "CM",
           "CDM"
         ],
         "secondaryPositions": [],
-        "ovr": 82,
-        "nationality": "네덜란드",
-        "nationalityCode": "NL",
+        "ovr": 78,
+        "nationality": "일본",
+        "nationalityCode": "JP",
         "leagueId": "epl",
         "club": "PSV 에인트호번",
-        "att": 76,
-        "mid": 83,
-        "def": 70,
-        "stamina": 84,
+        "att": 72,
+        "mid": 79,
+        "def": 71,
+        "stamina": 87,
         "playstyles": [
-          "deep_playmaker"
+          "box_to_box"
         ],
         "scoutNote": "PSV 에인트호번 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-psv-p8",
-        "name": "말릭 틸만",
+        "name": "휘스 틸",
         "position": "MF",
         "mainPositions": [
           "CAM",
           "CM"
         ],
-        "secondaryPositions": [
-          "LW"
-        ],
-        "ovr": 82,
-        "nationality": "미국",
-        "nationalityCode": "US",
+        "secondaryPositions": [],
+        "ovr": 80,
+        "nationality": "네덜란드",
+        "nationalityCode": "NL",
         "leagueId": "epl",
         "club": "PSV 에인트호번",
-        "att": 76,
-        "mid": 83,
-        "def": 70,
-        "stamina": 87,
+        "att": 78,
+        "mid": 81,
+        "def": 58,
+        "stamina": 88,
         "playstyles": [
-          "playmaker_10",
           "box_to_box"
         ],
         "scoutNote": "PSV 에인트호번 UEFA 챔피언스리그 주전 멤버",
@@ -1398,23 +1390,22 @@
       },
       {
         "id": "ucl-psv-p9",
-        "name": "요한 바카요코",
+        "name": "루벤 판 보멀",
         "position": "FW",
         "mainPositions": [
+          "LW",
           "RW"
         ],
-        "secondaryPositions": [
-          "RM"
-        ],
-        "ovr": 81,
-        "nationality": "벨기에",
-        "nationalityCode": "BE",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "네덜란드",
+        "nationalityCode": "NL",
         "leagueId": "epl",
         "club": "PSV 에인트호번",
-        "att": 82,
-        "mid": 71,
-        "def": 42,
-        "stamina": 86,
+        "att": 80,
+        "mid": 73,
+        "def": 45,
+        "stamina": 85,
         "playstyles": [
           "inverted_winger"
         ],
@@ -1486,9 +1477,9 @@
       "mid": 80,
       "def": 79,
       "topScorers": [
-        "우에다 아야세",
-        "이고르 파이샹",
-        "아니스 하지 무사"
+        "아니스 하지 무사",
+        "리스 넬슨",
+        "나초 페리"
       ]
     },
     "country": "네덜란드",
@@ -1543,21 +1534,21 @@
       },
       {
         "id": "ucl-feyenoord-p3",
-        "name": "게르노트 트라우너",
+        "name": "와타나베 츠요시",
         "position": "DF",
         "mainPositions": [
           "CB"
         ],
         "secondaryPositions": [],
         "ovr": 79,
-        "nationality": "오스트리아",
-        "nationalityCode": "AT",
+        "nationality": "일본",
+        "nationalityCode": "JP",
         "leagueId": "epl",
         "club": "페예노르트",
-        "att": 58,
-        "mid": 70,
+        "att": 57,
+        "mid": 69,
         "def": 80,
-        "stamina": 78,
+        "stamina": 84,
         "playstyles": [
           "stopper_cb"
         ],
@@ -1589,77 +1580,72 @@
       },
       {
         "id": "ucl-feyenoord-p5",
-        "name": "키린트시 하르트만",
+        "name": "미카 마르몰",
         "position": "DF",
         "mainPositions": [
+          "CB",
           "LB"
         ],
-        "secondaryPositions": [
-          "LWB"
-        ],
-        "ovr": 80,
-        "nationality": "네덜란드",
-        "nationalityCode": "NL",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "스페인",
+        "nationalityCode": "ES",
         "leagueId": "epl",
         "club": "페예노르트",
-        "att": 59,
-        "mid": 70,
-        "def": 81,
-        "stamina": 88,
+        "att": 57,
+        "mid": 69,
+        "def": 80,
+        "stamina": 84,
         "playstyles": [
-          "attacking_wingback"
+          "ball_playing_cb"
         ],
         "scoutNote": "페예노르트 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-feyenoord-p6",
-        "name": "황인범",
+        "name": "루시아노 발렌테",
         "position": "MF",
         "mainPositions": [
           "CM",
-          "CDM"
-        ],
-        "secondaryPositions": [
           "CAM"
         ],
-        "ovr": 81,
-        "nationality": "대한민국",
-        "nationalityCode": "KR",
+        "secondaryPositions": [],
+        "ovr": 78,
+        "nationality": "네덜란드",
+        "nationalityCode": "NL",
         "leagueId": "epl",
         "club": "페예노르트",
-        "att": 75,
-        "mid": 82,
-        "def": 69,
-        "stamina": 91,
+        "att": 72,
+        "mid": 79,
+        "def": 71,
+        "stamina": 85,
         "playstyles": [
-          "box_to_box",
-          "deep_playmaker"
+          "playmaker_10"
         ],
         "scoutNote": "페예노르트 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-feyenoord-p7",
-        "name": "퀸턴 팀버",
+        "name": "셈 스테인",
         "position": "MF",
         "mainPositions": [
+          "CAM",
           "CM"
         ],
-        "secondaryPositions": [
-          "CDM"
-        ],
-        "ovr": 82,
+        "secondaryPositions": [],
+        "ovr": 80,
         "nationality": "네덜란드",
         "nationalityCode": "NL",
         "leagueId": "epl",
         "club": "페예노르트",
-        "att": 76,
-        "mid": 83,
-        "def": 70,
-        "stamina": 90,
+        "att": 78,
+        "mid": 81,
+        "def": 58,
+        "stamina": 86,
         "playstyles": [
-          "box_to_box"
+          "playmaker_10"
         ],
         "scoutNote": "페예노르트 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -1715,46 +1701,45 @@
       },
       {
         "id": "ucl-feyenoord-p10",
-        "name": "이고르 파이샹",
+        "name": "리스 넬슨",
         "position": "FW",
         "mainPositions": [
-          "LW"
-        ],
-        "secondaryPositions": [
+          "LW",
           "RW"
         ],
-        "ovr": 81,
-        "nationality": "브라질",
-        "nationalityCode": "BR",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "잉글랜드",
+        "nationalityCode": "GB",
         "leagueId": "epl",
         "club": "페예노르트",
-        "att": 82,
-        "mid": 71,
-        "def": 42,
-        "stamina": 87,
+        "att": 80,
+        "mid": 73,
+        "def": 45,
+        "stamina": 83,
         "playstyles": [
-          "inverted_winger"
+          "classic_winger"
         ],
         "scoutNote": "페예노르트 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-feyenoord-p11",
-        "name": "우에다 아야세",
+        "name": "나초 페리",
         "position": "FW",
         "mainPositions": [
           "ST"
         ],
         "secondaryPositions": [],
-        "ovr": 80,
-        "nationality": "일본",
-        "nationalityCode": "JP",
+        "ovr": 78,
+        "nationality": "스페인",
+        "nationalityCode": "ES",
         "leagueId": "epl",
         "club": "페예노르트",
-        "att": 81,
-        "mid": 70,
-        "def": 42,
-        "stamina": 85,
+        "att": 80,
+        "mid": 66,
+        "def": 40,
+        "stamina": 83,
         "playstyles": [
           "poacher"
         ],
@@ -1777,9 +1762,9 @@
       "mid": 79,
       "def": 78,
       "topScorers": [
+        "주앙 필리프 조타",
         "아담 아이다",
-        "마에다 다이젠",
-        "니콜라스 퀸"
+        "양현준"
       ]
     },
     "country": "스코틀랜드",
@@ -1978,23 +1963,22 @@
       },
       {
         "id": "ucl-celtic-p9",
-        "name": "니콜라스 퀸",
+        "name": "양현준",
         "position": "FW",
         "mainPositions": [
-          "RW"
+          "RW",
+          "LW"
         ],
-        "secondaryPositions": [
-          "RM"
-        ],
-        "ovr": 80,
-        "nationality": "독일",
-        "nationalityCode": "DE",
+        "secondaryPositions": [],
+        "ovr": 77,
+        "nationality": "대한민국",
+        "nationalityCode": "KR",
         "leagueId": "epl",
         "club": "셀틱 FC",
-        "att": 81,
-        "mid": 70,
-        "def": 42,
-        "stamina": 88,
+        "att": 78,
+        "mid": 71,
+        "def": 43,
+        "stamina": 85,
         "playstyles": [
           "classic_winger"
         ],
@@ -2003,26 +1987,24 @@
       },
       {
         "id": "ucl-celtic-p10",
-        "name": "마에다 다이젠",
+        "name": "주앙 필리프 조타",
         "position": "FW",
         "mainPositions": [
           "LW",
-          "ST"
-        ],
-        "secondaryPositions": [
           "RW"
         ],
-        "ovr": 80,
-        "nationality": "일본",
-        "nationalityCode": "JP",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "포르투갈",
+        "nationalityCode": "PT",
         "leagueId": "epl",
         "club": "셀틱 FC",
-        "att": 81,
-        "mid": 70,
-        "def": 42,
-        "stamina": 95,
+        "att": 80,
+        "mid": 73,
+        "def": 45,
+        "stamina": 84,
         "playstyles": [
-          "line_breaker"
+          "inverted_winger"
         ],
         "scoutNote": "셀틱 FC UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -2066,29 +2048,29 @@
       "mid": 78,
       "def": 77,
       "topScorers": [
-        "함자 이가마네",
-        "이아니스 하지",
-        "네딤 바이라미"
+        "바츨라프 체르니",
+        "시릴 데세르스",
+        "이아니스 하지"
       ]
     },
     "country": "스코틀랜드",
     "roster": [
       {
         "id": "ucl-rangers-p1",
-        "name": "잭 버틀랜드",
+        "name": "리암 켈리",
         "position": "GK",
         "mainPositions": [
           "GK"
         ],
         "secondaryPositions": [],
-        "ovr": 79,
+        "ovr": 76,
         "nationality": "잉글랜드",
         "nationalityCode": "GB",
         "leagueId": "epl",
         "club": "레인저스 FC",
         "att": 30,
-        "mid": 60,
-        "def": 80,
+        "mid": 56,
+        "def": 77,
         "stamina": 75,
         "playstyles": [
           "shot_stopper"
@@ -2318,23 +2300,23 @@
       },
       {
         "id": "ucl-rangers-p11",
-        "name": "함자 이가마네",
+        "name": "시릴 데세르스",
         "position": "FW",
         "mainPositions": [
           "ST"
         ],
         "secondaryPositions": [],
-        "ovr": 79,
-        "nationality": "모로코",
-        "nationalityCode": "MA",
+        "ovr": 78,
+        "nationality": "나이지리아",
+        "nationalityCode": "NG",
         "leagueId": "epl",
         "club": "레인저스 FC",
         "att": 80,
-        "mid": 70,
-        "def": 41,
-        "stamina": 85,
+        "mid": 66,
+        "def": 40,
+        "stamina": 82,
         "playstyles": [
-          "line_breaker"
+          "poacher"
         ],
         "scoutNote": "레인저스 FC UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -2356,8 +2338,8 @@
       "def": 79,
       "topScorers": [
         "빅터 오시멘",
-        "롤란드 살라이",
-        "유누스 악귄"
+        "바르슈 알페르 일마즈",
+        "롤란드 살라이"
       ]
     },
     "country": "튀르키예",
@@ -2387,25 +2369,26 @@
       },
       {
         "id": "ucl-galatasaray-p2",
-        "name": "엘리아스 옐레르트",
+        "name": "카안 아이한",
         "position": "DF",
         "mainPositions": [
-          "RB"
+          "RB",
+          "CB"
         ],
         "secondaryPositions": [
-          "LB"
+          "CDM"
         ],
-        "ovr": 77,
-        "nationality": "덴마크",
-        "nationalityCode": "DK",
+        "ovr": 78,
+        "nationality": "튀르키예",
+        "nationalityCode": "TR",
         "leagueId": "epl",
         "club": "갈라타사라이",
-        "att": 57,
-        "mid": 68,
-        "def": 78,
-        "stamina": 88,
+        "att": 62,
+        "mid": 71,
+        "def": 79,
+        "stamina": 83,
         "playstyles": [
-          "attacking_wingback"
+          "stopper_cb"
         ],
         "scoutNote": "갈라타사라이 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -2652,28 +2635,28 @@
       "topScorers": [
         "유세프 엔-네시리",
         "두산 타디치",
-        "세바스티안 시만스키"
+        "이르판 잔 카흐베지"
       ]
     },
     "country": "튀르키예",
     "roster": [
       {
         "id": "ucl-fenerbahce-p1",
-        "name": "도미니크 리바코비치",
+        "name": "이르판 잔 에그리바야트",
         "position": "GK",
         "mainPositions": [
           "GK"
         ],
         "secondaryPositions": [],
-        "ovr": 81,
-        "nationality": "크로아티아",
-        "nationalityCode": "HR",
+        "ovr": 77,
+        "nationality": "튀르키예",
+        "nationalityCode": "TR",
         "leagueId": "epl",
         "club": "페네르바체",
         "att": 30,
-        "mid": 62,
-        "def": 82,
-        "stamina": 76,
+        "mid": 57,
+        "def": 78,
+        "stamina": 75,
         "playstyles": [
           "shot_stopper"
         ],
@@ -2753,23 +2736,21 @@
       },
       {
         "id": "ucl-fenerbahce-p5",
-        "name": "필립 코스티치",
+        "name": "제이든 오스터볼데",
         "position": "DF",
         "mainPositions": [
           "LB",
-          "LWB"
+          "CB"
         ],
-        "secondaryPositions": [
-          "LM"
-        ],
-        "ovr": 80,
-        "nationality": "세르비아",
-        "nationalityCode": "RS",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "네덜란드",
+        "nationalityCode": "NL",
         "leagueId": "epl",
         "club": "페네르바체",
-        "att": 59,
-        "mid": 70,
-        "def": 81,
+        "att": 63,
+        "mid": 72,
+        "def": 80,
         "stamina": 86,
         "playstyles": [
           "attacking_wingback"
@@ -2779,23 +2760,22 @@
       },
       {
         "id": "ucl-fenerbahce-p6",
-        "name": "소피앙 암라바트",
+        "name": "이스마일 윅세크",
         "position": "MF",
         "mainPositions": [
-          "CDM"
-        ],
-        "secondaryPositions": [
+          "CDM",
           "CM"
         ],
-        "ovr": 81,
-        "nationality": "모로코",
-        "nationalityCode": "MA",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "튀르키예",
+        "nationalityCode": "TR",
         "leagueId": "epl",
         "club": "페네르바체",
-        "att": 75,
-        "mid": 82,
-        "def": 69,
-        "stamina": 91,
+        "att": 67,
+        "mid": 79,
+        "def": 77,
+        "stamina": 88,
         "playstyles": [
           "ball_winner"
         ],
@@ -2853,25 +2833,24 @@
       },
       {
         "id": "ucl-fenerbahce-p9",
-        "name": "세바스티안 시만스키",
-        "position": "MF",
+        "name": "오구즈 아이딘",
+        "position": "FW",
         "mainPositions": [
-          "CAM",
-          "CM"
+          "RW",
+          "LW"
         ],
         "secondaryPositions": [],
-        "ovr": 81,
-        "nationality": "폴란드",
-        "nationalityCode": "PL",
+        "ovr": 78,
+        "nationality": "튀르키예",
+        "nationalityCode": "TR",
         "leagueId": "epl",
         "club": "페네르바체",
-        "att": 75,
-        "mid": 82,
-        "def": 69,
-        "stamina": 90,
+        "att": 79,
+        "mid": 72,
+        "def": 44,
+        "stamina": 85,
         "playstyles": [
-          "playmaker_10",
-          "box_to_box"
+          "classic_winger"
         ],
         "scoutNote": "페네르바체 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -2942,54 +2921,52 @@
       "def": 77,
       "topScorers": [
         "카림 코나테",
-        "무사 쿤폴로 예오",
-        "네네 도르젤레스"
+        "네네 도르젤레스",
+        "무사 쿤폴로 예오"
       ]
     },
     "country": "오스트리아",
     "roster": [
       {
         "id": "ucl-salzburg-p1",
-        "name": "알렉산더 슐라거",
+        "name": "크리스티안 자비에츠키",
         "position": "GK",
         "mainPositions": [
           "GK"
         ],
         "secondaryPositions": [],
-        "ovr": 78,
+        "ovr": 75,
         "nationality": "오스트리아",
         "nationalityCode": "AT",
         "leagueId": "epl",
         "club": "RB 잘츠부르크",
         "att": 30,
-        "mid": 59,
-        "def": 79,
-        "stamina": 76,
+        "mid": 55,
+        "def": 76,
+        "stamina": 75,
         "playstyles": [
-          "sweeper_keeper"
+          "shot_stopper"
         ],
         "scoutNote": "RB 잘츠부르크 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-salzburg-p2",
-        "name": "아마르 데디치",
+        "name": "슈테판 라이너",
         "position": "DF",
         "mainPositions": [
           "RB"
         ],
-        "secondaryPositions": [
-          "LB"
-        ],
-        "ovr": 79,
-        "nationality": "보스니아",
-        "nationalityCode": "BA",
+        "secondaryPositions": [],
+        "ovr": 76,
+        "nationality": "오스트리아",
+        "nationalityCode": "AT",
         "leagueId": "epl",
         "club": "RB 잘츠부르크",
-        "att": 58,
-        "mid": 70,
-        "def": 80,
-        "stamina": 90,
+        "att": 60,
+        "mid": 69,
+        "def": 77,
+        "stamina": 84,
         "playstyles": [
           "attacking_wingback"
         ],
@@ -2998,21 +2975,21 @@
       },
       {
         "id": "ucl-salzburg-p3",
-        "name": "삼손 바이두",
+        "name": "야코브 라스무센",
         "position": "DF",
         "mainPositions": [
           "CB"
         ],
         "secondaryPositions": [],
-        "ovr": 78,
-        "nationality": "오스트리아",
-        "nationalityCode": "AT",
+        "ovr": 76,
+        "nationality": "덴마크",
+        "nationalityCode": "DK",
         "leagueId": "epl",
         "club": "RB 잘츠부르크",
-        "att": 58,
-        "mid": 69,
-        "def": 79,
-        "stamina": 83,
+        "att": 54,
+        "mid": 66,
+        "def": 77,
+        "stamina": 82,
         "playstyles": [
           "stopper_cb"
         ],
@@ -3044,23 +3021,22 @@
       },
       {
         "id": "ucl-salzburg-p5",
-        "name": "알렉사 테르지치",
+        "name": "프란스 크래치히",
         "position": "DF",
         "mainPositions": [
-          "LB"
-        ],
-        "secondaryPositions": [
+          "LB",
           "LWB"
         ],
-        "ovr": 77,
-        "nationality": "세르비아",
-        "nationalityCode": "RS",
+        "secondaryPositions": [],
+        "ovr": 76,
+        "nationality": "독일",
+        "nationalityCode": "DE",
         "leagueId": "epl",
         "club": "RB 잘츠부르크",
-        "att": 57,
-        "mid": 68,
-        "def": 78,
-        "stamina": 87,
+        "att": 60,
+        "mid": 69,
+        "def": 77,
+        "stamina": 85,
         "playstyles": [
           "attacking_wingback"
         ],
@@ -3069,47 +3045,22 @@
       },
       {
         "id": "ucl-salzburg-p6",
-        "name": "마즈 비스트루프",
+        "name": "우무트 토훔주",
         "position": "MF",
         "mainPositions": [
-          "CDM",
-          "CM"
+          "CM",
+          "CDM"
         ],
         "secondaryPositions": [],
-        "ovr": 79,
-        "nationality": "덴마크",
-        "nationalityCode": "DK",
+        "ovr": 76,
+        "nationality": "독일",
+        "nationalityCode": "DE",
         "leagueId": "epl",
         "club": "RB 잘츠부르크",
-        "att": 73,
-        "mid": 80,
-        "def": 67,
-        "stamina": 92,
-        "playstyles": [
-          "ball_winner"
-        ],
-        "scoutNote": "RB 잘츠부르크 UEFA 챔피언스리그 주전 멤버",
-        "isLegend": false
-      },
-      {
-        "id": "ucl-salzburg-p7",
-        "name": "니콜라스 카팔도",
-        "position": "MF",
-        "mainPositions": [
-          "CM"
-        ],
-        "secondaryPositions": [
-          "RB"
-        ],
-        "ovr": 78,
-        "nationality": "아르헨티나",
-        "nationalityCode": "AR",
-        "leagueId": "epl",
-        "club": "RB 잘츠부르크",
-        "att": 73,
-        "mid": 79,
-        "def": 66,
-        "stamina": 91,
+        "att": 70,
+        "mid": 77,
+        "def": 69,
+        "stamina": 86,
         "playstyles": [
           "box_to_box"
         ],
@@ -3117,25 +3068,46 @@
         "isLegend": false
       },
       {
+        "id": "ucl-salzburg-p7",
+        "name": "소우마일라 디아바테",
+        "position": "MF",
+        "mainPositions": [
+          "CDM"
+        ],
+        "secondaryPositions": [],
+        "ovr": 75,
+        "nationality": "말리",
+        "nationalityCode": "ML",
+        "leagueId": "epl",
+        "club": "RB 잘츠부르크",
+        "att": 63,
+        "mid": 75,
+        "def": 73,
+        "stamina": 85,
+        "playstyles": [
+          "ball_winner"
+        ],
+        "scoutNote": "RB 잘츠부르크 UEFA 챔피언스리그 주전 멤버",
+        "isLegend": false
+      },
+      {
         "id": "ucl-salzburg-p8",
-        "name": "오스카르 글로흐",
+        "name": "케림 알라이베고비치",
         "position": "MF",
         "mainPositions": [
           "CAM",
-          "CM"
-        ],
-        "secondaryPositions": [
           "LW"
         ],
-        "ovr": 81,
-        "nationality": "이스라엘",
-        "nationalityCode": "IL",
+        "secondaryPositions": [],
+        "ovr": 76,
+        "nationality": "보스니아 헤르체고비나",
+        "nationalityCode": "BA",
         "leagueId": "epl",
         "club": "RB 잘츠부르크",
-        "att": 75,
-        "mid": 82,
-        "def": 69,
-        "stamina": 86,
+        "att": 74,
+        "mid": 77,
+        "def": 54,
+        "stamina": 84,
         "playstyles": [
           "playmaker_10"
         ],
@@ -3231,9 +3203,9 @@
       "mid": 79,
       "def": 77,
       "topScorers": [
-        "라시나 트라오레",
-        "케빈 마세두",
-        "알리송 산타나"
+        "알리송 산타나",
+        "에기날두",
+        "라시나 트라오레"
       ]
     },
     "country": "우크라이나",
@@ -3263,23 +3235,21 @@
       },
       {
         "id": "ucl-shakhtar-p2",
-        "name": "유힘 코노플랴",
+        "name": "비니시우스 토비아스",
         "position": "DF",
         "mainPositions": [
           "RB"
         ],
-        "secondaryPositions": [
-          "RWB"
-        ],
-        "ovr": 78,
-        "nationality": "우크라이나",
-        "nationalityCode": "UA",
+        "secondaryPositions": [],
+        "ovr": 77,
+        "nationality": "브라질",
+        "nationalityCode": "BR",
         "leagueId": "epl",
         "club": "샤흐타르 도네츠크",
-        "att": 58,
-        "mid": 69,
-        "def": 79,
-        "stamina": 88,
+        "att": 61,
+        "mid": 70,
+        "def": 78,
+        "stamina": 85,
         "playstyles": [
           "attacking_wingback"
         ],
@@ -3459,25 +3429,24 @@
       },
       {
         "id": "ucl-shakhtar-p10",
-        "name": "케빈 마세두",
+        "name": "에기날두",
         "position": "FW",
         "mainPositions": [
-          "LW"
+          "LW",
+          "ST"
         ],
-        "secondaryPositions": [
-          "LM"
-        ],
-        "ovr": 80,
+        "secondaryPositions": [],
+        "ovr": 78,
         "nationality": "브라질",
         "nationalityCode": "BR",
         "leagueId": "epl",
         "club": "샤흐타르 도네츠크",
-        "att": 81,
-        "mid": 70,
-        "def": 42,
-        "stamina": 87,
+        "att": 79,
+        "mid": 72,
+        "def": 44,
+        "stamina": 84,
         "playstyles": [
-          "inverted_winger"
+          "line_breaker"
         ],
         "scoutNote": "샤흐타르 도네츠크 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -3521,8 +3490,8 @@
       "mid": 80,
       "def": 79,
       "topScorers": [
-        "페란 주트글라",
-        "크리스토스 촐리스",
+        "카를로스 포르브스",
+        "니콜로 트레솔디",
         "한스 바나컨"
       ]
     },
@@ -3530,21 +3499,21 @@
     "roster": [
       {
         "id": "ucl-brugge-p1",
-        "name": "시몽 미뇰레",
+        "name": "얀 좀머",
         "position": "GK",
         "mainPositions": [
           "GK"
         ],
         "secondaryPositions": [],
-        "ovr": 79,
-        "nationality": "벨기에",
-        "nationalityCode": "BE",
+        "ovr": 83,
+        "nationality": "스위스",
+        "nationalityCode": "CH",
         "leagueId": "epl",
         "club": "클럽 브뤼허",
         "att": 30,
-        "mid": 60,
-        "def": 80,
-        "stamina": 74,
+        "mid": 63,
+        "def": 84,
+        "stamina": 76,
         "playstyles": [
           "shot_stopper"
         ],
@@ -3623,23 +3592,21 @@
       },
       {
         "id": "ucl-brugge-p5",
-        "name": "막심 더 카위퍼르",
+        "name": "마테오 담스",
         "position": "DF",
         "mainPositions": [
           "LB"
         ],
-        "secondaryPositions": [
-          "LWB"
-        ],
-        "ovr": 80,
+        "secondaryPositions": [],
+        "ovr": 77,
         "nationality": "벨기에",
         "nationalityCode": "BE",
         "leagueId": "epl",
         "club": "클럽 브뤼허",
-        "att": 59,
+        "att": 61,
         "mid": 70,
-        "def": 81,
-        "stamina": 89,
+        "def": 78,
+        "stamina": 85,
         "playstyles": [
           "attacking_wingback"
         ],
@@ -3648,23 +3615,22 @@
       },
       {
         "id": "ucl-brugge-p6",
-        "name": "라파엘 오니에디카",
+        "name": "프레디 포츠",
         "position": "MF",
         "mainPositions": [
-          "CDM"
-        ],
-        "secondaryPositions": [
+          "CDM",
           "CM"
         ],
-        "ovr": 80,
-        "nationality": "나이지리아",
-        "nationalityCode": "NG",
+        "secondaryPositions": [],
+        "ovr": 78,
+        "nationality": "잉글랜드",
+        "nationalityCode": "GB",
         "leagueId": "epl",
         "club": "클럽 브뤼허",
-        "att": 74,
-        "mid": 81,
-        "def": 68,
-        "stamina": 90,
+        "att": 66,
+        "mid": 78,
+        "def": 76,
+        "stamina": 86,
         "playstyles": [
           "ball_winner"
         ],
@@ -3673,22 +3639,22 @@
       },
       {
         "id": "ucl-brugge-p7",
-        "name": "아르돈 야샤리",
+        "name": "우고 베틀레센",
         "position": "MF",
         "mainPositions": [
           "CM",
-          "CDM"
+          "CAM"
         ],
         "secondaryPositions": [],
-        "ovr": 81,
-        "nationality": "스위스",
-        "nationalityCode": "CH",
+        "ovr": 79,
+        "nationality": "노르웨이",
+        "nationalityCode": "NO",
         "leagueId": "epl",
         "club": "클럽 브뤼허",
-        "att": 75,
-        "mid": 82,
-        "def": 69,
-        "stamina": 91,
+        "att": 73,
+        "mid": 80,
+        "def": 72,
+        "stamina": 86,
         "playstyles": [
           "box_to_box"
         ],
@@ -3697,23 +3663,22 @@
       },
       {
         "id": "ucl-brugge-p8",
-        "name": "켐스딘 탈비",
+        "name": "카를로스 포르브스",
         "position": "FW",
         "mainPositions": [
-          "RW"
-        ],
-        "secondaryPositions": [
+          "RW",
           "LW"
         ],
-        "ovr": 79,
-        "nationality": "벨기에",
-        "nationalityCode": "BE",
+        "secondaryPositions": [],
+        "ovr": 78,
+        "nationality": "포르투갈",
+        "nationalityCode": "PT",
         "leagueId": "epl",
         "club": "클럽 브뤼허",
-        "att": 80,
-        "mid": 70,
-        "def": 41,
-        "stamina": 88,
+        "att": 79,
+        "mid": 72,
+        "def": 44,
+        "stamina": 86,
         "playstyles": [
           "classic_winger"
         ],
@@ -3746,50 +3711,47 @@
       },
       {
         "id": "ucl-brugge-p10",
-        "name": "크리스토스 촐리스",
+        "name": "로메오 베르만트",
         "position": "FW",
         "mainPositions": [
+          "ST",
           "LW"
         ],
-        "secondaryPositions": [
-          "ST"
-        ],
-        "ovr": 81,
-        "nationality": "그리스",
-        "nationalityCode": "GR",
+        "secondaryPositions": [],
+        "ovr": 77,
+        "nationality": "벨기에",
+        "nationalityCode": "BE",
         "leagueId": "epl",
         "club": "클럽 브뤼허",
-        "att": 82,
-        "mid": 71,
-        "def": 42,
-        "stamina": 87,
+        "att": 79,
+        "mid": 65,
+        "def": 39,
+        "stamina": 84,
         "playstyles": [
-          "inverted_winger"
+          "line_breaker"
         ],
         "scoutNote": "클럽 브뤼허 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-brugge-p11",
-        "name": "페란 주트글라",
+        "name": "니콜로 트레솔디",
         "position": "FW",
         "mainPositions": [
           "ST"
         ],
-        "secondaryPositions": [
-          "LW"
-        ],
-        "ovr": 79,
-        "nationality": "스페인",
-        "nationalityCode": "ES",
+        "secondaryPositions": [],
+        "ovr": 78,
+        "nationality": "독일",
+        "nationalityCode": "DE",
         "leagueId": "epl",
         "club": "클럽 브뤼허",
         "att": 80,
-        "mid": 70,
-        "def": 41,
-        "stamina": 85,
+        "mid": 66,
+        "def": 40,
+        "stamina": 84,
         "playstyles": [
-          "line_breaker"
+          "poacher"
         ],
         "scoutNote": "클럽 브뤼허 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -3811,31 +3773,31 @@
       "def": 78,
       "topScorers": [
         "아유브 엘 카비",
-        "바비 코스토울라스",
-        "치키뉴"
+        "젤송 마르팅스",
+        "조타 실바"
       ]
     },
     "country": "그리스",
     "roster": [
       {
         "id": "ucl-olympiacos-p1",
-        "name": "콘스탄티노스 촐라키스",
+        "name": "슈테판 오르테가",
         "position": "GK",
         "mainPositions": [
           "GK"
         ],
         "secondaryPositions": [],
-        "ovr": 80,
-        "nationality": "그리스",
-        "nationalityCode": "GR",
+        "ovr": 81,
+        "nationality": "독일",
+        "nationalityCode": "DE",
         "leagueId": "epl",
         "club": "올림피아코스",
         "att": 30,
         "mid": 61,
-        "def": 81,
+        "def": 82,
         "stamina": 77,
         "playstyles": [
-          "shot_stopper"
+          "sweeper_keeper"
         ],
         "scoutNote": "올림피아코스 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -3964,25 +3926,24 @@
       },
       {
         "id": "ucl-olympiacos-p7",
-        "name": "크리스토스 무자키티스",
+        "name": "레모 프로일러",
         "position": "MF",
         "mainPositions": [
-          "CM"
-        ],
-        "secondaryPositions": [
+          "CM",
           "CDM"
         ],
-        "ovr": 78,
-        "nationality": "그리스",
-        "nationalityCode": "GR",
+        "secondaryPositions": [],
+        "ovr": 79,
+        "nationality": "스위스",
+        "nationalityCode": "CH",
         "leagueId": "epl",
         "club": "올림피아코스",
         "att": 73,
-        "mid": 79,
-        "def": 66,
-        "stamina": 88,
+        "mid": 80,
+        "def": 72,
+        "stamina": 85,
         "playstyles": [
-          "deep_playmaker"
+          "box_to_box"
         ],
         "scoutNote": "올림피아코스 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -4014,50 +3975,48 @@
       },
       {
         "id": "ucl-olympiacos-p9",
-        "name": "치키뉴",
+        "name": "코스타스 포르투니스",
         "position": "MF",
         "mainPositions": [
           "CAM",
-          "CM"
+          "RW"
         ],
         "secondaryPositions": [],
         "ovr": 79,
-        "nationality": "포르투갈",
-        "nationalityCode": "PT",
+        "nationality": "그리스",
+        "nationalityCode": "GR",
         "leagueId": "epl",
         "club": "올림피아코스",
-        "att": 73,
+        "att": 77,
         "mid": 80,
-        "def": 67,
-        "stamina": 88,
+        "def": 57,
+        "stamina": 81,
         "playstyles": [
-          "box_to_box"
+          "playmaker_10"
         ],
         "scoutNote": "올림피아코스 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
       },
       {
         "id": "ucl-olympiacos-p10",
-        "name": "바비 코스토울라스",
+        "name": "조타 실바",
         "position": "FW",
         "mainPositions": [
           "LW",
-          "ST"
+          "RW"
         ],
-        "secondaryPositions": [
-          "CAM"
-        ],
+        "secondaryPositions": [],
         "ovr": 78,
-        "nationality": "그리스",
-        "nationalityCode": "GR",
+        "nationality": "포르투갈",
+        "nationalityCode": "PT",
         "leagueId": "epl",
         "club": "올림피아코스",
         "att": 79,
-        "mid": 69,
-        "def": 41,
-        "stamina": 86,
+        "mid": 72,
+        "def": 44,
+        "stamina": 85,
         "playstyles": [
-          "line_breaker"
+          "inverted_winger"
         ],
         "scoutNote": "올림피아코스 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -4101,9 +4060,9 @@
       "mid": 77,
       "def": 77,
       "topScorers": [
-        "빅토르 올라툰지",
         "루카슈 하라슬린",
-        "벨코 비르만체비치"
+        "벨코 비르만체비치",
+        "빅토르 올라툰지"
       ]
     },
     "country": "체코",
@@ -4133,23 +4092,24 @@
       },
       {
         "id": "ucl-sparta-p2",
-        "name": "마르틴 비티크",
-        "position": "DF",
+        "name": "시베르트 만스베르크",
+        "position": "MF",
         "mainPositions": [
+          "CDM",
           "CB"
         ],
         "secondaryPositions": [],
-        "ovr": 79,
-        "nationality": "체코",
-        "nationalityCode": "CZ",
+        "ovr": 77,
+        "nationality": "노르웨이",
+        "nationalityCode": "NO",
         "leagueId": "epl",
         "club": "스파르타 프라하",
-        "att": 58,
-        "mid": 70,
-        "def": 80,
-        "stamina": 84,
+        "att": 65,
+        "mid": 77,
+        "def": 75,
+        "stamina": 85,
         "playstyles": [
-          "stopper_cb"
+          "ball_winner"
         ],
         "scoutNote": "스파르타 프라하 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -4392,8 +4352,8 @@
       "def": 77,
       "topScorers": [
         "브루노 페트코비치",
-        "아르베르 호자",
-        "마르틴 바투리나"
+        "마르코 퍄차",
+        "아르베르 호자"
       ]
     },
     "country": "크로아티아",
@@ -4471,23 +4431,23 @@
       },
       {
         "id": "ucl-dinamo-p4",
-        "name": "라울 토렌테",
+        "name": "니코 갈레시치",
         "position": "DF",
         "mainPositions": [
           "CB"
         ],
         "secondaryPositions": [],
-        "ovr": 77,
-        "nationality": "스페인",
-        "nationalityCode": "ES",
+        "ovr": 76,
+        "nationality": "크로아티아",
+        "nationalityCode": "HR",
         "leagueId": "epl",
         "club": "디나모 자그레브",
-        "att": 57,
-        "mid": 68,
-        "def": 78,
-        "stamina": 81,
+        "att": 54,
+        "mid": 66,
+        "def": 77,
+        "stamina": 83,
         "playstyles": [
-          "ball_playing_cb"
+          "stopper_cb"
         ],
         "scoutNote": "디나모 자그레브 UEFA 챔피언스리그 주전 멤버",
         "isLegend": false
@@ -4542,22 +4502,22 @@
       },
       {
         "id": "ucl-dinamo-p7",
-        "name": "페타르 수치치",
+        "name": "루카 스토이코비치",
         "position": "MF",
         "mainPositions": [
           "CM",
-          "CDM"
+          "CAM"
         ],
         "secondaryPositions": [],
-        "ovr": 80,
+        "ovr": 77,
         "nationality": "크로아티아",
         "nationalityCode": "HR",
         "leagueId": "epl",
         "club": "디나모 자그레브",
-        "att": 74,
-        "mid": 81,
-        "def": 68,
-        "stamina": 91,
+        "att": 71,
+        "mid": 78,
+        "def": 70,
+        "stamina": 85,
         "playstyles": [
           "box_to_box"
         ],
@@ -4590,22 +4550,22 @@
       },
       {
         "id": "ucl-dinamo-p9",
-        "name": "마르틴 바투리나",
+        "name": "루카 이바누셰츠",
         "position": "MF",
         "mainPositions": [
           "CAM",
-          "CM"
+          "LW"
         ],
         "secondaryPositions": [],
-        "ovr": 81,
+        "ovr": 79,
         "nationality": "크로아티아",
         "nationalityCode": "HR",
         "leagueId": "epl",
         "club": "디나모 자그레브",
-        "att": 75,
-        "mid": 82,
-        "def": 69,
-        "stamina": 86,
+        "att": 77,
+        "mid": 80,
+        "def": 57,
+        "stamina": 84,
         "playstyles": [
           "playmaker_10"
         ],

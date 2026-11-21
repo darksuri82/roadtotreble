@@ -53,4 +53,5 @@ export interface UclTournamentState {
   championTeamId: string | null;
   lastUserMatch: MatchResult | null;
   completed: boolean;
+  userParticipated?: boolean; // false when background AI-only UCL runs for 5th+ user
 }

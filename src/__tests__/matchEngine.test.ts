@@ -166,9 +166,12 @@ describe('V4 Poisson Match Engine, Live Broadcast Phases, Awards & Season Analyt
     const clubs = [userClub, ...epl.clubs.slice(0, 19)];
     const clubsById: Record<string, Club> = {};
     const aiRosters: Record<string, typeof starters> = {};
+    const userOwnedIds = new Set([...starters, ...bench].map((p) => p.id));
     for (const c of clubs) {
       clubsById[c.id] = c;
-      if (c.id !== USER_CLUB_ID) aiRosters[c.id] = buildAiClubRoster(c, 'epl');
+      if (c.id !== USER_CLUB_ID) {
+        aiRosters[c.id] = buildAiClubRoster(c, 'epl', userOwnedIds);
+      }
     }
 
     let standings = createInitialStandings(clubs);
@@ -201,8 +204,8 @@ describe('V4 Poisson Match Engine, Live Broadcast Phases, Awards & Season Analyt
     standings = applied.standings;
     stats = applied.allPlayerStats;
 
-    // Verify user stats are cleanly keyed under user:: and carry club color
-    const firstStarterStat = stats[`user::${starters[0].id}`];
+    // Verify user stats are cleanly keyed under unified playerId and carry club color
+    const firstStarterStat = stats[starters[0].id];
     expect(firstStarterStat).toBeDefined();
     expect(firstStarterStat.isUserTeam).toBe(true);
     expect(firstStarterStat.teamPrimaryColor).toBe('#10b981');

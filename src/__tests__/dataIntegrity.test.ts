@@ -56,9 +56,14 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
       expect(p.isLegend).toBe(false);
       expect(Array.isArray(p.mainPositions)).toBe(true);
       expect(p.mainPositions.length).toBeGreaterThanOrEqual(1);
-      expect(['손흥민', '리오넬 메시', '크리스티아누 호날두']).not.toContain(
-        p.name,
-      );
+      expect([
+        '손흥민',
+        '리오넬 메시',
+        '크리스티아누 호날두',
+        '로베르트 레반도프스키',
+        '카림 벤제마',
+        '루이스 수아레스',
+      ]).not.toContain(p.name);
       expect(validClubNames.has(p.club)).toBe(true);
       expect(p.playstyles.length).toBeGreaterThanOrEqual(1);
       expect(p.scoutNote.length).toBeGreaterThan(4);
@@ -71,8 +76,8 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
     expect(rice.stamina).toBeGreaterThanOrEqual(95);
   });
 
-  it('has exact 30 custom legends with multi mainPositions (Messi, CR7, Maldini, Cruyff, Park, Son)', () => {
-    expect(LEGEND_PLAYERS.length).toBe(30);
+  it('has exact 33 custom legends with multi mainPositions (including 레벤수 trio)', () => {
+    expect(LEGEND_PLAYERS.length).toBe(33);
 
     const messi = LEGEND_PLAYERS.find((p) => p.name === '리오넬 메시')!;
     const cr7 = LEGEND_PLAYERS.find((p) => p.name === '크리스티아누 호날두')!;
@@ -80,6 +85,9 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
     const park = LEGEND_PLAYERS.find((p) => p.name === '박지성')!;
     const maldini = LEGEND_PLAYERS.find((p) => p.name === '파올로 말디니')!;
     const cruyff = LEGEND_PLAYERS.find((p) => p.name === '요한 크루이프')!;
+    const lewa = LEGEND_PLAYERS.find((p) => p.name === '로베르트 레반도프스키')!;
+    const benz = LEGEND_PLAYERS.find((p) => p.name === '카림 벤제마')!;
+    const suarez = LEGEND_PLAYERS.find((p) => p.name === '루이스 수아레스')!;
 
     expect(messi.ovr).toBe(99);
     expect(messi.mainPositions).toEqual(['RW', 'CAM']);
@@ -91,6 +99,12 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
     expect(park.stamina).toBeGreaterThanOrEqual(96);
     expect(maldini.mainPositions).toEqual(['LB', 'CB']);
     expect(cruyff.mainPositions).toEqual(['CAM', 'ST']);
+    expect(lewa.ovr).toBe(94);
+    expect(lewa.mainPositions).toContain('ST');
+    expect(benz.ovr).toBe(93);
+    expect(benz.mainPositions).toContain('ST');
+    expect(suarez.ovr).toBe(94);
+    expect(suarez.mainPositions).toContain('ST');
 
     const ids = new Set<string>();
     for (const p of LEGEND_PLAYERS) {

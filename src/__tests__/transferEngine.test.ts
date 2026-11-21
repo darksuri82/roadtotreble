@@ -16,7 +16,7 @@ function createSeededRng(seed = 7): () => number {
 }
 
 describe('V5 Dynamic Form Transfer Market Engine', () => {
-  it('draws 3 unique clubs with 8-11 player squads or 1-player Legend FA slot', () => {
+  it('draws 3 unique clubs with 8-16 player squads (top-3 OVR per position) or 1-player Legend FA slot', () => {
     const epl = getLeagueById('epl');
     const standings = createInitialStandings(epl.clubs);
 
@@ -45,7 +45,7 @@ describe('V5 Dynamic Form Transfer Market Engine', () => {
         expect(seenClubIds.has(offer.club!.id)).toBe(false);
         seenClubIds.add(offer.club!.id);
         expect(offer.squad.length).toBeGreaterThanOrEqual(8);
-        expect(offer.squad.length).toBeLessThanOrEqual(11);
+        expect(offer.squad.length).toBeLessThanOrEqual(16);
       }
     }
   });

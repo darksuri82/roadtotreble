@@ -18,6 +18,7 @@ import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
+import { buildPlayerCompetitionBreakdown } from '../../utils/playerLookup';
 
 interface SquadManagerModalProps {
   onClose?: () => void;
@@ -90,7 +91,7 @@ export function SquadManagerModal({
       } => x.p !== null,
     )
     .map(({ p, label, slotSubPosition }) => {
-      const st = allStats[`user::${p.id}`];
+      const st = allStats[p.id] ?? allStats[`user::${p.id}`];
       return {
         player: p,
         label,
@@ -381,7 +382,16 @@ export function SquadManagerModal({
         slotSubPosition={inspected?.slotSubPosition}
         managerTraitId={state.manager.traitId}
         seasonStats={
-          inspected ? allStats[`user::${inspected.player.id}`] ?? null : null
+          inspected
+            ? allStats[inspected.player.id] ??
+              allStats[`user::${inspected.player.id}`] ??
+              null
+            : null
+        }
+        competitionStats={
+          inspected
+            ? buildPlayerCompetitionBreakdown(inspected.player.id, state.season)
+            : null
         }
         onClose={() => setInspected(null)}
       />

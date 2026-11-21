@@ -80,7 +80,12 @@ function pickLegendsForSlot(
   return picked;
 }
 
-function pickClubCandidatesForSlot(params: {
+function compareByOvrDesc(a: Player, b: Player): number {
+  if (b.ovr !== a.ovr) return b.ovr - a.ovr;
+  return b.att + b.mid + b.def - (a.att + a.mid + a.def);
+}
+
+export function pickClubCandidatesForSlot(params: {
   club: Club;
   leagueId: LeagueId;
   targetSub: SubPosition;
@@ -110,7 +115,8 @@ function pickClubCandidatesForSlot(params: {
   const usedLocalNames = new Set<string>();
 
   const addFromBucket = (bucket: Player[]) => {
-    for (const p of shuffleWithRng(bucket, rng)) {
+    const sorted = [...bucket].sort(compareByOvrDesc);
+    for (const p of sorted) {
       if (picked.length >= count) break;
       if (usedLocalIds.has(p.id)) continue;
       usedLocalIds.add(p.id);
@@ -119,10 +125,10 @@ function pickClubCandidatesForSlot(params: {
     }
   };
 
-  // Priority 1: Exact mainPositions match
+  // Priority 1: Exact mainPositions match — strictly Top OVR first
   addFromBucket(clubUnused.filter((p) => p.mainPositions.includes(targetSub)));
 
-  // Priority 2: Secondary or compatible pair match
+  // Priority 2: Secondary or compatible pair match — strictly Top OVR first
   addFromBucket(
     clubUnused.filter(
       (p) =>
@@ -131,7 +137,7 @@ function pickClubCandidatesForSlot(params: {
     ),
   );
 
-  // Priority 3: Same broad position line
+  // Priority 3: Same broad position line — strictly Top OVR first
   addFromBucket(clubUnused.filter((p) => p.position === targetBroad));
 
   // Fill remaining slots up to `count` (always guaranteeing 2..3 options per club)
@@ -155,7 +161,7 @@ function pickClubCandidatesForSlot(params: {
   }
 
   // Sort candidates within each club by OVR descending for clean visual comparison
-  picked.sort((a, b) => b.ovr - a.ovr);
+  picked.sort(compareByOvrDesc);
   return picked;
 }
 

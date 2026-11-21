@@ -783,5 +783,85 @@
     "scoutNote": "아시아 최초 EPL 득점왕, 역대 최고 양발 감아차기 스나이퍼",
     "isLegend": true,
     "stamina": 90
+  },
+  {
+    "id": "leg-fw-10",
+    "name": "로베르트 레반도프스키",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [
+      "CAM"
+    ],
+    "ovr": 94,
+    "nationality": "폴란드",
+    "nationalityCode": "PL",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 96,
+    "mid": 80,
+    "def": 48,
+    "playstyles": [
+      "poacher",
+      "complete_forward"
+    ],
+    "scoutNote": "9분 5골의 전설, 완벽한 위치 선정과 양발 결정력을 갖춘 현대 최고 9번",
+    "isLegend": true,
+    "stamina": 87
+  },
+  {
+    "id": "leg-fw-11",
+    "name": "카림 벤제마",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [
+      "CAM",
+      "LW"
+    ],
+    "ovr": 93,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 94,
+    "mid": 86,
+    "def": 46,
+    "playstyles": [
+      "complete_forward",
+      "playmaker_10"
+    ],
+    "scoutNote": "발롱도르 위너, 9번과 10번을 결합한 우아한 연계와 클러치 결정력의 대가",
+    "isLegend": true,
+    "stamina": 84
+  },
+  {
+    "id": "leg-fw-12",
+    "name": "루이스 수아레스",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [
+      "RW",
+      "CAM"
+    ],
+    "ovr": 94,
+    "nationality": "우루과이",
+    "nationalityCode": "UY",
+    "leagueId": "LEGEND",
+    "club": "레전드",
+    "att": 95,
+    "mid": 82,
+    "def": 52,
+    "playstyles": [
+      "complete_forward",
+      "line_breaker"
+    ],
+    "scoutNote": "MSN의 심장, 야성적 투쟁심과 어떤 각도에서도 골망을 찢는 천재 골잡이",
+    "isLegend": true,
+    "stamina": 87
   }
 ]

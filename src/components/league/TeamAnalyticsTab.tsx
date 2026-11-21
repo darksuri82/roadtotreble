@@ -10,6 +10,7 @@ interface TeamAnalyticsTabProps {
   teamAnalytics: TeamSeasonAnalytics;
   squadRows: SquadPlayerAnalyticsRow[];
   clubName: string;
+  onSelectPlayer?: (playerId: string) => void;
 }
 
 type SquadSortKey =
@@ -27,6 +28,7 @@ export function TeamAnalyticsTab({
   teamAnalytics: t,
   squadRows,
   clubName,
+  onSelectPlayer,
 }: TeamAnalyticsTabProps) {
   const [sortKey, setSortKey] = useState<SquadSortKey>('rating');
 
@@ -296,10 +298,18 @@ export function TeamAnalyticsTab({
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {sortedSquad.map((row) => (
-                <tr key={row.playerId} className="hover:bg-slate-800/30">
+                <tr
+                  key={row.playerId}
+                  onClick={onSelectPlayer ? () => onSelectPlayer(row.playerId) : undefined}
+                  className={`hover:bg-slate-800/30 ${onSelectPlayer ? 'cursor-pointer' : ''}`}
+                >
                   <td className="py-2.5 px-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-bold text-slate-100">
+                      <span
+                        className={`font-bold text-slate-100 ${
+                          onSelectPlayer ? 'hover:text-emerald-300 hover:underline' : ''
+                        }`}
+                      >
                         {row.playerName}
                       </span>
                       {row.isLegend && (

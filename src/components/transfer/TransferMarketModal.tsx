@@ -142,7 +142,7 @@ export function TransferMarketModal({
         slot.subPosition,
         state.manager.traitId,
       );
-      const st = allStats[`user::${player.id}`];
+      const st = allStats[player.id] ?? allStats[`user::${player.id}`];
       return {
         index: idx,
         slotLabel: slot.label,
@@ -175,7 +175,9 @@ export function TransferMarketModal({
   const benchRows = useMemo(() => {
     const allStats = season?.allPlayerStats ?? {};
     return state.bench.map((player, idx) => {
-      const st = player ? allStats[`user::${player.id}`] : undefined;
+      const st = player
+        ? allStats[player.id] ?? allStats[`user::${player.id}`]
+        : undefined;
       return {
         index: idx,
         slotLabel: BENCH_SLOTS[idx]?.label ?? `B${idx + 1}`,
@@ -191,7 +193,11 @@ export function TransferMarketModal({
   const weakSlotCount = starterRows.filter(
     (r) => r.isPenaltyWeak || r.isLowestOvrWeak,
   ).length;
-  const legendRatePercent = tm.legendBonusActive ? 4.0 : 2.5;
+  const legendRatePercent = tm.championBonusActive
+    ? 5.5
+    : tm.legendBonusActive
+      ? 4.0
+      : 2.5;
   const allRevealed = tm.hasSpunClubs && !animating && lockedCount >= 3;
 
   const handleSpinClubs = () => {

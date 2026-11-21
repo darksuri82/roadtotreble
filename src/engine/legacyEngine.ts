@@ -48,9 +48,19 @@ export function loadLegacyState(): LegacyStorageState {
     const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return createEmptyLegacyState();
     const parsed = JSON.parse(raw) as Partial<LegacyStorageState>;
+    const hallOfFame = Array.isArray(parsed.hallOfFame)
+      ? parsed.hallOfFame.map((entry) => ({
+          ...entry,
+          finalLeagueRank:
+            typeof entry.finalLeagueRank === 'number' &&
+            entry.finalLeagueRank >= 1
+              ? entry.finalLeagueRank
+              : 1,
+        }))
+      : [];
     return {
       version: 1,
-      hallOfFame: Array.isArray(parsed.hallOfFame) ? parsed.hallOfFame : [],
+      hallOfFame,
       unlockedAchievements:
         parsed.unlockedAchievements &&
         typeof parsed.unlockedAchievements === 'object'
@@ -140,9 +150,9 @@ export function computeSeasonScore(
     else if (cup.userEliminatedAt === 'qf') cupBonus = 120;
   }
 
-  // 36-Team UEFA Champions League Bonus
+  // 36-Team UEFA Champions League Bonus (only when user actually participated)
   let uclBonus = 0;
-  if (ucl) {
+  if (ucl && ucl.userParticipated !== false) {
     if (ucl.championTeamId === userClubId) uclBonus = 2200;
     else if (ucl.userEliminatedAt === 'final') uclBonus = 1400;
     else if (ucl.userEliminatedAt === 'sf') uclBonus = 950;
@@ -336,8 +346,8 @@ export function evaluateAchievements(
     if (userRow.lost === 0) earned.add('ligue1_unbeaten_myth');
   }
 
-  // 11-13: Europe (UCL)
-  if (ucl) {
+  // 11-13: Europe (UCL) — only when user actually participated
+  if (ucl && ucl.userParticipated !== false) {
     if (wonUcl) earned.add('ucl_big_ears');
 
     const uclRow = ucl.standings.find((r) => r.teamId === userClubId);
@@ -595,7 +605,7 @@ export function archiveSeasonToHallOfFame(params: {
   if (uclWon) trophies.push('UEFA 챔피언스리그 우승');
 
   const toMember = (p: Player) => {
-    const st = combinedPlayerStats[`user::${p.id}`];
+    const st = combinedPlayerStats[p.id] ?? combinedPlayerStats[`user::${p.id}`];
     return buildHallOfFameMember(
       p,
       st?.goals ?? 0,

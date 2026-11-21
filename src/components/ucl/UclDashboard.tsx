@@ -20,10 +20,23 @@ import {
   UCL_STAGE_LABELS,
 } from '../../engine/uclEngine';
 import { useGame } from '../../store/GameContext';
-import type { Club, TacticId } from '../../types/league';
+import type {
+  Club,
+  MatchResult,
+  PlayerSeasonStats,
+  TacticId,
+} from '../../types/league';
 import type { Player, SubPosition } from '../../types/player';
+import type { UclKnockoutTie } from '../../types/ucl';
+import {
+  buildPlayerCompetitionBreakdown,
+  resolveClubRoster,
+  resolvePlayerById,
+} from '../../utils/playerLookup';
+import { ClubSquadModal } from '../common/ClubSquadModal';
 import { JerseySvg } from '../common/JerseySvg';
 import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
+import { MatchDetailModal } from '../common/MatchDetailModal';
 import { PitchBoard, type SlotRef } from '../common/PitchBoard';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
@@ -46,6 +59,7 @@ export function UclDashboard() {
     swapSquadPositions,
     startLiveMatch,
     simulateSingleMatchInstant,
+    simulateUclPlayoffBye,
     simulateUclLeaguePhaseToEnd,
     simulateUclToEnd,
     finishUclToSummary,
@@ -57,10 +71,30 @@ export function UclDashboard() {
   const [inspected, setInspected] = useState<{
     player: Player;
     slotSubPosition?: SubPosition;
+    fallbackStats?: PlayerSeasonStats | null;
   } | null>(null);
+  const [inspectedMatch, setInspectedMatch] = useState<MatchResult | null>(null);
+  const [inspectedTie, setInspectedTie] = useState<UclKnockoutTie | null>(null);
+  const [inspectedClub, setInspectedClub] = useState<Club | null>(null);
 
   const season = state.season;
   const ucl = season?.ucl ?? null;
+
+  const openPlayerById = (
+    playerId: string,
+    fallbackStats?: PlayerSeasonStats | null,
+  ) => {
+    const resolved = resolvePlayerById({
+      playerId,
+      starters: state.starters,
+      bench: state.bench,
+      season,
+      fallbackStats,
+    });
+    if (resolved) {
+      setInspected({ player: resolved, fallbackStats: fallbackStats ?? null });
+    }
+  };
 
   const clubsById = useMemo<Record<string, Club>>(() => {
     if (!ucl) return {};
@@ -127,6 +161,14 @@ export function UclDashboard() {
     setSwapPick(null);
   };
 
+  const inspectedBreakdown = inspected
+    ? buildPlayerCompetitionBreakdown(
+        inspected.player.id,
+        season,
+        inspected.fallbackStats,
+      )
+    : null;
+
   return (
     <div className="mx-auto max-w-7xl px-3 sm:px-6 py-5 space-y-5">
       {/* UCL Special Transfer Window Modal */}
@@ -135,13 +177,49 @@ export function UclDashboard() {
       {/* Live Match Broadcast Modal (reuses full 2D pitch + Slow-Mo + Stamina + ET/PK!) */}
       {season.liveHalftime && <LiveMatchBroadcast clubsById={clubsById} />}
 
+      {/* Club Squad Modal */}
+      <ClubSquadModal
+        club={inspectedClub}
+        roster={
+          inspectedClub
+            ? resolveClubRoster({
+                clubId: inspectedClub.id,
+                club: inspectedClub,
+                season,
+                userStarters: state.starters,
+                userBench: state.bench,
+              })
+            : []
+        }
+        statsMap={season.uclPlayerStats}
+        onSelectPlayer={(player) => {
+          setInspectedClub(null);
+          setInspected({ player });
+        }}
+        onClose={() => setInspectedClub(null)}
+      />
+
+      {/* Match / Tie Detail Modal */}
+      <MatchDetailModal
+        key={inspectedTie?.id ?? inspectedMatch?.fixtureId ?? 'ucl-detail'}
+        match={inspectedMatch}
+        tie={inspectedTie}
+        clubsById={clubsById}
+        onSelectPlayer={(playerId) => openPlayerById(playerId)}
+        onClose={() => {
+          setInspectedMatch(null);
+          setInspectedTie(null);
+        }}
+      />
+
       {/* Player Inspector */}
       {inspected && (
         <PlayerDetailModal
           player={inspected.player}
           slotSubPosition={inspected.slotSubPosition}
           managerTraitId={state.manager.traitId}
-          seasonStats={season.uclPlayerStats[`user::${inspected.player.id}`]}
+          seasonStats={inspectedBreakdown?.total ?? null}
+          competitionStats={inspectedBreakdown}
           onClose={() => setInspected(null)}
         />
       )}
@@ -503,7 +581,7 @@ export function UclDashboard() {
                         onClick={finishUclToSummary}
                         className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
                       >
-                        바로 최종 결산으로
+                        남은 토너먼트 자동 완료 후 최종 결산 →
                       </button>
                     </div>
                   </>
@@ -520,13 +598,22 @@ export function UclDashboard() {
                     <p className="text-xs text-slate-400">
                       우리 팀은 상위 8위 직행 자격으로 플레이오프를 면제받았습니다. 플레이오프 승자가 결정되면 16강 대진이 완성됩니다.
                     </p>
-                    <button
-                      type="button"
-                      onClick={simulateSingleMatchInstant}
-                      className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-black text-slate-950 hover:bg-emerald-400 cursor-pointer"
-                    >
-                      플레이오프 {ucl.knockoutLeg}차전 진행 →
-                    </button>
+                    <div className="flex flex-wrap justify-center gap-2.5">
+                      <button
+                        type="button"
+                        onClick={simulateUclPlayoffBye}
+                        className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-black text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                      >
+                        플레이오프 일괄 완료 → 16강 대진 확정
+                      </button>
+                      <button
+                        type="button"
+                        onClick={simulateSingleMatchInstant}
+                        className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
+                      >
+                        {ucl.knockoutLeg}차전만 진행
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
@@ -534,14 +621,21 @@ export function UclDashboard() {
 
             {/* Latest UCL Match Result */}
             {ucl.lastUserMatch && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setInspectedTie(null);
+                  setInspectedMatch(ucl.lastUserMatch);
+                }}
+                className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-left space-y-2 transition-colors hover:border-sky-400/50 cursor-pointer"
+              >
                 <div className="flex items-center justify-between text-xs text-slate-400">
                   <span className="font-bold text-sky-300">
                     직전 UCL 경기 · {ucl.lastUserMatch.competitionLabel}
                   </span>
                   <span>
                     MOM: {ucl.lastUserMatch.momPlayerName} (
-                    {ucl.lastUserMatch.momRating.toFixed(1)})
+                    {ucl.lastUserMatch.momRating.toFixed(1)}) · 상세 보기 →
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-xl bg-slate-950/70 px-4 py-3 text-sm font-black text-white">
@@ -557,7 +651,7 @@ export function UclDashboard() {
                   </span>
                   <span>{clubsById[ucl.lastUserMatch.awayTeamId]?.name}</span>
                 </div>
-              </div>
+              </button>
             )}
           </div>
 
@@ -577,12 +671,17 @@ export function UclDashboard() {
             </div>
             <div className="space-y-1 text-xs">
               {ucl.standings.slice(0, 10).map((row, idx) => (
-                <div
+                <button
                   key={row.teamId}
-                  className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 ${
+                  type="button"
+                  onClick={() => {
+                    const c = clubsById[row.teamId];
+                    if (c) setInspectedClub(c);
+                  }}
+                  className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left transition-colors cursor-pointer ${
                     row.isUser
-                      ? 'bg-emerald-500/20 font-bold text-emerald-200'
-                      : 'bg-slate-950/50 text-slate-300'
+                      ? 'bg-emerald-500/20 font-bold text-emerald-200 hover:bg-emerald-500/30'
+                      : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800/60'
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -603,13 +702,20 @@ export function UclDashboard() {
                     </span>
                     <span className="font-black text-white">{row.points}</span>
                   </div>
-                </div>
+                </button>
               ))}
               {userUclRank > 10 && (() => {
                 const uRow = ucl.standings[userUclRank - 1];
                 if (!uRow) return null;
                 return (
-                  <div className="mt-2 flex items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 font-bold text-emerald-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const c = clubsById[uRow.teamId];
+                      if (c) setInspectedClub(c);
+                    }}
+                    className="mt-2 flex w-full items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-left font-bold text-emerald-200 hover:bg-emerald-500/25 cursor-pointer"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="w-5 text-center font-mono text-[11px]">
                         {userUclRank}
@@ -617,7 +723,7 @@ export function UclDashboard() {
                       <span>{uRow.teamName}</span>
                     </div>
                     <span className="font-mono font-black">{uRow.points}점</span>
-                  </div>
+                  </button>
                 );
               })()}
             </div>
@@ -649,7 +755,7 @@ export function UclDashboard() {
               <thead className="border-b border-slate-800 text-[11px] text-slate-400">
                 <tr>
                   <th className="py-2 px-2">#</th>
-                  <th className="py-2 px-2">구단</th>
+                  <th className="py-2 px-2">구단 (클릭 시 스쿼드)</th>
                   <th className="py-2 px-2">포트 / 출전</th>
                   <th className="py-2 px-1.5 text-center">경기</th>
                   <th className="py-2 px-1.5 text-center">승</th>
@@ -673,10 +779,14 @@ export function UclDashboard() {
                   return (
                     <tr
                       key={row.teamId}
-                      className={`${zoneBorder} ${
+                      onClick={() => {
+                        const c = clubsById[row.teamId];
+                        if (c) setInspectedClub(c);
+                      }}
+                      className={`${zoneBorder} cursor-pointer transition-colors ${
                         row.isUser
-                          ? 'bg-emerald-500/15 font-bold text-white'
-                          : 'hover:bg-slate-800/40 text-slate-200'
+                          ? 'bg-emerald-500/15 font-bold text-white hover:bg-emerald-500/25'
+                          : 'hover:bg-slate-800/50 text-slate-200'
                       }`}
                     >
                       <td className="py-2 px-2 font-mono font-bold">{rank}</td>
@@ -686,7 +796,7 @@ export function UclDashboard() {
                             className="h-2.5 w-2.5 rounded-full"
                             style={{ backgroundColor: row.primaryColor }}
                           />
-                          <span>{row.teamName}</span>
+                          <span className="hover:text-sky-300">{row.teamName}</span>
                         </div>
                       </td>
                       <td className="py-2 px-2 text-[11px] text-slate-400">
@@ -723,7 +833,14 @@ export function UclDashboard() {
 
       {/* TAB 3: AUTHENTIC ORTHOGONAL KNOCKOUT BRACKET TREE */}
       {tab === 'bracket' && (
-        <UclBracketTree ucl={ucl} clubsById={clubsById} />
+        <UclBracketTree
+          ucl={ucl}
+          clubsById={clubsById}
+          onSelectTie={(tie) => {
+            setInspectedMatch(null);
+            setInspectedTie(tie);
+          }}
+        />
       )}
 
       {/* TAB 4: UCL INDIVIDUAL STATS */}
@@ -738,10 +855,13 @@ export function UclDashboard() {
               key={col.title}
               className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4 space-y-2.5"
             >
-              <h3 className="flex items-center gap-1.5 text-xs font-black text-white">
-                <Award className="h-4 w-4 text-amber-400" />
-                {col.title}
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="flex items-center gap-1.5 text-xs font-black text-white">
+                  <Award className="h-4 w-4 text-amber-400" />
+                  {col.title}
+                </h3>
+                <span className="text-[10px] text-slate-500">클릭 시 세부 스탯</span>
+              </div>
               {col.list.length === 0 ? (
                 <p className="py-6 text-center text-xs text-slate-500">
                   경기 진행 후 기록이 집계됩니다.
@@ -749,19 +869,23 @@ export function UclDashboard() {
               ) : (
                 <div className="space-y-1.5 text-xs">
                   {col.list.map((st, idx) => (
-                    <div
+                    <button
                       key={`${col.title}-${st.teamId}-${st.playerId}`}
-                      className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 ${
+                      type="button"
+                      onClick={() => openPlayerById(st.playerId, st)}
+                      className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left transition-colors cursor-pointer ${
                         st.isUserTeam
-                          ? 'bg-emerald-500/15 font-bold text-emerald-200'
-                          : 'bg-slate-950/60 text-slate-200'
+                          ? 'bg-emerald-500/15 font-bold text-emerald-200 hover:bg-emerald-500/25'
+                          : 'bg-slate-950/60 text-slate-200 hover:bg-slate-800/70'
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="w-4 font-mono text-[11px] text-slate-400">
                           {idx + 1}
                         </span>
-                        <span className="truncate">{st.playerName}</span>
+                        <span className="truncate hover:text-sky-300">
+                          {st.playerName}
+                        </span>
                         <span className="text-[10px] text-slate-500">
                           {st.teamShortName}
                         </span>
@@ -769,7 +893,7 @@ export function UclDashboard() {
                       <span className="font-mono font-black text-amber-300">
                         {col.metric(st)}
                       </span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               )}

@@ -28,6 +28,7 @@ import {
   applyRoundResults,
   createInitialPlayerStatsMap,
   createInitialStandings,
+  findUserRankOrNull,
   getUserRank,
 } from './standingsEngine';
 
@@ -200,6 +201,8 @@ export function generateSwissSchedule(
 /**
  * Builds the complete 36-Team UEFA Champions League Tournament State from the completed
  * 5-League season standings (Top 4 per league = 20 clubs) + 16 non-Top-5 European clubs.
+ * Supports `userParticipated: false` to run a background AI-only UCL when the user finished 5th+
+ * so Ballon d'Or & World Best XI are always awarded once after full European competition completion.
  */
 export function createUclTournamentState(params: {
   userLeagueId: LeagueId;
@@ -209,6 +212,8 @@ export function createUclTournamentState(params: {
   userLeagueStandings: StandingRow[];
   userAiRosters: Record<string, Player[]>;
   otherLeagues: Partial<Record<LeagueId, OtherLeagueSeasonState>>;
+  excludeIds?: Set<string>;
+  userParticipated?: boolean;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -222,8 +227,13 @@ export function createUclTournamentState(params: {
     userLeagueStandings,
     userAiRosters,
     otherLeagues,
+    excludeIds,
+    userParticipated = true,
     rng = Math.random,
   } = params;
+
+  const globalExcludeIds = new Set<string>(excludeIds ?? []);
+  for (const p of userSquad) globalExcludeIds.add(p.id);
 
   const qualifiedEntries: Omit<UclTeamEntry, 'pot'>[] = [];
   const aiRosters: Record<string, Player[]> = {};
@@ -245,13 +255,17 @@ export function createUclTournamentState(params: {
       isLeagueChampion,
     });
     if (club.id !== USER_CLUB_ID) {
-      aiRosters[club.id] =
-        roster ??
-        userAiRosters[club.id] ??
-        buildAiClubRoster(
+      if (roster) {
+        aiRosters[club.id] = roster.filter((p) => !globalExcludeIds.has(p.id));
+      } else if (userAiRosters[club.id]) {
+        aiRosters[club.id] = userAiRosters[club.id];
+      } else {
+        aiRosters[club.id] = buildAiClubRoster(
           club,
           originLeagueId === 'other' ? 'epl' : originLeagueId,
+          globalExcludeIds,
         );
+      }
     } else {
       aiRosters[USER_CLUB_ID] = userSquad.slice(0, 11);
     }
@@ -259,8 +273,12 @@ export function createUclTournamentState(params: {
 
   // 1) Top 4 from User's League
   const userLeagueClubMap = new Map(userLeagueClubs.map((c) => [c.id, c]));
-  const userTop4 = userLeagueStandings.slice(0, 4);
-  userTop4.forEach((row, idx) => {
+  const eligibleUserLeagueRows = userParticipated
+    ? userLeagueStandings.slice(0, 4)
+    : userLeagueStandings
+        .filter((r) => r.teamId !== USER_CLUB_ID)
+        .slice(0, 4);
+  eligibleUserLeagueRows.forEach((row, idx) => {
     const club =
       row.teamId === USER_CLUB_ID
         ? userClub
@@ -312,6 +330,7 @@ export function createUclTournamentState(params: {
     const fallbackLeague = getLeagueById(userLeagueId);
     for (const c of fallbackLeague.clubs) {
       if (qualifiedEntries.length >= 36) break;
+      if (!userParticipated && c.id === USER_CLUB_ID) continue;
       pushClub(c, userLeagueId, LEAGUE_SHORT_LABEL[userLeagueId], false);
     }
   }
@@ -336,12 +355,12 @@ export function createUclTournamentState(params: {
   const uclPlayerStats = createInitialPlayerStatsMap({
     clubs,
     userClub,
-    userSquad,
+    userSquad: userParticipated ? userSquad : [],
     aiRosters,
   });
 
   const ucl: UclTournamentState = {
-    stage: 'special_transfer',
+    stage: userParticipated ? 'special_transfer' : 'league_phase',
     teams,
     clubs,
     aiRosters,
@@ -362,6 +381,7 @@ export function createUclTournamentState(params: {
     championTeamId: null,
     lastUserMatch: null,
     completed: false,
+    userParticipated,
   };
 
   return { ucl, uclPlayerStats };
@@ -556,13 +576,24 @@ export function simulateUclLeaguePhaseRound(params: {
         competitionLabel,
       };
     } else {
+      const oppId =
+        fix.homeTeamId === userClubId ? fix.awayTeamId : fix.homeTeamId;
+      const oppIdx = ucl.standings.findIndex((r) => r.teamId === oppId);
+      const effectiveUserCtx: UserMatchContext | undefined =
+        involvesUser && userContext
+          ? {
+              ...userContext,
+              opponentRank:
+                userContext.opponentRank ?? (oppIdx === -1 ? 12 : oppIdx + 1),
+            }
+          : undefined;
       const base = simulateMatch(
         fix,
         homeClub,
         awayClub,
         homeRoster,
         awayRoster,
-        involvesUser ? userContext : undefined,
+        effectiveUserCtx,
         rng,
       );
       res = {
@@ -594,12 +625,17 @@ export function simulateUclLeaguePhaseRound(params: {
   const nextTies = { ...ucl.ties };
 
   if (targetRound === 8) {
-    userLeaguePhaseRank = getUserRank(applied.standings, userClubId);
     nextTies.playoff = buildPlayoffTies(applied.standings, rng);
-    if (userLeaguePhaseRank >= 9 && userLeaguePhaseRank <= 24) {
-      enteredViaPlayoff = true;
-    } else if (userLeaguePhaseRank >= 25) {
-      userEliminatedAt = 'league_phase';
+    if (ucl.userParticipated !== false) {
+      const rankOrNull = findUserRankOrNull(applied.standings, userClubId);
+      if (rankOrNull !== null) {
+        userLeaguePhaseRank = rankOrNull;
+        if (rankOrNull >= 9 && rankOrNull <= 24) {
+          enteredViaPlayoff = true;
+        } else if (rankOrNull >= 25) {
+          userEliminatedAt = 'league_phase';
+        }
+      }
     }
     nextStage = 'playoff';
   }
@@ -1207,11 +1243,42 @@ export function simulateUclLeaguePhaseToEnd(params: {
   };
 }
 
+/**
+ * Resolves all remaining legs of the Playoff stage in a single call (used when the user finished
+ * Top 8 with a direct R16 bye so they advance cleanly to R16 in 1 click).
+ */
+export function advanceUclPlayoffToCompletion(params: {
+  ucl: UclTournamentState;
+  uclPlayerStats: Record<string, PlayerSeasonStats>;
+  userClubId?: string;
+  rng?: () => number;
+}): {
+  ucl: UclTournamentState;
+  uclPlayerStats: Record<string, PlayerSeasonStats>;
+} {
+  let curUcl = params.ucl;
+  let curStats = params.uclPlayerStats;
+  const rng = params.rng ?? Math.random;
+  let guard = 0;
+  while (curUcl.stage === 'playoff' && guard < 4) {
+    guard += 1;
+    const res = advanceUclKnockoutLeg({
+      ucl: curUcl,
+      uclPlayerStats: curStats,
+      userClubId: params.userClubId,
+      rng,
+    });
+    curUcl = res.ucl;
+    curStats = res.uclPlayerStats;
+  }
+  return { ucl: curUcl, uclPlayerStats: curStats };
+}
+
 export function getUserUclResultLabel(
   ucl: UclTournamentState | null,
   userClubId = USER_CLUB_ID,
 ): string {
-  if (!ucl) return '미진출';
+  if (!ucl || ucl.userParticipated === false) return '미진출';
   if (ucl.championTeamId === userClubId) return '우승';
   if (ucl.userEliminatedAt === 'final') return '준우승';
   if (ucl.userEliminatedAt === 'sf') return '4강';
@@ -1226,5 +1293,7 @@ export function didUserWinUcl(
   ucl: UclTournamentState | null,
   userClubId = USER_CLUB_ID,
 ): boolean {
-  return Boolean(ucl && ucl.championTeamId === userClubId);
+  return Boolean(
+    ucl && ucl.userParticipated !== false && ucl.championTeamId === userClubId,
+  );
 }

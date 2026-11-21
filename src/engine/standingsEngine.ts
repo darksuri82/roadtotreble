@@ -40,16 +40,96 @@ export function sortStandings(rows: StandingRow[]): StandingRow[] {
   });
 }
 
+export function findUserRankOrNull(
+  standings: StandingRow[],
+  userClubId = USER_CLUB_ID,
+): number | null {
+  if (standings.length === 0) return null;
+  let idx = standings.findIndex((row) => row.teamId === userClubId);
+  if (idx === -1 && userClubId === USER_CLUB_ID) {
+    idx = standings.findIndex((row) => row.isUser);
+  }
+  return idx === -1 ? null : idx + 1;
+}
+
 export function getUserRank(
   standings: StandingRow[],
   userClubId = USER_CLUB_ID,
 ): number {
   if (standings.length === 0) return 1;
-  let idx = standings.findIndex((row) => row.teamId === userClubId);
-  if (idx === -1 && userClubId === USER_CLUB_ID) {
-    idx = standings.findIndex((row) => row.isUser);
+  const rank = findUserRankOrNull(standings, userClubId);
+  return rank ?? standings.length;
+}
+
+export function getPlayerStatById(
+  statsMap: Record<string, PlayerSeasonStats> | null | undefined,
+  playerId: string,
+): PlayerSeasonStats | undefined {
+  if (!statsMap) return undefined;
+  return statsMap[playerId] ?? statsMap[`user::${playerId}`];
+}
+
+/**
+ * Normalizes legacy v2.4 saves where user squad stats were stored under `user::${playerId}`
+ * into single-key `${playerId}` entries, merging any split pre/post-transfer stats cleanly.
+ */
+export function normalizeLegacyPlayerStatsMap(
+  rawMap: Record<string, PlayerSeasonStats> | null | undefined,
+): Record<string, PlayerSeasonStats> {
+  if (!rawMap) return {};
+  const normalized: Record<string, PlayerSeasonStats> = {};
+
+  for (const st of Object.values(rawMap)) {
+    const id = st.playerId;
+    const existing = normalized[id];
+    if (!existing) {
+      normalized[id] = {
+        ...st,
+        minutesPlayed:
+          st.minutesPlayed ?? st.starts * 84 + st.subAppearances * 22,
+        mainPositions: [...st.mainPositions],
+        positionCounts: { ...st.positionCounts },
+        transferHistory: st.transferHistory ? [...st.transferHistory] : undefined,
+      };
+    } else {
+      const appearances = existing.appearances + st.appearances;
+      const ratingSum = Math.round((existing.ratingSum + st.ratingSum) * 100) / 100;
+      const preferNewClub = st.isUserTeam && !existing.isUserTeam;
+      const mergedPos: PlayerSeasonStats['positionCounts'] = {
+        ...existing.positionCounts,
+      };
+      for (const [pos, cnt] of Object.entries(st.positionCounts)) {
+        const k = pos as keyof PlayerSeasonStats['positionCounts'];
+        mergedPos[k] = (mergedPos[k] ?? 0) + (cnt ?? 0);
+      }
+      const mergedHistory = [
+        ...(existing.transferHistory ?? []),
+        ...(st.transferHistory ?? []),
+      ];
+      normalized[id] = {
+        ...(preferNewClub ? st : existing),
+        appearances,
+        starts: existing.starts + st.starts,
+        subAppearances: existing.subAppearances + st.subAppearances,
+        minutesPlayed:
+          (existing.minutesPlayed ?? 0) + (st.minutesPlayed ?? 0),
+        goals: existing.goals + st.goals,
+        assists: existing.assists + st.assists,
+        xgSum: Math.round((existing.xgSum + st.xgSum) * 100) / 100,
+        cleanSheets: existing.cleanSheets + st.cleanSheets,
+        momCount: existing.momCount + st.momCount,
+        ratingSum,
+        avgRating:
+          appearances > 0
+            ? Math.round((ratingSum / appearances) * 100) / 100
+            : 0,
+        positionCounts: mergedPos,
+        transferHistory: mergedHistory.length > 0 ? mergedHistory : undefined,
+      };
+    }
   }
-  return idx === -1 ? standings.length : idx + 1;
+
+  return normalized;
 }
 
 export function createInitialPlayerStatsMap(params: {
@@ -62,9 +142,9 @@ export function createInitialPlayerStatsMap(params: {
   const map: Record<string, PlayerSeasonStats> = {};
 
   const register = (p: Player, club: Club, isUserTeam: boolean) => {
-    // Disambiguate key when user drafted a player who is also in an AI club roster
-    const statKey = isUserTeam ? `user::${p.id}` : p.id;
-    map[statKey] = {
+    // Worldwide unique playerId key: never overwrite user's owned player entry with an AI entry
+    if (map[p.id] && map[p.id].isUserTeam && !isUserTeam) return;
+    map[p.id] = {
       playerId: p.id,
       playerName: p.name,
       teamId: club.id,
@@ -114,9 +194,8 @@ export interface RoundUpdateResult {
 
 /**
  * Applies all match results of a round to league standings and FULL-LEAGUE individual player stats
- * (starts, sub appearances, minutes played, goals, assists, cumulative xG, clean sheets, MOM count,
- * average rating, and deployed position frequency).
- * Keeps user squad stats cleanly separated from same-player AI club stats via `user::` prefix.
+ * under single worldwide `playerId` keys so mid-season transfers seamlessly accumulate stats
+ * while updating team metadata to the player's latest club.
  */
 export function applyRoundResults(
   currentStandings: StandingRow[],
@@ -130,15 +209,7 @@ export function applyRoundResults(
     rowMap[row.teamId] = { ...row, form: [...row.form] };
   }
 
-  const nextStats: Record<string, PlayerSeasonStats> = {};
-  for (const [key, st] of Object.entries(currentStats)) {
-    nextStats[key] = {
-      ...st,
-      minutesPlayed: st.minutesPlayed ?? st.starts * 84 + st.subAppearances * 22,
-      mainPositions: [...st.mainPositions],
-      positionCounts: { ...st.positionCounts },
-    };
-  }
+  const nextStats = normalizeLegacyPlayerStatsMap(currentStats);
 
   for (const res of roundResults) {
     const home = rowMap[res.homeTeamId];
@@ -177,12 +248,15 @@ export function applyRoundResults(
 
     const homeCleanSheet = res.awayGoals === 0;
     const awayCleanSheet = res.homeGoals === 0;
+    const momTeamId = res.playerRatings.find(
+      (r) => r.playerId === res.momPlayerId,
+    )?.teamId;
 
-    // Accumulate full-league individual stats from match ratings
+    // Accumulate full-league individual stats under single worldwide playerId key
     for (const pr of res.playerRatings) {
       const club = clubsById[pr.teamId];
       const isUser = pr.teamId === userClubId;
-      const statKey = isUser ? `user::${pr.playerId}` : pr.playerId;
+      const statKey = pr.playerId;
 
       if (!nextStats[statKey]) {
         nextStats[statKey] = {
@@ -214,6 +288,16 @@ export function applyRoundResults(
       }
 
       const entry = nextStats[statKey];
+      // Keep latest club attribution if player transferred mid-season
+      if (club && entry.teamId !== pr.teamId) {
+        entry.teamId = pr.teamId;
+        entry.teamName = club.name;
+        entry.teamShortName = club.shortName;
+        entry.teamPrimaryColor = club.primaryColor;
+        entry.teamSecondaryColor = club.secondaryColor;
+        entry.isUserTeam = isUser;
+      }
+
       entry.appearances += 1;
       if (pr.isSub) {
         entry.subAppearances += 1;
@@ -236,7 +320,7 @@ export function applyRoundResults(
       entry.positionCounts[pr.subPosition] =
         (entry.positionCounts[pr.subPosition] ?? 0) + 1;
 
-      if (pr.playerId === res.momPlayerId && pr.teamId === (res.playerRatings.find((r) => r.playerId === res.momPlayerId)?.teamId ?? pr.teamId)) {
+      if (pr.playerId === res.momPlayerId && pr.teamId === (momTeamId ?? pr.teamId)) {
         entry.momCount += 1;
       }
 
@@ -266,15 +350,7 @@ export function accumulateCompetitionPlayerStats(
   clubsById: Record<string, Club>,
   userClubId = USER_CLUB_ID,
 ): Record<string, PlayerSeasonStats> {
-  const nextStats: Record<string, PlayerSeasonStats> = {};
-  for (const [key, st] of Object.entries(currentStats)) {
-    nextStats[key] = {
-      ...st,
-      minutesPlayed: st.minutesPlayed ?? st.starts * 84 + st.subAppearances * 22,
-      mainPositions: [...st.mainPositions],
-      positionCounts: { ...st.positionCounts },
-    };
-  }
+  const nextStats = normalizeLegacyPlayerStatsMap(currentStats);
 
   for (const res of results) {
     const homeCleanSheet = res.awayGoals === 0;
@@ -286,7 +362,7 @@ export function accumulateCompetitionPlayerStats(
     for (const pr of res.playerRatings) {
       const club = clubsById[pr.teamId];
       const isUser = pr.teamId === userClubId;
-      const statKey = isUser ? `user::${pr.playerId}` : pr.playerId;
+      const statKey = pr.playerId;
 
       if (!nextStats[statKey]) {
         nextStats[statKey] = {
@@ -318,6 +394,15 @@ export function accumulateCompetitionPlayerStats(
       }
 
       const entry = nextStats[statKey];
+      if (club && entry.teamId !== pr.teamId) {
+        entry.teamId = pr.teamId;
+        entry.teamName = club.name;
+        entry.teamShortName = club.shortName;
+        entry.teamPrimaryColor = club.primaryColor;
+        entry.teamSecondaryColor = club.secondaryColor;
+        entry.isUserTeam = isUser;
+      }
+
       entry.appearances += 1;
       if (pr.isSub) {
         entry.subAppearances += 1;

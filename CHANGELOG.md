@@ -5,6 +5,54 @@
 
 ---
 
+## v2.5 — 2026-27 전면 로스터 재검증 · 레벤수 레전드 편입 · 글로벌 고유 선수 & 이적 스탯 합산 · 발롱도르 1회 시상 · 리그컵 트리 & 선수/경기 상세 모달
+
+### 1. 5대 리그 2026-27 로스터 전면 재검증 & '레벤수' 레전드 편입
+- **5대 리그 96개 구단 & UCL 외곽 16개 구단 전면 정비** (`src/data/activePlayers.json`, `src/data/leagues.json`, `src/data/uclTeams.json`):
+  - EPL·라리가·세리에A·분데스리가·리그1 96개 구단 현역 1,179명(구단당 최소 7명 이상, 슈퍼스타 91~94 정확히 19명) 및 UCL 외곽 16개 구단 176명을 2026-27 최신 공식 이적·승격/강등 기준으로 재검증.
+  - 라치오 중미(다비데 프라테시·케네스 테일러·니콜로 로벨라) 등 누락 핵심 자원 전면 보강 및 전 구단 `topScorers` 실존 2026-27 선수 동기화.
+  - 전 세계 총 1,388명(현역 1,179 + 레전드 33 + UCL 외곽 176) 중복 ID 0건, 중복 선수명 0건 검증 완료.
+- **'레벤수' 3인방 레전드 풀 편입** (`src/data/legendPlayers.json`):
+  - 로베르트 레반도프스키(94), 카림 벤제마(93), 루이스 수아레스(94)를 현역 로스터에서 제외하고 전성기 능력치·플레이스타일로 레전드 풀(총 33명)에 등록.
+
+### 2. 드래프트 & 이적시장 포지션별 OVR 상위 3명 노출 보장
+- **결정적 OVR 우선 선발** (`src/engine/draftEngine.ts`, `src/engine/transferEngine.ts`):
+  - `pickClubCandidatesForSlot`의 무작위 셔플 후 슬라이스를 제거하고 우선순위 버킷 내 OVR 내림차순 결정적 정렬로 전환(라치오 CM 드래프트 시 프라테시·테일러·로벨라 상위 3명 노출 검증).
+  - `buildTransferClubSquad`가 광역 포지션(GK/DF/MF/FW)별 OVR 상위 3명을 우선 보장하고 구단당 최대 16명까지 노출하도록 확장.
+
+### 3. 전 세계 고유 선수(중복 제거) & 시즌 중 이적/트레이드 스탯 합산
+- **글로벌 단일 선수 ID 키 통일 & 이적 연속성** (`src/engine/dataLoader.ts`, `src/engine/standingsEngine.ts`, `src/engine/analyticsEngine.ts`, `src/engine/awardsEngine.ts`, `src/store/GameContext.tsx`):
+  - `user::${playerId}` 이중 키를 단일 `${playerId}` 키로 전면 통일하고, 구버전 세이브 자동 마이그레이션(`normalizeLegacyPlayerStatsMap`) 구현.
+  - 드래프트/영입 선수는 `excludeIds`·`departedPlayerIds`로 AI 구단 로스터 및 UCL 36팀 로스터에서 원천 제외.
+  - 시즌 중 영입 성공 시 원소속 AI 구단에서 즉시 제거 후 `pickReplacementForAiClub`으로 포지션 대체 자원을 보충하며, 기존 스탯을 유지한 채 `transferHistory` 이력을 기록해 시즌 통합 기록 및 최종 소속팀 기준 시상 구현.
+
+### 4. Phase 2 심층 감사·최적화, `0위` 재검증 및 UCL 우승 편향 점검
+- **Phase 2 UX & 상태 무결성 최적화** (`src/engine/uclEngine.ts`, `src/store/GameContext.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/transfer/TransferMarketModal.tsx`):
+  - 1~8위 부전승 플레이오프 원클릭 일괄 완료(`advanceUclPlayoffToCompletion` / `SIMULATE_UCL_PLAYOFF_BYE`) 추가.
+  - 미완료 UCL 토너먼트에서 최종 결산 이동 시 자동 완료 후 단일 시상(`FINISH_UCL_TO_SUMMARY` / `SKIP_UCL_TO_FINAL_SUMMARY`) 보장.
+  - 리그 우승 특별 이적시장 레전드 FA 확률 표기 오류(4.0% → 5.5%) 및 스위스 리그 페이즈 상대 순위(`opponentRank`) 전달 누락 수정.
+- **`0위` 버그 전수 점검 & 자가 복구** (`standingsEngine.ts`, `legacyEngine.ts`):
+  - `findUserRankOrNull` 추가, `loadLegacyState`에서 구버전 `finalLeagueRank === 0` 레코드 자동 보정(`>= 1`), 비참가 백그라운드 UCL 시 `userParticipated: false` 가드로 `uclBonus === 0` 및 `'미진출'` 라벨 보장.
+- **UCL 우승 편향 100회 시뮬레이션 검증**:
+  - 바이에른 뮌헨 3연패는 시드/정렬 버그가 아닌 정상 확률 분포(100회 기준: 레알 20%, 바이에른 18%, 리버풀 15%, 아스널 14%, PSG 14%, 맨시티 5%, 인테르·바르사 각 4% 등)임을 확인.
+
+### 5. 발롱도르 & 월드베스트 XI: 시즌 완전 종료 시 1회만 종합 시상
+- **단일 종합 시상 및 대회별 가중치 정교화** (`src/engine/awardsEngine.ts`, `src/store/GameContext.tsx`, `src/components/league/SeasonSummary.tsx`):
+  - TOP 4 챔스 진출 팀은 리그 종료 시점에 발롱도르를 보류하고 UCL 진출 관문 배너를 표시한 뒤, UCL 완전 종료 시 단 1회 시상.
+  - 5위 이하 챔스 미진출 팀은 리그 종료 즉시 백그라운드 36팀 AI 챔스를 완료한 뒤 단 1회 시상.
+  - 대회별 개인 스탯 가중치(UCL·컵 프레스티지 반영)와 팀 실적(UCL·리그·컵 우승 및 트레블 가점)을 균형 있게 고도화.
+
+### 6. 리그컵 트리형 대진표 + 클릭 가능한 선수 대회별 스탯 & 경기 상세 모달
+- **자국 컵 정통 트리형 대진표** (`src/components/league/CupBracketView.tsx`): SVG 직각 엘보 연결선 기반 `16강 → 8강 → 4강 → 결승 → 우승 트로피` 트리 구현.
+- **전역 클릭 가능 선수 상세 & 대회별 세부 스탯** (`src/utils/playerLookup.ts`, `src/components/common/PlayerDetailModal.tsx`, `ClubSquadModal.tsx`): 리그·자국 컵·챔피언스리그·시즌 통합 4단 스탯 테이블 및 이적 이력 배지 표시.
+- **완료 경기 & 2차전 타이 상세 리포트 모달** (`src/components/common/MatchDetailModal.tsx`): 리그 최근 경기·경기 리포트·전체 경기 히스토리·자국 컵 대진표·UCL 대진표(1·2차전 탭 지원) 어디서든 클릭 시 스코어·득점/도움·점유율·슈팅/xG·승부차기 로그·평점·MOM 열람 가능.
+
+### 검증 결과
+- 유닛 테스트: **17개 파일 / 55개 테스트 전부 PASS**, `oxlint` 0 errors, `tsc -b && vite build` 성공.
+- 실제 `gameReducer` 기반 **20시즌 연속 풀 시뮬레이션**(5대 리그 순환, TOP 4 UCL 15시즌 + 5위 이하 백그라운드 UCL 5시즌, 시즌 중 이적 44건·동일리그 스탯 합산 28건, 컵 300경기·UCL 토너먼트 900경기 전수 검증) **오류 0건 통과**.
+
+---
+
 ## v2.4 — 역대 최강팀 14팀 벤치마크 · 최종 순위 0위 버그 수정 · 감독 능력 직접 선택 · 남/여 & 대머리 커스터마이징
 
 ### 명예의 전당 — 실제 역대 최강팀 14팀 벤치마크 랭킹

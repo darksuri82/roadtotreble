@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.4)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v2.5)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,9 +9,16 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **16개 파일 / 52+개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **17개 파일 / 55개 테스트 전부 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
+- **v2.5 주요 신규 모듈·기능**:
+  - **2026-27 전면 로스터 재검증 & '레벤수' 레전드 편입**: 5대 리그 96개 구단 현역 1,179명 + 레전드 33명(레반도프스키·벤제마·수아레스 편입) + UCL 외곽 16팀 176명 = 전 세계 1,388명 중복 ID/이름 0건 검증
+  - **드래프트·이적시장 OVR 상위 3명 노출 보장**: `pickClubCandidatesForSlot`(결정적 OVR 정렬), `buildTransferClubSquad`(포지션별 상위 3명 보장, 최대 16명)
+  - **전 세계 고유 선수 & 시즌 중 이적 스탯 연속 합산**: 단일 `playerId` 키 통일(`normalizeLegacyPlayerStatsMap`), 원소속 AI 구단 제거+대체 자원 보충(`pickReplacementForAiClub`), `transferHistory` 이력 및 최종 소속팀 시상
+  - **발롱도르 & 월드베스트 XI 시즌 완전 종료 시 1회 종합 시상**: TOP 4는 UCL 완료 후 1회, 5위 이하는 백그라운드 36팀 AI UCL 완료 후 1회 (`userParticipated: false` 가드)
+  - **Phase 2 심층 최적화 & 0위 자가 복구**: 플레이오프 부전승 원클릭 완료(`SIMULATE_UCL_PLAYOFF_BYE`), `SKIP_UCL_TO_FINAL_SUMMARY`, `FINISH_UCL_TO_SUMMARY` 자동 완료 가드, `loadLegacyState` 0위 자가 복구
+  - **리그컵 정통 트리형 대진표 & 전역 선수/경기/구단 상세 모달**: `CupBracketView.tsx`(SVG 엘보 트리), `MatchDetailModal.tsx`(단판/UCL 2차전 탭), `ClubSquadModal.tsx`, `PlayerDetailModal.tsx`(리그/컵/UCL/통합 4단 세부 스탯 + 이적 이력), `src/utils/playerLookup.ts`
 - **v2.4 주요 신규 모듈·기능**:
   - 역대 최강 14팀 벤치마크(`src/data/historicalTeams.ts`): 유저와 동일한 `computeSeasonScore`로 공정 산출, 명예의 전당 3종 필터(`[전체 / 유저 / 역대 강팀]`)·베스트 11 상세 모달·결산 한 줄 비교 피드백·Phase 3 Supabase 확장 호환 타입(`UnifiedLeaderboardEntry`)
   - 최종 순위 `0위` 버그 근본 수정(`standingsEngine.ts`, `analyticsEngine.ts`, `phase2Bridge.ts`, `TeamAnalyticsTab.tsx`, `SeasonSummary.tsx`)
@@ -42,7 +49,7 @@
 ```text
 .
 ├── .github/workflows/deploy.yml   # GitHub Pages 자동 배포 (push to main -> npm ci -> build -> deploy dist/)
-├── CHANGELOG.md                   # v1.0 ~ v2.1 전체 패치 이력
+├── CHANGELOG.md                   # v1.0 ~ v2.5 전체 패치 이력
 ├── PROJECT_HANDOFF.md             # 본 인수인계 문서
 ├── src/
 │   ├── App.tsx                    # 게임 페이즈 라우터 + LegacyHubModal + AchievementToast
@@ -50,55 +57,59 @@
 │   │   └── GameContext.tsx        # 전역 상태(useReducer + localStorage 저장/하위호환 + 실시간 도전과제 감시 + 명예의 전당 아카이빙)
 │   ├── types/
 │   │   ├── player.ts              # Player, Position, SubPosition, PlaystyleId, getCardTier
-│   │   ├── league.ts              # Club, LeagueData, Fixture, MatchResult, ExtraTimeInfo, PenaltyKickLog, LiveHalftimeState, PlayerSeasonStats
+│   │   ├── league.ts              # Club, LeagueData, Fixture, MatchResult, ExtraTimeInfo, PenaltyKickLog, LiveHalftimeState, PlayerSeasonStats, PlayerTransferRecord
 │   │   ├── game.ts                # GameState, GamePhase, SeasonState, TransferMarketState, ChemistryResult, TeamRatings
 │   │   ├── cup.ts                 # DomesticCupState, CupStageId, CupMeta, CupMatchNode
 │   │   ├── ucl.ts                 # UclTournamentState, UclTeamEntry, UclKnockoutTie, UclPhaseStage
 │   │   ├── legacy.ts              # LegacyStorageState, HallOfFameEntry, SeasonScoreBreakdown, HiddenAchievementDef
 │   │   └── phase2.ts              # Phase 1 -> Phase 2 핸드오프 요약 타입
 │   ├── data/
-│   │   ├── activePlayers.json     # 2026-27 유럽 5대 리그 현역 290명 (복수 주포지션·stamina 포함)
-│   │   ├── legendPlayers.json     # 레전드 30명 (stamina 포함)
+│   │   ├── activePlayers.json     # 2026-27 유럽 5대 리그 96개 구단 현역 1,179명 (복수 주포지션·stamina·playstyles 포함)
+│   │   ├── legendPlayers.json     # 레전드 33명 (레벤수 3인방 포함, stamina 포함)
 │   │   ├── leagues.json           # 유럽 5대 리그 96개 구단 (EPL 20, 라리가 20, 세리에 A 20, 분데스리가 18, 리그 1 18)
-│   │   ├── uclTeams.json          # 비5대 리그 유럽 강호 16개 구단 · 176명 풀 스쿼드
+│   │   ├── uclTeams.json          # 비5대 리그 유럽 강호 16개 구단 · 176명 풀 스쿼드 (5대 리그와 중복 0건)
 │   │   ├── formations.ts          # 6종 포메이션 좌표·케미 링크 + 벤치 5슬롯
 │   │   ├── managerTraits.ts       # 14종 감독 강점 정의
 │   │   ├── playstyles.ts          # 14종 플레이스타일 및 스타일 시너지 쌍
 │   │   ├── achievements.ts        # 24종 히든 도전과제 (힌트/해금 제목/역사적 모티브/조건)
-│   │   └── patchNotes.ts          # 인게임 패치노트 데이터 (v1.0 ~ v2.1)
+│   │   ├── historicalTeams.ts     # 역대 최강 14팀 벤치마크 데이터
+│   │   └── patchNotes.ts          # 인게임 패치노트 데이터 (v1.0 ~ v2.5)
 │   ├── engine/
-│   │   ├── dataLoader.ts          # JSON 로더, AI 11인 로스터 생성(buildAiClubRoster), 로테이션 선수 생성
+│   │   ├── dataLoader.ts          # JSON 로더, AI 11인 로스터 생성(buildAiClubRoster + excludeIds), 대체 자원 보충(pickReplacementForAiClub)
 │   │   ├── positionEngine.ts      # 복수 주포지션/부포지션 적합도 & 실효 OVR 계산
 │   │   ├── chemistryEngine.ts     # 3색 병렬 케미(구단/국적/스타일+역할) & 팀 실전 OVR 계산
 │   │   ├── tacticEngine.ts        # 5종 전술 & 포메이션 상성, 하프타임 힌트 생성
 │   │   ├── staminaEngine.ts       # 인게임 체력 소모(0'~120'), 피로 패널티, 60'~82' 자동 교체 계획
-│   │   ├── draftEngine.ts         # 3구단 멀티 후보 드래프트 룰렛 (리그 풀 필터 + 레전드 독립 확률)
+│   │   ├── draftEngine.ts         # 3구단 멀티 후보 드래프트 룰렛 (OVR 상위 3명 결정적 노출 + 레전드 독립 확률)
 │   │   ├── lineupOptimizer.ts     # 포메이션 변경 시 스마트 재배치 & 자동 최적 베스트 11
 │   │   ├── scheduleEngine.ts      # Fisher-Yates 랜덤 셔플 더블 라운드 로빈 일정 생성
-│   │   ├── matchEngine.ts         # 포아송 xG 경기 엔진, 전반/후반/실시간 교체 재시뮬, 7종 하이라이트, 연장전/승부차기
-│   │   ├── standingsEngine.ts     # 순위표 정렬, 풀리그 선수 기록 및 대회별 기록(accumulateCompetitionPlayerStats) 누적
+│   │   ├── matchEngine.ts         # 포아송 xG 경기 엔진, 전반/후반/실시간 교체 재시뮬, 10종 하이라이트, 연장전/승부차기
+│   │   ├── standingsEngine.ts     # 순위표 정렬, 단일 playerId 스탯 누적 및 레거시 user:: 키 정규화
 │   │   ├── otherLeaguesEngine.ts  # 타 4대 리그 백그라운드 동시 시뮬레이션 & UCL 20팀 진출 요약
-│   │   ├── transferEngine.ts      # 3구단 동적 이적시장 (몸값·확률·20% 하한·UCL 리그 우승 프리미엄)
+│   │   ├── transferEngine.ts      # 3구단 동적 이적시장 (포지션별 OVR 상위 3명 보장, 몸값·확률·UCL 우승 프리미엄)
 │   │   ├── cupEngine.ts           # 5대 리그 자국 컵 16강~결승 토너먼트 진행
-│   │   ├── uclEngine.ts           # 36팀 4포트 편성, O(N) 8R 스위스 일정 생성, 플레이오프~결승 토너먼트
-│   │   ├── awardsEngine.ts        # 시즌 어워드(득점/도움/클린시트/평점/POTY/4-3-3 베스트 11)
+│   │   ├── uclEngine.ts           # 36팀 4포트 편성, O(N) 8R 스위스 일정, 플레이오프 부전승 일괄 완료, 토너먼트
+│   │   ├── awardsEngine.ts        # 리그 어워드 & 시즌 완전 종료 단일 발롱도르·월드베스트 XI 종합 산정
 │   │   ├── analyticsEngine.ts     # 팀/스쿼드 세부 분석 + 다중 대회 스탯 병합(mergePlayerStatsMaps)
-│   │   └── legacyEngine.ts        # PPG×38 공정 시즌 스코어, 명예의 전당 storage, 24종 히든 도전과제 판정
+│   │   └── legacyEngine.ts        # PPG×38 공정 시즌 스코어, 명예의 전당 storage(0위 자가 복구), 24종 히든 도전과제 판정
+│   ├── utils/
+│   │   ├── playerLookup.ts        # 전역 선수 조회, 리그/컵/UCL/통합 4단 세부 스탯 및 이적 이력 조합, 구단 로스터 조회
+│   │   └── clubPresets.ts         # 이전 팀 프리셋 localStorage 저장/복원
 │   ├── components/
-│   │   ├── common/                # HeaderNav, JerseySvg, PitchBoard, PlayerCard, PlayerDetailModal, PatchNotesModal
-│   │   ├── setup/                 # TitleScreen (v2.1 개편), FormationSelect (1단계), ManagerRouletteScreen (2단계)
+│   │   ├── common/                # HeaderNav, JerseySvg, PitchBoard, PlayerCard, PlayerDetailModal, MatchDetailModal, ClubSquadModal, PatchNotesModal
+│   │   ├── setup/                 # TitleScreen, FormationSelect (1단계), ManagerRouletteScreen (2단계)
 │   │   ├── draft/                 # DraftScreen (3단계, 2단계 확정)
-│   │   ├── league/                # LeagueSelect, SeasonDashboard, LiveMatchBroadcast, PitchMatch2D, FastSimModal, CupBracketView, SeasonSummary, TeamAnalyticsTab, StandingsTable
+│   │   ├── league/                # LeagueSelect, SeasonDashboard, LiveMatchBroadcast, PitchMatch2D, FastSimModal, CupBracketView (SVG 트리), SeasonSummary, TeamAnalyticsTab, StandingsTable
 │   │   ├── transfer/              # TransferMarketModal (좌우 분할 + 피치 뷰 + UCL 특별 이적시장)
-│   │   ├── ucl/                   # UclDashboard (36팀 순위표·토너먼트·UCL 기록·스쿼드)
-│   │   ├── legacy/                # LegacyHubModal (명예의 전당 + 24종 도감), AchievementToast
+│   │   ├── ucl/                   # UclDashboard, UclBracketTree (SVG 트리)
+│   │   ├── legacy/                # LegacyHubModal (명예의 전당 + 역대 14팀 + 24종 도감), AchievementToast
 │   │   └── guide/                 # SystemGuideModal
-│   └── __tests__/                 # 13개 유닛 테스트 (총 37개 테스트)
+│   └── __tests__/                 # 17개 유닛 테스트 (총 55개 테스트)
 ```
 
 ---
 
-## 3. 현재 구현 완료된 전체 게임 루프 (v2.1)
+## 3. 현재 구현 완료된 전체 게임 루프 (v2.5)
 
 1. **메인 화면 (`title`)**: 히어로 + `v2.1` 패치노트 + **[새 시즌 시작하기]** + 보조 메뉴 모달([레거시/명예의 전당], [게임 가이드], [패치노트]).
 2. **1단계 구단·풀·포메이션 설정 (`setup`)**: 이전 팀 프리셋(`localStorage`, 최대 6개), 팀명/약칭/유니폼, 드래프트 풀 리그 체크박스(최소 1개), 6종 포메이션, 5종 기본 전술.

@@ -260,20 +260,37 @@ export function generateClubRotationPlayer(params: {
 
 /**
  * Builds a complete 11-player starting roster for an AI club in its formation,
- * preferring real 2026-27 players from activePlayers.json and club.topScorers so full-league
- * individual stats, clean sheets, Best XI, and POTY are authentically tracked.
+ * preferring real 2026-27 players sorted by OVR desc while strictly excluding globally owned/departed players
+ * so every player exists at most once worldwide.
  */
-export function buildAiClubRoster(club: Club, leagueId: LeagueId): Player[] {
+export function buildAiClubRoster(
+  club: Club,
+  leagueId: LeagueId,
+  excludeIds?: Set<string>,
+): Player[] {
   const formation = FORMATIONS[club.formation] ?? FORMATIONS['4-3-3'];
-  const clubRealPlayers = ACTIVE_PLAYERS.filter((p) => p.club === club.name);
-  const usedIds = new Set<string>();
-  const usedNames = new Set<string>();
+  const blockedIds = excludeIds ?? new Set<string>();
+  const blockedNames = new Set<string>();
+  if (blockedIds.size > 0) {
+    for (const p of ALL_PLAYERS) {
+      if (blockedIds.has(p.id)) blockedNames.add(p.name);
+    }
+  }
+
+  const clubRealPlayers = ACTIVE_PLAYERS.filter(
+    (p) => p.club === club.name && !blockedIds.has(p.id),
+  ).sort(
+    (a, b) =>
+      b.ovr - a.ovr || b.att + b.mid + b.def - (a.att + a.mid + a.def),
+  );
+  const usedIds = new Set<string>(blockedIds);
+  const usedNames = new Set<string>(blockedNames);
   const roster: Player[] = [];
 
   for (let i = 0; i < formation.slots.length; i += 1) {
     const slot = formation.slots[i];
 
-    // 1) Exact mainPositions match among club's real players
+    // 1) Exact mainPositions match among club's real players (highest OVR first)
     let found = clubRealPlayers.find(
       (p) => !usedIds.has(p.id) && p.mainPositions.includes(slot.subPosition),
     );
@@ -299,7 +316,7 @@ export function buildAiClubRoster(club: Club, leagueId: LeagueId): Player[] {
       continue;
     }
 
-    // Use one of club.topScorers for FW/MF slots if not yet represented
+    // Use one of club.topScorers for FW/MF slots only if not already owned/excluded
     let customName: string | undefined;
     if (slot.position === 'FW' || slot.position === 'MF') {
       const unusedScorer = club.topScorers.find((sc) => !usedNames.has(sc));
@@ -328,4 +345,83 @@ export function buildAiClubRoster(club: Club, leagueId: LeagueId): Player[] {
   }
 
   return roster;
+}
+
+/**
+ * Selects a balanced replacement player when an AI club loses a player to a mid-season user transfer:
+ * 1) Unused real player of the same club & broad position (highest OVR)
+ * 2) Compatible non-Legend outPlayer from the trade swap (if matching broad position and not excluded)
+ * 3) Any unused real player of the same club
+ * 4) Deterministic club rotation player filling the departed slot's subPosition
+ */
+export function pickReplacementForAiClub(params: {
+  club: Club;
+  leagueId: LeagueId;
+  departedPlayer: Player;
+  currentRoster: Player[];
+  excludeIds: Set<string>;
+  swapOutPlayer?: Player | null;
+  round?: number;
+}): Player {
+  const {
+    club,
+    leagueId,
+    departedPlayer,
+    currentRoster,
+    excludeIds,
+    swapOutPlayer,
+    round = 0,
+  } = params;
+
+  const rosterIds = new Set<string>(currentRoster.map((p) => p.id));
+  const blockedIds = new Set<string>([...excludeIds, ...rosterIds, departedPlayer.id]);
+  const blockedNames = new Set<string>(currentRoster.map((p) => p.name));
+  blockedNames.add(departedPlayer.name);
+  for (const p of ALL_PLAYERS) {
+    if (blockedIds.has(p.id)) blockedNames.add(p.name);
+  }
+
+  const targetSub = departedPlayer.mainPositions[0] ?? 'CM';
+  const targetBroad = departedPlayer.position;
+
+  // 1) Real bench/depth player of the same club matching position
+  const clubDepth = ACTIVE_PLAYERS.filter(
+    (p) => p.club === club.name && !blockedIds.has(p.id),
+  ).sort((a, b) => b.ovr - a.ovr);
+
+  const exactSub = clubDepth.find((p) => p.mainPositions.includes(targetSub));
+  if (exactSub) return exactSub;
+
+  const sameBroad = clubDepth.find((p) => p.position === targetBroad);
+  if (sameBroad) return sameBroad;
+
+  // 2) Trade-swap outgoing non-Legend player if same broad position & not already on this club
+  if (
+    swapOutPlayer &&
+    !swapOutPlayer.isLegend &&
+    swapOutPlayer.position === targetBroad &&
+    !rosterIds.has(swapOutPlayer.id)
+  ) {
+    return {
+      ...swapOutPlayer,
+      club: club.name,
+      leagueId,
+    };
+  }
+
+  // 3) Any real depth player of this club
+  if (clubDepth[0]) return clubDepth[0];
+
+  // 4) Fallback generated club rotation player
+  const seedKey = `repl-${club.id}-${departedPlayer.id}-r${round}`;
+  const seedVal = hashString(seedKey);
+  const detRng = () => (seedVal % 97) / 97;
+  return generateClubRotationPlayer({
+    club,
+    leagueId,
+    subPosition: targetSub,
+    seedKey,
+    excludeNames: blockedNames,
+    rng: detRng,
+  });
 }

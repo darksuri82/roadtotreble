@@ -315,6 +315,7 @@ export interface SeasonState {
   achievementTrackers: SeasonAchievementTrackers;
   seasonScore: SeasonScoreBreakdown | null;
   legacyArchived?: boolean;
+  departedPlayerIds?: string[];
 }
 
 export interface GameState {

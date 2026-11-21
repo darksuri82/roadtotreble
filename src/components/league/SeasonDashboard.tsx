@@ -33,9 +33,22 @@ import {
 } from '../../engine/tacticEngine';
 import { getNextTransferWindowRound } from '../../engine/transferEngine';
 import { useGame } from '../../store/GameContext';
-import type { Club, LeagueId } from '../../types/league';
+import type {
+  Club,
+  LeagueId,
+  MatchResult,
+  PlayerSeasonStats,
+} from '../../types/league';
+import {
+  buildPlayerCompetitionBreakdown,
+  resolveClubRoster,
+  resolvePlayerById,
+} from '../../utils/playerLookup';
+import { ClubSquadModal } from '../common/ClubSquadModal';
 import { ClubTag } from '../common/ClubTag';
 import { JerseySvg } from '../common/JerseySvg';
+import { MatchDetailModal } from '../common/MatchDetailModal';
+import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
 import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
@@ -70,6 +83,15 @@ export function SeasonDashboard() {
   const [standingsLeagueId, setStandingsLeagueId] = useState<LeagueId | null>(
     null,
   );
+  const [inspectedPlayer, setInspectedPlayer] = useState<{
+    playerId: string;
+    fallbackStats?: PlayerSeasonStats | null;
+  } | null>(null);
+  const [inspectedMatch, setInspectedMatch] = useState<MatchResult | null>(null);
+  const [inspectedClub, setInspectedClub] = useState<{
+    club: Club;
+    leagueId?: LeagueId;
+  } | null>(null);
 
   const season = state.season;
 
@@ -552,8 +574,11 @@ export function SeasonDashboard() {
             {/* Recent Match History Strip */}
             {season.userMatchHistory.length > 0 && (
               <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-2.5">
-                <div className="text-xs font-bold text-slate-400">
-                  최근 경기 결과
+                <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                  <span>최근 경기 결과</span>
+                  <span className="text-[10px] font-medium text-slate-500">
+                    클릭하여 경기 상세 확인
+                  </span>
                 </div>
                 <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                   {[...season.userMatchHistory]
@@ -571,9 +596,11 @@ export function SeasonDashboard() {
                             ? 'bg-rose-500/15 text-rose-300'
                             : 'bg-slate-800 text-slate-300';
                       return (
-                        <div
+                        <button
                           key={m.fixtureId}
-                          className="flex items-center justify-between rounded-lg bg-[#0b1018] px-3 py-2 text-xs tabular-nums"
+                          type="button"
+                          onClick={() => setInspectedMatch(m)}
+                          className="flex items-center justify-between rounded-lg border border-transparent bg-[#0b1018] px-3 py-2 text-left text-xs tabular-nums transition-colors hover:border-emerald-500/40 cursor-pointer"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-[10px] text-slate-500">
@@ -586,7 +613,7 @@ export function SeasonDashboard() {
                           <span className={`rounded px-2 py-0.5 font-display font-bold ${badge}`}>
                             {ug} - {og}
                           </span>
-                        </div>
+                        </button>
                       );
                     })}
                 </div>
@@ -600,6 +627,8 @@ export function SeasonDashboard() {
               <MatchReportPanel
                 match={season.lastUserMatch}
                 clubsById={clubsById}
+                onSelectPlayer={(playerId) => setInspectedPlayer({ playerId })}
+                onOpenDetail={(m) => setInspectedMatch(m)}
               />
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-800 bg-[#111822]/70 p-6 text-center text-xs text-slate-400">
@@ -667,15 +696,26 @@ export function SeasonDashboard() {
                 clubsById={viewedClubsById}
                 uclSpots={viewedLeagueMeta.uclSpots}
                 relegationSpots={viewedLeagueMeta.relegationSpots}
+                onSelectClub={(clubId) => {
+                  const club = viewedClubsById[clubId];
+                  if (club) {
+                    setInspectedClub({ club, leagueId: viewedLeagueId });
+                  }
+                }}
               />
             </div>
 
             <div className="lg:col-span-5">
               {isViewingUserLeague ? (
                 <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-3">
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
-                    <Award className="w-4 h-4 text-amber-400" />
-                    리그 개인 기록 TOP 10
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                      <Award className="w-4 h-4 text-amber-400" />
+                      리그 개인 기록 TOP 10
+                    </div>
+                    <span className="text-[10px] text-slate-500">
+                      클릭하여 세부 스탯
+                    </span>
                   </div>
 
                   <div className="grid grid-cols-4 gap-1 rounded-lg bg-[#0b1018] p-1 text-[11px]">
@@ -709,19 +749,26 @@ export function SeasonDashboard() {
                   ) : (
                     <div className="space-y-1.5">
                       {activeLeaderboard.map((entry, idx) => (
-                        <div
+                        <button
                           key={`${entry.teamId}-${entry.playerId}`}
-                          className={`flex items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-xs tabular-nums ${
+                          type="button"
+                          onClick={() =>
+                            setInspectedPlayer({
+                              playerId: entry.playerId,
+                              fallbackStats: entry,
+                            })
+                          }
+                          className={`flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs tabular-nums transition-colors cursor-pointer ${
                             entry.isUserTeam
-                              ? 'bg-emerald-500/15 border border-emerald-500/35'
-                              : 'bg-[#0b1018]'
+                              ? 'bg-emerald-500/15 border border-emerald-500/35 hover:bg-emerald-500/25'
+                              : 'bg-[#0b1018] border border-transparent hover:border-slate-700'
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="font-display w-4 text-slate-500 font-bold text-center">
                               {idx + 1}
                             </span>
-                            <span className="truncate font-bold text-slate-100">
+                            <span className="truncate font-bold text-slate-100 hover:text-emerald-300">
                               {entry.playerName}
                             </span>
                             <ClubTag
@@ -736,7 +783,7 @@ export function SeasonDashboard() {
                             {recordTab === 'cleanSheets' && `${entry.cleanSheets}CS`}
                             {recordTab === 'rating' && entry.avgRating.toFixed(2)}
                           </span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -769,9 +816,18 @@ export function SeasonDashboard() {
                     </div>
                     <div className="space-y-1.5">
                       {viewedStandings.slice(0, 4).map((row, idx) => (
-                        <div
+                        <button
                           key={row.teamId}
-                          className="flex items-center justify-between rounded-xl border border-emerald-500/25 bg-[#0b1018] px-3 py-2.5 text-xs tabular-nums"
+                          type="button"
+                          onClick={() => {
+                            const c = viewedClubsById[row.teamId];
+                            if (c)
+                              setInspectedClub({
+                                club: c,
+                                leagueId: viewedLeagueId,
+                              });
+                          }}
+                          className="flex w-full items-center justify-between rounded-xl border border-emerald-500/25 bg-[#0b1018] px-3 py-2.5 text-left text-xs tabular-nums transition-colors hover:border-emerald-400/50 cursor-pointer"
                         >
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span className="font-display text-sm font-bold text-emerald-400 w-4 text-center">
@@ -793,7 +849,7 @@ export function SeasonDashboard() {
                               {row.points}점
                             </span>
                           </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -840,7 +896,12 @@ export function SeasonDashboard() {
               </div>
             </div>
           )}
-          <CupBracketView cup={season.cup} clubs={season.clubs} />
+          <CupBracketView
+            cup={season.cup}
+            clubs={season.clubs}
+            leagueId={season.leagueId}
+            onSelectMatch={(m) => setInspectedMatch(m)}
+          />
         </div>
       )}
 
@@ -1166,6 +1227,63 @@ export function SeasonDashboard() {
           </div>
         </div>
       )}
+
+      {/* Club Squad Modal */}
+      <ClubSquadModal
+        club={inspectedClub?.club ?? null}
+        roster={
+          inspectedClub
+            ? resolveClubRoster({
+                clubId: inspectedClub.club.id,
+                club: inspectedClub.club,
+                leagueId: inspectedClub.leagueId,
+                season,
+                userStarters: state.starters,
+                userBench: state.bench,
+              })
+            : []
+        }
+        statsMap={season.allPlayerStats}
+        onSelectPlayer={(player) => {
+          setInspectedClub(null);
+          setInspectedPlayer({ playerId: player.id });
+        }}
+        onClose={() => setInspectedClub(null)}
+      />
+
+      {/* Match Detail Modal */}
+      <MatchDetailModal
+        key={inspectedMatch?.fixtureId ?? 'season-match-detail'}
+        match={inspectedMatch}
+        clubsById={clubsById}
+        onSelectPlayer={(playerId) => setInspectedPlayer({ playerId })}
+        onClose={() => setInspectedMatch(null)}
+      />
+
+      {/* Player Detail Modal with Competition Breakdown */}
+      {inspectedPlayer && (() => {
+        const resolved = resolvePlayerById({
+          playerId: inspectedPlayer.playerId,
+          starters: state.starters,
+          bench: state.bench,
+          season,
+          fallbackStats: inspectedPlayer.fallbackStats,
+        });
+        const breakdown = buildPlayerCompetitionBreakdown(
+          inspectedPlayer.playerId,
+          season,
+          inspectedPlayer.fallbackStats,
+        );
+        return (
+          <PlayerDetailModal
+            player={resolved}
+            managerTraitId={state.manager.traitId}
+            seasonStats={breakdown.total}
+            competitionStats={breakdown}
+            onClose={() => setInspectedPlayer(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

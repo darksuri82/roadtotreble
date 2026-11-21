@@ -2080,7 +2080,11 @@ export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
         slotSubPosition={inspected?.slotSubPosition}
         managerTraitId={state.manager.traitId}
         seasonStats={
-          inspected ? allStats[`user::${inspected.player.id}`] ?? null : null
+          inspected
+            ? allStats[inspected.player.id] ??
+              allStats[`user::${inspected.player.id}`] ??
+              null
+            : null
         }
         onClose={() => setInspected(null)}
       />

@@ -1,4 +1,4 @@
-import { Crown, Diamond, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
+import { ArrowRight, Crown, Diamond, Shield, Sparkles, TrendingUp, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
@@ -15,12 +15,14 @@ import {
 } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
 import { getCountryFlag } from '../../utils/countryFlag';
+import type { PlayerCompetitionStatsBreakdown } from '../../utils/playerLookup';
 
 interface PlayerDetailModalProps {
   player: Player | null;
   slotSubPosition?: SubPosition;
   managerTraitId?: ManagerTraitId | null;
   seasonStats?: PlayerSeasonStats | null;
+  competitionStats?: PlayerCompetitionStatsBreakdown | null;
   onClose: () => void;
 }
 
@@ -29,6 +31,7 @@ export function PlayerDetailModal({
   slotSubPosition,
   managerTraitId = null,
   seasonStats = null,
+  competitionStats = null,
   onClose,
 }: PlayerDetailModalProps) {
   useEffect(() => {
@@ -50,13 +53,44 @@ export function PlayerDetailModal({
     ? evaluatePositionFit(player, slotSubPosition, managerTraitId)
     : null;
 
+  const transferHistory =
+    competitionStats?.transferHistory ??
+    seasonStats?.transferHistory ??
+    [];
+  const displayClub =
+    competitionStats?.currentClubName ??
+    seasonStats?.teamName ??
+    player.club;
+
+  const hasBreakdown = Boolean(
+    competitionStats &&
+      (competitionStats.league ||
+        competitionStats.cup ||
+        competitionStats.ucl ||
+        competitionStats.total),
+  );
+  const isDefenderOrGk = player.position === 'GK' || player.position === 'DF';
+
+  const breakdownRows: {
+    label: string;
+    st: PlayerSeasonStats | null;
+    isTotal?: boolean;
+  }[] = competitionStats
+    ? [
+        { label: '리그', st: competitionStats.league },
+        { label: '자국 컵', st: competitionStats.cup },
+        { label: '챔피언스리그', st: competitionStats.ucl },
+        { label: '시즌 통합', st: competitionStats.total, isTotal: true },
+      ]
+    : [];
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/82 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-md overflow-hidden rounded-2xl border bg-[#0f1621] shadow-2xl ${
+        className={`w-full max-w-lg overflow-hidden rounded-2xl border bg-[#0f1621] shadow-2xl ${
           isLegend
             ? 'border-amber-400/70 shadow-[0_0_28px_rgba(251,191,36,0.22)]'
             : isSuperstar
@@ -106,8 +140,27 @@ export function PlayerDetailModal({
                 {getCountryFlag(player.nationalityCode)} {player.nationality}
               </span>
               <span className="text-slate-600">·</span>
-              <span className="font-semibold text-slate-200">{player.club}</span>
+              <span className="font-semibold text-slate-200">{displayClub}</span>
             </div>
+
+            {/* Mid-season Transfer History Badge */}
+            {transferHistory.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                {transferHistory.map((tr, idx) => (
+                  <span
+                    key={`${tr.fromClubId}-${tr.toClubId}-${tr.round}-${idx}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-200"
+                  >
+                    <span>{tr.fromClubName}</span>
+                    <ArrowRight className="w-2.5 h-2.5 text-emerald-400" />
+                    <span>{tr.toClubName}</span>
+                    <span className="text-emerald-400/80">
+                      ({tr.competition === 'ucl' ? 'UCL 특별' : `${tr.round}R`})
+                    </span>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex items-start gap-2.5 shrink-0">
@@ -225,6 +278,128 @@ export function PlayerDetailModal({
             </div>
           </div>
 
+          {/* Competition-Split Detailed Season Stats Table (v2.5) */}
+          {hasBreakdown ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="flex items-center gap-1.5 font-bold text-slate-200">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                  대회별 시즌 세부 스탯
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  리그 · 자국 컵 · UCL 통합
+                </span>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-slate-800 bg-[#0b1018]">
+                <table className="w-full text-left text-[11px] tabular-nums">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[10px] text-slate-400">
+                      <th className="py-2 pl-3 pr-2">대회</th>
+                      <th className="py-2 px-1.5 text-center">출전</th>
+                      <th className="py-2 px-1.5 text-center">골</th>
+                      <th className="py-2 px-1.5 text-center">도움</th>
+                      <th className="py-2 px-1.5 text-center">
+                        {isDefenderOrGk ? 'CS' : 'xG'}
+                      </th>
+                      <th className="py-2 px-1.5 text-center">MOM</th>
+                      <th className="py-2 pl-1.5 pr-3 text-right">평점</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {breakdownRows.map((row) => (
+                      <tr
+                        key={row.label}
+                        className={
+                          row.isTotal
+                            ? 'bg-emerald-500/10 font-bold text-white'
+                            : 'text-slate-300'
+                        }
+                      >
+                        <td className="py-2 pl-3 pr-2 font-bold">
+                          {row.label}
+                        </td>
+                        <td className="py-2 px-1.5 text-center">
+                          {row.st ? row.st.appearances : '-'}
+                        </td>
+                        <td className="py-2 px-1.5 text-center font-bold text-emerald-300">
+                          {row.st ? row.st.goals : '-'}
+                        </td>
+                        <td className="py-2 px-1.5 text-center font-semibold text-sky-300">
+                          {row.st ? row.st.assists : '-'}
+                        </td>
+                        <td className="py-2 px-1.5 text-center text-slate-300">
+                          {row.st
+                            ? isDefenderOrGk
+                              ? row.st.cleanSheets
+                              : row.st.xgSum.toFixed(1)
+                            : '-'}
+                        </td>
+                        <td className="py-2 px-1.5 text-center text-amber-300">
+                          {row.st ? row.st.momCount : '-'}
+                        </td>
+                        <td className="py-2 pl-1.5 pr-3 text-right font-display font-bold text-amber-300">
+                          {row.st && row.st.appearances > 0
+                            ? row.st.avgRating.toFixed(2)
+                            : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : seasonStats ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                이번 시즌 기록
+              </div>
+              <div className="grid grid-cols-5 gap-1.5 rounded-xl border border-slate-800 bg-[#0b1018] p-2.5 text-center tabular-nums">
+                <div>
+                  <div className="text-[10px] text-slate-500">출전</div>
+                  <div className="font-display text-sm font-bold text-white">
+                    {seasonStats.appearances}
+                    {seasonStats.subAppearances > 0 && (
+                      <span className="text-[10px] text-slate-400">
+                        ({seasonStats.subAppearances})
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500">출전시간</div>
+                  <div className="font-display text-sm font-bold text-slate-200">
+                    {seasonStats.minutesPlayed ?? 0}&apos;
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500">골 / 도움</div>
+                  <div className="font-display text-sm font-bold text-emerald-300">
+                    {seasonStats.goals} / {seasonStats.assists}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500">
+                    {isDefenderOrGk ? '클린시트' : 'xG'}
+                  </div>
+                  <div className="font-display text-sm font-bold text-sky-300">
+                    {isDefenderOrGk
+                      ? seasonStats.cleanSheets
+                      : seasonStats.xgSum.toFixed(1)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500">평균 평점</div>
+                  <div className="font-display text-sm font-bold text-amber-300">
+                    {seasonStats.appearances > 0
+                      ? seasonStats.avgRating.toFixed(2)
+                      : '-'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {/* Playstyles */}
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
@@ -269,61 +444,6 @@ export function PlayerDetailModal({
             <div className="flex items-start gap-2 rounded-xl border border-slate-800/80 bg-slate-900/50 px-3 py-2.5 text-[11px] text-slate-300">
               <Shield className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
               <span>{player.scoutNote}</span>
-            </div>
-          )}
-
-          {/* Current Season Stats (when in season) */}
-          {seasonStats && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                이번 시즌 기록
-              </div>
-              <div className="grid grid-cols-5 gap-1.5 rounded-xl border border-slate-800 bg-[#0b1018] p-2.5 text-center tabular-nums">
-                <div>
-                  <div className="text-[10px] text-slate-500">출전</div>
-                  <div className="font-display text-sm font-bold text-white">
-                    {seasonStats.appearances}
-                    {seasonStats.subAppearances > 0 && (
-                      <span className="text-[10px] text-slate-400">
-                        ({seasonStats.subAppearances})
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-500">출전시간</div>
-                  <div className="font-display text-sm font-bold text-slate-200">
-                    {seasonStats.minutesPlayed ?? 0}&apos;
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-500">골 / 도움</div>
-                  <div className="font-display text-sm font-bold text-emerald-300">
-                    {seasonStats.goals} / {seasonStats.assists}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-500">
-                    {player.position === 'GK' || player.position === 'DF'
-                      ? '클린시트'
-                      : 'xG'}
-                  </div>
-                  <div className="font-display text-sm font-bold text-sky-300">
-                    {player.position === 'GK' || player.position === 'DF'
-                      ? seasonStats.cleanSheets
-                      : seasonStats.xgSum.toFixed(1)}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] text-slate-500">평균 평점</div>
-                  <div className="font-display text-sm font-bold text-amber-300">
-                    {seasonStats.appearances > 0
-                      ? seasonStats.avgRating.toFixed(2)
-                      : '-'}
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </div>

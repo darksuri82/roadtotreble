@@ -254,6 +254,15 @@ export interface StandingRow {
   form: ('W' | 'D' | 'L')[];
 }
 
+export interface PlayerTransferRecord {
+  fromClubId: string;
+  fromClubName: string;
+  toClubId: string;
+  toClubName: string;
+  round: number;
+  competition?: 'league' | 'ucl';
+}
+
 export interface PlayerSeasonStats {
   playerId: string;
   playerName: string;
@@ -279,6 +288,7 @@ export interface PlayerSeasonStats {
   avgRating: number;
   positionCounts: Partial<Record<SubPosition, number>>;
   isLegend: boolean;
+  transferHistory?: PlayerTransferRecord[];
 }
 
 export interface BestXiEntry {

@@ -164,7 +164,7 @@ export function computeSquadPlayerAnalytics(params: {
   const squad = [...starters, ...bench].filter((p): p is Player => p !== null);
 
   return squad.map((player) => {
-    const st = allPlayerStats[`user::${player.id}`];
+    const st = allPlayerStats[player.id] ?? allPlayerStats[`user::${player.id}`];
 
     let primaryDeployedPosition: SubPosition = getPrimaryPosition(player);
     if (st && st.positionCounts) {
@@ -206,7 +206,7 @@ export function computeSquadPlayerAnalytics(params: {
 
 /**
  * Merges multiple PlayerSeasonStats maps (e.g. League + Domestic Cup + UCL) into a single
- * combined season total map for the [시즌 통합] analytics tab and Hall of Fame archive.
+ * combined season total map keyed strictly by `playerId`, preserving final club metadata & transfer history.
  */
 export function mergePlayerStatsMaps(
   ...maps: Record<string, PlayerSeasonStats>[]
@@ -214,13 +214,15 @@ export function mergePlayerStatsMaps(
   const merged: Record<string, PlayerSeasonStats> = {};
 
   for (const map of maps) {
-    for (const [key, st] of Object.entries(map)) {
+    for (const st of Object.values(map)) {
+      const key = st.playerId;
       const existing = merged[key];
       if (!existing) {
         merged[key] = {
           ...st,
           mainPositions: [...st.mainPositions],
           positionCounts: { ...st.positionCounts },
+          transferHistory: st.transferHistory ? [...st.transferHistory] : undefined,
         };
       } else {
         existing.appearances += st.appearances;
@@ -242,6 +244,32 @@ export function mergePlayerStatsMaps(
         for (const [pos, cnt] of Object.entries(st.positionCounts)) {
           existing.positionCounts[pos as SubPosition] =
             (existing.positionCounts[pos as SubPosition] ?? 0) + (cnt ?? 0);
+        }
+        // Keep latest club metadata (later competition map or user club after transfer)
+        if (st.isUserTeam || (st.appearances > 0 && st.teamId !== existing.teamId)) {
+          existing.teamId = st.teamId;
+          existing.teamName = st.teamName;
+          existing.teamShortName = st.teamShortName;
+          existing.teamPrimaryColor = st.teamPrimaryColor;
+          existing.teamSecondaryColor = st.teamSecondaryColor;
+          existing.isUserTeam = st.isUserTeam;
+        }
+        if (st.transferHistory && st.transferHistory.length > 0) {
+          const prev = existing.transferHistory ?? [];
+          const dedup = [...prev];
+          for (const rec of st.transferHistory) {
+            if (
+              !dedup.some(
+                (r) =>
+                  r.fromClubId === rec.fromClubId &&
+                  r.toClubId === rec.toClubId &&
+                  r.round === rec.round,
+              )
+            ) {
+              dedup.push(rec);
+            }
+          }
+          existing.transferHistory = dedup;
         }
       }
     }

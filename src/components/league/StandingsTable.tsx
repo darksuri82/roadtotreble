@@ -7,6 +7,7 @@ interface StandingsTableProps {
   clubsById: Record<string, Club>;
   uclSpots?: number;
   relegationSpots?: number;
+  onSelectClub?: (clubId: string) => void;
 }
 
 export function StandingsTable({
@@ -14,6 +15,7 @@ export function StandingsTable({
   clubsById,
   uclSpots = 4,
   relegationSpots = 3,
+  onSelectClub,
 }: StandingsTableProps) {
   const totalTeams = standings.length;
 
@@ -63,7 +65,10 @@ export function StandingsTable({
               return (
                 <tr
                   key={row.teamId}
+                  onClick={onSelectClub ? () => onSelectClub(row.teamId) : undefined}
                   className={`relative transition-colors ${
+                    onSelectClub ? 'cursor-pointer' : ''
+                  } ${
                     row.isUser
                       ? 'bg-emerald-500/15 hover:bg-emerald-500/20'
                       : isUcl
@@ -104,7 +109,7 @@ export function StandingsTable({
                           row.isUser
                             ? 'font-extrabold text-white'
                             : 'font-semibold text-slate-200'
-                        }`}
+                        } ${onSelectClub ? 'hover:text-emerald-300 hover:underline' : ''}`}
                       >
                         {row.teamName}
                       </span>

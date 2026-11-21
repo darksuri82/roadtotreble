@@ -19,7 +19,6 @@ import {
   computeTeamSeasonAnalytics,
   mergePlayerStatsMaps,
 } from '../../engine/analyticsEngine';
-import { computeGlobalSeasonAwards } from '../../engine/awardsEngine';
 import { didUserWinCup, getUserCupResultLabel } from '../../engine/cupEngine';
 import { getLeagueById, LEAGUES } from '../../engine/dataLoader';
 import { buildCompactMatchHistory } from '../../engine/legacyEngine';
@@ -29,14 +28,29 @@ import { formatMainPositions } from '../../engine/positionEngine';
 import { getUserRank } from '../../engine/standingsEngine';
 import { didUserWinUcl, getUserUclResultLabel } from '../../engine/uclEngine';
 import { useGame } from '../../store/GameContext';
-import type { BestXiEntry, Club, LeagueId, PlayerSeasonStats } from '../../types/league';
+import type {
+  BestXiEntry,
+  Club,
+  LeagueId,
+  MatchResult,
+  PlayerSeasonStats,
+} from '../../types/league';
+import type { UclKnockoutTie } from '../../types/ucl';
+import {
+  buildPlayerCompetitionBreakdown,
+  resolveClubRoster,
+  resolvePlayerById,
+} from '../../utils/playerLookup';
+import { ClubSquadModal } from '../common/ClubSquadModal';
 import { ClubTag } from '../common/ClubTag';
 import { JerseySvg } from '../common/JerseySvg';
+import { MatchDetailModal } from '../common/MatchDetailModal';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import {
   getDomesticCupTrophyVariant,
   PixelTrophySvg,
 } from '../common/PixelTrophySvg';
+import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { UclBracketTree } from '../ucl/UclBracketTree';
 import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
@@ -51,10 +65,12 @@ function BestXiPitchCard({
   title,
   entries,
   accentLabel,
+  onSelectPlayer,
 }: {
   title: string;
   entries: BestXiEntry[];
   accentLabel?: string;
+  onSelectPlayer?: (stats: PlayerSeasonStats) => void;
 }) {
   const slots = FORMATIONS['4-3-3'].slots;
   return (
@@ -109,16 +125,18 @@ function BestXiPitchCard({
           if (!slot) return null;
           const isMine = entry.stats.isUserTeam;
           return (
-            <div
+            <button
               key={`${entry.slotIndex}-${entry.stats.playerId}`}
+              type="button"
+              onClick={() => onSelectPlayer?.(entry.stats)}
               style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
-              className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center"
+              className="absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center cursor-pointer group focus:outline-none"
             >
               <div
-                className={`flex flex-col items-center rounded-xl px-2 py-1 min-w-[72px] sm:min-w-[84px] text-center shadow-lg ${
+                className={`flex flex-col items-center rounded-xl px-2 py-1 min-w-[72px] sm:min-w-[84px] text-center shadow-lg transition-transform group-hover:scale-105 ${
                   isMine
                     ? 'bg-emerald-950/95 border-2 border-emerald-400'
-                    : 'bg-[#101822]/95 border border-slate-600/80'
+                    : 'bg-[#101822]/95 border border-slate-600/80 group-hover:border-amber-400/70'
                 }`}
               >
                 <div className="flex items-center gap-1 leading-none">
@@ -142,7 +160,7 @@ function BestXiPitchCard({
                     </span>
                   )}
                 </div>
-                <span className="mt-0.5 max-w-[84px] truncate text-[10px] font-bold text-white">
+                <span className="mt-0.5 max-w-[84px] truncate text-[10px] font-bold text-white group-hover:text-emerald-200">
                   {entry.stats.playerName}
                 </span>
                 <span className="text-[9px] text-slate-400">
@@ -155,7 +173,7 @@ function BestXiPitchCard({
               <span className="mt-0.5 rounded bg-slate-950/85 px-1.5 text-[9px] font-bold text-slate-300">
                 {entry.slotLabel}
               </span>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -167,7 +185,7 @@ export function SeasonSummary() {
   const {
     state,
     enterUclMode,
-    archiveCurrentSeasonNow,
+    skipUclToFinalSummary,
     setLegacyModalOpen,
     markCupCelebrated,
     resetGame,
@@ -176,7 +194,24 @@ export function SeasonSummary() {
   const [rankTab, setRankTab] = useState<AwardRankTab>('goals');
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>('all');
   const [summaryLeagueId, setSummaryLeagueId] = useState<LeagueId | null>(null);
+  const [inspectedPlayer, setInspectedPlayer] = useState<{
+    playerId: string;
+    fallbackStats?: PlayerSeasonStats | null;
+  } | null>(null);
+  const [inspectedMatch, setInspectedMatch] = useState<MatchResult | null>(null);
+  const [inspectedTie, setInspectedTie] = useState<UclKnockoutTie | null>(null);
+  const [inspectedClub, setInspectedClub] = useState<{
+    club: Club;
+    leagueId?: LeagueId;
+  } | null>(null);
   const season = state.season;
+
+  const openPlayerById = (
+    playerId: string,
+    fallbackStats?: PlayerSeasonStats | null,
+  ) => {
+    setInspectedPlayer({ playerId, fallbackStats: fallbackStats ?? null });
+  };
 
   const clubsById = useMemo(() => {
     const map: Record<string, Club> = {};
@@ -208,20 +243,9 @@ export function SeasonSummary() {
     );
   }, [season]);
 
-  const globalAwards = useMemo(() => {
-    if (!season) return null;
-    if (season.globalAwards) return season.globalAwards;
-    return computeGlobalSeasonAwards({
-      allLeaguePlayerStats: season.allPlayerStats,
-      cupPlayerStats: season.cupPlayerStats,
-      uclPlayerStats: season.uclPlayerStats,
-      leagueStandings: season.standings,
-      cup: season.cup,
-      ucl: season.ucl,
-      otherLeagues: season.otherLeagues,
-      userLeagueId: season.leagueId,
-    });
-  }, [season]);
+  // Ballon d'Or & World Best XI are ONLY awarded ONCE after League + Cup + UCL are ALL complete.
+  const uclCompleted = Boolean(season?.ucl?.completed);
+  const globalAwards = uclCompleted ? (season?.globalAwards ?? null) : null;
 
   const leagueRankForAnalytics = season
     ? getUserRank(season.standings, USER_CLUB_ID)
@@ -310,16 +334,25 @@ export function SeasonSummary() {
     });
   }, [season, state.starters, state.bench]);
 
-  const fullMatchHistory = useMemo(() => {
+  const fullMatchEntries = useMemo(() => {
     if (!season) return [];
     const clubNameById: Record<string, string> = {};
     for (const c of allKnownClubs) clubNameById[c.id] = c.name;
-    return buildCompactMatchHistory({
+    const summaries = buildCompactMatchHistory({
       leagueMatches: season.userMatchHistory,
       cupMatches: season.userCupMatchHistory,
       uclMatches: season.userUclMatchHistory,
       clubNameById,
     });
+    const raws: MatchResult[] = [
+      ...season.userMatchHistory,
+      ...season.userCupMatchHistory,
+      ...season.userUclMatchHistory,
+    ];
+    return summaries.map((summary, idx) => ({
+      summary,
+      raw: raws[idx] ?? null,
+    }));
   }, [season, allKnownClubs]);
 
   const uclLeaders = useMemo(() => {
@@ -390,8 +423,9 @@ export function SeasonSummary() {
           : awards.topRatings
     : [];
 
-  const filteredHistory = fullMatchHistory.filter(
-    (m) => historyFilter === 'all' || m.competition === historyFilter,
+  const filteredHistory = fullMatchEntries.filter(
+    (entry) =>
+      historyFilter === 'all' || entry.summary.competition === historyFilter,
   );
 
   return (
@@ -489,11 +523,11 @@ export function SeasonSummary() {
               {canStartUcl && !season.legacyArchived && (
                 <button
                   type="button"
-                  onClick={archiveCurrentSeasonNow}
+                  onClick={skipUclToFinalSummary}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-300 hover:border-amber-400/50 hover:text-amber-300 cursor-pointer"
                 >
                   <Crown className="w-3.5 h-3.5" />
-                  챔스 건너뛰고 명예의 전당 기록
+                  챔스 자동 시뮬 후 최종 결산
                 </button>
               )}
 
@@ -654,7 +688,7 @@ export function SeasonSummary() {
             ['league', '리그 기록', <Globe key="l" className="w-3.5 h-3.5" />],
             ['cup', season.cup?.meta.koreanName ?? '자국 컵', <Trophy key="c" className="w-3.5 h-3.5" />],
             ['ucl', '챔피언스리그', <Sparkles key="u" className="w-3.5 h-3.5" />],
-            ['history', `전체 경기 (${fullMatchHistory.length})`, <History key="h" className="w-3.5 h-3.5" />],
+            ['history', `전체 경기 (${fullMatchEntries.length})`, <History key="h" className="w-3.5 h-3.5" />],
           ] as [SummaryMainTab, string, React.ReactNode][]
         ).map(([id, label, icon]) => (
           <button
@@ -677,12 +711,83 @@ export function SeasonSummary() {
       {/* TAB 1: GLOBAL AWARDS (BALLON D'OR + WORLD BEST XI) & COMBINED SUMMARY */}
       {mainTab === 'overview' && (
         <div className="space-y-5">
+          {/* Gate banner before UCL completes — Ballon d'Or & World Best XI awarded ONCE at full season end */}
+          {!uclCompleted && canStartUcl && (
+            <div className="rounded-2xl border border-sky-500/35 bg-gradient-to-r from-[#0a1628] via-[#0e1d36] to-[#0c1422] p-5 sm:p-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-2.5">
+                    <PixelTrophySvg variant="ballon_dor" size={52} animate />
+                  </div>
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/20 px-2.5 py-0.5 text-[10px] font-black text-sky-300">
+                      <Sparkles className="w-3 h-3" />
+                      CHAMPIONS LEAGUE GATE · 최종 어워즈 대기
+                    </div>
+                    <h2 className="text-lg font-extrabold text-white">
+                      발롱도르 &amp; FIFA 월드베스트 XI는 챔피언스리그 종료 후 단 1회 종합 시상됩니다
+                    </h2>
+                    <p className="text-xs leading-relaxed text-slate-300">
+                      리그·자국 컵 성적과 36팀 UEFA 챔피언스리그 최종 결과를 모두 합산해 공정하게 수상자를 선정합니다. 챔스에 직접 도전하거나 자동 시뮬레이션으로 시즌 최종 결산을 확인하세요.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={enterUclMode}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-black text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    36팀 챔피언스리그 도전하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={skipUclToFinalSummary}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-2.5 text-xs font-bold text-amber-200 hover:bg-amber-500/20 cursor-pointer"
+                  >
+                    <Crown className="w-3.5 h-3.5" />
+                    챔스 자동 시뮬 후 최종 결산·발롱도르 확인
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {uclCompleted && season.ucl?.userParticipated === false && season.ucl.championTeamId && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-500/25 bg-sky-500/8 px-4 py-2.5 text-xs text-sky-100">
+              <span>
+                🏆 이번 시즌 36팀 UEFA 챔피언스리그 최종 우승팀:{' '}
+                <strong className="text-amber-300">
+                  {uclClubsById[season.ucl.championTeamId]?.name ?? season.ucl.championTeamId}
+                </strong>{' '}
+                (백그라운드 유럽 대회 결과까지 모두 반영되어 발롱도르·월드베스트 XI가 확정되었습니다)
+              </span>
+              <button
+                type="button"
+                onClick={() => setMainTab('ucl')}
+                className="font-bold text-sky-300 hover:underline cursor-pointer"
+              >
+                챔스 대진표 보기 →
+              </button>
+            </div>
+          )}
+
           {globalAwards && (
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
               {/* Ballon d'Or Winner + TOP 5 */}
               <div className="lg:col-span-6 space-y-4">
                 {globalAwards.ballonDorWinner && (
-                  <div className="card-legend-glow relative overflow-hidden rounded-2xl p-5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openPlayerById(
+                        globalAwards.ballonDorWinner!.stats.playerId,
+                        globalAwards.ballonDorWinner!.stats,
+                      )
+                    }
+                    className="card-legend-glow relative w-full overflow-hidden rounded-2xl p-5 text-left transition-transform hover:scale-[1.01] cursor-pointer"
+                  >
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1.5">
                         <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-0.5 text-[10px] font-black text-slate-950">
@@ -746,7 +851,10 @@ export function SeasonSummary() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                    <div className="mt-2.5 text-right text-[10px] font-semibold text-amber-300/80">
+                      클릭하여 대회별 세부 스탯 보기 →
+                    </div>
+                  </button>
                 )}
 
                 {/* Ballon d'Or TOP 5 Ranking */}
@@ -756,18 +864,20 @@ export function SeasonSummary() {
                       🏆 발롱도르 최종 후보 TOP 5
                     </span>
                     <span className="text-[11px] text-slate-400">
-                      5대 리그 · 컵 · 챔스 통합 평가
+                      선수 클릭 시 대회별 세부 스탯 확인
                     </span>
                   </div>
 
                   <div className="space-y-1.5">
                     {globalAwards.ballonDorTop5.map((cand) => (
-                      <div
+                      <button
                         key={`${cand.stats.teamId}-${cand.stats.playerId}`}
-                        className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs ${
+                        type="button"
+                        onClick={() => openPlayerById(cand.stats.playerId, cand.stats)}
+                        className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs transition-colors cursor-pointer ${
                           cand.stats.isUserTeam
-                            ? 'border-emerald-500/45 bg-emerald-500/10'
-                            : 'border-slate-800 bg-[#090e15]'
+                            ? 'border-emerald-500/45 bg-emerald-500/10 hover:bg-emerald-500/20'
+                            : 'border-slate-800 bg-[#090e15] hover:border-slate-600'
                         }`}
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
@@ -784,7 +894,7 @@ export function SeasonSummary() {
                           </span>
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-white truncate">
+                              <span className="font-bold text-white truncate hover:text-emerald-300">
                                 {cand.stats.playerName}
                               </span>
                               <ClubTag
@@ -806,7 +916,7 @@ export function SeasonSummary() {
                             평점 {cand.stats.avgRating.toFixed(2)}
                           </div>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -818,6 +928,7 @@ export function SeasonSummary() {
                   title="FIFA 월드베스트 XI (4-3-3)"
                   entries={globalAwards.worldBestXi}
                   accentLabel={`우리 팀 선정: ${globalAwards.worldBestXi.filter((x) => x.stats.isUserTeam).length}명`}
+                  onSelectPlayer={(st) => openPlayerById(st.playerId, st)}
                 />
               </div>
             </div>
@@ -833,6 +944,7 @@ export function SeasonSummary() {
               teamAnalytics={combinedTeamAnalytics}
               squadRows={combinedSquadRows}
               clubName={state.userClub.name}
+              onSelectPlayer={(playerId) => openPlayerById(playerId)}
             />
           </div>
         </div>
@@ -845,7 +957,11 @@ export function SeasonSummary() {
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
               <div className="lg:col-span-6 space-y-4">
                 {awards.poty && (
-                  <div className="rounded-2xl border border-amber-400/35 bg-[#121925] p-5">
+                  <button
+                    type="button"
+                    onClick={() => openPlayerById(awards.poty!.playerId, awards.poty!)}
+                    className="w-full rounded-2xl border border-amber-400/35 bg-[#121925] p-5 text-left transition-colors hover:border-amber-400/70 cursor-pointer"
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <span className="inline-flex items-center gap-1 rounded-md bg-amber-400/20 px-2 py-0.5 text-[10px] font-bold text-amber-300">
@@ -874,13 +990,18 @@ export function SeasonSummary() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </button>
                 )}
 
                 <div className="rounded-2xl border border-slate-800 bg-[#0e141d] p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-xs font-bold text-white">
-                    <Award className="w-4 h-4 text-emerald-400" />
-                    {league.koreanName} 개인 기록 TOP 10
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-white">
+                      <Award className="w-4 h-4 text-emerald-400" />
+                      {league.koreanName} 개인 기록 TOP 10
+                    </div>
+                    <span className="text-[10px] text-slate-500">
+                      선수 클릭 시 세부 스탯
+                    </span>
                   </div>
                   <div className="grid grid-cols-4 gap-1 rounded-lg bg-[#090e15] p-1 text-[11px]">
                     {(
@@ -919,18 +1040,19 @@ export function SeasonSummary() {
                         {activeLeaderboard.map((st, idx) => (
                           <tr
                             key={`${st.teamId}-${st.playerId}`}
-                            className={
+                            onClick={() => openPlayerById(st.playerId, st)}
+                            className={`cursor-pointer transition-colors ${
                               st.isUserTeam
-                                ? 'bg-emerald-500/15'
-                                : 'hover:bg-slate-800/30'
-                            }
+                                ? 'bg-emerald-500/15 hover:bg-emerald-500/25'
+                                : 'hover:bg-slate-800/40'
+                            }`}
                           >
                             <td className="py-2 px-2.5 text-center font-display font-bold text-slate-400">
                               {idx + 1}
                             </td>
                             <td className="py-2 px-2">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-slate-100">
+                                <span className="font-bold text-slate-100 hover:text-emerald-300">
                                   {st.playerName}
                                 </span>
                                 <ClubTag
@@ -962,6 +1084,7 @@ export function SeasonSummary() {
                   title={`${league.koreanName} 시즌 베스트 11 (4-3-3)`}
                   entries={awards.bestXi}
                   accentLabel={`우리 팀 선정: ${awards.bestXi.filter((x) => x.stats.isUserTeam).length}명`}
+                  onSelectPlayer={(st) => openPlayerById(st.playerId, st)}
                 />
               </div>
             </div>
@@ -1012,6 +1135,12 @@ export function SeasonSummary() {
               clubsById={viewedClubsById}
               uclSpots={viewedLeagueMeta.uclSpots}
               relegationSpots={viewedLeagueMeta.relegationSpots}
+              onSelectClub={(clubId) => {
+                const club = viewedClubsById[clubId];
+                if (club) {
+                  setInspectedClub({ club, leagueId: viewedLeagueId });
+                }
+              }}
             />
 
             {/* 5대 리그 UCL 진출 20팀 */}
@@ -1029,9 +1158,16 @@ export function SeasonSummary() {
                       {entry.leagueKoreanName}
                     </div>
                     {entry.teams.map((c, idx) => (
-                      <div
+                      <button
                         key={c.id}
-                        className="flex items-center justify-between text-[11px] text-slate-300"
+                        type="button"
+                        onClick={() =>
+                          setInspectedClub({
+                            club: c,
+                            leagueId: entry.leagueId,
+                          })
+                        }
+                        className="flex w-full items-center justify-between text-left text-[11px] text-slate-300 hover:text-white cursor-pointer"
                       >
                         <span
                           className={`truncate ${
@@ -1043,7 +1179,7 @@ export function SeasonSummary() {
                         <span className="font-mono text-slate-400">
                           {c.shortName}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                 ))}
@@ -1055,6 +1191,7 @@ export function SeasonSummary() {
             teamAnalytics={leagueTeamAnalytics}
             squadRows={leagueSquadRows}
             clubName={`${state.userClub.name} (${league.koreanName})`}
+            onSelectPlayer={(playerId) => openPlayerById(playerId)}
           />
         </div>
       )}
@@ -1093,13 +1230,22 @@ export function SeasonSummary() {
                 </div>
               </div>
 
-              <CupBracketView cup={season.cup} clubs={season.clubs} />
+              <CupBracketView
+                cup={season.cup}
+                clubs={season.clubs}
+                leagueId={season.leagueId}
+                onSelectMatch={(m) => {
+                  setInspectedTie(null);
+                  setInspectedMatch(m);
+                }}
+              />
 
               {cupTeamAnalytics && season.userCupMatchHistory.length > 0 && (
                 <TeamAnalyticsTab
                   teamAnalytics={cupTeamAnalytics}
                   squadRows={cupSquadRows}
                   clubName={`${state.userClub.name} (${season.cup.meta.koreanName})`}
+                  onSelectPlayer={(playerId) => openPlayerById(playerId)}
                 />
               )}
             </>
@@ -1144,13 +1290,20 @@ export function SeasonSummary() {
               </div>
 
               {/* Authentic UCL Bracket Tree */}
-              <UclBracketTree ucl={season.ucl} clubsById={uclClubsById} />
+              <UclBracketTree
+                ucl={season.ucl}
+                clubsById={uclClubsById}
+                onSelectTie={(tie) => {
+                  setInspectedMatch(null);
+                  setInspectedTie(tie);
+                }}
+              />
 
               {/* UCL 36-Team Final Swiss Standings */}
               <div className="rounded-2xl border border-slate-800 bg-[#0e141d] p-4 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-xs font-bold text-white">
-                    UCL 36팀 스위스 리그 페이즈 최종 순위표
+                    UCL 36팀 스위스 리그 페이즈 최종 순위표 (구단 클릭 시 스쿼드)
                   </h3>
                   <div className="flex gap-3 text-[11px]">
                     <span className="text-emerald-400">1~8위 16강 직행</span>
@@ -1176,16 +1329,24 @@ export function SeasonSummary() {
                       {season.ucl.standings.map((row, idx) => (
                         <tr
                           key={row.teamId}
-                          className={`${
+                          onClick={() => {
+                            const c = uclClubsById[row.teamId];
+                            if (c) setInspectedClub({ club: c });
+                          }}
+                          className={`cursor-pointer transition-colors ${
                             idx < 8
                               ? 'border-l-2 border-l-emerald-400'
                               : idx < 24
                                 ? 'border-l-2 border-l-amber-400'
                                 : 'border-l-2 border-l-rose-500/70'
-                          } ${row.isUser ? 'bg-emerald-500/15 font-bold text-white' : 'text-slate-300'}`}
+                          } ${
+                            row.isUser
+                              ? 'bg-emerald-500/15 font-bold text-white hover:bg-emerald-500/25'
+                              : 'text-slate-300 hover:bg-slate-800/40'
+                          }`}
                         >
                           <td className="py-1.5 px-2 font-mono">{idx + 1}</td>
-                          <td className="py-1.5 px-2">{row.teamName}</td>
+                          <td className="py-1.5 px-2 hover:text-sky-300">{row.teamName}</td>
                           <td className="py-1.5 px-1.5 text-center font-mono">{row.played}</td>
                           <td className="py-1.5 px-1.5 text-center font-mono">{row.won}</td>
                           <td className="py-1.5 px-1.5 text-center font-mono">{row.drawn}</td>
@@ -1214,23 +1375,30 @@ export function SeasonSummary() {
                     key={col.title}
                     className="rounded-2xl border border-slate-800 bg-[#0e141d] p-4 space-y-2"
                   >
-                    <h4 className="text-xs font-bold text-white">{col.title}</h4>
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-white">{col.title}</h4>
+                      <span className="text-[10px] text-slate-500">클릭 시 세부 스탯</span>
+                    </div>
                     <div className="space-y-1 text-xs">
                       {col.list.map((s, idx) => (
-                        <div
+                        <button
                           key={`${s.teamId}-${s.playerId}`}
-                          className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 ${
-                            s.isUserTeam ? 'bg-emerald-500/15 font-bold text-white' : 'bg-[#090e15] text-slate-300'
+                          type="button"
+                          onClick={() => openPlayerById(s.playerId, s)}
+                          className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left transition-colors cursor-pointer ${
+                            s.isUserTeam
+                              ? 'bg-emerald-500/15 font-bold text-white hover:bg-emerald-500/25'
+                              : 'bg-[#090e15] text-slate-300 hover:bg-slate-800/50'
                           }`}
                         >
-                          <span className="truncate">
+                          <span className="truncate hover:text-sky-300">
                             {idx + 1}. {s.playerName}{' '}
                             <span className="text-[10px] text-slate-500">({s.teamShortName})</span>
                           </span>
                           <span className="font-mono font-bold text-sky-300">
                             {col.fmt(s)}
                           </span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -1242,6 +1410,7 @@ export function SeasonSummary() {
                   teamAnalytics={uclTeamAnalytics}
                   squadRows={uclSquadRows}
                   clubName={`${state.userClub.name} (UEFA 챔피언스리그)`}
+                  onSelectPlayer={(playerId) => openPlayerById(playerId)}
                 />
               )}
             </>
@@ -1256,14 +1425,24 @@ export function SeasonSummary() {
                   : '이번 시즌 챔피언스리그에 진출하지 못했습니다.'}
               </p>
               {canStartUcl && (
-                <button
-                  type="button"
-                  onClick={enterUclMode}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  36팀 챔피언스리그 시작하기
-                </button>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={enterUclMode}
+                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    36팀 챔피언스리그 시작하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={skipUclToFinalSummary}
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-200 hover:border-amber-400/50 hover:text-amber-300 cursor-pointer"
+                  >
+                    <Crown className="w-3.5 h-3.5" />
+                    챔스 자동 시뮬 후 최종 결산
+                  </button>
+                </div>
               )}
             </div>
           )}
@@ -1279,13 +1458,13 @@ export function SeasonSummary() {
                 전체 경기 히스토리 ({filteredHistory.length}경기)
               </h3>
               <p className="text-xs text-slate-400">
-                리그·자국 컵·챔피언스리그에서 치른 모든 경기 스코어와 득점자를 확인할 수 있습니다
+                경기를 클릭하면 득점자·도움·점유율·xG·승부차기·MOM 등 상세 리포트를 확인할 수 있습니다
               </p>
             </div>
             <div className="flex flex-wrap gap-1 rounded-xl border border-slate-800 bg-[#090e15] p-1">
               {(
                 [
-                  ['all', `전체 (${fullMatchHistory.length})`],
+                  ['all', `전체 (${fullMatchEntries.length})`],
                   ['league', `리그 (${season.userMatchHistory.length})`],
                   ['cup', `자국 컵 (${season.userCupMatchHistory.length})`],
                   ['ucl', `챔스 (${season.userUclMatchHistory.length})`],
@@ -1313,10 +1492,17 @@ export function SeasonSummary() {
             </p>
           ) : (
             <div className="space-y-1.5">
-              {filteredHistory.map((m, idx) => (
-                <div
+              {filteredHistory.map(({ summary: m, raw }, idx) => (
+                <button
                   key={`${m.label}-${idx}`}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#090e15] px-3.5 py-2.5 text-xs"
+                  type="button"
+                  disabled={!raw}
+                  onClick={() => {
+                    if (!raw) return;
+                    setInspectedTie(null);
+                    setInspectedMatch(raw);
+                  }}
+                  className="flex w-full flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#090e15] px-3.5 py-2.5 text-left text-xs transition-colors hover:border-emerald-500/45 hover:bg-[#0c131d] cursor-pointer disabled:cursor-default"
                 >
                   <div className="flex flex-wrap items-center gap-2 min-w-0">
                     <span
@@ -1360,12 +1546,73 @@ export function SeasonSummary() {
                       </span>
                     )}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </div>
       )}
+
+      {/* Club Squad Modal */}
+      <ClubSquadModal
+        club={inspectedClub?.club ?? null}
+        roster={
+          inspectedClub
+            ? resolveClubRoster({
+                clubId: inspectedClub.club.id,
+                club: inspectedClub.club,
+                leagueId: inspectedClub.leagueId,
+                season,
+                userStarters: state.starters,
+                userBench: state.bench,
+              })
+            : []
+        }
+        statsMap={combinedStatsMap}
+        onSelectPlayer={(player) => {
+          setInspectedClub(null);
+          openPlayerById(player.id);
+        }}
+        onClose={() => setInspectedClub(null)}
+      />
+
+      {/* Match / UCL Tie Detail Modal */}
+      <MatchDetailModal
+        key={inspectedTie?.id ?? inspectedMatch?.fixtureId ?? 'summary-match-detail'}
+        match={inspectedMatch}
+        tie={inspectedTie}
+        clubsById={uclClubsById}
+        onSelectPlayer={(playerId) => openPlayerById(playerId)}
+        onClose={() => {
+          setInspectedMatch(null);
+          setInspectedTie(null);
+        }}
+      />
+
+      {/* Player Detail Modal with Competition Breakdown */}
+      {inspectedPlayer && (() => {
+        const resolved = resolvePlayerById({
+          playerId: inspectedPlayer.playerId,
+          starters: state.starters,
+          bench: state.bench,
+          season,
+          fallbackStats: inspectedPlayer.fallbackStats,
+        });
+        const breakdown = buildPlayerCompetitionBreakdown(
+          inspectedPlayer.playerId,
+          season,
+          inspectedPlayer.fallbackStats,
+        );
+        return (
+          <PlayerDetailModal
+            player={resolved}
+            managerTraitId={state.manager.traitId}
+            seasonStats={breakdown.total}
+            competitionStats={breakdown}
+            onClose={() => setInspectedPlayer(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

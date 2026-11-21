@@ -26,6 +26,7 @@ import {
   buildAiClubRoster,
   getLeagueById,
   getWeakestClub,
+  pickReplacementForAiClub,
 } from '../engine/dataLoader';
 import {
   DEFAULT_ROULETTE_LEGEND_RATE,
@@ -71,6 +72,7 @@ import {
   createInitialPlayerStatsMap,
   createInitialStandings,
   getUserRank,
+  normalizeLegacyPlayerStatsMap,
 } from '../engine/standingsEngine';
 import {
   checkTransferWindowTrigger,
@@ -80,6 +82,7 @@ import {
 } from '../engine/transferEngine';
 import {
   advanceUclKnockoutLeg,
+  advanceUclPlayoffToCompletion,
   createUclTournamentState,
   findNextUserUclLeaguePhaseFixture,
   getUserKnockoutFixtureInfo,
@@ -105,6 +108,8 @@ import type {
   LeagueId,
   LiveSubRecord,
   MatchResult,
+  PlayerSeasonStats,
+  PlayerTransferRecord,
   TacticId,
 } from '../types/league';
 import {
@@ -154,7 +159,7 @@ const ALL_LEAGUE_IDS: LeagueId[] = [
   'ligue1',
 ];
 
-function createInitialState(): GameState {
+export function createInitialState(): GameState {
   return {
     phase: 'title',
     userClub: DEFAULT_USER_CLUB,
@@ -575,16 +580,70 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
     finalSeason.totalRounds,
   );
 
-  const globalAwards = computeGlobalSeasonAwards({
-    allLeaguePlayerStats: finalSeason.allPlayerStats,
-    cupPlayerStats: finalSeason.cupPlayerStats,
-    uclPlayerStats: finalSeason.uclPlayerStats,
-    leagueStandings: finalSeason.standings,
-    cup: finalSeason.cup,
-    ucl: finalSeason.ucl,
-    otherLeagues: finalOtherLeagues,
-    userLeagueId: finalSeason.leagueId,
-  });
+  const finalRank = getUserRank(finalSeason.standings, USER_CLUB_ID);
+  const excludeIds = new Set<string>([
+    ...filledStarters.map((p) => p.id),
+    ...filledBench.map((p) => p.id),
+    ...(finalSeason.departedPlayerIds ?? []),
+  ]);
+
+  let finalUcl = finalSeason.ucl;
+  let finalUclPlayerStats = finalSeason.uclPlayerStats;
+  let globalAwards: SeasonState['globalAwards'] = null;
+
+  if (finalRank > 4) {
+    // Non-UCL user: run background 36-team AI-only UCL to completion so Ballon d'Or & World Best XI
+    // are awarded ONCE with full European results finalized!
+    const chem = calculateChemistry(
+      state.formation,
+      filledStarters,
+      finalSeason.defaultTactic,
+      state.manager.traitId,
+    );
+    const ratings = calculateTeamRatings(
+      state.formation,
+      filledStarters,
+      chem.total,
+      state.manager.traitId,
+    );
+    const userClubEntry = buildUserClubEntry(
+      state.userClub,
+      state.formation,
+      finalSeason.defaultTactic,
+      filledStarters,
+      ratings,
+    );
+    const bgInit = createUclTournamentState({
+      userLeagueId: finalSeason.leagueId,
+      userClub: userClubEntry,
+      userSquad: [...filledStarters, ...filledBench],
+      userLeagueClubs: finalSeason.clubs,
+      userLeagueStandings: finalSeason.standings,
+      userAiRosters: finalSeason.aiRosters,
+      otherLeagues: finalOtherLeagues,
+      excludeIds,
+      userParticipated: false,
+    });
+    const bgSim = simulateUclToCompletion({
+      ucl: bgInit.ucl,
+      uclPlayerStats: bgInit.uclPlayerStats,
+    });
+    finalUcl = bgSim.ucl;
+    finalUclPlayerStats = bgSim.uclPlayerStats;
+
+    globalAwards = computeGlobalSeasonAwards({
+      allLeaguePlayerStats: finalSeason.allPlayerStats,
+      cupPlayerStats: finalSeason.cupPlayerStats,
+      uclPlayerStats: finalUclPlayerStats,
+      leagueStandings: finalSeason.standings,
+      cup: finalSeason.cup,
+      ucl: finalUcl,
+      otherLeagues: finalOtherLeagues,
+      userLeagueId: finalSeason.leagueId,
+      excludeIds,
+    });
+  }
+  // If finalRank <= 4: globalAwards stays null until UCL completes (awarded ONCE after UCL!)
 
   const handoff = buildPhase2HandoffState({
     userClub: state.userClub,
@@ -613,6 +672,8 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
       ...finalSeason,
       otherLeagues: finalOtherLeagues,
       uclQualifiedSummary,
+      ucl: finalUcl,
+      uclPlayerStats: finalUclPlayerStats,
       liveHalftime: null,
       awards,
       globalAwards,
@@ -720,7 +781,9 @@ type GameAction =
   | { type: 'MARK_CUP_CELEBRATED' }
   | { type: 'ENTER_UCL_MODE' }
   | { type: 'SIMULATE_UCL_LEAGUE_PHASE_TO_END' }
+  | { type: 'SIMULATE_UCL_PLAYOFF_BYE' }
   | { type: 'SIMULATE_UCL_TO_END' }
+  | { type: 'SKIP_UCL_TO_FINAL_SUMMARY' }
   | { type: 'FINISH_UCL_TO_SUMMARY' }
   | { type: 'MARK_LEGACY_ARCHIVED' }
   | { type: 'RESET_GAME' };
@@ -954,7 +1017,7 @@ function commitLiveMatchResult(
   });
 }
 
-function gameReducer(state: GameState, action: GameAction): GameState {
+export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'START_NEW_CAREER': {
       return {
@@ -1484,10 +1547,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         c.id === weakest.id ? userClubEntry : c,
       );
 
+      const userSquadIds = new Set<string>([
+        ...filledStarters.map((p) => p.id),
+        ...filledBench.map((p) => p.id),
+      ]);
+
       const aiRosters: Record<string, Player[]> = {};
       for (const c of clubs) {
         if (c.id !== USER_CLUB_ID) {
-          aiRosters[c.id] = buildAiClubRoster(c, league.id);
+          aiRosters[c.id] = buildAiClubRoster(c, league.id, userSquadIds);
         }
       }
 
@@ -1526,6 +1594,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         allPlayerStats,
         transferMarket: createClosedTransferState(),
         awards: null,
+        globalAwards: null,
         cup,
         cupPlayerStats,
         userCupMatchHistory: [],
@@ -1535,6 +1604,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         achievementTrackers: createInitialTrackers(),
         seasonScore: null,
         legacyArchived: false,
+        departedPlayerIds: [],
       };
 
       return {
@@ -2749,6 +2819,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         allPlayerStats: state.season.allPlayerStats,
         aiRosters: state.season.aiRosters,
         ownedIds,
+        departedPlayerIds: state.season.departedPlayerIds ?? [],
         legendBonusActive: tm.legendBonusActive,
         championBonusActive: Boolean(tm.championBonusActive),
         allowedLeagueIds: state.draftLeaguePool,
@@ -2810,13 +2881,268 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         };
       }
 
-      // Negotiation Succeeded!
+      // Negotiation Succeeded! Enforce global 1-instance uniqueness + stat continuity
       const incomingPlayer = target.player;
       const nextStarters = [...state.starters];
       const nextBench = [...state.bench];
 
       if (outSlot.area === 'starter') nextStarters[outSlot.index] = incomingPlayer;
       else nextBench[outSlot.index] = incomingPlayer;
+
+      const nextFilledStarters = nextStarters.filter(
+        (p): p is Player => p !== null,
+      );
+      const nextFilledBench = nextBench.filter((p): p is Player => p !== null);
+
+      const nextDepartedPlayerIds = Array.from(
+        new Set([...(state.season.departedPlayerIds ?? []), incomingPlayer.id]),
+      );
+      const globalExcludeIds = new Set<string>([
+        ...nextFilledStarters.map((p) => p.id),
+        ...nextFilledBench.map((p) => p.id),
+        ...nextDepartedPlayerIds,
+      ]);
+
+      // Remove incomingPlayer from original AI club roster in league & backfill cleanly
+      const nextAiRosters: Record<string, Player[]> = { ...state.season.aiRosters };
+      let originClubId = '';
+      let swappedToOriginClub: Club | null = null;
+      const clubById = new Map(state.season.clubs.map((c) => [c.id, c]));
+
+      for (const [cid, roster] of Object.entries(nextAiRosters)) {
+        const idx = roster.findIndex((p) => p.id === incomingPlayer.id);
+        if (idx === -1) continue;
+        originClubId = cid;
+        const originClub = clubById.get(cid);
+        if (originClub) {
+          const replacement = pickReplacementForAiClub({
+            club: originClub,
+            leagueId: state.season.leagueId,
+            departedPlayer: incomingPlayer,
+            currentRoster: roster,
+            excludeIds: globalExcludeIds,
+            swapOutPlayer: outPlayer,
+            round: state.season.currentRound,
+          });
+          const updatedRoster = [...roster];
+          updatedRoster[idx] = replacement;
+          nextAiRosters[cid] = updatedRoster;
+          if (replacement.id === outPlayer.id) {
+            swappedToOriginClub = originClub;
+          }
+        }
+      }
+
+      if (!originClubId) {
+        const byName = state.season.clubs.find((c) => c.name === target.clubName);
+        originClubId = byName?.id ?? (target.isLegendFa ? 'LEGEND_FA' : `ext-${target.clubShortName}`);
+      }
+
+      const transferComp: 'league' | 'ucl' = tm.isUclSpecial ? 'ucl' : 'league';
+      const incomingTransferRecord: PlayerTransferRecord = {
+        fromClubId: originClubId,
+        fromClubName: target.clubName,
+        toClubId: USER_CLUB_ID,
+        toClubName: state.userClub.name,
+        round: state.season.currentRound,
+        competition: transferComp,
+      };
+
+      const applyTransferToStatsMap = (
+        sourceMap: Record<string, PlayerSeasonStats>,
+        player: Player,
+        toClub: {
+          id: string;
+          name: string;
+          shortName: string;
+          primaryColor: string;
+          secondaryColor: string;
+        },
+        isToUser: boolean,
+        record: PlayerTransferRecord,
+      ): Record<string, PlayerSeasonStats> => {
+        const nextMap = { ...sourceMap };
+        const existing = nextMap[player.id] ?? nextMap[`user::${player.id}`];
+        delete nextMap[`user::${player.id}`];
+
+        if (existing) {
+          const prevHist = existing.transferHistory ?? [];
+          nextMap[player.id] = {
+            ...existing,
+            teamId: toClub.id,
+            teamName: toClub.name,
+            teamShortName: toClub.shortName,
+            teamPrimaryColor: toClub.primaryColor,
+            teamSecondaryColor: toClub.secondaryColor,
+            isUserTeam: isToUser,
+            transferHistory: [...prevHist, record],
+          };
+        } else {
+          nextMap[player.id] = {
+            playerId: player.id,
+            playerName: player.name,
+            teamId: toClub.id,
+            teamName: toClub.name,
+            teamShortName: toClub.shortName,
+            teamPrimaryColor: toClub.primaryColor,
+            teamSecondaryColor: toClub.secondaryColor,
+            isUserTeam: isToUser,
+            position: player.position,
+            mainPositions: [...player.mainPositions],
+            ovr: player.ovr,
+            appearances: 0,
+            starts: 0,
+            subAppearances: 0,
+            minutesPlayed: 0,
+            goals: 0,
+            assists: 0,
+            xgSum: 0,
+            cleanSheets: 0,
+            momCount: 0,
+            ratingSum: 0,
+            avgRating: 0,
+            positionCounts: {},
+            isLegend: player.isLegend,
+            transferHistory: [record],
+          };
+        }
+        return nextMap;
+      };
+
+      const userClubMeta = {
+        id: USER_CLUB_ID,
+        name: state.userClub.name,
+        shortName: state.userClub.shortName,
+        primaryColor: state.userClub.primaryColor,
+        secondaryColor: state.userClub.secondaryColor,
+      };
+
+      let nextStats = applyTransferToStatsMap(
+        state.season.allPlayerStats,
+        incomingPlayer,
+        userClubMeta,
+        true,
+        incomingTransferRecord,
+      );
+      let nextCupStats = applyTransferToStatsMap(
+        state.season.cupPlayerStats,
+        incomingPlayer,
+        userClubMeta,
+        true,
+        incomingTransferRecord,
+      );
+      let nextUclStats = state.season.ucl
+        ? applyTransferToStatsMap(
+            state.season.uclPlayerStats,
+            incomingPlayer,
+            userClubMeta,
+            true,
+            incomingTransferRecord,
+          )
+        : { ...state.season.uclPlayerStats };
+
+      if (swappedToOriginClub) {
+        const swapRecord: PlayerTransferRecord = {
+          fromClubId: USER_CLUB_ID,
+          fromClubName: state.userClub.name,
+          toClubId: swappedToOriginClub.id,
+          toClubName: swappedToOriginClub.name,
+          round: state.season.currentRound,
+          competition: transferComp,
+        };
+        nextStats = applyTransferToStatsMap(
+          nextStats,
+          outPlayer,
+          swappedToOriginClub,
+          false,
+          swapRecord,
+        );
+        nextCupStats = applyTransferToStatsMap(
+          nextCupStats,
+          outPlayer,
+          swappedToOriginClub,
+          false,
+          swapRecord,
+        );
+      }
+
+      // If UCL is active (e.g. UCL Special Transfer Window), sync UCL clubs & AI rosters immediately!
+      let nextUcl = state.season.ucl;
+      if (nextUcl) {
+        const nextUclAiRosters: Record<string, Player[]> = {
+          ...nextUcl.aiRosters,
+          [USER_CLUB_ID]: nextFilledStarters.slice(0, 11),
+        };
+        const uclClubById = new Map(nextUcl.clubs.map((c) => [c.id, c]));
+        for (const [cid, roster] of Object.entries(nextUclAiRosters)) {
+          if (cid === USER_CLUB_ID) continue;
+          const idx = roster.findIndex((p) => p.id === incomingPlayer.id);
+          if (idx === -1) continue;
+          const uclOriginClub = uclClubById.get(cid);
+          if (uclOriginClub) {
+            const entryLeague =
+              nextUcl.teams.find((t) => t.club.id === cid)?.originLeagueId ??
+              'epl';
+            const replacement = pickReplacementForAiClub({
+              club: uclOriginClub,
+              leagueId: entryLeague === 'other' ? 'epl' : entryLeague,
+              departedPlayer: incomingPlayer,
+              currentRoster: roster,
+              excludeIds: globalExcludeIds,
+              swapOutPlayer: outPlayer,
+              round: state.season.currentRound,
+            });
+            const updatedRoster = [...roster];
+            updatedRoster[idx] = replacement;
+            nextUclAiRosters[cid] = updatedRoster;
+            if (replacement.id === outPlayer.id) {
+              nextUclStats = applyTransferToStatsMap(
+                nextUclStats,
+                outPlayer,
+                uclOriginClub,
+                false,
+                {
+                  fromClubId: USER_CLUB_ID,
+                  fromClubName: state.userClub.name,
+                  toClubId: uclOriginClub.id,
+                  toClubName: uclOriginClub.name,
+                  round: state.season.currentRound,
+                  competition: 'ucl',
+                },
+              );
+            }
+          }
+        }
+
+        const chemAfter = calculateChemistry(
+          state.formation,
+          nextFilledStarters,
+          state.season.defaultTactic,
+          state.manager.traitId,
+        );
+        const ratingsAfter = calculateTeamRatings(
+          state.formation,
+          nextFilledStarters,
+          chemAfter.total,
+          state.manager.traitId,
+        );
+        nextUcl = {
+          ...nextUcl,
+          aiRosters: nextUclAiRosters,
+          clubs: nextUcl.clubs.map((c) =>
+            c.id === USER_CLUB_ID
+              ? {
+                  ...c,
+                  formation: state.formation,
+                  defaultTactic: state.season!.defaultTactic,
+                  att: ratingsAfter.att,
+                  mid: ratingsAfter.mid,
+                  def: ratingsAfter.def,
+                }
+              : c,
+          ),
+        };
+      }
 
       const nextHistory = [
         ...tm.history,
@@ -2830,45 +3156,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         },
       ];
 
-      const buildFreshStatEntry = () => ({
-        playerId: incomingPlayer.id,
-        playerName: incomingPlayer.name,
-        teamId: USER_CLUB_ID,
-        teamName: state.userClub.name,
-        teamShortName: state.userClub.shortName,
-        teamPrimaryColor: state.userClub.primaryColor,
-        teamSecondaryColor: state.userClub.secondaryColor,
-        isUserTeam: true,
-        position: incomingPlayer.position,
-        mainPositions: [...incomingPlayer.mainPositions],
-        ovr: incomingPlayer.ovr,
-        appearances: 0,
-        starts: 0,
-        subAppearances: 0,
-        minutesPlayed: 0,
-        goals: 0,
-        assists: 0,
-        xgSum: 0,
-        cleanSheets: 0,
-        momCount: 0,
-        ratingSum: 0,
-        avgRating: 0,
-        positionCounts: {},
-        isLegend: incomingPlayer.isLegend,
-      });
-
-      const statKey = `user::${incomingPlayer.id}`;
-      const nextStats = { ...state.season.allPlayerStats };
-      if (!nextStats[statKey]) nextStats[statKey] = buildFreshStatEntry();
-
-      const nextCupStats = { ...state.season.cupPlayerStats };
-      if (!nextCupStats[statKey]) nextCupStats[statKey] = buildFreshStatEntry();
-
-      const nextUclStats = { ...state.season.uclPlayerStats };
-      if (state.season.ucl && !nextUclStats[statKey]) {
-        nextUclStats[statKey] = buildFreshStatEntry();
-      }
-
       const prevTrackers =
         state.season.achievementTrackers ?? createInitialTrackers();
       const nextTrackers: SeasonAchievementTrackers = {
@@ -2877,14 +3164,21 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           prevTrackers.signedUnder20PctSuccess || target.successChance <= 20,
       };
 
+      const swapSuffix = swappedToOriginClub
+        ? ` (${outPlayer.name} ↔ ${swappedToOriginClub.name} 스왑)`
+        : ` (${outPlayer.name} 방출)`;
+
       return {
         ...state,
         starters: nextStarters,
         bench: nextBench,
         season: {
           ...state.season,
+          aiRosters: nextAiRosters,
+          departedPlayerIds: nextDepartedPlayerIds,
           allPlayerStats: nextStats,
           cupPlayerStats: nextCupStats,
+          ucl: nextUcl,
           uclPlayerStats: nextUclStats,
           achievementTrackers: nextTrackers,
           transferMarket: {
@@ -2899,7 +3193,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
               outPlayer,
               probability: target.successChance,
               marketValueM: target.marketValueM,
-              message: `오피셜! ${incomingPlayer.name} (OVR ${incomingPlayer.ovr} · €${target.marketValueM}M) 영입 완료! (${outPlayer.name} 방출)`,
+              message: `오피셜! ${incomingPlayer.name} (OVR ${incomingPlayer.ovr} · €${target.marketValueM}M) 영입 완료!${swapSuffix}`,
             },
           },
         },
@@ -2964,6 +3258,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ratings,
       );
 
+      const excludeIds = new Set<string>([
+        ...filledStarters.map((p) => p.id),
+        ...filledBench.map((p) => p.id),
+        ...(state.season.departedPlayerIds ?? []),
+      ]);
+
       const { ucl, uclPlayerStats } = createUclTournamentState({
         userLeagueId: state.season.leagueId,
         userClub: userClubEntry,
@@ -2972,6 +3272,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         userLeagueStandings: state.season.standings,
         userAiRosters: state.season.aiRosters,
         otherLeagues: state.season.otherLeagues,
+        excludeIds,
+        userParticipated: true,
       });
 
       const specialTransfer = createOpenTransferState(
@@ -2995,7 +3297,6 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           userUclMatchHistory: [],
           transferMarket: specialTransfer,
           liveHalftime: null,
-          legacyArchived: false,
         },
       };
     }
@@ -3082,6 +3383,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         season: {
           ...state.season,
+          nextMatchTactic: null,
           ucl: res.ucl,
           uclPlayerStats: res.uclPlayerStats,
           userUclMatchHistory: [
@@ -3092,6 +3394,26 @@ function gameReducer(state: GameState, action: GameAction): GameState {
             res.newUserMatches[res.newUserMatches.length - 1] ??
             state.season.lastUserMatch,
           achievementTrackers: nextTrackers,
+        },
+      };
+    }
+
+    case 'SIMULATE_UCL_PLAYOFF_BYE': {
+      if (state.phase !== 'ucl' || !state.season || !state.season.ucl) {
+        return state;
+      }
+      if (state.season.ucl.stage !== 'playoff') return state;
+      const res = advanceUclPlayoffToCompletion({
+        ucl: state.season.ucl,
+        uclPlayerStats: state.season.uclPlayerStats,
+      });
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          nextMatchTactic: null,
+          ucl: res.ucl,
+          uclPlayerStats: res.uclPlayerStats,
         },
       };
     }
@@ -3161,6 +3483,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         ...state,
         season: {
           ...state.season,
+          nextMatchTactic: null,
           ucl: res.ucl,
           uclPlayerStats: res.uclPlayerStats,
           userUclMatchHistory: [
@@ -3175,17 +3498,91 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
-    case 'FINISH_UCL_TO_SUMMARY': {
+    case 'SKIP_UCL_TO_FINAL_SUMMARY': {
       if (!state.season) return state;
+      const filledStarters = state.starters.filter((p): p is Player => p !== null);
+      const filledBench = state.bench.filter((p): p is Player => p !== null);
+      const activeTactic = state.season.defaultTactic;
+      const chem = calculateChemistry(
+        state.formation,
+        filledStarters,
+        activeTactic,
+        state.manager.traitId,
+      );
+      const ratings = calculateTeamRatings(
+        state.formation,
+        filledStarters,
+        chem.total,
+        state.manager.traitId,
+      );
+      const userClubEntry = buildUserClubEntry(
+        state.userClub,
+        state.formation,
+        activeTactic,
+        filledStarters,
+        ratings,
+      );
+      const excludeIds = new Set<string>([
+        ...filledStarters.map((p) => p.id),
+        ...filledBench.map((p) => p.id),
+        ...(state.season.departedPlayerIds ?? []),
+      ]);
+
+      const userRank = getUserRank(state.season.standings, USER_CLUB_ID);
+      const init = state.season.ucl
+        ? { ucl: state.season.ucl, uclPlayerStats: state.season.uclPlayerStats }
+        : createUclTournamentState({
+            userLeagueId: state.season.leagueId,
+            userClub: userClubEntry,
+            userSquad: [...filledStarters, ...filledBench],
+            userLeagueClubs: state.season.clubs,
+            userLeagueStandings: state.season.standings,
+            userAiRosters: state.season.aiRosters,
+            otherLeagues: state.season.otherLeagues,
+            excludeIds,
+            userParticipated: userRank <= 4,
+          });
+
+      const sim = init.ucl.completed
+        ? {
+            ucl: init.ucl,
+            uclPlayerStats: init.uclPlayerStats,
+            newUserMatches: [] as MatchResult[],
+          }
+        : simulateUclToCompletion({
+            ucl: init.ucl,
+            uclPlayerStats: init.uclPlayerStats,
+            userContext:
+              userRank <= 4
+                ? {
+                    userClubId: USER_CLUB_ID,
+                    starters: filledStarters,
+                    bench: filledBench,
+                    formation: state.formation,
+                    tactic: activeTactic,
+                    chemistry: chem.total,
+                    ratings,
+                    managerTraitId: state.manager.traitId,
+                    allowAutoSubs: true,
+                  }
+                : undefined,
+          });
+
+      let nextTrackers = state.season.achievementTrackers;
+      for (const m of sim.newUserMatches) {
+        nextTrackers = updateTrackersForUserMatch(nextTrackers, m);
+      }
+
       const globalAwards = computeGlobalSeasonAwards({
         allLeaguePlayerStats: state.season.allPlayerStats,
         cupPlayerStats: state.season.cupPlayerStats,
-        uclPlayerStats: state.season.uclPlayerStats,
+        uclPlayerStats: sim.uclPlayerStats,
         leagueStandings: state.season.standings,
         cup: state.season.cup,
-        ucl: state.season.ucl,
+        ucl: sim.ucl,
         otherLeagues: state.season.otherLeagues,
         userLeagueId: state.season.leagueId,
+        excludeIds,
       });
 
       const updated: GameState = {
@@ -3193,6 +3590,115 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         phase: 'season_end',
         season: {
           ...state.season,
+          nextMatchTactic: null,
+          ucl: sim.ucl,
+          uclPlayerStats: sim.uclPlayerStats,
+          userUclMatchHistory: [
+            ...state.season.userUclMatchHistory,
+            ...sim.newUserMatches,
+          ],
+          achievementTrackers: nextTrackers,
+          globalAwards,
+          liveHalftime: null,
+          transferMarket: createClosedTransferState(
+            state.season.transferMarket.completedWindows,
+            state.season.transferMarket.history,
+          ),
+        },
+      };
+      return {
+        ...updated,
+        season: updated.season
+          ? {
+              ...updated.season,
+              seasonScore: computeSeasonScoreFromState(updated),
+            }
+          : null,
+      };
+    }
+
+    case 'FINISH_UCL_TO_SUMMARY': {
+      if (!state.season) return state;
+      const filledStarters = state.starters.filter((p): p is Player => p !== null);
+      const filledBench = state.bench.filter((p): p is Player => p !== null);
+      const excludeIds = new Set<string>([
+        ...filledStarters.map((p) => p.id),
+        ...filledBench.map((p) => p.id),
+        ...(state.season.departedPlayerIds ?? []),
+      ]);
+
+      // Guarantee UCL is fully completed before computing Ballon d'Or & entering final summary
+      let finalUcl = state.season.ucl;
+      let finalUclStats = state.season.uclPlayerStats;
+      let extraUserMatches: MatchResult[] = [];
+      let nextTrackers = state.season.achievementTrackers;
+
+      if (finalUcl && !finalUcl.completed) {
+        const activeTactic =
+          state.season.nextMatchTactic ?? state.season.defaultTactic;
+        const chem = calculateChemistry(
+          state.formation,
+          filledStarters,
+          activeTactic,
+          state.manager.traitId,
+        );
+        const ratings = calculateTeamRatings(
+          state.formation,
+          filledStarters,
+          chem.total,
+          state.manager.traitId,
+        );
+        const sim = simulateUclToCompletion({
+          ucl: finalUcl,
+          uclPlayerStats: finalUclStats,
+          userContext:
+            finalUcl.userParticipated !== false
+              ? {
+                  userClubId: USER_CLUB_ID,
+                  starters: filledStarters,
+                  bench: filledBench,
+                  formation: state.formation,
+                  tactic: activeTactic,
+                  chemistry: chem.total,
+                  ratings,
+                  managerTraitId: state.manager.traitId,
+                  allowAutoSubs: true,
+                }
+              : undefined,
+        });
+        finalUcl = sim.ucl;
+        finalUclStats = sim.uclPlayerStats;
+        extraUserMatches = sim.newUserMatches;
+        for (const m of extraUserMatches) {
+          nextTrackers = updateTrackersForUserMatch(nextTrackers, m);
+        }
+      }
+
+      const globalAwards = computeGlobalSeasonAwards({
+        allLeaguePlayerStats: state.season.allPlayerStats,
+        cupPlayerStats: state.season.cupPlayerStats,
+        uclPlayerStats: finalUclStats,
+        leagueStandings: state.season.standings,
+        cup: state.season.cup,
+        ucl: finalUcl,
+        otherLeagues: state.season.otherLeagues,
+        userLeagueId: state.season.leagueId,
+        excludeIds,
+      });
+
+      const updated: GameState = {
+        ...state,
+        phase: 'season_end',
+        season: {
+          ...state.season,
+          nextMatchTactic: null,
+          ucl: finalUcl,
+          uclPlayerStats: finalUclStats,
+          userUclMatchHistory: [
+            ...state.season.userUclMatchHistory,
+            ...extraUserMatches,
+          ],
+          achievementTrackers: nextTrackers,
           globalAwards,
           liveHalftime: null,
           transferMarket: createClosedTransferState(
@@ -3296,6 +3802,19 @@ function loadSavedGameState(): GameState {
         if (parsed.season.cupChampionCelebrated === undefined) {
           parsed.season.cupChampionCelebrated = false;
         }
+        if (!Array.isArray(parsed.season.departedPlayerIds)) {
+          parsed.season.departedPlayerIds = [];
+        }
+        // Migrate legacy v2.4 `user::${id}` stat keys into unified single-player keys
+        parsed.season.allPlayerStats = normalizeLegacyPlayerStatsMap(
+          parsed.season.allPlayerStats,
+        );
+        parsed.season.cupPlayerStats = normalizeLegacyPlayerStatsMap(
+          parsed.season.cupPlayerStats,
+        );
+        parsed.season.uclPlayerStats = normalizeLegacyPlayerStatsMap(
+          parsed.season.uclPlayerStats,
+        );
       }
       return parsed;
     }
@@ -3385,7 +3904,9 @@ interface GameContextValue {
   markCupCelebrated: () => void;
   enterUclMode: () => void;
   simulateUclLeaguePhaseToEnd: () => void;
+  simulateUclPlayoffBye: () => void;
   simulateUclToEnd: () => void;
+  skipUclToFinalSummary: () => void;
   finishUclToSummary: () => void;
   resetGame: () => void;
 }
@@ -3556,7 +4077,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'MARK_LEGACY_ARCHIVED' });
   }, [state, ratings.rawOvr, chemistry.total]);
 
-  // Auto-archive completed runs into Hall of Fame once (non-Top4 at league end, OR after UCL completes)
+  // Auto-archive completed runs into Hall of Fame strictly ONCE when full season (including UCL) is complete
   useEffect(() => {
     if (
       state.phase !== 'season_end' ||
@@ -3565,9 +4086,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     ) {
       return;
     }
-    const finalRank = getUserRank(state.season.standings, USER_CLUB_ID);
     const uclDone = Boolean(state.season.ucl?.completed);
-    if (finalRank > 4 || uclDone) {
+    if (uclDone) {
       const timer = window.setTimeout(() => {
         archiveCurrentSeasonNow();
       }, 0);
@@ -3662,7 +4182,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
       enterUclMode: () => dispatch({ type: 'ENTER_UCL_MODE' }),
       simulateUclLeaguePhaseToEnd: () =>
         dispatch({ type: 'SIMULATE_UCL_LEAGUE_PHASE_TO_END' }),
+      simulateUclPlayoffBye: () =>
+        dispatch({ type: 'SIMULATE_UCL_PLAYOFF_BYE' }),
       simulateUclToEnd: () => dispatch({ type: 'SIMULATE_UCL_TO_END' }),
+      skipUclToFinalSummary: () =>
+        dispatch({ type: 'SKIP_UCL_TO_FINAL_SUMMARY' }),
       finishUclToSummary: () => dispatch({ type: 'FINISH_UCL_TO_SUMMARY' }),
       resetGame: () => dispatch({ type: 'RESET_GAME' }),
     }),
