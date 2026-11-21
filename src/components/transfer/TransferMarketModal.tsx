@@ -95,6 +95,9 @@ export function TransferMarketModal({
   const [selectedOutSlot, setSelectedOutSlot] = useState<OutSlotRef | null>(
     null,
   );
+  const [outFilterTab, setOutFilterTab] = useState<
+    'recommended' | 'starters' | 'bench'
+  >('recommended');
   const [mobileSquadOpen, setMobileSquadOpen] = useState(false);
   const [squadViewMode, setSquadViewMode] = useState<'pitch' | 'list'>('pitch');
 
@@ -215,6 +218,7 @@ export function TransferMarketModal({
 
   const handleStartNegotiation = (target: TransferTargetPlayer) => {
     setNegotiatingTarget(target);
+    setOutFilterTab('recommended');
     // Auto-suggest best matching starter slot (weakest effective OVR where target fits best)
     let bestSlot: OutSlotRef | null = null;
     let bestScore = Number.NEGATIVE_INFINITY;
@@ -226,7 +230,12 @@ export function TransferMarketModal({
         state.manager.traitId,
       );
       const gain = incomingFit.effectiveOvr - row.effectiveOvr;
-      const fitBonus = incomingFit.fit === 'main' ? 12 : incomingFit.fit === 'secondary' ? 4 : -10;
+      const fitBonus =
+        incomingFit.fit === 'main'
+          ? 14
+          : incomingFit.fit === 'secondary'
+            ? 5
+            : -12;
       const score = gain + fitBonus;
       if (score > bestScore) {
         bestScore = score;
@@ -234,7 +243,6 @@ export function TransferMarketModal({
       }
     }
     setSelectedOutSlot(bestSlot);
-    setMobileSquadOpen(true);
   };
 
   const activeClubOffer = tm.rolledClubs[activeReelIdx] ?? tm.rolledClubs[0];
@@ -809,125 +817,6 @@ export function TransferMarketModal({
           </div>
         )}
 
-        {/* Active Negotiation Compare & Submit Bar (linked directly with My Squad Panel) */}
-        {negotiatingTarget && (
-          <div className="rounded-xl border border-emerald-500/50 bg-[#0c1a16] p-3.5 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-300">
-                <ArrowLeftRight className="w-4 h-4" />
-                영입 협상 비교 &amp; 방출 대상 지정
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setNegotiatingTarget(null);
-                  setSelectedOutSlot(null);
-                }}
-                className="text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
-              >
-                협상 취소
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-11 sm:items-center">
-              {/* Incoming */}
-              <div className="sm:col-span-5 rounded-lg border border-emerald-500/35 bg-[#0b1018] px-3 py-2 flex items-center justify-between">
-                <div className="min-w-0">
-                  <div className="text-[10px] font-bold text-emerald-300">
-                    영입 대상 · {formatMainPositions(negotiatingTarget.player)}
-                  </div>
-                  <div className="truncate text-sm font-extrabold text-white">
-                    {negotiatingTarget.player.name}
-                  </div>
-                  <div className="text-[10px] text-slate-400">
-                    €{negotiatingTarget.marketValueM}M · 성공률{' '}
-                    <strong className="text-emerald-300">
-                      {negotiatingTarget.successChance}%
-                    </strong>
-                  </div>
-                </div>
-                <div className="text-right tabular-nums shrink-0 ml-2">
-                  <div className="text-[9px] text-slate-500">예상 OVR</div>
-                  <div className="font-display text-xl font-bold text-emerald-300">
-                    {incomingProjectedOvr ?? negotiatingTarget.player.ovr}
-                  </div>
-                </div>
-              </div>
-
-              <div className="hidden sm:flex sm:col-span-1 justify-center text-slate-500">
-                <ArrowLeftRight className="w-4 h-4" />
-              </div>
-
-              {/* Outgoing from My Squad */}
-              <div className="sm:col-span-5 rounded-lg border border-rose-500/35 bg-[#0b1018] px-3 py-2 flex items-center justify-between">
-                {selectedOutPlayer && selectedOutSlot ? (
-                  <>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-bold text-rose-300">
-                        방출 대상 (
-                        {selectedOutSlot.area === 'starter'
-                          ? `선발 ${formationSlots[selectedOutSlot.index]?.label}`
-                          : `벤치 ${BENCH_SLOTS[selectedOutSlot.index]?.label}`}
-                        )
-                      </div>
-                      <div className="truncate text-sm font-extrabold text-white">
-                        {selectedOutPlayer.name}
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        좌측 내 스쿼드에서 다른 선수 클릭 시 변경
-                      </div>
-                    </div>
-                    <div className="text-right tabular-nums shrink-0 ml-2">
-                      <div className="text-[9px] text-slate-500">현재 OVR</div>
-                      <div className="font-display text-xl font-bold text-rose-300">
-                        {selectedOutEffectiveOvr}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-xs text-slate-400 py-1.5">
-                    내 스쿼드 패널에서 방출할 선수를 클릭하세요
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-              <div className="text-[11px] text-slate-300 tabular-nums">
-                {incomingProjectedOvr !== null &&
-                  selectedOutEffectiveOvr !== null && (
-                    <span>
-                      슬롯 실효 OVR 변화:{' '}
-                      <strong
-                        className={
-                          incomingProjectedOvr >= selectedOutEffectiveOvr
-                            ? 'text-emerald-300'
-                            : 'text-amber-300'
-                        }
-                      >
-                        {selectedOutEffectiveOvr} → {incomingProjectedOvr} (
-                        {incomingProjectedOvr - selectedOutEffectiveOvr >= 0
-                          ? '+'
-                          : ''}
-                        {incomingProjectedOvr - selectedOutEffectiveOvr})
-                      </strong>
-                    </span>
-                  )}
-              </div>
-
-              <button
-                type="button"
-                disabled={!selectedOutSlot || tm.attemptsRemaining <= 0}
-                onClick={handleConfirmOffer}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-40 cursor-pointer"
-              >
-                <Handshake className="w-3.5 h-3.5" />
-                오퍼 제출 (성공률 {negotiatingTarget.successChance}%)
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Main 2-Column PC Layout */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
           {/* Left Column (PC Always-Visible My Squad) */}
@@ -1328,7 +1217,7 @@ export function TransferMarketModal({
                           </div>
                         </div>
 
-                        {/* Offer CTA (allows re-trying failed players while attempts remain) */}
+                        {/* Offer CTA (opens One-Stop Negotiation Modal immediately) */}
                         <button
                           type="button"
                           disabled={disabled}
@@ -1350,11 +1239,9 @@ export function TransferMarketModal({
                             ? '영입 완료'
                             : tm.attemptsRemaining <= 0
                               ? '협상 기회 소진'
-                              : isNegotiatingThis
-                                ? '방출 대상 선택 중 (상단 확인)'
-                                : failCount > 0
-                                  ? `재도전 협상 제안 (${target.successChance}%)`
-                                  : `영입 협상 제안 (${target.successChance}%)`}
+                              : failCount > 0
+                                ? `재도전 협상 제안 (${target.successChance}%)`
+                                : `영입 협상 제안 (${target.successChance}%)`}
                         </button>
                       </div>
                     );
@@ -1365,6 +1252,417 @@ export function TransferMarketModal({
           </div>
         </div>
       </div>
+
+      {/* ONE-STOP NEGOTIATION MODAL / BOTTOM DRAWER (Zero Scroll Back-and-Forth on PC & Mobile) */}
+      {negotiatingTarget && (
+        <div
+          className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-slate-950/85 p-2 sm:p-4 backdrop-blur-sm"
+          onClick={() => {
+            setNegotiatingTarget(null);
+            setSelectedOutSlot(null);
+          }}
+        >
+          <div
+            className="w-full max-w-2xl overflow-hidden rounded-2xl border border-emerald-500/45 bg-[#111822] shadow-2xl flex flex-col max-h-[92vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between gap-2 border-b border-slate-800 bg-[#0d131c] px-4 py-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 px-2 py-0.5 text-[11px] font-extrabold text-emerald-300">
+                  <Handshake className="w-3.5 h-3.5" />
+                  원스톱 영입 협상
+                </span>
+                <span className="truncate text-xs font-bold text-slate-300 tabular-nums">
+                  남은 기회 {tm.attemptsRemaining} / {tm.maxAttempts}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setNegotiatingTarget(null);
+                  setSelectedOutSlot(null);
+                }}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs font-bold text-slate-300 hover:border-slate-500 hover:text-white cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                닫기
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="overflow-y-auto p-3.5 sm:p-4 space-y-3.5">
+              {/* 1. Head-to-Head Incoming vs Outgoing Summary */}
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-11 sm:items-center">
+                {/* Incoming Target */}
+                <div className="sm:col-span-5 rounded-xl border border-emerald-500/40 bg-[#0b1018] p-3 flex items-center justify-between gap-2">
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-1">
+                      <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">
+                        IN 영입 대상
+                      </span>
+                      <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-200">
+                        {formatMainPositions(negotiatingTarget.player)}
+                      </span>
+                      {evaluateManagerPlayerSynergy(
+                        negotiatingTarget.player,
+                        state.manager.traitId,
+                      ).isMatch && (
+                        <span className="inline-flex items-center gap-0.5 rounded bg-amber-400/20 px-1 py-0.5 text-[9px] font-extrabold text-amber-200">
+                          <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
+                          감독 시너지
+                        </span>
+                      )}
+                    </div>
+                    <div className="truncate text-sm font-extrabold text-white">
+                      {negotiatingTarget.player.name}
+                    </div>
+                    <div className="text-[10px] text-slate-400 tabular-nums">
+                      €{negotiatingTarget.marketValueM}M · 성공 확률{' '}
+                      <strong className="text-emerald-300">
+                        {negotiatingTarget.successChance}%
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="text-right tabular-nums shrink-0">
+                    <div className="text-[9px] text-slate-500">슬롯 실효 OVR</div>
+                    <div className="font-display text-2xl font-bold text-emerald-300 leading-none">
+                      {incomingProjectedOvr ?? negotiatingTarget.player.ovr}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Delta Badge */}
+                <div className="sm:col-span-1 flex sm:flex-col items-center justify-center gap-1 text-center">
+                  <ArrowLeftRight className="w-4 h-4 text-slate-500" />
+                  {incomingProjectedOvr !== null &&
+                    selectedOutEffectiveOvr !== null && (
+                      <span
+                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-black tabular-nums ${
+                          incomingProjectedOvr - selectedOutEffectiveOvr > 0
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : incomingProjectedOvr - selectedOutEffectiveOvr < 0
+                              ? 'bg-rose-500/20 text-rose-300'
+                              : 'bg-slate-800 text-slate-300'
+                        }`}
+                      >
+                        {incomingProjectedOvr - selectedOutEffectiveOvr >= 0
+                          ? `+${incomingProjectedOvr - selectedOutEffectiveOvr}`
+                          : incomingProjectedOvr - selectedOutEffectiveOvr}
+                      </span>
+                    )}
+                </div>
+
+                {/* Outgoing Squad Player */}
+                <div className="sm:col-span-5 rounded-xl border border-rose-500/40 bg-[#0b1018] p-3 flex items-center justify-between gap-2">
+                  {selectedOutPlayer && selectedOutSlot ? (
+                    <>
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-[9px] font-black text-rose-300">
+                            OUT 방출 대상
+                          </span>
+                          <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-200">
+                            {selectedOutSlot.area === 'starter'
+                              ? `선발 ${formationSlots[selectedOutSlot.index]?.label}`
+                              : `벤치 ${BENCH_SLOTS[selectedOutSlot.index]?.label}`}
+                          </span>
+                        </div>
+                        <div className="truncate text-sm font-extrabold text-white">
+                          {selectedOutPlayer.name}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          주포지션 {formatMainPositions(selectedOutPlayer)}
+                        </div>
+                      </div>
+                      <div className="text-right tabular-nums shrink-0">
+                        <div className="text-[9px] text-slate-500">현재 실효 OVR</div>
+                        <div className="font-display text-2xl font-bold text-rose-300 leading-none">
+                          {selectedOutEffectiveOvr}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-xs text-slate-400 py-2">
+                      아래 목록에서 내보낼 우리 팀 선수를 선택하세요
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Inline Outgoing Squad Player Picker (Tabs + Grid) */}
+              <div className="rounded-xl border border-slate-800 bg-[#0d131c] p-3 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-extrabold text-white">
+                    내보낼 우리 팀 선수 선택 (클릭 시 즉시 변경)
+                  </span>
+
+                  <div className="inline-flex items-center rounded-lg border border-slate-800 bg-[#0b1018] p-0.5 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setOutFilterTab('recommended')}
+                      className={`rounded-md px-2.5 py-1 font-bold transition-colors cursor-pointer ${
+                        outFilterTab === 'recommended'
+                          ? 'bg-emerald-500 text-slate-950'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      ⚡ AI 추천 (Top 5)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOutFilterTab('starters')}
+                      className={`rounded-md px-2.5 py-1 font-bold transition-colors cursor-pointer ${
+                        outFilterTab === 'starters'
+                          ? 'bg-emerald-500 text-slate-950'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      선발 11인
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOutFilterTab('bench')}
+                      className={`rounded-md px-2.5 py-1 font-bold transition-colors cursor-pointer ${
+                        outFilterTab === 'bench'
+                          ? 'bg-emerald-500 text-slate-950'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      벤치 5인
+                    </button>
+                  </div>
+                </div>
+
+                {outFilterTab === 'bench' ? (
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    {benchRows.map((row) => {
+                      if (!row.player) return null;
+                      const isSel =
+                        selectedOutSlot?.area === 'bench' &&
+                        selectedOutSlot.index === row.index;
+                      const delta = negotiatingTarget.player.ovr - row.player.ovr;
+                      const samePos =
+                        row.player.position === negotiatingTarget.player.position;
+                      return (
+                        <button
+                          key={`modal-bn-${row.index}`}
+                          type="button"
+                          onClick={() =>
+                            setSelectedOutSlot({ area: 'bench', index: row.index })
+                          }
+                          className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer tabular-nums ${
+                            isSel
+                              ? 'border-emerald-400 bg-emerald-500/15 ring-1 ring-emerald-400'
+                              : 'border-slate-800 bg-[#0b1018] hover:border-slate-600'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-8 shrink-0 rounded bg-slate-900 py-0.5 text-center text-[10px] font-bold text-slate-300">
+                              {row.slotLabel}
+                            </span>
+                            <div className="min-w-0">
+                              <div className="truncate text-xs font-bold text-white">
+                                {row.player.name}
+                              </div>
+                              <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                                <span>{formatMainPositions(row.player)}</span>
+                                {samePos && (
+                                  <span className="rounded bg-emerald-500/20 px-1 text-[9px] font-bold text-emerald-300">
+                                    동일 포지션
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="font-display text-xs font-bold text-slate-200">
+                              {row.player.ovr} →{' '}
+                              <span className="text-emerald-300">
+                                {negotiatingTarget.player.ovr}
+                              </span>
+                            </div>
+                            <div
+                              className={`text-[10px] font-extrabold ${
+                                delta > 0
+                                  ? 'text-emerald-300'
+                                  : delta < 0
+                                    ? 'text-rose-300'
+                                    : 'text-slate-400'
+                              }`}
+                            >
+                              {delta >= 0 ? `+${delta}` : delta} OVR
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+                    {(() => {
+                      const evaluatedStarters = starterRows
+                        .filter((r) => r.player !== null)
+                        .map((row) => {
+                          const fit = evaluatePositionFit(
+                            negotiatingTarget.player,
+                            row.subPosition,
+                            state.manager.traitId,
+                          );
+                          const delta = fit.effectiveOvr - row.effectiveOvr;
+                          const fitBonus =
+                            fit.fit === 'main'
+                              ? 14
+                              : fit.fit === 'secondary'
+                                ? 5
+                                : -12;
+                          return {
+                            row,
+                            fit,
+                            delta,
+                            score: delta + fitBonus,
+                          };
+                        });
+
+                      const listToRender =
+                        outFilterTab === 'recommended'
+                          ? [...evaluatedStarters]
+                              .sort((a, b) => b.score - a.score)
+                              .slice(0, 5)
+                          : evaluatedStarters;
+
+                      return listToRender.map(({ row, fit, delta }, rankIdx) => {
+                        if (!row.player) return null;
+                        const isSel =
+                          selectedOutSlot?.area === 'starter' &&
+                          selectedOutSlot.index === row.index;
+                        return (
+                          <button
+                            key={`modal-st-${row.index}`}
+                            type="button"
+                            onClick={() =>
+                              setSelectedOutSlot({
+                                area: 'starter',
+                                index: row.index,
+                              })
+                            }
+                            className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-left transition-all cursor-pointer tabular-nums ${
+                              isSel
+                                ? 'border-emerald-400 bg-emerald-500/15 ring-1 ring-emerald-400'
+                                : 'border-slate-800 bg-[#0b1018] hover:border-slate-600'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={`w-8 shrink-0 rounded py-0.5 text-center text-[10px] font-extrabold ${
+                                  row.isPenaltyWeak
+                                    ? 'bg-rose-500/20 text-rose-300'
+                                    : row.isLowestOvrWeak
+                                      ? 'bg-amber-500/20 text-amber-300'
+                                      : 'bg-slate-800 text-emerald-300'
+                                }`}
+                              >
+                                {row.slotLabel}
+                              </span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1">
+                                  <span className="truncate text-xs font-bold text-white">
+                                    {row.player.name}
+                                  </span>
+                                  {outFilterTab === 'recommended' &&
+                                    rankIdx === 0 && (
+                                      <span className="rounded bg-emerald-400 px-1 text-[8px] font-black text-slate-950 shrink-0">
+                                        최적 추천
+                                      </span>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
+                                  <span>{formatMainPositions(row.player)}</span>
+                                  {fit.fit === 'main' && (
+                                    <span className="rounded bg-emerald-500/20 px-1 text-[9px] font-bold text-emerald-300">
+                                      주포지션 일치
+                                    </span>
+                                  )}
+                                  {fit.fit === 'secondary' && (
+                                    <span className="rounded bg-amber-500/20 px-1 text-[9px] font-bold text-amber-300">
+                                      부포지션 ({fit.penalty})
+                                    </span>
+                                  )}
+                                  {fit.fit === 'severe' && (
+                                    <span className="rounded bg-rose-500/20 px-1 text-[9px] font-bold text-rose-300">
+                                      비적합 ({fit.penalty})
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0">
+                              <div className="font-display text-xs font-bold text-slate-200">
+                                {row.effectiveOvr} →{' '}
+                                <span className="text-emerald-300">
+                                  {fit.effectiveOvr}
+                                </span>
+                              </div>
+                              <div
+                                className={`text-[10px] font-extrabold ${
+                                  delta > 0
+                                    ? 'text-emerald-300'
+                                    : delta < 0
+                                      ? 'text-rose-300'
+                                      : 'text-slate-400'
+                                }`}
+                              >
+                                {delta >= 0 ? `+${delta}` : delta} OVR
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer: One-Click Confirm Offer */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 bg-[#0d131c] px-4 py-3">
+              <div className="text-xs text-slate-300 tabular-nums">
+                이적료{' '}
+                <strong className="text-amber-300">
+                  €{negotiatingTarget.marketValueM}M
+                </strong>{' '}
+                · 영입 성공 확률{' '}
+                <strong className="text-emerald-300">
+                  {negotiatingTarget.successChance}%
+                </strong>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNegotiatingTarget(null);
+                    setSelectedOutSlot(null);
+                  }}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2.5 text-xs font-bold text-slate-300 hover:border-slate-500 hover:text-white cursor-pointer"
+                >
+                  취소
+                </button>
+                <button
+                  id="submit-transfer-offer-btn"
+                  type="button"
+                  disabled={!selectedOutSlot || tm.attemptsRemaining <= 0}
+                  onClick={handleConfirmOffer}
+                  className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  <Handshake className="w-4 h-4" />
+                  오퍼 제출 · 영입 시도 (성공률 {negotiatingTarget.successChance}%)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

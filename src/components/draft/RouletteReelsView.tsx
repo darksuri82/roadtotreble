@@ -1,4 +1,4 @@
-import { CheckCircle2, Crown, Dices, Sparkles } from 'lucide-react';
+import { CheckCircle2, Crown, Dices, Link2, Sparkles, Star, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PLAYSTYLES } from '../../data/playstyles';
 import { ALL_CLUBS_WITH_LEAGUE } from '../../engine/dataLoader';
@@ -6,7 +6,11 @@ import {
   evaluatePositionFit,
   formatMainPositions,
 } from '../../engine/positionEngine';
-import type { ManagerTraitId, RouletteReelResult } from '../../types/game';
+import type {
+  ManagerTraitId,
+  PlayerSlotSynergy,
+  RouletteReelResult,
+} from '../../types/game';
 import type { LeagueId } from '../../types/league';
 import { LEAGUE_LABELS } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
@@ -21,6 +25,10 @@ interface RouletteReelsViewProps {
   targetSubPosition: SubPosition;
   managerTraitId: ManagerTraitId | null;
   allowedLeagueIds?: LeagueId[];
+  previewCandidate?: Player | null;
+  onSelectPreviewCandidate?: (player: Player | null) => void;
+  previewSlotSynergy?: PlayerSlotSynergy | null;
+  previewChemDelta?: number;
   onSpin: () => void;
   onPickPlayer: (player: Player) => void;
   pickActionLabel: string;
@@ -33,6 +41,10 @@ export function RouletteReelsView({
   targetSubPosition,
   managerTraitId,
   allowedLeagueIds,
+  previewCandidate,
+  onSelectPreviewCandidate,
+  previewSlotSynergy = null,
+  previewChemDelta = 0,
   onSpin,
   onPickPlayer,
   pickActionLabel,
@@ -41,9 +53,17 @@ export function RouletteReelsView({
   const [tick, setTick] = useState(0);
   const [animating, setAnimating] = useState(false);
   const [activeClubTab, setActiveClubTab] = useState<number | 'all'>('all');
-  const [selectedCandidate, setSelectedCandidate] = useState<Player | null>(
+  const [internalCandidate, setInternalCandidate] = useState<Player | null>(
     null,
   );
+
+  const selectedCandidate =
+    previewCandidate !== undefined ? previewCandidate : internalCandidate;
+
+  const updateSelectedCandidate = (player: Player | null) => {
+    setInternalCandidate(player);
+    onSelectPreviewCandidate?.(player);
+  };
 
   const previewClubs =
     allowedLeagueIds && allowedLeagueIds.length > 0
@@ -80,14 +100,22 @@ export function RouletteReelsView({
     if (hasSpun || animating) return;
     setLockedCount(0);
     setActiveClubTab('all');
-    setSelectedCandidate(null);
+    updateSelectedCandidate(null);
     setAnimating(true);
     onSpin();
   };
 
   const handleConfirmPick = (player: Player) => {
-    setSelectedCandidate(null);
+    updateSelectedCandidate(null);
     onPickPlayer(player);
+  };
+
+  const handleCandidateCardClick = (player: Player) => {
+    if (selectedCandidate?.id === player.id) {
+      handleConfirmPick(player);
+      return;
+    }
+    updateSelectedCandidate(player);
   };
 
   const allRevealed = hasSpun && !animating && lockedCount >= 3;
@@ -99,6 +127,8 @@ export function RouletteReelsView({
   const selectedFit = selectedCandidate
     ? evaluatePositionFit(selectedCandidate, targetSubPosition, managerTraitId)
     : null;
+  const synBonus = previewSlotSynergy?.totalBonus ?? 0;
+  const finalBoostedOvr = selectedFit ? selectedFit.effectiveOvr + synBonus : 0;
 
   return (
     <div className="space-y-4">
@@ -221,16 +251,16 @@ export function RouletteReelsView({
         )}
       </div>
 
-      {/* 2-Step Selection & Confirmation Preview Bar (prevents accidental one-click picks) */}
+      {/* 2-Step Selection & Live Pitch Synergy Preview Bar */}
       {allRevealed && reels.length > 0 && (
         <div className="space-y-3">
           {selectedCandidate && selectedFit ? (
-            <div className="rounded-xl border border-emerald-400/60 bg-emerald-950/25 p-3.5 space-y-2.5">
+            <div className="rounded-xl border border-emerald-400/70 bg-emerald-950/30 p-3.5 space-y-2.5 shadow-[0_0_20px_rgba(16,185,129,0.12)]">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
+                <div className="min-w-0 space-y-1.5 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-300">
-                      선택된 후보
+                    <span className="rounded bg-emerald-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
+                      포메이션 임시 배치 중
                     </span>
                     <span className="text-sm font-extrabold text-white">
                       {selectedCandidate.name}
@@ -243,7 +273,62 @@ export function RouletteReelsView({
                         : selectedCandidate.club}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300">
+
+                  {/* Live Synergy OVR & Chemistry Impact Row */}
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-200 tabular-nums">
+                    <span className="rounded-lg border border-slate-700/80 bg-slate-950/80 px-2 py-1">
+                      {targetSubPosition} 실효 OVR:{' '}
+                      <strong
+                        className={
+                          selectedFit.penalty < 0
+                            ? 'text-amber-300'
+                            : 'text-white'
+                        }
+                      >
+                        {selectedFit.effectiveOvr}
+                        {selectedFit.penalty < 0
+                          ? ` (${selectedFit.penalty})`
+                          : ''}
+                      </strong>
+                      {synBonus > 0 && (
+                        <>
+                          {' → '}
+                          <strong className="text-emerald-300 font-extrabold">
+                            {finalBoostedOvr} (+{synBonus})
+                          </strong>
+                        </>
+                      )}
+                    </span>
+
+                    {previewSlotSynergy && previewSlotSynergy.managerBonus > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-amber-400/45 bg-amber-400/15 px-2 py-1 text-[10px] font-extrabold text-amber-200">
+                        <Star className="w-3 h-3 fill-amber-300 text-amber-300" />
+                        감독 시너지 +{previewSlotSynergy.managerBonus}
+                      </span>
+                    )}
+
+                    {previewSlotSynergy && previewSlotSynergy.neighborBonus > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-400/45 bg-emerald-500/15 px-2 py-1 text-[10px] font-extrabold text-emerald-200">
+                        <Link2 className="w-3 h-3 text-emerald-300" />
+                        인접 팀원 케미 +{previewSlotSynergy.neighborBonus}
+                      </span>
+                    )}
+
+                    <span
+                      className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${
+                        previewChemDelta > 0
+                          ? 'border-sky-400/40 bg-sky-500/15 text-sky-200'
+                          : previewChemDelta < 0
+                            ? 'border-rose-400/40 bg-rose-500/15 text-rose-200'
+                            : 'border-slate-800 bg-slate-900/80 text-slate-400'
+                      }`}
+                    >
+                      팀 케미 {previewChemDelta > 0 ? `+${previewChemDelta}` : previewChemDelta}
+                    </span>
+                  </div>
+
+                  {/* Synergy Reasons & Positions */}
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-slate-300">
                     <span>
                       주포지션:{' '}
                       <strong className="text-emerald-300">
@@ -258,22 +343,14 @@ export function RouletteReelsView({
                         </strong>
                       </span>
                     )}
-                    <span>
-                      {targetSubPosition} 실효 OVR:{' '}
-                      <strong
-                        className={
-                          selectedFit.penalty < 0
-                            ? 'text-amber-300'
-                            : 'text-white'
-                        }
-                      >
-                        {selectedFit.effectiveOvr}
-                        {selectedFit.penalty < 0
-                          ? ` (${selectedFit.penalty})`
-                          : ' (100%)'}
-                      </strong>
-                    </span>
+                    {previewSlotSynergy &&
+                      previewSlotSynergy.reasons.length > 0 && (
+                        <span className="text-emerald-200/90 font-semibold">
+                          · 시너지 상세: {previewSlotSynergy.reasons.join(' + ')}
+                        </span>
+                      )}
                   </div>
+
                   <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
                     {selectedCandidate.playstyles.map((ps) => (
                       <span
@@ -291,21 +368,31 @@ export function RouletteReelsView({
                   </div>
                 </div>
 
-                <button
-                  id="confirm-draft-pick-btn"
-                  type="button"
-                  onClick={() => handleConfirmPick(selectedCandidate)}
-                  className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 transition-colors cursor-pointer shrink-0"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {selectedCandidate.name} {pickActionLabel}하기
-                </button>
+                <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                  <button
+                    id="confirm-draft-pick-btn"
+                    type="button"
+                    onClick={() => handleConfirmPick(selectedCandidate)}
+                    className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 transition-colors cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {selectedCandidate.name} {pickActionLabel} 확정
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateSelectedCandidate(null)}
+                    title="임시 배치 해제"
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-700 bg-slate-900/90 p-2.5 text-slate-400 hover:border-slate-500 hover:text-white transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
             <div className="rounded-xl border border-slate-800 bg-[#0d131c] px-3.5 py-2.5 text-xs text-slate-400">
-              후보 카드를 먼저 <strong className="text-slate-200">클릭해 상세 정보를 확인</strong>한 뒤, 활성화된{' '}
-              <strong className="text-emerald-300">[영입하기]</strong> 버튼을 눌러 확정하세요.
+              후보 카드를 <strong className="text-emerald-300">1회 클릭하면 포메이션 피치에 임시 배치</strong>되어 시너지 OVR 상승량과 연결선이 실시간 표시됩니다. 마음에 들면{' '}
+              <strong className="text-white">[영입 확정]</strong>(또는 재클릭)으로 확정하세요.
             </div>
           )}
 
@@ -359,7 +446,7 @@ export function RouletteReelsView({
               })}
             </div>
             <span className="text-[11px] text-slate-400">
-              선택 후 영입 확정
+              1클릭 임시 배치 · 2클릭 영입 확정
             </span>
           </div>
 
@@ -421,7 +508,7 @@ export function RouletteReelsView({
                         targetSubPosition={targetSubPosition}
                         managerTraitId={managerTraitId}
                         selected={selectedCandidate?.id === player.id}
-                        onClick={() => setSelectedCandidate(player)}
+                        onClick={() => handleCandidateCardClick(player)}
                         onConfirmAction={() => handleConfirmPick(player)}
                         actionLabel={pickActionLabel}
                       />
@@ -436,7 +523,7 @@ export function RouletteReelsView({
                         targetSubPosition={targetSubPosition}
                         managerTraitId={managerTraitId}
                         selected={selectedCandidate?.id === player.id}
-                        onClick={() => setSelectedCandidate(player)}
+                        onClick={() => handleCandidateCardClick(player)}
                         onConfirmAction={() => handleConfirmPick(player)}
                         actionLabel={pickActionLabel}
                       />

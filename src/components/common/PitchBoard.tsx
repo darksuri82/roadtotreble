@@ -28,6 +28,7 @@ interface PitchBoardProps {
   managerTraitId?: ManagerTraitId | null;
   activeSlot?: SlotRef | null;
   selectedSlot?: SlotRef | null;
+  previewSlot?: SlotRef | null;
   staminaByPlayerId?: Record<string, number>;
   disabledBenchIds?: Set<string>;
   onSlotClick?: (area: 'starter' | 'bench', index: number) => void;
@@ -66,6 +67,7 @@ export function PitchBoard({
   managerTraitId = null,
   activeSlot = null,
   selectedSlot = null,
+  previewSlot = null,
   staminaByPlayerId,
   disabledBenchIds,
   onSlotClick,
@@ -288,6 +290,9 @@ export function PitchBoard({
           const isSelected =
             selectedSlot?.area === 'starter' &&
             selectedSlot.index === slot.index;
+          const isPreview =
+            previewSlot?.area === 'starter' &&
+            previewSlot.index === slot.index;
           const isDragOver =
             dragOverSlot?.area === 'starter' &&
             dragOverSlot.index === slot.index;
@@ -359,29 +364,34 @@ export function PitchBoard({
             >
               <div
                 className={`relative flex flex-col items-center justify-center rounded-xl px-1.5 py-1 min-w-[60px] sm:min-w-[74px] text-center shadow-md transition-all ${
-                  player
-                    ? isLegend
-                      ? 'bg-gradient-to-b from-amber-950 via-stone-900 to-amber-950 border-2 border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.5)]'
-                      : isSuperstar
-                        ? 'bg-gradient-to-b from-cyan-950 via-slate-900 to-cyan-950 border-2 border-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.42)]'
-                        : staminaPct !== null && staminaPct < 40
-                          ? 'bg-[#251018]/95 border-2 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.45)]'
-                          : staminaPct !== null && staminaPct < 55
-                            ? 'bg-[#22170e]/95 border border-orange-400/90'
-                            : 'bg-[#101822]/95 border border-slate-600/75'
-                    : isActive
-                      ? 'bg-emerald-500/20 border-2 border-emerald-400'
-                      : 'bg-slate-950/70 border border-dashed border-slate-600/60'
+                  isPreview && player
+                    ? 'bg-emerald-950/95 border-2 border-emerald-300 ring-2 ring-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.55)] scale-105'
+                    : player
+                      ? isLegend
+                        ? 'bg-gradient-to-b from-amber-950 via-stone-900 to-amber-950 border-2 border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.5)]'
+                        : isSuperstar
+                          ? 'bg-gradient-to-b from-cyan-950 via-slate-900 to-cyan-950 border-2 border-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.42)]'
+                          : staminaPct !== null && staminaPct < 40
+                            ? 'bg-[#251018]/95 border-2 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.45)]'
+                            : staminaPct !== null && staminaPct < 55
+                              ? 'bg-[#22170e]/95 border border-orange-400/90'
+                              : 'bg-[#101822]/95 border border-slate-600/75'
+                      : isActive
+                        ? 'bg-emerald-500/20 border-2 border-emerald-400'
+                        : 'bg-slate-950/70 border border-dashed border-slate-600/60'
                 } ${isSelected ? 'ring-2 ring-emerald-400 scale-105' : ''} ${
                   isDragOver ? 'ring-2 ring-sky-400 scale-105' : ''
                 }`}
               >
-                {isLegend && (
+                {isPreview && player ? (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-400 px-1 py-0.2 text-[8px] font-black text-slate-950 shadow">
+                    프리뷰
+                  </span>
+                ) : isLegend ? (
                   <Crown className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 text-amber-300" />
-                )}
-                {isSuperstar && (
+                ) : isSuperstar ? (
                   <Diamond className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 text-cyan-300" />
-                )}
+                ) : null}
 
                 {hasPenalty && fit && (
                   <span
@@ -549,6 +559,9 @@ export function PitchBoard({
               const isSelected =
                 selectedSlot?.area === 'bench' &&
                 selectedSlot.index === bSlot.index;
+              const isPreview =
+                previewSlot?.area === 'bench' &&
+                previewSlot.index === bSlot.index;
               const isDragOver =
                 dragOverSlot?.area === 'bench' &&
                 dragOverSlot.index === bSlot.index;
@@ -603,15 +616,17 @@ export function PitchBoard({
                   className={`relative flex flex-col items-center justify-center rounded-xl p-1.5 text-center select-none transition-all ${
                     isDisabledBench
                       ? 'bg-slate-950/70 border border-slate-800 opacity-45 cursor-not-allowed'
-                      : player
-                        ? isLegend
-                          ? 'bg-amber-950/45 border border-amber-400'
-                          : isSuperstar
-                            ? 'bg-cyan-950/45 border border-cyan-300'
-                            : 'bg-slate-900/90 border border-slate-700/80'
-                        : isActive
-                          ? 'bg-emerald-500/15 border-2 border-emerald-400'
-                          : 'bg-slate-950/60 border border-dashed border-slate-700/60'
+                      : isPreview && player
+                        ? 'bg-emerald-950/90 border-2 border-emerald-300 ring-2 ring-emerald-400/75 shadow-[0_0_12px_rgba(16,185,129,0.45)]'
+                        : player
+                          ? isLegend
+                            ? 'bg-amber-950/45 border border-amber-400'
+                            : isSuperstar
+                              ? 'bg-cyan-950/45 border border-cyan-300'
+                              : 'bg-slate-900/90 border border-slate-700/80'
+                          : isActive
+                            ? 'bg-emerald-500/15 border-2 border-emerald-400'
+                            : 'bg-slate-950/60 border border-dashed border-slate-700/60'
                   } ${
                     onSlotClick && !isDisabledBench
                       ? 'cursor-pointer hover:border-emerald-400/70'
@@ -622,6 +637,11 @@ export function PitchBoard({
                     isDragOver ? 'ring-2 ring-sky-400' : ''
                   }`}
                 >
+                  {isPreview && player && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-400 px-1 text-[7px] font-black text-slate-950">
+                      프리뷰
+                    </span>
+                  )}
                   {player && onInspectPlayer && (
                     <button
                       type="button"

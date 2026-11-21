@@ -333,8 +333,8 @@ export function PlayerCard({
             {actionLabel ?? '영입하기'} 확정 ✓
           </button>
         ) : (
-          <div className="relative z-10 mt-2.5 w-full rounded-lg border border-slate-700/80 bg-slate-900/75 py-1.5 text-center text-[11px] font-semibold text-slate-400 group-hover:border-slate-500 group-hover:text-slate-200">
-            클릭하여 선택 · 상세 확인
+          <div className="relative z-10 mt-2.5 w-full rounded-lg border border-slate-700/80 bg-slate-900/75 py-1.5 text-center text-[11px] font-semibold text-slate-400 group-hover:border-emerald-500/50 group-hover:text-emerald-200">
+            클릭하여 피치 임시 배치 · 시너지 프리뷰
           </div>
         )
       ) : (
