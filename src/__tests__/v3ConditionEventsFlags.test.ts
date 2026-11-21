@@ -122,11 +122,25 @@ describe('v3.0 Cumulative Fatigue, 3-Tier Injuries, Morale, 72 Manager Events & 
     const freshTotal = freshMinor + freshModerate + freshSevere;
     expect(freshMinor).toBeGreaterThan(freshModerate);
     expect(freshModerate).toBeGreaterThanOrEqual(freshSevere);
-    // ~1.35% fresh rate => roughly 35..80 injuries over 4000 player-matches
-    expect(freshTotal).toBeGreaterThan(25);
-    expect(freshTotal).toBeLessThan(95);
-    // Fatigued (2.8x) must be substantially higher
-    expect(fatiguedTotal).toBeGreaterThan(freshTotal * 2);
+    // ~0.467% fresh rate => roughly 8..35 injuries over 4000 player-matches
+    expect(freshTotal).toBeGreaterThan(5);
+    expect(freshTotal).toBeLessThan(40);
+    // Fatigued (2.1x) must be substantially higher
+    expect(fatiguedTotal).toBeGreaterThan(freshTotal * 1.5);
+
+    // Per-team per-match safety cap: never more than 1 fresh injury in a single match even with rng=0
+    const squad11 = ACTIVE_PLAYERS.slice(0, 11);
+    const capped = updateSquadConditionsAfterMatch({
+      squad: squad11,
+      starterIds: new Set(squad11.map((p) => p.id)),
+      minutesByPlayerId: Object.fromEntries(squad11.map((p) => [p.id, 90])),
+      tactic: 'gegenpressing',
+      conditionMap: {},
+      competition: 'league',
+      trackUserAlerts: true,
+      rng: () => 0.00001,
+    });
+    expect(capped.newInjuries.length).toBe(1);
   });
 
   it('handles 3-tier injury recovery countdown, minor play-through penalty, and AI injury substitution', () => {

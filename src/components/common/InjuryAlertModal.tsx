@@ -143,7 +143,7 @@ export function InjuryAlertModal({
                       <strong className="text-amber-300">
                         OVR {injury.playThroughPenalty} 하락
                       </strong>
-                      과 중상 악화 위험(+12%)이 따릅니다.
+                      과 중상 악화 위험(+7%)이 따릅니다.
                     </p>
                   ) : injury.severity === 'severe' ? (
                     <p className="text-[11px] text-rose-200/90 leading-relaxed">

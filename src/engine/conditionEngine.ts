@@ -147,9 +147,9 @@ export function getFatigueInitialStaminaCap(fatigue: number): number {
 }
 
 export function getFatigueInjuryRiskMultiplier(fatigue: number): number {
-  if (fatigue >= 80) return 4.8;
-  if (fatigue >= 60) return 2.8;
-  if (fatigue >= 40) return 1.6;
+  if (fatigue >= 80) return 3.2;
+  if (fatigue >= 60) return 2.1;
+  if (fatigue >= 40) return 1.35;
   return 1.0;
 }
 
@@ -278,10 +278,10 @@ export function createInjury(
 /**
  * Rolls whether a player who played in a match sustains a new injury (or aggravates a minor injury).
  * Base probabilities (per player per 90-min match at fresh fatigue < 40):
- * - minor: 1.10%
- * - moderate: 0.22%
- * - severe: 0.035%
- * Scaled by fatigue risk multiplier (1.0x / 1.6x / 2.8x / 4.8x), minutes ratio, and GK factor (0.35x).
+ * - minor: 0.38% (~2-3 minor injuries per full season)
+ * - moderate: 0.075% (~0.4 moderate injuries per season)
+ * - severe: 0.012% (rare season-ending event)
+ * Scaled by fatigue risk multiplier (1.0x / 1.35x / 2.1x / 3.2x), minutes ratio, and GK factor (0.35x).
  */
 export function rollPlayerMatchInjury(params: {
   player: Pick<Player, 'position'>;
@@ -303,13 +303,13 @@ export function rollPlayerMatchInjury(params: {
   } = params;
   if (minutesPlayed <= 0) return { injury: null, wasAggravated: false };
 
-  // Playing through an existing minor injury => +12% aggravation risk
+  // Playing through an existing minor injury => +7% aggravation risk
   if (
     currentCondition.injury &&
     currentCondition.injury.matchesRemaining > 0 &&
     currentCondition.injury.canPlayThrough
   ) {
-    const aggravationChance = 0.12 * (postMatchFatigue >= 60 ? 1.4 : 1.0);
+    const aggravationChance = 0.07 * (postMatchFatigue >= 60 ? 1.35 : 1.0);
     if (rng() < aggravationChance) {
       // 65% escalate to moderate, 35% extend minor by +2..3 matches
       if (rng() < 0.65) {
@@ -339,12 +339,12 @@ export function rollPlayerMatchInjury(params: {
 
   const riskMult = getFatigueInjuryRiskMultiplier(postMatchFatigue);
   const gkMult = player.position === 'GK' ? 0.35 : 1.0;
-  const minMult = Math.min(1.3, Math.max(0.35, minutesPlayed / 90));
+  const minMult = Math.min(1.25, Math.max(0.35, minutesPlayed / 90));
   const totalMult = riskMult * gkMult * minMult;
 
-  const severeProb = 0.00035 * totalMult;
-  const moderateProb = 0.0022 * totalMult;
-  const minorProb = 0.011 * totalMult;
+  const severeProb = 0.00012 * totalMult;
+  const moderateProb = 0.00075 * totalMult;
+  const minorProb = 0.0038 * totalMult;
 
   const roll = rng();
   if (roll < severeProb) {
@@ -569,6 +569,7 @@ export function updateSquadConditionsAfterMatch(
 
   const playedRecovery = isShortRest ? 5 : 10;
   const restedRecovery = isShortRest ? 18 : 24;
+  let teamFreshInjuriesThisMatch = 0;
 
   for (const player of squad) {
     const prev = getPlayerCondition(conditionMap, player.id);
@@ -590,8 +591,12 @@ export function updateSquadConditionsAfterMatch(
     }
 
     // 2. Injury roll (if played) or tick down existing injury
+    // Cap fresh injuries at max 1 per team per match to avoid multi-injury pileups
     let nextInjury = tickInjuryOneMatch(prev.injury);
-    if (played) {
+    const isPlayingThroughMinor = Boolean(
+      prev.injury && prev.injury.matchesRemaining > 0 && prev.injury.canPlayThrough,
+    );
+    if (played && (teamFreshInjuriesThisMatch < 1 || isPlayingThroughMinor)) {
       const rolled = rollPlayerMatchInjury({
         player,
         currentCondition: prev,
@@ -602,6 +607,9 @@ export function updateSquadConditionsAfterMatch(
         rng,
       });
       if (rolled.injury) {
+        if (!rolled.wasAggravated) {
+          teamFreshInjuriesThisMatch += 1;
+        }
         nextInjury = rolled.injury;
         if (trackUserAlerts) {
           newInjuries.push({
