@@ -1,0 +1,155 @@
+import type { Position, SubPosition } from './player';
+
+export type InjurySeverity = 'minor' | 'moderate' | 'severe';
+
+export type FatigueTier = 'fresh' | 'caution' | 'danger' | 'burnout';
+
+export type MoraleTier = 'ecstatic' | 'high' | 'normal' | 'low' | 'frozen';
+
+export interface PlayerInjury {
+  id: string;
+  name: string;
+  severity: InjurySeverity;
+  matchesRemaining: number;
+  initialMatches: number;
+  canPlayThrough: boolean;
+  playThroughPenalty: number; // -2..-4 for minor injury if forced to play
+  recoveryMatchesRemaining: number; // post-return rust matches (2 for moderate, 3 for severe)
+  occurredRound?: number;
+  occurredCompetition?: 'league' | 'cup' | 'ucl';
+}
+
+export interface PlayerConditionState {
+  fatigue: number; // 0..100
+  morale: number; // -5..+5
+  injury: PlayerInjury | null;
+  consecutiveBenchMatches: number;
+  consecutiveMatchesPlayed: number;
+  recentGoalDrought: number;
+  lastMatchRating?: number;
+}
+
+export type PlayerConditionMap = Record<string, PlayerConditionState>;
+
+export interface InjuryAlertItem {
+  playerId: string;
+  playerName: string;
+  nationality: string;
+  nationalityCode: string;
+  position: Position;
+  mainPosition: SubPosition;
+  ovr: number;
+  isStarter: boolean;
+  starterSlotIndex: number | null;
+  injury: PlayerInjury;
+  wasAggravated?: boolean;
+}
+
+export type ManagerEventCategory = 'press_conference' | 'locker_room';
+
+export type ManagerEventTargetScope = 'team' | 'position_group' | 'player';
+
+export type PositionGroupId = 'FW' | 'MF' | 'DF_GK';
+
+export type ManagerEventTriggerType =
+  | 'any'
+  | 'win_streak'
+  | 'lose_streak'
+  | 'big_win'
+  | 'heavy_loss'
+  | 'big_match'
+  | 'cup_or_ucl'
+  | 'fatigue_overload'
+  | 'xg_underperform'
+  | 'clean_sheet_streak'
+  | 'conceded_many'
+  | 'player_poor_rating'
+  | 'player_mom_or_hattrick'
+  | 'player_goal_drought'
+  | 'player_bench_unhappy'
+  | 'player_injury_cover'
+  | 'player_big_game_ace'
+  | 'player_returning_injury'
+  | 'transfer_rumor'
+  | 'title_race'
+  | 'unbeaten_run'
+  | 'comeback_win';
+
+export interface ManagerEventChoiceEffect {
+  targetMoraleDelta?: number;
+  teamMoraleDelta?: number;
+  benchMoraleDelta?: number;
+  starterMoraleDelta?: number;
+  secondaryGroup?: PositionGroupId;
+  secondaryGroupDelta?: number;
+  frozenReliefBonus?: number;
+  reactionText: string;
+}
+
+export interface ManagerEventChoiceDef {
+  id: string;
+  label: string;
+  toneTag: string;
+  quote: string;
+  riskLabel?: string;
+  successChance?: number; // 0..1, omitted => deterministic success
+  successEffect: ManagerEventChoiceEffect;
+  failEffect?: ManagerEventChoiceEffect;
+}
+
+export interface ManagerEventTemplate {
+  id: string;
+  category: ManagerEventCategory;
+  targetScope: ManagerEventTargetScope;
+  positionGroup?: PositionGroupId;
+  trigger: ManagerEventTriggerType;
+  title: string;
+  speakerLabel: string;
+  prompt: string;
+  choices: [ManagerEventChoiceDef, ManagerEventChoiceDef, ManagerEventChoiceDef];
+}
+
+export interface ActiveManagerEvent {
+  templateId: string;
+  category: ManagerEventCategory;
+  targetScope: ManagerEventTargetScope;
+  positionGroup?: PositionGroupId;
+  targetPlayerId?: string;
+  targetPlayerName?: string;
+  targetPlayerNationality?: string;
+  targetPlayerNationalityCode?: string;
+  title: string;
+  speakerLabel: string;
+  contextBadge: string;
+  prompt: string;
+  choices: ManagerEventChoiceDef[];
+}
+
+export interface ManagerEventOutcomeItem {
+  label: string;
+  delta: number;
+  note: string;
+}
+
+export interface ManagerEventResolution {
+  eventTitle: string;
+  category: ManagerEventCategory;
+  chosenLabel: string;
+  chosenQuote: string;
+  wasRisky: boolean;
+  riskSucceeded: boolean;
+  reactionText: string;
+  outcomes: ManagerEventOutcomeItem[];
+}
+
+export interface ManagerEventsState {
+  usedEventIds: string[];
+  matchesSinceLastEvent: number;
+  activeEvent: ActiveManagerEvent | null;
+  lastResolution: ManagerEventResolution | null;
+  teamMorale: number; // -5..+5
+  recentWinStreak: number;
+  recentLossStreak: number;
+  recentCleanSheetStreak: number;
+  recentUnbeatenStreak: number;
+}

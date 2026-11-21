@@ -1,3 +1,8 @@
+import type {
+  InjuryAlertItem,
+  ManagerEventsState,
+  PlayerConditionMap,
+} from './condition';
 import type { DomesticCupState } from './cup';
 import type {
   Club,
@@ -338,6 +343,10 @@ export interface SeasonState {
   seasonScore: SeasonScoreBreakdown | null;
   legacyArchived?: boolean;
   departedPlayerIds?: string[];
+  // v3.0: Cumulative fatigue, 3-tier injuries, morale & press/locker room events
+  playerConditions?: PlayerConditionMap;
+  managerEvents?: ManagerEventsState;
+  pendingInjuryAlerts?: InjuryAlertItem[];
 }
 
 export interface GameState {

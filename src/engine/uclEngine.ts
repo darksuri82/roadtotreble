@@ -1,4 +1,5 @@
 import uclTeamsRaw from '../data/uclTeams.json';
+import type { PlayerConditionMap } from '../types/condition';
 import type { OtherLeagueSeasonState } from '../types/game';
 import type {
   Club,
@@ -16,6 +17,10 @@ import type {
   UclTeamEntry,
   UclTournamentState,
 } from '../types/ucl';
+import {
+  commitAiClubPostMatchConditions,
+  prepareAiClubLineupForMatch,
+} from './conditionEngine';
 import { buildAiClubRoster, getLeagueById, LEAGUES } from './dataLoader';
 import {
   simulateExtraTimeAndPenalties,
@@ -526,6 +531,8 @@ export function simulateUclLeaguePhaseRound(params: {
   userContext?: UserMatchContext;
   precomputedUserResult?: MatchResult | null;
   userClubId?: string;
+  conditionMap?: PlayerConditionMap;
+  excludeIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -538,6 +545,8 @@ export function simulateUclLeaguePhaseRound(params: {
     userContext,
     precomputedUserResult = null,
     userClubId = USER_CLUB_ID,
+    conditionMap,
+    excludeIds,
     rng = Math.random,
   } = params;
 
@@ -560,14 +569,32 @@ export function simulateUclLeaguePhaseRound(params: {
       fix.homeTeamId === userClubId || fix.awayTeamId === userClubId;
     const homeClub = clubsById[fix.homeTeamId];
     const awayClub = clubsById[fix.awayTeamId];
-    const homeRoster =
-      fix.homeTeamId === userClubId && userContext
-        ? userContext.starters
-        : ucl.aiRosters[fix.homeTeamId] ?? [];
-    const awayRoster =
-      fix.awayTeamId === userClubId && userContext
-        ? userContext.starters
-        : ucl.aiRosters[fix.awayTeamId] ?? [];
+    const homeIsUser = fix.homeTeamId === userClubId && Boolean(userContext);
+    const awayIsUser = fix.awayTeamId === userClubId && Boolean(userContext);
+
+    const homePrep = homeIsUser
+      ? null
+      : prepareAiClubLineupForMatch({
+          club: homeClub,
+          baseRoster: ucl.aiRosters[fix.homeTeamId] ?? [],
+          conditionMap,
+          excludeIds,
+        });
+    const awayPrep = awayIsUser
+      ? null
+      : prepareAiClubLineupForMatch({
+          club: awayClub,
+          baseRoster: ucl.aiRosters[fix.awayTeamId] ?? [],
+          conditionMap,
+          excludeIds,
+        });
+
+    const homeRoster = homeIsUser && userContext
+      ? userContext.starters
+      : homePrep?.effectiveStarters ?? ucl.aiRosters[fix.homeTeamId] ?? [];
+    const awayRoster = awayIsUser && userContext
+      ? userContext.starters
+      : awayPrep?.effectiveStarters ?? ucl.aiRosters[fix.awayTeamId] ?? [];
 
     let res: MatchResult;
     if (involvesUser && precomputedUserResult) {
@@ -602,6 +629,47 @@ export function simulateUclLeaguePhaseRound(params: {
         competition: 'ucl',
         competitionLabel,
       };
+    }
+
+    if (homePrep) {
+      commitAiClubPostMatchConditions({
+        club: homeClub,
+        rawStarters: homePrep.rawStarters,
+        fullClubSquad: homePrep.fullClubSquad,
+        conditionMap,
+        competition: 'ucl',
+        round: targetRound,
+        isShortRest: true,
+        outcome:
+          res.homeGoals > res.awayGoals
+            ? 'W'
+            : res.homeGoals < res.awayGoals
+              ? 'L'
+              : 'D',
+        goalDiff: res.homeGoals - res.awayGoals,
+        cleanSheet: res.awayGoals === 0,
+        rng,
+      });
+    }
+    if (awayPrep) {
+      commitAiClubPostMatchConditions({
+        club: awayClub,
+        rawStarters: awayPrep.rawStarters,
+        fullClubSquad: awayPrep.fullClubSquad,
+        conditionMap,
+        competition: 'ucl',
+        round: targetRound,
+        isShortRest: true,
+        outcome:
+          res.awayGoals > res.homeGoals
+            ? 'W'
+            : res.awayGoals < res.homeGoals
+              ? 'L'
+              : 'D',
+        goalDiff: res.awayGoals - res.homeGoals,
+        cleanSheet: res.homeGoals === 0,
+        rng,
+      });
     }
 
     if (involvesUser) {
@@ -757,6 +825,8 @@ export function advanceUclKnockoutLeg(params: {
   userContext?: UserMatchContext;
   precomputedUserResult?: MatchResult | null;
   userClubId?: string;
+  conditionMap?: PlayerConditionMap;
+  excludeIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -769,6 +839,8 @@ export function advanceUclKnockoutLeg(params: {
     userContext,
     precomputedUserResult = null,
     userClubId = USER_CLUB_ID,
+    conditionMap,
+    excludeIds,
     rng = Math.random,
   } = params;
 
@@ -796,6 +868,72 @@ export function advanceUclKnockoutLeg(params: {
   let userResult: MatchResult | null = null;
   let userEliminatedAt = ucl.userEliminatedAt;
 
+  const prepSide = (teamId: string) => {
+    if (teamId === userClubId && userContext) {
+      return { roster: userContext.starters, aiPrep: null };
+    }
+    const aiPrep = prepareAiClubLineupForMatch({
+      club: clubsById[teamId],
+      baseRoster: ucl.aiRosters[teamId] ?? [],
+      conditionMap,
+      excludeIds,
+    });
+    return { roster: aiPrep.effectiveStarters, aiPrep };
+  };
+
+  const commitSides = (
+    homeClub: Club,
+    awayClub: Club,
+    homeAiPrep: ReturnType<typeof prepareAiClubLineupForMatch> | null,
+    awayAiPrep: ReturnType<typeof prepareAiClubLineupForMatch> | null,
+    res: MatchResult,
+    roundNum: number,
+  ) => {
+    const wentToEt = Boolean(res.extraTime);
+    if (homeAiPrep) {
+      commitAiClubPostMatchConditions({
+        club: homeClub,
+        rawStarters: homeAiPrep.rawStarters,
+        fullClubSquad: homeAiPrep.fullClubSquad,
+        conditionMap,
+        competition: 'ucl',
+        round: roundNum,
+        isShortRest: true,
+        isExtraTime: wentToEt,
+        outcome:
+          res.homeGoals > res.awayGoals
+            ? 'W'
+            : res.homeGoals < res.awayGoals
+              ? 'L'
+              : 'D',
+        goalDiff: res.homeGoals - res.awayGoals,
+        cleanSheet: res.awayGoals === 0,
+        rng,
+      });
+    }
+    if (awayAiPrep) {
+      commitAiClubPostMatchConditions({
+        club: awayClub,
+        rawStarters: awayAiPrep.rawStarters,
+        fullClubSquad: awayAiPrep.fullClubSquad,
+        conditionMap,
+        competition: 'ucl',
+        round: roundNum,
+        isShortRest: true,
+        isExtraTime: wentToEt,
+        outcome:
+          res.awayGoals > res.homeGoals
+            ? 'W'
+            : res.awayGoals < res.homeGoals
+              ? 'L'
+              : 'D',
+        goalDiff: res.awayGoals - res.homeGoals,
+        cleanSheet: res.homeGoals === 0,
+        rng,
+      });
+    }
+  };
+
   const updatedTies: UclKnockoutTie[] = ucl.ties[stage].map((tie) => {
     const involvesUser =
       tie.teamAId === userClubId || tie.teamBId === userClubId;
@@ -803,14 +941,10 @@ export function advanceUclKnockoutLeg(params: {
     if (isFinal) {
       const homeClub = clubsById[tie.teamAId];
       const awayClub = clubsById[tie.teamBId];
-      const homeRoster =
-        tie.teamAId === userClubId && userContext
-          ? userContext.starters
-          : ucl.aiRosters[tie.teamAId] ?? [];
-      const awayRoster =
-        tie.teamBId === userClubId && userContext
-          ? userContext.starters
-          : ucl.aiRosters[tie.teamBId] ?? [];
+      const homeSide = prepSide(tie.teamAId);
+      const awaySide = prepSide(tie.teamBId);
+      const homeRoster = homeSide.roster;
+      const awayRoster = awaySide.roster;
 
       let res: MatchResult;
       if (involvesUser && precomputedUserResult) {
@@ -865,6 +999,8 @@ export function advanceUclKnockoutLeg(params: {
             : tagged;
       }
 
+      commitSides(homeClub, awayClub, homeSide.aiPrep, awaySide.aiPrep, res, 16);
+
       const winnerId = res.extraTime
         ? res.extraTime.winnerTeamId
         : res.homeGoals > res.awayGoals
@@ -900,14 +1036,11 @@ export function advanceUclKnockoutLeg(params: {
       // Leg 1: Team B (home) vs Team A (away)
       const homeClub = clubsById[tie.teamBId];
       const awayClub = clubsById[tie.teamAId];
-      const homeRoster =
-        tie.teamBId === userClubId && userContext
-          ? userContext.starters
-          : ucl.aiRosters[tie.teamBId] ?? [];
-      const awayRoster =
-        tie.teamAId === userClubId && userContext
-          ? userContext.starters
-          : ucl.aiRosters[tie.teamAId] ?? [];
+      const homeSide = prepSide(tie.teamBId);
+      const awaySide = prepSide(tie.teamAId);
+      const homeRoster = homeSide.roster;
+      const awayRoster = awaySide.roster;
+      const roundNum = 9 + UCL_KNOCKOUT_ORDER.indexOf(stage) * 2;
 
       let res: MatchResult;
       if (involvesUser && precomputedUserResult) {
@@ -920,7 +1053,7 @@ export function advanceUclKnockoutLeg(params: {
         const base = simulateMatch(
           {
             id: `${tie.id}-leg1`,
-            round: 9 + UCL_KNOCKOUT_ORDER.indexOf(stage) * 2,
+            round: roundNum,
             homeTeamId: tie.teamBId,
             awayTeamId: tie.teamAId,
             played: false,
@@ -934,6 +1067,8 @@ export function advanceUclKnockoutLeg(params: {
         );
         res = { ...base, competition: 'ucl', competitionLabel };
       }
+
+      commitSides(homeClub, awayClub, homeSide.aiPrep, awaySide.aiPrep, res, roundNum);
 
       if (involvesUser) userResult = res;
       legResults.push(res);
@@ -949,14 +1084,11 @@ export function advanceUclKnockoutLeg(params: {
     // Leg 2: Team A (home) vs Team B (away) — Aggregate decider with ET & PK!
     const homeClub = clubsById[tie.teamAId];
     const awayClub = clubsById[tie.teamBId];
-    const homeRoster =
-      tie.teamAId === userClubId && userContext
-        ? userContext.starters
-        : ucl.aiRosters[tie.teamAId] ?? [];
-    const awayRoster =
-      tie.teamBId === userClubId && userContext
-        ? userContext.starters
-        : ucl.aiRosters[tie.teamBId] ?? [];
+    const homeSide = prepSide(tie.teamAId);
+    const awaySide = prepSide(tie.teamBId);
+    const homeRoster = homeSide.roster;
+    const awayRoster = awaySide.roster;
+    const roundNum = 10 + UCL_KNOCKOUT_ORDER.indexOf(stage) * 2;
 
     const prevAggA = tie.aggTeamA;
     const prevAggB = tie.aggTeamB;
@@ -988,7 +1120,7 @@ export function advanceUclKnockoutLeg(params: {
       const base = simulateMatch(
         {
           id: `${tie.id}-leg2`,
-          round: 10 + UCL_KNOCKOUT_ORDER.indexOf(stage) * 2,
+          round: roundNum,
           homeTeamId: tie.teamAId,
           awayTeamId: tie.teamBId,
           played: false,
@@ -1020,6 +1152,8 @@ export function advanceUclKnockoutLeg(params: {
             })
           : tagged;
     }
+
+    commitSides(homeClub, awayClub, homeSide.aiPrep, awaySide.aiPrep, res, roundNum);
 
     const finalAggA = prevAggA + res.homeGoals;
     const finalAggB = prevAggB + res.awayGoals;
@@ -1119,6 +1253,8 @@ export function simulateUclToCompletion(params: {
   uclPlayerStats: Record<string, PlayerSeasonStats>;
   userContext?: UserMatchContext;
   userClubId?: string;
+  conditionMap?: PlayerConditionMap;
+  excludeIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -1142,6 +1278,8 @@ export function simulateUclToCompletion(params: {
         uclPlayerStats: curStats,
         userContext: params.userContext,
         userClubId: params.userClubId,
+        conditionMap: params.conditionMap,
+        excludeIds: params.excludeIds,
         rng,
       });
       curUcl = res.ucl;
@@ -1153,6 +1291,8 @@ export function simulateUclToCompletion(params: {
         uclPlayerStats: curStats,
         userContext: params.userContext,
         userClubId: params.userClubId,
+        conditionMap: params.conditionMap,
+        excludeIds: params.excludeIds,
         rng,
       });
       curUcl = res.ucl;
@@ -1188,6 +1328,8 @@ export function simulateUclLeaguePhaseToEnd(params: {
   uclPlayerStats: Record<string, PlayerSeasonStats>;
   userContext?: UserMatchContext;
   userClubId?: string;
+  conditionMap?: PlayerConditionMap;
+  excludeIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -1212,6 +1354,8 @@ export function simulateUclLeaguePhaseToEnd(params: {
       uclPlayerStats: curStats,
       userContext: params.userContext,
       userClubId,
+      conditionMap: params.conditionMap,
+      excludeIds: params.excludeIds,
       rng,
     });
     curUcl = res.ucl;
@@ -1252,6 +1396,8 @@ export function advanceUclPlayoffToCompletion(params: {
   ucl: UclTournamentState;
   uclPlayerStats: Record<string, PlayerSeasonStats>;
   userClubId?: string;
+  conditionMap?: PlayerConditionMap;
+  excludeIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -1267,6 +1413,8 @@ export function advanceUclPlayoffToCompletion(params: {
       ucl: curUcl,
       uclPlayerStats: curStats,
       userClubId: params.userClubId,
+      conditionMap: params.conditionMap,
+      excludeIds: params.excludeIds,
       rng,
     });
     curUcl = res.ucl;

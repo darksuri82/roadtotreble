@@ -55,9 +55,11 @@ export function computePlayerStaminaPct(params: {
   subPosition: SubPosition;
   tactic: TacticId;
   minutesPlayed: number;
+  initialStaminaCap?: number;
 }): number {
-  const { staminaStat, subPosition, tactic, minutesPlayed } = params;
-  if (minutesPlayed <= 0) return 100;
+  const { staminaStat, subPosition, tactic, minutesPlayed, initialStaminaCap = 100 } = params;
+  const startCap = Math.max(50, Math.min(100, Math.round(initialStaminaCap)));
+  if (minutesPlayed <= 0) return startCap;
 
   const clampedStat = Math.max(60, Math.min(99, staminaStat));
   // STA 60 -> 1.48x drain, STA 82 -> 1.07x drain, STA 99 -> 0.76x drain
@@ -66,8 +68,8 @@ export function computePlayerStaminaPct(params: {
   const tacticMult = TACTIC_STAMINA_MULT[tactic] ?? 1.0;
 
   const drainPerMin = 0.44 * statFactor * posMult * tacticMult;
-  const remaining = 100 - drainPerMin * minutesPlayed;
-  return Math.max(15, Math.min(100, Math.round(remaining)));
+  const remaining = startCap - drainPerMin * minutesPlayed;
+  return Math.max(15, Math.min(startCap, Math.round(remaining)));
 }
 
 /**

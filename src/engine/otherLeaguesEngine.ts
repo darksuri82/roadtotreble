@@ -1,3 +1,4 @@
+import type { PlayerConditionMap } from '../types/condition';
 import type { DomesticCupState } from '../types/cup';
 import type { OtherLeagueSeasonState } from '../types/game';
 import type {
@@ -9,6 +10,10 @@ import type {
 } from '../types/league';
 import type { UclQualifiedLeagueEntry } from '../types/phase2';
 import type { Player } from '../types/player';
+import {
+  commitAiClubPostMatchConditions,
+  prepareAiClubLineupForMatch,
+} from './conditionEngine';
 import {
   advanceCupStage,
   createDomesticCupState,
@@ -164,6 +169,7 @@ function simulateOtherLeagueOneRound(
   rawLeagueState: OtherLeagueSeasonState,
   rng: () => number,
   excludeIds?: Set<string>,
+  conditionMap?: PlayerConditionMap,
 ): OtherLeagueSeasonState {
   const leagueState = ensureLeagueHydrated(rawLeagueState, excludeIds, rng);
   const nextRound = leagueState.currentRound + 1;
@@ -178,17 +184,63 @@ function simulateOtherLeagueOneRound(
     if (fixture.round !== nextRound || fixture.played) return fixture;
     const homeClub = clubsById[fixture.homeTeamId];
     const awayClub = clubsById[fixture.awayTeamId];
-    const homeRoster = aiRosters[fixture.homeTeamId] ?? [];
-    const awayRoster = aiRosters[fixture.awayTeamId] ?? [];
+    const homePrep = prepareAiClubLineupForMatch({
+      club: homeClub,
+      baseRoster: aiRosters[fixture.homeTeamId] ?? [],
+      conditionMap,
+      excludeIds,
+    });
+    const awayPrep = prepareAiClubLineupForMatch({
+      club: awayClub,
+      baseRoster: aiRosters[fixture.awayTeamId] ?? [],
+      conditionMap,
+      excludeIds,
+    });
     const result = simulateMatch(
       fixture,
       homeClub,
       awayClub,
-      homeRoster,
-      awayRoster,
+      homePrep.effectiveStarters,
+      awayPrep.effectiveStarters,
       undefined,
       rng,
     );
+    commitAiClubPostMatchConditions({
+      club: homeClub,
+      rawStarters: homePrep.rawStarters,
+      fullClubSquad: homePrep.fullClubSquad,
+      conditionMap,
+      competition: 'league',
+      round: nextRound,
+      isShortRest: false,
+      outcome:
+        result.homeGoals > result.awayGoals
+          ? 'W'
+          : result.homeGoals < result.awayGoals
+            ? 'L'
+            : 'D',
+      goalDiff: result.homeGoals - result.awayGoals,
+      cleanSheet: result.awayGoals === 0,
+      rng,
+    });
+    commitAiClubPostMatchConditions({
+      club: awayClub,
+      rawStarters: awayPrep.rawStarters,
+      fullClubSquad: awayPrep.fullClubSquad,
+      conditionMap,
+      competition: 'league',
+      round: nextRound,
+      isShortRest: false,
+      outcome:
+        result.awayGoals > result.homeGoals
+          ? 'W'
+          : result.awayGoals < result.homeGoals
+            ? 'L'
+            : 'D',
+      goalDiff: result.awayGoals - result.homeGoals,
+      cleanSheet: result.homeGoals === 0,
+      rng,
+    });
     roundResults.push(result);
     return { ...fixture, played: true };
   });
@@ -216,6 +268,8 @@ function simulateOtherLeagueOneRound(
         aiRosters,
         cupPlayerStats: nextCupStats,
         userClubId: NO_USER_ID,
+        conditionMap,
+        excludeIds,
         rng,
       });
       nextCup = compactCupForStorage(advanced.cup);
@@ -245,6 +299,7 @@ export function advanceOtherLeaguesToProgress(
   userTotalRounds: number,
   rng: () => number = Math.random,
   excludeIds?: Set<string>,
+  conditionMap?: PlayerConditionMap,
 ): Partial<Record<LeagueId, OtherLeagueSeasonState>> {
   if (!otherLeagues) return {};
 
@@ -270,7 +325,7 @@ export function advanceOtherLeaguesToProgress(
 
     let updated = ensureLeagueHydrated(leagueState, excludeIds, rng);
     while (updated.currentRound < targetRound) {
-      updated = simulateOtherLeagueOneRound(updated, rng, excludeIds);
+      updated = simulateOtherLeagueOneRound(updated, rng, excludeIds, conditionMap);
     }
 
     // Guarantee domestic cup finishes when the background league completes all rounds
@@ -290,6 +345,8 @@ export function advanceOtherLeaguesToProgress(
             aiRosters: updated.aiRosters ?? {},
             cupPlayerStats: cupStats,
             userClubId: NO_USER_ID,
+            conditionMap,
+            excludeIds,
             rng,
           });
           cup = compactCupForStorage(advanced.cup);

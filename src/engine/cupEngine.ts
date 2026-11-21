@@ -1,3 +1,4 @@
+import type { PlayerConditionMap } from '../types/condition';
 import type {
   CupMatchNode,
   CupMeta,
@@ -12,6 +13,10 @@ import type {
   PlayerSeasonStats,
 } from '../types/league';
 import type { Player } from '../types/player';
+import {
+  commitAiClubPostMatchConditions,
+  prepareAiClubLineupForMatch,
+} from './conditionEngine';
 import {
   simulateExtraTimeAndPenalties,
   simulateMatch,
@@ -217,6 +222,8 @@ export function advanceCupStage(params: {
   userContext?: UserMatchContext;
   precomputedUserResult?: MatchResult | null;
   userClubId?: string;
+  conditionMap?: PlayerConditionMap;
+  excludeIds?: Set<string>;
   rng?: () => number;
 }): AdvanceCupStageResult {
   const {
@@ -228,6 +235,8 @@ export function advanceCupStage(params: {
     userContext,
     precomputedUserResult = null,
     userClubId = USER_CLUB_ID,
+    conditionMap,
+    excludeIds,
     rng = Math.random,
   } = params;
 
@@ -251,14 +260,32 @@ export function advanceCupStage(params: {
       node.homeTeamId === userClubId || node.awayTeamId === userClubId;
     const homeClub = clubsById[node.homeTeamId];
     const awayClub = clubsById[node.awayTeamId];
-    const homeRoster =
-      node.homeTeamId === userClubId && userContext
-        ? userContext.starters
-        : aiRosters[node.homeTeamId] ?? [];
-    const awayRoster =
-      node.awayTeamId === userClubId && userContext
-        ? userContext.starters
-        : aiRosters[node.awayTeamId] ?? [];
+    const homeIsUser = node.homeTeamId === userClubId && Boolean(userContext);
+    const awayIsUser = node.awayTeamId === userClubId && Boolean(userContext);
+
+    const homePrep = homeIsUser
+      ? null
+      : prepareAiClubLineupForMatch({
+          club: homeClub,
+          baseRoster: aiRosters[node.homeTeamId] ?? [],
+          conditionMap,
+          excludeIds,
+        });
+    const awayPrep = awayIsUser
+      ? null
+      : prepareAiClubLineupForMatch({
+          club: awayClub,
+          baseRoster: aiRosters[node.awayTeamId] ?? [],
+          conditionMap,
+          excludeIds,
+        });
+
+    const homeRoster = homeIsUser && userContext
+      ? userContext.starters
+      : homePrep?.effectiveStarters ?? aiRosters[node.homeTeamId] ?? [];
+    const awayRoster = awayIsUser && userContext
+      ? userContext.starters
+      : awayPrep?.effectiveStarters ?? aiRosters[node.awayTeamId] ?? [];
 
     let finalResult: MatchResult;
     if (involvesUser && precomputedUserResult) {
@@ -310,6 +337,50 @@ export function advanceCupStage(params: {
               rng,
             })
           : tagged;
+    }
+
+    const wentToEt = Boolean(finalResult.extraTime);
+    if (homePrep) {
+      commitAiClubPostMatchConditions({
+        club: homeClub,
+        rawStarters: homePrep.rawStarters,
+        fullClubSquad: homePrep.fullClubSquad,
+        conditionMap,
+        competition: 'cup',
+        round: stageNum,
+        isShortRest: true,
+        isExtraTime: wentToEt,
+        outcome:
+          finalResult.homeGoals > finalResult.awayGoals
+            ? 'W'
+            : finalResult.homeGoals < finalResult.awayGoals
+              ? 'L'
+              : 'D',
+        goalDiff: finalResult.homeGoals - finalResult.awayGoals,
+        cleanSheet: finalResult.awayGoals === 0,
+        rng,
+      });
+    }
+    if (awayPrep) {
+      commitAiClubPostMatchConditions({
+        club: awayClub,
+        rawStarters: awayPrep.rawStarters,
+        fullClubSquad: awayPrep.fullClubSquad,
+        conditionMap,
+        competition: 'cup',
+        round: stageNum,
+        isShortRest: true,
+        isExtraTime: wentToEt,
+        outcome:
+          finalResult.awayGoals > finalResult.homeGoals
+            ? 'W'
+            : finalResult.awayGoals < finalResult.homeGoals
+              ? 'L'
+              : 'D',
+        goalDiff: finalResult.awayGoals - finalResult.homeGoals,
+        cleanSheet: finalResult.homeGoals === 0,
+        rng,
+      });
     }
 
     const winnerId = resolveKnockoutWinnerId(finalResult);

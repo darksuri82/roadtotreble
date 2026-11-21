@@ -20,6 +20,29 @@ export const ALL_CLUBS_WITH_LEAGUE: ClubWithLeague[] = LEAGUES.flatMap((l) =>
   l.clubs.map((club) => ({ club, leagueId: l.id })),
 );
 
+const ACTIVE_PLAYERS_BY_CLUB = new Map<string, Player[]>();
+for (const p of ACTIVE_PLAYERS) {
+  const arr = ACTIVE_PLAYERS_BY_CLUB.get(p.club);
+  if (arr) arr.push(p);
+  else ACTIVE_PLAYERS_BY_CLUB.set(p.club, [p]);
+}
+for (const arr of ACTIVE_PLAYERS_BY_CLUB.values()) {
+  arr.sort((a, b) => b.ovr - a.ovr);
+}
+
+/**
+ * Returns a club's full real squad depth pool (typically 18-24 players),
+ * excluding any globally owned/departed IDs, for AI rotation & injury cover.
+ */
+export function getClubRealDepthPool(
+  clubName: string,
+  excludeIds?: Set<string>,
+): Player[] {
+  const list = ACTIVE_PLAYERS_BY_CLUB.get(clubName) ?? [];
+  if (!excludeIds || excludeIds.size === 0) return list;
+  return list.filter((p) => !excludeIds.has(p.id));
+}
+
 export function getLeagueById(leagueId: LeagueId): LeagueData {
   const league = LEAGUES.find((l) => l.id === leagueId);
   if (!league) {
