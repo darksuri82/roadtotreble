@@ -22,8 +22,8 @@ function getTagStyle(tag: PatchNoteEntry['tag']): string {
 
 export function PatchNotesModal({ onClose }: PatchNotesModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-5 backdrop-blur-sm">
-      <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-700/80 bg-[#0f1621] shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-5">
+      <div className="flex max-h-[88dvh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-700/80 bg-[#0f1621] shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-[#0a0f17] px-5 py-4">
           <div className="flex items-center gap-3">
@@ -40,7 +40,7 @@ export function PatchNotesModal({ onClose }: PatchNotesModalProps) {
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                v1.0 출시부터 Phase 2 완성 및 최신 UI 개편까지의 전체 업데이트 기록
+                v1.0 출시부터 최신 {CURRENT_APP_VERSION}까지의 전체 기능·밸런스 업데이트 기록
               </p>
             </div>
           </div>

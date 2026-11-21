@@ -12,6 +12,7 @@
 - **Testing & Lint**: Vitest (`npm run test` — **19개 파일 / 70개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
+- **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **v3.1 주요 신규 모듈·기능**:
   - **누적 피로도(Fatigue) 완전 제거 & 단독 부상 확률 재조정**: 우리 팀·AI 5대 리그 전체의 경기 간 누적 피로도 계산·OVR 페널티·UI 게이지/배지 완전 삭제(부상·사기·단일 경기 내부 체력 `staminaEngine.ts`는 그대로 유지), 단독 부상 기본 확률 재조정(경상 `0.42%` / 중상 `0.030%` / 치명적 중상 `0.006%`, 경상 강행 악화 고정 `6%`, 경기당 팀 신규 부상 최대 1명 캡, 부상 시 사기 `-1/-2/-3` 하락)
   - **포메이션 피치 기반 부상 교체 팝업 (`InjuryAlertModal.tsx`, `PitchBoard.tsx`)**: `PitchBoard`(`compact`) 재사용 + 부상 슬롯 빨간 테두리 강조(`highlightedPlayerIds`) + 선발 간 자유 포지션 스왑 & 실시간 대상 슬롯 포지션 적합도 벤치 추천 패널(`recommendBenchReplacements`)
