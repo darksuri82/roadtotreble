@@ -37,7 +37,18 @@ import {
   TACTICS,
 } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
-import type { Club, TacticId } from '../../types/league';
+import type {
+  ChemistryResult,
+  FormationId,
+  ManagerRouletteState,
+  UserClubProfile,
+} from '../../types/game';
+import type {
+  Club,
+  LiveHalftimeState,
+  PlayerSeasonStats,
+  TacticId,
+} from '../../types/league';
 import type { Player, SubPosition } from '../../types/player';
 import { ClubTag } from '../common/ClubTag';
 import { JerseySvg } from '../common/JerseySvg';
@@ -53,8 +64,62 @@ import {
 } from './PitchMatch2D';
 import type { DramaticHighlightPayload } from './PitchMatch2D';
 
+export interface LiveMatchBroadcastOverride {
+  state: {
+    formation: FormationId;
+    defaultTactic: TacticId;
+    starters: (Player | null)[];
+    bench: (Player | null)[];
+    manager: ManagerRouletteState;
+    userClub: UserClubProfile;
+    season: {
+      liveHalftime: LiveHalftimeState | null;
+      allPlayerStats?: Record<string, PlayerSeasonStats>;
+    };
+  };
+  chemistry: ChemistryResult;
+  changeFormation: (formation: FormationId) => void;
+  optimizeHalftimeStarters: (tactic?: TacticId) => void;
+  swapSquadPositions: (from: SlotRef, to: SlotRef) => void;
+  enterHalftimeLocker: () => void;
+  startSecondHalfBroadcast: (params: {
+    secondHalfTactic: TacticId;
+    subPlayerIds?: string[];
+    firstHalfStarters?: Player[];
+  }) => void;
+  applySecondHalfLiveSub: (params: {
+    minute: number;
+    subs: {
+      starterIndex?: number;
+      benchIndex?: number;
+      outPlayerId?: string;
+      inPlayerId?: string;
+    }[];
+    nextStarters?: (Player | null)[];
+    nextBench?: (Player | null)[];
+    firstHalfStarters: Player[];
+    halftimeSubIds: string[];
+  }) => void;
+  enterExtraTimeBreak: () => void;
+  startExtraTimeBroadcast: (params?: {
+    etTactic?: TacticId;
+    extraSub?: { starterIndex: number; benchIndex: number };
+    firstHalfStarters?: Player[];
+    halftimeSubIds?: string[];
+  }) => void;
+  enterEtHalftimeLocker: () => void;
+  startEtSecondHalfBroadcast: (params?: {
+    etTactic?: TacticId;
+    firstHalfStarters?: Player[];
+    halftimeSubIds?: string[];
+  }) => void;
+  enterPenaltyShootout: () => void;
+  commitLiveMatch: (secondHalfTactic?: TacticId) => void;
+}
+
 interface LiveMatchBroadcastProps {
   clubsById: Record<string, Club>;
+  override?: LiveMatchBroadcastOverride;
 }
 
 type BroadcastSpeed = 1 | 2 | 4;
@@ -86,23 +151,49 @@ function getStaminaTextColor(pct: number): string {
   return 'text-rose-400';
 }
 
-export function LiveMatchBroadcast({ clubsById }: LiveMatchBroadcastProps) {
-  const {
-    state,
-    chemistry,
-    changeFormation,
-    optimizeHalftimeStarters,
-    swapSquadPositions,
-    enterHalftimeLocker,
-    startSecondHalfBroadcast,
-    applySecondHalfLiveSub,
-    enterExtraTimeBreak,
-    startExtraTimeBroadcast,
-    enterEtHalftimeLocker,
-    startEtSecondHalfBroadcast,
-    enterPenaltyShootout,
-    commitLiveMatch,
-  } = useGame();
+export function LiveMatchBroadcast({
+  clubsById,
+  override,
+}: LiveMatchBroadcastProps) {
+  const gameCtx = useGame();
+  const state = override ? override.state : gameCtx.state;
+  const chemistry = override ? override.chemistry : gameCtx.chemistry;
+  const changeFormation = override
+    ? override.changeFormation
+    : gameCtx.changeFormation;
+  const optimizeHalftimeStarters = override
+    ? override.optimizeHalftimeStarters
+    : gameCtx.optimizeHalftimeStarters;
+  const swapSquadPositions = override
+    ? override.swapSquadPositions
+    : gameCtx.swapSquadPositions;
+  const enterHalftimeLocker = override
+    ? override.enterHalftimeLocker
+    : gameCtx.enterHalftimeLocker;
+  const startSecondHalfBroadcast = override
+    ? override.startSecondHalfBroadcast
+    : gameCtx.startSecondHalfBroadcast;
+  const applySecondHalfLiveSub = override
+    ? override.applySecondHalfLiveSub
+    : gameCtx.applySecondHalfLiveSub;
+  const enterExtraTimeBreak = override
+    ? override.enterExtraTimeBreak
+    : gameCtx.enterExtraTimeBreak;
+  const startExtraTimeBroadcast = override
+    ? override.startExtraTimeBroadcast
+    : gameCtx.startExtraTimeBroadcast;
+  const enterEtHalftimeLocker = override
+    ? override.enterEtHalftimeLocker
+    : gameCtx.enterEtHalftimeLocker;
+  const startEtSecondHalfBroadcast = override
+    ? override.startEtSecondHalfBroadcast
+    : gameCtx.startEtSecondHalfBroadcast;
+  const enterPenaltyShootout = override
+    ? override.enterPenaltyShootout
+    : gameCtx.enterPenaltyShootout;
+  const commitLiveMatch = override
+    ? override.commitLiveMatch
+    : gameCtx.commitLiveMatch;
 
   const halftime = state.season?.liveHalftime ?? null;
 

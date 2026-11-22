@@ -16,18 +16,21 @@ import type {
   TacticId,
 } from '../types/league';
 import type {
+  DreamMatchRecord,
   HallOfFameEntry,
   HallOfFameMatchSummary,
+  HallOfFameSquadMember,
   LegacyStorageState,
   SeasonAchievementTrackers,
   SeasonScoreBreakdown,
   UnlockedAchievementRecord,
 } from '../types/legacy';
 import { buildHallOfFameMember } from '../types/legacy';
-import type { Player } from '../types/player';
+import type { Player, Position, SubPosition } from '../types/player';
 import type { UclTournamentState } from '../types/ucl';
+import { getPlayerAttributes } from './attributeEngine';
 import { didUserWinCup, getUserCupResultLabel } from './cupEngine';
-import { getLeagueById } from './dataLoader';
+import { ACTIVE_PLAYERS, getLeagueById, LEGEND_PLAYERS } from './dataLoader';
 import { USER_CLUB_ID } from './matchEngine';
 import { getUserRank } from './standingsEngine';
 import { didUserWinUcl, getUserUclResultLabel } from './uclEngine';
@@ -39,6 +42,7 @@ export function createEmptyLegacyState(): LegacyStorageState {
     version: 1,
     hallOfFame: [],
     unlockedAchievements: {},
+    dreamMatchRecords: {},
   };
 }
 
@@ -65,6 +69,11 @@ export function loadLegacyState(): LegacyStorageState {
         parsed.unlockedAchievements &&
         typeof parsed.unlockedAchievements === 'object'
           ? parsed.unlockedAchievements
+          : {},
+      dreamMatchRecords:
+        parsed.dreamMatchRecords &&
+        typeof parsed.dreamMatchRecords === 'object'
+          ? parsed.dreamMatchRecords
           : {},
     };
   } catch {
@@ -93,18 +102,60 @@ export interface SeasonScoreInput {
   leaguePlayed: number;
   leagueGoalDifference: number;
   leagueLosses: number;
+  leagueGoalsFor?: number;
+  leagueGoalsAgainst?: number;
   finalLeagueRank: number;
   cup: DomesticCupState | null;
   ucl: UclTournamentState | null;
+  uclPerfectWin?: boolean;
+  uclUnbeatenWin?: boolean;
   teamAvgOvr: number;
+  chemistry?: number;
+  avgSynergyOvrBonus?: number;
+  managerSynergyCount?: number;
+  managerRating?: number;
   awards?: SeasonAwards | null;
   globalAwards?: GlobalSeasonAwards | null;
   userClubId?: string;
 }
 
 /**
+ * Evaluates a user manager's seasonal managerial rating (80..99) on the exact same scale
+ * as historical legendary managers (91..99), based on trophies, unbeaten runs, chemistry & synergy.
+ */
+export function computeUserSeasonManagerRating(params: {
+  finalLeagueRank: number;
+  wonCup: boolean;
+  wonUcl: boolean;
+  leagueLosses: number;
+  leaguePlayed: number;
+  converted38Points: number;
+  chemistry: number;
+  managerSynergyCount: number;
+}): number {
+  let rating = 80;
+  if (params.finalLeagueRank === 1) rating += 6;
+  else if (params.finalLeagueRank === 2) rating += 3;
+  else if (params.finalLeagueRank <= 4) rating += 2;
+  if (params.wonCup) rating += 2;
+  if (params.wonUcl) rating += 5;
+  if (params.finalLeagueRank === 1 && params.leagueLosses === 0 && params.leaguePlayed >= 34) {
+    rating += 3;
+  }
+  if (params.converted38Points >= 98) rating += 2;
+  else if (params.converted38Points >= 90) rating += 1;
+  if (params.chemistry >= 90) rating += 2;
+  else if (params.chemistry >= 80) rating += 1;
+  if (params.managerSynergyCount >= 7) rating += 2;
+  else if (params.managerSynergyCount >= 4) rating += 1;
+  return Math.max(80, Math.min(99, rating));
+}
+
+/**
  * Computes a fair cross-league Season Score normalizing 34-round (Bundesliga / Ligue 1)
- * and 38-round (EPL / La Liga / Serie A) leagues via PPG * 38, plus individual awards bonuses!
+ * and 38-round (EPL / La Liga / Serie A) leagues via PPG * 38, plus historic milestone bonuses,
+ * squad OVR/chemistry/manager synergy craft bonuses, and individual awards bonuses!
+ * Identical formula is applied to BOTH User Teams and Historical Benchmark Teams.
  */
 export function computeSeasonScore(
   input: SeasonScoreInput,
@@ -114,10 +165,18 @@ export function computeSeasonScore(
     leaguePlayed,
     leagueGoalDifference,
     leagueLosses,
+    leagueGoalsFor,
+    leagueGoalsAgainst,
     finalLeagueRank,
     cup,
     ucl,
+    uclPerfectWin = false,
+    uclUnbeatenWin = false,
     teamAvgOvr,
+    chemistry,
+    avgSynergyOvrBonus,
+    managerSynergyCount,
+    managerRating,
     awards = null,
     globalAwards = null,
     userClubId = USER_CLUB_ID,
@@ -129,7 +188,7 @@ export function computeSeasonScore(
   const gdNormalized = (leagueGoalDifference / safePlayed) * 38;
   const leagueConvertedScore = Math.max(
     0,
-    Math.round(converted38Points * 25 + Math.max(-150, gdNormalized * 3.5)),
+    Math.round(converted38Points * 26 + Math.max(-150, gdNormalized * 4.5)),
   );
 
   // League Rank Bonus
@@ -162,17 +221,59 @@ export function computeSeasonScore(
     else if (ucl.userEliminatedAt === 'league_phase') uclBonus = 60;
   }
 
-  // Honors Bonus (Treble / Double / League Unbeaten)
+  // Honors & Historic Milestones Bonus (38R-normalized for 34R/38R fairness)
   const wonLeague = finalLeagueRank === 1;
   const wonCup = didUserWinCup(cup, userClubId);
   const wonUcl = didUserWinUcl(ucl, userClubId);
   const trophyCount = (wonLeague ? 1 : 0) + (wonCup ? 1 : 0) + (wonUcl ? 1 : 0);
 
   let honorsBonus = 0;
-  if (trophyCount === 3) honorsBonus += 1500; // Treble
-  else if (trophyCount === 2) honorsBonus += 550; // Double
+  const honorsBonusDetails: string[] = [];
+  if (trophyCount === 3) {
+    honorsBonus += 1500;
+    honorsBonusDetails.push('트레블 +1,500');
+  } else if (trophyCount === 2) {
+    honorsBonus += 600;
+    honorsBonusDetails.push('더블 +600');
+  }
   if (wonLeague && leagueLosses === 0 && leaguePlayed >= 34) {
-    honorsBonus += 750; // Invincible League Champion
+    honorsBonus += 1200;
+    honorsBonusDetails.push('리그 무패 우승 +1,200');
+  }
+  if (wonLeague && leaguePlayed >= 34) {
+    if (converted38Points >= 100) {
+      honorsBonus += 900;
+      honorsBonusDetails.push('센추리온즈(환산 100점+) +900');
+    } else if (converted38Points >= 95) {
+      honorsBonus += 450;
+      honorsBonusDetails.push('압도적 우승(환산 95점+) +450');
+    }
+  }
+  if (typeof leagueGoalsFor === 'number' && leaguePlayed >= 34) {
+    const gf38 = (leagueGoalsFor / safePlayed) * 38;
+    if (gf38 >= 100) {
+      honorsBonus += 400;
+      honorsBonusDetails.push('역사적 화력(환산 100득점+) +400');
+    }
+  }
+  if (wonLeague && typeof leagueGoalsAgainst === 'number' && leaguePlayed >= 34) {
+    const ga38 = (leagueGoalsAgainst / safePlayed) * 38;
+    if (ga38 <= 18) {
+      honorsBonus += 800;
+      honorsBonusDetails.push('철벽 수비(환산 18실점 이하) +800');
+    } else if (ga38 <= 22) {
+      honorsBonus += 350;
+      honorsBonusDetails.push('최소 실점급(환산 22실점 이하) +350');
+    }
+  }
+  if (wonUcl) {
+    if (uclPerfectWin) {
+      honorsBonus += 850;
+      honorsBonusDetails.push('UCL 전승 우승 +850');
+    } else if (uclUnbeatenWin) {
+      honorsBonus += 400;
+      honorsBonusDetails.push('UCL 무패 우승 +400');
+    }
   }
 
   // Underdog Bonus (lower avg OVR achieving Top 4 / Title / UCL deep run)
@@ -180,8 +281,52 @@ export function computeSeasonScore(
   if (teamAvgOvr < 85 && (finalLeagueRank <= 4 || wonCup || wonUcl)) {
     const ovrGap = Math.max(0, 85 - teamAvgOvr);
     const achievementMult =
-      wonUcl || wonLeague ? 85 : finalLeagueRank <= 4 ? 45 : 30;
-    underdogBonus = Math.min(900, Math.round(ovrGap * achievementMult));
+      wonUcl || wonLeague ? 145 : finalLeagueRank <= 4 ? 55 : 35;
+    const baseUnderdog = Math.round(ovrGap * achievementMult);
+    const miracleBonus =
+      (wonUcl || wonLeague) && teamAvgOvr <= 82
+        ? Math.round((82 - teamAvgOvr) * 220)
+        : 0;
+    underdogBonus = Math.min(1750, baseUnderdog + miracleBonus);
+  }
+
+  // Squad Craft & Manager Synergy Bonus (OVR + Team Chemistry + Manager Synergy + Manager Stature)
+  let squadCraftBonus = 0;
+  const squadCraftDetails: string[] = [];
+  if (teamAvgOvr >= 85) {
+    const ovrPts = Math.round((teamAvgOvr - 84) * 55);
+    if (ovrPts > 0) {
+      squadCraftBonus += ovrPts;
+      squadCraftDetails.push(`스쿼드 OVR ${teamAvgOvr.toFixed(1)} +${ovrPts}`);
+    }
+  }
+  if (typeof chemistry === 'number' && chemistry >= 70) {
+    const chemPts = Math.round((chemistry - 65) * 7);
+    if (chemPts > 0) {
+      squadCraftBonus += chemPts;
+      squadCraftDetails.push(`팀 케미 ${Math.round(chemistry)} +${chemPts}`);
+    }
+  }
+  if (
+    typeof avgSynergyOvrBonus === 'number' ||
+    typeof managerSynergyCount === 'number'
+  ) {
+    const synPts =
+      Math.round((avgSynergyOvrBonus ?? 0) * 120) +
+      (managerSynergyCount ?? 0) * 18;
+    if (synPts > 0) {
+      squadCraftBonus += synPts;
+      squadCraftDetails.push(
+        `감독·전술 시너지(${managerSynergyCount ?? 0}명 · +${(avgSynergyOvrBonus ?? 0).toFixed(1)} OVR) +${synPts}`,
+      );
+    }
+  }
+  if (typeof managerRating === 'number' && managerRating >= 88) {
+    const mgrPts = Math.round((managerRating - 87) * 25);
+    if (mgrPts > 0) {
+      squadCraftBonus += mgrPts;
+      squadCraftDetails.push(`명장 지휘력 ${Math.round(managerRating)} +${mgrPts}`);
+    }
   }
 
   // Individual Awards Bonus (Ballon d'Or, World Best XI, League MVP, League Best XI)
@@ -228,6 +373,7 @@ export function computeSeasonScore(
     uclBonus +
     honorsBonus +
     underdogBonus +
+    squadCraftBonus +
     awardsBonus;
 
   let grade: SeasonScoreBreakdown['grade'];
@@ -245,7 +391,10 @@ export function computeSeasonScore(
     cupBonus,
     uclBonus,
     honorsBonus,
+    honorsBonusDetails,
     underdogBonus,
+    squadCraftBonus,
+    squadCraftDetails,
     awardsBonus,
     awardsBonusDetails,
     totalScore,
@@ -547,6 +696,7 @@ export function archiveSeasonToHallOfFame(params: {
   managerName?: string;
   managerAvatar?: ManagerAvatarConfig;
   managerTraitId: ManagerTraitId | null;
+  managerRating?: number;
   leagueId: LeagueId;
   formation: FormationId;
   defaultTactic: TacticId;
@@ -556,6 +706,8 @@ export function archiveSeasonToHallOfFame(params: {
   ucl: UclTournamentState | null;
   teamAvgOvr: number;
   chemistry: number;
+  avgSynergyOvrBonus?: number;
+  managerSynergyCount?: number;
   seasonScore: SeasonScoreBreakdown;
   awards?: SeasonAwards | null;
   globalAwards?: GlobalSeasonAwards | null;
@@ -571,6 +723,7 @@ export function archiveSeasonToHallOfFame(params: {
     managerName,
     managerAvatar,
     managerTraitId,
+    managerRating,
     leagueId,
     formation,
     defaultTactic,
@@ -580,6 +733,8 @@ export function archiveSeasonToHallOfFame(params: {
     ucl,
     teamAvgOvr,
     chemistry,
+    avgSynergyOvrBonus,
+    managerSynergyCount,
     seasonScore,
     awards = null,
     globalAwards = null,
@@ -614,12 +769,15 @@ export function archiveSeasonToHallOfFame(params: {
     );
   };
 
-  const starterMembers = starters
+  const fullStarters = starters
     .filter((p): p is Player => p !== null)
-    .map(toMember);
-  const benchMembers = bench
+    .map((p) => ({ ...p, attrs: getPlayerAttributes(p) }));
+  const fullBench = bench
     .filter((p): p is Player => p !== null)
-    .map(toMember);
+    .map((p) => ({ ...p, attrs: getPlayerAttributes(p) }));
+
+  const starterMembers = fullStarters.map(toMember);
+  const benchMembers = fullBench.map(toMember);
 
   const topScorer = [...starterMembers, ...benchMembers].sort(
     (a, b) => b.goals - a.goals || b.assists - a.assists,
@@ -640,6 +798,7 @@ export function archiveSeasonToHallOfFame(params: {
     managerName,
     managerAvatar: managerAvatar ? { ...managerAvatar } : undefined,
     managerTraitId,
+    managerRating,
     leagueId,
     leagueKoreanName: league.koreanName,
     formation,
@@ -657,6 +816,11 @@ export function archiveSeasonToHallOfFame(params: {
     isLeagueChampion,
     teamAvgOvr: Math.round(teamAvgOvr * 10) / 10,
     chemistry,
+    avgSynergyOvrBonus:
+      typeof avgSynergyOvrBonus === 'number'
+        ? Math.round(avgSynergyOvrBonus * 100) / 100
+        : undefined,
+    managerSynergyCount,
     seasonScore,
     trophies,
     topScorerSummary: topScorer
@@ -670,6 +834,8 @@ export function archiveSeasonToHallOfFame(params: {
     matchHistory,
     starters: starterMembers,
     bench: benchMembers,
+    fullStarters,
+    fullBench,
     unlockedAchievementIds,
   };
 
@@ -691,6 +857,160 @@ export function deleteHallOfFameEntry(entryId: string): LegacyStorageState {
   };
   saveLegacyState(updated);
   return updated;
+}
+
+export function recordDreamMatchResult(params: {
+  historicalTeamId: string;
+  outcome: 'W' | 'D' | 'L';
+  scoreLabel: string;
+}): LegacyStorageState {
+  const current = loadLegacyState();
+  const prevRecords = current.dreamMatchRecords ?? {};
+  const existing: DreamMatchRecord = prevRecords[params.historicalTeamId] ?? {
+    historicalTeamId: params.historicalTeamId,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    lastPlayedAt: new Date().toISOString(),
+  };
+
+  const nextRec: DreamMatchRecord = {
+    ...existing,
+    wins: existing.wins + (params.outcome === 'W' ? 1 : 0),
+    losses: existing.losses + (params.outcome === 'L' ? 1 : 0),
+    draws: existing.draws + (params.outcome === 'D' ? 1 : 0),
+    bestResultLabel:
+      params.outcome === 'W' || !existing.bestResultLabel
+        ? params.scoreLabel
+        : existing.bestResultLabel,
+    lastPlayedAt: new Date().toISOString(),
+  };
+
+  const updated: LegacyStorageState = {
+    ...current,
+    dreamMatchRecords: {
+      ...prevRecords,
+      [params.historicalTeamId]: nextRec,
+    },
+  };
+  saveLegacyState(updated);
+  return updated;
+}
+
+const VALID_POSITIONS = new Set<Position>(['GK', 'DF', 'MF', 'FW']);
+const VALID_SUB_POSITIONS = new Set<SubPosition>([
+  'GK', 'LB', 'CB', 'RB', 'LWB', 'RWB', 'CDM', 'CM', 'CAM', 'LM', 'RM', 'LW', 'RW', 'ST',
+]);
+
+function rebuildPlayerFromLegacyMember(
+  m: HallOfFameSquadMember,
+  leagueId: LeagueId,
+  clubName: string,
+): Player {
+  const byId =
+    LEGEND_PLAYERS.find((p) => p.id === m.id) ??
+    ACTIVE_PLAYERS.find((p) => p.id === m.id);
+  if (byId) {
+    return { ...byId, attrs: getPlayerAttributes(byId) };
+  }
+  const byName =
+    LEGEND_PLAYERS.find((p) => p.name === m.name) ??
+    ACTIVE_PLAYERS.find((p) => p.name === m.name);
+  if (byName) {
+    return { ...byName, attrs: getPlayerAttributes(byName) };
+  }
+
+  const pos: Position = VALID_POSITIONS.has(m.position as Position)
+    ? (m.position as Position)
+    : 'MF';
+  const mainPositions: SubPosition[] = m.mainPositions.filter((sp): sp is SubPosition =>
+    VALID_SUB_POSITIONS.has(sp as SubPosition),
+  );
+  if (mainPositions.length === 0) {
+    mainPositions.push(pos === 'GK' ? 'GK' : pos === 'DF' ? 'CB' : pos === 'FW' ? 'ST' : 'CM');
+  }
+
+  const ovr = Math.max(65, Math.min(99, m.ovr || 82));
+  const synthetic: Player = {
+    id: m.id,
+    name: m.name,
+    position: pos,
+    mainPositions,
+    secondaryPositions: [],
+    ovr,
+    nationality: '유럽',
+    nationalityCode: 'EU',
+    leagueId: m.isLegend ? 'LEGEND' : leagueId,
+    club: clubName,
+    att: pos === 'FW' ? ovr + 1 : pos === 'MF' ? ovr - 3 : Math.max(45, ovr - 18),
+    mid: pos === 'MF' ? ovr + 1 : pos === 'GK' ? Math.max(45, ovr - 16) : ovr - 5,
+    def: pos === 'DF' || pos === 'GK' ? ovr + 1 : pos === 'MF' ? ovr - 5 : Math.max(40, ovr - 28),
+    stamina: 84,
+    playstyles:
+      pos === 'GK'
+        ? ['shot_stopper']
+        : pos === 'DF'
+          ? ['stopper_cb']
+          : pos === 'FW'
+            ? ['complete_forward']
+            : ['box_to_box'],
+    scoutNote: '명예의 전당 레거시 스쿼드 복원 선수',
+    isLegend: m.isLegend,
+  };
+  return { ...synthetic, attrs: getPlayerAttributes(synthetic) };
+}
+
+/**
+ * Reconstructs a playable 11-starter + 5-bench squad from any HallOfFameEntry,
+ * supporting both v4.1+ full snapshots and older pre-v4.1 saved legacy entries.
+ */
+export function reconstructHallOfFameSquad(entry: HallOfFameEntry): {
+  starters: (Player | null)[];
+  bench: (Player | null)[];
+  usedLegacyFallback: boolean;
+} {
+  if (
+    Array.isArray(entry.fullStarters) &&
+    entry.fullStarters.length >= 11
+  ) {
+    const starters: (Player | null)[] = entry.fullStarters
+      .slice(0, 11)
+      .map((p) => ({ ...p, attrs: getPlayerAttributes(p) }));
+    const rawBench = (entry.fullBench ?? []).map((p) => ({
+      ...p,
+      attrs: getPlayerAttributes(p),
+    }));
+    const bench: (Player | null)[] = Array.from(
+      { length: 5 },
+      (_, idx) => rawBench[idx] ?? null,
+    );
+    return { starters, bench, usedLegacyFallback: false };
+  }
+
+  const rebuiltStarters = entry.starters
+    .slice(0, 11)
+    .map((m) => rebuildPlayerFromLegacyMember(m, entry.leagueId, entry.userClub.name));
+  while (rebuiltStarters.length < 11) {
+    const fallbackPool = ACTIVE_PLAYERS.find(
+      (p) => !rebuiltStarters.some((s) => s.id === p.id),
+    );
+    if (!fallbackPool) break;
+    rebuiltStarters.push({ ...fallbackPool, attrs: getPlayerAttributes(fallbackPool) });
+  }
+
+  const rebuiltBenchRaw = entry.bench
+    .slice(0, 5)
+    .map((m) => rebuildPlayerFromLegacyMember(m, entry.leagueId, entry.userClub.name));
+  const bench: (Player | null)[] = Array.from(
+    { length: 5 },
+    (_, idx) => rebuiltBenchRaw[idx] ?? null,
+  );
+
+  return {
+    starters: rebuiltStarters.slice(0, 11),
+    bench,
+    usedLegacyFallback: true,
+  };
 }
 
 export function getAchievementProgress(state: LegacyStorageState): {

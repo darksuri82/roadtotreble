@@ -13,7 +13,10 @@ import {
   pickNextManagerEvent,
   resolveManagerEventChoice,
 } from '../data/managerEvents';
-import { MANAGER_TRAIT_LIST } from '../data/managerTraits';
+import {
+  evaluateManagerPlayerSynergy,
+  MANAGER_TRAIT_LIST,
+} from '../data/managerTraits';
 import { mergePlayerStatsMaps } from '../engine/analyticsEngine';
 import { computeGlobalSeasonAwards, computeSeasonAwards } from '../engine/awardsEngine';
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
@@ -34,6 +37,7 @@ import {
   CUP_STAGE_LABELS,
   CUP_STAGE_ORDER,
   cupNodeToFixture,
+  didUserWinCup,
   findUserCupMatch,
 } from '../engine/cupEngine';
 import {
@@ -51,9 +55,11 @@ import {
   archiveSeasonToHallOfFame,
   buildCompactMatchHistory,
   computeSeasonScore,
+  computeUserSeasonManagerRating,
   deleteHallOfFameEntry,
   evaluateAchievements,
   loadLegacyState,
+  recordDreamMatchResult,
   unlockAchievementsInStorage,
 } from '../engine/legacyEngine';
 import {
@@ -108,6 +114,7 @@ import {
   advanceUclKnockoutLeg,
   advanceUclPlayoffToCompletion,
   createUclTournamentState,
+  didUserWinUcl,
   findNextUserUclLeaguePhaseFixture,
   getUserKnockoutFixtureInfo,
   simulateUclLeaguePhaseRound,
@@ -586,6 +593,12 @@ function applyPostUserMatchConditionAndEvents(params: {
   ) {
     const nextOpp = findNextOpponentInfo(season, competition);
     const userRank = getUserRank(season.standings, USER_CLUB_ID);
+    const lastOppId = isUserHome
+      ? userMatchResult.awayTeamId
+      : userMatchResult.homeTeamId;
+    const lastOppClub =
+      season.clubs.find((c) => c.id === lastOppId) ??
+      season.ucl?.clubs.find((c) => c.id === lastOppId);
     const picked = pickNextManagerEvent({
       eventsState: nextEventsState,
       starters,
@@ -598,6 +611,7 @@ function applyPostUserMatchConditionAndEvents(params: {
       userRank,
       isCupOrUclNext: nextOpp.isCupOrUcl,
       lastMatch: userMatchResult,
+      lastMatchOpponentName: lastOppClub?.name,
       lastMatchWasUserHome: isUserHome,
       lastMatchMomPlayerId: momPlayerId,
       lastMatchRatings: ratingsByPlayerId,
@@ -1102,16 +1116,75 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
   );
   const userRow = state.season.standings.find((r) => r.teamId === USER_CLUB_ID);
   const finalRank = getUserRank(state.season.standings, USER_CLUB_ID);
+  const played = Math.max(1, userRow?.played ?? state.season.totalRounds);
+  const converted38Points = ((userRow?.points ?? 0) / played) * 38;
+
+  const slotSynValues = Object.values(chem.slotSynergies);
+  const avgSynergyOvrBonus =
+    slotSynValues.length > 0
+      ? Math.round(
+          (slotSynValues.reduce((sum, s) => sum + s.totalBonus, 0) /
+            slotSynValues.length) *
+            100,
+        ) / 100
+      : 0;
+  const managerSynergyCount = filledStarters.filter(
+    (p) => evaluateManagerPlayerSynergy(p, state.manager.traitId).isMatch,
+  ).length;
+
+  const wonCup = didUserWinCup(state.season.cup, USER_CLUB_ID);
+  const wonUcl = didUserWinUcl(state.season.ucl, USER_CLUB_ID);
+  const uclMatches = state.season.userUclMatchHistory ?? [];
+  const uclUnbeatenWin =
+    wonUcl &&
+    uclMatches.length > 0 &&
+    uclMatches.every((m) => {
+      const isHome = m.homeTeamId === USER_CLUB_ID;
+      const ug = isHome ? m.homeGoals : m.awayGoals;
+      const og = isHome ? m.awayGoals : m.homeGoals;
+      if (m.extraTime?.penalties) {
+        return m.extraTime.penalties.winnerTeamId === USER_CLUB_ID;
+      }
+      return ug >= og;
+    });
+  const uclPerfectWin =
+    wonUcl &&
+    uclMatches.length >= 8 &&
+    uclMatches.every((m) => {
+      const isHome = m.homeTeamId === USER_CLUB_ID;
+      const ug = isHome ? m.homeGoals : m.awayGoals;
+      const og = isHome ? m.awayGoals : m.homeGoals;
+      return ug > og;
+    });
+
+  const managerRating = computeUserSeasonManagerRating({
+    finalLeagueRank: finalRank,
+    wonCup,
+    wonUcl,
+    leagueLosses: userRow?.lost ?? 0,
+    leaguePlayed: played,
+    converted38Points,
+    chemistry: chem.total,
+    managerSynergyCount,
+  });
 
   return computeSeasonScore({
     leaguePoints: userRow?.points ?? 0,
-    leaguePlayed: userRow?.played ?? state.season.totalRounds,
+    leaguePlayed: played,
     leagueGoalDifference: userRow?.goalDifference ?? 0,
     leagueLosses: userRow?.lost ?? 0,
+    leagueGoalsFor: userRow?.goalsFor,
+    leagueGoalsAgainst: userRow?.goalsAgainst,
     finalLeagueRank: finalRank,
     cup: state.season.cup,
     ucl: state.season.ucl,
+    uclPerfectWin,
+    uclUnbeatenWin,
     teamAvgOvr: ratings.rawOvr,
+    chemistry: chem.total,
+    avgSynergyOvrBonus,
+    managerSynergyCount,
+    managerRating,
     awards: state.season.awards,
     globalAwards: state.season.globalAwards ?? null,
   });
@@ -6027,6 +6100,15 @@ interface GameContextValue {
   legacyState: LegacyStorageState;
   legacyModalOpen: boolean;
   setLegacyModalOpen: (open: boolean) => void;
+  dreamMatchOpen: boolean;
+  dreamMatchInitialOpponentId: string | null;
+  openDreamMatch: (opponentId?: string | null) => void;
+  closeDreamMatch: () => void;
+  recordDreamMatchOutcome: (params: {
+    historicalTeamId: string;
+    outcome: 'W' | 'D' | 'L';
+    scoreLabel: string;
+  }) => void;
   recentUnlocks: string[];
   dismissUnlockToast: (achievementId: string) => void;
   removeHallOfFameEntry: (entryId: string) => void;
@@ -6145,6 +6227,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     loadLegacyState(),
   );
   const [legacyModalOpen, setLegacyModalOpen] = useState(false);
+  const [dreamMatchOpen, setDreamMatchOpen] = useState(false);
+  const [dreamMatchInitialOpponentId, setDreamMatchInitialOpponentId] =
+    useState<string | null>(null);
   const [recentUnlocks, setRecentUnlocks] = useState<string[]>([]);
 
   useEffect(() => {
@@ -6290,11 +6375,38 @@ export function GameProvider({ children }: { children: ReactNode }) {
       clubNameById,
     });
 
+    const filledStarters = state.starters.filter((p): p is Player => p !== null);
+    const slotSynValues = Object.values(chemistry.slotSynergies);
+    const avgSynergyOvrBonus =
+      slotSynValues.length > 0
+        ? Math.round(
+            (slotSynValues.reduce((sum, s) => sum + s.totalBonus, 0) /
+              slotSynValues.length) *
+              100,
+          ) / 100
+        : 0;
+    const managerSynergyCount = filledStarters.filter(
+      (p) => evaluateManagerPlayerSynergy(p, state.manager.traitId).isMatch,
+    ).length;
+    const userRow = state.season.standings.find((r) => r.teamId === USER_CLUB_ID);
+    const played = Math.max(1, userRow?.played ?? state.season.totalRounds);
+    const managerRating = computeUserSeasonManagerRating({
+      finalLeagueRank: getUserRank(state.season.standings, USER_CLUB_ID),
+      wonCup: didUserWinCup(state.season.cup, USER_CLUB_ID),
+      wonUcl: didUserWinUcl(state.season.ucl, USER_CLUB_ID),
+      leagueLosses: userRow?.lost ?? 0,
+      leaguePlayed: played,
+      converted38Points: ((userRow?.points ?? 0) / played) * 38,
+      chemistry: chemistry.total,
+      managerSynergyCount,
+    });
+
     const updated = archiveSeasonToHallOfFame({
       userClub: state.userClub,
       managerName: state.manager.name,
       managerAvatar: state.manager.avatar,
       managerTraitId: state.manager.traitId,
+      managerRating,
       leagueId: state.season.leagueId,
       formation: state.formation,
       defaultTactic: state.season.defaultTactic,
@@ -6304,6 +6416,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ucl: state.season.ucl,
       teamAvgOvr: ratings.rawOvr,
       chemistry: chemistry.total,
+      avgSynergyOvrBonus,
+      managerSynergyCount,
       seasonScore: score,
       awards: state.season.awards,
       globalAwards: state.season.globalAwards ?? null,
@@ -6315,7 +6429,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
     setLegacyState(updated);
     dispatch({ type: 'MARK_LEGACY_ARCHIVED' });
-  }, [state, ratings.rawOvr, chemistry.total]);
+  }, [state, ratings.rawOvr, chemistry]);
 
   // Auto-archive completed runs into Hall of Fame strictly ONCE when full season (including UCL) is complete
   useEffect(() => {
@@ -6343,6 +6457,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setLegacyState(deleteHallOfFameEntry(entryId));
   }, []);
 
+  const openDreamMatch = useCallback((opponentId?: string | null) => {
+    setLegacyModalOpen(false);
+    setDreamMatchInitialOpponentId(opponentId ?? null);
+    setDreamMatchOpen(true);
+  }, []);
+
+  const closeDreamMatch = useCallback(() => {
+    setDreamMatchOpen(false);
+    setDreamMatchInitialOpponentId(null);
+  }, []);
+
+  const recordDreamMatchOutcome = useCallback(
+    (params: {
+      historicalTeamId: string;
+      outcome: 'W' | 'D' | 'L';
+      scoreLabel: string;
+    }) => {
+      setLegacyState(recordDreamMatchResult(params));
+    },
+    [],
+  );
+
   const value = useMemo<GameContextValue>(
     () => ({
       state,
@@ -6352,6 +6488,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
       legacyState,
       legacyModalOpen,
       setLegacyModalOpen,
+      dreamMatchOpen,
+      dreamMatchInitialOpponentId,
+      openDreamMatch,
+      closeDreamMatch,
+      recordDreamMatchOutcome,
       recentUnlocks,
       dismissUnlockToast,
       removeHallOfFameEntry,
@@ -6474,6 +6615,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ratings,
       legacyState,
       legacyModalOpen,
+      dreamMatchOpen,
+      dreamMatchInitialOpponentId,
+      openDreamMatch,
+      closeDreamMatch,
+      recordDreamMatchOutcome,
       recentUnlocks,
       dismissUnlockToast,
       removeHallOfFameEntry,

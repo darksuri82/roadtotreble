@@ -703,13 +703,14 @@ export function SeasonSummary() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7 text-center">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8 text-center">
             {[
               { label: '리그 환산(PPG×38)', val: score.leagueConvertedScore },
               { label: '리그 순위', val: score.leagueRankBonus },
               { label: '자국 컵', val: score.cupBonus },
               { label: '챔피언스리그', val: score.uclBonus },
-              { label: '대업(트레블/무패)', val: score.honorsBonus },
+              { label: '대업·대기록', val: score.honorsBonus },
+              { label: '스쿼드·감독 시너지', val: score.squadCraftBonus ?? 0, highlight: true },
               { label: '언더독 보너스', val: score.underdogBonus },
               { label: '개인 수상 보너스', val: score.awardsBonus ?? 0, highlight: true },
             ].map((item) => (
@@ -735,13 +736,41 @@ export function SeasonSummary() {
             ))}
           </div>
 
-          {score.awardsBonusDetails && score.awardsBonusDetails.length > 0 && (
+          {score.honorsBonusDetails && score.honorsBonusDetails.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
-              <span className="font-bold text-amber-300">개인 수상 가산점:</span>
-              {score.awardsBonusDetails.map((detail) => (
+              <span className="font-bold text-amber-300">대업·대기록 가산점:</span>
+              {score.honorsBonusDetails.map((detail) => (
                 <span
                   key={detail}
                   className="rounded-md bg-[#090e15] px-2 py-0.5 font-semibold text-amber-100"
+                >
+                  {detail}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {score.squadCraftDetails && score.squadCraftDetails.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[11px] text-emerald-200">
+              <span className="font-bold text-emerald-300">전력·케미·감독 시너지:</span>
+              {score.squadCraftDetails.map((detail) => (
+                <span
+                  key={detail}
+                  className="rounded-md bg-[#090e15] px-2 py-0.5 font-semibold text-emerald-100"
+                >
+                  {detail}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {score.awardsBonusDetails && score.awardsBonusDetails.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-sky-500/20 bg-sky-500/5 px-3 py-2 text-[11px] text-sky-200">
+              <span className="font-bold text-sky-300">개인 수상 가산점:</span>
+              {score.awardsBonusDetails.map((detail) => (
+                <span
+                  key={detail}
+                  className="rounded-md bg-[#090e15] px-2 py-0.5 font-semibold text-sky-100"
                 >
                   {detail}
                 </span>

@@ -59,7 +59,8 @@ export type GamePhase =
   | 'league_select'
   | 'season'
   | 'ucl'
-  | 'season_end';
+  | 'season_end'
+  | 'dream_match';
 
 export interface FormationSlot {
   index: number;

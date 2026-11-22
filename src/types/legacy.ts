@@ -43,12 +43,15 @@ export interface UnlockedAchievementRecord {
 }
 
 export interface SeasonScoreBreakdown {
-  leagueConvertedScore: number; // PPG * 38 * 25 + GD bonus
+  leagueConvertedScore: number; // PPG * 38 * 26 + GD bonus
   leagueRankBonus: number;
   cupBonus: number;
   uclBonus: number;
-  honorsBonus: number; // Treble / Double / Unbeaten
+  honorsBonus: number; // Treble / Double / Unbeaten / Historic milestones
+  honorsBonusDetails?: string[];
   underdogBonus: number; // Low avg OVR + high achievement
+  squadCraftBonus?: number; // Squad OVR + Chemistry + Manager Synergy completion bonus
+  squadCraftDetails?: string[];
   awardsBonus?: number; // Ballon d'Or, World Best XI, League MVP, League Best XI
   awardsBonusDetails?: string[];
   totalScore: number;
@@ -86,6 +89,7 @@ export interface HallOfFameEntry {
   managerName?: string;
   managerAvatar?: ManagerAvatarConfig;
   managerTraitId: ManagerTraitId | null;
+  managerRating?: number;
   leagueId: LeagueId;
   leagueKoreanName: string;
   formation: FormationId;
@@ -103,6 +107,8 @@ export interface HallOfFameEntry {
   isLeagueChampion: boolean;
   teamAvgOvr: number;
   chemistry: number;
+  avgSynergyOvrBonus?: number;
+  managerSynergyCount?: number;
   seasonScore: SeasonScoreBreakdown;
   trophies: string[];
   topScorerSummary: string;
@@ -114,13 +120,26 @@ export interface HallOfFameEntry {
   matchHistory?: HallOfFameMatchSummary[];
   starters: HallOfFameSquadMember[];
   bench: HallOfFameSquadMember[];
+  /** Full player snapshots (with sub-attributes & playstyles) for Dream Match replay */
+  fullStarters?: Player[];
+  fullBench?: Player[];
   unlockedAchievementIds: string[];
+}
+
+export interface DreamMatchRecord {
+  historicalTeamId: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  bestResultLabel?: string;
+  lastPlayedAt: string;
 }
 
 export interface LegacyStorageState {
   version: 1;
   hallOfFame: HallOfFameEntry[];
   unlockedAchievements: Record<string, UnlockedAchievementRecord>;
+  dreamMatchRecords?: Record<string, DreamMatchRecord>;
 }
 
 export interface SeasonAchievementTrackers {
@@ -161,6 +180,7 @@ export type LeaderboardEntrySource = 'user' | 'historical' | 'global';
 export interface HistoricalBestXiPlayer {
   position: string;
   name: string;
+  ovr?: number;
   note?: string;
 }
 
@@ -170,6 +190,10 @@ export interface HistoricalTeamEntry {
   displayName: string; // e.g. "19-20 바이에른 뮌헨"
   nickname: string; // e.g. "UCL 전승 트레블"
   managerName: string;
+  managerTraitId: ManagerTraitId;
+  managerRating: number; // 91..99 real-world managerial stature
+  managerStyleNote: string;
+  managerAvatar: ManagerAvatarConfig;
   userClub: UserClubProfile;
   leagueId: LeagueId;
   leagueKoreanName: string;
@@ -180,14 +204,21 @@ export interface HistoricalTeamEntry {
   leagueTotalRounds: number;
   leagueRecord: string;
   leagueGoalDifference: number;
+  goalsFor: number;
+  goalsAgainst: number;
   cupName: string;
   cupResultLabel: string;
   cupWon: boolean;
   uclResultLabel: string;
   uclWon: boolean;
+  uclPerfectWin?: boolean;
+  uclUnbeatenWin?: boolean;
   isTreble: boolean;
   isLeagueChampion: boolean;
   teamAvgOvr: number;
+  chemistry: number;
+  avgSynergyOvrBonus: number;
+  managerSynergyCount: number;
   seasonScore: SeasonScoreBreakdown;
   trophies: string[];
   summaryNote: string;
@@ -196,6 +227,9 @@ export interface HistoricalTeamEntry {
   leagueMvpName?: string;
   leagueBestXiCount: number;
   bestXi: HistoricalBestXiPlayer[];
+  /** Full playable prime squad (11 starters aligned to formation + 5~7 key bench = 16~18 players) */
+  starters: Player[];
+  bench: Player[];
 }
 
 export interface UnifiedLeaderboardEntry {

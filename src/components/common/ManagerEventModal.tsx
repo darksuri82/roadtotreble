@@ -1,21 +1,174 @@
-import { CheckCircle2, Flame, Megaphone, Mic, Sparkles, User, Users, Zap } from 'lucide-react';
+import {
+  Activity,
+  Award,
+  CheckCircle2,
+  Flame,
+  Megaphone,
+  Mic,
+  Zap,
+} from 'lucide-react';
 import type {
   ActiveManagerEvent,
+  ManagerEventMatchContext,
   ManagerEventResolution,
+  ManagerEventSceneId,
 } from '../../types/condition';
-import { CountryFlagSvg } from './CountryFlagSvg';
+import type { ManagerAvatarConfig, UserClubProfile } from '../../types/game';
+import { PixelEventSceneBanner } from './PixelEventSceneBanner';
 import { PixelStatusIcon } from './PixelStatusIcon';
 
 interface ManagerEventModalProps {
   activeEvent: ActiveManagerEvent | null;
   lastResolution: ManagerEventResolution | null;
+  managerAvatar?: ManagerAvatarConfig;
+  managerName?: string;
+  userClub?: UserClubProfile;
   onSelectChoice: (choiceId: string) => void;
   onDismissResolution: () => void;
+}
+
+function MatchContextStatCard({
+  ctx,
+}: {
+  ctx: ManagerEventMatchContext;
+}) {
+  const outcomeLabel =
+    ctx.outcome === 'W' ? '승' : ctx.outcome === 'L' ? '패' : '무';
+  const outcomeBadgeCls =
+    ctx.outcome === 'W'
+      ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-300'
+      : ctx.outcome === 'L'
+        ? 'border-rose-400/45 bg-rose-500/15 text-rose-300'
+        : 'border-slate-500/45 bg-slate-700/40 text-slate-200';
+
+  const ps = ctx.playerStats;
+  const ratingColor = ps
+    ? ps.rating >= 8.5
+      ? 'text-amber-300 bg-amber-500/20 border-amber-400/45'
+      : ps.rating >= 7.3
+        ? 'text-emerald-300 bg-emerald-500/15 border-emerald-400/40'
+        : ps.rating <= 6.0
+          ? 'text-rose-300 bg-rose-500/15 border-rose-400/45'
+          : 'text-slate-200 bg-slate-800 border-slate-700'
+    : '';
+
+  return (
+    <div className="rounded-xl border border-slate-700/80 bg-gradient-to-r from-[#0b121e] via-[#0e1726] to-[#0b121e] px-3.5 py-2.5 space-y-2">
+      {/* Row 1: Last Match Scoreline & Team Metrics */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+          <span className="inline-flex items-center gap-1 rounded bg-slate-800/90 px-1.5 py-0.5 text-[10px] font-extrabold text-sky-300">
+            <Activity className="h-3 w-3" />
+            {ctx.competitionLabel}
+          </span>
+          <span className="font-extrabold text-white truncate">
+            {ctx.userTeamName}
+          </span>
+          <span className="font-mono font-black text-amber-300">
+            {ctx.userGoals} - {ctx.oppGoals}
+          </span>
+          <span className="font-bold text-slate-300 truncate">
+            {ctx.opponentName}
+          </span>
+          <span
+            className={`rounded border px-1.5 py-0.2 text-[10px] font-black ${outcomeBadgeCls}`}
+          >
+            {outcomeLabel}
+            {ctx.note ? ` (${ctx.note})` : ''}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 font-mono text-[10px] text-slate-400 shrink-0">
+          <span>
+            xG <strong className="text-slate-200">{ctx.userXg.toFixed(2)}</strong>-
+            {ctx.oppXg.toFixed(2)}
+          </span>
+          <span>·</span>
+          <span>
+            점유 <strong className="text-slate-200">{ctx.userPossession}%</strong>
+          </span>
+          <span className="hidden sm:inline">·</span>
+          <span className="hidden sm:inline">
+            슈팅 <strong className="text-slate-200">{ctx.userShots}</strong>({ctx.userShotsOnTarget})
+          </span>
+        </div>
+      </div>
+
+      {/* Row 2: Highlighted Individual Player Match Stat Line (when available) */}
+      {ps ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/90 pt-2 text-[11px]">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-300">
+              {ps.subPosition}
+            </span>
+            <span className="font-extrabold text-white">{ps.playerName}</span>
+            <span
+              className={`rounded border px-1.5 py-0.2 font-mono text-[10px] font-black ${ratingColor}`}
+            >
+              평점 {ps.rating.toFixed(1)}
+            </span>
+            <span className="text-slate-300 font-semibold">
+              {ps.goals}골 {ps.assists}도움
+            </span>
+            {ps.xg > 0 && (
+              <span className="text-slate-400 font-mono text-[10px]">
+                (xG {ps.xg.toFixed(2)})
+              </span>
+            )}
+            {ps.dribbleBeats > 0 && (
+              <span className="text-emerald-300 font-semibold text-[10px]">
+                · 드리블 돌파 {ps.dribbleBeats}회
+              </span>
+            )}
+            {ps.savesCount > 0 && (
+              <span className="text-sky-300 font-semibold text-[10px]">
+                · 선방 {ps.savesCount}회
+              </span>
+            )}
+          </div>
+
+          {ps.keyMoments.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1">
+              {ps.keyMoments.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-extrabold ${
+                    tag.includes('부진')
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-400/35'
+                      : 'bg-amber-500/15 text-amber-200 border border-amber-400/35'
+                  }`}
+                >
+                  {tag === '경기 MOM' && <Award className="h-2.5 w-2.5" />}
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : ctx.momPlayerName ? (
+        <div className="flex items-center gap-1.5 border-t border-slate-800/90 pt-1.5 text-[11px] text-slate-400">
+          <Award className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+          <span>
+            직전 경기 MOM:{' '}
+            <strong className="text-amber-200">{ctx.momPlayerName}</strong>
+            {typeof ctx.momRating === 'number' && (
+              <span className="ml-1 font-mono text-[10px] text-amber-300">
+                ({ctx.momRating.toFixed(1)})
+              </span>
+            )}
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export function ManagerEventModal({
   activeEvent,
   lastResolution,
+  managerAvatar,
+  managerName,
+  userClub,
   onSelectChoice,
   onDismissResolution,
 }: ManagerEventModalProps) {
@@ -24,11 +177,21 @@ export function ManagerEventModal({
   // Phase 2: Resolution Report Modal
   if (!activeEvent && lastResolution) {
     const isPress = lastResolution.category === 'press_conference';
+    const sceneId: ManagerEventSceneId =
+      lastResolution.sceneId ?? (isPress ? 'press_official' : 'locker_home');
     return (
       <div className="fixed inset-0 z-[71] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
         <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-emerald-500/40 bg-[#0e1520] shadow-2xl">
+          <PixelEventSceneBanner
+            sceneId={sceneId}
+            managerAvatar={managerAvatar}
+            managerName={managerName}
+            userClub={userClub}
+            compact
+          />
+
           <div
-            className={`flex items-center gap-2.5 border-b px-5 py-4 ${
+            className={`flex items-center gap-2.5 border-b px-5 py-3.5 ${
               isPress
                 ? 'border-sky-500/30 bg-gradient-to-r from-sky-950/60 via-[#121a28] to-[#0e1520]'
                 : 'border-emerald-500/30 bg-gradient-to-r from-emerald-950/60 via-[#121a28] to-[#0e1520]'
@@ -45,7 +208,7 @@ export function ManagerEventModal({
             </div>
           </div>
 
-          <div className="p-5 space-y-4">
+          <div className="max-h-[60vh] overflow-y-auto p-5 space-y-4">
             {/* Chosen Quote */}
             <div className="rounded-xl border border-slate-800 bg-[#090e16] p-3.5 space-y-1.5">
               <div className="flex flex-wrap items-center gap-1.5">
@@ -123,97 +286,96 @@ export function ManagerEventModal({
 
   if (!activeEvent) return null;
 
-  // Phase 1: Interactive Prompt & 3 Choices
+  // Phase 1: Interactive Prompt & 3 Choices with 8-Scene Pixel Art Backdrop + Custom Manager Avatar
   const isPress = activeEvent.category === 'press_conference';
+  const sceneId: ManagerEventSceneId =
+    activeEvent.sceneId ?? (isPress ? 'press_official' : 'locker_home');
+
   return (
     <div className="fixed inset-0 z-[71] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-700 bg-[#0e1520] shadow-2xl">
-        {/* Header */}
+      <div className="flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0e1520] shadow-2xl">
+        {/* Situational Pixel-Art Backdrop Scene + Custom Manager Sprite + Target Player Card */}
+        <PixelEventSceneBanner
+          sceneId={sceneId}
+          managerAvatar={managerAvatar}
+          managerName={managerName}
+          userClub={userClub}
+          targetScope={activeEvent.targetScope}
+          positionGroup={activeEvent.positionGroup}
+          targetPlayer={
+            activeEvent.targetScope === 'player' && activeEvent.targetPlayerName
+              ? {
+                  name: activeEvent.targetPlayerName,
+                  nationality: activeEvent.targetPlayerNationality,
+                  nationalityCode: activeEvent.targetPlayerNationalityCode,
+                  ovr: activeEvent.targetPlayerOvr,
+                  position: activeEvent.targetPlayerPosition,
+                  mainPosition: activeEvent.targetPlayerMainPosition,
+                  morale: activeEvent.targetPlayerMorale,
+                  injured: activeEvent.targetPlayerInjured,
+                }
+              : null
+          }
+        />
+
+        {/* Compact Title Strip */}
         <div
-          className={`flex items-start justify-between gap-3 border-b px-5 py-4 ${
+          className={`flex items-center gap-3 border-b px-5 py-3 shrink-0 ${
             isPress
-              ? 'border-sky-500/30 bg-gradient-to-r from-sky-950/65 via-[#131c2c] to-[#0e1520]'
-              : 'border-amber-500/30 bg-gradient-to-r from-amber-950/55 via-[#161b26] to-[#0e1520]'
+              ? 'border-sky-500/30 bg-gradient-to-r from-sky-950/55 via-[#131c2c] to-[#0e1520]'
+              : 'border-amber-500/30 bg-gradient-to-r from-amber-950/45 via-[#161b26] to-[#0e1520]'
           }`}
         >
-          <div className="flex items-start gap-3 min-w-0">
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
-                isPress
-                  ? 'border-sky-400/40 bg-sky-500/15 text-sky-300'
-                  : 'border-amber-400/40 bg-amber-500/15 text-amber-300'
-              }`}
-            >
-              {isPress ? (
-                <Mic className="h-5 w-5" />
-              ) : (
-                <Megaphone className="h-5 w-5" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span
-                  className={`rounded px-2 py-0.5 text-[10px] font-extrabold ${
-                    isPress
-                      ? 'bg-sky-500/20 text-sky-200 border border-sky-400/35'
-                      : 'bg-amber-500/20 text-amber-200 border border-amber-400/35'
-                  }`}
-                >
-                  {activeEvent.contextBadge}
-                </span>
-                <span className="text-[11px] font-semibold text-slate-400">
-                  {activeEvent.speakerLabel}
-                </span>
-              </div>
-              <h3 className="mt-1 text-base sm:text-lg font-extrabold text-white">
-                {activeEvent.title}
-              </h3>
-            </div>
-          </div>
-
-          {/* Target Indicator Pill */}
-          <div className="shrink-0">
-            {activeEvent.targetScope === 'player' && activeEvent.targetPlayerName ? (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-emerald-950/50 px-2.5 py-1 text-xs font-bold text-emerald-200">
-                <CountryFlagSvg
-                  code={activeEvent.targetPlayerNationalityCode}
-                  nationality={activeEvent.targetPlayerNationality}
-                  size="sm"
-                />
-                <User className="h-3 w-3 text-emerald-400" />
-                <span>{activeEvent.targetPlayerName}</span>
-              </div>
-            ) : activeEvent.targetScope === 'position_group' ? (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/35 bg-amber-950/40 px-2.5 py-1 text-xs font-bold text-amber-200">
-                <Users className="h-3.5 w-3.5 text-amber-300" />
-                <span>
-                  {activeEvent.positionGroup === 'FW'
-                    ? '공격진'
-                    : activeEvent.positionGroup === 'MF'
-                      ? '미드필더진'
-                      : '수비진·GK'}
-                </span>
-              </div>
+          <div
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+              isPress
+                ? 'border-sky-400/40 bg-sky-500/15 text-sky-300'
+                : 'border-amber-400/40 bg-amber-500/15 text-amber-300'
+            }`}
+          >
+            {isPress ? (
+              <Mic className="h-4 w-4" />
             ) : (
-              <div className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/35 bg-sky-950/40 px-2.5 py-1 text-xs font-bold text-sky-200">
-                <Sparkles className="h-3.5 w-3.5 text-sky-300" />
-                <span>팀 전체</span>
-              </div>
+              <Megaphone className="h-4 w-4" />
             )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span
+                className={`rounded px-2 py-0.5 text-[10px] font-extrabold ${
+                  isPress
+                    ? 'bg-sky-500/20 text-sky-200 border border-sky-400/35'
+                    : 'bg-amber-500/20 text-amber-200 border border-amber-400/35'
+                }`}
+              >
+                {activeEvent.contextBadge}
+              </span>
+              <span className="text-[11px] font-semibold text-slate-400 truncate">
+                {activeEvent.speakerLabel}
+              </span>
+            </div>
+            <h3 className="mt-0.5 text-sm sm:text-base font-extrabold text-white truncate">
+              {activeEvent.title}
+            </h3>
           </div>
         </div>
 
-        {/* Body */}
-        <div className="max-h-[75vh] overflow-y-auto p-5 space-y-4">
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5">
+          {/* Last Match Score & Individual Player Stat Summary Card */}
+          {activeEvent.matchContext && (
+            <MatchContextStatCard ctx={activeEvent.matchContext} />
+          )}
+
           {/* Prompt Box */}
-          <div className="rounded-xl border border-slate-800 bg-[#090e16] p-4 text-sm text-slate-100 leading-relaxed">
+          <div className="rounded-xl border border-slate-800 bg-[#090e16] p-3.5 sm:p-4 text-xs sm:text-sm text-slate-100 leading-relaxed">
             {activeEvent.prompt}
           </div>
 
           {/* 3 Choices */}
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <div className="text-[11px] font-bold text-slate-400">
-              감독님의 답변을 선택하세요
+              {managerName ? `${managerName} 감독님의 답변을 선택하세요` : '감독님의 답변을 선택하세요'}
             </div>
             {activeEvent.choices.map((choice, idx) => {
               const isRisky = Boolean(choice.riskLabel);
@@ -222,13 +384,13 @@ export function ManagerEventModal({
                   key={choice.id}
                   type="button"
                   onClick={() => onSelectChoice(choice.id)}
-                  className={`group w-full rounded-xl border p-3.5 text-left transition-colors cursor-pointer ${
+                  className={`group w-full rounded-xl border p-3 sm:p-3.5 text-left transition-colors cursor-pointer ${
                     isRisky
                       ? 'border-amber-500/35 bg-[#121620] hover:border-amber-400/75 hover:bg-amber-950/25'
                       : 'border-slate-800 bg-[#101722] hover:border-emerald-400/65 hover:bg-emerald-950/20'
                   }`}
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-2">
                       <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-[10px] font-black text-slate-200 group-hover:bg-emerald-500 group-hover:text-slate-950">
                         {idx + 1}
@@ -257,8 +419,8 @@ export function ManagerEventModal({
             })}
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 pt-1">
-            <Flame className="h-3.5 w-3.5 text-amber-400/70" />
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 pt-0.5">
+            <Flame className="h-3.5 w-3.5 text-amber-400/70 shrink-0" />
             <span>
               선택에 따라 대상 선수·포지션 라인·팀 전체의 사기(Morale)가 즉시 변동되어 경기 실효 OVR에 반영됩니다.
             </span>

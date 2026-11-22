@@ -3,6 +3,7 @@ import { InjuryAlertModal } from './components/common/InjuryAlertModal';
 import { InjuryReturnToast } from './components/common/InjuryReturnToast';
 import { ManagerEventModal } from './components/common/ManagerEventModal';
 import { DraftScreen } from './components/draft/DraftScreen';
+import { DreamMatchArena } from './components/dream/DreamMatchArena';
 import { LeagueSelect } from './components/league/LeagueSelect';
 import { SeasonDashboard } from './components/league/SeasonDashboard';
 import { SeasonSummary } from './components/league/SeasonSummary';
@@ -19,6 +20,7 @@ function GameRouter() {
     state,
     chemistry,
     ratings,
+    dreamMatchOpen,
     swapSquadPositions,
     resolveManagerEvent,
     dismissManagerEventResolution,
@@ -26,7 +28,8 @@ function GameRouter() {
     dismissInjuryReturnToast,
   } = useGame();
 
-  const isPlayableSeason = state.phase === 'season' || state.phase === 'ucl';
+  const isPlayableSeason =
+    !dreamMatchOpen && (state.phase === 'season' || state.phase === 'ucl');
   const pendingInjuryAlerts =
     isPlayableSeason ? (state.season?.pendingInjuryAlerts ?? []) : [];
   const injuryReturnToasts =
@@ -44,14 +47,20 @@ function GameRouter() {
     <div className="min-h-dvh w-full max-w-full overflow-x-clip flex flex-col">
       <HeaderNav />
       <main className="flex-1 w-full max-w-full pb-10">
-        {state.phase === 'title' && <TitleScreen />}
-        {state.phase === 'manager_roulette' && <ManagerRouletteScreen />}
-        {state.phase === 'setup' && <FormationSelect />}
-        {state.phase === 'draft' && <DraftScreen />}
-        {state.phase === 'league_select' && <LeagueSelect />}
-        {state.phase === 'season' && <SeasonDashboard />}
-        {state.phase === 'ucl' && <UclDashboard />}
-        {state.phase === 'season_end' && <SeasonSummary />}
+        {dreamMatchOpen ? (
+          <DreamMatchArena />
+        ) : (
+          <>
+            {state.phase === 'title' && <TitleScreen />}
+            {state.phase === 'manager_roulette' && <ManagerRouletteScreen />}
+            {state.phase === 'setup' && <FormationSelect />}
+            {state.phase === 'draft' && <DraftScreen />}
+            {state.phase === 'league_select' && <LeagueSelect />}
+            {state.phase === 'season' && <SeasonDashboard />}
+            {state.phase === 'ucl' && <UclDashboard />}
+            {state.phase === 'season_end' && <SeasonSummary />}
+          </>
+        )}
       </main>
       <LegacyHubModal />
       <AchievementToast />
@@ -74,6 +83,9 @@ function GameRouter() {
       <ManagerEventModal
         activeEvent={activeManagerEvent}
         lastResolution={lastManagerResolution}
+        managerAvatar={state.manager.avatar}
+        managerName={state.manager.name}
+        userClub={state.userClub}
         onSelectChoice={resolveManagerEvent}
         onDismissResolution={dismissManagerEventResolution}
       />

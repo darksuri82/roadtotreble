@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v4.0)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v4.1)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -8,11 +8,15 @@
 
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
-- **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **21개 파일 / 82개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
+- **Testing & Lint**: Vitest (`npm run test` — **22개 파일 / 86개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
+- **v4.1 주요 신규 모듈·기능**:
+  - **명예의 전당 역대 강팀 14팀 17인 풀스쿼드·명장 시너지·공정 시즌 스코어 재조정 (`src/data/historicalSquadsData.ts`, `src/data/historicalTeams.ts`, `src/engine/legacyEngine.ts`, `src/types/legacy.ts`, `LegacyHubModal.tsx`, `SeasonSummary.tsx`)**: 역대 14팀 전체를 포메이션 정렬 선발 11명 + 핵심 벤치 6명(총 238명) 풀스쿼드 & 7+5 세부 능력치·플레이스타일 + 명장 지휘력(91~99)·감독 특성·도트 아바타로 완전 구체화하고, 유저와 동일한 `computeSeasonScore`에 역사적 대기록 보너스(`honorsBonusDetails`)와 스쿼드 OVR·팀 케미·감독 시너지·명장 지휘력 보너스(`squadCraftBonus`)를 공정 반영 (`v41HofDreamMatchScenes.test.ts`).
+  - **[⚔️ 드림 매치 (명예의 전당 챌린지)] 모드 (`src/components/dream/DreamMatchArena.tsx`, `LiveMatchBroadcast.tsx`, `GameContext.tsx`, `TitleScreen.tsx`, `LegacyHubModal.tsx`, `App.tsx`)**: 진행 중인 시즌 세이브를 보존한 채 독립 실행되는 역대 강팀 단판 챌린지. [방식 A · 내 명전 팀 불러오기(`fullStarters`/`fullBench` 스냅샷 + `reconstructHallOfFameSquad` 구버전 자동 복원)] 및 [방식 B · 즉석 16인 드림 드래프트] 모두 지원, `MatchDayTacticsRoom` → `LiveMatchBroadcast`(`override` 어댑터, 90'/105' 연장 라커룸 + PK 포함) → `MatchReportPanel` + `dreamMatchRecords` 격파 전적 영구 기록.
+  - **기자회견·라커룸 8종 도트 배경 씬 · 커스텀 감독 등장 · 직전 경기 스탯 카드 (`src/components/common/PixelEventSceneBanner.tsx`, `src/data/managerEvents.ts`, `src/components/common/ManagerEventModal.tsx`, `src/types/condition.ts`)**: 공식 회견장·UCL 야간 회견장·믹스트존·홈 라커룸·경기장 터널·감독실 1:1·훈련장 피치·승리 환호 라커룸 8종 픽셀 아트 배경 자동 매칭(`resolveManagerEventSceneId`), 유저 커스텀 `PixelManagerAvatar` 전경 단상/책상 레이어 합성, 대상 선수 미니 카드 및 `buildManagerEventMatchContext` 직전 경기 스코어·개인 스탯(평점·골/도움·xG·드리블 돌파·선방·MOM) 요약 카드 연동.
 - **v4.0 주요 신규 모듈·기능**:
   - **전 선수 세부 능력치(Sub-Attributes) 체계 (`src/types/player.ts`, `src/data/attributeOverrides.ts`, `src/engine/attributeEngine.ts`, `activePlayers.json`, `legendPlayers.json`)**: 전 선수 2,239명(현역 2,206 + 레전드 33) + 생성 자원에 필드 7대(`SHO·PAS·CRO·DRI·AER·DEF·PHY`) + GK 5대(`DIV·HAN·REF·KIC·POS`) 세부 능력치 부여(40~99, 포지션 가중 평균 `OVR ±2` 정합성 유지). 기존 디자인 톤을 그대로 유지한 `PlayerSubAttributesCard.tsx`(7각/5각 SVG 레이더 차트 + 스탯 바 + 아키타입 배지)를 `PlayerDetailModal.tsx`에 통합
   - **단계별 공격 체인 경기 시뮬레이션 엔진 (`src/engine/attackChainEngine.ts`, `src/engine/matchEngine.ts`, `src/types/league.ts`)**: 팀 단위 `Poisson(λ)` 승점 밸런스를 보존하면서 득점·어시스트·찬스·세이브 이벤트를 **빌드업 → 14종 공격 루트(`AttackRouteId`: 원맨 드리블 쇼 `solo_dribble` · 중거리 대포알 `long_range_cannon` · 티키타카 삼각 연계 `tiki_taka_triangle` · 선수비 후역습 `low_block_counter` · 게겐프레싱 탈취 · 얼리 크로스 · 컷백 · 스루패스 · 세트피스 등) → 창출자(`PAS/CRO/DRI`) → 수비수(`DEF/AER`) 경합 → 마무리자(`SHO/AER`)** 단계 체인으로 전면 개편. 4시즌×3리그 아키타입 검증(`v40AttributeEngine.test.ts`: 어시스트 비율 ~70%, 헤더 ~13%, 원맨 드리블 ~4.2%, 세트피스 ~18.5%, 정통 9번 vs 크랙 윙어 vs 10번 자연 분포 확인)

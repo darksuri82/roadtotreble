@@ -120,20 +120,72 @@ export interface ManagerEventTemplate {
   choices: [ManagerEventChoiceDef, ManagerEventChoiceDef, ManagerEventChoiceDef];
 }
 
+export type ManagerEventSceneId =
+  | 'press_official'
+  | 'press_ucl_night'
+  | 'press_mixed_zone'
+  | 'locker_home'
+  | 'stadium_tunnel'
+  | 'manager_office'
+  | 'training_pitch'
+  | 'celebration_locker';
+
+export interface ManagerEventPlayerMatchStat {
+  playerId: string;
+  playerName: string;
+  position: Position;
+  subPosition: SubPosition;
+  ovr: number;
+  rating: number;
+  goals: number;
+  assists: number;
+  xg: number;
+  minutesPlayed: number;
+  isMom: boolean;
+  dribbleBeats: number;
+  savesCount: number;
+  keyMoments: string[];
+}
+
+export interface ManagerEventMatchContext {
+  competitionLabel: string; // e.g. "리그 14R", "FA컵 8강", "UCL 4R"
+  userTeamName: string;
+  opponentName: string;
+  userGoals: number;
+  oppGoals: number;
+  outcome: 'W' | 'D' | 'L';
+  note?: string; // e.g. "PK 5-4", "연장"
+  userXg: number;
+  oppXg: number;
+  userPossession: number;
+  userShots: number;
+  userShotsOnTarget: number;
+  momPlayerName?: string;
+  momRating?: number;
+  playerStats?: ManagerEventPlayerMatchStat | null;
+}
+
 export interface ActiveManagerEvent {
   templateId: string;
   category: ManagerEventCategory;
+  sceneId?: ManagerEventSceneId;
   targetScope: ManagerEventTargetScope;
   positionGroup?: PositionGroupId;
   targetPlayerId?: string;
   targetPlayerName?: string;
   targetPlayerNationality?: string;
   targetPlayerNationalityCode?: string;
+  targetPlayerOvr?: number;
+  targetPlayerPosition?: Position;
+  targetPlayerMainPosition?: SubPosition;
+  targetPlayerMorale?: number;
+  targetPlayerInjured?: boolean;
   title: string;
   speakerLabel: string;
   contextBadge: string;
   prompt: string;
   choices: ManagerEventChoiceDef[];
+  matchContext?: ManagerEventMatchContext | null;
 }
 
 export interface ManagerEventOutcomeItem {
@@ -145,6 +197,7 @@ export interface ManagerEventOutcomeItem {
 export interface ManagerEventResolution {
   eventTitle: string;
   category: ManagerEventCategory;
+  sceneId?: ManagerEventSceneId;
   chosenLabel: string;
   chosenQuote: string;
   wasRisky: boolean;

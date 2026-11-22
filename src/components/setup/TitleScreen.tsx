@@ -4,6 +4,7 @@ import {
   Crown,
   Play,
   ScrollText,
+  Swords,
 } from 'lucide-react';
 import { useState } from 'react';
 import { CURRENT_APP_VERSION } from '../../data/patchNotes';
@@ -14,7 +15,8 @@ import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { SystemGuideModal } from '../guide/SystemGuideModal';
 
 export function TitleScreen() {
-  const { startNewCareer, legacyState, setLegacyModalOpen } = useGame();
+  const { startNewCareer, legacyState, setLegacyModalOpen, openDreamMatch } =
+    useGame();
   const [showGuide, setShowGuide] = useState(false);
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const achProgress = getAchievementProgress(legacyState);
@@ -100,17 +102,30 @@ export function TitleScreen() {
               나만의 전술로 유럽 트레블의 역사를 써 내려가세요.
             </p>
 
-            {/* Primary CTA */}
-            <div className="mt-8 flex justify-center">
+            {/* Primary CTAs */}
+            <div className="mt-8 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
               <button
                 id="title-start-btn"
                 type="button"
                 onClick={startNewCareer}
-                className="group inline-flex w-full max-w-xs items-center justify-center gap-2.5 rounded-xl bg-emerald-500 px-8 py-3.5 text-sm font-extrabold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-400 active:scale-[0.99] cursor-pointer sm:text-base"
+                className="group inline-flex w-full max-w-xs items-center justify-center gap-2.5 rounded-xl bg-emerald-500 px-8 py-3.5 text-sm font-extrabold text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-400 active:scale-[0.99] cursor-pointer sm:w-auto sm:text-base"
               >
                 <Play className="h-4 w-4 fill-current" />
                 <span>새 시즌 시작</span>
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </button>
+
+              <button
+                id="title-dream-match-btn"
+                type="button"
+                onClick={() => openDreamMatch(null)}
+                className="group inline-flex w-full max-w-xs items-center justify-center gap-2 rounded-xl border border-amber-400/50 bg-amber-500/15 px-6 py-3.5 text-sm font-extrabold text-amber-200 shadow-lg shadow-amber-500/10 transition-all hover:border-amber-300 hover:bg-amber-500/25 active:scale-[0.99] cursor-pointer sm:w-auto sm:text-base"
+              >
+                <Swords className="h-4 w-4 text-amber-300" />
+                <span>드림 매치</span>
+                <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-black text-amber-300">
+                  역대 강팀 도전
+                </span>
               </button>
             </div>
           </div>

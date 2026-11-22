@@ -5,6 +5,7 @@ import {
   Crown,
   Lock,
   Sparkles,
+  Swords,
   Trash2,
   Trophy,
   X,
@@ -22,9 +23,12 @@ import type {
   HallOfFameEntry,
   HistoricalTeamEntry,
 } from '../../types/legacy';
+import type { Player } from '../../types/player';
+import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
+import { PlayerDetailModal } from '../common/PlayerDetailModal';
 
 type LegacyTab = 'hof' | 'achievements';
 type HofFilterTab = 'all' | 'user' | 'historical';
@@ -47,6 +51,7 @@ export function LegacyHubModal() {
     legacyModalOpen,
     setLegacyModalOpen,
     removeHallOfFameEntry,
+    openDreamMatch,
   } = useGame();
 
   const [tab, setTab] = useState<LegacyTab>('hof');
@@ -57,6 +62,7 @@ export function LegacyHubModal() {
   );
   const [selectedHistorical, setSelectedHistorical] =
     useState<HistoricalTeamEntry | null>(null);
+  const [inspectedPlayer, setInspectedPlayer] = useState<Player | null>(null);
   const [detailSubTab, setDetailSubTab] = useState<HofDetailSubTab>('squad');
   const [historyFilter, setHistoryFilter] = useState<HofHistoryFilter>('all');
   const [achFilter, setAchFilter] = useState<'all' | 'unlocked' | 'locked'>(
@@ -246,13 +252,14 @@ export function LegacyHubModal() {
 
                     if (row.source === 'historical' && row.historicalEntry) {
                       const h = row.historicalEntry;
+                      const dreamRec = legacyState.dreamMatchRecords?.[h.id];
                       return (
                         <div
                           key={h.id}
                           className="group relative flex flex-col justify-between rounded-2xl border border-amber-500/25 bg-gradient-to-br from-[#171612] via-[#11151d] to-[#0d1118] p-4 transition hover:border-amber-400/60"
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
                               <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-amber-500/35 bg-slate-900">
                                 <JerseySvg
                                   primaryColor={h.userClub.primaryColor}
@@ -272,6 +279,15 @@ export function LegacyHubModal() {
                                 </span>
                               </div>
 
+                              <div className="hidden sm:flex h-12 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-slate-900/90">
+                                <PixelManagerAvatar
+                                  avatar={h.managerAvatar}
+                                  clubPrimaryColor={h.userClub.primaryColor}
+                                  clubSecondaryColor={h.userClub.secondaryColor}
+                                  size={30}
+                                />
+                              </div>
+
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                   <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-black text-amber-300 border border-amber-500/35">
@@ -285,13 +301,17 @@ export function LegacyHubModal() {
                                       👑 트레블
                                     </span>
                                   )}
+                                  {dreamRec && dreamRec.wins > 0 && (
+                                    <span className="rounded bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">
+                                      ⚔️ 격파 {dreamRec.wins}승 {dreamRec.losses}패
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="mt-0.5 text-[11px] text-slate-300 truncate">
-                                  {h.managerName} 감독 · {h.nickname}
+                                  {h.managerName} (명장 {h.managerRating} · {MANAGER_TRAITS[h.managerTraitId].name}) · {h.nickname}
                                 </p>
-                                <p className="mt-0.5 text-[10px] text-slate-500 truncate">
-                                  {h.leagueKoreanName} {h.leaguePoints}점 ({h.leagueRecord}) · {h.cupName}{' '}
-                                  {h.cupResultLabel} · UCL {h.uclResultLabel}
+                                <p className="mt-0.5 text-[10px] text-slate-400 truncate">
+                                  OVR {h.teamAvgOvr} · 케미 {h.chemistry} · {h.leagueKoreanName} {h.leaguePoints}점 ({h.leagueRecord}) · UCL {h.uclResultLabel}
                                 </p>
                               </div>
                             </div>
@@ -306,7 +326,7 @@ export function LegacyHubModal() {
                             </div>
                           </div>
 
-                          <div className="mt-3 flex items-center justify-between border-t border-slate-800/80 pt-2.5">
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 pt-2.5">
                             <div className="flex flex-wrap gap-1">
                               {h.trophies.slice(0, 3).map((tr) => (
                                 <span
@@ -317,13 +337,23 @@ export function LegacyHubModal() {
                                 </span>
                               ))}
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedHistorical(h)}
-                              className="shrink-0 rounded-lg bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-300 hover:bg-amber-500/25 cursor-pointer"
-                            >
-                              베스트 11 보기
-                            </button>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedHistorical(h)}
+                                className="rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-bold text-slate-200 hover:bg-slate-700 cursor-pointer"
+                              >
+                                스쿼드 보기
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openDreamMatch(h.id)}
+                                className="inline-flex items-center gap-1 rounded-lg bg-amber-400 px-2.5 py-1 text-xs font-black text-slate-950 hover:bg-amber-300 cursor-pointer"
+                              >
+                                <Swords className="h-3 w-3" />
+                                <span>도전하기</span>
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
@@ -465,13 +495,23 @@ export function LegacyHubModal() {
           {/* HISTORICAL TEAM BENCHMARK DETAIL VIEW */}
           {tab === 'hof' && selectedHistorical && (
             <div className="space-y-4">
-              <button
-                type="button"
-                onClick={() => setSelectedHistorical(null)}
-                className="text-xs font-bold text-amber-300 hover:underline cursor-pointer"
-              >
-                ← 명예의 전당 랭킹으로 돌아가기
-              </button>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedHistorical(null)}
+                  className="text-xs font-bold text-amber-300 hover:underline cursor-pointer"
+                >
+                  ← 명예의 전당 랭킹으로 돌아가기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openDreamMatch(selectedHistorical.id)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-300 cursor-pointer shadow-md"
+                >
+                  <Swords className="h-4 w-4" />
+                  <span>이 팀에 도전하기 (드림 매치)</span>
+                </button>
+              </div>
 
               <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/35 bg-slate-950/85 p-5">
                 <div className="flex items-center gap-4">
@@ -482,6 +522,14 @@ export function LegacyHubModal() {
                     label={selectedHistorical.userClub.shortName}
                     size={56}
                   />
+                  <div className="flex h-16 w-14 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-slate-900">
+                    <PixelManagerAvatar
+                      avatar={selectedHistorical.managerAvatar}
+                      clubPrimaryColor={selectedHistorical.userClub.primaryColor}
+                      clubSecondaryColor={selectedHistorical.userClub.secondaryColor}
+                      size={44}
+                    />
+                  </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-black text-amber-300 border border-amber-500/35">
@@ -496,16 +544,25 @@ export function LegacyHubModal() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs font-semibold text-amber-200">
-                      {selectedHistorical.managerName} 감독 · {selectedHistorical.nickname}
+                      {selectedHistorical.managerName} 감독 (명장 지휘력 {selectedHistorical.managerRating} ·{' '}
+                      {MANAGER_TRAITS[selectedHistorical.managerTraitId].name}) ·{' '}
+                      {selectedHistorical.nickname}
                     </p>
                     <p className="mt-1 text-xs text-slate-300">
                       {selectedHistorical.leagueKoreanName} {selectedHistorical.leagueTotalRounds}R{' '}
-                      {selectedHistorical.leaguePoints}점 우승 ({selectedHistorical.leagueRecord}, 득실{' '}
-                      +{selectedHistorical.leagueGoalDifference}) · {selectedHistorical.cupName}{' '}
-                      {selectedHistorical.cupResultLabel} · UCL {selectedHistorical.uclResultLabel}
+                      {selectedHistorical.leaguePoints}점 우승 ({selectedHistorical.leagueRecord},{' '}
+                      {selectedHistorical.goalsFor}득점 {selectedHistorical.goalsAgainst}실점) ·{' '}
+                      {selectedHistorical.cupName} {selectedHistorical.cupResultLabel} · UCL{' '}
+                      {selectedHistorical.uclResultLabel}
+                    </p>
+                    <p className="mt-1 text-[11px] text-emerald-300 font-semibold">
+                      팀 평균 OVR {selectedHistorical.teamAvgOvr} · 실전 케미{' '}
+                      {selectedHistorical.chemistry} · 감독 시너지{' '}
+                      {selectedHistorical.managerSynergyCount}명 (+
+                      {selectedHistorical.avgSynergyOvrBonus.toFixed(1)} OVR)
                     </p>
                     <p className="mt-1.5 text-xs text-slate-400 leading-relaxed">
-                      {selectedHistorical.summaryNote}
+                      {selectedHistorical.summaryNote} {selectedHistorical.managerStyleNote}
                     </p>
                   </div>
                 </div>
@@ -528,20 +585,21 @@ export function LegacyHubModal() {
                 )}
               </div>
 
-              {/* Same Fair Season Score Breakdown */}
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
+              {/* Same Fair Season Score Breakdown (8 Columns including Squad Craft & Manager Synergy) */}
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">
                 {[
                   { label: '리그 환산(PPG×38)', val: selectedHistorical.seasonScore.leagueConvertedScore },
                   { label: '리그 순위', val: selectedHistorical.seasonScore.leagueRankBonus },
                   { label: '자국 컵', val: selectedHistorical.seasonScore.cupBonus },
                   { label: '챔피언스리그', val: selectedHistorical.seasonScore.uclBonus },
-                  { label: '대업(트레블/무패)', val: selectedHistorical.seasonScore.honorsBonus },
+                  { label: '대업·대기록', val: selectedHistorical.seasonScore.honorsBonus },
+                  { label: '스쿼드·감독 시너지', val: selectedHistorical.seasonScore.squadCraftBonus ?? 0 },
                   { label: '언더독 보너스', val: selectedHistorical.seasonScore.underdogBonus },
                   { label: '개인 수상 보너스', val: selectedHistorical.seasonScore.awardsBonus ?? 0 },
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-center"
+                    className="rounded-xl border border-slate-800 bg-slate-950/70 p-2.5 text-center"
                   >
                     <div className="text-[10px] text-slate-400">{item.label}</div>
                     <div className="mt-1 font-mono text-sm font-black text-amber-300">
@@ -551,53 +609,147 @@ export function LegacyHubModal() {
                 ))}
               </div>
 
-              {selectedHistorical.seasonScore.awardsBonusDetails &&
-                selectedHistorical.seasonScore.awardsBonusDetails.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2 text-[11px] text-amber-200">
-                    <span className="font-bold text-amber-300">당시 개인 수상 가산점:</span>
-                    {selectedHistorical.seasonScore.awardsBonusDetails.map((d) => (
-                      <span
-                        key={d}
-                        className="rounded-md bg-slate-950/70 px-2 py-0.5 font-semibold"
-                      >
-                        {d}
-                      </span>
-                    ))}
-                  </div>
-                )}
+              {/* Detailed Breakdown Chips */}
+              <div className="space-y-1.5">
+                {selectedHistorical.seasonScore.honorsBonusDetails &&
+                  selectedHistorical.seasonScore.honorsBonusDetails.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2 text-[11px] text-amber-200">
+                      <span className="font-bold text-amber-300">역사적 대업 가산점:</span>
+                      {selectedHistorical.seasonScore.honorsBonusDetails.map((d) => (
+                        <span
+                          key={d}
+                          className="rounded-md bg-slate-950/70 px-2 py-0.5 font-semibold"
+                        >
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
-              {/* Representative Best 11 */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
+                {selectedHistorical.seasonScore.squadCraftDetails &&
+                  selectedHistorical.seasonScore.squadCraftDetails.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2 text-[11px] text-emerald-200">
+                      <span className="font-bold text-emerald-300">전력·케미·명장 시너지:</span>
+                      {selectedHistorical.seasonScore.squadCraftDetails.map((d) => (
+                        <span
+                          key={d}
+                          className="rounded-md bg-slate-950/70 px-2 py-0.5 font-semibold"
+                        >
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                {selectedHistorical.seasonScore.awardsBonusDetails &&
+                  selectedHistorical.seasonScore.awardsBonusDetails.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3.5 py-2 text-[11px] text-sky-200">
+                      <span className="font-bold text-sky-300">당시 개인 수상 가산점:</span>
+                      {selectedHistorical.seasonScore.awardsBonusDetails.map((d) => (
+                        <span
+                          key={d}
+                          className="rounded-md bg-slate-950/70 px-2 py-0.5 font-semibold"
+                        >
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+              </div>
+
+              {/* Full Prime Squad: 11 Starters + 6 Bench (Click any player for 7+5 sub-attributes radar!) */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h4 className="text-xs font-extrabold text-white">
-                    대표 베스트 11 ({selectedHistorical.formation} · {TACTICS[selectedHistorical.defaultTactic].name})
+                    풀스쿼드 — 선발 {selectedHistorical.starters.length}명 + 핵심 벤치{' '}
+                    {selectedHistorical.bench.length}명 ({selectedHistorical.formation} ·{' '}
+                    {TACTICS[selectedHistorical.defaultTactic].name})
                   </h4>
-                  <span className="text-[11px] text-slate-400">
-                    추정 팀 OVR {selectedHistorical.teamAvgOvr}
+                  <span className="text-[11px] text-amber-300">
+                    선수 클릭 시 7대 세부 능력치 &amp; 레이더 차트 확인
                   </span>
                 </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {selectedHistorical.bestXi.map((p, idx) => (
-                    <div
-                      key={`${p.position}-${p.name}-${idx}`}
-                      className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/75 px-3 py-2 text-xs"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="w-9 shrink-0 rounded bg-slate-800 py-0.5 text-center font-mono text-[10px] font-bold text-amber-300">
-                          {p.position}
-                        </span>
-                        <span className="truncate font-bold text-white">
-                          {p.name}
-                        </span>
-                      </div>
-                      {p.note && (
-                        <span className="shrink-0 rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
-                          {p.note}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+
+                <div>
+                  <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                    선발 베스트 11 (STARTING XI)
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {selectedHistorical.starters.map((p, idx) => {
+                      const slotLabel =
+                        selectedHistorical.bestXi[idx]?.position ??
+                        p.mainPositions[0];
+                      const note = selectedHistorical.bestXi[idx]?.note;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setInspectedPlayer(p)}
+                          className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/75 px-3 py-2 text-left text-xs transition hover:border-amber-400/55 hover:bg-slate-800/80 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-9 shrink-0 rounded bg-slate-800 py-0.5 text-center font-mono text-[10px] font-bold text-amber-300">
+                              {slotLabel}
+                            </span>
+                            <CountryFlagSvg
+                              code={p.nationalityCode}
+                              nationality={p.nationality}
+                              size="sm"
+                            />
+                            <span className="truncate font-bold text-white">
+                              {p.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {note && (
+                              <span className="hidden xl:inline rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
+                                {note}
+                              </span>
+                            )}
+                            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] font-black text-amber-300">
+                              {p.ovr}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
+                {selectedHistorical.bench.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      핵심 벤치 ({selectedHistorical.bench.length}명)
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                      {selectedHistorical.bench.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setInspectedPlayer(p)}
+                          className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-900/45 px-3 py-2 text-left text-xs transition hover:border-amber-400/50 hover:bg-slate-800/70 cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-9 shrink-0 rounded bg-slate-800/80 py-0.5 text-center font-mono text-[10px] font-bold text-slate-400">
+                              {p.mainPositions[0]}
+                            </span>
+                            <CountryFlagSvg
+                              code={p.nationalityCode}
+                              nationality={p.nationality}
+                              size="sm"
+                            />
+                            <span className="truncate font-bold text-slate-200">
+                              {p.name}
+                            </span>
+                          </div>
+                          <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-black text-slate-300">
+                            {p.ovr}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -685,20 +837,21 @@ export function LegacyHubModal() {
                 )}
               </div>
 
-              {/* Score Breakdown (including Individual Awards Bonus) */}
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-7">
+              {/* Score Breakdown (including Squad Craft & Individual Awards Bonus) */}
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">
                 {[
                   { label: '리그 환산(PPG×38)', val: selectedEntry.seasonScore.leagueConvertedScore },
                   { label: '리그 순위', val: selectedEntry.seasonScore.leagueRankBonus },
                   { label: '자국 컵', val: selectedEntry.seasonScore.cupBonus },
                   { label: '챔피언스리그', val: selectedEntry.seasonScore.uclBonus },
-                  { label: '대업(트레블/무패)', val: selectedEntry.seasonScore.honorsBonus },
+                  { label: '대업·대기록', val: selectedEntry.seasonScore.honorsBonus },
+                  { label: '스쿼드·감독 시너지', val: selectedEntry.seasonScore.squadCraftBonus ?? 0 },
                   { label: '언더독 보너스', val: selectedEntry.seasonScore.underdogBonus },
                   { label: '개인 수상 보너스', val: selectedEntry.seasonScore.awardsBonus ?? 0 },
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-center"
+                    className="rounded-xl border border-slate-800 bg-slate-950/70 p-2.5 text-center"
                   >
                     <div className="text-[10px] text-slate-400">{item.label}</div>
                     <div className="mt-1 font-mono text-sm font-black text-emerald-300">
@@ -708,10 +861,40 @@ export function LegacyHubModal() {
                 ))}
               </div>
 
+              {selectedEntry.seasonScore.honorsBonusDetails &&
+                selectedEntry.seasonScore.honorsBonusDetails.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2 text-[11px] text-amber-200">
+                    <span className="font-bold text-amber-300">대업·대기록 내역:</span>
+                    {selectedEntry.seasonScore.honorsBonusDetails.map((d) => (
+                      <span
+                        key={d}
+                        className="rounded-md bg-slate-950/70 px-2 py-0.5 font-semibold"
+                      >
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+              {selectedEntry.seasonScore.squadCraftDetails &&
+                selectedEntry.seasonScore.squadCraftDetails.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-2 text-[11px] text-emerald-200">
+                    <span className="font-bold text-emerald-300">전력·케미·감독 시너지:</span>
+                    {selectedEntry.seasonScore.squadCraftDetails.map((d) => (
+                      <span
+                        key={d}
+                        className="rounded-md bg-slate-950/70 px-2 py-0.5 font-semibold"
+                      >
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
               {selectedEntry.seasonScore.awardsBonusDetails &&
                 selectedEntry.seasonScore.awardsBonusDetails.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2 text-[11px] text-amber-200">
-                    <span className="font-bold text-amber-300">개인 수상 내역:</span>
+                  <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3.5 py-2 text-[11px] text-sky-200">
+                    <span className="font-bold text-sky-300">개인 수상 내역:</span>
                     {selectedEntry.seasonScore.awardsBonusDetails.map((d) => (
                       <span
                         key={d}
@@ -1014,6 +1197,14 @@ export function LegacyHubModal() {
           )}
         </div>
       </div>
+
+      {inspectedPlayer && (
+        <PlayerDetailModal
+          player={inspectedPlayer}
+          managerTraitId={selectedHistorical?.managerTraitId ?? null}
+          onClose={() => setInspectedPlayer(null)}
+        />
+      )}
     </div>
   );
 }

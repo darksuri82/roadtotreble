@@ -1,9 +1,16 @@
+import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
 import { computeSeasonScore } from '../engine/legacyEngine';
 import { USER_CLUB_ID } from '../engine/matchEngine';
 import type { CupStageId, DomesticCupState } from '../types/cup';
-import type { FormationId, UserClubProfile } from '../types/game';
+import type {
+  FormationId,
+  ManagerAvatarConfig,
+  ManagerTraitId,
+  UserClubProfile,
+} from '../types/game';
 import type {
   BestXiEntry,
+  Club,
   GlobalSeasonAwards,
   LeagueId,
   PlayerSeasonStats,
@@ -16,7 +23,11 @@ import type {
   HistoricalTeamEntry,
   UnifiedLeaderboardEntry,
 } from '../types/legacy';
+import type { Player } from '../types/player';
 import type { UclKnockoutStage, UclTournamentState } from '../types/ucl';
+import { FORMATIONS } from './formations';
+import { HISTORICAL_SQUADS } from './historicalSquadsData';
+import { evaluateManagerPlayerSynergy } from './managerTraits';
 
 interface RawHistoricalTeamSpec {
   id: string;
@@ -24,6 +35,10 @@ interface RawHistoricalTeamSpec {
   displayName: string;
   nickname: string;
   managerName: string;
+  managerTraitId: ManagerTraitId;
+  managerRating: number; // 91..99 real-world managerial stature
+  managerStyleNote: string;
+  managerAvatar: ManagerAvatarConfig;
   userClub: UserClubProfile;
   leagueId: LeagueId;
   leagueKoreanName: string;
@@ -42,13 +57,14 @@ interface RawHistoricalTeamSpec {
   cupResultLabel: string;
   uclOutcome: 'winner' | UclKnockoutStage | 'league_phase' | 'none';
   uclResultLabel: string;
-  teamAvgOvr: number;
+  uclPerfectWin?: boolean;
+  uclUnbeatenWin?: boolean;
   summaryNote: string;
   ballonDorWinnerName?: string;
   worldBestXiCount: number;
   leagueMvpName?: string;
   leagueBestXiCount: number;
-  bestXi: HistoricalBestXiPlayer[];
+  bestXiNotes?: Record<string, string>;
 }
 
 function makeDummyStat(name: string, idx: number): PlayerSeasonStats {
@@ -85,6 +101,44 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
   const uclWon = spec.uclOutcome === 'winner';
   const isLeagueChampion = spec.finalLeagueRank === 1;
   const isTreble = isLeagueChampion && cupWon && uclWon;
+
+  const squadBundle = HISTORICAL_SQUADS[spec.id];
+  const starters: Player[] = squadBundle ? squadBundle.starters : [];
+  const bench: Player[] = squadBundle ? squadBundle.bench : [];
+  const formationCfg = FORMATIONS[spec.formation];
+
+  // Calculate genuine team OVR, chemistry, and manager synergy using the EXACT user engines!
+  const chemResult = calculateChemistry(
+    spec.formation,
+    starters,
+    spec.defaultTactic,
+    spec.managerTraitId,
+  );
+  const rawStarterAvgOvr =
+    starters.length > 0
+      ? starters.reduce((sum, p) => sum + p.ovr, 0) / starters.length
+      : 86;
+  const teamAvgOvr = Math.round(rawStarterAvgOvr * 10) / 10;
+
+  const slotSynValues = Object.values(chemResult.slotSynergies);
+  const avgSynergyOvrBonus =
+    slotSynValues.length > 0
+      ? Math.round(
+          (slotSynValues.reduce((sum, s) => sum + s.totalBonus, 0) /
+            slotSynValues.length) *
+            100,
+        ) / 100
+      : 0;
+  const managerSynergyCount = starters.filter(
+    (p) => evaluateManagerPlayerSynergy(p, spec.managerTraitId).isMatch,
+  ).length;
+
+  const bestXi: HistoricalBestXiPlayer[] = starters.map((p, idx) => ({
+    position: formationCfg.slots[idx]?.label ?? p.mainPositions[0] ?? p.position,
+    name: p.name,
+    ovr: p.ovr,
+    note: spec.bestXiNotes?.[p.name],
+  }));
 
   // Synthesize minimal Cup & UCL states so computeSeasonScore applies the exact same user formula
   const syntheticCup: DomesticCupState | null =
@@ -180,10 +234,18 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
     leaguePlayed: spec.leagueTotalRounds,
     leagueGoalDifference,
     leagueLosses: spec.lost,
+    leagueGoalsFor: spec.goalsFor,
+    leagueGoalsAgainst: spec.goalsAgainst,
     finalLeagueRank: spec.finalLeagueRank,
     cup: syntheticCup,
     ucl: syntheticUcl,
-    teamAvgOvr: spec.teamAvgOvr,
+    uclPerfectWin: spec.uclPerfectWin,
+    uclUnbeatenWin: spec.uclUnbeatenWin,
+    teamAvgOvr,
+    chemistry: chemResult.total,
+    avgSynergyOvrBonus,
+    managerSynergyCount,
+    managerRating: spec.managerRating,
     awards: syntheticAwards,
     globalAwards: syntheticGlobalAwards,
     userClubId: USER_CLUB_ID,
@@ -200,6 +262,10 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
     displayName: spec.displayName,
     nickname: spec.nickname,
     managerName: spec.managerName,
+    managerTraitId: spec.managerTraitId,
+    managerRating: spec.managerRating,
+    managerStyleNote: spec.managerStyleNote,
+    managerAvatar: spec.managerAvatar,
     userClub: spec.userClub,
     leagueId: spec.leagueId,
     leagueKoreanName: spec.leagueKoreanName,
@@ -210,14 +276,21 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
     leagueTotalRounds: spec.leagueTotalRounds,
     leagueRecord: `${spec.won}승 ${spec.drawn}무 ${spec.lost}패`,
     leagueGoalDifference,
+    goalsFor: spec.goalsFor,
+    goalsAgainst: spec.goalsAgainst,
     cupName: spec.cupName,
     cupResultLabel: spec.cupResultLabel,
     cupWon,
     uclResultLabel: spec.uclResultLabel,
     uclWon,
+    uclPerfectWin: spec.uclPerfectWin,
+    uclUnbeatenWin: spec.uclUnbeatenWin,
     isTreble,
     isLeagueChampion,
-    teamAvgOvr: spec.teamAvgOvr,
+    teamAvgOvr,
+    chemistry: chemResult.total,
+    avgSynergyOvrBonus,
+    managerSynergyCount,
     seasonScore,
     trophies,
     summaryNote: spec.summaryNote,
@@ -225,7 +298,9 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
     worldBestXiCount: spec.worldBestXiCount,
     leagueMvpName: spec.leagueMvpName,
     leagueBestXiCount: spec.leagueBestXiCount,
-    bestXi: spec.bestXi,
+    bestXi,
+    starters,
+    bench,
   };
 }
 
@@ -236,6 +311,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '19-20 바이에른 뮌헨',
     nickname: 'UCL 전승 트레블 · 6관왕',
     managerName: '한지 플릭',
+    managerTraitId: 'gegenpress_guru',
+    managerRating: 95,
+    managerStyleNote: '초고강도 하이 라인과 전방 3인 압박 트랩으로 유럽을 초토화한 게겐프레싱의 정점.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'light',
+      hairStyle: 'parted',
+      hairColor: 'silver',
+      outfit: 'team_tracksuit',
+    },
     userClub: {
       name: '19-20 바이에른 뮌헨',
       shortName: 'FCB',
@@ -260,25 +345,19 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '우승',
     uclOutcome: 'winner',
     uclResultLabel: '전승 우승 (11승)',
-    teamAvgOvr: 88.4,
-    summaryNote: '분데스리가 100득점 + DFB-포칼 + 사상 초유의 UCL 11전 전승 우승으로 트레블을 완성한 압박 축구의 정점.',
+    uclPerfectWin: true,
+    uclUnbeatenWin: true,
+    summaryNote:
+      '분데스리가 100득점 + DFB-포칼 + 사상 초유의 UCL 11전 전승 우승으로 트레블을 완성한 압박 축구의 정점.',
     ballonDorWinnerName: '로베르트 레반도프스키 (FIFA 올해의 선수)',
     worldBestXiCount: 4,
     leagueMvpName: '로베르트 레반도프스키',
     leagueBestXiCount: 6,
-    bestXi: [
-      { position: 'GK', name: '마누엘 노이어' },
-      { position: 'RB', name: '요주아 키미히' },
-      { position: 'CB', name: '제롬 보아텡' },
-      { position: 'CB', name: '다비드 알라바' },
-      { position: 'LB', name: '알폰소 데이비스' },
-      { position: 'CDM', name: '레온 고레츠카' },
-      { position: 'CDM', name: '티아고 알칸타라' },
-      { position: 'RW', name: '세르주 그나브리' },
-      { position: 'CAM', name: '토마스 뮐러', note: '리그 21도움' },
-      { position: 'LW', name: '킹슬리 코망', note: '결승 결승골' },
-      { position: 'ST', name: '로베르트 레반도프스키', note: '시즌 55골' },
-    ],
+    bestXiNotes: {
+      '토마스 뮐러': '리그 21도움',
+      '킹슬리 코망': '결승 결승골',
+      '로베르트 레반도프스키': '시즌 55골',
+    },
   },
   {
     id: 'hist-1213-bayern',
@@ -286,6 +365,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '12-13 바이에른 뮌헨',
     nickname: '분데스리가 역대 최다 승점 트레블',
     managerName: '유프 하인케스',
+    managerTraitId: 'wing_bomber',
+    managerRating: 96,
+    managerStyleNote: '로베리 양 측면 폭격과 완벽한 공수 밸런스로 독일 최초 트레블을 완성한 대명장.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'light',
+      hairStyle: 'parted',
+      hairColor: 'silver',
+      outfit: 'navy_coat',
+    },
     userClub: {
       name: '12-13 바이에른 뮌헨',
       shortName: 'FCB',
@@ -310,24 +399,15 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '우승',
     uclOutcome: 'winner',
     uclResultLabel: '우승',
-    teamAvgOvr: 88.2,
-    summaryNote: '분데스리가 34R 91점·단 1패·18실점이라는 압도적 기록과 로베리 좌우 윙어 듀오로 독일 구단 최초 트레블 달성.',
+    summaryNote:
+      '분데스리가 34R 91점·단 1패·18실점이라는 압도적 기록과 로베리 좌우 윙어 듀오로 독일 구단 최초 트레블 달성.',
     worldBestXiCount: 3,
     leagueMvpName: '프랑크 리베리',
     leagueBestXiCount: 6,
-    bestXi: [
-      { position: 'GK', name: '마누엘 노이어' },
-      { position: 'RB', name: '필립 람' },
-      { position: 'CB', name: '제롬 보아텡' },
-      { position: 'CB', name: '단테' },
-      { position: 'LB', name: '다비드 알라바' },
-      { position: 'CDM', name: '하비 마르티네스' },
-      { position: 'CDM', name: '바스티안 슈바인슈타이거' },
-      { position: 'RW', name: '아르옌 로벤', note: '결승 결승골' },
-      { position: 'CAM', name: '토마스 뮐러' },
-      { position: 'LW', name: '프랑크 리베리', note: 'UEFA 올해의 선수' },
-      { position: 'ST', name: '마리오 만주키치' },
-    ],
+    bestXiNotes: {
+      '아르옌 로벤': '결승 결승골',
+      '프랑크 리베리': 'UEFA 올해의 선수',
+    },
   },
   {
     id: 'hist-1415-barca',
@@ -335,6 +415,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '14-15 FC 바르셀로나',
     nickname: 'MSN 122골 · 유럽 최초 2회 트레블',
     managerName: '루이스 엔리케',
+    managerTraitId: 'galactico_manager',
+    managerRating: 95,
+    managerStyleNote: '티키타카 점유율에 MSN 삼각 편대의 초고속 직선 역습을 결합한 완성형 공격 축구.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'buzz',
+      hairColor: 'brown',
+      outfit: 'classic_suit',
+    },
     userClub: {
       name: '14-15 FC 바르셀로나',
       shortName: 'FCB',
@@ -359,25 +449,17 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '우승',
     uclOutcome: 'winner',
     uclResultLabel: '우승',
-    teamAvgOvr: 89.2,
-    summaryNote: '메시·수아레스·네이마르(MSN) 트리오가 합작 122골을 폭발시키며 라리가 94점·코파 델 레이·UCL을 석권.',
+    summaryNote:
+      '메시·수아레스·네이마르(MSN) 트리오가 합작 122골을 폭발시키며 라리가 94점·코파 델 레이·UCL을 석권.',
     ballonDorWinnerName: '리오넬 메시',
     worldBestXiCount: 4,
     leagueMvpName: '리오넬 메시',
     leagueBestXiCount: 6,
-    bestXi: [
-      { position: 'GK', name: '마르크안드레 테어 슈테겐' },
-      { position: 'RB', name: '다니 알베스' },
-      { position: 'CB', name: '제라르 피케' },
-      { position: 'CB', name: '하비에르 마스체라노' },
-      { position: 'LB', name: '조르디 알바' },
-      { position: 'CDM', name: '세르히오 부스케츠' },
-      { position: 'CM', name: '이반 라키티치' },
-      { position: 'CM', name: '안드레스 이니에스타' },
-      { position: 'RW', name: '리오넬 메시', note: '발롱도르 · 58골' },
-      { position: 'ST', name: '루이스 수아레스' },
-      { position: 'LW', name: '네이마르', note: '39골' },
-    ],
+    bestXiNotes: {
+      '리오넬 메시': '발롱도르 · 58골',
+      '네이마르': '39골',
+      '루이스 수아레스': '결승 결승골',
+    },
   },
   {
     id: 'hist-0809-barca',
@@ -385,6 +467,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '08-09 FC 바르셀로나',
     nickname: '티키타카 탄생 · 스페인 최초 트레블',
     managerName: '펩 과르디올라',
+    managerTraitId: 'tiki_taka',
+    managerRating: 98,
+    managerStyleNote: '현대 축구의 패러다임을 영원히 바꾼 포지셔널 플레이·펄스 나인·티키타카의 창시자.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'bald',
+      hairColor: 'black',
+      outfit: 'classic_suit',
+    },
     userClub: {
       name: '08-09 FC 바르셀로나',
       shortName: 'FCB',
@@ -409,25 +501,17 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '우승',
     uclOutcome: 'winner',
     uclResultLabel: '우승',
-    teamAvgOvr: 88.5,
-    summaryNote: '펩 과르디올라 데뷔 시즌에 티키타카 점유율 축구로 라리가 105득점·코파 델 레이·UCL을 모두 제패하며 6관왕의 서막을 염.',
+    summaryNote:
+      '펩 과르디올라 데뷔 시즌에 티키타카 점유율 축구로 라리가 105득점·코파 델 레이·UCL을 모두 제패하며 6관왕의 서막을 염.',
     ballonDorWinnerName: '리오넬 메시',
     worldBestXiCount: 4,
     leagueMvpName: '리오넬 메시',
     leagueBestXiCount: 5,
-    bestXi: [
-      { position: 'GK', name: '빅토르 발데스' },
-      { position: 'RB', name: '다니 알베스' },
-      { position: 'CB', name: '카를레스 푸욜' },
-      { position: 'CB', name: '제라르 피케' },
-      { position: 'LB', name: '에릭 아비달' },
-      { position: 'CDM', name: '세르히오 부스케츠' },
-      { position: 'CM', name: '사비 에르난데스' },
-      { position: 'CM', name: '안드레스 이니에스타' },
-      { position: 'RW', name: '리오넬 메시', note: '발롱도르 · 38골' },
-      { position: 'ST', name: '사무엘 에투', note: '36골' },
-      { position: 'LW', name: '티에리 앙리', note: '26골' },
-    ],
+    bestXiNotes: {
+      '리오넬 메시': '발롱도르 · 38골',
+      '사무엘 에투': '36골',
+      '티에리 앙리': '26골',
+    },
   },
   {
     id: 'hist-2223-mancity',
@@ -435,6 +519,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '22-23 맨체스터 시티',
     nickname: '홀란 52골 · 3-2-4-1 트레블',
     managerName: '펩 과르디올라',
+    managerTraitId: 'tiki_taka',
+    managerRating: 98,
+    managerStyleNote: '존 스톤스 하이브리드 3-2-4-1 박스 미드필드로 유럽 최초 개인 2회 트레블을 달성한 전술 천재.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'bald',
+      hairColor: 'black',
+      outfit: 'navy_coat',
+    },
     userClub: {
       name: '22-23 맨체스터 시티',
       shortName: 'MCI',
@@ -458,25 +552,18 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupOutcome: 'winner',
     cupResultLabel: '우승',
     uclOutcome: 'winner',
-    uclResultLabel: '우승',
-    teamAvgOvr: 88.8,
-    summaryNote: '존 스톤스의 센터백-볼란치 하이브리드 전술과 홀란(EPL 36골)·더 브라위너·로드리의 조합으로 구단 최초 트레블 완성.',
+    uclResultLabel: '무패 우승',
+    uclUnbeatenWin: true,
+    summaryNote:
+      '존 스톤스의 센터백-볼란치 하이브리드 전술과 홀란(EPL 36골)·더 브라위너·로드리의 조합으로 구단 최초 트레블 완성.',
     worldBestXiCount: 5,
     leagueMvpName: '엘링 홀란',
     leagueBestXiCount: 5,
-    bestXi: [
-      { position: 'GK', name: '에데르송' },
-      { position: 'CB', name: '카일 워커' },
-      { position: 'CB', name: '후벵 디아스' },
-      { position: 'CB', name: '마누엘 아칸지' },
-      { position: 'CDM', name: '존 스톤스' },
-      { position: 'CDM', name: '로드리', note: 'UCL 결승 결승골' },
-      { position: 'RM', name: '베르나르두 실바' },
-      { position: 'LM', name: '잭 그릴리시' },
-      { position: 'CAM', name: '케빈 더 브라위너' },
-      { position: 'CAM', name: '일카이 귄도안' },
-      { position: 'ST', name: '엘링 홀란', note: '시즌 52골' },
-    ],
+    bestXiNotes: {
+      '로드리': 'UCL 결승 결승골',
+      '엘링 홀란': '시즌 52골',
+      '케빈 더 브라위너': '31도움',
+    },
   },
   {
     id: 'hist-0910-inter',
@@ -484,6 +571,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '09-10 인터 밀란',
     nickname: '이탈리아 최초 트레블 · 무리뉴 실리 축구',
     managerName: '조제 무리뉴',
+    managerTraitId: 'catenaccio',
+    managerRating: 96,
+    managerStyleNote: '극한의 수비 조직력과 면도날 역습, 선수단 멘탈 장악으로 빅매치를 집어삼킨 스페셜 원.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'warm',
+      hairStyle: 'parted',
+      hairColor: 'silver',
+      outfit: 'navy_coat',
+    },
     userClub: {
       name: '09-10 인터 밀란',
       shortName: 'INT',
@@ -508,24 +605,15 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '우승',
     uclOutcome: 'winner',
     uclResultLabel: '우승',
-    teamAvgOvr: 86.2,
-    summaryNote: '철벽 수비와 면도날 역습으로 바르셀로나와 바이에른을 차례로 꺾고 이탈리아 클럽 사상 유일의 트레블 달성.',
+    summaryNote:
+      '철벽 수비와 면도날 역습으로 바르셀로나와 바이에른을 차례로 꺾고 이탈리아 클럽 사상 유일의 트레블 달성.',
     worldBestXiCount: 3,
     leagueMvpName: '디에고 밀리토',
     leagueBestXiCount: 5,
-    bestXi: [
-      { position: 'GK', name: '줄리우 세자르' },
-      { position: 'RB', name: '마이콩' },
-      { position: 'CB', name: '루시우' },
-      { position: 'CB', name: '발테르 사무엘' },
-      { position: 'LB', name: '하비에르 사네티' },
-      { position: 'CDM', name: '에스테반 캄비아소' },
-      { position: 'CDM', name: '티아고 모타' },
-      { position: 'RW', name: '사무엘 에투' },
-      { position: 'CAM', name: '베슬러이 스네이더르' },
-      { position: 'LW', name: '고란 판데프' },
-      { position: 'ST', name: '디에고 밀리토', note: '결승 멀티골' },
-    ],
+    bestXiNotes: {
+      '디에고 밀리토': '결승 멀티골',
+      '베슬러이 스네이더르': 'UCL 도움왕',
+    },
   },
   {
     id: 'hist-9899-manutd',
@@ -533,6 +621,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '98-99 맨체스터 유나이티드',
     nickname: '캄프 누의 기적 · 잉글랜드 최초 트레블',
     managerName: '알렉스 퍼거슨',
+    managerTraitId: 'super_sub',
+    managerRating: 99,
+    managerStyleNote: '‘퍼기 타임’과 전설의 교체 용병술, 불굴의 위닝 멘탈리티를 상징하는 축구 역사상 최고 명장.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'light',
+      hairStyle: 'slick',
+      hairColor: 'silver',
+      outfit: 'classic_suit',
+    },
     userClub: {
       name: '98-99 맨체스터 유나이티드',
       shortName: 'MUN',
@@ -556,25 +654,17 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupOutcome: 'winner',
     cupResultLabel: '우승',
     uclOutcome: 'winner',
-    uclResultLabel: '우승',
-    teamAvgOvr: 85.4,
-    summaryNote: '클래스 오브 92와 요크-콜 투톱, 그리고 캄프 누 후반 추가시간 대역전극으로 잉글랜드 축구 사상 첫 트레블을 기록.',
+    uclResultLabel: '무패 우승',
+    uclUnbeatenWin: true,
+    summaryNote:
+      '클래스 오브 92와 요크-콜 투톱, 그리고 캄프 누 후반 추가시간 대역전극으로 잉글랜드 축구 사상 첫 트레블을 기록.',
     worldBestXiCount: 2,
     leagueMvpName: '드와이트 요크',
     leagueBestXiCount: 5,
-    bestXi: [
-      { position: 'GK', name: '피터 슈마이켈' },
-      { position: 'RB', name: '게리 네빌' },
-      { position: 'CB', name: '야프 스탐' },
-      { position: 'CB', name: '로니 욘센' },
-      { position: 'LB', name: '데니스 어윈' },
-      { position: 'RM', name: '데이비드 베컴', note: '발롱도르 2위' },
-      { position: 'CM', name: '로이 킨' },
-      { position: 'CM', name: '폴 스콜스' },
-      { position: 'LM', name: '라이언 긱스' },
-      { position: 'ST', name: '드와이트 요크' },
-      { position: 'ST', name: '앤디 콜' },
-    ],
+    bestXiNotes: {
+      '데이비드 베컴': '발롱도르 2위',
+      '드와이트 요크': 'EPL MVP · 29골',
+    },
   },
   {
     id: 'hist-2324-leverkusen',
@@ -582,6 +672,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '23-24 바이어 레버쿠젠',
     nickname: '네버루젠 · 분데스리가 사상 첫 무패 우승',
     managerName: '사비 알론소',
+    managerTraitId: 'total_football',
+    managerRating: 93,
+    managerStyleNote: '윙백·하프스페이스 스위칭과 끝까지 포기하지 않는 90+ 극장골 철학으로 51경기 무패 신화 창조.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'parted',
+      hairColor: 'brown',
+      outfit: 'navy_coat',
+    },
     userClub: {
       name: '23-24 바이어 레버쿠젠',
       shortName: 'B04',
@@ -606,24 +706,15 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '우승',
     uclOutcome: 'none',
     uclResultLabel: '미출전 (UEL 준우승)',
-    teamAvgOvr: 83.4,
-    summaryNote: '분데스리가 역사상 최초 무패 우승(28승 6무 0패 · 90점)과 DFB-포칼 우승으로 국내 무패 더블을 달성한 사비 알론소의 마법.',
+    summaryNote:
+      '분데스리가 역사상 최초 무패 우승(28승 6무 0패 · 90점)과 DFB-포칼 우승으로 국내 무패 더블을 달성한 사비 알론소의 마법.',
     worldBestXiCount: 1,
     leagueMvpName: '플로리안 비르츠',
     leagueBestXiCount: 6,
-    bestXi: [
-      { position: 'GK', name: '루카시 흐라데츠키' },
-      { position: 'CB', name: '에드몽 탑소바' },
-      { position: 'CB', name: '요나탄 타' },
-      { position: 'CB', name: '피에로 인카피에' },
-      { position: 'RWB', name: '제레미 프림퐁' },
-      { position: 'CM', name: '그라니트 자카' },
-      { position: 'CM', name: '에세키엘 팔라시오스' },
-      { position: 'LWB', name: '알레한드로 그리말도' },
-      { position: 'CAM', name: '플로리안 비르츠', note: '분데스리가 MVP' },
-      { position: 'CAM', name: '요나스 호프만' },
-      { position: 'ST', name: '빅터 보니페이스' },
-    ],
+    bestXiNotes: {
+      '플로리안 비르츠': '분데스리가 MVP',
+      '알레한드로 그리말도': '12G 20A',
+    },
   },
   {
     id: 'hist-1718-mancity',
@@ -631,6 +722,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '17-18 맨체스터 시티',
     nickname: '센추리온즈 · EPL 최초 승점 100점',
     managerName: '펩 과르디올라',
+    managerTraitId: 'tiki_taka',
+    managerRating: 98,
+    managerStyleNote: '프리롤 더블 8번(실바·KDB)과 인버티드 풀백으로 EPL 승점·승수·득점 기록을 모조리 경신.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'bald',
+      hairColor: 'black',
+      outfit: 'puffer_jacket',
+    },
     userClub: {
       name: '17-18 맨체스터 시티',
       shortName: 'MCI',
@@ -655,23 +756,14 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '16강',
     uclOutcome: 'qf',
     uclResultLabel: '8강',
-    teamAvgOvr: 87.6,
-    summaryNote: '프리미어리그 역사상 최초 승점 100점, 최다승(32승), 최다골(106골), 최대 득실(+79)을 기록한 센추리온즈.',
+    summaryNote:
+      '프리미어리그 역사상 최초 승점 100점, 최다승(32승), 최다골(106골), 최대 득실(+79)을 기록한 센추리온즈.',
     worldBestXiCount: 1,
     leagueBestXiCount: 5,
-    bestXi: [
-      { position: 'GK', name: '에데르송' },
-      { position: 'RB', name: '카일 워커' },
-      { position: 'CB', name: '뱅상 콤파니' },
-      { position: 'CB', name: '니콜라스 오타멘디' },
-      { position: 'LB', name: '파비안 델프' },
-      { position: 'CDM', name: '페르난지뉴' },
-      { position: 'CM', name: '케빈 더 브라위너', note: '도움왕 16A' },
-      { position: 'CM', name: '다비드 실바' },
-      { position: 'RW', name: '라힘 스털링' },
-      { position: 'ST', name: '세르히오 아구에로' },
-      { position: 'LW', name: '르로이 자네' },
-    ],
+    bestXiNotes: {
+      '케빈 더 브라위너': '도움왕 16A',
+      '세르히오 아구에로': '21골',
+    },
   },
   {
     id: 'hist-1112-realmadrid',
@@ -679,6 +771,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '11-12 레알 마드리드',
     nickname: '승점 100점 · 라리가 역대 최다 121득점',
     managerName: '조제 무리뉴',
+    managerTraitId: 'direct_football',
+    managerRating: 96,
+    managerStyleNote: '5초 만에 자기 진영에서 골망을 흔드는 세계 역사상 가장 치명적인 직선 역습 축구 완성.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'warm',
+      hairStyle: 'parted',
+      hairColor: 'silver',
+      outfit: 'classic_suit',
+    },
     userClub: {
       name: '11-12 레알 마드리드',
       shortName: 'RMA',
@@ -703,24 +805,15 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '8강',
     uclOutcome: 'sf',
     uclResultLabel: '4강',
-    teamAvgOvr: 88.4,
-    summaryNote: '전광석화 같은 역습 축구로 라리가 사상 최초 승점 100점과 역대 최다 121골(+89 득실)을 기록.',
+    summaryNote:
+      '전광석화 같은 역습 축구로 라리가 사상 최초 승점 100점과 역대 최다 121골(+89 득실)을 기록.',
     worldBestXiCount: 4,
     leagueMvpName: '크리스티아누 호날두',
     leagueBestXiCount: 5,
-    bestXi: [
-      { position: 'GK', name: '이케르 카시야스' },
-      { position: 'RB', name: '알바로 아르벨로아' },
-      { position: 'CB', name: '페페' },
-      { position: 'CB', name: '세르히오 라모스' },
-      { position: 'LB', name: '마르셀루' },
-      { position: 'CDM', name: '사비 알론소' },
-      { position: 'CDM', name: '사미 케디라' },
-      { position: 'RW', name: '앙헬 디 마리아' },
-      { position: 'CAM', name: '메수트 외질', note: '도움왕 17A' },
-      { position: 'LW', name: '크리스티아누 호날두', note: '리그 46골' },
-      { position: 'ST', name: '카림 벤제마' },
-    ],
+    bestXiNotes: {
+      '메수트 외질': '도움왕 17A',
+      '크리스티아누 호날두': '리그 46골',
+    },
   },
   {
     id: 'hist-1314-juventus',
@@ -728,6 +821,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '13-14 유벤투스',
     nickname: '유럽 5대 리그 역대 최다 승점 102점',
     managerName: '안토니오 콘테',
+    managerTraitId: 'defensive_architect',
+    managerRating: 93,
+    managerStyleNote: 'BBC 스리백과 피를로 레지스타 보호 시스템으로 홈 19전 전승·102점 철벽을 세운 전술가.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'fluffy',
+      hairColor: 'black',
+      outfit: 'classic_suit',
+    },
     userClub: {
       name: '13-14 유벤투스',
       shortName: 'JUV',
@@ -752,24 +855,15 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '8강',
     uclOutcome: 'league_phase',
     uclResultLabel: '조별리그 탈락',
-    teamAvgOvr: 86.0,
-    summaryNote: '홈 19전 전승 포함 33승 3무 2패, 유럽 5대 리그 역사상 단일 시즌 최고 승점인 102점을 달성한 BBC 스리백.',
+    summaryNote:
+      '홈 19전 전승 포함 33승 3무 2패, 유럽 5대 리그 역사상 단일 시즌 최고 승점인 102점을 달성한 BBC 스리백.',
     worldBestXiCount: 0,
     leagueMvpName: '안드레아 피를로',
     leagueBestXiCount: 6,
-    bestXi: [
-      { position: 'GK', name: '잔루이지 부폰' },
-      { position: 'CB', name: '안드레아 바르찰리' },
-      { position: 'CB', name: '레오나르도 보누치' },
-      { position: 'CB', name: '조르조 키엘리니' },
-      { position: 'RM', name: '슈테판 리히트슈타이너' },
-      { position: 'CM', name: '아르투로 비달' },
-      { position: 'CDM', name: '안드레아 피를로' },
-      { position: 'CM', name: '폴 포그바' },
-      { position: 'LM', name: '콰드워 아사모아' },
-      { position: 'ST', name: '카를로스 테베스', note: '19골' },
-      { position: 'ST', name: '페르난도 요렌테' },
-    ],
+    bestXiNotes: {
+      '카를로스 테베스': '19골',
+      '안드레아 피를로': '세리에 A MVP',
+    },
   },
   {
     id: 'hist-0304-arsenal',
@@ -777,6 +871,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '03-04 아스널',
     nickname: '인빈시블 · EPL 유일 무패 우승',
     managerName: '아르센 벵거',
+    managerTraitId: 'midfield_maestro',
+    managerRating: 95,
+    managerStyleNote: '‘벵거볼’ 원터치 고속 패스워크와 피지컬·기술의 완벽한 조화로 EPL 유일 38R 무패 신화 완성.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'light',
+      hairStyle: 'parted',
+      hairColor: 'silver',
+      outfit: 'puffer_jacket',
+    },
     userClub: {
       name: '03-04 아스널',
       shortName: 'ARS',
@@ -801,24 +905,15 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '4강',
     uclOutcome: 'qf',
     uclResultLabel: '8강',
-    teamAvgOvr: 86.2,
-    summaryNote: '프리미어리그 출범 이후 유일한 38경기 무패 우승(26승 12무 0패)으로 황금 트로피를 수여받은 전설의 무패 군단.',
+    summaryNote:
+      '프리미어리그 출범 이후 유일한 38경기 무패 우승(26승 12무 0패)으로 황금 트로피를 수여받은 전설의 무패 군단.',
     worldBestXiCount: 2,
     leagueMvpName: '티에리 앙리',
     leagueBestXiCount: 6,
-    bestXi: [
-      { position: 'GK', name: '옌스 레만' },
-      { position: 'RB', name: '로랑' },
-      { position: 'CB', name: '솔 캠벨' },
-      { position: 'CB', name: '콜로 투레' },
-      { position: 'LB', name: '애슐리 콜' },
-      { position: 'RM', name: '프레드리크 융베리' },
-      { position: 'CM', name: '파트리크 비에이라' },
-      { position: 'CM', name: '질베르투 실바' },
-      { position: 'LM', name: '로베르 피레스' },
-      { position: 'ST', name: '데니스 베르캄프' },
-      { position: 'ST', name: '티에리 앙리', note: 'EPL 득점왕 30골' },
-    ],
+    bestXiNotes: {
+      '티에리 앙리': 'EPL 득점왕 30골',
+      '파트리크 비에이라': '무패 주장',
+    },
   },
   {
     id: 'hist-0405-chelsea',
@@ -826,6 +921,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '04-05 첼시',
     nickname: '38경기 15실점 · EPL 역대 최소 실점 철벽',
     managerName: '조제 무리뉴',
+    managerTraitId: 'catenaccio',
+    managerRating: 96,
+    managerStyleNote: '마켈렐레 롤과 4-3-3 수비 블록으로 38경기 단 15실점이라는 불멸의 기록을 세운 수비의 예술가.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'warm',
+      hairStyle: 'fluffy',
+      hairColor: 'brown',
+      outfit: 'navy_coat',
+    },
     userClub: {
       name: '04-05 첼시',
       shortName: 'CHE',
@@ -850,24 +955,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '16강',
     uclOutcome: 'sf',
     uclResultLabel: '4강',
-    teamAvgOvr: 86.5,
-    summaryNote: '체흐-테리-카르발류-마켈렐레의 철벽 수비로 38경기 15실점·25클린시트·단 1패라는 불멸의 수비 기록을 수립.',
+    summaryNote:
+      '체흐-테리-카르발류-마켈렐레의 철벽 수비로 38경기 15실점·25클린시트·단 1패라는 불멸의 수비 기록을 수립.',
     worldBestXiCount: 2,
     leagueMvpName: '프랭크 램파드',
     leagueBestXiCount: 4,
-    bestXi: [
-      { position: 'GK', name: '페트르 체흐', note: '24클린시트' },
-      { position: 'RB', name: '파울루 페헤이라' },
-      { position: 'CB', name: '존 테리', note: 'PFA 올해의 선수' },
-      { position: 'CB', name: '히카르두 카르발류' },
-      { position: 'LB', name: '윌리암 갈라스' },
-      { position: 'CDM', name: '클로드 마켈렐레' },
-      { position: 'CM', name: '프랭크 램파드', note: '발롱도르 2위' },
-      { position: 'CM', name: '티아구 멘데스' },
-      { position: 'RW', name: '아르옌 로벤' },
-      { position: 'ST', name: '디디에 드로그바' },
-      { position: 'LW', name: '데미안 더프' },
-    ],
+    bestXiNotes: {
+      '페트르 체흐': '24클린시트',
+      '존 테리': 'PFA 올해의 선수',
+      '프랭크 램파드': '발롱도르 2위',
+    },
   },
   {
     id: 'hist-1516-leicester',
@@ -875,6 +972,16 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     displayName: '15-16 레스터 시티',
     nickname: '5000분의 1 동화 · 축구 역사상 최고의 언더독',
     managerName: '클라우디오 라니에리',
+    managerTraitId: 'underdog_killer',
+    managerRating: 91,
+    managerStyleNote: '‘딜리-딩 딜리-동’ 완벽한 4-4-2 컴팩트 블록과 번개 역습으로 5000:1 기적을 빚어낸 노장 명장.',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'parted',
+      hairColor: 'silver',
+      outfit: 'navy_coat',
+    },
     userClub: {
       name: '15-16 레스터 시티',
       shortName: 'LEI',
@@ -899,24 +1006,15 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
     cupResultLabel: '조기 탈락',
     uclOutcome: 'none',
     uclResultLabel: '미출전',
-    teamAvgOvr: 78.2,
-    summaryNote: '강등 1순위·우승 배당 5000배를 뒤집고 바디·마레즈·캉테의 완벽한 4-4-2 역습으로 프리미어리그 정상에 오른 기적의 시즌.',
+    summaryNote:
+      '강등 1순위·우승 배당 5000배를 뒤집고 바디·마레즈·캉테의 완벽한 4-4-2 역습으로 프리미어리그 정상에 오른 기적의 시즌.',
     worldBestXiCount: 0,
     leagueMvpName: '리야드 마레즈',
     leagueBestXiCount: 4,
-    bestXi: [
-      { position: 'GK', name: '카스페르 슈마이켈' },
-      { position: 'RB', name: '대니 심슨' },
-      { position: 'CB', name: '웨스 모건' },
-      { position: 'CB', name: '로베르트 후트' },
-      { position: 'LB', name: '크리스티안 푸흐스' },
-      { position: 'RM', name: '리야드 마레즈', note: 'EPL MVP · 17G 11A' },
-      { position: 'CM', name: '은골로 캉테' },
-      { position: 'CM', name: '대니 드링크워터' },
-      { position: 'LM', name: '마크 올브라이턴' },
-      { position: 'ST', name: '오카자키 신지' },
-      { position: 'ST', name: '제이미 바디', note: '11경기 연속골 · 24G' },
-    ],
+    bestXiNotes: {
+      '리야드 마레즈': 'EPL MVP · 17G 11A',
+      '제이미 바디': '11경기 연속골 · 24G',
+    },
   },
 ];
 
@@ -924,6 +1022,65 @@ export const HISTORICAL_BENCHMARK_TEAMS: HistoricalTeamEntry[] =
   RAW_HISTORICAL_TEAMS.map(buildHistoricalEntry).sort(
     (a, b) => b.seasonScore.totalScore - a.seasonScore.totalScore,
   );
+
+export function getHistoricalTeamById(id: string): HistoricalTeamEntry | null {
+  return HISTORICAL_BENCHMARK_TEAMS.find((t) => t.id === id) ?? null;
+}
+
+/**
+ * Converts a HistoricalTeamEntry into a full match-ready Club + 16~18 player roster
+ * whose ATT/MID/DEF ratings reflect its genuine starters, chemistry & legendary manager synergy.
+ */
+export function buildHistoricalClubForMatch(team: HistoricalTeamEntry): {
+  club: Club;
+  starters: Player[];
+  bench: Player[];
+  fullRoster: Player[];
+} {
+  const chem = calculateChemistry(
+    team.formation,
+    team.starters,
+    team.defaultTactic,
+    team.managerTraitId,
+  );
+  const ratings = calculateTeamRatings(
+    team.formation,
+    team.starters,
+    chem.total,
+    team.managerTraitId,
+    chem.slotSynergies,
+  );
+  const topAttackers = [...team.starters]
+    .sort((a, b) => b.att - a.att || b.ovr - a.ovr)
+    .slice(0, 3)
+    .map((p) => p.name);
+
+  const club: Club = {
+    id: team.id,
+    name: team.displayName,
+    shortName: team.userClub.shortName,
+    primaryColor: team.userClub.primaryColor,
+    secondaryColor: team.userClub.secondaryColor,
+    pattern: team.userClub.pattern,
+    formation: team.formation,
+    defaultTactic: team.defaultTactic,
+    att: Math.round(ratings.effectiveAtt),
+    mid: Math.round(ratings.effectiveMid),
+    def: Math.round(ratings.effectiveDef),
+    topScorers: [
+      topAttackers[0] ?? team.starters[10]?.name ?? '에이스',
+      topAttackers[1] ?? team.starters[9]?.name ?? '공격수',
+      topAttackers[2] ?? team.starters[8]?.name ?? '미드필더',
+    ],
+  };
+
+  return {
+    club,
+    starters: team.starters,
+    bench: team.bench,
+    fullRoster: [...team.starters, ...team.bench],
+  };
+}
 
 /**
  * Merges User Hall of Fame entries, Historical Benchmark Teams, and future Phase 3 Global entries

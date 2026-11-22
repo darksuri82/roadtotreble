@@ -10,8 +10,11 @@ import {
 import type {
   ActiveManagerEvent,
   ManagerEventChoiceDef,
+  ManagerEventMatchContext,
   ManagerEventOutcomeItem,
+  ManagerEventPlayerMatchStat,
   ManagerEventResolution,
+  ManagerEventSceneId,
   ManagerEventsState,
   ManagerEventTemplate,
   ManagerEventTriggerType,
@@ -63,6 +66,7 @@ export interface ManagerEventSelectionInput {
   userRank: number;
   isCupOrUclNext?: boolean;
   lastMatch?: MatchResult | null;
+  lastMatchOpponentName?: string;
   lastMatchWasUserHome?: boolean;
   lastMatchMomPlayerId?: string | null;
   lastMatchRatings?: Record<string, number>;
@@ -92,6 +96,245 @@ function getContextBadge(tpl: ManagerEventTemplate): string {
 }
 
 /**
+ * Automatically selects the most atmospheric pixel-art scene among 8 distinct environments
+ * based on event category, target scope, trigger context, speaker label, and competition.
+ */
+export function resolveManagerEventSceneId(params: {
+  template: ManagerEventTemplate;
+  isCupOrUclNext?: boolean;
+  lastMatch?: MatchResult | null;
+}): ManagerEventSceneId {
+  const { template, isCupOrUclNext = false, lastMatch = null } = params;
+  const sp = template.speakerLabel;
+  const tr = template.trigger;
+
+  if (template.category === 'press_conference') {
+    if (
+      tr === 'cup_or_ucl' ||
+      tr === 'big_match' ||
+      tr === 'title_race' ||
+      tr === 'player_big_game_ace' ||
+      isCupOrUclNext ||
+      lastMatch?.competition === 'ucl'
+    ) {
+      return 'press_ucl_night';
+    }
+    if (
+      sp.includes('경기 후') ||
+      sp.includes('방송사') ||
+      tr === 'big_win' ||
+      tr === 'heavy_loss' ||
+      tr === 'comeback_win' ||
+      tr === 'player_mom_or_hattrick' ||
+      tr === 'player_poor_rating' ||
+      tr === 'xg_underperform' ||
+      tr === 'conceded_many' ||
+      tr === 'win_streak' ||
+      tr === 'lose_streak'
+    ) {
+      return 'press_mixed_zone';
+    }
+    return 'press_official';
+  }
+
+  // Locker room / Club internal scenes (5 distinct environments)
+  if (
+    sp.includes('훈련장') ||
+    sp.includes('훈련 후') ||
+    tr === 'player_goal_drought' ||
+    template.id.includes('training')
+  ) {
+    return 'training_pitch';
+  }
+
+  if (template.targetScope === 'position_group') {
+    if (tr === 'big_win' || tr === 'clean_sheet_streak') {
+      return 'celebration_locker';
+    }
+    if (tr === 'big_match' || tr === 'cup_or_ucl') {
+      return 'stadium_tunnel';
+    }
+    return 'training_pitch';
+  }
+
+  if (template.targetScope === 'player') {
+    if (tr === 'player_mom_or_hattrick') {
+      return 'celebration_locker';
+    }
+    if (tr === 'player_big_game_ace' || tr === 'cup_or_ucl' || sp.includes('경기 직전')) {
+      return 'stadium_tunnel';
+    }
+    return 'manager_office';
+  }
+
+  // Team-wide locker room scenes
+  if (
+    tr === 'big_win' ||
+    tr === 'comeback_win' ||
+    tr === 'win_streak' ||
+    tr === 'clean_sheet_streak' ||
+    tr === 'unbeaten_run'
+  ) {
+    return 'celebration_locker';
+  }
+  if (
+    tr === 'big_match' ||
+    tr === 'cup_or_ucl' ||
+    tr === 'title_race' ||
+    sp.includes('경기 직전') ||
+    sp.includes('터널') ||
+    template.title.includes('터널')
+  ) {
+    return 'stadium_tunnel';
+  }
+  return 'locker_home';
+}
+
+/**
+ * Extracts a concise, high-immersion last-match & individual player stat card snapshot
+ * for press conference / locker room popups.
+ */
+export function buildManagerEventMatchContext(params: {
+  lastMatch?: MatchResult | null;
+  lastMatchWasUserHome?: boolean;
+  teamName: string;
+  opponentName?: string;
+  targetPlayer?: Player;
+  squad: Player[];
+}): ManagerEventMatchContext | null {
+  const {
+    lastMatch,
+    lastMatchWasUserHome = true,
+    teamName,
+    opponentName,
+    targetPlayer,
+    squad,
+  } = params;
+  if (!lastMatch) return null;
+
+  const isHome = lastMatchWasUserHome;
+  const userGoals = isHome ? lastMatch.homeGoals : lastMatch.awayGoals;
+  const oppGoals = isHome ? lastMatch.awayGoals : lastMatch.homeGoals;
+  const userTeamId = isHome ? lastMatch.homeTeamId : lastMatch.awayTeamId;
+
+  let outcome: 'W' | 'D' | 'L' =
+    userGoals > oppGoals ? 'W' : userGoals < oppGoals ? 'L' : 'D';
+  let note: string | undefined;
+  if (lastMatch.extraTime?.penalties) {
+    const penWon = lastMatch.extraTime.penalties.winnerTeamId === userTeamId;
+    outcome = penWon ? 'W' : 'L';
+    const uPen = isHome
+      ? lastMatch.extraTime.penalties.homePenGoals
+      : lastMatch.extraTime.penalties.awayPenGoals;
+    const oPen = isHome
+      ? lastMatch.extraTime.penalties.awayPenGoals
+      : lastMatch.extraTime.penalties.homePenGoals;
+    note = `PK ${uPen}-${oPen}`;
+  } else if (lastMatch.extraTime) {
+    note = '연장';
+  }
+
+  const competitionLabel =
+    lastMatch.competitionLabel ??
+    (lastMatch.competition === 'cup'
+      ? '자국 컵'
+      : lastMatch.competition === 'ucl'
+        ? `UCL ${lastMatch.round}R`
+        : `리그 ${lastMatch.round}R`);
+
+  const allEvents = [
+    ...lastMatch.events,
+    ...(lastMatch.extraTime?.etEvents ?? []),
+  ];
+
+  // Focus player: explicit target player first, otherwise user MOM if user won/starred
+  let focusPlayer: Player | undefined = targetPlayer;
+  if (!focusPlayer && lastMatch.momPlayerId) {
+    focusPlayer = squad.find((p) => p.id === lastMatch.momPlayerId);
+  }
+
+  let playerStats: ManagerEventPlayerMatchStat | null = null;
+  if (focusPlayer) {
+    const pr = lastMatch.playerRatings.find((r) => r.playerId === focusPlayer.id);
+    if (pr) {
+      let dribbleBeats = 0;
+      let savesCount = 0;
+      for (const ev of allEvents) {
+        if (
+          (ev.scorerId === focusPlayer.id || ev.assistId === focusPlayer.id) &&
+          ev.dribbleBeatCount &&
+          ev.dribbleBeatCount > 0
+        ) {
+          dribbleBeats += ev.dribbleBeatCount;
+        }
+        if (
+          focusPlayer.position === 'GK' &&
+          ev.type === 'save' &&
+          ev.teamId !== userTeamId
+        ) {
+          savesCount += 1;
+        }
+      }
+
+      const keyMoments: string[] = [];
+      const isMom = lastMatch.momPlayerId === focusPlayer.id;
+      if (isMom) keyMoments.push('경기 MOM');
+      if (pr.goals >= 3) keyMoments.push(`해트트릭 (${pr.goals}골)`);
+      else if (pr.goals === 2) keyMoments.push('멀티골');
+      if (pr.assists >= 2) keyMoments.push(`멀티 어시스트 (${pr.assists}도움)`);
+      if (dribbleBeats >= 2) keyMoments.push(`드리블 돌파 ${dribbleBeats}회`);
+      if (focusPlayer.position === 'GK' && oppGoals === 0) {
+        keyMoments.push('클린시트');
+      }
+      if (savesCount >= 2) keyMoments.push(`결정적 선방 ${savesCount}회`);
+      if (pr.rating <= 5.9) keyMoments.push('평점 부진');
+
+      playerStats = {
+        playerId: focusPlayer.id,
+        playerName: focusPlayer.name,
+        position: focusPlayer.position,
+        subPosition: pr.subPosition,
+        ovr: focusPlayer.ovr,
+        rating: Math.round(pr.rating * 10) / 10,
+        goals: pr.goals,
+        assists: pr.assists,
+        xg: Math.round(pr.xg * 100) / 100,
+        minutesPlayed: pr.minutesPlayed,
+        isMom,
+        dribbleBeats,
+        savesCount,
+        keyMoments,
+      };
+    }
+  }
+
+  return {
+    competitionLabel,
+    userTeamName: teamName,
+    opponentName: opponentName || '상대팀',
+    userGoals,
+    oppGoals,
+    outcome,
+    note,
+    userXg: Math.round((isHome ? lastMatch.homeXg : lastMatch.awayXg) * 100) / 100,
+    oppXg: Math.round((isHome ? lastMatch.awayXg : lastMatch.homeXg) * 100) / 100,
+    userPossession: Math.round(
+      isHome ? lastMatch.homePossession : 100 - lastMatch.homePossession,
+    ),
+    userShots: isHome ? lastMatch.homeShots : lastMatch.awayShots,
+    userShotsOnTarget: isHome
+      ? lastMatch.homeShotsOnTarget
+      : lastMatch.awayShotsOnTarget,
+    momPlayerName: lastMatch.momPlayerName || undefined,
+    momRating:
+      typeof lastMatch.momRating === 'number'
+        ? Math.round(lastMatch.momRating * 10) / 10
+        : undefined,
+    playerStats,
+  };
+}
+
+/**
  * Picks a context-aware, non-repeating manager event when cooldown allows.
  * Guarantees no event template repeats within the same season.
  */
@@ -110,6 +353,7 @@ export function pickNextManagerEvent(
     userRank,
     isCupOrUclNext = false,
     lastMatch = null,
+    lastMatchOpponentName,
     lastMatchWasUserHome = true,
     lastMatchMomPlayerId = null,
     lastMatchRatings = {},
@@ -394,20 +638,43 @@ export function pickNextManagerEvent(
       : undefined,
   }));
 
+  const sceneId = resolveManagerEventSceneId({
+    template: chosenTemplate,
+    isCupOrUclNext,
+    lastMatch,
+  });
+
+  const targetCond = targetPlayer ? conditionMap[targetPlayer.id] : undefined;
+  const matchContext = buildManagerEventMatchContext({
+    lastMatch,
+    lastMatchWasUserHome,
+    teamName,
+    opponentName: lastMatchOpponentName,
+    targetPlayer,
+    squad,
+  });
+
   return {
     templateId: chosenTemplate.id,
     category: chosenTemplate.category,
+    sceneId,
     targetScope: chosenTemplate.targetScope,
     positionGroup: chosenTemplate.positionGroup,
     targetPlayerId: targetPlayer?.id,
     targetPlayerName: targetPlayer?.name,
     targetPlayerNationality: targetPlayer?.nationality,
     targetPlayerNationalityCode: targetPlayer?.nationalityCode,
+    targetPlayerOvr: targetPlayer?.ovr,
+    targetPlayerPosition: targetPlayer?.position,
+    targetPlayerMainPosition: targetPlayer?.mainPositions[0],
+    targetPlayerMorale: targetCond?.morale ?? 0,
+    targetPlayerInjured: Boolean(targetCond && isPlayerActivelyInjured(targetCond)),
     title: interpolateEventText(chosenTemplate.title, vars),
     speakerLabel: interpolateEventText(chosenTemplate.speakerLabel, vars),
     contextBadge: getContextBadge(chosenTemplate),
     prompt: interpolateEventText(chosenTemplate.prompt, vars),
     choices: interpolatedChoices,
+    matchContext,
   };
 }
 
@@ -606,6 +873,7 @@ export function resolveManagerEventChoice(params: {
     resolution: {
       eventTitle: event.title,
       category: event.category,
+      sceneId: event.sceneId,
       chosenLabel: choice.label,
       chosenQuote: choice.quote,
       wasRisky,

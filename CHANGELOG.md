@@ -5,6 +5,31 @@
 
 ---
 
+## v4.1 — 명예의 전당 역대 강팀 14팀 17인 풀스쿼드·명장 시너지·공정 스코어 재조정 · [드림 매치] 챌린지 모드 · 기자회견/라커룸 8종 도트 배경 씬 & 경기 스탯 카드 연동
+
+### 1. 명예의 전당 역대 강팀 14팀 풀스쿼드(총 238명) · 명장 능력치 & 공정 시즌 스코어 재조정
+- **역대 최강 14팀 풀스쿼드·세부 능력치 완전 구체화 (`src/data/historicalSquadsData.ts`, `src/data/historicalTeams.ts`, `src/types/legacy.ts`)**:
+  - 19-20·12-13 바이에른 뮌헨, 14-15·08-09 바르셀로나, 22-23·17-18 맨시티, 09-10 인터 밀란, 98-99 맨유, 23-24 레버쿠젠, 11-12 레알 마드리드, 03-04 아스널, 04-05 첼시, 13-14 유벤투스, 15-16 레스터 시티 14팀 모두를 포메이션 슬롯에 정확히 일치하는 **선발 11명 + 핵심 벤치 6명(총 238명)**으로 구체화하고 전성기 OVR·7+5 세부 능력치(`SHO/PAS/CRO/DRI/AER/DEF/PHY`, GK `DIV/HAN/REF/KIC/POS`)·플레이스타일·국기 코드를 완비.
+  - 각 팀 명장(퍼거슨 99 · 과르디올라 98 · 무리뉴 96 · 하인케스 96 · 플릭 95 · 엔리케 95 · 벵거 95 · 콘테 93 · 사비 알론소 93 · 라니에리 91)에 실제 축구 평가에 맞는 `managerRating` · `managerTraitId` · 맞춤 도트 아바타(`managerAvatar`)를 부여하고 유저 팀과 동일한 `calculateChemistry` / `evaluateManagerPlayerSynergy` 엔진으로 실제 팀 케미와 감독 시너지 OVR 상승을 산출.
+- **유저·역대 강팀 100% 동일 공정 시즌 스코어 재조정 (`src/engine/legacyEngine.ts`, `src/store/GameContext.tsx`, `LegacyHubModal.tsx`, `SeasonSummary.tsx`)**:
+  - 리그 환산(`PPG×38×26 + GD환산×4.5`), 역사적 대업 보너스(`honorsBonus` + `honorsBonusDetails`: 트레블 `+1,500`, 더블 `+600`, 리그 무패 `+1,200`, 센추리온즈 환산 100점+ `+900`, 환산 100득점+ `+400`, 철벽 수비 환산 18실점 이하 `+800`, UCL 전승 `+850`/무패 `+400`), 언더독 기적 보너스(OVR 82 이하 가중, 상한 `+1,750`), 그리고 **스쿼드 완성도·팀 케미·감독 시너지·명장 지휘력 보너스(`squadCraftBonus` + `squadCraftDetails`)**를 유저(`computeUserSeasonManagerRating`)와 역대 강팀에 동일 적용.
+  - 명예의 전당 상세 모달에서 역대 강팀 17인 풀스쿼드 선수 클릭 시 `PlayerDetailModal` 세부 능력치 레이더 차트 즉시 열람 지원.
+
+### 2. 신규 모드: [⚔️ 드림 매치 (명예의 전당 챌린지)]
+- **독립 드림 매치 아레나 (`src/components/dream/DreamMatchArena.tsx`, `src/store/GameContext.tsx`, `App.tsx`, `TitleScreen.tsx`, `LegacyHubModal.tsx`, `LiveMatchBroadcast.tsx`)**:
+  - 타이틀 화면(`[⚔️ 드림 매치]`) 및 명예의 전당 역대 강팀 카드/상세 모달(`[⚔️ 도전하기]`)에서 진행 중인 정규 시즌 세이브를 건드리지 않고 독립 실행.
+  - **방식 A (내 명전 팀 불러오기)**: `HallOfFameEntry`에 `fullStarters`/`fullBench` 풀스쿼드 스냅샷 저장을 보강하고, 구버전 명전 기록도 `reconstructHallOfFameSquad`로 현역/레전드 DB 매칭 및 세부 능력치 자동 복원 지원.
+  - **방식 B (즉석 드림 드래프트)**: 1화면 빠른 설정 → 16인 룰렛 드래프트(레전드 4.0%, 임시 배치 시너지 프리뷰, 자유 스왑, 자동완성 지원).
+  - `MatchDayTacticsRoom`(양 팀 피치 비교 + 상대 17인 풀스쿼드 스카우팅) → `LiveMatchBroadcast`(`override` 어댑터로 하프타임 라커룸 · 후반 일시정지 수동 교체 · 90'/105' 연장 라커룸 · 승부차기 100% 동일 엔진 플레이) → `MatchReportPanel`/`MatchDetailModal` 상세 리포트 및 `dreamMatchRecords` 격파 전적 영구 저장.
+
+### 3. 기자회견 & 라커룸: 8종 도트 배경 씬 · 커스텀 감독 등장 · 직전 경기 스탯 카드 연동
+- **상황별 8종 픽셀 아트 배경 씬 & 커스텀 감독 레이어링 (`src/components/common/PixelEventSceneBanner.tsx`, `src/data/managerEvents.ts`, `src/components/common/ManagerEventModal.tsx`, `src/types/condition.ts`, `App.tsx`)**:
+  - 공식 기자회견장(`press_official`), 빅매치/UCL 야간 회견장(`press_ucl_night`), 경기 직후 믹스트존(`press_mixed_zone`), 홈 라커룸(`locker_home`), 경기장 출전 터널(`stadium_tunnel`), 감독실 1:1 면담실(`manager_office`), 훈련장 피치(`training_pitch`), 승리 환호 라커룸(`celebration_locker`) 8종 인라인 SVG 픽셀 아트 배경을 제작해 72종 이벤트에 자동 매칭(`resolveManagerEventSceneId`).
+  - 유저가 커스텀한 `PixelManagerAvatar`를 각 배경 씬 내부(기자회견 단상·감독실 책상 전경 레이어 뒤 포함)에 직접 배치하고, 1:1 개인 이벤트 시 대상 선수 카드(국기·OVR·사기/부상 도트 아이콘)를 나란히 표시.
+  - `buildManagerEventMatchContext`로 직전 경기 대회·라운드·스코어·xG·점유율·슈팅 및 대상 선수의 실제 경기 평점·골·도움·xG·원맨 드리블 돌파·선방·MOM/해트트릭/부진 배지를 요약 카드로 팝업 상단에 연동.
+
+---
+
 ## v4.0 — 전 선수 세부 능력치(7+5종) 체계 · 단계별 공격 체인(원맨 드리블 쇼/중거리/티키타카/크로스 헤더) 엔진 업그레이드 · 2D 전술 움직임 심화 & 세부 능력치 가이드 탭
 
 ### 1. 전 선수 세부 능력치(Sub-Attributes) 체계 & 레이더 차트 시각화
