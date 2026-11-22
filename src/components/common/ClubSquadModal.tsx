@@ -1,15 +1,20 @@
 import { Crown, Diamond, Users, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import { getClubManager } from '../../data/aiManagers';
+import { MANAGER_TRAITS } from '../../data/managerTraits';
+import { calculateChemistry } from '../../engine/chemistryEngine';
 import {
   getInjuryTooltip,
   getMoraleLabel,
   getMoraleTier,
   isPlayerActivelyInjured,
 } from '../../engine/conditionEngine';
+import { optimizeCurrentStartersForFormation } from '../../engine/lineupOptimizer';
 import { formatMainPositions } from '../../engine/positionEngine';
 import { getPlayerStatById } from '../../engine/standingsEngine';
 import { TACTICS } from '../../engine/tacticEngine';
 import type { PlayerConditionMap } from '../../types/condition';
+import type { PlayerSlotSynergy } from '../../types/game';
 import type { Club, PlayerSeasonStats } from '../../types/league';
 import type { Player } from '../../types/player';
 import { CountryFlagSvg } from './CountryFlagSvg';
@@ -50,6 +55,40 @@ export function ClubSquadModal({
     return () => window.removeEventListener('keydown', handleKey);
   }, [club, onClose]);
 
+  const clubManager = useMemo(
+    () => (club ? getClubManager(club) : null),
+    [club],
+  );
+
+  const { chemTotal, synergyByPlayerId } = useMemo(() => {
+    if (!club || !clubManager || roster.length === 0) {
+      return {
+        chemTotal: 0,
+        synergyByPlayerId: {} as Record<string, PlayerSlotSynergy>,
+      };
+    }
+    const xi = club.id.startsWith('hist-')
+      ? roster.slice(0, 11)
+      : optimizeCurrentStartersForFormation(
+          roster.slice(0, 11),
+          club.formation,
+          club.defaultTactic,
+          clubManager.traitId,
+        );
+    const chem = calculateChemistry(
+      club.formation,
+      xi,
+      club.defaultTactic,
+      clubManager.traitId,
+      clubManager.ovr,
+    );
+    const map: Record<string, PlayerSlotSynergy> = {};
+    for (const syn of Object.values(chem.slotSynergies)) {
+      map[syn.playerId] = syn;
+    }
+    return { chemTotal: chem.total, synergyByPlayerId: map };
+  }, [club, clubManager, roster]);
+
   if (!club) return null;
 
   const sortedRoster = [...roster].sort(
@@ -76,9 +115,19 @@ export function ClubSquadModal({
               size={42}
             />
             <div className="min-w-0">
-              <h3 className="truncate text-base font-extrabold text-white">
-                {club.name}
-              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="truncate text-base font-extrabold text-white">
+                  {club.name}
+                </h3>
+                {clubManager && (
+                  <span
+                    className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 tabular-nums"
+                    title={`${clubManager.name} (OVR ${clubManager.ovr} · ${MANAGER_TRAITS[clubManager.traitId]?.name ?? ''})`}
+                  >
+                    {clubManager.name} {clubManager.ovr}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                 <span>{club.formation}</span>
                 <span>·</span>
@@ -87,6 +136,14 @@ export function ClubSquadModal({
                 <span className="font-mono text-slate-300">
                   ATT {club.att} / MID {club.mid} / DEF {club.def}
                 </span>
+                {chemTotal > 0 && (
+                  <>
+                    <span>·</span>
+                    <span className="font-bold text-emerald-300 tabular-nums">
+                      케미 {chemTotal}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -116,6 +173,9 @@ export function ClubSquadModal({
               const cond = conditionMap?.[p.id];
               const injured = isPlayerActivelyInjured(cond);
               const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
+              const syn = synergyByPlayerId[p.id];
+              const displayOvr = syn ? syn.effectiveOvrWithSynergy : p.ovr;
+              const synBonus = syn?.totalBonus ?? 0;
               return (
                 <div
                   key={p.id}
@@ -186,9 +246,9 @@ export function ClubSquadModal({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0 tabular-nums">
+                  <div className="flex items-center gap-2 shrink-0 tabular-nums">
                     {st && st.appearances > 0 && (
-                      <div className="text-right text-[11px]">
+                      <div className="text-right text-[11px] mr-1">
                         <div className="font-bold text-emerald-300">
                           {p.position === 'GK' || p.position === 'DF'
                             ? `${st.cleanSheets}CS · ${st.goals}G`
@@ -199,8 +259,23 @@ export function ClubSquadModal({
                         </div>
                       </div>
                     )}
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 font-display text-sm font-black text-amber-300">
-                      {p.ovr}
+                    {synBonus > 0 && (
+                      <span
+                        title={syn?.reasons.join(' · ')}
+                        className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-black text-emerald-300"
+                      >
+                        +{synBonus}
+                      </span>
+                    )}
+                    <span
+                      title={
+                        syn && synBonus > 0
+                          ? `기본 ${p.ovr} → 실효 ${displayOvr} (${syn.reasons.join(' · ')})`
+                          : undefined
+                      }
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 font-display text-sm font-black text-amber-300"
+                    >
+                      {displayOvr}
                     </span>
                   </div>
                 </div>

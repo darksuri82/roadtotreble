@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v5.0.1)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v5.0.2)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -15,7 +15,7 @@
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (v5.0 전술 개편 직전 `v4.1` 안정 커밋 `a77f6a4`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 토글 패널(`UnifiedTacticsStrip.tsx`) 내부에만 수록.
-- **v5.0 / v5.0.1 주요 신규 모듈·기능**:
+- **v5.0 ~ v5.0.2 주요 신규 모듈·기능**:
   - **신규 포메이션 3종(총 9종 확장) (`src/data/formations.ts`, `src/types/game.ts`, `src/engine/positionEngine.ts`, `src/engine/lineupOptimizer.ts`, `src/engine/tacticalMovement.ts`)**: `4-4-2-diamond`(4-4-2 다이아몬드), `3-3-3-1`, `3-5-2-dm`(3-5-2 DM) 3종 포메이션의 좌표·슬롯·`alternateSubPositions` 호환 포지션·케미 링크·2D 오프더볼 움직임·9종 선택 UI 전면 구현.
   - **현실 축구형 [통합 전술 수싸움] 엔진 (`src/engine/unifiedTacticsEngine.ts`, `src/engine/matchEngine.ts`, `src/components/league/MatchDayTacticsRoom.tsx`)**: 분리된 포메이션/전술 `+OVR!` 스택을 폐지하고 1단계 내부 전술 완성도(`tacticalFit`: 포메이션×전술 구조 35% + 스쿼드 OVR 정규화 세부 능력치/스타일 45% + 감독 스타일/OVR 20%) → 2단계 5대 구역 대결(`midfield` · `flanks` · `transition` · `box` · `pressing`)로 점유율·ATT/MID/DEF·임계치 임상 xG·공격 루트 비중(`routeWeightMods`) 산출. 프리뷰는 `[완성도 N% + 5구역 ▲/─/▼ + ? 툴팁]` 1줄 요약 표시.
   - **선수 시너지 4원칙 통일 · 공식 전 소속팀(`formerClubs`) 연동 & 감독 궁합 독립 분리 (`src/engine/chemistryEngine.ts`, `src/data/formerClubs.ts`, `src/data/managerTraits.ts`, `src/components/common/PitchBoard.tsx`, `PlayerDetailModal.tsx`)**: 레전드 와일드카드 및 전술/감독 혼합 링크 제거, 오직 **① 같은 팀/전 소속팀(35) · ② 같은 국적(20) · ③ 플레이스타일 궁합(30) · ④ 엘리트 페어 88+(15)** 4원칙(4색 케미선) 통일. 추측 없이 공식 1군 커리어만 검증한 레전드 33명 + 주요 현역 ~170명의 `formerClubs` 반영. 감독 스타일 궁합은 선수 개인 실효 OVR 독립 상승(`+1~+2`, 개인 총 보정 캡 `+3`)으로 분리해 5대 리그 96구단·UCL 16구단·명전 14팀 전역 적용.

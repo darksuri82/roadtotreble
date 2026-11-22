@@ -5,6 +5,17 @@
 
 ---
 
+## v5.0.2 — 상대팀 피치 4색 시너지선·케미·감독 궁합 +OVR 시각화 · 포지션 꼬임 수정 & 드림 매치 명전 팀 실효 능력치 공정 동기화
+
+- **상대팀 피치 4색 시너지선 · 케미 · +OVR 시각화 및 포지션 정렬 수정 (`src/components/league/OpponentPitchView.tsx`, `src/components/common/ClubSquadModal.tsx`)**:
+  - 상대팀 포메이션 피치(시즌 5대 리그 · 컵 · UCL · 드림 매치 공통)에 `calculateChemistry(포메이션·선발·전술·AI 감독 스타일·감독 OVR)`를 적용해 4색 병렬 케미선, `케미 N (+X.X)` 오버레이, 선수별 실효 OVR 및 `+1~+3` 배지(선수 시너지 + 감독 궁합 호버 상세), 핵심 경계 실효 OVR을 우리 팀과 동일하게 표시.
+  - 기존 탐욕적 슬롯 배치로 CB가 ST에 배치되거나 윙어가 CDM에 배치되던 버그를 명전 14팀 큐레이션 슬롯 고정 및 AI 구단 헝가리안 최적 배치(`optimizeCurrentStartersForFormation`)로 완전 해결.
+  - `ClubSquadModal` 헤더 및 리스트에도 AI 감독 OVR, 팀 케미, 선발 `+N` 시너지/감독 궁합 OVR 상승 반영.
+- **드림 매치 역대 강팀 실효 ATT/MID/DEF 공정 동기화 (`src/data/historicalTeams.ts`, `src/engine/matchEngine.ts`)**:
+  - `buildHistoricalClubForMatch`에서 4원칙 시너지 + 명장 OVR 궁합이 반영된 실효 ATT/MID/DEF를 산출하고, `matchEngine.ts`에서 중복 가산 없이 역대 강팀 로스터에 개인 시너지 OVR을 적용해 유저 팀과 100% 동일 기준으로 대결하도록 동기화.
+
+---
+
 ## v5.0.1 — 하프타임·연장 라커룸 통합 전술 UI 통일(구 상성 배지 제거) & 클릭형 `?` 지표 안내 패널 추가
 
 - **하프타임·연장 라커룸 v5.0 통합 전술 UI 통일 (`src/components/common/UnifiedTacticsStrip.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/components/league/MatchDayTacticsRoom.tsx`, `src/components/dream/DreamMatchArena.tsx`)**:

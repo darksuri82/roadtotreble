@@ -1038,13 +1038,21 @@ export function buildHistoricalClubForMatch(team: HistoricalTeamEntry): {
   bench: Player[];
   fullRoster: Player[];
 } {
-  // Use baseline pre-synergy ratings on the Club object so matchEngine computes
-  // the exact same 4-pillar synergy + legendary manager OVR lift without double-counting.
-  const baseRatings = calculateTeamRatings(
+  // Compute genuine 4-pillar player synergy + legendary manager OVR compatibility
+  // so HOF teams carry exact fair effective ATT/MID/DEF identical to user teams.
+  const hofChem = calculateChemistry(
     team.formation,
     team.starters,
-    50,
+    team.defaultTactic,
     team.managerTraitId,
+    team.managerRating,
+  );
+  const effRatings = calculateTeamRatings(
+    team.formation,
+    team.starters,
+    hofChem.total,
+    team.managerTraitId,
+    hofChem.slotSynergies,
   );
   const topAttackers = [...team.starters]
     .sort((a, b) => b.att - a.att || b.ovr - a.ovr)
@@ -1060,9 +1068,9 @@ export function buildHistoricalClubForMatch(team: HistoricalTeamEntry): {
     pattern: team.userClub.pattern,
     formation: team.formation,
     defaultTactic: team.defaultTactic,
-    att: Math.round(baseRatings.att),
-    mid: Math.round(baseRatings.mid),
-    def: Math.round(baseRatings.def),
+    att: Math.round(effRatings.effectiveAtt),
+    mid: Math.round(effRatings.effectiveMid),
+    def: Math.round(effRatings.effectiveDef),
     topScorers: [
       topAttackers[0] ?? team.starters[10]?.name ?? '에이스',
       topAttackers[1] ?? team.starters[9]?.name ?? '공격수',

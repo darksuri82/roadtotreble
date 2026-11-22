@@ -12,15 +12,40 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v5.0.1';
+export const CURRENT_APP_VERSION = 'v5.0.2';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v5.0.2',
+    codename:
+      '상대팀 피치 4색 시너지선·케미·감독 궁합 +OVR 전면 시각화 · 상대 포지션 꼬임 수정(헝가리안/명전 슬롯 정렬) & 드림 매치 명전 팀 실효 능력치 공정 동기화',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '매치 프리뷰의 상대팀 포메이션 피치(시즌 5대 리그·컵·UCL·드림 매치 공통)에서도 우리 팀과 100% 동일하게 4원칙 선수 간 시너지 선(에메랄드/스카이/앰버/퍼플), 팀 케미 수치, 감독 스타일·OVR 궁합이 반영된 선수별 실효 OVR(+1~+3) 배지를 실시간 표시하도록 업그레이드했습니다. 또한 상대 피치의 단순 탐욕 배치로 포지션이 꼬이던 문제(예: CB가 ST로 배치되던 버그)를 헝가리안 최적 배치 및 명전 큐레이션 슬롯 고정으로 완전 해결했으며, 드림 매치 명예의 전당 팀의 ATT/MID/DEF에도 4원칙 시너지와 명장 궁합 실효 능력치를 공정 반영했습니다.',
+    sections: [
+      {
+        category: '1. 상대팀 피치 4색 시너지선 · 팀 케미 · 선수별 +OVR(시너지+감독 궁합) 시각화 & 포지션 정렬 수정',
+        items: [
+          '상대팀 포메이션 피치(OpponentPitchView.tsx)에 calculateChemistry(포메이션·선발·전술·AI 감독 스타일·감독 OVR)를 연동해 4색 병렬 케미선(구단/전 소속팀 · 국적 · 스타일 · 엘리트 88+), 상단 [케미 N (+X.X)] 배지, 상대 감독 OVR, 선수별 실효 OVR 및 녹색 +1~+3 배지(호버 시 선수 시너지/감독 궁합 상세 표시)를 우리 팀과 동일하게 표시합니다.',
+          '기존 탐욕적 슬롯 배치로 수비수가 ST에 서거나 윙어가 CDM에 배치되던 버그를 해결해 명예의 전당 역대 14팀은 큐레이션 11슬롯 정위치를 유지하고, 5대 리그·UCL·부상 대체 AI 구단은 헝가리안 최적 배치(optimizeCurrentStartersForFormation)로 정확히 정렬합니다.',
+          '순위표에서 타 구단 클릭 시 열리는 구단 스쿼드 모달(ClubSquadModal.tsx)에도 AI 감독 OVR, 팀 케미, 선발 선수별 +N 시너지·감독 궁합 OVR 상승을 표시합니다.',
+        ],
+      },
+      {
+        category: '2. 드림 매치 역대 강팀 실효 ATT/MID/DEF 공정 동기화',
+        items: [
+          'buildHistoricalClubForMatch(historicalTeams.ts)에서 역대 강팀의 ATT/MID/DEF를 유저 팀과 100% 동일한 방식(4원칙 시너지 + 명장 OVR 궁합 반영 실효 능력치)으로 산출하고, matchEngine.ts에서 중복 가산 없이 역대 강팀 선발 로스터에 개인 시너지 OVR을 적용해 유저 팀과 완전히 공정한 조건으로 맞붙도록 동기화했습니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v5.0.1',
     codename:
       '하프타임·연장 라커룸 통합 전술 UI 통일(구 상성 배지 제거) & 클릭형 ? 지표 안내 패널 추가',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'FEATURE',
     summary:
       '하프타임 및 연장전 라커룸에 남아있던 구버전 전술/포메이션 상성 배지(+2.8/호각)를 완전히 제거하고 경기 전 전술실과 100% 동일한 v5.0 통합 전술 지표(완성도 % · 5대 구역 ▲/▬/▼ · 전술별 완성도 %)로 통일했습니다. 또한 우측 ? 아이콘을 클릭/터치해 완성도 구성 비율과 5대 구역별 실시간 대결 수치를 깔끔하게 펼쳐볼 수 있는 안내 패널을 추가했습니다.',
     sections: [

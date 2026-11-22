@@ -473,6 +473,18 @@ function resolveMatchStrengths(params: {
     }
 
     const chem = calculateChemistry(formation, xi, tactic, manager.traitId, manager.ovr);
+
+    // Historical HOF teams already carry full 4-pillar synergy + legendary manager OVR in club.att/mid/def
+    // (100% identical to user team's calculateTeamRatings) -> apply slot synergies to roster without double-lifting base ratings!
+    if (club.id.startsWith('hist-')) {
+      return {
+        effectiveRoster: applySlotSynergiesToStarters(xi, chem.slotSynergies),
+        att: club.att,
+        mid: club.mid,
+        def: club.def,
+      };
+    }
+
     const avgSynBonus =
       Object.values(chem.slotSynergies).reduce((sum, s) => sum + s.totalBonus, 0) / 11;
     const chemOrgBonus =
@@ -480,16 +492,16 @@ function resolveMatchStrengths(params: {
         ? chem.chemistryOvrBonus * 0.45
         : Math.min(0.3, Math.max(0, chem.chemistryOvrBonus - avgSynBonus * 0.75));
 
-    // Center AI synergy + manager OVR lift around league baseline (avgSyn ~1.7, manager OVR ~84)
-    // so elite cohesive clubs & world-class managers (90+) gain +0.25~+0.40 while keeping league points realistic
-    const relativeSynLift = clamp((avgSynBonus - 1.7) * 0.14, -0.12, 0.18);
-    const mgrCoachingBonus = clamp((manager.ovr - 84) * 0.02, -0.14, 0.22);
+    // Center AI synergy + manager OVR lift around league baseline (avgSyn ~1.8, manager OVR ~85)
+    // so elite cohesive clubs & world-class managers (90+) gain +0.20~+0.32 while keeping league points rock-solid
+    const relativeSynLift = clamp((avgSynBonus - 1.8) * 0.12, -0.14, 0.15);
+    const mgrCoachingBonus = clamp((manager.ovr - 85) * 0.018, -0.15, 0.18);
     const uclPrestigeBonus =
       userContext?.competition === 'ucl' && (club.att + club.mid + club.def) / 3 >= 82
         ? 0.4
         : 0;
     const totalAiLift =
-      relativeSynLift + chemOrgBonus * 0.2 + mgrCoachingBonus + uclPrestigeBonus;
+      relativeSynLift + chemOrgBonus * 0.15 + mgrCoachingBonus + uclPrestigeBonus;
 
     if (aiClubSynergyLiftCache.size >= MAX_AI_SYNERGY_CACHE) {
       aiClubSynergyLiftCache.clear();
