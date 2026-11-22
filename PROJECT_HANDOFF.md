@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v4.1)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v5.0)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,10 +9,17 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **22개 파일 / 86개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **23개 파일 / 91개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
+- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (v5.0 전술 개편 직전 `v4.1` 안정 커밋 `a77f6a4`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
+- **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 `?` 툴팁 내부에만 수록.
+- **v5.0 주요 신규 모듈·기능**:
+  - **신규 포메이션 3종(총 9종 확장) (`src/data/formations.ts`, `src/types/game.ts`, `src/engine/positionEngine.ts`, `src/engine/lineupOptimizer.ts`, `src/engine/tacticalMovement.ts`)**: `4-4-2-diamond`(4-4-2 다이아몬드), `3-3-3-1`, `3-5-2-dm`(3-5-2 DM) 3종 포메이션의 좌표·슬롯·`alternateSubPositions` 호환 포지션·케미 링크·2D 오프더볼 움직임·9종 선택 UI 전면 구현.
+  - **현실 축구형 [통합 전술 수싸움] 엔진 (`src/engine/unifiedTacticsEngine.ts`, `src/engine/matchEngine.ts`, `src/components/league/MatchDayTacticsRoom.tsx`)**: 분리된 포메이션/전술 `+OVR!` 스택을 폐지하고 1단계 내부 전술 완성도(`tacticalFit`: 포메이션×전술 구조 35% + 스쿼드 OVR 정규화 세부 능력치/스타일 45% + 감독 스타일/OVR 20%) → 2단계 5대 구역 대결(`midfield` · `flanks` · `transition` · `box` · `pressing`)로 점유율·ATT/MID/DEF·임계치 임상 xG·공격 루트 비중(`routeWeightMods`) 산출. 프리뷰는 `[완성도 N% + 5구역 ▲/─/▼ + ? 툴팁]` 1줄 요약 표시.
+  - **선수 시너지 4원칙 통일 · 공식 전 소속팀(`formerClubs`) 연동 & 감독 궁합 독립 분리 (`src/engine/chemistryEngine.ts`, `src/data/formerClubs.ts`, `src/data/managerTraits.ts`, `src/components/common/PitchBoard.tsx`, `PlayerDetailModal.tsx`)**: 레전드 와일드카드 및 전술/감독 혼합 링크 제거, 오직 **① 같은 팀/전 소속팀(35) · ② 같은 국적(20) · ③ 플레이스타일 궁합(30) · ④ 엘리트 페어 88+(15)** 4원칙(4색 케미선) 통일. 추측 없이 공식 1군 커리어만 검증한 레전드 33명 + 주요 현역 ~170명의 `formerClubs` 반영. 감독 스타일 궁합은 선수 개인 실효 OVR 독립 상승(`+1~+2`, 개인 총 보정 캡 `+3`)으로 분리해 5대 리그 96구단·UCL 16구단·명전 14팀 전역 적용.
+  - **전 구단 AI 감독(OVR·스타일) & 하프타임 능동적 수싸움 (`src/data/aiManagers.ts`, `src/engine/unifiedTacticsEngine.ts`, `src/engine/matchEngine.ts`, `src/engine/tacticEngine.ts`, `GameContext.tsx`, `LiveMatchBroadcast.tsx`, `DreamMatchArena.tsx`)**: 5대 리그 96구단 + UCL 16구단 + 명전 14팀 전 구단에 AI 감독(OVR 70~99, `ManagerTraitId`, 선호 포메이션/전술) 부여. 리그·컵·UCL·드림 매치 전반에서 AI 감독이 하프타임에 전반 흐름을 읽고 OVR 차등 기반 포메이션·전술·교체(최대 2명) 카운터 실행, 수석코치 조언 현실적 불확실성 반영, 후반 시작 시 중계 헤더 1줄(`⚡ [감독명] 하프타임 대응`) 표시 (`v50UnifiedTacticsAndManagers.test.ts`).
 - **v4.1 주요 신규 모듈·기능**:
   - **명예의 전당 역대 강팀 14팀 17인 풀스쿼드·명장 시너지·공정 시즌 스코어 재조정 (`src/data/historicalSquadsData.ts`, `src/data/historicalTeams.ts`, `src/engine/legacyEngine.ts`, `src/types/legacy.ts`, `LegacyHubModal.tsx`, `SeasonSummary.tsx`)**: 역대 14팀 전체를 포메이션 정렬 선발 11명 + 핵심 벤치 6명(총 238명) 풀스쿼드 & 7+5 세부 능력치·플레이스타일 + 명장 지휘력(91~99)·감독 특성·도트 아바타로 완전 구체화하고, 유저와 동일한 `computeSeasonScore`에 역사적 대기록 보너스(`honorsBonusDetails`)와 스쿼드 OVR·팀 케미·감독 시너지·명장 지휘력 보너스(`squadCraftBonus`)를 공정 반영 (`v41HofDreamMatchScenes.test.ts`).
   - **[⚔️ 드림 매치 (명예의 전당 챌린지)] 모드 (`src/components/dream/DreamMatchArena.tsx`, `LiveMatchBroadcast.tsx`, `GameContext.tsx`, `TitleScreen.tsx`, `LegacyHubModal.tsx`, `App.tsx`)**: 진행 중인 시즌 세이브를 보존한 채 독립 실행되는 역대 강팀 단판 챌린지. [방식 A · 내 명전 팀 불러오기(`fullStarters`/`fullBench` 스냅샷 + `reconstructHallOfFameSquad` 구버전 자동 복원)] 및 [방식 B · 즉석 16인 드림 드래프트] 모두 지원, `MatchDayTacticsRoom` → `LiveMatchBroadcast`(`override` 어댑터, 90'/105' 연장 라커룸 + PK 포함) → `MatchReportPanel` + `dreamMatchRecords` 격파 전적 영구 기록.
@@ -117,22 +124,25 @@
 │   │   ├── legendPlayers.json     # 레전드 33명 (레벤수 3인방 포함, stamina 포함)
 │   │   ├── leagues.json           # 유럽 5대 리그 96개 구단 (EPL 20, 라리가 20, 세리에 A 20, 분데스리가 18, 리그 1 18)
 │   │   ├── uclTeams.json          # 비5대 리그 유럽 강호 16개 구단 · 176명 풀 스쿼드 (5대 리그와 중복 0건)
-│   │   ├── formations.ts          # 6종 포메이션 좌표·케미 링크 + 벤치 5슬롯
-│   │   ├── managerTraits.ts       # 14종 감독 강점 정의
+│   │   ├── formations.ts          # 9종 포메이션 좌표·alternateSubPositions·케미 링크 + 벤치 5슬롯
+│   │   ├── aiManagers.ts          # 5대 리그 96구단 + UCL 16구단 AI 감독(OVR·스타일·선호 포메이션/전술)
+│   │   ├── formerClubs.ts         # 공식 1군 커리어 검증 기반 전 소속팀 이력(레전드 33명 + 주요 현역 ~170명)
+│   │   ├── managerTraits.ts       # 14종 감독 강점 정의 & 감독 OVR 기반 개인 궁합(+1~+2)
 │   │   ├── playstyles.ts          # 14종 플레이스타일 및 스타일 시너지 쌍
 │   │   ├── achievements.ts        # 24종 히든 도전과제 (힌트/해금 제목/역사적 모티브/조건)
-│   │   ├── historicalTeams.ts     # 역대 최강 14팀 벤치마크 데이터
-│   │   └── patchNotes.ts          # 인게임 패치노트 데이터 (v1.0 ~ v2.6)
+│   │   ├── historicalTeams.ts     # 역대 최강 14팀 벤치마크 데이터 (17인 풀스쿼드·명장 OVR 91~99)
+│   │   └── patchNotes.ts          # 인게임 패치노트 데이터 (v1.0 ~ v5.0)
 │   ├── engine/
-│   │   ├── dataLoader.ts          # JSON 로더, AI 11인 로스터 생성(buildAiClubRoster + excludeIds), 대체 자원 보충(pickReplacementForAiClub)
-│   │   ├── positionEngine.ts      # 복수 주포지션/부포지션 적합도 & 실효 OVR 계산
-│   │   ├── chemistryEngine.ts     # 3색 병렬 케미(구단/국적/스타일+역할) & 팀 실전 OVR 계산
-│   │   ├── tacticEngine.ts        # 5종 전술 & 포메이션 상성, 하프타임 힌트 생성
+│   │   ├── dataLoader.ts          # JSON 로더, formerClubs/AI 감독 하이드레이션, AI 16인 로스터 생성
+│   │   ├── positionEngine.ts      # 복수 주포지션/부포지션/alternateSubPositions 적합도 & 실효 OVR 계산
+│   │   ├── chemistryEngine.ts     # 엄격 4원칙 선수 시너지(구단·전소속35/국적20/스타일30/엘리트88+15) & 감독 궁합 독립 분리
+│   │   ├── unifiedTacticsEngine.ts # 2단계 통합 전술 수싸움(내부 완성도→5구역 대결) & AI 감독 OVR별 하프타임 카운터
+│   │   ├── tacticEngine.ts        # 5종 전술/9종 포메이션 메타 & 수석코치 현실적 하프타임 조언
 │   │   ├── staminaEngine.ts       # 인게임 체력 소모(0'~120'), 피로 패널티, 60'~82' 자동 교체 계획
 │   │   ├── draftEngine.ts         # 3구단 멀티 후보 드래프트 룰렛 (OVR 상위 3명 결정적 노출 + 레전드 독립 확률)
 │   │   ├── lineupOptimizer.ts     # 포메이션 변경 시 스마트 재배치 & 자동 최적 베스트 11
 │   │   ├── scheduleEngine.ts      # Fisher-Yates 랜덤 셔플 더블 라운드 로빈 일정 생성
-│   │   ├── matchEngine.ts         # 포아송 xG 경기 엔진, 전반/후반/실시간 교체 재시뮬, 10종 하이라이트, 연장전/승부차기
+│   │   ├── matchEngine.ts         # 포아송 xG 경기 엔진, 통합 전술/AI 감독 하프타임 수싸움, 14종 공격 루트, 연장/PK
 │   │   ├── standingsEngine.ts     # 순위표 정렬, 단일 playerId 스탯 누적 및 레거시 user:: 키 정규화
 │   │   ├── otherLeaguesEngine.ts  # 타 4대 리그 백그라운드 동시 시뮬레이션 & UCL 20팀 진출 요약
 │   │   ├── transferEngine.ts      # 3구단 동적 이적시장 (포지션별 OVR 상위 3명 보장, 몸값·확률·UCL 우승 프리미엄)
@@ -153,7 +163,7 @@
 │   │   ├── ucl/                   # UclDashboard, UclBracketTree (SVG 트리)
 │   │   ├── legacy/                # LegacyHubModal (명예의 전당 + 역대 14팀 + 24종 도감), AchievementToast
 │   │   └── guide/                 # SystemGuideModal
-│   └── __tests__/                 # 17개 유닛 테스트 (총 55개 테스트)
+│   └── __tests__/                 # 23개 유닛/통합 테스트 (총 91개 테스트)
 ```
 
 ---

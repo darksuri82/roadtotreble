@@ -76,10 +76,14 @@ export function evaluatePositionFit(
   player: Pick<Player, 'ovr' | 'mainPositions' | 'secondaryPositions'>,
   slotSubPosition: SubPosition,
   managerTraitId?: ManagerTraitId | null,
+  alternateSubPositions?: SubPosition[],
 ): PositionFitResult {
   const isTotalFootball = managerTraitId === 'total_football';
+  const acceptedMains: SubPosition[] = alternateSubPositions
+    ? [slotSubPosition, ...alternateSubPositions]
+    : [slotSubPosition];
 
-  if (player.mainPositions.includes(slotSubPosition)) {
+  if (acceptedMains.some((sp) => player.mainPositions.includes(sp))) {
     return {
       fit: 'main',
       penalty: 0,
@@ -88,14 +92,12 @@ export function evaluatePositionFit(
     };
   }
 
-  const isSecondaryOrCompat =
-    player.secondaryPositions.includes(slotSubPosition) ||
-    player.mainPositions.some((mp) =>
-      isCompatibleSubPosition(mp, slotSubPosition),
-    ) ||
-    player.secondaryPositions.some((sp) =>
-      isCompatibleSubPosition(sp, slotSubPosition),
-    );
+  const isSecondaryOrCompat = acceptedMains.some(
+    (target) =>
+      player.secondaryPositions.includes(target) ||
+      player.mainPositions.some((mp) => isCompatibleSubPosition(mp, target)) ||
+      player.secondaryPositions.some((sp) => isCompatibleSubPosition(sp, target)),
+  );
 
   if (isSecondaryOrCompat) {
     const penalty = isTotalFootball ? -1 : -3;
@@ -107,12 +109,14 @@ export function evaluatePositionFit(
     };
   }
 
-  const slotLine = getLineForSubPosition(slotSubPosition);
+  const acceptedLines = new Set(
+    acceptedMains.map((sp) => getLineForSubPosition(sp)),
+  );
   const sharesLine =
-    slotLine !== 'GK' &&
+    !acceptedLines.has('GK') &&
     player.mainPositions.some((mp) => {
       const mpLine = getLineForSubPosition(mp);
-      return mpLine !== 'GK' && mpLine === slotLine;
+      return mpLine !== 'GK' && acceptedLines.has(mpLine);
     });
 
   if (sharesLine) {

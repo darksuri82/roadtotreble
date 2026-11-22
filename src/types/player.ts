@@ -81,6 +81,7 @@ export interface Player {
   isLegend: boolean;
   isGenerated?: boolean;
   attrs?: PlayerAttributes;
+  formerClubs?: string[];
 }
 
 export type PositionFitLevel = 'main' | 'secondary' | 'out_of_pos' | 'severe';

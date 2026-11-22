@@ -1,4 +1,4 @@
-import type { FormationId } from './game';
+import type { AiManagerProfile, FormationId } from './game';
 import type { Player, Position, SubPosition } from './player';
 
 export type LeagueId = 'epl' | 'laliga' | 'seriea' | 'bundesliga' | 'ligue1';
@@ -26,6 +26,7 @@ export interface Club {
   def: number;
   topScorers: [string, string, string];
   isUser?: boolean;
+  manager?: AiManagerProfile;
 }
 
 export interface LeagueData {
@@ -177,6 +178,21 @@ export interface ExtraTimeInfo {
   winnerTeamId: string;
 }
 
+export interface AiHalftimeAdjustment {
+  managerName: string;
+  managerOvr: number;
+  changedFormation: boolean;
+  previousFormation: FormationId;
+  newFormation: FormationId;
+  changedTactic: boolean;
+  previousTactic: TacticId;
+  newTactic: TacticId;
+  subsMade: { outPlayerName: string; inPlayerName: string }[];
+  headline: string; // e.g. "⚡ 한지 플릭 하프타임 대응: 3-5-2 DM 전환 · 선수비 후역습"
+  updatedStarters?: Player[];
+  updatedBench?: Player[];
+}
+
 export interface MatchResult {
   fixtureId: string;
   round: number;
@@ -202,6 +218,7 @@ export interface MatchResult {
   homeTacticBonus: number;
   awayTacticBonus: number;
   halftimeAdjusted?: boolean;
+  aiHalftimeAdjustment?: AiHalftimeAdjustment;
   halftimeHomeGoals?: number;
   halftimeAwayGoals?: number;
   extraTime?: ExtraTimeInfo;
@@ -256,6 +273,7 @@ export interface LiveHalftimeState {
   preMatchFormation?: FormationId;
   userTacticAtKickoff: TacticId;
   userFormationAtKickoff: FormationId;
+  aiHalftimeAdjustment?: AiHalftimeAdjustment;
   phase:
     | 'first_half'
     | 'halftime'

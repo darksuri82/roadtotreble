@@ -335,36 +335,29 @@ export function DraftScreen() {
                 <div className="lg:col-span-7 rounded-xl border border-slate-800 bg-[#0b1018]/90 p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-extrabold text-emerald-300">
-                      ① 선발 선수 개인 시너지 OVR 상승 (최대 +3 · 실제 경기 스탯 반영)
-                    </span>
-                    <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-200">
-                      피치 녹색 +1 ~ +3 배지
+                      ① 선수 시너지 (+0~+2) &amp; 감독 궁합 (+1~+2) — 합산 최대 +3
                     </span>
                   </div>
                   <ul className="space-y-1.5 text-[11px] text-slate-300 leading-relaxed">
                     <li>
-                      • <strong className="text-amber-300">⭐ 감독 시너지 (+1 OVR)</strong>: 내 감독 추천 플레이스타일 또는 특성 조건(갈락티코 OVR 88+/레전드, 토탈풋볼 3포지션+, 슈퍼서브 체력 86+) 일치 시 <strong className="text-white">+1</strong>
+                      • <strong className="text-amber-300">⭐ 감독 궁합 (+1~+2 OVR, 독립 적용)</strong>: 감독 스타일과 일치하는 선수 실효 OVR 직접 상승
                     </li>
                     <li>
-                      • <strong className="text-emerald-300">🔗 인접 팀원 케미 (+1 ~ +2 OVR)</strong>: 포메이션 연결선으로 이어진 이웃 선수들과의 연결 점수 합산
+                      • <strong className="text-emerald-300">🔗 선수 간 시너지 4원칙 (+1~+2 OVR)</strong>:
                       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
                         <span className="rounded bg-emerald-500/15 border border-emerald-400/35 px-1.5 py-0.5 text-emerald-200 font-bold">
-                          🟢 동일 구단 +1.6점
-                        </span>
-                        <span className="rounded bg-amber-500/15 border border-amber-400/35 px-1.5 py-0.5 text-amber-200 font-bold">
-                          👑 레전드 와일드카드 +1.2점
+                          🟢 동일 구단 +1.6 / 전 소속팀 +1.25
                         </span>
                         <span className="rounded bg-sky-500/15 border border-sky-400/35 px-1.5 py-0.5 text-sky-200 font-bold">
-                          🔵 동일 국적 +1.1점
+                          🔵 동일 국적 +1.1
                         </span>
                         <span className="rounded bg-amber-400/15 border border-amber-300/35 px-1.5 py-0.5 text-amber-100 font-bold">
-                          🟡 보완 스타일·전술 동반 +1.0점
+                          🟡 스타일 궁합 +1.1
+                        </span>
+                        <span className="rounded bg-purple-500/15 border border-purple-400/35 px-1.5 py-0.5 text-purple-200 font-bold">
+                          🟣 엘리트 페어(88+) +1.25
                         </span>
                       </div>
-                    </li>
-                    <li className="text-[10px] text-slate-400">
-                      ↳ <strong className="text-emerald-300">+1 조건</strong>: 인접 연결 합계 <strong className="text-slate-200">1.6점+</strong> (즉, 동일 구단 1명만 연결돼도 즉시 +1) 또는 (국적+스타일 연결) 2개+
-                      <br />↳ <strong className="text-emerald-300">+2 조건</strong>: 인접 연결 합계 <strong className="text-slate-200">4.2점+</strong> 또는 (평균 1.75점+ &amp; 2연결+) 또는 (구단 2개+ &amp; 국적·스타일 2개+)
                     </li>
                   </ul>
                 </div>
@@ -372,7 +365,7 @@ export function DraftScreen() {
                 <div className="lg:col-span-5 rounded-xl border border-slate-800 bg-[#0b1018]/90 p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-extrabold text-sky-300">
-                      ② 팀 전체 케미스트리 (0~100점)
+                      ② 팀 케미 4축 (0~100점)
                     </span>
                     <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-200">
                       팀 OVR -1.5 ~ +2.5
@@ -380,25 +373,22 @@ export function DraftScreen() {
                   </div>
                   <div className="grid grid-cols-2 gap-1.5 text-[10px] tabular-nums">
                     <div className="rounded-lg border border-slate-800/90 bg-slate-950/70 px-2 py-1.5">
-                      <div className="text-emerald-300 font-bold">동일 구단·레전드</div>
-                      <div className="text-slate-300">최대 25점 (인접 가중)</div>
+                      <div className="text-emerald-300 font-bold">구단·전소속</div>
+                      <div className="text-slate-300">최대 35점</div>
                     </div>
                     <div className="rounded-lg border border-slate-800/90 bg-slate-950/70 px-2 py-1.5">
                       <div className="text-sky-300 font-bold">동일 국적</div>
-                      <div className="text-slate-300">최대 20점 (인접 가중)</div>
+                      <div className="text-slate-300">최대 20점</div>
                     </div>
                     <div className="rounded-lg border border-slate-800/90 bg-slate-950/70 px-2 py-1.5">
-                      <div className="text-amber-300 font-bold">전술·스타일·감독</div>
-                      <div className="text-slate-300">최대 40점 (궁합 보너스)</div>
+                      <div className="text-amber-300 font-bold">스타일 궁합</div>
+                      <div className="text-slate-300">최대 30점</div>
                     </div>
                     <div className="rounded-lg border border-slate-800/90 bg-slate-950/70 px-2 py-1.5">
-                      <div className="text-slate-300 font-bold">역할 균형</div>
-                      <div className="text-slate-400">최대 15점 (공·중·수 조화)</div>
+                      <div className="text-purple-300 font-bold">엘리트 88+</div>
+                      <div className="text-slate-400">최대 15점</div>
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-400 leading-relaxed">
-                    💡 후보 카드를 <strong className="text-emerald-300">1번 클릭</strong>하면 왼쪽 피치에 임시 배치되어 연결선과 <strong className="text-emerald-300">+OVR 상승량</strong>이 즉시 계산됩니다!
-                  </p>
                 </div>
               </div>
             )}

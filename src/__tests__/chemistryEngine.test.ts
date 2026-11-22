@@ -61,13 +61,15 @@ describe('V4 Multi-MainPosition Fit, No-Same-League Multi-Line Chemistry & Match
     expect(arsenalLink.activeLines).toContain('club');
     expect(arsenalLink.activeLines).toContain('nation');
 
-    // Legend wildcard provides default club/tactic link + nation link when matching
+    // v5.0: Legends use strict 4-pillar rules (no artificial wildcard):
+    // Messi (AR, OVR 98) + Mac Allister (AR, OVR 88) share Nation (AR) + Elite Pair (88+),
+    // while Messi + Lamine Yamal share Former Club (FC 바르셀로나) + Elite Pair!
     const messi = LEGEND_PLAYERS.find((p) => p.name === '리오넬 메시')!; // AR
     const macAllister = ACTIVE_PLAYERS.find((p) => p.name === '알렉시스 맥 알리스터')!; // AR
     const legendLink = evaluatePairLink(messi, macAllister, 'possession', null);
-    expect(legendLink.isLegendWildcard).toBe(true);
-    expect(legendLink.hasClubLink).toBe(true);
+    expect(legendLink.isLegendWildcard).toBe(false);
     expect(legendLink.hasNationLink).toBe(true);
+    expect(legendLink.hasEliteLink).toBe(true);
     expect(legendLink.activeLines.length).toBeGreaterThanOrEqual(2);
 
     const starters = [

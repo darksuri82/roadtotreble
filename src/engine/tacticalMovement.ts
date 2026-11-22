@@ -188,6 +188,70 @@ export function computeTacticalPlayerOffset(
     }
   }
 
+  // =========================================================================
+  // FORMATION-SPECIFIC SIGNATURE OFF-BALL MOVEMENTS (v5.0)
+  // =========================================================================
+  if (formation === '4-4-2-diamond') {
+    // Narrow central diamond overload + aggressive fullback width overlaps
+    if (hasBall) {
+      if (isFB) {
+        dx += dir * (attackPhase >= 1 ? 0.085 : 0.04);
+        dy += sideSign * 0.055; // Fullbacks provide sole touchline width
+      } else if (isCM) {
+        dx += dir * 0.025;
+        dy += (0.5 - base.y) * 0.12; // Pinch half-spaces for tight triangles
+      } else if (isCAM) {
+        dx += dir * 0.03;
+        dy += Math.sin(simClock * 1.5) * 0.05; // Float behind twin strikers
+      }
+    } else {
+      if (isCM || isCDM) {
+        dy += (0.5 - base.y) * 0.14; // Shield central corridor tightly
+      }
+    }
+  } else if (formation === '3-3-3-1') {
+    // Bielsa ultra-high press, numerical overload in 2nd/3rd tiers, high-line space behind
+    if (hasBall) {
+      if (isCB) {
+        dx += dir * 0.045; // Aggressive high rest-defense
+      } else if (isFB) {
+        dx += dir * (attackPhase >= 1 ? 0.065 : 0.03);
+        dy += sideSign * 0.04;
+      } else if (isCAM) {
+        dx += dir * (attackPhase >= 2 ? 0.06 : 0.035);
+        dy += Math.cos(simClock * 1.6 + slotIndex) * 0.04;
+      }
+    } else {
+      // Man-oriented aggressive forward press leaving space behind 3CBs
+      const distToBall = Math.hypot(base.x - ball.x, base.y - ball.y);
+      if (distToBall < 0.36 && !isCB) {
+        dx += (ball.x - base.x) * 0.22;
+        dy += (ball.y - base.y) * 0.22;
+      } else {
+        dx += dir * 0.04;
+      }
+    }
+  } else if (formation === '3-5-2-dm') {
+    // Double pivot anchor shields back 3, wingbacks surge on transition, CAM links twin strikers
+    if (hasBall) {
+      if (isCDM) {
+        dx += -dir * 0.02; // Rest-defense double pivot stability
+      } else if (isFB) {
+        dx += dir * (attackPhase >= 1 ? 0.09 : 0.04);
+        dy += sideSign * 0.04;
+      } else if (isCAM) {
+        dx += dir * 0.035;
+      }
+    } else {
+      if (isCB || isCDM) {
+        dx += -dir * 0.03; // Compact 3+2 defensive block
+        dy += (0.5 - base.y) * 0.12;
+      } else if (isFB) {
+        dx += -dir * 0.045; // Drop into 5-man backline out of possession
+      }
+    }
+  }
+
   return { x: dx, y: dy };
 }
 

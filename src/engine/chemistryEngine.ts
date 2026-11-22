@@ -1,9 +1,6 @@
 import { FORMATIONS } from '../data/formations';
-import {
-  evaluateManagerPlayerSynergy,
-  MANAGER_TRAITS,
-} from '../data/managerTraits';
-import { doesPlaystyleFitTactic, PLAYSTYLES } from '../data/playstyles';
+import { evaluateSharedClubHeritage } from '../data/formerClubs';
+import { evaluateManagerPlayerSynergy } from '../data/managerTraits';
 import type {
   ChemistryLineType,
   ChemistryLink,
@@ -18,6 +15,17 @@ import type { TacticId } from '../types/league';
 import type { Player, PlaystyleId } from '../types/player';
 import { evaluatePositionFit } from './positionEngine';
 
+/**
+ * v5.0 Strict 4-Pillar Player Synergy Engine:
+ *   1) Playstyle Synergy (`style`): Authentic complementary football role pairs ONLY
+ *   2) Same Nationality (`nation`): Identical nationalityCode
+ *   3) Same Club incl. Verified Former Clubs (`club`): Current same club OR shared official career club
+ *   4) Elite Pair (`elite`): Both adjacent players have base OVR >= 88 (World-Class / Superstar / Legend)
+ *
+ * Manager Style Compatibility is strictly separated as an independent direct player OVR bonus (`managerBonus`).
+ */
+export const ELITE_PAIR_MIN_OVR = 88;
+
 export const COMPLEMENTARY_STYLE_PAIRS: [PlaystyleId, PlaystyleId][] = [
   ['playmaker_10', 'line_breaker'],
   ['playmaker_10', 'poacher'],
@@ -30,6 +38,7 @@ export const COMPLEMENTARY_STYLE_PAIRS: [PlaystyleId, PlaystyleId][] = [
   ['attacking_wingback', 'inverted_winger'],
   ['attacking_wingback', 'complete_forward'],
   ['attacking_wingback', 'poacher'],
+  ['attacking_wingback', 'classic_winger'],
   ['classic_winger', 'poacher'],
   ['classic_winger', 'complete_forward'],
   ['ball_playing_cb', 'stopper_cb'],
@@ -37,9 +46,11 @@ export const COMPLEMENTARY_STYLE_PAIRS: [PlaystyleId, PlaystyleId][] = [
   ['stopper_cb', 'shot_stopper'],
   ['ball_winner', 'box_to_box'],
   ['box_to_box', 'complete_forward'],
+  ['inverted_winger', 'complete_forward'],
+  ['inverted_winger', 'poacher'],
 ];
 
-function hasComplementaryPlaystyles(a: Player, b: Player): boolean {
+export function hasComplementaryPlaystyles(a: Player, b: Player): boolean {
   for (const [s1, s2] of COMPLEMENTARY_STYLE_PAIRS) {
     if (
       (a.playstyles.includes(s1) && b.playstyles.includes(s2)) ||
@@ -58,61 +69,60 @@ export interface PairLinkEval {
   hasClubLink: boolean;
   hasNationLink: boolean;
   hasStyleLink: boolean;
+  hasEliteLink: boolean;
+  isFormerClubLink: boolean;
+  sharedClubName?: string;
   isLegendWildcard: boolean;
   activeLines: ChemistryLineType[];
   clubContribution: number;
 }
 
 /**
- * Evaluates adjacent player chemistry WITHOUT "Same League".
- * Three independent visual & scoring link criteria:
- *  1) Club link (emerald): Same Club OR Legend wildcard (1 default club/tactic link)
- *  2) Nation link (sky blue): Same Nationality
- *  3) Playstyle/Tactic Synergy link (gold): Complementary playstyles OR both matching active tactic/manager
+ * Evaluates adjacent player-to-player chemistry strictly by the 4 official synergy rules:
+ *  1) Club (emerald): Same active club (1.6) OR shared verified former club career (1.25)
+ *  2) Nation (sky): Same nationalityCode (1.1)
+ *  3) Playstyle (gold): Authentic complementary playstyle pair (1.1)
+ *  4) Elite Pair (violet): Both players base OVR >= 88 (1.25)
  */
 export function evaluatePairLink(
   a: Player,
   b: Player,
-  tactic: TacticId = 'balanced',
-  managerTraitId: ManagerTraitId | null = null,
+  _tactic: TacticId = 'balanced',
+  _managerTraitId: ManagerTraitId | null = null,
 ): PairLinkEval {
-  const isLegendWildcard = a.isLegend || b.isLegend;
-  const sameClub = !a.isLegend && !b.isLegend && a.club === b.club;
-  const hasClubLink = sameClub || isLegendWildcard;
+  const clubHeritage = evaluateSharedClubHeritage(a, b);
+  const sameClub = clubHeritage.type === 'current';
+  const isFormerClubLink = clubHeritage.type === 'former';
+  const hasClubLink = sameClub || isFormerClubLink;
   const hasNationLink = a.nationalityCode === b.nationalityCode;
-
-  const traitConfig = managerTraitId ? MANAGER_TRAITS[managerTraitId] : null;
-  const aFitsTactic =
-    doesPlaystyleFitTactic(a.playstyles, tactic) ||
-    Boolean(traitConfig?.synergyPlaystyles?.some((ps) => a.playstyles.includes(ps)));
-  const bFitsTactic =
-    doesPlaystyleFitTactic(b.playstyles, tactic) ||
-    Boolean(traitConfig?.synergyPlaystyles?.some((ps) => b.playstyles.includes(ps)));
-
-  const hasStyleLink =
-    hasComplementaryPlaystyles(a, b) ||
-    (aFitsTactic && bFitsTactic) ||
-    (isLegendWildcard && (aFitsTactic || bFitsTactic));
+  const hasStyleLink = hasComplementaryPlaystyles(a, b);
+  const hasEliteLink = a.ovr >= ELITE_PAIR_MIN_OVR && b.ovr >= ELITE_PAIR_MIN_OVR;
 
   const activeLines: ChemistryLineType[] = [];
   if (hasClubLink) activeLines.push('club');
   if (hasNationLink) activeLines.push('nation');
   if (hasStyleLink) activeLines.push('style');
+  if (hasEliteLink) activeLines.push('elite');
 
   const reasons: string[] = [];
-  if (sameClub) reasons.push('동일 구단');
-  else if (isLegendWildcard) reasons.push('레전드 와일드카드');
+  if (sameClub) {
+    reasons.push(`동일 구단(${clubHeritage.clubName})`);
+  } else if (isFormerClubLink) {
+    reasons.push(`전 소속팀(${clubHeritage.clubName})`);
+  }
   if (hasNationLink) reasons.push('동일 국적');
-  if (hasStyleLink) reasons.push('플레이스타일 시너지');
+  if (hasStyleLink) reasons.push('스타일 궁합');
+  if (hasEliteLink) reasons.push('엘리트 페어');
 
-  const clubContribution = sameClub ? 1.5 : isLegendWildcard ? 1.15 : 0;
+  const clubContribution = sameClub ? 1.5 : isFormerClubLink ? 1.15 : 0;
   const score =
-    (sameClub ? 1.6 : isLegendWildcard ? 1.2 : 0) +
+    (sameClub ? 1.6 : isFormerClubLink ? 1.25 : 0) +
     (hasNationLink ? 1.1 : 0) +
-    (hasStyleLink ? 1.0 : 0);
+    (hasStyleLink ? 1.1 : 0) +
+    (hasEliteLink ? 1.25 : 0);
 
   let status: ChemistryLinkStatus = 'none';
-  if (isLegendWildcard && activeLines.length >= 2) status = 'legend';
+  if (hasEliteLink && activeLines.length >= 2) status = 'legend';
   else if (activeLines.length >= 2 || sameClub) status = 'strong';
   else if (activeLines.length === 1) status = 'weak';
 
@@ -123,36 +133,44 @@ export function evaluatePairLink(
     hasClubLink,
     hasNationLink,
     hasStyleLink,
-    isLegendWildcard,
+    hasEliteLink,
+    isFormerClubLink,
+    sharedClubName: clubHeritage.clubName,
+    isLegendWildcard: false,
     activeLines,
     clubContribution,
   };
 }
 
 /**
- * 4-Pillar Team Identity Chemistry (0..100) + Per-Player Synergy OVR Boost (+0..+3):
- * 1) Same Club links (strong) + Legend wildcard: max 25
- * 2) Same Nationality links (medium): max 20
- * 3) Playstyle · Tactic · Manager Synergy (core pillar): max 40
- * 4) Squad Role Balance (complementary roles across lines): max 15
+ * 4-Pillar Player-to-Player Team Chemistry (0..100) + Separated Manager Direct OVR Compatibility:
+ *   1) Club (Current + Verified Former Clubs): max 30
+ *   2) Same Nationality: max 25
+ *   3) Complementary Playstyle Pairs: max 30
+ *   4) Elite Pair (88+ ↔ 88+): max 15
+ *
+ * Independent Manager Style Fit (`managerBonus`: +0..+2 scaled by managerOvr) is calculated
+ * separately per player and applied directly to each player's effective OVR without polluting player synergy links.
  */
 export function calculateChemistry(
   formationId: FormationId,
   starters: (Player | null)[],
   tactic: TacticId = 'balanced',
   managerTraitId: ManagerTraitId | null = null,
+  managerOvr = 84,
 ): ChemistryResult {
-  const formation = FORMATIONS[formationId];
+  const formation = FORMATIONS[formationId] ?? FORMATIONS['4-3-3'];
   const links: ChemistryLink[] = [];
   const slotScoreMap: Record<
     number,
     {
       sum: number;
       count: number;
-      hasLegend: boolean;
       clubHits: number;
+      formerClubHits: number;
       nationHits: number;
       styleHits: number;
+      eliteHits: number;
     }
   > = {};
 
@@ -160,16 +178,18 @@ export function calculateChemistry(
     slotScoreMap[i] = {
       sum: 0,
       count: 0,
-      hasLegend: false,
       clubHits: 0,
+      formerClubHits: 0,
       nationHits: 0,
       styleHits: 0,
+      eliteHits: 0,
     };
   }
 
   let nationHits = 0;
   let clubSum = 0;
   let styleLinkHits = 0;
+  let eliteLinkHits = 0;
   const totalLinkCount = Math.max(1, formation.links.length);
 
   for (const [fromIndex, toIndex] of formation.links) {
@@ -186,6 +206,8 @@ export function calculateChemistry(
         hasClubLink: false,
         hasNationLink: false,
         hasStyleLink: false,
+        hasEliteLink: false,
+        isFormerClubLink: false,
         isLegendWildcard: false,
         activeLines: [],
       });
@@ -196,6 +218,7 @@ export function calculateChemistry(
     if (result.hasNationLink) nationHits += 1;
     clubSum += result.clubContribution;
     if (result.hasStyleLink) styleLinkHits += 1;
+    if (result.hasEliteLink) eliteLinkHits += 1;
 
     links.push({
       fromIndex,
@@ -206,96 +229,60 @@ export function calculateChemistry(
       hasClubLink: result.hasClubLink,
       hasNationLink: result.hasNationLink,
       hasStyleLink: result.hasStyleLink,
-      isLegendWildcard: result.isLegendWildcard,
+      hasEliteLink: result.hasEliteLink,
+      isFormerClubLink: result.isFormerClubLink,
+      sharedClubName: result.sharedClubName,
+      isLegendWildcard: false,
       activeLines: result.activeLines,
     });
 
     for (const idx of [fromIndex, toIndex]) {
       slotScoreMap[idx].sum += result.score;
       slotScoreMap[idx].count += 1;
-      if (result.isLegendWildcard) slotScoreMap[idx].hasLegend = true;
-      if (result.hasClubLink) slotScoreMap[idx].clubHits += 1;
+      if (result.hasClubLink) {
+        if (result.isFormerClubLink) slotScoreMap[idx].formerClubHits += 1;
+        else slotScoreMap[idx].clubHits += 1;
+      }
       if (result.hasNationLink) slotScoreMap[idx].nationHits += 1;
       if (result.hasStyleLink) slotScoreMap[idx].styleHits += 1;
+      if (result.hasEliteLink) slotScoreMap[idx].eliteHits += 1;
     }
   }
 
-  const filled = starters.filter((p): p is Player => p !== null);
-
-  // Pillar 1: Same Club + Legend wildcard (max 25, NO Same League)
+  // Pillar 1: Same Club + Former Club Heritage (max 35)
   const clubScore = Math.min(
-    25,
-    Math.round((clubSum / (totalLinkCount * 0.42)) * 25),
+    35,
+    Math.round((clubSum / (totalLinkCount * 0.34)) * 35),
   );
 
   // Pillar 2: Same Nationality (max 20)
   const nationScore = Math.min(
     20,
-    Math.round((nationHits / (totalLinkCount * 0.32)) * 20),
+    Math.round((nationHits / (totalLinkCount * 0.21)) * 20),
   );
 
-  // Pillar 3: Playstyle · Tactic · Manager Synergy (max 40)
-  const traitConfig = managerTraitId ? MANAGER_TRAITS[managerTraitId] : null;
-  let matchedStyleCount = 0;
-  let stylePoints = 0;
-
-  for (const p of filled) {
-    const fitsTactic = doesPlaystyleFitTactic(p.playstyles, tactic);
-    const fitsManager = evaluateManagerPlayerSynergy(p, managerTraitId).isMatch;
-    if (fitsTactic || fitsManager) {
-      matchedStyleCount += 1;
-      stylePoints += fitsTactic && fitsManager ? 1.25 : 1.0;
-    } else if (p.isLegend) {
-      stylePoints += 0.6;
-    }
-  }
-
-  const pairStyleBonus = Math.min(
-    8,
-    Math.round((styleLinkHits / (totalLinkCount * 0.55)) * 8),
+  // Pillar 3: Complementary Playstyle Pairs (max 30)
+  const styleScore = Math.min(
+    30,
+    Math.round((styleLinkHits / (totalLinkCount * 0.25)) * 30),
   );
 
-  const managerTacticBonus =
-    traitConfig?.synergyTactic && traitConfig.synergyTactic === tactic ? 5 : 0;
-
-  const galacticoBonus =
-    managerTraitId === 'galactico_manager'
-      ? Math.min(6, filled.filter((p) => p.isLegend || p.ovr >= 91).length * 2)
-      : 0;
-
-  const tacticStyleScore =
-    filled.length > 0
-      ? Math.min(
-          40,
-          Math.round((stylePoints / 9.0) * 30) +
-            pairStyleBonus +
-            managerTacticBonus +
-            galacticoBonus,
-        )
-      : 0;
-
-  // Pillar 4: Squad Role Balance (max 15)
-  const roleGroups = new Set<string>();
-  for (const p of filled) {
-    for (const ps of p.playstyles) {
-      const meta = PLAYSTYLES[ps];
-      if (meta) roleGroups.add(meta.roleGroup);
-    }
-  }
-  const roleBalanceScore =
-    filled.length > 0
-      ? Math.min(15, Math.round((roleGroups.size / 6) * 15))
-      : 0;
+  // Pillar 4: Elite Pair 88+ Superstar Chemistry (max 15)
+  const eliteScore = Math.min(
+    15,
+    Math.round((eliteLinkHits / (totalLinkCount * 0.22)) * 15),
+  );
 
   const total = Math.min(
     100,
-    Math.max(0, clubScore + nationScore + tacticStyleScore + roleBalanceScore),
+    Math.max(0, clubScore + nationScore + styleScore + eliteScore),
   );
 
   const chemistryOvrBonus = computeChemistryOvrBonus(total);
 
   const slotQuality: Record<number, ChemistryLinkStatus> = {};
   const slotSynergies: Record<number, PlayerSlotSynergy> = {};
+  let matchedStyleCount = 0;
 
   for (let i = 0; i < formation.slots.length; i += 1) {
     const entry = slotScoreMap[i];
@@ -307,53 +294,71 @@ export function calculateChemistry(
       continue;
     }
 
+    if (entry.styleHits > 0) {
+      matchedStyleCount += 1;
+    }
+
     if (entry.count === 0) {
       slotQuality[i] = 'none';
     } else {
       const avg = entry.sum / entry.count;
-      if (entry.hasLegend && avg >= 1.6) slotQuality[i] = 'legend';
-      else if (avg >= 1.8) slotQuality[i] = 'strong';
-      else if (avg >= 0.8) slotQuality[i] = 'weak';
+      if (entry.eliteHits > 0 && avg >= 1.55) slotQuality[i] = 'legend';
+      else if (avg >= 1.7) slotQuality[i] = 'strong';
+      else if (avg >= 0.75) slotQuality[i] = 'weak';
       else slotQuality[i] = 'none';
     }
 
-    // Per-player individual synergy OVR calculation (0..+3)
-    const mgrEval = evaluateManagerPlayerSynergy(p, managerTraitId);
-    const managerBonus = mgrEval.isMatch ? 1 : 0;
-
+    // 1) Strictly 4-Pillar Player-to-Player Synergy Bonus (0..2)
     let neighborBonus = 0;
+    const totalClubHits = entry.clubHits + entry.formerClubHits;
     if (entry.count > 0) {
       const avgLink = entry.sum / entry.count;
       if (
-        entry.sum >= 4.2 ||
-        (avgLink >= 1.75 && entry.count >= 2) ||
-        (entry.clubHits >= 2 && entry.nationHits + entry.styleHits >= 2)
+        entry.sum >= 4.0 ||
+        (avgLink >= 1.65 && entry.count >= 2) ||
+        (totalClubHits >= 2 && entry.nationHits + entry.styleHits + entry.eliteHits >= 2)
       ) {
         neighborBonus = 2;
       } else if (
-        entry.sum >= 1.6 ||
-        entry.clubHits >= 1 ||
+        entry.sum >= 1.25 ||
+        totalClubHits >= 1 ||
+        entry.eliteHits >= 1 ||
         entry.nationHits + entry.styleHits >= 2
       ) {
         neighborBonus = 1;
       }
     }
 
-    const totalBonus = Math.min(3, managerBonus + neighborBonus);
-    const reasons: string[] = [];
-    if (managerBonus > 0) {
-      reasons.push(`감독 시너지 +${managerBonus}`);
-    }
+    // 2) Independent Manager Style × OVR Compatibility Bonus (0..2)
+    const mgrEval = evaluateManagerPlayerSynergy(p, managerTraitId, managerOvr);
+    const managerBonus = mgrEval.isMatch ? mgrEval.bonus : 0;
+
+    // Combined cap at +3 to preserve season calibration
+    const totalBonus = Math.min(3, neighborBonus + managerBonus);
+
+    const playerReasons: string[] = [];
     if (neighborBonus > 0) {
       const linkTags: string[] = [];
-      if (entry.clubHits > 0) linkTags.push(entry.hasLegend ? '구단/레전드' : '동일 구단');
+      if (entry.clubHits > 0) linkTags.push('동일 구단');
+      if (entry.formerClubHits > 0) linkTags.push('전 소속팀');
       if (entry.nationHits > 0) linkTags.push('동일 국적');
-      if (entry.styleHits > 0) linkTags.push('스타일 궁합');
+      if (entry.styleHits > 0) linkTags.push('스타일');
+      if (entry.eliteHits > 0) linkTags.push('엘리트');
       const detail = linkTags.length > 0 ? ` (${linkTags.join('·')})` : '';
-      reasons.push(`인접 팀원 케미 +${neighborBonus}${detail}`);
+      playerReasons.push(`선수 시너지 +${neighborBonus}${detail}`);
     }
 
-    const fit = evaluatePositionFit(p, slot.subPosition, managerTraitId);
+    const managerReason = managerBonus > 0 ? `감독 궁합 +${managerBonus}` : undefined;
+    const reasons: string[] = [];
+    if (playerReasons.length > 0) reasons.push(...playerReasons);
+    if (managerReason) reasons.push(managerReason);
+
+    const fit = evaluatePositionFit(
+      p,
+      slot.subPosition,
+      managerTraitId,
+      slot.alternateSubPositions,
+    );
     const baseEffectiveOvr = fit.effectiveOvr;
     const effectiveOvrWithSynergy = Math.min(99, baseEffectiveOvr + totalBonus);
 
@@ -364,6 +369,8 @@ export function calculateChemistry(
       managerBonus,
       neighborBonus,
       reasons,
+      playerReasons,
+      managerReason,
       baseEffectiveOvr,
       effectiveOvrWithSynergy,
     };
@@ -374,8 +381,9 @@ export function calculateChemistry(
     breakdown: {
       club: clubScore,
       nation: nationScore,
-      tacticStyle: tacticStyleScore,
-      roleBalance: roleBalanceScore,
+      tacticStyle: styleScore,
+      roleBalance: eliteScore,
+      elite: eliteScore,
     },
     chemistryOvrBonus,
     links,
@@ -414,7 +422,7 @@ export function applySlotSynergiesToStarters(
 }
 
 /**
- * Computes position-fit-adjusted ATT/MID/DEF/OVR incorporating individual player slotSynergies (+0..+3)
+ * Computes position-fit-adjusted ATT/MID/DEF/OVR incorporating individual player synergy + manager OVR boosts
  * and a balanced non-double-counted team chemistry adjustment.
  */
 export function calculateTeamRatings(
@@ -424,7 +432,7 @@ export function calculateTeamRatings(
   managerTraitId: ManagerTraitId | null = null,
   slotSynergies?: Record<number, PlayerSlotSynergy>,
 ): TeamRatings {
-  const formation = FORMATIONS[formationId];
+  const formation = FORMATIONS[formationId] ?? FORMATIONS['4-3-3'];
   const adjusted: {
     player: Player;
     slotPos: 'GK' | 'DF' | 'MF' | 'FW';
@@ -439,7 +447,12 @@ export function calculateTeamRatings(
     const p = starters[i];
     if (!p) continue;
     const slot = formation.slots[i];
-    const fit = evaluatePositionFit(p, slot.subPosition, managerTraitId);
+    const fit = evaluatePositionFit(
+      p,
+      slot.subPosition,
+      managerTraitId,
+      slot.alternateSubPositions,
+    );
     const synBonus = slotSynergies?.[i]?.totalBonus ?? 0;
     adjusted.push({
       player: p,
@@ -511,8 +524,6 @@ export function calculateTeamRatings(
       : avg(dfGkList, (x) => x.effectiveDef, effOvrAvg);
 
   const fullChemBonus = computeChemistryOvrBonus(chemistryTotal);
-  // Prevent double-buffing: when per-player slotSynergies are active, they already carry
-  // the bulk of positive chemistry OVR gain; keep only negative disorganization or small residual org bonus.
   const teamOrgBonus = slotSynergies
     ? fullChemBonus < 0
       ? fullChemBonus

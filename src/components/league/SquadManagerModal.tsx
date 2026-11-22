@@ -167,22 +167,27 @@ export function SquadManagerModal({
               빠른 선발
             </button>
           </div>
-          <div className="grid grid-cols-6 gap-1">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
             {FORMATION_LIST.map((f) => (
               <button
                 key={f.id}
                 type="button"
+                title={f.name}
                 onClick={() => {
                   setSelectedSlot(null);
                   changeFormation(f.id);
                 }}
-                className={`rounded-lg py-1.5 text-[11px] font-bold cursor-pointer ${
+                className={`rounded-lg py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate ${
                   state.formation === f.id
                     ? 'bg-emerald-500 text-slate-950'
                     : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
                 }`}
               >
-                {f.id}
+                {f.id === '4-4-2-diamond'
+                  ? '4-4-2◇'
+                  : f.id === '3-5-2-dm'
+                    ? '3-5-2 DM'
+                    : f.id}
               </button>
             ))}
           </div>

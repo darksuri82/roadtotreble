@@ -5,6 +5,39 @@
 
 ---
 
+## v5.0 — 신규 포메이션 3종(4-4-2 다이아몬드 · 3-3-3-1 · 3-5-2 DM) · 현실 축구형 [통합 전술 수싸움] 엔진 · 선수 시너지 4원칙(전 소속팀 · 엘리트 페어) & 감독 궁합 독립 분리 · 전 구단 AI 감독(OVR/스타일) & 하프타임 능동적 수싸움
+
+### 1. 신규 포메이션 3종 추가 (총 9종 포메이션 전면 확장)
+- **신규 포메이션 좌표·슬롯·케미 링크·호환 포지션·2D 움직임 (`src/data/formations.ts`, `src/types/game.ts`, `src/engine/positionEngine.ts`, `src/engine/lineupOptimizer.ts`, `src/engine/tacticalMovement.ts`, `src/engine/tacticEngine.ts`)**:
+  - **`4-4-2 다이아몬드 (4-4-2-diamond)`**: `GK / LB-CB-CB-RB / CDM / LCM-RCM / CAM / ST-ST` — 좁은 중앙 4인 다이아몬드 하프스페이스 장악, 풀백 터치라인 오버래핑, 투톱 연계 2D 움직임 구현.
+  - **`3-3-3-1`**: `GK / LCB-CB-RCB / LWB(LM 호환)-CDM-RWB(RM 호환) / LAM(LW 호환)-CAM-RAM(RW 호환) / ST` — 비엘사식 전방 압박·초공격적 수적 우위·높은 수비 라인 뒷공간 리스크 반영.
+  - **`3-5-2 DM (3-5-2-dm)`**: `GK / LCB-CB-RCB / LWB-RWB / LCDM-RCDM / CAM / ST-ST` — 더블 볼란치 수비 안정감·윙백 공수 전환·투톱 연계 구현.
+  - `FormationSlot.alternateSubPositions` 지원으로 포지션 적합도(`evaluatePositionFit`), 자동 라인업 최적화(`lineupOptimizer.ts`), 9종 포메이션 선택 UI(`FormationSelect.tsx`, `MatchDayTacticsRoom.tsx`, `SquadManagerModal.tsx`, `UclDashboard.tsx`, `LiveMatchBroadcast.tsx`) 전역 확장.
+
+### 2. 현실 축구형 [통합 전술 수싸움] 엔진 재설계
+- **2단계 통합 전술 평가 엔진 (`src/engine/unifiedTacticsEngine.ts`, `src/engine/matchEngine.ts`)**:
+  - 기존 분리된 포메이션/전술 단순 `+OVR!` 합산을 폐지하고, **1단계 내부 전술 완성도(`tacticalFit` = 포메이션×전술 구조 35% + 선발 11인 정규화 세부 능력치/플레이스타일 수행력 45% + 감독 스타일/OVR 20%)**와 **2단계 5대 구역 대결(`중원 주도권` · `측면 공간` · `뒷공간/전환` · `박스/공중볼` · `압박/탈압박`)**으로 재설계.
+  - 구역 대결 결과가 실효 ATT/MID/DEF, 점유율, 임계치 기반 임상 xG/수비 억제력, 공격 루트 비중(`routeWeightMods`: 측면/중앙/역습/압박탈취/공중볼)에 직접 반영되며, 20시즌 EPL 밸런스 검증(`balanceVerification.test.ts`: OVR 90 1.15위/91.9점 · OVR 85 3.5위/72.9점 · OVR 79 10.95위/50.3점 · AI 1위 85.3점 · 84 OVR 풀시너지 업셋 승률 35%/무패율 61%) 통과.
+- **미니멀 UI 원칙 준수 (`src/components/league/MatchDayTacticsRoom.tsx`, `TacticsGuideModal.tsx`, `SystemGuideModal.tsx`)**:
+  - 매치 프리뷰 화면에서 번잡한 숫자 나열과 장황한 안내 텍스트를 제거하고 `[완성도 N% + 5대 구역 ▲/─/▼ + ? 툴팁]`의 깔끔한 1줄 지표로 정돈, 상세 수식과 원리는 기존 가이드/전술 도감 모달에 수록.
+
+### 3. 선수 시너지 4원칙 단순화 · 공식 전 소속팀(Former Clubs) 커리어 연동 & 감독 궁합 독립 분리
+- **선수 간 시너지 4원칙 엄격 통일 (`src/engine/chemistryEngine.ts`, `src/types/game.ts`, `src/components/common/PitchBoard.tsx`)**:
+  - 레전드 와일드카드 및 전술/감독 혼합 링크를 완전 제거하고 오직 4원칙(**① 같은 팀/전 소속팀 35점 · ② 같은 국적 20점 · ③ 플레이스타일 궁합 30점 · ④ 엘리트 페어 OVR 88+ 15점**)으로 100점 체계를 통일하고 4색 케미선(에메랄드/스카이/앰버/퍼플)을 시각화.
+- **공식 1군 커리어 기반 전 소속팀 데이터 (`src/data/formerClubs.ts`, `src/engine/dataLoader.ts`, `src/engine/uclEngine.ts`, `src/components/common/PlayerDetailModal.tsx`)**:
+  - 추측·지어내기 금지 원칙 하에 검증된 공식 1군 출전 기록만으로 레전드 33명 전원 + 5대 리그/UCL 주요 스타 약 170명의 `formerClubs`(112개 구단 정규 명칭)를 구축해 과거 같은 팀 동료 간 시너지를 발동하고 선수 상세 모달에 전 소속 배지 표시.
+- **감독 스타일 궁합 독립 분리 & 전 구단 전역 적용 (`src/data/managerTraits.ts`, `src/data/historicalTeams.ts`, `src/engine/matchEngine.ts`, `src/engine/conditionEngine.ts`)**:
+  - 감독 스타일 궁합을 선수 간 시너지에서 분리해 감독 OVR과 스타일 적합도에 따라 선수 개인 실효 OVR을 직접 상승(`+1~+2`, 총 개인 보정 상한 `+3`)시키고, 5대 리그 96개 AI 구단·UCL 16구단·명예의 전당 14팀 전역에 동일 시너지 4원칙 적용.
+
+### 4. 전 구단 AI 감독(OVR·스타일) 도입 & 하프타임 능동적 수싸움 (리그 · 컵 · UCL · 드림 매치)
+- **전 구단 AI 감독 데이터베이스 (`src/data/aiManagers.ts`, `src/types/league.ts`, `src/data/historicalTeams.ts`)**:
+  - 5대 리그 96개 구단(2026-27 실존 감독 기준), UCL 외곽 16구단, 명예의 전당 14팀 전 구단에 감독 OVR(70~99), 감독 스타일(`ManagerTraitId`), 선호 포메이션·전술 프로필 부여.
+- **AI 감독 하프타임 능동적 대응 & 수석코치 현실성 (`src/engine/unifiedTacticsEngine.ts`, `src/engine/matchEngine.ts`, `src/engine/tacticEngine.ts`, `src/store/GameContext.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/components/dream/DreamMatchArena.tsx`)**:
+  - 하프타임에 상대 AI 감독도 전반 스코어·점유율·5대 구역 유불리를 읽어 포메이션 변경, 전술 전환, 맞춤 교체(최대 2명)를 동시 실행하며, 감독 OVR 구간(`88+` 선제/정밀 카운터 · `80~87` 반응형 대응 · `<80` 단순/지연 대응)에 따른 수싸움 격차 구현.
+  - 수석코치 하프타임 조언에 전반 데이터 기반 유력 관점과 상대 명장의 역카운터 불확실성을 현실적으로 반영하고, 후반 시작 시 상대 AI 감독이 대응한 경우 중계 헤더에 1줄 요약(`⚡ [감독명] 하프타임 대응: ...`) 표시.
+
+---
+
 ## v4.1 — 명예의 전당 역대 강팀 14팀 17인 풀스쿼드·명장 시너지·공정 스코어 재조정 · [드림 매치] 챌린지 모드 · 기자회견/라커룸 8종 도트 배경 씬 & 경기 스탯 카드 연동
 
 ### 1. 명예의 전당 역대 강팀 14팀 풀스쿼드(총 238명) · 명장 능력치 & 공정 시즌 스코어 재조정

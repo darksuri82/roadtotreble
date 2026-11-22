@@ -66,9 +66,10 @@ function getStaminaNumCls(pct: number): string {
 }
 
 const LINE_COLORS: Record<ChemistryLineType, string> = {
-  club: '#10b981', // Emerald: Same Club / Legend wildcard
+  club: '#10b981', // Emerald: Same Club / Former Clubs
   nation: '#38bdf8', // Sky Blue: Same Nationality
-  style: '#f59e0b', // Gold: Playstyle / Tactic Synergy
+  style: '#f59e0b', // Gold: Complementary Playstyle Synergy
+  elite: '#c084fc', // Violet: Elite Pair (88+ ↔ 88+)
 };
 
 export function PitchBoard({
@@ -266,7 +267,8 @@ export function PitchBoard({
             const len = Math.hypot(dx, dy) || 1;
             const nx = -dy / len;
             const ny = dx / len;
-            const spacing = activeLines.length === 3 ? 1.05 : 1.15;
+            const spacing =
+              activeLines.length >= 4 ? 0.82 : activeLines.length === 3 ? 1.05 : 1.15;
             const centerOffset = ((activeLines.length - 1) * spacing) / 2;
 
             return activeLines.map((lineType, lineIdx) => {
@@ -280,7 +282,13 @@ export function PitchBoard({
                   y2={toSlot.y + ny * offset}
                   stroke={LINE_COLORS[lineType]}
                   strokeOpacity={0.92}
-                  strokeWidth={activeLines.length === 3 ? '0.72' : '0.85'}
+                  strokeWidth={
+                    activeLines.length >= 4
+                      ? '0.62'
+                      : activeLines.length === 3
+                        ? '0.72'
+                        : '0.85'
+                  }
                   strokeLinecap="round"
                 />
               );
@@ -291,7 +299,11 @@ export function PitchBoard({
         {/* Minimal Top Overlay */}
         <div className="pointer-events-none absolute left-3 top-2.5 z-10 flex items-center gap-2">
           <span className="rounded bg-slate-950/85 px-2 py-0.5 font-display text-xs font-bold text-slate-100">
-            {formation}
+            {formation === '4-4-2-diamond'
+              ? '4-4-2◇'
+              : formation === '3-5-2-dm'
+                ? '3-5-2 DM'
+                : formation}
           </span>
           <span className="rounded bg-slate-950/85 px-2 py-0.5 text-[11px] font-semibold text-emerald-300 tabular-nums">
             케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
@@ -321,7 +333,12 @@ export function PitchBoard({
           const isSuperstar = tier === 'superstar';
 
           const fit = player
-            ? evaluatePositionFit(player, slot.subPosition, managerTraitId)
+            ? evaluatePositionFit(
+                player,
+                slot.subPosition,
+                managerTraitId,
+                slot.alternateSubPositions,
+              )
             : null;
           const slotSyn = player ? chemistry.slotSynergies?.[slot.index] : undefined;
           const synBonus = slotSyn?.totalBonus ?? 0;
@@ -587,12 +604,12 @@ export function PitchBoard({
         })}
       </div>
 
-      {/* Multi-Line Chemistry Legend (3 parallel line colors) */}
+      {/* Multi-Line Chemistry Legend (4 official synergy line colors) */}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#111822] px-3 py-2 text-[11px] text-slate-300">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1.5">
             <span className="h-0.5 w-4 rounded-full bg-emerald-400" />
-            구단·레전드
+            구단·전소속
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-0.5 w-4 rounded-full bg-sky-400" />
@@ -600,21 +617,25 @@ export function PitchBoard({
           </span>
           <span className="inline-flex items-center gap-1.5">
             <span className="h-0.5 w-4 rounded-full bg-amber-400" />
-            플레이스타일 시너지
+            스타일
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-0.5 w-4 rounded-full bg-purple-400" />
+            엘리트 88+
           </span>
         </div>
         <span className="text-[10px] text-slate-500">
-          {onInspectPlayer ? '우클릭 · ⓘ 선수 상세' : '중복 충족 시 다중 병렬선'}
+          {onInspectPlayer ? '우클릭 · ⓘ 상세' : '다중 병렬선'}
         </span>
       </div>
 
-      {/* 4-Pillar Chemistry Breakdown (NO Same League) */}
+      {/* 4-Pillar Player Synergy Breakdown */}
       {showChemBreakdown && (
         <div className="grid grid-cols-4 gap-1.5 rounded-xl border border-slate-800/80 bg-[#111822] p-2 text-center text-[10px]">
           <div className="rounded-lg bg-slate-950/60 py-1.5 px-1">
-            <div className="text-emerald-400/90">동일 구단</div>
+            <div className="text-emerald-400/90">구단·전소속</div>
             <div className="font-display text-xs font-bold text-white">
-              {chemistry.breakdown.club} / 25
+              {chemistry.breakdown.club} / 35
             </div>
           </div>
           <div className="rounded-lg bg-slate-950/60 py-1.5 px-1">
@@ -624,13 +645,13 @@ export function PitchBoard({
             </div>
           </div>
           <div className="rounded-lg bg-slate-950/60 py-1.5 px-1">
-            <div className="text-amber-400/90">전술·스타일</div>
+            <div className="text-amber-400/90">스타일 궁합</div>
             <div className="font-display text-xs font-bold text-white">
-              {chemistry.breakdown.tacticStyle} / 40
+              {chemistry.breakdown.tacticStyle} / 30
             </div>
           </div>
           <div className="rounded-lg bg-slate-950/60 py-1.5 px-1">
-            <div className="text-slate-400">역할 균형</div>
+            <div className="text-purple-400/90">엘리트 88+</div>
             <div className="font-display text-xs font-bold text-white">
               {chemistry.breakdown.roleBalance} / 15
             </div>

@@ -137,8 +137,8 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
     }
   });
 
-  it('has 6 formations, 14 manager traits, and exact 96 2026-27 European Top-5 clubs (20/20/20/18/18)', () => {
-    expect(FORMATION_LIST.length).toBe(6);
+  it('has 9 formations, 14 manager traits, and exact 96 2026-27 European Top-5 clubs (20/20/20/18/18)', () => {
+    expect(FORMATION_LIST.length).toBe(9);
     expect(MANAGER_TRAIT_LIST.length).toBe(14);
     expect(LEAGUES.length).toBe(5);
 

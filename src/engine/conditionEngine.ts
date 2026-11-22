@@ -370,24 +370,35 @@ export interface FullPlayerOvrBreakdown {
   isUnavailableInjured: boolean;
   finalEffectiveOvr: number;
   summaryLine: string;
+  playerSynergyBonus?: number;
+  managerBonus?: number;
 }
 
 /**
  * Computes a unified one-glance OVR breakdown:
- * 기본 OVR / (포지션) / 시너지 / 사기 / 부상 -> 최종 실효 OVR
+ * 기본 OVR / (포지션) / 선수 시너지 / 감독 궁합 / 사기 / 부상 -> 최종 실효 OVR
  */
 export function computeFullPlayerOvrBreakdown(params: {
   baseOvr: number;
   positionPenalty?: number;
   synergyBonus?: number;
+  playerSynergyBonus?: number;
+  managerBonus?: number;
   condition?: PlayerConditionState | null;
 }): FullPlayerOvrBreakdown {
   const {
     baseOvr,
     positionPenalty = 0,
     synergyBonus = 0,
+    playerSynergyBonus,
+    managerBonus,
     condition = null,
   } = params;
+  const hasSplitSynergy =
+    playerSynergyBonus !== undefined || managerBonus !== undefined;
+  const effectiveSynergySum = hasSplitSynergy
+    ? Math.min(3, (playerSynergyBonus ?? 0) + (managerBonus ?? 0))
+    : synergyBonus;
   const condBr = getPlayerConditionOvrBreakdown(condition);
   const isUnavailableInjured = isPlayerUnavailable(condition);
   const finalEffectiveOvr = Math.max(
@@ -397,14 +408,16 @@ export function computeFullPlayerOvrBreakdown(params: {
       Math.round(
         baseOvr +
           positionPenalty +
-          synergyBonus +
+          effectiveSynergySum +
           condBr.moraleBonus +
           condBr.injuryPenalty,
       ),
     ),
   );
   const posPart = positionPenalty < 0 ? ` / 포지션 ${positionPenalty}` : '';
-  const synPart = ` / 시너지 +${synergyBonus}`;
+  const synPart = hasSplitSynergy
+    ? ` / 시너지 +${playerSynergyBonus ?? 0} / 감독 +${managerBonus ?? 0}`
+    : ` / 시너지 +${synergyBonus}`;
   const moraleStr =
     condBr.moraleBonus > 0
       ? `+${condBr.moraleBonus}`
@@ -417,7 +430,9 @@ export function computeFullPlayerOvrBreakdown(params: {
   return {
     baseOvr,
     positionPenalty,
-    synergyBonus,
+    synergyBonus: effectiveSynergySum,
+    playerSynergyBonus: playerSynergyBonus ?? effectiveSynergySum,
+    managerBonus: managerBonus ?? 0,
     moraleBonus: condBr.moraleBonus,
     injuryPenalty: condBr.injuryPenalty,
     isUnavailableInjured,

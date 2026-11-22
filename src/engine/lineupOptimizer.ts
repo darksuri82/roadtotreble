@@ -127,7 +127,12 @@ export function remapStartersForFormation(
   const weights = filledEntries.map(({ player, prevIndex }) => {
     const prevSlot = prevSlots[prevIndex];
     return nextSlots.map((nextSlot) => {
-      const fit = evaluatePositionFit(player, nextSlot.subPosition, managerTraitId);
+      const fit = evaluatePositionFit(
+        player,
+        nextSlot.subPosition,
+        managerTraitId,
+        nextSlot.alternateSubPositions,
+      );
       const fitTierBonus =
         fit.fit === 'main'
           ? 320
@@ -169,7 +174,12 @@ function evaluateFullLineupObjective(
   for (let i = 0; i < slots.length; i += 1) {
     const player = starters[i];
     if (!player) continue;
-    const fit = evaluatePositionFit(player, slots[i].subPosition, managerTraitId);
+    const fit = evaluatePositionFit(
+      player,
+      slots[i].subPosition,
+      managerTraitId,
+      slots[i].alternateSubPositions,
+    );
     effectiveOvrSum += fit.effectiveOvr;
     if (fit.fit === 'main') fitShapeBonus += 1.2;
     else if (fit.fit === 'secondary') fitShapeBonus += 0.3;
@@ -238,7 +248,12 @@ export function optimizeBestLineup(
   // Phase 1: Exact Hungarian assignment maximizing positional Effective OVR
   const seedWeights = pool.map((player) =>
     slots.map((slot) => {
-      const fit = evaluatePositionFit(player, slot.subPosition, managerTraitId);
+      const fit = evaluatePositionFit(
+        player,
+        slot.subPosition,
+        managerTraitId,
+        slot.alternateSubPositions,
+      );
       const fitBonus =
         fit.fit === 'main'
           ? 45
@@ -357,7 +372,12 @@ export function optimizeCurrentStartersForFormation(
   // Phase 1: Hungarian assignment maximizing positional Effective OVR
   const weights = activePlayers.map((player) =>
     slots.map((slot) => {
-      const fit = evaluatePositionFit(player, slot.subPosition, managerTraitId);
+      const fit = evaluatePositionFit(
+        player,
+        slot.subPosition,
+        managerTraitId,
+        slot.alternateSubPositions,
+      );
       const fitBonus =
         fit.fit === 'main'
           ? 55

@@ -43,6 +43,7 @@ import {
 import {
   buildAiClubRoster,
   buildAiClubSquad16,
+  getClubRealDepthPool,
   getLeagueById,
   getWeakestClub,
   pickReplacementForAiClub,
@@ -3320,17 +3321,23 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         ? halftime.awayTeamId
         : halftime.homeTeamId;
       const oppIdx = activeStandings.findIndex((r) => r.teamId === oppId);
+      const oppBaseRoster = activeAiRosters[oppId] ?? [];
+      const oppClubObj = clubsById[oppId];
+      const oppBenchFill =
+        oppBaseRoster.length <= 11 && oppClubObj
+          ? getClubRealDepthPool(
+              oppClubObj.name,
+              new Set(oppBaseRoster.map((p) => p.id)),
+            ).slice(0, 5)
+          : [];
+      const oppFullRoster = [...oppBaseRoster, ...oppBenchFill];
 
       const userMatchResult = simulateSecondHalf({
         halftime,
         homeClub: clubsById[halftime.homeTeamId],
         awayClub: clubsById[halftime.awayTeamId],
-        homeRoster: halftime.isUserHome
-          ? filledStarters
-          : activeAiRosters[halftime.homeTeamId] ?? [],
-        awayRoster: halftime.isUserHome
-          ? activeAiRosters[halftime.awayTeamId] ?? []
-          : filledStarters,
+        homeRoster: halftime.isUserHome ? filledStarters : oppFullRoster,
+        awayRoster: halftime.isUserHome ? oppFullRoster : filledStarters,
         userContext: {
           userClubId: USER_CLUB_ID,
           starters: filledStarters,
@@ -3356,6 +3363,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           liveHalftime: {
             ...halftime,
             phase: 'second_half',
+            homeTactic: userMatchResult.homeTactic,
+            awayTactic: userMatchResult.awayTactic,
+            homeFormation: userMatchResult.homeFormation,
+            awayFormation: userMatchResult.awayFormation,
+            aiHalftimeAdjustment: userMatchResult.aiHalftimeAdjustment,
             fullMatchResult: userMatchResult,
           },
         },

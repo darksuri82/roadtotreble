@@ -1,3 +1,5 @@
+import { getClubManager } from '../data/aiManagers';
+import { getPlayerFormerClubs } from '../data/formerClubs';
 import uclTeamsRaw from '../data/uclTeams.json';
 import type { PlayerConditionMap } from '../types/condition';
 import type { OtherLeagueSeasonState } from '../types/game';
@@ -43,8 +45,19 @@ interface RawUclTeamEntry {
   roster: Player[];
 }
 
-export const UCL_EXTERNAL_TEAMS: RawUclTeamEntry[] =
-  uclTeamsRaw as RawUclTeamEntry[];
+export const UCL_EXTERNAL_TEAMS: RawUclTeamEntry[] = (
+  uclTeamsRaw as RawUclTeamEntry[]
+).map((entry) => ({
+  ...entry,
+  club: {
+    ...entry.club,
+    manager: getClubManager(entry.club),
+  },
+  roster: entry.roster.map((p) => {
+    const fc = getPlayerFormerClubs(p);
+    return fc.length > 0 ? { ...p, formerClubs: fc } : p;
+  }),
+}));
 
 export const UCL_KNOCKOUT_ORDER: UclKnockoutStage[] = [
   'playoff',

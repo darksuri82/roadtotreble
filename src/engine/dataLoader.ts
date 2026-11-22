@@ -1,5 +1,7 @@
 import activePlayersRaw from '../data/activePlayers.json';
+import { getClubManager } from '../data/aiManagers';
 import { FORMATIONS } from '../data/formations';
+import { getPlayerFormerClubs } from '../data/formerClubs';
 import leaguesRaw from '../data/leagues.json';
 import legendPlayersRaw from '../data/legendPlayers.json';
 import type { Club, LeagueData, LeagueId } from '../types/league';
@@ -7,16 +9,30 @@ import type { Player, PlaystyleId, Position, SubPosition } from '../types/player
 import { getPlayerAttributes } from './attributeEngine';
 import { getLineForSubPosition } from './positionEngine';
 
-export const ACTIVE_PLAYERS: Player[] = (activePlayersRaw as Player[]).map((p) => ({
-  ...p,
-  attrs: getPlayerAttributes(p),
-}));
-export const LEGEND_PLAYERS: Player[] = (legendPlayersRaw as Player[]).map((p) => ({
-  ...p,
-  attrs: getPlayerAttributes(p),
-}));
+export const ACTIVE_PLAYERS: Player[] = (activePlayersRaw as Player[]).map((p) => {
+  const formerClubs = getPlayerFormerClubs(p);
+  return {
+    ...p,
+    attrs: getPlayerAttributes(p),
+    ...(formerClubs.length > 0 ? { formerClubs } : {}),
+  };
+});
+export const LEGEND_PLAYERS: Player[] = (legendPlayersRaw as Player[]).map((p) => {
+  const formerClubs = getPlayerFormerClubs(p);
+  return {
+    ...p,
+    attrs: getPlayerAttributes(p),
+    ...(formerClubs.length > 0 ? { formerClubs } : {}),
+  };
+});
 export const ALL_PLAYERS: Player[] = [...ACTIVE_PLAYERS, ...LEGEND_PLAYERS];
-export const LEAGUES: LeagueData[] = leaguesRaw as LeagueData[];
+export const LEAGUES: LeagueData[] = (leaguesRaw as LeagueData[]).map((league) => ({
+  ...league,
+  clubs: league.clubs.map((club) => ({
+    ...club,
+    manager: getClubManager(club),
+  })),
+}));
 
 export interface ClubWithLeague {
   club: Club;

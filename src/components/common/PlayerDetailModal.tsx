@@ -174,7 +174,7 @@ export function PlayerDetailModal({
                   className="inline-flex items-center gap-0.5 rounded bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-200"
                 >
                   <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
-                  감독 시너지
+                  감독 궁합 +{mgrSynergy.bonus}
                 </span>
               )}
             </div>
@@ -195,6 +195,20 @@ export function PlayerDetailModal({
               <span className="text-slate-600">·</span>
               <span className="font-semibold text-slate-200">{displayClub}</span>
             </div>
+
+            {player.formerClubs && player.formerClubs.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                <span className="text-[10px] font-bold text-slate-500">전 소속</span>
+                {player.formerClubs.map((fc) => (
+                  <span
+                    key={fc}
+                    className="rounded bg-slate-800/80 border border-slate-700/70 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300"
+                  >
+                    {fc}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Season Club Honors (League rank / Cup / UCL) */}
             {clubHonors.length > 0 && (

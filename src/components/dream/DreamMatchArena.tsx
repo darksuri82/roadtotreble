@@ -666,7 +666,7 @@ export function DreamMatchArena() {
           homeClub: userMatchClub,
           awayClub: oppMatchBundle.club,
           homeRoster: filledStarters,
-          awayRoster: oppMatchBundle.starters,
+          awayRoster: oppMatchBundle.fullRoster,
           userContext: buildUserContext({
             tactic: secondHalfTactic,
             halftimeAdjusted: htAdjusted,
@@ -682,7 +682,11 @@ export function DreamMatchArena() {
                 ...prev,
                 phase: 'second_half',
                 halftimeSubsMade: subPlayerIds.length,
-                homeTactic: secondHalfTactic,
+                homeTactic: fullResult.homeTactic,
+                awayTactic: fullResult.awayTactic,
+                homeFormation: fullResult.homeFormation,
+                awayFormation: fullResult.awayFormation,
+                aiHalftimeAdjustment: fullResult.aiHalftimeAdjustment,
                 fullMatchResult: {
                   ...fullResult,
                   competition: 'ucl',

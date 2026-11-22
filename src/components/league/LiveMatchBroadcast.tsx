@@ -1257,6 +1257,16 @@ export function LiveMatchBroadcast({
         <div className="overflow-y-auto p-3 sm:p-4 space-y-3">
           {/* Compact Live Scoreboard & Stats Strip */}
           <div className="rounded-xl border border-slate-800 bg-[#0b1018] px-3.5 py-2.5 space-y-2">
+            {/* 1-Line AI Manager Halftime Counter Notification */}
+            {phase === 'second_half' &&
+              (fullResult?.aiHalftimeAdjustment ?? halftime.aiHalftimeAdjustment) && (
+                <div className="flex items-center justify-center rounded-lg border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-200">
+                  <span className="truncate">
+                    {(fullResult?.aiHalftimeAdjustment ?? halftime.aiHalftimeAdjustment)!.headline}
+                  </span>
+                </div>
+              )}
+
             <div className="grid grid-cols-3 items-center text-center gap-2">
               <div className="flex items-center justify-end gap-2.5 text-right">
                 <div className="min-w-0">
@@ -1968,19 +1978,24 @@ export function LiveMatchBroadcast({
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-6 gap-1">
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
                       {FORMATION_LIST.map((f) => (
                         <button
                           key={f.id}
                           type="button"
+                          title={f.name}
                           onClick={() => changeFormation(f.id)}
-                          className={`rounded-lg py-1.5 text-[11px] font-bold cursor-pointer ${
+                          className={`rounded-lg py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate ${
                             state.formation === f.id
                               ? 'bg-sky-400 text-slate-950'
                               : 'bg-[#111822] text-slate-300 border border-slate-800'
                           }`}
                         >
-                          {f.id}
+                          {f.id === '4-4-2-diamond'
+                            ? '4-4-2◇'
+                            : f.id === '3-5-2-dm'
+                              ? '3-5-2 DM'
+                              : f.id}
                         </button>
                       ))}
                     </div>

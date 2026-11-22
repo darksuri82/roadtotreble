@@ -1246,19 +1246,24 @@ export function UclDashboard() {
                   자동 최적 배치
                 </button>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                 {FORMATION_LIST.map((f) => (
                   <button
                     key={f.id}
                     type="button"
+                    title={f.name}
                     onClick={() => changeFormation(f.id)}
-                    className={`rounded-lg py-1.5 text-xs font-bold cursor-pointer ${
+                    className={`rounded-lg py-1.5 px-1 text-[11px] font-bold cursor-pointer truncate ${
                       state.formation === f.id
                         ? 'bg-sky-400 text-slate-950'
                         : 'border border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600'
                     }`}
                   >
-                    {f.id}
+                    {f.id === '4-4-2-diamond'
+                      ? '4-4-2◇'
+                      : f.id === '3-5-2-dm'
+                        ? '3-5-2 DM'
+                        : f.id}
                   </button>
                 ))}
               </div>

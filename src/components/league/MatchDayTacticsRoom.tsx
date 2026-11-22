@@ -4,22 +4,21 @@ import {
   Columns2,
   Compass,
   Eye,
+  HelpCircle,
   Shield,
-  Sparkles,
   Users,
   Wand2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { getClubManager } from '../../data/aiManagers';
 import { FORMATION_LIST } from '../../data/formations';
+import { MANAGER_TRAITS } from '../../data/managerTraits';
 import { calculateTeamRatings } from '../../engine/chemistryEngine';
+import { TACTIC_LIST, TACTICS } from '../../engine/tacticEngine';
 import {
-  evaluateFormationMatchup,
-  evaluatePlaystyleTacticMatchup,
-  evaluateTacticMatchup,
-  getBestCounterTactic,
-  TACTIC_LIST,
-  TACTICS,
-} from '../../engine/tacticEngine';
+  evaluateTeamTacticalProfile,
+  evaluateUnifiedTacticalMatchup,
+} from '../../engine/unifiedTacticsEngine';
 import type {
   ChemistryResult,
   FormationId,
@@ -32,6 +31,12 @@ import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
 import { TacticsGuideModal } from '../common/TacticsGuideModal';
 import { OpponentPitchView } from './OpponentPitchView';
+
+function shortFormationLabel(id: FormationId): string {
+  if (id === '4-4-2-diamond') return '4-4-2◇';
+  if (id === '3-5-2-dm') return '3-5-2 DM';
+  return id;
+}
 
 interface MatchDayTacticsRoomProps {
   opponent: Club;
@@ -136,6 +141,8 @@ export function MatchDayTacticsRoom({
     [starters],
   );
 
+  const oppManager = useMemo(() => getClubManager(opponent), [opponent]);
+
   const ourRatings = useMemo(
     () =>
       calculateTeamRatings(
@@ -148,26 +155,55 @@ export function MatchDayTacticsRoom({
     [formation, filledStarters, chemistry, managerTraitId],
   );
 
-  const tacticMatch = useMemo(
-    () => evaluateTacticMatchup(activeTactic, opponent.defaultTactic),
-    [activeTactic, opponent.defaultTactic],
-  );
-
-  const formationMatch = useMemo(
-    () => evaluateFormationMatchup(formation, opponent.formation),
-    [formation, opponent.formation],
-  );
-
-  const styleMatch = useMemo(
+  const unifiedMatchup = useMemo(
     () =>
-      evaluatePlaystyleTacticMatchup({
-        starters: filledStarters,
-        oppTactic: opponent.defaultTactic,
-      }),
-    [filledStarters, opponent.defaultTactic],
+      evaluateUnifiedTacticalMatchup(
+        {
+          starters,
+          formation,
+          tactic: activeTactic,
+          managerTraitId,
+          managerOvr: 86,
+        },
+        {
+          starters: opponentRoster.slice(0, 11),
+          formation: opponent.formation,
+          tactic: opponent.defaultTactic,
+          managerTraitId: oppManager.traitId,
+          managerOvr: oppManager.ovr,
+        },
+      ),
+    [
+      starters,
+      formation,
+      activeTactic,
+      managerTraitId,
+      opponentRoster,
+      opponent.formation,
+      opponent.defaultTactic,
+      oppManager,
+    ],
   );
 
-  const recommendedTactic = getBestCounterTactic(opponent.defaultTactic);
+  const tacticFits = useMemo(() => {
+    const map: Record<TacticId, number> = {
+      possession: 75,
+      gegenpressing: 75,
+      counter: 75,
+      wingplay: 75,
+      balanced: 75,
+    };
+    for (const t of TACTIC_LIST) {
+      map[t.id] = evaluateTeamTacticalProfile({
+        starters,
+        formation,
+        tactic: t.id,
+        managerTraitId,
+        managerOvr: 86,
+      }).tacticalFit;
+    }
+    return map;
+  }, [starters, formation, managerTraitId]);
 
   const handleSlotClick = (area: 'starter' | 'bench', index: number) => {
     const clicked = area === 'starter' ? starters[index] : bench[index];
@@ -191,33 +227,16 @@ export function MatchDayTacticsRoom({
         ? 'border-sky-500/40 bg-[#0e1520]'
         : 'border-slate-800 bg-[#111822]';
 
-  const diagnosisBadgeCls =
-    tacticMatch.delta >= 2
-      ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-200'
-      : tacticMatch.delta > 0
-        ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300'
-        : tacticMatch.delta <= -2
-          ? 'border-rose-400/50 bg-rose-500/15 text-rose-200'
-          : tacticMatch.delta < 0
-            ? 'border-rose-500/35 bg-rose-500/10 text-rose-300'
-            : 'border-slate-700 bg-slate-800/70 text-slate-300';
-
-  const diagnosisIcon =
-    tacticMatch.delta > 0 ? '🟢' : tacticMatch.delta < 0 ? '🔴' : '🟡';
-
-  const diagnosisTitle =
-    tacticMatch.delta >= 2
-      ? `전술 상성 유리 (+${tacticMatch.delta.toFixed(1)})`
-      : tacticMatch.delta > 0
-        ? `전술 약우위 (+${tacticMatch.delta.toFixed(1)})`
-        : tacticMatch.delta <= -2
-          ? `전술 상성 불리 (${tacticMatch.delta.toFixed(1)})`
-          : tacticMatch.delta < 0
-            ? `전술 약열세 (${tacticMatch.delta.toFixed(1)})`
-            : '전술 상성 호각 (0.0)';
-
-  const styleNetDelta =
-    (styleMatch.attBonus + styleMatch.midBonus + styleMatch.defBonus) / 3;
+  const fitTooltipText = useMemo(() => {
+    const p = unifiedMatchup.myProfile;
+    const zoneLines = unifiedMatchup.zones.map(
+      (z) => `${z.label}: ${z.detail}`,
+    );
+    return [
+      `전술 완성도 ${p.tacticalFit}% (구조 ${p.structureFit} · 선수 ${p.personnelFit} · 감독 ${p.managerFit})`,
+      ...zoneLines,
+    ].join('\n');
+  }, [unifiedMatchup]);
 
   return (
     <div className={`rounded-2xl border p-3.5 sm:p-4 space-y-3.5 ${borderCls}`}>
@@ -352,13 +371,31 @@ export function MatchDayTacticsRoom({
                   </span>
                 )}
               </div>
-              <div className="flex items-center justify-end gap-1.5 text-[11px]">
+              <div className="flex flex-wrap items-center justify-end gap-1.5 text-[11px]">
                 <span className="font-mono font-bold text-sky-300">
-                  {opponent.formation}
+                  {shortFormationLabel(opponent.formation)}
                 </span>
                 <span className="text-slate-600">·</span>
                 <span className="font-bold text-amber-300">
-                  {TACTICS[opponent.defaultTactic].name}
+                  {TACTICS[opponent.defaultTactic].shortName}
+                </span>
+                <span className="text-slate-600">·</span>
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-300"
+                  title={`${oppManager.name} (OVR ${oppManager.ovr} · ${MANAGER_TRAITS[oppManager.traitId]?.name ?? ''})`}
+                >
+                  {oppManager.name}
+                  <span
+                    className={`rounded px-1 py-0.2 text-[9px] font-black tabular-nums ${
+                      oppManager.ovr >= 90
+                        ? 'bg-amber-400/20 text-amber-300'
+                        : oppManager.ovr >= 84
+                          ? 'bg-sky-400/20 text-sky-300'
+                          : 'bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    {oppManager.ovr}
+                  </span>
                 </span>
               </div>
             </div>
@@ -391,40 +428,48 @@ export function MatchDayTacticsRoom({
           />
         </div>
 
-        {/* 1-Line Real-Time Matchup Diagnosis Strip */}
-        <div
-          className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] ${diagnosisBadgeCls}`}
-        >
-          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-            <span className="font-extrabold whitespace-nowrap">
-              {diagnosisIcon} {diagnosisTitle}
-            </span>
-            <span className="text-slate-400">·</span>
-            <span className="text-slate-200 leading-snug">
-              {tacticMatch.reason}
+        {/* Minimal 1-Line Unified Tactical Zone Summary Strip (Zero clutter) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-[#090e15] px-2.5 py-1.5 text-[11px]">
+          <div className="flex items-center gap-2 shrink-0">
+            <span
+              className={`rounded px-1.5 py-0.5 text-[10px] font-black tabular-nums ${
+                unifiedMatchup.myProfile.tacticalFit >= 84
+                  ? 'bg-emerald-500/20 text-emerald-300'
+                  : unifiedMatchup.myProfile.tacticalFit >= 72
+                    ? 'bg-sky-500/15 text-sky-300'
+                    : 'bg-rose-500/20 text-rose-300'
+              }`}
+              title={fitTooltipText}
+            >
+              완성도 {unifiedMatchup.myProfile.tacticalFit}%
             </span>
           </div>
-          <div className="flex items-center gap-1.5 shrink-0 text-[10px]">
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {unifiedMatchup.zones.map((z) => {
+              const cls =
+                z.status === 'up'
+                  ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300'
+                  : z.status === 'down'
+                    ? 'border-rose-500/35 bg-rose-500/10 text-rose-300'
+                    : 'border-slate-700/80 bg-slate-800/50 text-slate-400';
+              const arrow = z.status === 'up' ? '▲' : z.status === 'down' ? '▼' : '▬';
+              return (
+                <span
+                  key={z.id}
+                  title={`${z.label}: ${z.detail}`}
+                  className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap ${cls}`}
+                >
+                  <span>{z.shortLabel}</span>
+                  <span className="text-[9px]">{arrow}</span>
+                </span>
+              );
+            })}
             <span
-              className={`rounded px-1.5 py-0.5 font-bold whitespace-nowrap ${
-                formationMatch.delta > 0
-                  ? 'bg-emerald-500/20 text-emerald-200'
-                  : formationMatch.delta < 0
-                    ? 'bg-rose-500/20 text-rose-200'
-                    : 'bg-slate-900/70 text-slate-300'
-              }`}
+              title={fitTooltipText}
+              className="inline-flex items-center text-slate-500 hover:text-slate-300 cursor-help"
             >
-              포메이션 {formationMatch.delta >= 0 ? '+' : ''}
-              {formationMatch.delta.toFixed(1)}
-            </span>
-            <span
-              className={`rounded px-1.5 py-0.5 font-bold whitespace-nowrap ${
-                styleNetDelta > 0.2
-                  ? 'bg-emerald-500/20 text-emerald-200'
-                  : 'bg-slate-900/70 text-slate-300'
-              }`}
-            >
-              스타일 +{styleNetDelta.toFixed(1)}
+              <HelpCircle className="w-3.5 h-3.5" />
             </span>
           </div>
         </div>
@@ -432,39 +477,28 @@ export function MatchDayTacticsRoom({
 
       {/* 3) Always-Visible Compact Tactic & Formation Bar */}
       <div className="rounded-xl border border-slate-800/90 bg-[#0b1018] p-3 space-y-2.5">
-        {/* Tactic 5-Button Selector */}
+        {/* Tactic 5-Button Selector (Shows Lineup Tactical Fit %, no forced RPS numbers) */}
         <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+          <div className="flex items-center justify-between gap-1.5 text-[11px]">
             <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
               <Compass className="w-3.5 h-3.5 text-emerald-400" />
-              맞춤 전술 선택
+              전술
             </span>
-            {activeTactic !== recommendedTactic ? (
-              <button
-                type="button"
-                onClick={() => onSelectTactic(recommendedTactic)}
-                className="inline-flex items-center gap-1 rounded bg-amber-400/15 border border-amber-400/40 px-2 py-0.5 text-[10px] font-bold text-amber-200 hover:bg-amber-400/25 cursor-pointer whitespace-nowrap"
-              >
-                <Sparkles className="w-2.5 h-2.5" />
-                카운터 추천: {TACTICS[recommendedTactic].shortName} 적용
-              </button>
-            ) : (
-              <span className="text-[10px] font-bold text-emerald-300">
-                ✓ 최적 카운터 전술 적용됨
-              </span>
-            )}
+            <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+              {TACTICS[activeTactic].name} · {tacticFits[activeTactic]}%
+            </span>
           </div>
 
           <div className="grid grid-cols-5 gap-1">
             {TACTIC_LIST.map((t) => {
               const active = activeTactic === t.id;
-              const isRec = recommendedTactic === t.id;
-              const vsEval = evaluateTacticMatchup(t.id, opponent.defaultTactic);
+              const fitPct = tacticFits[t.id];
               return (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => onSelectTactic(t.id)}
+                  title={`${t.name} (현재 라인업 완성도 ${fitPct}%)`}
                   className={`relative min-w-0 rounded-lg py-1.5 px-1 text-center transition-colors cursor-pointer ${
                     active
                       ? 'bg-emerald-500 text-slate-950 font-extrabold shadow'
@@ -478,36 +512,27 @@ export function MatchDayTacticsRoom({
                     className={`mt-0.5 truncate text-[8px] sm:text-[9px] font-bold tabular-nums ${
                       active
                         ? 'text-slate-900'
-                        : vsEval.delta > 0
+                        : fitPct >= 84
                           ? 'text-emerald-400'
-                          : vsEval.delta < 0
-                            ? 'text-rose-400'
-                            : 'text-slate-500'
+                          : fitPct >= 74
+                            ? 'text-slate-400'
+                            : 'text-rose-400'
                     }`}
                   >
-                    {vsEval.delta > 0
-                      ? `+${vsEval.delta.toFixed(1)}`
-                      : vsEval.delta < 0
-                        ? `${vsEval.delta.toFixed(1)}`
-                        : '호각'}
+                    {fitPct}%
                   </div>
-                  {isRec && !active && (
-                    <span className="absolute -top-1.5 right-0.5 rounded bg-amber-400 px-1 text-[8px] font-black text-slate-950">
-                      추천
-                    </span>
-                  )}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Formation 6-Button Selector + Quick Optimize */}
+        {/* Formation 9-Button Selector + Quick Optimize */}
         <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
           <div className="flex items-center justify-between gap-2 text-[11px]">
             <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
               <Shield className="w-3.5 h-3.5 text-sky-400" />
-              우리 팀 포메이션
+              포메이션
             </span>
             <button
               type="button"
@@ -521,22 +546,23 @@ export function MatchDayTacticsRoom({
               빠른 최적 선발
             </button>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1">
             {FORMATION_LIST.map((f) => (
               <button
                 key={f.id}
                 type="button"
+                title={`${f.name} · ${f.shortTag}`}
                 onClick={() => {
                   setSelectedSlot(null);
                   onChangeFormation(f.id);
                 }}
-                className={`rounded-lg py-1.5 text-[11px] font-bold transition-colors cursor-pointer ${
+                className={`rounded-lg py-1.5 px-1 text-[10px] sm:text-[11px] font-bold transition-colors cursor-pointer truncate ${
                   formation === f.id
                     ? 'bg-sky-400 text-slate-950 font-extrabold'
                     : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
                 }`}
               >
-                {f.id}
+                {shortFormationLabel(f.id)}
               </button>
             ))}
           </div>
@@ -589,18 +615,9 @@ export function MatchDayTacticsRoom({
               }`}
             >
               <Users className="w-3.5 h-3.5 shrink-0" />
-              내 선발 ({formation})
+              내 선발 ({shortFormationLabel(formation)})
             </button>
           </div>
-
-          {styleMatch.highlights.length > 0 && (
-            <div className="hidden md:flex items-center gap-1 text-[10px] text-emerald-300 truncate">
-              <span className="font-bold text-slate-400">상성 우위:</span>
-              <span className="truncate">
-                {styleMatch.highlights.slice(0, 2).join(' · ')}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Pitch Content Area */}

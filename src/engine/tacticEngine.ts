@@ -204,56 +204,108 @@ export function evaluateTacticMatchup(
 }
 
 /**
- * Symmetric 6-formation tactical matchup matrix (in effective OVR points).
+ * Legacy fallback 9-formation structural reference matrix.
+ * Primary v5.0 match engine uses unified 5-zone lineup clash (`evaluateUnifiedTacticalMatchup`).
  */
 const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
   '4-3-3': {
     '4-3-3': 0,
     '4-4-2': 0.5,
-    '4-2-3-1': 1.2,
-    '3-5-2': 1.2,
+    '4-4-2-diamond': 0.8,
+    '4-2-3-1': 0.8,
+    '3-5-2': 0.8,
+    '3-5-2-dm': 0.4,
     '3-4-3': 0,
-    '3-4-2-1': -1.2,
+    '3-4-2-1': -0.8,
+    '3-3-3-1': 0.5,
   },
   '4-4-2': {
     '4-3-3': -0.5,
     '4-4-2': 0,
-    '4-2-3-1': -1.4,
-    '3-5-2': -1.4,
-    '3-4-3': 1.4,
-    '3-4-2-1': 1.3,
+    '4-4-2-diamond': -0.6,
+    '4-2-3-1': -0.9,
+    '3-5-2': -0.9,
+    '3-5-2-dm': -0.5,
+    '3-4-3': 0.9,
+    '3-4-2-1': 0.8,
+    '3-3-3-1': 0.6,
+  },
+  '4-4-2-diamond': {
+    '4-3-3': -0.8,
+    '4-4-2': 0.6,
+    '4-4-2-diamond': 0,
+    '4-2-3-1': 0.5,
+    '3-5-2': 0.4,
+    '3-5-2-dm': 0.3,
+    '3-4-3': -0.9,
+    '3-4-2-1': 0.2,
+    '3-3-3-1': 0.4,
   },
   '4-2-3-1': {
-    '4-3-3': -1.2,
-    '4-4-2': 1.4,
+    '4-3-3': -0.8,
+    '4-4-2': 0.9,
+    '4-4-2-diamond': -0.5,
     '4-2-3-1': 0,
     '3-5-2': 0,
-    '3-4-3': 1.1,
+    '3-5-2-dm': 0.2,
+    '3-4-3': 0.8,
     '3-4-2-1': 0,
+    '3-3-3-1': 0.6,
   },
   '3-5-2': {
-    '4-3-3': -1.2,
-    '4-4-2': 1.4,
+    '4-3-3': -0.8,
+    '4-4-2': 0.9,
+    '4-4-2-diamond': -0.4,
     '4-2-3-1': 0,
     '3-5-2': 0,
-    '3-4-3': -1.4,
-    '3-4-2-1': 1.3,
+    '3-5-2-dm': -0.3,
+    '3-4-3': -0.9,
+    '3-4-2-1': 0.8,
+    '3-3-3-1': 0.5,
+  },
+  '3-5-2-dm': {
+    '4-3-3': -0.4,
+    '4-4-2': 0.5,
+    '4-4-2-diamond': -0.3,
+    '4-2-3-1': -0.2,
+    '3-5-2': 0.3,
+    '3-5-2-dm': 0,
+    '3-4-3': -0.5,
+    '3-4-2-1': 0.6,
+    '3-3-3-1': 1.0,
   },
   '3-4-3': {
     '4-3-3': 0,
-    '4-4-2': -1.4,
-    '4-2-3-1': -1.1,
-    '3-5-2': 1.4,
+    '4-4-2': -0.9,
+    '4-4-2-diamond': 0.9,
+    '4-2-3-1': -0.8,
+    '3-5-2': 0.9,
+    '3-5-2-dm': 0.5,
     '3-4-3': 0,
-    '3-4-2-1': -0.6,
+    '3-4-2-1': -0.4,
+    '3-3-3-1': -0.3,
   },
   '3-4-2-1': {
-    '4-3-3': 1.2,
-    '4-4-2': -1.3,
+    '4-3-3': 0.8,
+    '4-4-2': -0.8,
+    '4-4-2-diamond': -0.2,
     '4-2-3-1': 0,
-    '3-5-2': -1.3,
-    '3-4-3': 0.6,
+    '3-5-2': -0.8,
+    '3-5-2-dm': -0.6,
+    '3-4-3': 0.4,
     '3-4-2-1': 0,
+    '3-3-3-1': 0.3,
+  },
+  '3-3-3-1': {
+    '4-3-3': -0.5,
+    '4-4-2': -0.6,
+    '4-4-2-diamond': -0.4,
+    '4-2-3-1': -0.6,
+    '3-5-2': -0.5,
+    '3-5-2-dm': -1.0,
+    '3-4-3': 0.3,
+    '3-4-2-1': -0.3,
+    '3-3-3-1': 0,
   },
 };
 
@@ -265,13 +317,18 @@ export function evaluateFormationMatchup(
   myFormation: FormationId,
   oppFormation: FormationId,
 ): FormationMatchupResult {
-  const delta = FORMATION_MATRIX[myFormation][oppFormation];
+  const delta = FORMATION_MATRIX[myFormation]?.[oppFormation] ?? 0;
 
-  // Subtle midfield possession modifier (e.g., 3-5-2 holds central numbers vs 4-3-3/4-4-2)
   let possessionDelta = 0;
-  if (myFormation === '3-5-2' && (oppFormation === '4-3-3' || oppFormation === '4-4-2')) {
+  if (
+    (myFormation === '3-5-2' || myFormation === '4-4-2-diamond' || myFormation === '3-3-3-1') &&
+    (oppFormation === '4-3-3' || oppFormation === '4-4-2')
+  ) {
     possessionDelta = 3;
-  } else if ((myFormation === '4-3-3' || myFormation === '4-4-2') && oppFormation === '3-5-2') {
+  } else if (
+    (myFormation === '4-3-3' || myFormation === '4-4-2') &&
+    (oppFormation === '3-5-2' || oppFormation === '4-4-2-diamond' || oppFormation === '3-3-3-1')
+  ) {
     possessionDelta = -3;
   } else if (myFormation === '4-2-3-1' && oppFormation === '4-4-2') {
     possessionDelta = 3;
@@ -279,13 +336,13 @@ export function evaluateFormationMatchup(
     possessionDelta = -3;
   }
 
-  if (delta >= 1.1) {
+  if (delta >= 0.8) {
     return {
       delta,
       possessionDelta,
       verdict: 'advantage',
-      label: `${myFormation} vs ${oppFormation} (포메이션 우세 +${delta.toFixed(1)})`,
-      reason: `${myFormation} 배치가 상대 ${oppFormation}의 빈 공간을 효과적으로 점유합니다.`,
+      label: `${myFormation} vs ${oppFormation} (우세)`,
+      reason: `${myFormation} 구조가 상대 ${oppFormation}의 빈 공간을 효과적으로 공략합니다.`,
     };
   }
   if (delta > 0) {
@@ -293,16 +350,16 @@ export function evaluateFormationMatchup(
       delta,
       possessionDelta,
       verdict: 'slight_advantage',
-      label: `${myFormation} vs ${oppFormation} (소폭 우세 +${delta.toFixed(1)})`,
+      label: `${myFormation} vs ${oppFormation} (소폭 우세)`,
       reason: `${myFormation} 배치가 상대 ${oppFormation} 상대로 소폭 유리한 간격을 만듭니다.`,
     };
   }
-  if (delta <= -1.1) {
+  if (delta <= -0.8) {
     return {
       delta,
       possessionDelta,
       verdict: 'disadvantage',
-      label: `${myFormation} vs ${oppFormation} (포메이션 취약 ${delta.toFixed(1)})`,
+      label: `${myFormation} vs ${oppFormation} (취약)`,
       reason: `상대 ${oppFormation}의 수적 우위 구간에 공간이 열릴 수 있습니다.`,
     };
   }
@@ -311,7 +368,7 @@ export function evaluateFormationMatchup(
       delta,
       possessionDelta,
       verdict: 'slight_disadvantage',
-      label: `${myFormation} vs ${oppFormation} (소폭 열세 ${delta.toFixed(1)})`,
+      label: `${myFormation} vs ${oppFormation} (소폭 열세)`,
       reason: `상대 ${oppFormation}에 대해 중원·측면 간격이 다소 불리합니다.`,
     };
   }
@@ -320,7 +377,7 @@ export function evaluateFormationMatchup(
     possessionDelta,
     verdict: 'neutral',
     label: `${myFormation} vs ${oppFormation} (호각)`,
-    reason: `${myFormation}과 ${oppFormation}의 구조적 상성은 대등합니다.`,
+    reason: `${myFormation}과 ${oppFormation}의 구조적 균형은 대등합니다.`,
   };
 }
 
@@ -346,17 +403,29 @@ export function getBestCounterFormation(oppFormation: FormationId): FormationId 
       return '3-4-2-1';
     case '4-4-2':
       return '4-2-3-1';
+    case '4-4-2-diamond':
+      return '3-4-3';
     case '4-2-3-1':
       return '4-3-3';
     case '3-5-2':
+      return '3-4-3';
+    case '3-5-2-dm':
       return '3-4-3';
     case '3-4-3':
       return '4-4-2';
     case '3-4-2-1':
       return '3-5-2';
+    case '3-3-3-1':
+      return '3-5-2-dm';
   }
 }
 
+/**
+ * Generates realistic Assistant Coach halftime analysis based on 1st-half data.
+ * Introduces real-world tactical uncertainty: the coach analyzes the 1st-half setup and
+ * highlights a plausible adjustment, explicitly accounting for the fact that the opposing
+ * manager may also counter-adjust at halftime (never a guaranteed 100% script).
+ */
 export function buildHalftimeTacticalHint(params: {
   userTactic: TacticId;
   oppTactic: TacticId;
@@ -366,6 +435,10 @@ export function buildHalftimeTacticalHint(params: {
   oppGoals: number;
   userXg: number;
   oppXg: number;
+  oppManagerName?: string;
+  oppManagerOvr?: number;
+  weakestZoneLabel?: string;
+  strongestZoneLabel?: string;
 }): { hint: string; recommendedTactic: TacticId; recommendedFormation: FormationId } {
   const {
     userTactic,
@@ -376,47 +449,53 @@ export function buildHalftimeTacticalHint(params: {
     oppGoals,
     userXg,
     oppXg,
+    oppManagerName,
+    oppManagerOvr = 82,
+    weakestZoneLabel,
+    strongestZoneLabel,
   } = params;
 
-  const tMatch = evaluateTacticMatchup(userTactic, oppTactic);
-  const fMatch = evaluateFormationMatchup(userFormation, oppFormation);
   const recommendedTactic = getBestCounterTactic(oppTactic);
   const recommendedFormation = getBestCounterFormation(oppFormation);
-
-  if (tMatch.delta < 0) {
-    return {
-      hint: `상대의 [${TACTICS[oppTactic].name}] 전술에 우리 [${TACTICS[userTactic].name}] 전술이 밀리고 있습니다. 후반전에 [${TACTICS[recommendedTactic].name}]으로 전환하면 흐름을 뒤집을 수 있습니다!`,
-      recommendedTactic,
-      recommendedFormation,
-    };
-  }
-
-  if (fMatch.delta < -0.8) {
-    return {
-      hint: `상대 ${oppFormation} 포메이션의 공간 공략에 노출되고 있습니다. ${recommendedFormation} 전환이나 벤치 투입으로 수비 간격을 조정해 보세요.`,
-      recommendedTactic,
-      recommendedFormation,
-    };
-  }
+  const mgrTag = oppManagerName ? `${oppManagerName} 감독` : '상대 벤치';
+  const counterWarning =
+    oppManagerOvr >= 88
+      ? ` 다만 ${mgrTag}(OVR ${oppManagerOvr})도 하프타임에 역으로 전술을 비틀 가능성이 높습니다.`
+      : oppManagerOvr >= 82
+        ? ` 단, ${mgrTag} 역시 후반 대응에 나설 수 있어 유동적인 판단이 필요합니다.`
+        : '';
 
   if (userGoals < oppGoals && userXg >= oppXg - 0.15) {
     return {
-      hint: `전반 경기력(xG ${userXg.toFixed(2)} vs ${oppXg.toFixed(2)})은 밀리지 않았으나 결정력이 아쉬웠습니다. 공격적인 전술(${TACTICS[recommendedTactic].name}) 또는 벤치 공격 자원 투입을 고려해 보세요.`,
+      hint: `전반 내용(xG ${userXg.toFixed(2)} vs ${oppXg.toFixed(2)})은 밀리지 않았습니다. 공격 조커 투입이나 [${TACTICS[recommendedTactic].name}] 전환이 유력한 선택지입니다.${counterWarning}`,
+      recommendedTactic,
+      recommendedFormation,
+    };
+  }
+
+  if (userGoals < oppGoals) {
+    const zoneNote = weakestZoneLabel ? `${weakestZoneLabel} 열세가 뚜렷했습니다. ` : '';
+    return {
+      hint: `${zoneNote}전반 상대(${oppFormation}·${TACTICS[oppTactic].name}) 기준으로는 [${TACTICS[recommendedTactic].name}] 또는 ${recommendedFormation} 전환이 해법으로 보입니다.${counterWarning}`,
       recommendedTactic,
       recommendedFormation,
     };
   }
 
   if (userGoals > oppGoals) {
+    const keepNote = strongestZoneLabel ? `${strongestZoneLabel} 우위를 바탕으로 ` : '';
     return {
-      hint: `전반 리드를 잘 잡았습니다! 상대의 [${TACTICS[oppTactic].name}] 반격에 대비해 [${TACTICS[recommendedTactic].name}] 상성을 유지하거나 수비 안정을 다지세요.`,
-      recommendedTactic,
-      recommendedFormation,
+      hint: `${keepNote}리드를 잡았습니다. 상대가 공격적으로 나올 가능성이 높으니 [${userTactic === 'counter' ? '선수비 후역습' : TACTICS[recommendedTactic].name}] 또는 수비 안정형 전환을 검토해 보세요.${counterWarning}`,
+      recommendedTactic: userGoals - oppGoals >= 2 ? 'counter' : recommendedTactic,
+      recommendedFormation: oppManagerOvr >= 85 ? '3-5-2-dm' : userFormation,
     };
   }
 
+  const zoneNote = weakestZoneLabel
+    ? `전반 ${weakestZoneLabel} 구간에서 부담이 있었습니다. `
+    : '전반 흐름이 팽팽합니다. ';
   return {
-    hint: `팽팽한 전반전이었습니다. 상대(${oppFormation} · ${TACTICS[oppTactic].name}) 상대로 [${TACTICS[recommendedTactic].name}] 전술이나 ${recommendedFormation} 포메이션으로 후반 승부수를 던져 보세요.`,
+    hint: `${zoneNote}상대 전반 형태(${oppFormation}·${TACTICS[oppTactic].name})를 겨냥한 [${TACTICS[recommendedTactic].name}] 전환이 유력해 보입니다.${counterWarning}`,
     recommendedTactic,
     recommendedFormation,
   };
@@ -820,7 +899,12 @@ export function buildHalftimeCoachRecommendations(params: {
     const isGkSlot = slot.subPosition === 'GK';
 
     const outStaminaPct = staminaByPlayerId[outP.id] ?? 76;
-    const outFit = evaluatePositionFit(outP, slot.subPosition, managerTraitId);
+    const outFit = evaluatePositionFit(
+      outP,
+      slot.subPosition,
+      managerTraitId,
+      slot.alternateSubPositions,
+    );
     const outRating = estimateFirstHalfStarterRating(
       outP,
       firstHalfEvents,
@@ -841,7 +925,12 @@ export function buildHalftimeCoachRecommendations(params: {
       if (isGkSlot && inP.position !== 'GK') continue;
       if (!isGkSlot && inP.position === 'GK') continue;
 
-      const inFit = evaluatePositionFit(inP, slot.subPosition, managerTraitId);
+      const inFit = evaluatePositionFit(
+        inP,
+        slot.subPosition,
+        managerTraitId,
+        slot.alternateSubPositions,
+      );
       if (inFit.fit === 'severe') continue;
 
       const inMatch = getPlayerStyleMatchupScore({

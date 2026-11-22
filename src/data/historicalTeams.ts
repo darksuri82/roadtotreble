@@ -113,6 +113,7 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
     starters,
     spec.defaultTactic,
     spec.managerTraitId,
+    spec.managerRating,
   );
   const rawStarterAvgOvr =
     starters.length > 0
@@ -130,7 +131,7 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
         ) / 100
       : 0;
   const managerSynergyCount = starters.filter(
-    (p) => evaluateManagerPlayerSynergy(p, spec.managerTraitId).isMatch,
+    (p) => evaluateManagerPlayerSynergy(p, spec.managerTraitId, spec.managerRating).isMatch,
   ).length;
 
   const bestXi: HistoricalBestXiPlayer[] = starters.map((p, idx) => ({
@@ -1037,18 +1038,13 @@ export function buildHistoricalClubForMatch(team: HistoricalTeamEntry): {
   bench: Player[];
   fullRoster: Player[];
 } {
-  const chem = calculateChemistry(
+  // Use baseline pre-synergy ratings on the Club object so matchEngine computes
+  // the exact same 4-pillar synergy + legendary manager OVR lift without double-counting.
+  const baseRatings = calculateTeamRatings(
     team.formation,
     team.starters,
-    team.defaultTactic,
+    50,
     team.managerTraitId,
-  );
-  const ratings = calculateTeamRatings(
-    team.formation,
-    team.starters,
-    chem.total,
-    team.managerTraitId,
-    chem.slotSynergies,
   );
   const topAttackers = [...team.starters]
     .sort((a, b) => b.att - a.att || b.ovr - a.ovr)
@@ -1064,14 +1060,21 @@ export function buildHistoricalClubForMatch(team: HistoricalTeamEntry): {
     pattern: team.userClub.pattern,
     formation: team.formation,
     defaultTactic: team.defaultTactic,
-    att: Math.round(ratings.effectiveAtt),
-    mid: Math.round(ratings.effectiveMid),
-    def: Math.round(ratings.effectiveDef),
+    att: Math.round(baseRatings.att),
+    mid: Math.round(baseRatings.mid),
+    def: Math.round(baseRatings.def),
     topScorers: [
       topAttackers[0] ?? team.starters[10]?.name ?? '에이스',
       topAttackers[1] ?? team.starters[9]?.name ?? '공격수',
       topAttackers[2] ?? team.starters[8]?.name ?? '미드필더',
     ],
+    manager: {
+      name: team.managerName,
+      ovr: team.managerRating,
+      traitId: team.managerTraitId,
+      preferredFormations: [team.formation, '4-2-3-1', '3-5-2-dm'],
+      preferredTactics: [team.defaultTactic, 'counter', 'gegenpressing'],
+    },
   };
 
   return {

@@ -240,19 +240,20 @@ export const MANAGER_TRAIT_LIST: ManagerTraitConfig[] =
 
 export interface ManagerPlayerSynergyEval {
   isMatch: boolean;
-  bonus: number; // 0 or 1
+  bonus: number; // 0, 1, or 2 (elite manager core fit)
   badgeLabel: string;
   reason: string;
   matchedPlaystyles: PlaystyleId[];
 }
 
 /**
- * Evaluates whether an individual player synergizes with the active Manager Trait.
- * Used across Draft, Transfer Market, PitchBoard individual OVR boost, and Match Engine.
+ * Evaluates whether an individual player fits the active Manager Style (independent of player-to-player synergy).
+ * Higher-OVR managers (88+ / 90+) unlock +2 OVR for core tactical fits; standard managers grant +1 OVR.
  */
 export function evaluateManagerPlayerSynergy(
   player: Player,
   managerTraitId: ManagerTraitId | null | undefined,
+  managerOvr = 84,
 ): ManagerPlayerSynergyEval {
   if (!managerTraitId) {
     return {
@@ -278,14 +279,17 @@ export function evaluateManagerPlayerSynergy(
   const matchedPlaystyles = player.playstyles.filter((ps) =>
     trait.synergyPlaystyles.includes(ps),
   );
+  const isEliteManager = managerOvr >= 90;
+  const isTopManager = managerOvr >= 86;
 
   // Special trait-specific criteria beyond playstyles
   if (managerTraitId === 'galactico_manager' && (player.isLegend || player.ovr >= 88)) {
+    const bonus = isEliteManager && (player.isLegend || player.ovr >= 90) ? 2 : 1;
     return {
       isMatch: true,
-      bonus: 1,
-      badgeLabel: '감독 시너지',
-      reason: `${trait.name}: ${player.isLegend ? '레전드' : `월드클래스(OVR ${player.ovr})`} 스타 보너스 (+1 OVR)`,
+      bonus,
+      badgeLabel: '감독 궁합',
+      reason: `${trait.name}: ${player.isLegend ? '레전드' : `월드클래스(OVR ${player.ovr})`} (+${bonus} OVR)`,
       matchedPlaystyles,
     };
   }
@@ -294,21 +298,28 @@ export function evaluateManagerPlayerSynergy(
     managerTraitId === 'total_football' &&
     player.mainPositions.length + player.secondaryPositions.length >= 3
   ) {
+    const bonus =
+      isEliteManager &&
+      (player.mainPositions.length + player.secondaryPositions.length >= 4 ||
+        matchedPlaystyles.length >= 1)
+        ? 2
+        : 1;
     return {
       isMatch: true,
-      bonus: 1,
-      badgeLabel: '감독 시너지',
-      reason: `${trait.name}: 멀티 포지션 스위칭 적합 자원 (+1 OVR)`,
+      bonus,
+      badgeLabel: '감독 궁합',
+      reason: `${trait.name}: 멀티 포지션 스위칭 (+${bonus} OVR)`,
       matchedPlaystyles,
     };
   }
 
   if (managerTraitId === 'super_sub' && (player.stamina ?? 80) >= 86) {
+    const bonus = isEliteManager && (player.stamina ?? 80) >= 88 ? 2 : 1;
     return {
       isMatch: true,
-      bonus: 1,
-      badgeLabel: '감독 시너지',
-      reason: `${trait.name}: 고체력(STA ${player.stamina}) 후반 압도 자원 (+1 OVR)`,
+      bonus,
+      badgeLabel: '감독 궁합',
+      reason: `${trait.name}: 고체력(STA ${player.stamina}) (+${bonus} OVR)`,
       matchedPlaystyles,
     };
   }
@@ -317,11 +328,19 @@ export function evaluateManagerPlayerSynergy(
     const names = matchedPlaystyles
       .map((ps) => PLAYSTYLES[ps]?.shortName ?? ps)
       .join('·');
+    const isCoreStyleMatch =
+      matchedPlaystyles.length >= 2 ||
+      (isEliteManager &&
+        player.playstyles[0] !== undefined &&
+        trait.synergyPlaystyles.includes(player.playstyles[0]) &&
+        player.ovr >= 84) ||
+      (isTopManager && matchedPlaystyles.length >= 2);
+    const bonus = isCoreStyleMatch && isTopManager ? 2 : 1;
     return {
       isMatch: true,
-      bonus: 1,
-      badgeLabel: '감독 시너지',
-      reason: `${trait.name} 핵심 스타일 일치 (${names}) (+1 OVR)`,
+      bonus,
+      badgeLabel: '감독 궁합',
+      reason: `${trait.name} (${names}) (+${bonus} OVR)`,
       matchedPlaystyles,
     };
   }

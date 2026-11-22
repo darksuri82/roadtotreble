@@ -30,10 +30,13 @@ import type { UclTournamentState } from './ucl';
 export type FormationId =
   | '4-3-3'
   | '4-4-2'
+  | '4-4-2-diamond'
   | '4-2-3-1'
   | '3-5-2'
+  | '3-5-2-dm'
   | '3-4-3'
-  | '3-4-2-1';
+  | '3-4-2-1'
+  | '3-3-3-1';
 
 export type ManagerTraitId =
   | 'tiki_taka'
@@ -51,6 +54,14 @@ export type ManagerTraitId =
   | 'midfield_maestro'
   | 'super_sub';
 
+export interface AiManagerProfile {
+  name: string;
+  ovr: number; // 70..99
+  traitId: ManagerTraitId;
+  preferredFormations?: FormationId[];
+  preferredTactics?: TacticId[];
+}
+
 export type GamePhase =
   | 'title'
   | 'manager_roulette'
@@ -66,6 +77,7 @@ export interface FormationSlot {
   index: number;
   label: string;
   subPosition: SubPosition;
+  alternateSubPositions?: SubPosition[];
   position: Position;
   x: number;
   y: number;
@@ -104,7 +116,7 @@ export interface TeamRatings {
   ovr: number;
   rawOvr: number;
   chemistryBonus: number; // -1.5 .. +2.5
-  synergyOvrBonus?: number; // avg individual player synergy OVR boost
+  synergyOvrBonus?: number; // avg individual player synergy + manager OVR boost
   effectiveAtt: number;
   effectiveMid: number;
   effectiveDef: number;
@@ -112,7 +124,7 @@ export interface TeamRatings {
 
 export type ChemistryLinkStatus = 'none' | 'weak' | 'strong' | 'legend';
 
-export type ChemistryLineType = 'club' | 'nation' | 'style';
+export type ChemistryLineType = 'club' | 'nation' | 'style' | 'elite';
 
 export interface ChemistryLink {
   fromIndex: number;
@@ -123,24 +135,30 @@ export interface ChemistryLink {
   hasClubLink: boolean;
   hasNationLink: boolean;
   hasStyleLink: boolean;
+  hasEliteLink?: boolean;
+  isFormerClubLink?: boolean;
+  sharedClubName?: string;
   isLegendWildcard: boolean;
   activeLines: ChemistryLineType[];
 }
 
 export interface ChemistryBreakdown {
-  club: number; // 0..25 (Same Club + Legend wildcard, NO Same League)
-  nation: number; // 0..20 (Same Nationality)
-  tacticStyle: number; // 0..40 (Playstyle + Tactic + Manager Synergy)
-  roleBalance: number; // 0..15 (Squad Role Balance)
+  club: number; // 0..30 (Same Club + Former Clubs)
+  nation: number; // 0..25 (Same Nationality)
+  tacticStyle: number; // 0..30 (Complementary Playstyle Pairs)
+  roleBalance: number; // 0..15 (Elite Pair 88+ Superstar Synergy)
+  elite?: number; // alias mirror of roleBalance for v5.0 4-pillar clarity
 }
 
 export interface PlayerSlotSynergy {
   slotIndex: number;
   playerId: string;
-  totalBonus: number; // 0..3 individual synergy OVR gain
-  managerBonus: number; // 0..1
-  neighborBonus: number; // 0..2
+  totalBonus: number; // 0..3 combined cap (player synergy 0..2 + independent manager fit 0..2, max 3)
+  managerBonus: number; // 0..2 independent Manager Style × OVR direct player boost
+  neighborBonus: number; // 0..2 strictly 4-pillar player-to-player synergy
   reasons: string[];
+  playerReasons?: string[];
+  managerReason?: string;
   baseEffectiveOvr: number; // base OVR + position fit penalty
   effectiveOvrWithSynergy: number; // base OVR + position fit penalty + totalBonus
 }

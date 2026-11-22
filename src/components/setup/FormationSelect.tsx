@@ -479,7 +479,7 @@ export function FormationSelect() {
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-emerald-400" />
                 <h2 className="text-base font-extrabold text-white">
-                  6종 포메이션 선택 (포백 3종 · 쓰리백 3종)
+                  9종 포메이션 선택 (포백 4종 · 쓰리백 5종)
                 </h2>
               </div>
               <span className="text-xs text-slate-400">
@@ -503,8 +503,12 @@ export function FormationSelect() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-display text-xl font-bold text-white">
-                          {fmt.id}
+                        <span className="font-display text-lg font-bold text-white">
+                          {fmt.id === '4-4-2-diamond'
+                            ? '4-4-2 다이아몬드'
+                            : fmt.id === '3-5-2-dm'
+                              ? '3-5-2 DM'
+                              : fmt.id}
                         </span>
                         <span className="ml-1.5 text-[10px] font-semibold text-emerald-300">
                           {fmt.shortTag}
