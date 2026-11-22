@@ -261,7 +261,7 @@ export function InjuryAlertModal({
       <div className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-rose-500/45 bg-[#0e141f] shadow-2xl">
         {/* Header */}
         <div
-          className={`flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-5 sm:py-3.5 shrink-0 ${
+          className={`flex items-center justify-between gap-2.5 border-b px-3 py-2.5 sm:px-5 sm:py-3.5 shrink-0 ${
             hasSevere
               ? 'border-rose-500/45 bg-gradient-to-r from-rose-950/80 via-[#1b1219] to-[#0e141f]'
               : hasModerate
@@ -269,23 +269,23 @@ export function InjuryAlertModal({
                 : 'border-amber-500/35 bg-gradient-to-r from-amber-950/50 via-[#18161a] to-[#0e141f]'
           }`}
         >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-400/40 bg-rose-500/15">
-              <PixelStatusIcon variant="injury" size={20} />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl border border-rose-400/40 bg-rose-500/15">
+              <PixelStatusIcon variant="injury" size={18} />
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <h2 className="text-sm sm:text-base font-extrabold text-white truncate">
+                <h2 className="text-xs sm:text-base font-extrabold text-white truncate">
                   {alerts.length === 1
-                    ? '부상 발생 — 스쿼드 포메이션 교체'
-                    : `선수단 부상 발생 (${alerts.length}명) — 포메이션 교체`}
+                    ? '부상 발생 · 포메이션 교체'
+                    : `부상 발생 (${alerts.length}명) · 교체`}
                 </h2>
-                <span className="inline-flex items-center gap-1 rounded border border-emerald-400/35 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-200">
+                <span className="inline-flex items-center gap-1 rounded border border-emerald-400/35 bg-emerald-500/15 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-emerald-200">
                   <Sparkles className="h-2.5 w-2.5" />
-                  완치 시 자동 복귀
+                  완치 자동복귀
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300 truncate">
+              <p className="hidden sm:block text-[11px] text-slate-300 truncate">
                 피치에서 선발 간 스왑 후 벤치 투입까지 자유롭게 조정할 수 있습니다.
               </p>
             </div>
@@ -295,32 +295,32 @@ export function InjuryAlertModal({
             type="button"
             onClick={handleConfirm}
             aria-label="닫기"
-            className="rounded-lg border border-slate-700 bg-slate-900/90 p-1.5 text-slate-300 hover:border-slate-500 hover:text-white cursor-pointer shrink-0"
+            className="rounded-lg border border-slate-700 bg-slate-900/90 p-1.5 text-slate-300 hover:border-slate-500 hover:text-white cursor-pointer shrink-0 touch-manipulation"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Main 2-column body (Mobile: Pitch top, Diagnosis & Bench below) */}
-        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div className="flex-1 overflow-y-auto p-2.5 sm:p-5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
             {/* Left: Interactive Formation PitchBoard */}
-            <div className="lg:col-span-6 space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
+            <div className="lg:col-span-6 space-y-1.5 sm:space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] sm:text-xs">
+                <span className="inline-flex items-center gap-1 font-bold text-slate-200">
                   <ArrowLeftRight className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                   {selectedSlot?.area === 'starter' ? (
                     <span>
                       <strong className="text-emerald-300">
                         {formCfg.slots[selectedSlot.index]?.subPosition}
                       </strong>{' '}
-                      선택됨 · 교체할 선발 또는 벤치 선수를 클릭하세요
+                      선택 · 교체 대상 탭
                     </span>
                   ) : (
-                    <span>피치 위 선수를 클릭·드래그해 자유롭게 교체/스왑</span>
+                    <span>선수 탭으로 교체/스왑</span>
                   )}
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 tabular-nums">
+                <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] text-slate-400 tabular-nums">
                   <Zap className="h-3 w-3 text-emerald-400" />
                   A {ratings.effectiveAtt} / M {ratings.effectiveMid} / D{' '}
                   {ratings.effectiveDef}
@@ -348,9 +348,9 @@ export function InjuryAlertModal({
             </div>
 
             {/* Right: Injury Diagnosis Cards + Dynamic Bench Replacements */}
-            <div className="lg:col-span-6 space-y-3.5">
+            <div className="lg:col-span-6 space-y-2.5 sm:space-y-3.5">
               {/* 1. Injury Diagnosis Summary */}
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {alerts.map((alert) => {
                   const { injury } = alert;
                   const onBenchNow = bench.some((p) => p?.id === alert.playerId);
@@ -360,7 +360,7 @@ export function InjuryAlertModal({
                   return (
                     <div
                       key={`${alert.playerId}-${injury.id}`}
-                      className={`rounded-xl border p-3.5 space-y-2 ${
+                      className={`rounded-xl border p-2.5 sm:p-3.5 space-y-1.5 sm:space-y-2 ${
                         onBenchNow
                           ? 'border-emerald-500/40 bg-emerald-950/15'
                           : 'border-rose-500/40 bg-[#0b1019]'

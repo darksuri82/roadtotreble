@@ -39,20 +39,20 @@ export function StandingsTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-left text-[11px] sm:text-xs">
           <thead>
-            <tr className="border-b border-slate-800/80 bg-slate-950/50 text-[11px] font-bold text-slate-400">
-              <th className="py-2.5 pl-3 pr-2 w-10 text-center">#</th>
-              <th className="py-2.5 px-2">구단</th>
-              <th className="py-2.5 px-1.5 text-center">경기</th>
-              <th className="py-2.5 px-1.5 text-center">승</th>
-              <th className="py-2.5 px-1.5 text-center">무</th>
-              <th className="py-2.5 px-1.5 text-center">패</th>
-              <th className="py-2.5 px-1.5 text-center hidden sm:table-cell">득</th>
-              <th className="py-2.5 px-1.5 text-center hidden sm:table-cell">실</th>
-              <th className="py-2.5 px-1.5 text-center">득실</th>
-              <th className="py-2.5 px-2 text-center text-white">승점</th>
-              <th className="py-2.5 pr-3 pl-2 text-right hidden md:table-cell">최근</th>
+            <tr className="border-b border-slate-800/80 bg-slate-950/50 text-[10px] sm:text-[11px] font-bold text-slate-400">
+              <th className="py-1.5 sm:py-2.5 pl-2 sm:pl-3 pr-1 sm:pr-2 w-8 sm:w-10 text-center">#</th>
+              <th className="py-1.5 sm:py-2.5 px-1.5 sm:px-2">구단</th>
+              <th className="py-1.5 sm:py-2.5 px-1 sm:px-1.5 text-center">경기</th>
+              <th className="py-1.5 sm:py-2.5 px-1 sm:px-1.5 text-center">승</th>
+              <th className="py-1.5 sm:py-2.5 px-1 sm:px-1.5 text-center">무</th>
+              <th className="py-1.5 sm:py-2.5 px-1 sm:px-1.5 text-center">패</th>
+              <th className="py-1.5 sm:py-2.5 px-1.5 text-center hidden sm:table-cell">득</th>
+              <th className="py-1.5 sm:py-2.5 px-1.5 text-center hidden sm:table-cell">실</th>
+              <th className="py-1.5 sm:py-2.5 px-1 sm:px-1.5 text-center">득실</th>
+              <th className="py-1.5 sm:py-2.5 px-1.5 sm:px-2 text-center text-white">승점</th>
+              <th className="py-1.5 sm:py-2.5 pr-3 pl-2 text-right hidden md:table-cell">최근</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
@@ -76,7 +76,7 @@ export function StandingsTable({
                         : 'hover:bg-slate-800/35'
                   }`}
                 >
-                  <td className="relative py-2 pl-3 pr-2 text-center font-display text-sm font-bold">
+                  <td className="relative py-1 sm:py-2 pl-2 sm:pl-3 pr-1 sm:pr-2 text-center font-display text-xs sm:text-sm font-bold">
                     {isUcl && (
                       <span className="absolute inset-y-0.5 left-0 w-1 rounded-r bg-emerald-400" />
                     )}
@@ -96,13 +96,13 @@ export function StandingsTable({
                     </span>
                   </td>
 
-                  <td className="py-2 px-2">
-                    <div className="flex items-center gap-2 min-w-[130px]">
+                  <td className="py-1 sm:py-2 px-1.5 sm:px-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 min-w-[110px] sm:min-w-[130px]">
                       <JerseySvg
                         primaryColor={row.primaryColor}
                         secondaryColor={row.secondaryColor}
                         pattern={club?.pattern}
-                        size={22}
+                        size={18}
                       />
                       <span
                         className={`truncate ${
@@ -114,7 +114,7 @@ export function StandingsTable({
                         {row.teamName}
                       </span>
                       {row.isUser && (
-                        <span className="rounded bg-emerald-500 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-950 shrink-0">
+                        <span className="rounded bg-emerald-500 px-1 py-px text-[8px] sm:text-[9px] font-extrabold text-slate-950 shrink-0">
                           MY
                         </span>
                       )}
@@ -126,22 +126,22 @@ export function StandingsTable({
                     </div>
                   </td>
 
-                  <td className="py-2 px-1.5 text-center text-slate-300">
+                  <td className="py-1 sm:py-2 px-1 sm:px-1.5 text-center text-slate-300">
                     {row.played}
                   </td>
-                  <td className="py-2 px-1.5 text-center text-slate-300">
+                  <td className="py-1 sm:py-2 px-1 sm:px-1.5 text-center text-slate-300">
                     {row.won}
                   </td>
-                  <td className="py-2 px-1.5 text-center text-slate-400">
+                  <td className="py-1 sm:py-2 px-1 sm:px-1.5 text-center text-slate-400">
                     {row.drawn}
                   </td>
-                  <td className="py-2 px-1.5 text-center text-slate-400">
+                  <td className="py-1 sm:py-2 px-1 sm:px-1.5 text-center text-slate-400">
                     {row.lost}
                   </td>
-                  <td className="py-2 px-1.5 text-center text-slate-400 hidden sm:table-cell">
+                  <td className="py-1 sm:py-2 px-1.5 text-center text-slate-400 hidden sm:table-cell">
                     {row.goalsFor}
                   </td>
-                  <td className="py-2 px-1.5 text-center text-slate-400 hidden sm:table-cell">
+                  <td className="py-1 sm:py-2 px-1.5 text-center text-slate-400 hidden sm:table-cell">
                     {row.goalsAgainst}
                   </td>
                   <td

@@ -1046,18 +1046,18 @@ export function UclDashboard() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-800 text-[11px] text-slate-400">
+            <table className="w-full text-left text-[11px] sm:text-xs">
+              <thead className="border-b border-slate-800 text-[10px] sm:text-[11px] text-slate-400">
                 <tr>
-                  <th className="py-2 px-2">#</th>
-                  <th className="py-2 px-2">구단 (클릭 시 스쿼드)</th>
-                  <th className="py-2 px-2">포트 / 출전</th>
-                  <th className="py-2 px-1.5 text-center">경기</th>
-                  <th className="py-2 px-1.5 text-center">승</th>
-                  <th className="py-2 px-1.5 text-center">무</th>
-                  <th className="py-2 px-1.5 text-center">패</th>
-                  <th className="py-2 px-1.5 text-center">득실</th>
-                  <th className="py-2 px-2 text-center font-black">승점</th>
+                  <th className="py-1.5 sm:py-2 px-1.5 sm:px-2">#</th>
+                  <th className="py-1.5 sm:py-2 px-1.5 sm:px-2">구단</th>
+                  <th className="py-1.5 sm:py-2 px-2 hidden sm:table-cell">포트 / 출전</th>
+                  <th className="py-1.5 sm:py-2 px-1 sm:px-1.5 text-center">경기</th>
+                  <th className="py-1.5 sm:py-2 px-1 sm:px-1.5 text-center">승</th>
+                  <th className="py-1.5 sm:py-2 px-1 sm:px-1.5 text-center">무</th>
+                  <th className="py-1.5 sm:py-2 px-1 sm:px-1.5 text-center">패</th>
+                  <th className="py-1.5 sm:py-2 px-1 sm:px-1.5 text-center">득실</th>
+                  <th className="py-1.5 sm:py-2 px-1.5 sm:px-2 text-center font-black">승점</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
@@ -1084,37 +1084,39 @@ export function UclDashboard() {
                           : 'hover:bg-slate-800/50 text-slate-200'
                       }`}
                     >
-                      <td className="py-2 px-2 font-mono font-bold">{rank}</td>
-                      <td className="py-2 px-2">
-                        <div className="flex items-center gap-2">
+                      <td className="py-1 sm:py-2 px-1.5 sm:px-2 font-mono font-bold">{rank}</td>
+                      <td className="py-1 sm:py-2 px-1.5 sm:px-2">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
                           <span
-                            className="h-2.5 w-2.5 rounded-full"
+                            className="h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: row.primaryColor }}
                           />
-                          <span className="hover:text-sky-300">{row.teamName}</span>
+                          <span className="truncate max-w-[125px] sm:max-w-none hover:text-sky-300">
+                            {row.teamName}
+                          </span>
                         </div>
                       </td>
-                      <td className="py-2 px-2 text-[11px] text-slate-400">
+                      <td className="py-1 sm:py-2 px-2 text-[11px] text-slate-400 hidden sm:table-cell">
                         Pot {entry?.pot ?? '-'} · {entry?.originLabel ?? ''}
                       </td>
-                      <td className="py-2 px-1.5 text-center font-mono">
+                      <td className="py-1 sm:py-2 px-1 sm:px-1.5 text-center font-mono">
                         {row.played}
                       </td>
-                      <td className="py-2 px-1.5 text-center font-mono">
+                      <td className="py-1 sm:py-2 px-1 sm:px-1.5 text-center font-mono">
                         {row.won}
                       </td>
-                      <td className="py-2 px-1.5 text-center font-mono">
+                      <td className="py-1 sm:py-2 px-1 sm:px-1.5 text-center font-mono">
                         {row.drawn}
                       </td>
-                      <td className="py-2 px-1.5 text-center font-mono">
+                      <td className="py-1 sm:py-2 px-1 sm:px-1.5 text-center font-mono">
                         {row.lost}
                       </td>
-                      <td className="py-2 px-1.5 text-center font-mono">
+                      <td className="py-1 sm:py-2 px-1 sm:px-1.5 text-center font-mono">
                         {row.goalDifference >= 0
                           ? `+${row.goalDifference}`
                           : row.goalDifference}
                       </td>
-                      <td className="py-2 px-2 text-center font-mono text-sm font-black text-white">
+                      <td className="py-1 sm:py-2 px-1.5 sm:px-2 text-center font-mono text-xs sm:text-sm font-black text-white">
                         {row.points}
                       </td>
                     </tr>

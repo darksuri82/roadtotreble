@@ -253,23 +253,23 @@ export function SeasonDashboard() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-5 space-y-5">
+    <div className="mx-auto max-w-6xl px-2.5 sm:px-4 py-2.5 sm:py-5 space-y-3 sm:space-y-5">
       {/* Compact Season Status + Clean Top 5-Tab Navigation */}
-      <section className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-3.5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <section className="rounded-xl sm:rounded-2xl border border-slate-800 bg-[#111822] p-2.5 sm:p-4 space-y-2 sm:space-y-3.5">
+        <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <span
-                className="rounded px-2 py-0.5 text-[11px] font-extrabold text-slate-950"
+                className="rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold text-slate-950"
                 style={{ backgroundColor: league.accentColor }}
               >
                 {league.koreanName}
               </span>
-              <span className="font-display text-xs font-bold text-slate-200 tabular-nums">
-                {season.currentRound} / {season.totalRounds}R
+              <span className="font-display text-[11px] sm:text-xs font-bold text-slate-200 tabular-nums">
+                {season.currentRound}/{season.totalRounds}R
               </span>
               <span
-                className={`rounded px-2 py-0.5 text-[11px] font-bold ${
+                className={`rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold ${
                   inUclZone
                     ? 'bg-emerald-500/15 text-emerald-300'
                     : 'bg-slate-800 text-slate-300'
@@ -279,20 +279,20 @@ export function SeasonDashboard() {
                 {userRow?.drawn ?? 0}무 {userRow?.lost ?? 0}패)
               </span>
               {season.cup && (
-                <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-300">
-                  🏆 {season.cup.meta.koreanName}: {getUserCupResultLabel(season.cup, USER_CLUB_ID)}
+                <span className="rounded bg-amber-500/15 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-amber-300">
+                  🏆 {getUserCupResultLabel(season.cup, USER_CLUB_ID)}
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 tabular-nums">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-400 tabular-nums">
               <span>
-                실전 A <strong className="text-slate-200">{ratings.effectiveAtt}</strong> · M{' '}
+                A <strong className="text-slate-200">{ratings.effectiveAtt}</strong> · M{' '}
                 <strong className="text-slate-200">{ratings.effectiveMid}</strong> · D{' '}
                 <strong className="text-slate-200">{ratings.effectiveDef}</strong>
               </span>
-              <span className="inline-flex items-center gap-1 text-emerald-300 font-semibold">
+              <span className="inline-flex items-center gap-0.5 text-emerald-300 font-semibold">
                 <Zap className="w-3 h-3" />
-                케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
+                {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
                 {chemistry.chemistryOvrBonus.toFixed(1)})
               </span>
               {(() => {
@@ -316,29 +316,29 @@ export function SeasonDashboard() {
                       }`}
                     >
                       {mTier === 'ecstatic' && (
-                        <PixelStatusIcon variant="morale_high" size={12} />
+                        <PixelStatusIcon variant="morale_high" size={11} />
                       )}
                       {mTier === 'frozen' && (
-                        <PixelStatusIcon variant="morale_low" size={12} />
+                        <PixelStatusIcon variant="morale_low" size={11} />
                       )}
                       사기 {getMoraleLabel(teamMorale)}
                     </span>
                     {injuredCount > 0 && (
                       <span
                         title="현재 우리 팀 부상자 수"
-                        className="inline-flex items-center gap-1 rounded bg-rose-500/15 border border-rose-400/35 px-1.5 py-0.5 text-[11px] font-bold text-rose-200"
+                        className="inline-flex items-center gap-1 rounded bg-rose-500/15 border border-rose-400/35 px-1.5 py-px text-[10px] font-bold text-rose-200"
                       >
-                        <PixelStatusIcon variant="injury" size={11} />
-                        부상 {injuredCount}명
+                        <PixelStatusIcon variant="injury" size={10} />
+                        부상 {injuredCount}
                       </span>
                     )}
                   </>
                 );
               })()}
               {nextTransferRound !== null && (
-                <span className="inline-flex items-center gap-1 text-amber-300/90">
+                <span className="inline-flex items-center gap-0.5 text-amber-300/90">
                   <Calendar className="w-3 h-3" />
-                  이적시장 {nextTransferRound}R
+                  이적 {nextTransferRound}R
                 </span>
               )}
             </div>
@@ -353,16 +353,16 @@ export function SeasonDashboard() {
                   key={t.id}
                   type="button"
                   onClick={() => setActiveTab(t.id)}
-                  className={`inline-flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-[11px] sm:text-xs font-bold transition-colors cursor-pointer ${
+                  className={`inline-flex items-center justify-center gap-1 rounded-lg px-1 py-1.5 sm:px-2 sm:py-2 text-[10px] sm:text-xs font-bold transition-colors cursor-pointer touch-manipulation ${
                     active
                       ? 'bg-emerald-500 text-slate-950'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  {t.icon}
+                  <span className="hidden sm:inline-flex">{t.icon}</span>
                   <span className="truncate">{t.label}</span>
                   {t.badge && (
-                    <span className="rounded bg-amber-400 px-1 py-0.5 text-[8px] font-black text-slate-950">
+                    <span className="rounded bg-amber-400 px-1 py-px text-[8px] font-black text-slate-950">
                       {t.badge}
                     </span>
                   )}
@@ -373,7 +373,7 @@ export function SeasonDashboard() {
         </div>
 
         {/* Minimal Season Progress Bar */}
-        <div className="relative h-1.5 w-full rounded-full bg-slate-900">
+        <div className="relative h-1 sm:h-1.5 w-full rounded-full bg-slate-900">
           <div
             className="h-full rounded-full bg-emerald-500 transition-all duration-300"
             style={{ width: `${progressPct}%` }}

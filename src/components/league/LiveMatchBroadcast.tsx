@@ -1334,17 +1334,17 @@ export function LiveMatchBroadcast({
                 </div>
               )}
 
-            <div className="grid grid-cols-3 items-center text-center gap-2">
-              <div className="flex items-center justify-end gap-2.5 text-right">
+            <div className="grid grid-cols-3 items-center text-center gap-1.5 sm:gap-2">
+              <div className="flex items-center justify-end gap-1.5 sm:gap-2.5 text-right">
                 <div className="min-w-0">
                   <div
-                    className={`truncate text-xs sm:text-sm font-bold ${
+                    className={`truncate text-[11px] sm:text-sm font-bold ${
                       home.isUser ? 'text-emerald-300' : 'text-white'
                     }`}
                   >
                     {home.name}
                   </div>
-                  <div className="text-[10px] text-slate-500">
+                  <div className="text-[9px] sm:text-[10px] text-slate-500">
                     {liveHomeFormation} ·{' '}
                     {TACTICS[fullResult?.homeTactic ?? halftime.homeTactic].shortName}
                   </div>
@@ -1354,27 +1354,27 @@ export function LiveMatchBroadcast({
                   secondaryColor={home.secondaryColor}
                   pattern={home.pattern}
                   label={home.shortName}
-                  size={34}
+                  size={28}
                 />
               </div>
 
               <div className="flex flex-col items-center">
-                <div className="font-display text-3xl sm:text-4xl font-bold tracking-wider text-white tabular-nums leading-none">
+                <div className="font-display text-2xl sm:text-4xl font-bold tracking-wider text-white tabular-nums leading-none">
                   {liveHomeGoals} <span className="text-slate-600">:</span>{' '}
                   {liveAwayGoals}
                 </div>
-                <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
-                  <span className="font-display text-xs font-bold text-emerald-400 tabular-nums">
+                <div className="mt-0.5 sm:mt-1 flex flex-wrap items-center justify-center gap-1">
+                  <span className="font-display text-[11px] sm:text-xs font-bold text-emerald-400 tabular-nums">
                     {phase === 'halftime'
                       ? "45' HT"
                       : phase === 'extra_time_break'
-                        ? "90' 연장 라커룸"
+                        ? "90' 연장"
                         : phase === 'extra_time_ht'
-                          ? "105' 연장 HT"
+                          ? "105' HT"
                           : phase === 'penalties'
                             ? isPenaltiesDone
                               ? 'PK 종료'
-                              : '승부차기 진행 중'
+                              : '승부차기'
                             : isSecondHalfDone
                               ? minute > 90
                                 ? "120' AET"
@@ -1382,35 +1382,35 @@ export function LiveMatchBroadcast({
                               : `${minute}'`}
                   </span>
                   {isTwoLegSecond && (
-                    <span className="rounded bg-sky-500/20 border border-sky-400/40 px-2 py-0.5 text-[11px] font-black text-sky-200 tabular-nums">
+                    <span className="rounded bg-sky-500/20 border border-sky-400/40 px-1.5 py-px text-[10px] sm:text-[11px] font-black text-sky-200 tabular-nums">
                       합산 {liveAggHome}:{liveAggAway}
                     </span>
                   )}
                   {phase === 'penalties' && (
-                    <span className="rounded bg-purple-500/20 px-1.5 py-0.5 text-[10px] font-black text-purple-200 tabular-nums">
+                    <span className="rounded bg-purple-500/20 px-1.5 py-px text-[10px] font-black text-purple-200 tabular-nums">
                       PK {livePenHomeScore}:{livePenAwayScore}
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center justify-start gap-2.5 text-left">
+              <div className="flex items-center justify-start gap-1.5 sm:gap-2.5 text-left">
                 <JerseySvg
                   primaryColor={away.primaryColor}
                   secondaryColor={away.secondaryColor}
                   pattern={away.pattern}
                   label={away.shortName}
-                  size={34}
+                  size={28}
                 />
                 <div className="min-w-0">
                   <div
-                    className={`truncate text-xs sm:text-sm font-bold ${
+                    className={`truncate text-[11px] sm:text-sm font-bold ${
                       away.isUser ? 'text-emerald-300' : 'text-white'
                     }`}
                   >
                     {away.name}
                   </div>
-                  <div className="text-[10px] text-slate-500">
+                  <div className="text-[9px] sm:text-[10px] text-slate-500">
                     {liveAwayFormation} ·{' '}
                     {TACTICS[fullResult?.awayTactic ?? halftime.awayTactic].shortName}
                   </div>
@@ -1425,10 +1425,10 @@ export function LiveMatchBroadcast({
               const diff = userAgg - oppAgg;
               const statusText =
                 diff > 0
-                  ? `합산 +${diff} 우위 · 진출권`
+                  ? `합산 +${diff} 우위`
                   : diff < 0
-                    ? `합산 ${diff} 열세 · ${Math.abs(diff)}골 필요`
-                    : '합산 동률 · 연장전 돌입권';
+                    ? `합산 ${diff} · ${Math.abs(diff)}골 필요`
+                    : '합산 동률';
               const statusCls =
                 diff > 0
                   ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200'
@@ -1436,20 +1436,19 @@ export function LiveMatchBroadcast({
                     ? 'border-rose-400/45 bg-rose-500/15 text-rose-200'
                     : 'border-amber-400/45 bg-amber-500/15 text-amber-200';
               return (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-400/40 bg-sky-950/45 px-3 py-1.5 text-[11px] tabular-nums">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded bg-slate-950/80 border border-slate-700 px-1.5 py-0.5 text-[10px] font-bold text-slate-300">
-                      1차전 {home.shortName} {halftime.aggHomeBeforeMatch} : {halftime.aggAwayBeforeMatch} {away.shortName}
+                <div className="flex flex-wrap items-center justify-between gap-1.5 rounded-lg border border-sky-400/35 bg-sky-950/40 px-2.5 py-1 text-[10px] sm:text-[11px] tabular-nums">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="rounded bg-slate-950/80 border border-slate-700 px-1.5 py-px text-[9px] sm:text-[10px] font-bold text-slate-300">
+                      1차전 {halftime.aggHomeBeforeMatch}:{halftime.aggAwayBeforeMatch}
                     </span>
                     <span className="font-extrabold text-sky-200">
-                      실시간 합산(AGG) {home.shortName}{' '}
-                      <span className="text-amber-300 text-xs font-black">
-                        {liveAggHome} : {liveAggAway}
-                      </span>{' '}
-                      {away.shortName}
+                      AGG{' '}
+                      <span className="text-amber-300 font-black">
+                        {liveAggHome}:{liveAggAway}
+                      </span>
                     </span>
                   </div>
-                  <span className={`rounded-md border px-2 py-0.5 text-[10px] font-extrabold ${statusCls}`}>
+                  <span className={`rounded border px-1.5 py-px text-[9px] sm:text-[10px] font-extrabold ${statusCls}`}>
                     {statusText}
                   </span>
                 </div>
@@ -1457,7 +1456,7 @@ export function LiveMatchBroadcast({
             })()}
 
             {/* Match Clock Progress Bar */}
-            <div className="relative h-1.5 w-full rounded-full bg-slate-900 overflow-hidden">
+            <div className="relative h-1 sm:h-1.5 w-full rounded-full bg-slate-900 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-150 ${
                   minute > 90 ? 'bg-amber-400' : 'bg-emerald-500'
@@ -1470,29 +1469,29 @@ export function LiveMatchBroadcast({
             </div>
 
             {/* Compact Live Match Stats */}
-            <div className="grid grid-cols-4 gap-1.5 text-center tabular-nums">
-              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#111822] px-2 py-1">
-                <span className="text-[10px] text-slate-500">점유율</span>
-                <span className="font-display text-xs font-bold text-white">
-                  {liveHomePoss}% : {100 - liveHomePoss}%
+            <div className="grid grid-cols-4 gap-1 sm:gap-1.5 text-center tabular-nums">
+              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1.5 py-0.5 sm:px-2 sm:py-1">
+                <span className="text-[9px] sm:text-[10px] text-slate-500">점유</span>
+                <span className="font-display text-[11px] sm:text-xs font-bold text-white">
+                  {liveHomePoss}:{100 - liveHomePoss}
                 </span>
               </div>
-              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#111822] px-2 py-1">
-                <span className="text-[10px] text-slate-500">xG</span>
-                <span className="font-display text-xs font-bold text-emerald-300">
-                  {liveHomeXg.toFixed(2)} : {liveAwayXg.toFixed(2)}
+              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1.5 py-0.5 sm:px-2 sm:py-1">
+                <span className="text-[9px] sm:text-[10px] text-slate-500">xG</span>
+                <span className="font-display text-[11px] sm:text-xs font-bold text-emerald-300">
+                  {liveHomeXg.toFixed(1)}:{liveAwayXg.toFixed(1)}
                 </span>
               </div>
-              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#111822] px-2 py-1">
-                <span className="text-[10px] text-slate-500">슈팅</span>
-                <span className="font-display text-xs font-bold text-white">
-                  {liveHomeShots} : {liveAwayShots}
+              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1.5 py-0.5 sm:px-2 sm:py-1">
+                <span className="text-[9px] sm:text-[10px] text-slate-500">슈팅</span>
+                <span className="font-display text-[11px] sm:text-xs font-bold text-white">
+                  {liveHomeShots}:{liveAwayShots}
                 </span>
               </div>
-              <div className="flex items-center justify-center gap-1.5 rounded-lg bg-[#111822] px-2 py-1">
-                <span className="text-[10px] text-slate-500">유효슈팅</span>
-                <span className="font-display text-xs font-bold text-sky-300">
-                  {liveHomeSot} : {liveAwaySot}
+              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1.5 py-0.5 sm:px-2 sm:py-1">
+                <span className="text-[9px] sm:text-[10px] text-slate-500">유효</span>
+                <span className="font-display text-[11px] sm:text-xs font-bold text-sky-300">
+                  {liveHomeSot}:{liveAwaySot}
                 </span>
               </div>
             </div>
@@ -1644,13 +1643,14 @@ export function LiveMatchBroadcast({
             </div>
           )}
 
-          {/* LIVE 2-COLUMN DESKTOP LAYOUT: Left (2D Pitch + Stamina) / Right (Live Commentary) */}
+          {/* LIVE LAYOUT: Mobile stacks Pitch -> Commentary (one-screen!) -> Compact Stamina; Desktop preserves 8+4 columns */}
           {(phase === 'first_half' ||
             phase === 'second_half' ||
             phase === 'extra_time' ||
             phase === 'extra_time_2') && (
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
-              <div className="lg:col-span-8 space-y-2.5">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 lg:grid-cols-12 items-start">
+              {/* 1) 2D Pitch */}
+              <div className="lg:col-span-8">
                 <PitchMatch2D
                   homeClub={home}
                   awayClub={away}
@@ -1669,81 +1669,23 @@ export function LiveMatchBroadcast({
                   awayTactic={fullResult?.awayTactic ?? halftime.awayTactic}
                   dramaticEvent={dramaticEvent}
                 />
-
-                {/* Compact Live Starter Stamina Strip */}
-                <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-2.5 space-y-1.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
-                      <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                      선발 실시간 체력 (STA · {TACTICS[userActiveTactic].shortName})
-                    </span>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                      <span>70%↑ 정상</span>
-                      <span className="text-yellow-300">55~69% -1.5</span>
-                      <span className="text-orange-300">40~54% -3.5</span>
-                      <span className="text-rose-400">40%↓ -6.0</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5 tabular-nums">
-                    {starterStaminaRows.map((row) => {
-                      if (!row.player) return null;
-                      return (
-                        <div
-                          key={`live-stam-${row.index}`}
-                          className={`rounded-lg border px-2 py-1 ${
-                            row.staminaPct < 40
-                              ? 'border-rose-500/45 bg-rose-950/20'
-                              : row.staminaPct < 55
-                                ? 'border-orange-500/35 bg-orange-950/15'
-                                : 'border-slate-800 bg-[#111822]'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between gap-1 text-[10px]">
-                            <span className="font-bold text-slate-400">
-                              {row.slotLabel}
-                            </span>
-                            <span
-                              className={`font-extrabold ${getStaminaTextColor(row.staminaPct)}`}
-                            >
-                              {row.staminaPct}%
-                            </span>
-                          </div>
-                          <div className="truncate text-[10px] font-bold text-slate-100">
-                            {row.player.name}
-                            {row.isFreshSub && (
-                              <span className="ml-1 text-[9px] font-black text-sky-300">
-                                IN
-                              </span>
-                            )}
-                          </div>
-                          <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-slate-900">
-                            <div
-                              className={`h-full rounded-full transition-all duration-200 ${getStaminaBarColor(row.staminaPct)}`}
-                              style={{ width: `${row.staminaPct}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
 
-              {/* Right Column: Live Commentary Timeline (fits alongside 2D pitch on laptop/PC!) */}
-              <div className="lg:col-span-4 rounded-xl border border-slate-800 bg-[#0b1018] p-3 flex flex-col">
-                <div className="mb-2 flex items-center justify-between text-xs shrink-0">
-                  <span className="font-bold text-slate-200">실시간 문자 중계</span>
-                  <span className="text-[11px] text-slate-500 tabular-nums">
-                    {visibleEvents.length}개 이벤트
+              {/* 2) Live Commentary: directly below 2D pitch on mobile, right column on desktop */}
+              <div className="lg:col-span-4 lg:row-span-2 rounded-xl border border-slate-800 bg-[#0b1018] p-2 sm:p-3 flex flex-col">
+                <div className="mb-1.5 flex items-center justify-between text-[11px] sm:text-xs shrink-0">
+                  <span className="font-bold text-slate-200">실시간 중계</span>
+                  <span className="text-[10px] sm:text-[11px] text-slate-500 tabular-nums">
+                    {visibleEvents.length}건
                   </span>
                 </div>
-                <div className="max-h-56 lg:max-h-[405px] space-y-1.5 overflow-y-auto pr-1 text-xs">
+                <div className="max-h-28 sm:max-h-44 lg:max-h-[420px] space-y-1 sm:space-y-1.5 overflow-y-auto pr-1 text-[11px] sm:text-xs">
                   {[...visibleEvents].reverse().map((ev, idx) => {
                     const evClub = clubsById[ev.teamId];
                     return (
                       <div
                         key={`${ev.minute}-${ev.type}-${idx}`}
-                        className={`flex items-start gap-2 rounded-lg px-2.5 py-2 ${
+                        className={`flex items-start gap-1.5 sm:gap-2 rounded-lg px-2 py-1 sm:px-2.5 sm:py-2 ${
                           ev.type === 'goal'
                             ? ev.teamId === USER_CLUB_ID
                               ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-100 font-semibold'
@@ -1759,7 +1701,7 @@ export function LiveMatchBroadcast({
                                     : 'bg-[#111822]/70 text-slate-400'
                         }`}
                       >
-                        <span className="w-7 shrink-0 font-display text-[11px] font-bold text-slate-400 tabular-nums">
+                        <span className="w-6 sm:w-7 shrink-0 font-display text-[10px] sm:text-[11px] font-bold text-slate-400 tabular-nums">
                           {ev.minute}&apos;
                         </span>
                         <div className="flex flex-wrap items-center gap-1 min-w-0">
@@ -1776,6 +1718,64 @@ export function LiveMatchBroadcast({
                           <span className="leading-snug text-[11px]">
                             {ev.description}
                           </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 3) Compact Live Starter Stamina Strip */}
+              <div className="lg:col-span-8 rounded-xl border border-slate-800 bg-[#0b1018] p-2 sm:p-2.5 space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10px] sm:text-[11px]">
+                  <span className="inline-flex items-center gap-1 font-bold text-slate-200">
+                    <Activity className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" />
+                    선발 체력 ({TACTICS[userActiveTactic].shortName})
+                  </span>
+                  <div className="hidden sm:flex items-center gap-2 text-[10px] text-slate-400">
+                    <span>70%↑ 정상</span>
+                    <span className="text-yellow-300">55~69% -1.5</span>
+                    <span className="text-orange-300">40~54% -3.5</span>
+                    <span className="text-rose-400">40%↓ -6.0</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-6 gap-1 sm:gap-1.5 tabular-nums">
+                  {starterStaminaRows.map((row) => {
+                    if (!row.player) return null;
+                    return (
+                      <div
+                        key={`live-stam-${row.index}`}
+                        className={`rounded-lg border px-1.5 py-1 sm:px-2 ${
+                          row.staminaPct < 40
+                            ? 'border-rose-500/45 bg-rose-950/20'
+                            : row.staminaPct < 55
+                              ? 'border-orange-500/35 bg-orange-950/15'
+                              : 'border-slate-800 bg-[#111822]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-0.5 text-[9px] sm:text-[10px]">
+                          <span className="font-bold text-slate-400">
+                            {row.slotLabel}
+                          </span>
+                          <span
+                            className={`font-extrabold ${getStaminaTextColor(row.staminaPct)}`}
+                          >
+                            {row.staminaPct}%
+                          </span>
+                        </div>
+                        <div className="truncate text-[9px] sm:text-[10px] font-bold text-slate-100">
+                          {row.player.name}
+                          {row.isFreshSub && (
+                            <span className="ml-0.5 text-[8px] font-black text-sky-300">
+                              IN
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-slate-900">
+                          <div
+                            className={`h-full rounded-full transition-all duration-200 ${getStaminaBarColor(row.staminaPct)}`}
+                            style={{ width: `${row.staminaPct}%` }}
+                          />
                         </div>
                       </div>
                     );

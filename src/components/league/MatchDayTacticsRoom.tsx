@@ -132,7 +132,11 @@ export function MatchDayTacticsRoom({
   firstLegBanner = null,
   children,
 }: MatchDayTacticsRoomProps) {
-  const [pitchTab, setPitchTab] = useState<PitchTabMode>('split');
+  const [pitchTab, setPitchTab] = useState<PitchTabMode>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768
+      ? 'our_squad'
+      : 'split',
+  );
   const [selectedSlot, setSelectedSlot] = useState<SlotRef | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
 
@@ -228,7 +232,7 @@ export function MatchDayTacticsRoom({
         : 'border-slate-800 bg-[#111822]';
 
   return (
-    <div className={`rounded-2xl border p-3.5 sm:p-4 space-y-3.5 ${borderCls}`}>
+    <div className={`rounded-xl sm:rounded-2xl border p-2.5 sm:p-4 space-y-2.5 sm:space-y-3.5 ${borderCls}`}>
       {/* 1) Top Match Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2 min-w-0">

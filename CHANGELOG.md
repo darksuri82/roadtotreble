@@ -5,6 +5,20 @@
 
 ---
 
+## v5.2 — 첫 페이지 실제 24×28 도트 트로피 복원 · 모바일 전역 한눈에 보기 레이아웃 압축 & 터치 오작동 완전 해결
+
+- **첫 페이지 실제 24×28 도트 트로피 복원 & 모바일 `100dvh` 원스크린 수납 (`src/components/common/PixelTrophySvg.tsx`, `src/components/setup/RoadToTrebleHeroSvg.tsx`, `src/components/setup/TitleScreen.tsx`)**:
+  - `getPixelTrophyRects` 헬퍼를 통해 기존 `24×28` 정밀 도트 트로피(`epl_league` · `fa_cup` · 대형 `ucl` 빅이어)의 고유 실루엣·금속 광택·받침대를 트레블 로드 일러스트(`240×94`) 위에 그대로 복원.
+  - 모바일 첫 화면 상하 여백 및 2열 CTA 버튼 밀도를 최적화해 스크롤 거의 없이 `100dvh` 안에 타이틀·트로피 길·시작/드림매치·보조 3버튼 수납.
+- **모바일 선수 교체·트레이드 선택 시 선수 상세 카드 오터치 완전 해결 (`src/components/common/PitchBoard.tsx`, `src/components/transfer/TransferMarketModal.tsx`)**:
+  - `PitchBoard`에서 모바일 카드 모서리 `ⓘ` 아이콘과 롱프레스 자동 팝업을 제거해 카드 전체를 100% 교체/스왑 터치 영역으로 확보하고, 선수 선택 시 상단에 나타나는 전용 `[선수 상세]` 바로 오작동 없이 조회 가능.
+  - `TransferMarketModal`의 양 팀 포메이션 피치·벤치·리스트 행에서 이름 버튼 오터치를 제거해 카드/행 전체가 트레이드 선택 전용으로 동작하며, 리스트 우측 분리 `ⓘ` 버튼과 하단 고정(Sticky) 트레이드 바의 선수 칩에서 안전하게 상세 확인.
+- **모바일 전역 한눈에 보기 압축 최적화 (`HeaderNav.tsx`, `DraftScreen.tsx`, `RouletteReelsView.tsx`, `SeasonDashboard.tsx`, `MatchDayTacticsRoom.tsx`, `OpponentPitchView.tsx`, `InjuryAlertModal.tsx`, `LiveMatchBroadcast.tsx`, `StandingsTable.tsx`, `UclDashboard.tsx`, `UclBracketTree.tsx`)**:
+  - CSS `zoom`·`100vh` 이중 스크롤 없이 순수 반응형 패딩·종횡비·가로 스와이프·하단 고정 바로 모바일 세로 스크롤 대폭 축소(PC 데스크톱 레이아웃 100% 보존).
+  - 드래프트 후보 모바일 가로 스와이프 + 하단 고정 `[영입 확정]` 바, 매치 프리뷰 모바일 단일 피치 기본 전환, 이적시장 하단 고정 트레이드 요약·제출 바, 2D 경기 중계 모바일 `[스코어보드 + 2D 피치 + 실시간 중계]` 1화면 재배치, 순위표·UCL 36팀 테이블·토너먼트 브래킷 행/카드 압축 적용.
+
+---
+
 ## v5.1 — 공식 타이틀 [Road To Treble] & 트레블 로드 도트 첫 화면 리뉴얼 · 부상 빈도 대폭 하향 · 사기 OVR 임계치 상향 & 기자회견 리스크-리턴 개편 · 명전 자동 등재 기준 상향 & 전역 UI 모던 다이어트
 
 - **공식 타이틀 `Road To Treble` 통일 & 첫 화면 트레블 로드 도트 일러스트 리뉴얼 (`index.html`, `src/components/setup/RoadToTrebleHeroSvg.tsx`, `src/components/setup/TitleScreen.tsx`, `HeaderNav.tsx`, `PatchNotesModal.tsx`, `SystemGuideModal.tsx`, `LegacyHubModal.tsx`)**:

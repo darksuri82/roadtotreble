@@ -1,5 +1,5 @@
 import { Crown, Diamond, Info } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { BENCH_SLOTS, FORMATIONS } from '../../data/formations';
 import {
   computeFullPlayerOvrBreakdown,
@@ -99,37 +99,9 @@ export function PitchBoard({
   const [draggingFrom, setDraggingFrom] = useState<SlotRef | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<SlotRef | null>(null);
 
-  // Mobile long-press inspection timer without interfering with click-to-swap
-  const longPressTimerRef = useRef<number | null>(null);
-  const longPressTriggeredRef = useRef(false);
-
   const canDrag = Boolean(onSlotSwap);
 
-  const clearLongPress = () => {
-    if (longPressTimerRef.current !== null) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  };
-
-  const handleTouchStartInspect = (
-    player: Player | null,
-    subPos?: SubPosition,
-  ) => {
-    if (!player || !onInspectPlayer) return;
-    longPressTriggeredRef.current = false;
-    clearLongPress();
-    longPressTimerRef.current = window.setTimeout(() => {
-      longPressTriggeredRef.current = true;
-      onInspectPlayer(player, subPos);
-    }, 450);
-  };
-
   const handleSlotActivate = (area: 'starter' | 'bench', index: number) => {
-    if (longPressTriggeredRef.current) {
-      longPressTriggeredRef.current = false;
-      return;
-    }
     onSlotClick?.(area, index);
   };
 
@@ -139,7 +111,6 @@ export function PitchBoard({
     index: number,
   ) => {
     if (!canDrag) return;
-    clearLongPress();
     setDraggingFrom({ area, index });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', `${area}:${index}`);
@@ -178,12 +149,50 @@ export function PitchBoard({
     setDragOverSlot(null);
   };
 
+  const selectedPlayer =
+    selectedSlot?.area === 'starter'
+      ? starters[selectedSlot.index] ?? null
+      : selectedSlot?.area === 'bench'
+        ? bench[selectedSlot.index] ?? null
+        : null;
+  const selectedSubPos =
+    selectedSlot?.area === 'starter'
+      ? config.slots[selectedSlot.index]?.subPosition
+      : undefined;
+
   return (
-    <div className="flex flex-col gap-2.5">
+    <div className="flex flex-col gap-2">
+      {/* Tap-safe Mobile Inspect Bar: appears only when a player is selected so tapping pitch cards NEVER opens detail modal by mistake */}
+      {selectedPlayer && onInspectPlayer && (
+        <div className="sm:hidden flex items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/30 px-2.5 py-1.5 text-[11px]">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="rounded bg-emerald-400 px-1.5 py-px text-[9px] font-black text-slate-950 shrink-0">
+              선택
+            </span>
+            <span className="truncate font-extrabold text-white">
+              {selectedPlayer.name}
+            </span>
+            <span className="font-mono text-[10px] font-bold text-amber-300 shrink-0">
+              {selectedPlayer.ovr}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onInspectPlayer(selectedPlayer, selectedSubPos)}
+            className="inline-flex items-center gap-1 rounded-lg border border-sky-400/45 bg-sky-500/15 px-2 py-1 text-[10px] font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer shrink-0 touch-manipulation"
+          >
+            <Info className="w-3 h-3" />
+            선수 상세
+          </button>
+        </div>
+      )}
+
       {/* Main Pitch Container */}
       <div
         className={`pitch-surface relative w-full overflow-hidden rounded-2xl border border-slate-800 ${
-          compact ? 'aspect-[4/4.5]' : 'aspect-[4/4.8] sm:aspect-[4/4.3]'
+          compact
+            ? 'aspect-[4/3.85] sm:aspect-[4/4.5]'
+            : 'aspect-[4/4.05] sm:aspect-[4/4.3]'
         }`}
       >
         {/* SVG Pitch Markings + Multi-Line Parallel Chemistry Links */}
@@ -392,24 +401,18 @@ export function PitchBoard({
                   onInspectPlayer(player, slot.subPosition);
                 }
               }}
-              onTouchStart={() =>
-                handleTouchStartInspect(player, slot.subPosition)
-              }
-              onTouchEnd={clearLongPress}
-              onTouchMove={clearLongPress}
-              onTouchCancel={clearLongPress}
               style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
               title={
                 player && starterOvrBr
                   ? `${player.name} (${formatMainPositions(player)}) · ${player.club}\n[${starterOvrBr.summaryLine}]${synTooltipText}${staminaPct !== null ? ` · 체력 ${staminaPct}%` : ''} (우클릭/ⓘ 상세)`
                   : `${slot.label} 빈 슬롯`
               }
-              className={`group absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center select-none ${
+              className={`group absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center select-none touch-manipulation ${
                 onSlotClick ? 'cursor-pointer' : 'cursor-default'
               }`}
             >
               <div
-                className={`relative flex flex-col items-center justify-center rounded-xl px-1.5 py-1 min-w-[60px] sm:min-w-[74px] text-center shadow-md transition-colors ${
+                className={`relative flex flex-col items-center justify-center rounded-xl px-1 py-0.5 sm:px-1.5 sm:py-1 min-w-[54px] sm:min-w-[74px] text-center shadow-md transition-colors ${
                   isHighlightedInjury && player
                     ? 'bg-rose-950/95 border-2 border-rose-500 ring-2 ring-rose-400/90 shadow-[0_0_18px_rgba(244,63,94,0.65)]'
                     : isPreview && player
@@ -461,8 +464,7 @@ export function PitchBoard({
                       e.stopPropagation();
                       onInspectPlayer(player, slot.subPosition);
                     }}
-                    onTouchStart={(e) => e.stopPropagation()}
-                    className="absolute -top-2 -right-2 flex h-4 w-4 items-center justify-center rounded-full border border-slate-600 bg-slate-900/95 text-slate-300 hover:border-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer z-30"
+                    className="hidden sm:flex absolute -top-2 -right-2 h-4 w-4 items-center justify-center rounded-full border border-slate-600 bg-slate-900/95 text-slate-300 hover:border-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer z-30"
                   >
                     <Info className="w-2.5 h-2.5" />
                   </button>
@@ -731,11 +733,7 @@ export function PitchBoard({
                       onInspectPlayer(player);
                     }
                   }}
-                  onTouchStart={() => handleTouchStartInspect(player)}
-                  onTouchEnd={clearLongPress}
-                  onTouchMove={clearLongPress}
-                  onTouchCancel={clearLongPress}
-                  className={`relative flex flex-col items-center justify-center rounded-xl p-1.5 text-center select-none transition-all ${
+                  className={`relative flex flex-col items-center justify-center rounded-xl p-1 sm:p-1.5 text-center select-none touch-manipulation transition-colors ${
                     isDisabledBench
                       ? 'bg-slate-950/70 border border-slate-800 opacity-45 cursor-not-allowed'
                       : isPreview && player
@@ -772,8 +770,7 @@ export function PitchBoard({
                         e.stopPropagation();
                         onInspectPlayer(player);
                       }}
-                      onTouchStart={(e) => e.stopPropagation()}
-                      className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full border border-slate-600 bg-slate-900/95 text-slate-300 hover:border-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer z-20"
+                      className="hidden sm:flex absolute -top-1.5 -right-1.5 h-4 w-4 items-center justify-center rounded-full border border-slate-600 bg-slate-900/95 text-slate-300 hover:border-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer z-20"
                     >
                       <Info className="w-2.5 h-2.5" />
                     </button>

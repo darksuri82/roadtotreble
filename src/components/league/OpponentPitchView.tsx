@@ -183,7 +183,7 @@ export function OpponentPitchView({
       </div>
 
       {/* Opponent Formation Pitch with 4-Pillar Synergy Lines & Boosted OVRs */}
-      <div className="relative aspect-[4/4.3] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0f1b26] via-[#0c1a1c] to-[#0d1919]">
+      <div className="relative aspect-[4/3.85] sm:aspect-[4/4.3] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0f1b26] via-[#0c1a1c] to-[#0d1919]">
         {/* Crisp Minimal Pitch SVG Lines + 4-Color Parallel Chemistry Links */}
         <svg
           viewBox="0 0 100 100"

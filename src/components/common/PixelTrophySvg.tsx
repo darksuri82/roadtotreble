@@ -478,18 +478,24 @@ function getGridForVariant(variant: PixelTrophyVariant): string[] {
   }
 }
 
-export function PixelTrophySvg({
-  variant,
-  size = 64,
-  className = '',
-  animate = false,
-}: PixelTrophySvgProps) {
+export interface PixelTrophyRect {
+  x: number;
+  y: number;
+  w: number;
+  fill: string;
+}
+
+export function getPixelTrophyRects(variant: PixelTrophyVariant): {
+  cols: number;
+  rows: number;
+  rects: PixelTrophyRect[];
+} {
   const palette = PALETTES[variant];
   const grid = getGridForVariant(variant);
   const cols = grid[0].length;
   const rows = grid.length;
 
-  const rects: { x: number; y: number; w: number; fill: string }[] = [];
+  const rects: PixelTrophyRect[] = [];
   for (let y = 0; y < rows; y += 1) {
     const row = grid[y];
     let x = 0;
@@ -512,6 +518,16 @@ export function PixelTrophySvg({
       x += w;
     }
   }
+  return { cols, rows, rects };
+}
+
+export function PixelTrophySvg({
+  variant,
+  size = 64,
+  className = '',
+  animate = false,
+}: PixelTrophySvgProps) {
+  const { cols, rows, rects } = getPixelTrophyRects(variant);
 
   return (
     <svg

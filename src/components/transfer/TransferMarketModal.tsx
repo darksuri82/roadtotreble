@@ -6,6 +6,7 @@ import {
   Dices,
   Handshake,
   Inbox,
+  Info,
   LayoutGrid,
   List,
   RefreshCw,
@@ -1659,7 +1660,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               </div>
 
                               {/* Partner Pitch */}
-                              <div className="relative aspect-[4/4.6] w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-b from-[#0f2c1f] via-[#113324] to-[#0d261b]">
+                              <div className="relative aspect-[4/3.85] sm:aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-b from-[#0f2c1f] via-[#113324] to-[#0d261b]">
                                 {/* Pitch Markings */}
                                 <div className="pointer-events-none absolute inset-3 rounded border border-emerald-300/20">
                                   <div className="absolute left-0 right-0 top-1/2 h-px bg-emerald-300/20" />
@@ -1697,16 +1698,20 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         onClick={() =>
                                           handleToggleAiPlayer(p.id)
                                         }
+                                        onContextMenu={(e) => {
+                                          e.preventDefault();
+                                          setInspectedPlayer(p);
+                                        }}
                                         style={{
                                           left: `${slot.x}%`,
                                           top: `${slot.y}%`,
                                         }}
                                         title={
                                           t.isShockBargain
-                                            ? `${p.name} · ${t.bargainReason ?? '프런트 급매 -35%'}`
-                                            : `${p.name} (주전 ${slot.label} · OVR ${p.ovr} · 가치 ${Math.round(tpVal.effectiveTp)})`
+                                            ? `${p.name} · ${t.bargainReason ?? '프런트 급매 -35%'} (우클릭 상세)`
+                                            : `${p.name} (주전 ${slot.label} · OVR ${p.ovr} · 가치 ${Math.round(tpVal.effectiveTp)}) (우클릭 상세)`
                                         }
-                                        className={`absolute -translate-x-1/2 -translate-y-1/2 w-[78px] sm:w-[86px] rounded-lg border px-1.5 py-1 text-center transition cursor-pointer select-none ${
+                                        className={`absolute -translate-x-1/2 -translate-y-1/2 w-[66px] sm:w-[86px] rounded-lg border px-1 py-0.5 sm:px-1.5 sm:py-1 text-center transition-colors cursor-pointer select-none touch-manipulation ${
                                           isPicked
                                             ? 'border-emerald-300 bg-emerald-950/95 ring-2 ring-emerald-400 shadow-lg z-20'
                                             : t.isShockBargain
@@ -1719,7 +1724,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             🚨급매-35%
                                           </span>
                                         )}
-                                        <div className="flex items-center justify-between text-[9px] tabular-nums leading-none">
+                                        <div className="flex items-center justify-between text-[8px] sm:text-[9px] tabular-nums leading-none">
                                           <span className="font-bold text-slate-400">
                                             {slot.label}
                                           </span>
@@ -1733,16 +1738,13 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             nationality={p.nationality}
                                             size="xs"
                                           />
-                                          <PlayerNameButton
-                                            onClick={() => setInspectedPlayer(p)}
-                                            className="truncate text-[10px] font-extrabold text-white"
-                                          >
+                                          <span className="truncate text-[9px] sm:text-[10px] font-extrabold text-white">
                                             {shortPitchName(p.name)}
-                                          </PlayerNameButton>
+                                          </span>
                                         </div>
-                                        <div className="mt-0.5 flex items-center justify-center gap-1 text-[9px] tabular-nums leading-none">
+                                        <div className="mt-0.5 flex items-center justify-center gap-1 text-[8px] sm:text-[9px] tabular-nums leading-none">
                                           <span className="font-mono text-sky-300">
-                                            가치 {Math.round(tpVal.effectiveTp)}
+                                            {Math.round(tpVal.effectiveTp)}
                                           </span>
                                           {inj && cond?.injury && (
                                             <PixelStatusIcon
@@ -1778,10 +1780,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               <div className="space-y-1.5">
                                 <div className="flex items-center justify-between text-[10px]">
                                   <span className="font-extrabold text-slate-300">
-                                    상대 팀 핵심 벤치 ({partnerFormationLayout.bench.length}명 · 키퍼 1 / 수비 2 / 공격·중원 2)
+                                    상대 벤치 ({partnerFormationLayout.bench.length}명)
                                   </span>
                                   <span className="text-slate-500">
-                                    클릭하여 트레이드 선택
+                                    탭하여 트레이드 선택
                                   </span>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
@@ -1802,7 +1804,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         onClick={() =>
                                           handleToggleAiPlayer(p.id)
                                         }
-                                        className={`rounded-lg border px-2 py-1.5 transition cursor-pointer ${
+                                        onContextMenu={(e) => {
+                                          e.preventDefault();
+                                          setInspectedPlayer(p);
+                                        }}
+                                        className={`rounded-lg border px-2 py-1.5 transition-colors cursor-pointer select-none touch-manipulation ${
                                           isPicked
                                             ? 'border-emerald-400 bg-emerald-950/45 ring-1 ring-emerald-400/50'
                                             : t.isShockBargain
@@ -1815,21 +1821,20 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             {t.slotLabel ?? `벤치 ${p.position}`}
                                           </span>
                                           <span className="font-black text-amber-300">
-                                            {p.ovr} · 가치 {Math.round(tpVal.effectiveTp)}
+                                            {p.ovr} · {Math.round(tpVal.effectiveTp)}
                                           </span>
                                         </div>
-                                        <div className="mt-0.5 flex items-center gap-1 min-w-0">
-                                          <CountryFlagSvg
-                                            code={p.nationalityCode}
-                                            nationality={p.nationality}
-                                            size="xs"
-                                          />
-                                          <PlayerNameButton
-                                            onClick={() => setInspectedPlayer(p)}
-                                            className="truncate text-[11px] font-bold text-white"
-                                          >
-                                            {p.name}
-                                          </PlayerNameButton>
+                                        <div className="mt-0.5 flex items-center justify-between gap-1 min-w-0">
+                                          <div className="flex items-center gap-1 min-w-0">
+                                            <CountryFlagSvg
+                                              code={p.nationalityCode}
+                                              nationality={p.nationality}
+                                              size="xs"
+                                            />
+                                            <span className="truncate text-[11px] font-bold text-white">
+                                              {p.name}
+                                            </span>
+                                          </div>
                                           {t.isShockBargain && (
                                             <span className="rounded bg-rose-500/25 px-1 text-[8px] font-black text-rose-200 shrink-0">
                                               급매
@@ -1871,7 +1876,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               </div>
 
                               {/* User Pitch */}
-                              <div className="relative aspect-[4/4.6] w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-b from-[#0f2c1f] via-[#113324] to-[#0d261b]">
+                              <div className="relative aspect-[4/3.85] sm:aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-b from-[#0f2c1f] via-[#113324] to-[#0d261b]">
                                 <div className="pointer-events-none absolute inset-3 rounded border border-emerald-300/20">
                                   <div className="absolute left-0 right-0 top-1/2 h-px bg-emerald-300/20" />
                                   <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300/20" />
@@ -1910,17 +1915,22 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                     <div
                                       key={`u-pitch-${idx}-${p.id}`}
                                       onClick={() => handleToggleUserSlot(ref)}
+                                      onContextMenu={(e) => {
+                                        e.preventDefault();
+                                        setInspectedPlayer(p);
+                                      }}
                                       style={{
                                         left: `${slot.x}%`,
                                         top: `${slot.y}%`,
                                       }}
-                                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-[78px] sm:w-[86px] rounded-lg border px-1.5 py-1 text-center transition cursor-pointer select-none ${
+                                      title={`${p.name} (OVR ${p.ovr} · 가치 ${Math.round(tpVal.effectiveTp)}) (우클릭 상세)`}
+                                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-[66px] sm:w-[86px] rounded-lg border px-1 py-0.5 sm:px-1.5 sm:py-1 text-center transition-colors cursor-pointer select-none touch-manipulation ${
                                         isPicked
                                           ? 'border-rose-400 bg-rose-950/95 ring-2 ring-rose-400 shadow-lg z-20'
                                           : 'border-slate-700/90 bg-slate-950/90 hover:border-rose-400/70 z-10'
                                       }`}
                                     >
-                                      <div className="flex items-center justify-between text-[9px] tabular-nums leading-none">
+                                      <div className="flex items-center justify-between text-[8px] sm:text-[9px] tabular-nums leading-none">
                                         <span className="font-bold text-slate-400">
                                           {slot.label}
                                         </span>
@@ -1934,16 +1944,13 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           nationality={p.nationality}
                                           size="xs"
                                         />
-                                        <PlayerNameButton
-                                          onClick={() => setInspectedPlayer(p)}
-                                          className="truncate text-[10px] font-extrabold text-white"
-                                        >
+                                        <span className="truncate text-[9px] sm:text-[10px] font-extrabold text-white">
                                           {shortPitchName(p.name)}
-                                        </PlayerNameButton>
+                                        </span>
                                       </div>
-                                      <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[9px] tabular-nums leading-none">
+                                      <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[8px] sm:text-[9px] tabular-nums leading-none">
                                         <span className="font-mono text-rose-300">
-                                          가치 {Math.round(tpVal.effectiveTp)}
+                                          {Math.round(tpVal.effectiveTp)}
                                         </span>
                                         {tpVal.needModPct >= 30 && (
                                           <span className="text-[8px] font-black text-amber-300">
@@ -1985,7 +1992,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               {/* User Bench Below Pitch */}
                               <div className="space-y-1.5">
                                 <div className="text-[10px] font-extrabold text-slate-300">
-                                  우리 팀 핵심 벤치 (5명 · 키퍼 1 / 수비 1 / 중원 2 / 공격 1)
+                                  우리 팀 벤치 (5명)
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                                   {state.bench.map((p, idx) => {
@@ -2010,7 +2017,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       <div
                                         key={`u-bench-${idx}-${p.id}`}
                                         onClick={() => handleToggleUserSlot(ref)}
-                                        className={`rounded-lg border px-2 py-1.5 transition cursor-pointer ${
+                                        onContextMenu={(e) => {
+                                          e.preventDefault();
+                                          setInspectedPlayer(p);
+                                        }}
+                                        className={`rounded-lg border px-2 py-1.5 transition-colors cursor-pointer select-none touch-manipulation ${
                                           isPicked
                                             ? 'border-rose-400 bg-rose-950/45 ring-1 ring-rose-400/50'
                                             : 'border-slate-800 bg-[#101826] hover:border-slate-600'
@@ -2023,7 +2034,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           <span className="font-black text-white">
                                             {p.ovr} ·{' '}
                                             <span className="text-rose-300">
-                                              가치 {Math.round(tpVal.effectiveTp)}
+                                              {Math.round(tpVal.effectiveTp)}
                                             </span>
                                             {tpVal.needModPct > 0
                                               ? tpVal.needModPct >= 30
@@ -2038,12 +2049,9 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             nationality={p.nationality}
                                             size="xs"
                                           />
-                                          <PlayerNameButton
-                                            onClick={() => setInspectedPlayer(p)}
-                                            className="truncate text-[11px] font-bold text-white"
-                                          >
+                                          <span className="truncate text-[11px] font-bold text-white">
                                             {p.name}
-                                          </PlayerNameButton>
+                                          </span>
                                         </div>
                                       </div>
                                     );
@@ -2056,12 +2064,12 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
                       {/* LIST VIEW (OPTIONAL TOGGLE) */}
                       {pickerViewMode === 'list' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
                           {/* Left: Partner List (16-man: Starters 11 + Core Bench 5) */}
-                          <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
+                          <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-2.5 sm:p-3.5 space-y-2.5">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="text-xs font-black text-white">
-                                📥 {activeClubOffer.club.name} 스쿼드 (16인 · 선발 11 + 벤치 5)
+                                📥 {activeClubOffer.club.name} (16인)
                               </div>
                               <div className="flex items-center gap-1">
                                 {(['ALL', 'GK', 'DF', 'MF', 'FW'] as const).map(
@@ -2070,7 +2078,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       key={`pf-${pf}`}
                                       type="button"
                                       onClick={() => setPosFilter(pf)}
-                                      className={`rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
+                                      className={`rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer touch-manipulation ${
                                         posFilter === pf
                                           ? 'bg-sky-400 text-slate-950'
                                           : 'bg-slate-900 text-slate-400 hover:text-white'
@@ -2083,7 +2091,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               </div>
                             </div>
 
-                            <div className="max-h-[380px] overflow-y-auto space-y-1.5 pr-1">
+                            <div className="max-h-[340px] sm:max-h-[380px] overflow-y-auto space-y-1 pr-1">
                               {filteredPartnerSquad.map((target) => {
                                 const p = target.player;
                                 const isPicked = selectedAiPlayerIds.includes(
@@ -2112,7 +2120,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   <div
                                     key={`ai-p-${p.id}`}
                                     onClick={() => handleToggleAiPlayer(p.id)}
-                                    className={`w-full rounded-xl border px-3 py-2 text-left transition cursor-pointer flex items-center justify-between gap-2 ${
+                                    className={`w-full rounded-xl border px-2.5 py-1.5 sm:px-3 sm:py-2 text-left transition-colors cursor-pointer touch-manipulation flex items-center justify-between gap-2 ${
                                       isPicked
                                         ? 'border-emerald-400 bg-emerald-950/35 ring-1 ring-emerald-400/40'
                                         : target.isShockBargain
@@ -2121,7 +2129,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                     }`}
                                   >
                                     <div className="min-w-0">
-                                      <div className="flex flex-wrap items-center gap-1.5">
+                                      <div className="flex flex-wrap items-center gap-1">
                                         <span
                                           className={`rounded px-1.5 py-0.5 text-[9px] font-black ${
                                             isStarterTarget
@@ -2136,18 +2144,15 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           nationality={p.nationality}
                                           size="xs"
                                         />
-                                        <PlayerNameButton
-                                          onClick={() => setInspectedPlayer(p)}
-                                          className="truncate text-xs font-extrabold text-white"
-                                        >
+                                        <span className="truncate text-xs font-extrabold text-white">
                                           {p.name}
-                                        </PlayerNameButton>
+                                        </span>
                                         {tier === 'superstar' && (
                                           <Sparkles className="h-3 w-3 text-cyan-300 shrink-0" />
                                         )}
                                         {target.isShockBargain && (
-                                          <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1.5 py-px text-[9px] font-black text-rose-200">
-                                            🚨 급매 -35%
+                                          <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1 py-px text-[9px] font-black text-rose-200">
+                                            🚨-35%
                                           </span>
                                         )}
                                       </div>
@@ -2161,19 +2166,30 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           {target.formTrend === 'down' && (
                                             <TrendingDown className="h-3 w-3 text-rose-400" />
                                           )}
-                                          평점 {target.formRating.toFixed(1)}
+                                          {target.formRating.toFixed(1)}
                                         </span>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0 tabular-nums">
+                                    <div className="flex items-center gap-1.5 shrink-0 tabular-nums">
                                       <div className="text-right">
                                         <div className="text-xs font-black text-amber-300">
-                                          OVR {p.ovr}
+                                          {p.ovr}
                                         </div>
                                         <div className="text-[10px] font-mono text-sky-300">
                                           가치 {tpVal.effectiveTp}
                                         </div>
                                       </div>
+                                      <button
+                                        type="button"
+                                        aria-label={`${p.name} 상세 보기`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setInspectedPlayer(p);
+                                        }}
+                                        className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-700 bg-slate-900 text-slate-400 hover:border-sky-400 hover:text-sky-300 cursor-pointer touch-manipulation"
+                                      >
+                                        <Info className="h-3 w-3" />
+                                      </button>
                                       <span
                                         className={`rounded-lg px-2 py-1 text-[10px] font-black ${
                                           isPicked
@@ -2181,7 +2197,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             : 'bg-slate-800 text-slate-300'
                                         }`}
                                       >
-                                        {isPicked ? '✓ 선택' : '+ 추가'}
+                                        {isPicked ? '✓' : '+'}
                                       </span>
                                     </div>
                                   </div>
@@ -2191,17 +2207,17 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                           </div>
 
                           {/* Right: User List */}
-                          <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 space-y-3">
+                          <div className="lg:col-span-6 rounded-2xl border border-slate-800 bg-[#0b111c] p-2.5 sm:p-3.5 space-y-2.5">
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-black text-emerald-300">
-                                📤 {state.userClub.name} 스쿼드 (16인 · 선발 11 + 벤치 5)
+                                📤 {state.userClub.name} (16인)
                               </div>
                               <span className="rounded bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-slate-300">
-                                {selectedUserSlots.length} / 3 선택
+                                {selectedUserSlots.length}/3
                               </span>
                             </div>
 
-                            <div className="max-h-[380px] overflow-y-auto space-y-1.5 pr-1">
+                            <div className="max-h-[340px] sm:max-h-[380px] overflow-y-auto space-y-1 pr-1">
                               {userRosterEntries.map((entry) => {
                                 const p = entry.player;
                                 const isPicked = selectedUserSlots.some(
@@ -2222,14 +2238,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                     onClick={() =>
                                       handleToggleUserSlot(entry.ref)
                                     }
-                                    className={`w-full rounded-xl border px-3 py-2 text-left transition cursor-pointer flex items-center justify-between gap-2 ${
+                                    className={`w-full rounded-xl border px-2.5 py-1.5 sm:px-3 sm:py-2 text-left transition-colors cursor-pointer touch-manipulation flex items-center justify-between gap-2 ${
                                       isPicked
                                         ? 'border-rose-400 bg-rose-950/35 ring-1 ring-rose-400/40'
                                         : 'border-slate-800 bg-[#101826] hover:border-slate-600'
                                     }`}
                                   >
                                     <div className="min-w-0">
-                                      <div className="flex flex-wrap items-center gap-1.5">
+                                      <div className="flex flex-wrap items-center gap-1">
                                         <span
                                           className={`rounded px-1.5 py-0.5 text-[9px] font-black ${
                                             entry.isStarter
@@ -2246,12 +2262,9 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           nationality={p.nationality}
                                           size="xs"
                                         />
-                                        <PlayerNameButton
-                                          onClick={() => setInspectedPlayer(p)}
-                                          className="truncate text-xs font-extrabold text-white"
-                                        >
+                                        <span className="truncate text-xs font-extrabold text-white">
                                           {p.name}
-                                        </PlayerNameButton>
+                                        </span>
                                       </div>
                                       <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
                                         <span>
@@ -2259,31 +2272,42 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           {p.stamina}
                                         </span>
                                         {tpVal.needModPct >= 30 && (
-                                          <span className="rounded bg-amber-500/20 px-1.5 py-px text-[9px] font-black text-amber-200">
-                                            🔥 최우선 니즈 +32%
+                                          <span className="rounded bg-amber-500/20 px-1 py-px text-[9px] font-black text-amber-200">
+                                            🔥+32%
                                           </span>
                                         )}
                                         {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
-                                          <span className="rounded bg-sky-500/15 px-1.5 py-px text-[9px] font-black text-sky-200">
-                                            ✨ 보강 니즈 +18%
+                                          <span className="rounded bg-sky-500/15 px-1 py-px text-[9px] font-black text-sky-200">
+                                            ✨+18%
                                           </span>
                                         )}
                                         {tpVal.needModPct < 0 && (
-                                          <span className="rounded bg-slate-800 px-1.5 py-px text-[9px] font-bold text-slate-400">
-                                            ⚠️ 포화 -25%
+                                          <span className="rounded bg-slate-800 px-1 py-px text-[9px] font-bold text-slate-400">
+                                            ⚠️-25%
                                           </span>
                                         )}
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-2 shrink-0 tabular-nums">
+                                    <div className="flex items-center gap-1.5 shrink-0 tabular-nums">
                                       <div className="text-right">
                                         <div className="text-xs font-black text-white">
-                                          OVR {p.ovr}
+                                          {p.ovr}
                                         </div>
                                         <div className="text-[10px] font-mono text-rose-300">
                                           가치 {tpVal.effectiveTp}
                                         </div>
                                       </div>
+                                      <button
+                                        type="button"
+                                        aria-label={`${p.name} 상세 보기`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setInspectedPlayer(p);
+                                        }}
+                                        className="flex h-6 w-6 items-center justify-center rounded-md border border-slate-700 bg-slate-900 text-slate-400 hover:border-sky-400 hover:text-sky-300 cursor-pointer touch-manipulation"
+                                      >
+                                        <Info className="h-3 w-3" />
+                                      </button>
                                       <span
                                         className={`rounded-lg px-2 py-1 text-[10px] font-black ${
                                           isPicked
@@ -2291,7 +2315,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             : 'bg-slate-800 text-slate-300'
                                         }`}
                                       >
-                                        {isPicked ? '✓ 포함' : '+ 선택'}
+                                        {isPicked ? '✓' : '+'}
                                       </span>
                                     </div>
                                   </div>
@@ -2349,6 +2373,62 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           </div>
         )}
       </div>
+
+      {/* Sticky Bottom Trade Bar (Mobile & PC convenience: inspect selected players & submit without scrolling back up!) */}
+      {activeTab === 'explore' &&
+        activeClubOffer &&
+        !activeClubOffer.isLegendSlot &&
+        (selectedAiPlayers.length > 0 || selectedUserPlayers.length > 0) && (
+          <div className="shrink-0 border-t border-slate-800 bg-[#090f19] px-3 py-2 sm:px-4 sm:py-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-1 min-w-0 flex-1 text-[10px] sm:text-[11px]">
+                {selectedAiPlayers.map((p) => (
+                  <button
+                    key={`bar-in-${p.id}`}
+                    type="button"
+                    onClick={() => setInspectedPlayer(p)}
+                    className="inline-flex items-center gap-1 rounded-md border border-emerald-400/40 bg-emerald-500/15 px-1.5 py-0.5 font-bold text-emerald-200 cursor-pointer touch-manipulation"
+                    title="탭하여 선수 상세 카드 보기"
+                  >
+                    <span>IN {shortPitchName(p.name)}</span>
+                    <Info className="h-2.5 w-2.5 opacity-80" />
+                  </button>
+                ))}
+                {selectedUserPlayers.map((p) => (
+                  <button
+                    key={`bar-out-${p.id}`}
+                    type="button"
+                    onClick={() => setInspectedPlayer(p)}
+                    className="inline-flex items-center gap-1 rounded-md border border-rose-400/40 bg-rose-500/15 px-1.5 py-0.5 font-bold text-rose-200 cursor-pointer touch-manipulation"
+                    title="탭하여 선수 상세 카드 보기"
+                  >
+                    <span>OUT {shortPitchName(p.name)}</span>
+                    <Info className="h-2.5 w-2.5 opacity-80" />
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={resetTradeBuilder}
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] sm:text-[11px] font-bold text-slate-300 cursor-pointer touch-manipulation"
+                >
+                  초기화
+                </button>
+                <button
+                  type="button"
+                  disabled={!canSubmitTrade}
+                  onClick={handleSubmitTrade}
+                  className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] sm:text-xs font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-40 cursor-pointer touch-manipulation whitespace-nowrap"
+                >
+                  {tradeEval
+                    ? `제안 (${tradeEval.acceptanceChance}%)`
+                    : '선수 선택 중'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Player Detail Card Modal (z-[60], floats cleanly above Trade Room!) */}
       {inspectedPlayer && (

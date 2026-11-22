@@ -45,7 +45,7 @@ function TieCard({
 }) {
   if (!tie) {
     return (
-      <div className="flex h-[58px] w-[200px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-3 text-[11px] font-medium text-slate-600">
+      <div className="flex h-[54px] w-[172px] sm:h-[58px] sm:w-[200px] items-center justify-center rounded-xl border border-dashed border-slate-800 bg-slate-900/40 px-2.5 text-[10px] sm:text-[11px] font-medium text-slate-600">
         {placeholderLabel}
       </div>
     );
@@ -76,13 +76,13 @@ function TieCard({
     <>
       {/* Team A Row */}
       <div
-        className={`flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-[11px] ${
+        className={`flex items-center justify-between gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-[10px] sm:text-[11px] ${
           aWon ? 'bg-slate-800/60 font-bold text-white' : 'text-slate-300'
         }`}
       >
         <div className="flex min-w-0 items-center gap-1.5">
           <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/15"
+            className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0 rounded-full border border-white/15"
             style={{ backgroundColor: clubA?.primaryColor ?? '#64748b' }}
           />
           <span
@@ -99,14 +99,14 @@ function TieCard({
             {clubA?.name ?? 'TBD'}
           </span>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 font-mono tabular-nums">
+        <div className="flex shrink-0 items-center gap-1 font-mono tabular-nums">
           {tie.stage !== 'final' && tie.leg1 && (
-            <span className="text-[10px] font-semibold text-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-semibold text-slate-300">
               ({formatLegScores(tie, 'A')})
             </span>
           )}
           <span
-            className={`min-w-[22px] rounded px-1 py-0.5 text-center text-xs font-black border ${
+            className={`min-w-[20px] sm:min-w-[22px] rounded px-1 py-0.5 text-center text-[11px] sm:text-xs font-black border ${
               aWon
                 ? 'border-amber-400/50 bg-amber-500/15 text-amber-300'
                 : 'border-slate-700/80 bg-slate-950/90 text-slate-200'
@@ -128,13 +128,13 @@ function TieCard({
 
       {/* Team B Row */}
       <div
-        className={`flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-[11px] ${
+        className={`flex items-center justify-between gap-1 px-2 py-1 sm:px-2.5 sm:py-1.5 text-[10px] sm:text-[11px] ${
           bWon ? 'bg-slate-800/60 font-bold text-white' : 'text-slate-300'
         }`}
       >
         <div className="flex min-w-0 items-center gap-1.5">
           <span
-            className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/15"
+            className="h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0 rounded-full border border-white/15"
             style={{ backgroundColor: clubB?.primaryColor ?? '#64748b' }}
           />
           <span
@@ -151,14 +151,14 @@ function TieCard({
             {clubB?.name ?? 'TBD'}
           </span>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5 font-mono tabular-nums">
+        <div className="flex shrink-0 items-center gap-1 font-mono tabular-nums">
           {tie.stage !== 'final' && tie.leg1 && (
-            <span className="text-[10px] font-semibold text-slate-300">
+            <span className="text-[9px] sm:text-[10px] font-semibold text-slate-300">
               ({formatLegScores(tie, 'B')})
             </span>
           )}
           <span
-            className={`min-w-[22px] rounded px-1 py-0.5 text-center text-xs font-black border ${
+            className={`min-w-[20px] sm:min-w-[22px] rounded px-1 py-0.5 text-center text-[11px] sm:text-xs font-black border ${
               bWon
                 ? 'border-amber-400/50 bg-amber-500/15 text-amber-300'
                 : 'border-slate-700/80 bg-slate-950/90 text-slate-200'
@@ -171,11 +171,11 @@ function TieCard({
     </>
   );
 
-  const cls = `w-[200px] overflow-hidden rounded-xl border text-left transition ${
+  const cls = `w-[172px] sm:w-[200px] overflow-hidden rounded-xl border text-left transition-colors touch-manipulation ${
     involvesUser
       ? 'border-emerald-500/55 bg-[#101e1c] shadow-sm shadow-emerald-500/10'
       : 'border-slate-800 bg-[#121923]'
-  } ${clickable ? 'hover:border-sky-400/75 hover:brightness-110 cursor-pointer' : ''}`;
+  } ${clickable ? 'hover:border-sky-400/75 cursor-pointer' : ''}`;
 
   if (clickable && onSelectTie) {
     return (

@@ -49,7 +49,7 @@ export function HeaderNav() {
   return (
     <>
       <header className="sticky top-0 z-40 w-full max-w-full overflow-x-clip border-b border-slate-800/80 bg-[#090d13]">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2">
           {/* Brand + Club / Manager */}
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
             {!isTitle ? (

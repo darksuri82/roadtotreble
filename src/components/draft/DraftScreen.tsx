@@ -206,23 +206,23 @@ export function DraftScreen() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-3 sm:px-4 py-4 sm:py-5 space-y-3.5">
+    <div className="mx-auto max-w-6xl px-2.5 sm:px-4 py-2.5 sm:py-5 space-y-2.5 sm:space-y-3.5">
       {/* Compact Manager Strip + ? Help Popovers */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-800/90 bg-[#0e141d] px-3.5 py-2.5">
-        <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <div className="flex h-7 w-6 shrink-0 items-center justify-center rounded-md border border-slate-800 bg-[#090d14]">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-800/90 bg-[#0e141d] px-2.5 py-1.5 sm:px-3.5 sm:py-2.5">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+          <div className="flex h-6 w-5 sm:h-7 sm:w-6 shrink-0 items-center justify-center rounded-md border border-slate-800 bg-[#090d14]">
             <PixelManagerAvatar
               avatar={state.manager.avatar}
               clubPrimaryColor={state.userClub.primaryColor}
               clubSecondaryColor={state.userClub.secondaryColor}
-              size={20}
+              size={18}
             />
           </div>
-          <span className="truncate text-xs font-extrabold text-white">
+          <span className="truncate text-[11px] sm:text-xs font-extrabold text-white">
             {state.manager.name}
           </span>
           {activeTrait && (
-            <span className="rounded-md border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-200">
+            <span className="rounded-md border border-amber-400/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-amber-200">
               {activeTrait.name}
             </span>
           )}
@@ -233,12 +233,12 @@ export function DraftScreen() {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           {activeTrait && (
             <InfoHelpButton
               title={`${state.manager.name} · ${activeTrait.name}`}
               label="감독 팁"
-              size="sm"
+              size="xs"
               align="right"
             >
               <p className="text-[11px] leading-relaxed text-slate-300 mb-2">
@@ -275,7 +275,7 @@ export function DraftScreen() {
           <InfoHelpButton
             title="시너지 4원칙 · 팀 케미"
             label="공식"
-            size="sm"
+            size="xs"
             align="right"
             items={[
               '감독 궁합(독립): 스타일 일치 선발 선수 개인 OVR +1~+2',
@@ -288,15 +288,15 @@ export function DraftScreen() {
       </div>
 
       {/* Compact Draft Progress Bar */}
-      <div className="rounded-2xl border border-slate-800/90 bg-[#0e141d] p-3.5 sm:p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-300 tabular-nums">
+      <div className="rounded-xl sm:rounded-2xl border border-slate-800/90 bg-[#0e141d] px-3 py-2 sm:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] sm:text-xs font-bold text-emerald-300 tabular-nums">
               {isStarterPick
                 ? `선발 ${draft.currentSlotIndex + 1}/11`
                 : `벤치 ${draft.currentSlotIndex + 1}/5`}
             </span>
-            <h1 className="text-sm sm:text-base font-extrabold text-white">
+            <h1 className="text-xs sm:text-base font-extrabold text-white">
               {currentSlot.label} ({POSITION_LABELS[currentSlot.position]})
             </h1>
             <InfoHelpButton
@@ -305,7 +305,7 @@ export function DraftScreen() {
               items={[
                 '후보 1회 클릭: 포메이션 임시 배치(시너지 실시간 프리뷰)',
                 '[영입 확정] 또는 재클릭 시 영입 완료',
-                '피치/벤치 선수 클릭·드래그로 자유 교환, ⓘ 아이콘으로 상세 확인',
+                '피치/벤치 선수 클릭으로 자유 교환 가능',
               ]}
             />
           </div>
@@ -317,19 +317,19 @@ export function DraftScreen() {
               setPreviewCandidate(null);
               autoCompleteDraft();
             }}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700/80 bg-[#0a0f17] px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-emerald-500/50 hover:text-emerald-300 transition-colors cursor-pointer shrink-0 touch-manipulation"
+            className="inline-flex items-center gap-1 rounded-lg sm:rounded-xl border border-slate-700/80 bg-[#0a0f17] px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold text-slate-300 hover:border-emerald-500/50 hover:text-emerald-300 transition-colors cursor-pointer shrink-0 touch-manipulation"
           >
-            <FastForward className="w-3.5 h-3.5" />
+            <FastForward className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             자동 완성
           </button>
         </div>
 
-        <div className="mt-2.5">
-          <div className="mb-1 flex items-center justify-between text-[11px] tabular-nums">
+        <div className="mt-1.5 sm:mt-2.5">
+          <div className="mb-1 flex items-center justify-between text-[10px] sm:text-[11px] tabular-nums">
             <span className="text-slate-400">{completedCount} / 16</span>
             <span className="font-semibold text-emerald-400">{progressPct}%</span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-900">
+          <div className="h-1 sm:h-1.5 w-full overflow-hidden rounded-full bg-slate-900">
             <div
               className="h-full rounded-full bg-emerald-500 transition-all duration-300"
               style={{ width: `${progressPct}%` }}
@@ -339,10 +339,10 @@ export function DraftScreen() {
       </div>
 
       {/* Main 2-Column Layout */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-3 sm:gap-5 lg:grid-cols-12">
         {/* Right/Top: Roulette & Candidates (7 cols) */}
-        <div className="lg:col-span-7 flex flex-col gap-4 order-1 lg:order-2">
-          <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4">
+        <div className="lg:col-span-7 flex flex-col gap-2.5 sm:gap-4 order-1 lg:order-2">
+          <div className="rounded-xl sm:rounded-2xl border border-slate-800 bg-[#111822] p-2.5 sm:p-4">
             <RouletteReelsView
               key={`${draft.currentSlotType}-${draft.currentSlotIndex}`}
               hasSpun={draft.hasSpun}
@@ -376,16 +376,16 @@ export function DraftScreen() {
           </div>
 
           {/* Live Team Ratings Strip (reflects previewCandidate in real time) */}
-          <div className="grid grid-cols-4 gap-2.5 tabular-nums">
-            <div className="rounded-xl border border-slate-800 bg-[#111822] p-3 text-center">
-              <div className="text-[11px] text-slate-400">ATT</div>
-              <div className="font-display text-xl font-bold text-white">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 tabular-nums">
+            <div className="rounded-xl border border-slate-800 bg-[#111822] p-1.5 sm:p-3 text-center">
+              <div className="text-[10px] sm:text-[11px] text-slate-400">ATT</div>
+              <div className="font-display text-base sm:text-xl font-bold text-white">
                 {displayedRatings.att || '-'}
                 {previewCandidate &&
                   displayedRatings.att !== ratings.att &&
                   ratings.att > 0 && (
                     <span
-                      className={`ml-1 text-xs ${
+                      className={`ml-0.5 text-[10px] sm:text-xs ${
                         displayedRatings.att > ratings.att
                           ? 'text-emerald-300'
                           : 'text-amber-300'
@@ -397,15 +397,15 @@ export function DraftScreen() {
                   )}
               </div>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-[#111822] p-3 text-center">
-              <div className="text-[11px] text-slate-400">MID</div>
-              <div className="font-display text-xl font-bold text-white">
+            <div className="rounded-xl border border-slate-800 bg-[#111822] p-1.5 sm:p-3 text-center">
+              <div className="text-[10px] sm:text-[11px] text-slate-400">MID</div>
+              <div className="font-display text-base sm:text-xl font-bold text-white">
                 {displayedRatings.mid || '-'}
                 {previewCandidate &&
                   displayedRatings.mid !== ratings.mid &&
                   ratings.mid > 0 && (
                     <span
-                      className={`ml-1 text-xs ${
+                      className={`ml-0.5 text-[10px] sm:text-xs ${
                         displayedRatings.mid > ratings.mid
                           ? 'text-emerald-300'
                           : 'text-amber-300'
@@ -417,15 +417,15 @@ export function DraftScreen() {
                   )}
               </div>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-[#111822] p-3 text-center">
-              <div className="text-[11px] text-slate-400">DEF</div>
-              <div className="font-display text-xl font-bold text-white">
+            <div className="rounded-xl border border-slate-800 bg-[#111822] p-1.5 sm:p-3 text-center">
+              <div className="text-[10px] sm:text-[11px] text-slate-400">DEF</div>
+              <div className="font-display text-base sm:text-xl font-bold text-white">
                 {displayedRatings.def || '-'}
                 {previewCandidate &&
                   displayedRatings.def !== ratings.def &&
                   ratings.def > 0 && (
                     <span
-                      className={`ml-1 text-xs ${
+                      className={`ml-0.5 text-[10px] sm:text-xs ${
                         displayedRatings.def > ratings.def
                           ? 'text-emerald-300'
                           : 'text-amber-300'
@@ -438,22 +438,22 @@ export function DraftScreen() {
               </div>
             </div>
             <div
-              className={`rounded-xl border p-3 text-center ${
+              className={`rounded-xl border p-1.5 sm:p-3 text-center ${
                 previewCandidate
                   ? 'border-emerald-400/50 bg-emerald-950/20'
                   : 'border-emerald-500/25 bg-[#111822]'
               }`}
             >
-              <div className="flex items-center justify-center gap-1 text-[11px] text-emerald-300">
-                <Zap className="w-3 h-3" />
+              <div className="flex items-center justify-center gap-0.5 text-[10px] sm:text-[11px] text-emerald-300">
+                <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                 케미 ({displayedChemistry.chemistryOvrBonus >= 0 ? '+' : ''}
                 {displayedChemistry.chemistryOvrBonus.toFixed(1)})
               </div>
-              <div className="font-display text-xl font-bold text-emerald-300">
+              <div className="font-display text-base sm:text-xl font-bold text-emerald-300">
                 {displayedChemistry.total}
                 {previewCandidate && previewChemDelta !== 0 && (
                   <span
-                    className={`ml-1 text-xs ${
+                    className={`ml-0.5 text-[10px] sm:text-xs ${
                       previewChemDelta > 0 ? 'text-emerald-200' : 'text-rose-300'
                     }`}
                   >
@@ -540,6 +540,57 @@ export function DraftScreen() {
           />
         </div>
       </div>
+
+      {/* Mobile Sticky Confirm Bar when previewing a candidate */}
+      {previewCandidate && (
+        <div className="lg:hidden sticky bottom-2 z-30 flex items-center justify-between gap-2 rounded-xl border border-emerald-400/60 bg-[#0b1518] px-3 py-2 shadow-2xl">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="truncate text-xs font-extrabold text-white">
+                {previewCandidate.name}
+              </span>
+              <span className="font-mono text-[11px] font-bold text-amber-300 shrink-0">
+                {previewCandidate.ovr}
+              </span>
+              {previewChemDelta !== 0 && (
+                <span
+                  className={`font-mono text-[10px] font-bold shrink-0 ${
+                    previewChemDelta > 0 ? 'text-emerald-300' : 'text-rose-300'
+                  }`}
+                >
+                  케미 {previewChemDelta > 0 ? `+${previewChemDelta}` : previewChemDelta}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSelectPreviewCandidate(null)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-slate-300 cursor-pointer touch-manipulation"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const swapsToCommit = [...previewSwaps];
+                const picked = previewCandidate;
+                setPreviewCandidate(null);
+                setPreviewSwaps([]);
+                setSelectedSlot(null);
+                pickDraftPlayer(picked);
+                for (const [from, to] of swapsToCommit) {
+                  swapSquadPositions(from, to);
+                }
+              }}
+              className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-slate-950 hover:bg-emerald-400 cursor-pointer touch-manipulation"
+            >
+              영입 확정
+            </button>
+          </div>
+        </div>
+      )}
 
       <PlayerDetailModal
         player={inspected?.player ?? null}

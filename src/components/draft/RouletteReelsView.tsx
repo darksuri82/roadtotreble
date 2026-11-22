@@ -432,18 +432,18 @@ export function RouletteReelsView({
           </div>
 
           {/* Grouped Club Candidate Sections */}
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {visibleReels.map((reel) => (
               <div
                 key={reel.reelIndex}
-                className={`rounded-xl border p-3 space-y-2.5 ${
+                className={`rounded-xl border p-2.5 sm:p-3 space-y-2 ${
                   reel.isLegendSlot
                     ? 'border-amber-400/60 bg-gradient-to-br from-amber-950/35 via-[#15120c] to-amber-950/20 shadow-[0_0_20px_rgba(251,191,36,0.12)]'
                     : 'border-slate-800 bg-[#0d131c]'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                     {reel.isLegendSlot ? (
                       <Crown className="w-4 h-4 text-amber-300 shrink-0" />
                     ) : (
@@ -452,7 +452,7 @@ export function RouletteReelsView({
                           primaryColor={reel.club.primaryColor}
                           secondaryColor={reel.club.secondaryColor}
                           pattern={reel.club.pattern}
-                          size={22}
+                          size={20}
                         />
                       )
                     )}
@@ -470,13 +470,13 @@ export function RouletteReelsView({
                     </span>
                   </div>
                   <span
-                    className={`text-[10px] font-semibold ${
+                    className={`text-[10px] font-semibold shrink-0 ${
                       reel.isLegendSlot ? 'text-amber-300/90' : 'text-slate-500'
                     }`}
                   >
                     {reel.isLegendSlot
-                      ? '희귀 단독 카드'
-                      : `${reel.candidates.length}명 중 선택`}
+                      ? '단독 카드'
+                      : `${reel.candidates.length}명`}
                   </span>
                 </div>
 
@@ -496,18 +496,22 @@ export function RouletteReelsView({
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                  <div className="flex gap-2 overflow-x-auto pb-1 snap-x sm:grid sm:grid-cols-3 sm:gap-2.5 sm:overflow-visible sm:pb-0">
                     {reel.candidates.map((player) => (
-                      <PlayerCard
+                      <div
                         key={player.id}
-                        player={player}
-                        targetSubPosition={targetSubPosition}
-                        managerTraitId={managerTraitId}
-                        selected={selectedCandidate?.id === player.id}
-                        onClick={() => handleCandidateCardClick(player)}
-                        onConfirmAction={() => handleConfirmPick(player)}
-                        actionLabel={pickActionLabel}
-                      />
+                        className="w-[215px] shrink-0 snap-start sm:w-auto sm:shrink"
+                      >
+                        <PlayerCard
+                          player={player}
+                          targetSubPosition={targetSubPosition}
+                          managerTraitId={managerTraitId}
+                          selected={selectedCandidate?.id === player.id}
+                          onClick={() => handleCandidateCardClick(player)}
+                          onConfirmAction={() => handleConfirmPick(player)}
+                          actionLabel={pickActionLabel}
+                        />
+                      </div>
                     ))}
                   </div>
                 )}
