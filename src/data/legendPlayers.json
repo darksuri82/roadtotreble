@@ -21,7 +21,23 @@
     ],
     "scoutNote": "발롱도르를 수상한 축구사 유일의 골키퍼, 검은 거미",
     "isLegend": true,
-    "stamina": 82
+    "stamina": 82,
+    "attrs": {
+      "sho": 42,
+      "pas": 84,
+      "cro": 68,
+      "dri": 72,
+      "aer": 95,
+      "def": 95,
+      "phy": 93,
+      "gk": {
+        "div": 96,
+        "han": 94,
+        "ref": 96,
+        "kic": 88,
+        "pos": 95
+      }
+    }
   },
   {
     "id": "leg-gk-02",
@@ -44,7 +60,23 @@
     ],
     "scoutNote": "완벽한 위치 선정과 리더십을 겸비한 아주리 수호신",
     "isLegend": true,
-    "stamina": 80
+    "stamina": 80,
+    "attrs": {
+      "sho": 40,
+      "pas": 80,
+      "cro": 64,
+      "dri": 68,
+      "aer": 94,
+      "def": 94,
+      "phy": 91,
+      "gk": {
+        "div": 94,
+        "han": 94,
+        "ref": 94,
+        "kic": 83,
+        "pos": 96
+      }
+    }
   },
   {
     "id": "leg-gk-03",
@@ -68,7 +100,23 @@
     ],
     "scoutNote": "결승전마다 기적의 반사신경을 뽐낸 성 이케르",
     "isLegend": true,
-    "stamina": 81
+    "stamina": 81,
+    "attrs": {
+      "sho": 40,
+      "pas": 82,
+      "cro": 65,
+      "dri": 70,
+      "aer": 91,
+      "def": 93,
+      "phy": 90,
+      "gk": {
+        "div": 95,
+        "han": 90,
+        "ref": 96,
+        "kic": 84,
+        "pos": 92
+      }
+    }
   },
   {
     "id": "leg-df-01",
@@ -95,7 +143,16 @@
     ],
     "scoutNote": "리베로의 개념을 창시한 후방 빌드업의 황제",
     "isLegend": true,
-    "stamina": 91
+    "stamina": 91,
+    "attrs": {
+      "sho": 82,
+      "pas": 95,
+      "cro": 84,
+      "dri": 90,
+      "aer": 91,
+      "def": 96,
+      "phy": 92
+    }
   },
   {
     "id": "leg-df-02",
@@ -122,7 +179,16 @@
     ],
     "scoutNote": "태클이 필요 없는 완벽한 수비 지능의 정점",
     "isLegend": true,
-    "stamina": 93
+    "stamina": 93,
+    "attrs": {
+      "sho": 71,
+      "pas": 92,
+      "cro": 91,
+      "dri": 89,
+      "aer": 94,
+      "def": 99,
+      "phy": 97
+    }
   },
   {
     "id": "leg-df-03",
@@ -148,7 +214,16 @@
     ],
     "scoutNote": "밀란 제네레이션의 오프사이드 트랩을 지휘한 캡틴",
     "isLegend": true,
-    "stamina": 91
+    "stamina": 91,
+    "attrs": {
+      "sho": 66,
+      "pas": 88,
+      "cro": 74,
+      "dri": 83,
+      "aer": 92,
+      "def": 97,
+      "phy": 91
+    }
   },
   {
     "id": "leg-df-04",
@@ -172,7 +247,16 @@
     ],
     "scoutNote": "우아하고 정확한 슬라이딩 태클의 예술가",
     "isLegend": true,
-    "stamina": 87
+    "stamina": 87,
+    "attrs": {
+      "sho": 60,
+      "pas": 84,
+      "cro": 70,
+      "dri": 81,
+      "aer": 93,
+      "def": 96,
+      "phy": 91
+    }
   },
   {
     "id": "leg-df-05",
@@ -197,7 +281,16 @@
     ],
     "scoutNote": "92분 48초의 기적, 클러치 헤더와 투지의 화신",
     "isLegend": true,
-    "stamina": 90
+    "stamina": 90,
+    "attrs": {
+      "sho": 82,
+      "pas": 85,
+      "cro": 80,
+      "dri": 82,
+      "aer": 97,
+      "def": 94,
+      "phy": 94
+    }
   },
   {
     "id": "leg-df-06",
@@ -223,7 +316,16 @@
     ],
     "scoutNote": "UFO 프리킥과 폭발적 오버래핑의 악마의 왼발",
     "isLegend": true,
-    "stamina": 96
+    "stamina": 96,
+    "attrs": {
+      "sho": 92,
+      "pas": 87,
+      "cro": 94,
+      "dri": 89,
+      "aer": 78,
+      "def": 88,
+      "phy": 96
+    }
   },
   {
     "id": "leg-df-07",
@@ -250,7 +352,16 @@
     ],
     "scoutNote": "90분 내내 측면을 지배하는 지치지 않는 고속 열차",
     "isLegend": true,
-    "stamina": 97
+    "stamina": 97,
+    "attrs": {
+      "sho": 80,
+      "pas": 89,
+      "cro": 94,
+      "dri": 90,
+      "aer": 80,
+      "def": 90,
+      "phy": 96
+    }
   },
   {
     "id": "leg-df-08",
@@ -279,7 +390,16 @@
     ],
     "scoutNote": "역대 가장 영리한 전술 지능의 멀티 풀백·수미",
     "isLegend": true,
-    "stamina": 95
+    "stamina": 95,
+    "attrs": {
+      "sho": 76,
+      "pas": 93,
+      "cro": 93,
+      "dri": 89,
+      "aer": 78,
+      "def": 94,
+      "phy": 88
+    }
   },
   {
     "id": "leg-df-09",
@@ -305,7 +425,16 @@
     ],
     "scoutNote": "몸을 사리지 않는 헌신과 카리스마의 바르사 심장",
     "isLegend": true,
-    "stamina": 94
+    "stamina": 94,
+    "attrs": {
+      "sho": 64,
+      "pas": 80,
+      "cro": 72,
+      "dri": 76,
+      "aer": 95,
+      "def": 95,
+      "phy": 95
+    }
   },
   {
     "id": "leg-mf-01",
@@ -332,7 +461,16 @@
     ],
     "scoutNote": "혼자서 월드컵을 들어 올린 불멸의 드리블 마법사",
     "isLegend": true,
-    "stamina": 81
+    "stamina": 81,
+    "attrs": {
+      "sho": 95,
+      "pas": 97,
+      "cro": 94,
+      "dri": 99,
+      "aer": 68,
+      "def": 56,
+      "phy": 90
+    }
   },
   {
     "id": "leg-mf-02",
@@ -359,7 +497,16 @@
     ],
     "scoutNote": "현대 토탈 풋볼의 철학을 구현한 경기장의 지휘자",
     "isLegend": true,
-    "stamina": 90
+    "stamina": 90,
+    "attrs": {
+      "sho": 93,
+      "pas": 97,
+      "cro": 92,
+      "dri": 97,
+      "aer": 76,
+      "def": 64,
+      "phy": 88
+    }
   },
   {
     "id": "leg-mf-03",
@@ -386,7 +533,16 @@
     ],
     "scoutNote": "마르세유 턴과 압도적 탈압박의 중원 마에스트로",
     "isLegend": true,
-    "stamina": 84
+    "stamina": 84,
+    "attrs": {
+      "sho": 91,
+      "pas": 97,
+      "cro": 92,
+      "dri": 97,
+      "aer": 86,
+      "def": 76,
+      "phy": 89
+    }
   },
   {
     "id": "leg-mf-04",
@@ -413,7 +569,16 @@
     ],
     "scoutNote": "공수 모든 구역을 파괴하는 역대 최강 박스투박스",
     "isLegend": true,
-    "stamina": 98
+    "stamina": 98,
+    "attrs": {
+      "sho": 91,
+      "pas": 93,
+      "cro": 86,
+      "dri": 89,
+      "aer": 88,
+      "def": 93,
+      "phy": 95
+    }
   },
   {
     "id": "leg-mf-05",
@@ -439,7 +604,16 @@
     ],
     "scoutNote": "360도 시야와 95% 패스 정확도의 티키타카 두뇌",
     "isLegend": true,
-    "stamina": 92
+    "stamina": 92,
+    "attrs": {
+      "sho": 86,
+      "pas": 99,
+      "cro": 96,
+      "dri": 98,
+      "aer": 67,
+      "def": 84,
+      "phy": 86
+    }
   },
   {
     "id": "leg-mf-06",
@@ -467,7 +641,16 @@
     ],
     "scoutNote": "좁은 공간을 물 흐르듯 빠져나오는 라 크로케타의 달인",
     "isLegend": true,
-    "stamina": 86
+    "stamina": 86,
+    "attrs": {
+      "sho": 91,
+      "pas": 99,
+      "cro": 95,
+      "dri": 99,
+      "aer": 65,
+      "def": 79,
+      "phy": 88
+    }
   },
   {
     "id": "leg-mf-07",
@@ -492,7 +675,16 @@
     ],
     "scoutNote": "무패 우승을 이끈 압도적 피지컬과 전진성의 중원 지배자",
     "isLegend": true,
-    "stamina": 94
+    "stamina": 94,
+    "attrs": {
+      "sho": 82,
+      "pas": 89,
+      "cro": 78,
+      "dri": 86,
+      "aer": 93,
+      "def": 95,
+      "phy": 96
+    }
   },
   {
     "id": "leg-mf-08",
@@ -518,7 +710,16 @@
     ],
     "scoutNote": "레지스타의 교과서, 한 번의 롱패스로 경기를 여는 건축가",
     "isLegend": true,
-    "stamina": 79
+    "stamina": 79,
+    "attrs": {
+      "sho": 91,
+      "pas": 99,
+      "cro": 99,
+      "dri": 99,
+      "aer": 80,
+      "def": 88,
+      "phy": 90
+    }
   },
   {
     "id": "leg-mf-09",
@@ -548,7 +749,16 @@
     ],
     "scoutNote": "두 개의 심장, 빅매치 전술 이해도와 압박의 정석",
     "isLegend": true,
-    "stamina": 99
+    "stamina": 99,
+    "attrs": {
+      "sho": 85,
+      "pas": 90,
+      "cro": 89,
+      "dri": 89,
+      "aer": 81,
+      "def": 91,
+      "phy": 98
+    }
   },
   {
     "id": "leg-fw-01",
@@ -575,7 +785,16 @@
     ],
     "scoutNote": "득점·플레이메이킹·드리블 모두 역사를 초월한 축구의 신",
     "isLegend": true,
-    "stamina": 78
+    "stamina": 78,
+    "attrs": {
+      "sho": 99,
+      "pas": 99,
+      "cro": 97,
+      "dri": 99,
+      "aer": 73,
+      "def": 52,
+      "phy": 94
+    }
   },
   {
     "id": "leg-fw-02",
@@ -602,7 +821,16 @@
     ],
     "scoutNote": "압도적 신체능력과 결정력을 갖춘 역대 최다 득점자",
     "isLegend": true,
-    "stamina": 86
+    "stamina": 86,
+    "attrs": {
+      "sho": 99,
+      "pas": 92,
+      "cro": 93,
+      "dri": 99,
+      "aer": 99,
+      "def": 55,
+      "phy": 99
+    }
   },
   {
     "id": "leg-fw-03",
@@ -627,7 +855,16 @@
     ],
     "scoutNote": "월드컵 3회 우승, 모든 공격 기술의 완성형 황제",
     "isLegend": true,
-    "stamina": 90
+    "stamina": 90,
+    "attrs": {
+      "sho": 98,
+      "pas": 94,
+      "cro": 88,
+      "dri": 97,
+      "aer": 92,
+      "def": 62,
+      "phy": 95
+    }
   },
   {
     "id": "leg-fw-04",
@@ -651,7 +888,16 @@
     ],
     "scoutNote": "수비수들을 무력화시키는 폭발적 가속력과 골 결정력",
     "isLegend": true,
-    "stamina": 77
+    "stamina": 77,
+    "attrs": {
+      "sho": 98,
+      "pas": 85,
+      "cro": 78,
+      "dri": 97,
+      "aer": 84,
+      "def": 48,
+      "phy": 97
+    }
   },
   {
     "id": "leg-fw-05",
@@ -676,7 +922,16 @@
     ],
     "scoutNote": "왼쪽 하프스페이스 감아차기의 교과서, 킹 앙리",
     "isLegend": true,
-    "stamina": 88
+    "stamina": 88,
+    "attrs": {
+      "sho": 96,
+      "pas": 89,
+      "cro": 88,
+      "dri": 95,
+      "aer": 82,
+      "def": 54,
+      "phy": 96
+    }
   },
   {
     "id": "leg-fw-06",
@@ -703,7 +958,16 @@
     ],
     "scoutNote": "상상을 현실로 바꾸는 외계인의 드리블과 노룩 패스",
     "isLegend": true,
-    "stamina": 78
+    "stamina": 78,
+    "attrs": {
+      "sho": 91,
+      "pas": 95,
+      "cro": 93,
+      "dri": 99,
+      "aer": 70,
+      "def": 52,
+      "phy": 89
+    }
   },
   {
     "id": "leg-fw-07",
@@ -728,7 +992,16 @@
     ],
     "scoutNote": "오른쪽 측면을 홀로 초토화시킨 역대 최고 드리블러",
     "isLegend": true,
-    "stamina": 84
+    "stamina": 84,
+    "attrs": {
+      "sho": 89,
+      "pas": 90,
+      "cro": 96,
+      "dri": 99,
+      "aer": 66,
+      "def": 48,
+      "phy": 92
+    }
   },
   {
     "id": "leg-fw-08",
@@ -755,7 +1028,16 @@
     ],
     "scoutNote": "분데스리가를 호령한 갈색 폭격기, 폭발적 돌파와 양발 슈팅",
     "isLegend": true,
-    "stamina": 93
+    "stamina": 93,
+    "attrs": {
+      "sho": 94,
+      "pas": 84,
+      "cro": 89,
+      "dri": 91,
+      "aer": 90,
+      "def": 62,
+      "phy": 95
+    }
   },
   {
     "id": "leg-fw-09",
@@ -782,7 +1064,16 @@
     ],
     "scoutNote": "아시아 최초 EPL 득점왕, 역대 최고 양발 감아차기 스나이퍼",
     "isLegend": true,
-    "stamina": 90
+    "stamina": 90,
+    "attrs": {
+      "sho": 94,
+      "pas": 86,
+      "cro": 87,
+      "dri": 91,
+      "aer": 78,
+      "def": 58,
+      "phy": 93
+    }
   },
   {
     "id": "leg-fw-10",
@@ -808,7 +1099,16 @@
     ],
     "scoutNote": "9분 5골의 전설, 완벽한 위치 선정과 양발 결정력을 갖춘 현대 최고 9번",
     "isLegend": true,
-    "stamina": 87
+    "stamina": 87,
+    "attrs": {
+      "sho": 97,
+      "pas": 83,
+      "cro": 75,
+      "dri": 87,
+      "aer": 94,
+      "def": 54,
+      "phy": 92
+    }
   },
   {
     "id": "leg-fw-11",
@@ -835,7 +1135,16 @@
     ],
     "scoutNote": "발롱도르 위너, 9번과 10번을 결합한 우아한 연계와 클러치 결정력의 대가",
     "isLegend": true,
-    "stamina": 84
+    "stamina": 84,
+    "attrs": {
+      "sho": 94,
+      "pas": 91,
+      "cro": 82,
+      "dri": 91,
+      "aer": 90,
+      "def": 54,
+      "phy": 89
+    }
   },
   {
     "id": "leg-fw-12",
@@ -862,6 +1171,15 @@
     ],
     "scoutNote": "MSN의 심장, 야성적 투쟁심과 어떤 각도에서도 골망을 찢는 천재 골잡이",
     "isLegend": true,
-    "stamina": 87
+    "stamina": 87,
+    "attrs": {
+      "sho": 96,
+      "pas": 89,
+      "cro": 83,
+      "dri": 92,
+      "aer": 87,
+      "def": 58,
+      "phy": 91
+    }
   }
 ]

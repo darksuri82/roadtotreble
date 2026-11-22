@@ -12,9 +12,16 @@ import { useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import { MANAGER_TRAIT_LIST } from '../../data/managerTraits';
 import { TACTIC_LIST } from '../../engine/tacticEngine';
+import { AttributeRoutesGuideContent } from './AttributeRoutesGuideContent';
 import { InjuryMoraleGuideContent } from './InjuryMoraleGuideContent';
 
-type GuideTab = 'ovr' | 'chemistry' | 'tactics' | 'manager' | 'condition';
+type GuideTab =
+  | 'ovr'
+  | 'chemistry'
+  | 'tactics'
+  | 'manager'
+  | 'condition'
+  | 'attributes';
 
 export function SystemGuideContent() {
   const [tab, setTab] = useState<GuideTab>('ovr');
@@ -25,12 +32,13 @@ export function SystemGuideContent() {
     { id: 'tactics', label: '3. 전술 · 포메이션 상성' },
     { id: 'manager', label: '4. 감독 강점 · 실시간 중계' },
     { id: 'condition', label: '5. 🩺 부상 & 사기 가이드' },
+    { id: 'attributes', label: '6. 📊 세부 능력치 & 득점 루트' },
   ];
 
   return (
     <div className="space-y-4">
       {/* Tab Navigation */}
-      <div className="grid grid-cols-2 gap-1 sm:grid-cols-5 rounded-xl border border-slate-800 bg-[#0b1018] p-1">
+      <div className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-6 rounded-xl border border-slate-800 bg-[#0b1018] p-1">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -271,6 +279,9 @@ export function SystemGuideContent() {
 
       {/* Tab 5: Injury & Morale System Guide */}
       {tab === 'condition' && <InjuryMoraleGuideContent />}
+
+      {/* Tab 6: Sub-Attributes & Scoring Routes Guide */}
+      {tab === 'attributes' && <AttributeRoutesGuideContent />}
     </div>
   );
 }

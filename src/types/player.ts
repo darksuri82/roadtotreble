@@ -42,6 +42,25 @@ export type PlayerLeagueId =
   | 'ligue1'
   | 'LEGEND';
 
+export interface GoalkeeperAttributes {
+  div: number; // 다이빙 (40..99)
+  han: number; // 핸들링 (40..99)
+  ref: number; // 반사신경 (40..99)
+  kic: number; // 킥/빌드업 (40..99)
+  pos: number; // 위치선정 (40..99)
+}
+
+export interface PlayerAttributes {
+  sho: number; // 슈팅/결정력 (40..99)
+  pas: number; // 패스/시야 (40..99)
+  cro: number; // 크로스/킥 정확도 (40..99)
+  dri: number; // 드리블/볼컨트롤/돌파 (40..99)
+  aer: number; // 헤더/공중볼 (40..99)
+  def: number; // 수비/태클/위치선정 (40..99)
+  phy: number; // 스피드/피지컬/경합 (40..99)
+  gk?: GoalkeeperAttributes;
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -61,6 +80,7 @@ export interface Player {
   scoutNote: string;
   isLegend: boolean;
   isGenerated?: boolean;
+  attrs?: PlayerAttributes;
 }
 
 export type PositionFitLevel = 'main' | 'secondary' | 'out_of_pos' | 'severe';

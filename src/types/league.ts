@@ -79,6 +79,35 @@ export type ShotAngleType =
   | 'acute_right'
   | 'center';
 
+export type AttackRouteId =
+  | 'early_cross'
+  | 'cutback'
+  | 'through_ball'
+  | 'solo_dribble'
+  | 'cut_inside_curler'
+  | 'long_range_cannon'
+  | 'tiki_taka_triangle'
+  | 'u_buildup_switch'
+  | 'gegenpress_steal'
+  | 'low_block_counter'
+  | 'corner_header'
+  | 'direct_fk'
+  | 'rebound_poach'
+  | 'penalty_kick';
+
+export type FinishTypeId =
+  | 'inside_shot'
+  | 'one_touch'
+  | 'curler'
+  | 'power_drive'
+  | 'long_cannon'
+  | 'header'
+  | 'volley'
+  | 'chip_1v1'
+  | 'solo_finish'
+  | 'free_kick'
+  | 'penalty';
+
 export interface MatchEvent {
   minute: number;
   half: 1 | 2;
@@ -94,6 +123,10 @@ export interface MatchEvent {
   xgDelta?: number;
   highlightPattern?: HighlightPatternId;
   highlightOutcome?: HighlightOutcomeType;
+  attackRoute?: AttackRouteId;
+  finishType?: FinishTypeId;
+  dribbleBeatCount?: number;
+  contestDefenderName?: string;
   shotAngle?: ShotAngleType;
   isPenalty?: boolean;
   pkDirection?: 'left' | 'center' | 'right';

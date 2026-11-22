@@ -5,6 +5,30 @@
 
 ---
 
+## v4.0 — 전 선수 세부 능력치(7+5종) 체계 · 단계별 공격 체인(원맨 드리블 쇼/중거리/티키타카/크로스 헤더) 엔진 업그레이드 · 2D 전술 움직임 심화 & 세부 능력치 가이드 탭
+
+### 1. 전 선수 세부 능력치(Sub-Attributes) 체계 & 레이더 차트 시각화
+- **타입 및 엔진 (`src/types/player.ts`, `src/data/attributeOverrides.ts`, `src/engine/attributeEngine.ts`, `src/engine/dataLoader.ts`)**:
+  - 필드 7대 능력치(`SHO` · `PAS` · `CRO` · `DRI` · `AER` · `DEF` · `PHY`) 및 골키퍼 5대 전문 능력치(`DIV` · `HAN` · `REF` · `KIC` · `POS`)를 도입하고, `activePlayers.json`(2,206명) + `legendPlayers.json`(33명) 전원(총 2,239명)과 생성 로테이션 선수에 적용.
+  - 5대 리그 주요 스타 및 레전드 33명 전원 큐레이션 프로필과 나머지 전 선수 아키타입·플레이스타일 기반 결정론적 파생 함수를 결합하고, 전 선수 포지션 가중 평균이 기존 `OVR ±2` 범위 내에 들도록 정규화(현역 최대 97, 레전드 최대 99).
+  - 크랙·찬스메이커 윙어(야말·올리세·사카 등)의 득점력을 과도하게 깎지 않고도 `PAS·CRO·DRI` 가중치를 통해 현실적인 어시스트 비중이 자연스럽게 상승하도록 균형 설계.
+- **UI 시각화 (`src/components/common/PlayerSubAttributesCard.tsx`, `src/components/common/PlayerDetailModal.tsx`)**:
+  - 기존 다크 스포츠 UI 톤과 레이아웃을 그대로 보존한 채, `PlayerDetailModal`에 7각(GK 5각) SVG 레이더 차트 · 스탯 바 · 아키타입 자동 판정 배지 추가(시너지·사기·부상 실효 OVR 실시간 반영).
+
+### 2. 세부 능력치 & 수비 경합 기반 단계별 공격 체인 경기 시뮬레이션 엔진
+- **공격 체인 엔진 (`src/engine/attackChainEngine.ts`, `src/engine/matchEngine.ts`, `src/types/league.ts`)**:
+  - 기존 단순 `att`/OVR 기반 득점·도움 배분을 **빌드업 → 14종 공격 루트(`AttackRouteId`) → 창출자(`PAS`/`CRO`/`DRI`) → 수비수(`DEF`/`AER`) 경합 → 마무리자(`SHO`/`AER` + 포지션 박스 점유 계수) → 마무리 유형(`FinishTypeId`)** 단계별 체인으로 전면 개편.
+  - **원맨 드리블 쇼(`solo_dribble`, 수비 1~3명 단독 돌파)**, **중거리 대포알(`long_range_cannon`)**, **티키타카 삼각 원투패스(`tiki_taka_triangle`)**, **선수비 후역습 뒷공간 롱볼(`low_block_counter`)**, **게겐프레싱 탈취 속공(`gegenpress_steal`)**, **얼리 크로스 헤더/발리**, **컷백**, **스루패스 칩슛**, **코너킥 헤더** 등 다채로운 전개와 한국어 중계 문구 추가.
+  - 팀 단위 `Poisson(λ)` 기대득점 모델과 밸런스 구간을 보존하면서, 승부차기(`SHO` vs `GK DIV/REF/POS`)와 점유율(`PAS` 대비 보정)에도 세부 능력치를 반영.
+
+### 3. 현대 축구 2D 피치 전술 움직임 심화 & `[📊 세부 능력치 & 득점 루트]` 가이드 탭
+- **2D 전술 움직임 (`src/engine/tacticalMovement.ts`, `src/components/league/PitchMatch2D.tsx`)**:
+  - 전술별 오프더볼·빌드업·수비 조직력(점유율: GK 후방 빌드업 전진·인버티드 풀백·펄스 나인 연계·삼각 패스 / 게겐프레싱: 높은 라인·3인 압박 트랩 / 선수비 후역습: 낮은 중앙 밀집 블록·수직 롱볼 / 측면 공략: 풀백 터치라인 오버래핑·박스 쇄도)과 4종 신규 공격 루트 전용 슬로우모션 애니메이션 추가.
+- **가이드 모달 탭 신설 (`src/components/guide/AttributeRoutesGuideContent.tsx`, `SystemGuideModal.tsx`, `TacticsGuideModal.tsx`)**:
+  - `[가이드]` 모달(6번 탭) 및 `[전술 도감]` 모달(3번 탭)에 세부 능력치 항목·공격 루트별 경합 표·아키타입 골/도움 특성·전술별 2D 움직임을 정리한 **`[📊 세부 능력치 & 득점 루트]`** 탭 추가.
+
+---
+
 ## v3.3 — 상대 구단 16인 규격(주전 11 + 핵심 벤치 5) 완벽 표시 · 트레이드 가치 용어 통일 · 포지션 니즈 비중 강화 & 돈치치급 충격 급매물 · 부상/사기 OVR 표시 & 전용 가이드 탭
 
 ### 1. 상대 AI 구단 벤치 누락 근본 해결 · 5대 리그 96구단 풀스쿼드 보강 & 핵심 벤치 5인(16인 규격) 표준화

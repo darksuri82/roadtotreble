@@ -22,6 +22,17 @@ import type {
   TacticId,
 } from '../types/league';
 import type { Player, SubPosition } from '../types/player';
+import {
+  computeTeamSubAttributeModifier,
+  formatAttackChainDescription,
+  mapPatternToAttackRoute,
+  pickChainAssister,
+  pickChainScorer,
+  pickContestDefender,
+  pickFinishType,
+  resolveHighlightPatternWeightsWithSubAttributes,
+} from './attackChainEngine';
+import { getPlayerAttributes } from './attributeEngine';
 import { applySlotSynergiesToStarters } from './chemistryEngine';
 import { getPrimaryPosition } from './positionEngine';
 import {
@@ -539,6 +550,25 @@ function resolveMatchStrengths(params: {
       ? htSwingMultiplier
       : 1.0);
 
+  const homeSubMod =
+    homeRoster && awayRoster
+      ? computeTeamSubAttributeModifier({
+          attackingRoster: homeRoster,
+          defendingRoster: awayRoster,
+          tactic: homeTactic,
+          formation: homeFormation,
+        })
+      : { xgDelta: 0, possessionDelta: 0 };
+  const awaySubMod =
+    homeRoster && awayRoster
+      ? computeTeamSubAttributeModifier({
+          attackingRoster: awayRoster,
+          defendingRoster: homeRoster,
+          tactic: awayTactic,
+          formation: awayFormation,
+        })
+      : { xgDelta: 0, possessionDelta: 0 };
+
   const home: EffectiveTeamStrength = {
     att:
       homeBase.att +
@@ -566,13 +596,15 @@ function resolveMatchStrengths(params: {
       (isHomeUser && userTraitMod ? userTraitMod.xgBonus : 0) +
       (isHomeUser && userStaminaMod ? userStaminaMod.freshSubXgBonus : 0) +
       (isAwayUser && userStaminaMod ? userStaminaMod.oppXgFatigueLeak : 0) +
-      (homeStyleMatch ? homeStyleMatch.xgBonus : 0),
+      (homeStyleMatch ? homeStyleMatch.xgBonus : 0) +
+      homeSubMod.xgDelta,
     oppXgPenalty:
       (isHomeUser && userTraitMod ? userTraitMod.oppXgPenalty : 0) +
       (homeStyleMatch ? homeStyleMatch.oppXgPenalty : 0) +
       (homeIndiv ? homeIndiv.gkSaveMod * 0.28 : 0),
     possessionBonus:
-      isHomeUser && userTraitMod ? userTraitMod.possessionBonus : 0,
+      (isHomeUser && userTraitMod ? userTraitMod.possessionBonus : 0) +
+      homeSubMod.possessionDelta,
   };
 
   const away: EffectiveTeamStrength = {
@@ -602,13 +634,15 @@ function resolveMatchStrengths(params: {
       (isAwayUser && userTraitMod ? userTraitMod.xgBonus : 0) +
       (isAwayUser && userStaminaMod ? userStaminaMod.freshSubXgBonus : 0) +
       (isHomeUser && userStaminaMod ? userStaminaMod.oppXgFatigueLeak : 0) +
-      (awayStyleMatch ? awayStyleMatch.xgBonus : 0),
+      (awayStyleMatch ? awayStyleMatch.xgBonus : 0) +
+      awaySubMod.xgDelta,
     oppXgPenalty:
       (isAwayUser && userTraitMod ? userTraitMod.oppXgPenalty : 0) +
       (awayStyleMatch ? awayStyleMatch.oppXgPenalty : 0) +
       (awayIndiv ? awayIndiv.gkSaveMod * 0.28 : 0),
     possessionBonus:
-      isAwayUser && userTraitMod ? userTraitMod.possessionBonus : 0,
+      (isAwayUser && userTraitMod ? userTraitMod.possessionBonus : 0) +
+      awaySubMod.possessionDelta,
   };
 
   const rawPoss =
@@ -681,16 +715,16 @@ export function pickHighlightPattern(params: {
   } = params;
 
   const weights: Record<HighlightPatternId, number> = {
-    wing_cross_header: 13,
+    wing_cross_header: 15.5,
     cutback_finish: 13,
     through_ball_1v1: 14,
-    cut_inside_curler: 13,
-    corner_kick: 11,
-    direct_free_kick: 8,
+    cut_inside_curler: 15.5,
+    corner_kick: 14,
+    direct_free_kick: 9.5,
     high_press_counter: 12,
     u_buildup_switch: 13,
-    rebound_finish: 12,
-    penalty_kick: allowPenalty ? 11 : 0,
+    rebound_finish: 11.5,
+    penalty_kick: allowPenalty ? 11.5 : 0,
   };
 
   // Tactic weighting
@@ -771,7 +805,15 @@ export function pickHighlightPattern(params: {
     weights.high_press_counter *= 1.22;
   }
 
-  const entries = (Object.entries(weights) as [HighlightPatternId, number][])
+  const adjustedWeights = resolveHighlightPatternWeightsWithSubAttributes({
+    baseWeights: weights,
+    roster,
+    tactic,
+    managerTraitId,
+    allowPenalty,
+  });
+
+  const entries = (Object.entries(adjustedWeights) as [HighlightPatternId, number][])
     .filter(([, weight]) => weight > 0)
     .map(([item, weight]) => ({ item, weight }));
   return pickWeighted(entries, rng);
@@ -832,268 +874,12 @@ function pickPkDirection(rng: () => number): 'left' | 'center' | 'right' {
   return 'center';
 }
 
-function formatHighlightDescription(params: {
-  pattern: HighlightPatternId;
-  outcome: HighlightOutcomeType;
-  scorerName: string;
-  assistName?: string;
-  gkName?: string;
-  secondaryShooterName?: string;
-  reboundOrigin?: 'save' | 'woodwork' | 'blocked';
-  pkDirection?: 'left' | 'center' | 'right';
-  shotAngle?: ShotAngleType;
-  isJoker?: boolean;
-}): string {
-  const {
-    pattern,
-    outcome,
-    scorerName,
-    assistName,
-    gkName,
-    secondaryShooterName,
-    reboundOrigin = 'save',
-    pkDirection = 'right',
-    shotAngle,
-    isJoker = false,
-  } = params;
-  const jokerPrefix = isJoker ? '🔥 교체 투입 조커! ' : '';
-  const assistTag = assistName ? ` (도움: ${assistName})` : '';
-  const gkLabel = gkName ? `${gkName} 골키퍼` : '상대 골키퍼';
-  const pkDirKr =
-    pkDirection === 'left'
-      ? '좌측 하단'
-      : pkDirection === 'right'
-        ? '우측 구석'
-        : '정면 파넨카';
-  const reboundSourceKr =
-    reboundOrigin === 'woodwork'
-      ? '골대를 맞고 튕겨 나온 볼을'
-      : reboundOrigin === 'blocked'
-        ? '수비수 몸에 맞고 흐른 세컨드볼을'
-        : '골키퍼 선방 후 튕겨 나온 리바운드 볼을';
-  const angleNote =
-    shotAngle === 'acute_left' || shotAngle === 'acute_right'
-      ? '예리한 측면 예각 슈팅으로'
-      : shotAngle === 'far_post'
-        ? '반대편 파포스트로 감아 차며'
-        : shotAngle === 'near_post'
-          ? '니어포스트 빈틈을 찌르며'
-          : '강력한 슈팅으로';
-
-  if (outcome === 'var_offside') {
-    return `📺 VAR 판독! ${scorerName}이(가) 골망을 흔들었으나 부심의 기가 올라갔습니다 — 오프사이드로 득점 취소!`;
-  }
-
-  if (outcome === 'goal') {
-    switch (pattern) {
-      case 'wing_cross_header':
-        return `${jokerPrefix}골! 측면 크로스를 ${scorerName}이(가) 타점 높은 헤더로 꽂아 넣습니다!${assistTag}`;
-      case 'cutback_finish':
-        return `${jokerPrefix}골! 엔드라인 컷백을 쇄도하던 ${scorerName}이(가) ${angleNote} 마무리!${assistTag}`;
-      case 'through_ball_1v1':
-        return `${jokerPrefix}골! 수비 뒷공간을 허문 스루패스, ${scorerName}이(가) 1대1 찬스를 침착하게 성공시킵니다!${assistTag}`;
-      case 'cut_inside_curler':
-        return `${jokerPrefix}골! 안쪽으로 파고든 ${scorerName}의 환상적인 파포스트 감아차기 골!${assistTag}`;
-      case 'corner_kick':
-        return `${jokerPrefix}골! 코너킥 문전 혼전 상황에서 ${scorerName}이(가) 강력한 헤더로 골망을 흔듭니다!${assistTag}`;
-      case 'direct_free_kick':
-        return `${jokerPrefix}골! ${scorerName}의 그림 같은 직접 프리킥! 수비벽을 넘어 상단 구석에 꽂힙니다!`;
-      case 'high_press_counter':
-        return `${jokerPrefix}골! 전방 압박으로 볼을 탈취한 직후 고속 역습, ${scorerName}이(가) ${angleNote} 마무리합니다!${assistTag}`;
-      case 'u_buildup_switch':
-        return `${jokerPrefix}골! 후방 U자 빌드업 후 반대편 측면으로 찔러준 대각선 반대전환! ${scorerName}이(가) ${angleNote} 골망을 가릅니다!${assistTag}`;
-      case 'rebound_finish':
-        return `${jokerPrefix}골! ${secondaryShooterName ? `${secondaryShooterName}의 슈팅이 ` : ''}${reboundSourceKr} ${scorerName}이(가) 번개처럼 쇄도해 밀어 넣습니다!`;
-      case 'penalty_kick':
-        return `${jokerPrefix}🎯 PK 골! 박스 안 반칙으로 얻어낸 페널티킥을 ${scorerName}이(가) ${pkDirKr} 코스로 침착하게 꽂아 넣습니다!`;
-    }
-  }
-
-  if (outcome === 'save') {
-    switch (pattern) {
-      case 'wing_cross_header':
-        return `측면 크로스에 이은 ${scorerName}의 결정적 헤더를 ${gkLabel}가 몸을 날려 쳐냅니다!`;
-      case 'cutback_finish':
-        return `날카로운 컷백 후 ${scorerName}의 논스톱 슈팅! ${gkLabel}의 동물적인 반사신경 슈퍼 세이브!`;
-      case 'through_ball_1v1':
-        return `1대1 결정적 기회! ${scorerName}의 슈팅을 ${gkLabel}가 각도를 좁히며 막아냅니다!`;
-      case 'cut_inside_curler':
-        return `${scorerName}의 위협적인 감아차기 중거리 슛을 ${gkLabel}가 손끝으로 쳐냅니다!`;
-      case 'corner_kick':
-        return `코너킥에서 이어진 ${scorerName}의 근거리 헤더를 ${gkLabel}가 극적으로 펀칭해냅니다!`;
-      case 'direct_free_kick':
-        return `${scorerName}의 수비벽을 넘긴 프리킥! ${gkLabel}가 몸을 던져 막아냅니다!`;
-      case 'high_press_counter':
-        return `전방 압박 탈취 후 고속 역습 슈팅! ${gkLabel}의 결정적 선방으로 실점을 막습니다!`;
-      case 'u_buildup_switch':
-        return `반대전환 롱패스 후 ${scorerName}의 측면 예각 슈팅! ${gkLabel}가 니어포스트를 틀어막습니다!`;
-      case 'rebound_finish':
-        return `${reboundSourceKr} 노린 ${scorerName}의 2차 슈팅까지 ${gkLabel}가 연속 슈퍼세이브로 막아냅니다!`;
-      case 'penalty_kick':
-        return `🧤 PK 선방!! ${scorerName}의 ${pkDirKr} 페널티킥을 ${gkLabel}가 방향을 완벽히 읽고 몸을 날려 막아냅니다!`;
-    }
-  }
-
-  if (outcome === 'woodwork') {
-    switch (pattern) {
-      case 'direct_free_kick':
-        return `💥 ${scorerName}의 직접 프리킥이 크로스바를 강타하고 튕겨 나옵니다!`;
-      case 'cut_inside_curler':
-        return `💥 ${scorerName}의 감아차기 슈팅이 파포스트를 때리고 나갑니다!`;
-      case 'corner_kick':
-        return `💥 코너킥에서 ${scorerName}의 헤더가 골대를 맞고 튕겨 나옵니다!`;
-      case 'u_buildup_switch':
-        return `💥 반대전환 롱패스를 이어받은 ${scorerName}의 예각 슈팅이 골포스트를 강타합니다!`;
-      case 'penalty_kick':
-        return `💥 PK 실축! ${scorerName}의 페널티킥이 골대를 강타하고 튕겨 나옵니다!`;
-      default:
-        return `💥 ${scorerName}의 결정적 슈팅이 골대를 강타합니다! 아쉽게 득점 무산!`;
-    }
-  }
-
-  if (outcome === 'blocked') {
-    switch (pattern) {
-      case 'cutback_finish':
-        return `🛡️ 엔드라인 컷백 후 ${scorerName}의 슈팅을 상대 수비수가 온몸을 던져 육탄 방어합니다!`;
-      case 'corner_kick':
-        return `🛡️ 코너킥 세컨드볼 슈팅이 밀집한 수비벽에 맞고 굴절됩니다!`;
-      case 'high_press_counter':
-        return `🛡️ 고속 역습 상황에서 ${scorerName}의 슈팅을 복귀한 수비수가 슬라이딩 태클로 막아냅니다!`;
-      case 'u_buildup_switch':
-        return `🛡️ 대각선 반대전환 후 ${scorerName}의 슈팅을 상대 풀백이 결정적 블록으로 막아냅니다!`;
-      default:
-        return `🛡️ ${scorerName}의 강력한 슈팅을 수비수가 결정적인 태클로 차단합니다!`;
-    }
-  }
-
-  // near_miss
-  switch (pattern) {
-    case 'wing_cross_header':
-      return `측면 크로스에 맞춘 ${scorerName}의 헤더가 골문 위로 살짝 넘어갑니다!`;
-    case 'through_ball_1v1':
-      return `완벽한 스루패스 1대1 찬스! ${scorerName}의 슈팅이 골포스트 옆을 아슬아슬하게 스칩니다!`;
-    case 'direct_free_kick':
-      return `${scorerName}의 예리한 프리킥이 골문 구석을 간발의 차로 벗어납니다!`;
-    case 'cut_inside_curler':
-      return `컷인 후 날린 ${scorerName}의 감아차기가 골대를 살짝 빗나갑니다!`;
-    case 'u_buildup_switch':
-      return `화려한 반대전환에 이은 ${scorerName}의 파포스트 슈팅이 아쉽게 빗나갑니다!`;
-    case 'rebound_finish':
-      return `${reboundSourceKr} 노린 ${scorerName}의 2차 슈팅이 크로스바 위로 살짝 뜹니다!`;
-    case 'penalty_kick':
-      return `😱 PK 실축! ${scorerName}의 페널티킥이 골문 옆으로 빗나갑니다!`;
-    default:
-      return `${scorerName}의 회심의 슈팅이 골문을 간발의 차로 벗어납니다!`;
-  }
-}
-
-function pickScorerWithFreshBoost(
-  roster: Player[],
-  freshSubIds: Set<string>,
-  rng: () => number,
-  pattern?: HighlightPatternId,
-): Player {
-  const outfield = roster.filter((p) => p.position !== 'GK');
-  const pool = outfield.length > 0 ? outfield : roster;
-
-  const weighted = pool.map((p) => {
-    let posWeight = p.position === 'FW' ? 58 : p.position === 'MF' ? 30 : 12;
-    let styleBoost = p.playstyles.some((s) =>
-      ['poacher', 'line_breaker', 'complete_forward', 'inverted_winger'].includes(s),
-    )
-      ? 1.25
-      : 1.0;
-
-    // Pattern-specific individual player affinity
-    if (pattern === 'penalty_kick') {
-      posWeight = p.position === 'FW' ? 75 : p.position === 'MF' ? 28 : 5;
-      styleBoost =
-        Math.pow(Math.max(50, p.ovr) / 80, 3.0) *
-        (p.playstyles.some((s) =>
-          ['complete_forward', 'poacher', 'playmaker_10'].includes(s),
-        )
-          ? 1.65
-          : 1.0);
-    } else if (pattern === 'wing_cross_header' || pattern === 'corner_kick') {
-      if (p.position === 'DF' && p.playstyles.includes('stopper_cb')) {
-        posWeight = pattern === 'corner_kick' ? 34 : 14;
-      }
-      if (p.playstyles.some((s) => ['poacher', 'complete_forward'].includes(s))) {
-        styleBoost *= 1.65;
-      }
-    } else if (pattern === 'rebound_finish') {
-      if (p.playstyles.some((s) => ['poacher', 'complete_forward', 'box_to_box'].includes(s))) {
-        styleBoost *= 1.75;
-      }
-    } else if (pattern === 'cut_inside_curler' || pattern === 'u_buildup_switch') {
-      if (p.playstyles.some((s) => ['inverted_winger', 'classic_winger', 'attacking_wingback'].includes(s))) {
-        styleBoost *= 1.7;
-      }
-    } else if (pattern === 'through_ball_1v1' || pattern === 'high_press_counter') {
-      if (p.playstyles.includes('line_breaker')) {
-        styleBoost *= 1.75;
-      }
-    }
-
-    const jokerBoost = freshSubIds.has(p.id) ? 1.55 : 1.0;
-    const attBoost = Math.pow(Math.max(40, p.att) / 80, 2.3);
-    return { item: p, weight: posWeight * attBoost * styleBoost * jokerBoost };
-  });
-
-  return pickWeighted(weighted, rng);
-}
-
-function pickPatternAssister(
-  roster: Player[],
-  scorerId: string,
-  pattern: HighlightPatternId,
-  rng: () => number,
-): Player | null {
-  if (
-    pattern === 'direct_free_kick' ||
-    pattern === 'penalty_kick' ||
-    pattern === 'rebound_finish'
-  ) {
-    return null;
-  }
-  const noAssistChance = pattern === 'u_buildup_switch' ? 0.08 : 0.22;
-  if (rng() < noAssistChance) return null;
-
-  const candidates = roster.filter(
-    (p) => p.id !== scorerId && p.position !== 'GK',
-  );
-  if (candidates.length === 0) return null;
-
-  const weighted = candidates.map((p) => {
-    const posWeight = p.position === 'MF' ? 52 : p.position === 'FW' ? 28 : 20;
-    let styleBoost = 1.0;
-    if (pattern === 'u_buildup_switch' || pattern === 'through_ball_1v1') {
-      if (p.playstyles.some((s) => ['deep_playmaker', 'playmaker_10', 'ball_playing_cb'].includes(s))) {
-        styleBoost = 1.95;
-      }
-    } else if (pattern === 'wing_cross_header' || pattern === 'cutback_finish') {
-      if (p.playstyles.some((s) => ['classic_winger', 'attacking_wingback', 'inverted_winger'].includes(s))) {
-        styleBoost = 1.85;
-      }
-    } else if (
-      p.playstyles.some((s) =>
-        ['playmaker_10', 'deep_playmaker', 'attacking_wingback', 'classic_winger'].includes(s),
-      )
-    ) {
-      styleBoost = 1.35;
-    }
-    const midBoost = Math.pow(Math.max(40, p.mid) / 80, 2.1);
-    return { item: p, weight: posWeight * midBoost * styleBoost };
-  });
-
-  return pickWeighted(weighted, rng);
-}
-
 function generateHalfGoalEvents(params: {
   goals: number;
   half: 1 | 2;
   club: Club;
   roster: Player[];
+  defendingRoster?: Player[];
   tactic: TacticId;
   managerTraitId?: ManagerTraitId | null;
   isUser: boolean;
@@ -1108,6 +894,7 @@ function generateHalfGoalEvents(params: {
     half,
     club,
     roster,
+    defendingRoster,
     tactic,
     managerTraitId = null,
     isUser,
@@ -1137,13 +924,41 @@ function generateHalfGoalEvents(params: {
       allowPenalty: true,
       rng,
     });
-    const scorer = pickScorerWithFreshBoost(
-      activeRoster,
-      activeFreshIds,
-      rng,
+    const attackRoute = mapPatternToAttackRoute({
       pattern,
-    );
-    const assister = pickPatternAssister(activeRoster, scorer.id, pattern, rng);
+      tactic,
+      roster: activeRoster,
+      rng,
+    });
+    const scorer = pickChainScorer({
+      roster: activeRoster,
+      route: attackRoute,
+      freshSubIds: activeFreshIds,
+      defendingRoster,
+      rng,
+    });
+    const assister = pickChainAssister({
+      roster: activeRoster,
+      scorerId: scorer.id,
+      route: attackRoute,
+      rng,
+    });
+    const finishType = pickFinishType({
+      route: attackRoute,
+      scorer,
+      rng,
+    });
+    const contestDefender = pickContestDefender(defendingRoster, rng);
+    const scorerAttrs = getPlayerAttributes(scorer);
+    const dribbleBeatCount =
+      attackRoute === 'solo_dribble'
+        ? scorerAttrs.dri >= 93 && rng() < 0.45
+          ? 3
+          : rng() < 0.72
+            ? 2
+            : 1
+        : undefined;
+
     const isJoker = activeFreshIds.has(scorer.id);
     const shotAngle = pickShotAngleForPattern(pattern, rng);
     const pkDirection = pattern === 'penalty_kick' ? pickPkDirection(rng) : undefined;
@@ -1162,12 +977,16 @@ function generateHalfGoalEvents(params: {
           scorer
         : undefined;
 
-    const desc = formatHighlightDescription({
+    const desc = formatAttackChainDescription({
       pattern,
+      attackRoute,
+      finishType,
       outcome: 'goal',
       scorerName: scorer.name,
       assistName: assister?.name,
       secondaryShooterName: firstShooter?.name,
+      contestDefenderName: contestDefender?.name,
+      dribbleBeatCount,
       reboundOrigin,
       pkDirection,
       shotAngle,
@@ -1189,9 +1008,15 @@ function generateHalfGoalEvents(params: {
       xgDelta:
         pattern === 'penalty_kick'
           ? 0.78
-          : Math.round((0.26 + rng() * 0.27) * 100) / 100,
+          : attackRoute === 'long_range_cannon'
+            ? Math.round((0.08 + rng() * 0.12) * 100) / 100
+            : Math.round((0.26 + rng() * 0.27) * 100) / 100,
       highlightPattern: pattern,
       highlightOutcome: 'goal',
+      attackRoute,
+      finishType,
+      dribbleBeatCount,
+      contestDefenderName: contestDefender?.name,
       shotAngle,
       isPenalty: pattern === 'penalty_kick' ? true : undefined,
       pkDirection,
@@ -1288,6 +1113,7 @@ function generateHalfFlavorEvents(params: {
     const chanceIsHome = rng() < homeAttackShare;
     const cClub = chanceIsHome ? homeClub : awayClub;
     const cRoster = chanceIsHome ? homeRoster : awayRoster;
+    const oppRoster = chanceIsHome ? awayRoster : homeRoster;
     const cTactic = chanceIsHome ? homeTactic : awayTactic;
     const cIsUser = chanceIsHome ? isHomeUser : isAwayUser;
 
@@ -1298,13 +1124,33 @@ function generateHalfFlavorEvents(params: {
       allowPenalty: cIdx === 0 && rng() < 0.22,
       rng,
     });
+    const attackRoute = mapPatternToAttackRoute({
+      pattern,
+      tactic: cTactic,
+      roster: cRoster,
+      rng,
+    });
     const outcome: HighlightOutcomeType =
       pattern === 'penalty_kick'
         ? rng() < 0.5
           ? 'woodwork'
           : 'near_miss'
         : nonGoalOutcomes[Math.floor(rng() * nonGoalOutcomes.length)];
-    const shooter = pickScorerWithFreshBoost(cRoster, new Set(), rng, pattern);
+    const shooter = pickChainScorer({
+      roster: cRoster,
+      route: attackRoute,
+      freshSubIds: new Set(),
+      defendingRoster: oppRoster,
+      rng,
+    });
+    const finishType = pickFinishType({
+      route: attackRoute,
+      scorer: shooter,
+      rng,
+    });
+    const contestDefender = pickContestDefender(oppRoster, rng);
+    const dribbleBeatCount =
+      attackRoute === 'solo_dribble' ? (rng() < 0.65 ? 2 : 1) : undefined;
     const shotAngle = pickShotAngleForPattern(pattern, rng);
     const pkDirection = pattern === 'penalty_kick' ? pickPkDirection(rng) : undefined;
     const minute =
@@ -1327,13 +1173,21 @@ function generateHalfFlavorEvents(params: {
           : Math.round((0.11 + rng() * 0.17) * 100) / 100,
       highlightPattern: pattern,
       highlightOutcome: outcome,
+      attackRoute,
+      finishType,
+      dribbleBeatCount,
+      contestDefenderName: contestDefender?.name,
       shotAngle,
       isPenalty: pattern === 'penalty_kick' ? true : undefined,
       pkDirection,
-      description: formatHighlightDescription({
+      description: formatAttackChainDescription({
         pattern,
+        attackRoute,
+        finishType,
         outcome,
         scorerName: shooter.name,
+        contestDefenderName: contestDefender?.name,
+        dribbleBeatCount,
         pkDirection,
         shotAngle,
       }),
@@ -1383,7 +1237,26 @@ function generateHalfFlavorEvents(params: {
         allowPenalty: sIdx === 0 && rng() < 0.22,
         rng,
       });
-      const shooter = pickScorerWithFreshBoost(atkRoster, new Set(), rng, pattern);
+      const attackRoute = mapPatternToAttackRoute({
+        pattern,
+        tactic: atkTactic,
+        roster: atkRoster,
+        rng,
+      });
+      const shooter = pickChainScorer({
+        roster: atkRoster,
+        route: attackRoute,
+        freshSubIds: new Set(),
+        defendingRoster: defRoster,
+        rng,
+      });
+      const finishType = pickFinishType({
+        route: attackRoute,
+        scorer: shooter,
+        rng,
+      });
+      const dribbleBeatCount =
+        attackRoute === 'solo_dribble' ? (rng() < 0.65 ? 2 : 1) : undefined;
       const gk = defRoster.find((p) => p.position === 'GK');
       const shotAngle = pickShotAngleForPattern(pattern, rng);
       const pkDirection = pattern === 'penalty_kick' ? pickPkDirection(rng) : undefined;
@@ -1410,14 +1283,20 @@ function generateHalfFlavorEvents(params: {
         scorerName: shooter.name,
         highlightPattern: pattern,
         highlightOutcome: 'save',
+        attackRoute,
+        finishType,
+        dribbleBeatCount,
         shotAngle,
         isPenalty: pattern === 'penalty_kick' ? true : undefined,
         pkDirection,
-        description: formatHighlightDescription({
+        description: formatAttackChainDescription({
           pattern,
+          attackRoute,
+          finishType,
           outcome: 'save',
           scorerName: shooter.name,
           gkName: gk?.name,
+          dribbleBeatCount,
           pkDirection,
           shotAngle,
         }),
@@ -1430,6 +1309,8 @@ function generateHalfFlavorEvents(params: {
     const varIsHome = rng() < homeAttackShare;
     const vClub = varIsHome ? homeClub : awayClub;
     const vRoster = varIsHome ? homeRoster : awayRoster;
+    const vDefRoster = varIsHome ? awayRoster : homeRoster;
+    const vTactic = varIsHome ? homeTactic : awayTactic;
     const vIsUser = varIsHome ? isHomeUser : isAwayUser;
     const varPatterns: HighlightPatternId[] = [
       'through_ball_1v1',
@@ -1438,7 +1319,19 @@ function generateHalfFlavorEvents(params: {
       'rebound_finish',
     ];
     const vPattern = varPatterns[Math.floor(rng() * varPatterns.length)];
-    const scorer = pickScorerWithFreshBoost(vRoster, new Set(), rng, vPattern);
+    const vRoute = mapPatternToAttackRoute({
+      pattern: vPattern,
+      tactic: vTactic,
+      roster: vRoster,
+      rng,
+    });
+    const scorer = pickChainScorer({
+      roster: vRoster,
+      route: vRoute,
+      freshSubIds: new Set(),
+      defendingRoster: vDefRoster,
+      rng,
+    });
     const minute = clamp(
       minStart + Math.floor(span * (0.25 + rng() * 0.65)),
       minStart,
@@ -1457,9 +1350,11 @@ function generateHalfFlavorEvents(params: {
       scorerName: scorer.name,
       highlightPattern: vPattern,
       highlightOutcome: 'var_offside',
+      attackRoute: vRoute,
       shotAngle: pickShotAngleForPattern(vPattern, rng),
-      description: formatHighlightDescription({
+      description: formatAttackChainDescription({
         pattern: vPattern,
+        attackRoute: vRoute,
         outcome: 'var_offside',
         scorerName: scorer.name,
       }),
@@ -1842,6 +1737,7 @@ export function simulateFirstHalf(params: {
       half: 1,
       club: homeClub,
       roster: homeRoster,
+      defendingRoster: awayRoster,
       tactic: resolved.homeTactic,
       managerTraitId: userContext.managerTraitId,
       isUser: isHomeUser,
@@ -1852,6 +1748,7 @@ export function simulateFirstHalf(params: {
       half: 1,
       club: awayClub,
       roster: awayRoster,
+      defendingRoster: homeRoster,
       tactic: resolved.awayTactic,
       managerTraitId: userContext.managerTraitId,
       isUser: isAwayUser,
@@ -2115,6 +2012,7 @@ export function simulateSecondHalf(params: {
       half: 2,
       club: homeClub,
       roster: isHomeUser ? effectiveUserEndingRoster : homeRoster,
+      defendingRoster: isAwayUser ? effectiveUserEndingRoster : awayRoster,
       tactic: resolved.homeTactic,
       managerTraitId: userContext.managerTraitId,
       isUser: isHomeUser,
@@ -2127,6 +2025,7 @@ export function simulateSecondHalf(params: {
       half: 2,
       club: awayClub,
       roster: isAwayUser ? effectiveUserEndingRoster : awayRoster,
+      defendingRoster: isHomeUser ? effectiveUserEndingRoster : homeRoster,
       tactic: resolved.awayTactic,
       managerTraitId: userContext.managerTraitId,
       isUser: isAwayUser,
@@ -2343,6 +2242,7 @@ export function resimulateRemainingSecondHalf(params: {
       half: 2,
       club: homeClub,
       roster: homeRoster,
+      defendingRoster: awayRoster,
       tactic: resolved.homeTactic,
       managerTraitId: userContext.managerTraitId,
       isUser: isHomeUser,
@@ -2356,6 +2256,7 @@ export function resimulateRemainingSecondHalf(params: {
       half: 2,
       club: awayClub,
       roster: awayRoster,
+      defendingRoster: homeRoster,
       tactic: resolved.awayTactic,
       managerTraitId: userContext.managerTraitId,
       isUser: isAwayUser,
@@ -2601,6 +2502,7 @@ export function simulateMatch(
       half: 1,
       club: homeClub,
       roster: homeRoster,
+      defendingRoster: awayRoster,
       tactic: resolved.homeTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isHomeUser,
@@ -2611,6 +2513,7 @@ export function simulateMatch(
       half: 2,
       club: homeClub,
       roster: isHomeUser ? userEndingStarters : homeRoster,
+      defendingRoster: isAwayUser ? userEndingStarters : awayRoster,
       tactic: resolved.homeTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isHomeUser,
@@ -2623,6 +2526,7 @@ export function simulateMatch(
       half: 1,
       club: awayClub,
       roster: awayRoster,
+      defendingRoster: homeRoster,
       tactic: resolved.awayTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isAwayUser,
@@ -2633,6 +2537,7 @@ export function simulateMatch(
       half: 2,
       club: awayClub,
       roster: isAwayUser ? userEndingStarters : awayRoster,
+      defendingRoster: isHomeUser ? userEndingStarters : homeRoster,
       tactic: resolved.awayTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isAwayUser,
@@ -2816,12 +2721,11 @@ export function simulateBackgroundClubMatch(
 function orderPenaltyKickers(roster: Player[]): Player[] {
   const outfield = roster.filter((p) => p.position !== 'GK');
   const gk = roster.filter((p) => p.position === 'GK');
-  const sorted = [...outfield].sort(
-    (a, b) =>
-      b.att * 0.65 +
-      b.ovr * 0.35 -
-      (a.att * 0.65 + a.ovr * 0.35),
-  );
+  const sorted = [...outfield].sort((a, b) => {
+    const aa = getPlayerAttributes(a);
+    const bb = getPlayerAttributes(b);
+    return bb.sho * 0.7 + b.ovr * 0.3 - (aa.sho * 0.7 + a.ovr * 0.3);
+  });
   return [...sorted, ...gk];
 }
 
@@ -2841,10 +2745,16 @@ export function simulatePenaltyShootoutOnly(params: {
 
   const homeKickers = orderPenaltyKickers(homeRoster);
   const awayKickers = orderPenaltyKickers(awayRoster);
-  const homeGkOvr =
-    homeRoster.find((p) => p.position === 'GK')?.ovr ?? homeClub.def;
-  const awayGkOvr =
-    awayRoster.find((p) => p.position === 'GK')?.ovr ?? awayClub.def;
+  const homeGk = homeRoster.find((p) => p.position === 'GK');
+  const awayGk = awayRoster.find((p) => p.position === 'GK');
+  const homeGkAttrs = homeGk ? getPlayerAttributes(homeGk).gk : undefined;
+  const awayGkAttrs = awayGk ? getPlayerAttributes(awayGk).gk : undefined;
+  const homeGkOvr = homeGkAttrs
+    ? homeGkAttrs.div * 0.4 + homeGkAttrs.ref * 0.4 + homeGkAttrs.pos * 0.2
+    : (homeGk?.ovr ?? homeClub.def);
+  const awayGkOvr = awayGkAttrs
+    ? awayGkAttrs.div * 0.4 + awayGkAttrs.ref * 0.4 + awayGkAttrs.pos * 0.2
+    : (awayGk?.ovr ?? awayClub.def);
 
   let homeScore = 0;
   let awayScore = 0;
@@ -2855,7 +2765,9 @@ export function simulatePenaltyShootoutOnly(params: {
     fallbackName: string,
     gkOvr: number,
   ): { name: string; scored: boolean } => {
-    const kickerSkill = kicker ? kicker.att * 0.55 + kicker.ovr * 0.45 : 78;
+    const kickerSkill = kicker
+      ? getPlayerAttributes(kicker).sho * 0.65 + kicker.ovr * 0.35
+      : 78;
     const prob = clamp(0.79 + (kickerSkill - gkOvr) * 0.0055, 0.66, 0.90);
     return {
       name: kicker?.name ?? fallbackName,
@@ -3073,6 +2985,7 @@ export function simulateExtraTimeAndPenalties(params: {
       half: 2,
       club: homeClub,
       roster: homeRoster,
+      defendingRoster: awayRoster,
       tactic: resolved.homeTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isHomeUser,
@@ -3086,6 +2999,7 @@ export function simulateExtraTimeAndPenalties(params: {
       half: 2,
       club: awayClub,
       roster: awayRoster,
+      defendingRoster: homeRoster,
       tactic: resolved.awayTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isAwayUser,
@@ -3345,6 +3259,7 @@ export function simulateExtraTimeFirstHalf(params: {
       half: 2,
       club: homeClub,
       roster: homeRoster,
+      defendingRoster: awayRoster,
       tactic: resolved.homeTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isHomeUser,
@@ -3358,6 +3273,7 @@ export function simulateExtraTimeFirstHalf(params: {
       half: 2,
       club: awayClub,
       roster: awayRoster,
+      defendingRoster: homeRoster,
       tactic: resolved.awayTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isAwayUser,
@@ -3537,6 +3453,7 @@ export function simulateExtraTimeSecondHalfAndPenalties(params: {
       half: 2,
       club: homeClub,
       roster: homeRoster,
+      defendingRoster: awayRoster,
       tactic: resolved.homeTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isHomeUser,
@@ -3550,6 +3467,7 @@ export function simulateExtraTimeSecondHalfAndPenalties(params: {
       half: 2,
       club: awayClub,
       roster: awayRoster,
+      defendingRoster: homeRoster,
       tactic: resolved.awayTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isAwayUser,

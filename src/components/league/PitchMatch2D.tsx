@@ -1,7 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { FORMATIONS } from '../../data/formations';
+import {
+  computeTacticalPlayerOffset,
+  pickTacticalPassNext,
+} from '../../engine/tacticalMovement';
 import type { FormationId } from '../../types/game';
 import type {
+  AttackRouteId,
   Club,
   HighlightOutcomeType,
   HighlightPatternId,
@@ -43,6 +48,8 @@ interface Vec2 {
 interface ActiveSequence {
   key: string;
   pattern: HighlightPatternId;
+  attackRoute?: AttackRouteId;
+  dribbleBeatCount?: number;
   outcome: HighlightOutcomeType;
   isHomeAttack: boolean;
   flankSide: 1 | -1; // -1 = top flank, +1 = bottom flank
@@ -71,6 +78,13 @@ const PATTERN_BADGE_LABELS: Record<HighlightPatternId, string> = {
   u_buildup_switch: 'U자 빌드업 · 반대전환',
   rebound_finish: '세컨찬스 리바운드',
   penalty_kick: '페널티킥 (PK)',
+};
+
+const ROUTE_BADGE_LABELS: Partial<Record<AttackRouteId, string>> = {
+  solo_dribble: '원맨 드리블 쇼',
+  long_range_cannon: '중거리 대포알 슛',
+  tiki_taka_triangle: '티키타카 삼각 연계',
+  low_block_counter: '선수비 후역습 롱볼',
 };
 
 const ALL_PATTERNS: HighlightPatternId[] = [
@@ -299,6 +313,8 @@ export function PitchMatch2D({
     sequenceRef.current = {
       key: dramaticEvent.key,
       pattern,
+      attackRoute: ev.attackRoute,
+      dribbleBeatCount: ev.dribbleBeatCount,
       outcome,
       isHomeAttack,
       flankSide,
@@ -573,13 +589,133 @@ export function PitchMatch2D({
         const preImpactX = atkX(isH, 0.945);
         const blockX = atkX(isH, 0.885);
 
-        const patternLabel = PATTERN_BADGE_LABELS[seq.pattern];
+        const patternLabel =
+          (seq.attackRoute && ROUTE_BADGE_LABELS[seq.attackRoute]) ||
+          PATTERN_BADGE_LABELS[seq.pattern];
 
-        // Compute shot origin & trajectory according to the exact pattern
+        // Compute shot origin & trajectory according to the exact route / pattern
         let shotOrigin: Vec2 = { x: atkX(isH, 0.84), y: seq.targetY };
         let shotControl: Vec2 = { x: atkX(isH, 0.9), y: seq.targetY };
 
-        if (seq.pattern === 'wing_cross_header') {
+        if (seq.attackRoute === 'solo_dribble') {
+          // Slalom solo dribble show weaving past 2~3 defenders into the box!
+          const startPos: Vec2 = { x: atkX(isH, 0.56), y: fl < 0 ? 0.16 : 0.84 };
+          const endPos: Vec2 = { x: atkX(isH, 0.865), y: fl < 0 ? 0.42 : 0.58 };
+          const dtRun = Math.min(1, seqProg / 0.36);
+          const zigzag = Math.sin(dtRun * Math.PI * 3.0) * 0.065 * fl;
+          const curDribbler: Vec2 = {
+            x: lerp(startPos.x, endPos.x, dtRun),
+            y: Math.max(0.10, Math.min(0.90, lerp(startPos.y, endPos.y, dtRun) + zigzag)),
+          };
+          atkOverrides.set(seq.attackerIdx, curDribbler);
+          // Defenders beaten & left lunging behind the dribbler
+          defOverrides.set(1, {
+            x: atkX(isH, lerp(0.64, 0.61, dtRun)),
+            y: fl < 0 ? 0.22 : 0.78,
+          });
+          defOverrides.set(2, {
+            x: atkX(isH, lerp(0.75, 0.73, dtRun)),
+            y: fl < 0 ? 0.36 : 0.64,
+          });
+          defOverrides.set(3, {
+            x: atkX(isH, lerp(0.83, 0.80, dtRun)),
+            y: fl < 0 ? 0.48 : 0.52,
+          });
+          shotOrigin = endPos;
+          shotControl = { x: atkX(isH, 0.915), y: seq.targetY };
+
+          if (seqProg < 0.36) {
+            ballTargetX = curDribbler.x + (isH ? 0.015 : -0.015);
+            ballTargetY = curDribbler.y;
+            curvePath = {
+              p0: startPos,
+              p1: { x: atkX(isH, 0.72), y: fl < 0 ? 0.38 : 0.62 },
+              p2: endPos,
+              alpha: 0.78,
+              color: '#f59e0b',
+            };
+          }
+        } else if (seq.attackRoute === 'long_range_cannon') {
+          // Lay-off outside the penalty arc -> rising thunderbolt cannon from 24m!
+          const layOffFrom: Vec2 = { x: atkX(isH, 0.78), y: halfSpaceY };
+          const cannonSpot: Vec2 = { x: atkX(isH, 0.69), y: 0.50 + fl * 0.05 };
+          atkOverrides.set(seq.passerIdx, layOffFrom);
+          atkOverrides.set(seq.attackerIdx, {
+            x: atkX(isH, lerp(0.63, 0.69, Math.min(1, seqProg / 0.26))),
+            y: cannonSpot.y,
+          });
+          defOverrides.set(2, { x: atkX(isH, 0.80), y: 0.46 });
+          defOverrides.set(3, { x: atkX(isH, 0.80), y: 0.54 });
+          shotOrigin = cannonSpot;
+          shotControl = { x: atkX(isH, 0.84), y: lerp(cannonSpot.y, seq.targetY, 0.55) };
+
+          if (seqProg < 0.26) {
+            const t = seqProg / 0.26;
+            ballTargetX = lerp(layOffFrom.x, cannonSpot.x, t);
+            ballTargetY = lerp(layOffFrom.y, cannonSpot.y, t);
+            curvePath = {
+              p0: layOffFrom,
+              p1: { x: lerp(layOffFrom.x, cannonSpot.x, 0.5), y: lerp(layOffFrom.y, cannonSpot.y, 0.5) },
+              p2: cannonSpot,
+              alpha: 0.72,
+              color: '#38bdf8',
+            };
+          }
+        } else if (seq.attackRoute === 'tiki_taka_triangle') {
+          // Rapid 3-player triangular one-two passing sequence slicing through the half-space!
+          const nodeA: Vec2 = { x: atkX(isH, 0.60), y: 0.50 + fl * 0.08 };
+          const nodeB: Vec2 = { x: atkX(isH, 0.73), y: halfSpaceY };
+          const nodeC: Vec2 = { x: atkX(isH, 0.84), y: 0.50 + fl * 0.03 };
+          atkOverrides.set(5, nodeA);
+          atkOverrides.set(seq.passerIdx, nodeB);
+          atkOverrides.set(seq.attackerIdx, {
+            x: atkX(isH, lerp(0.75, 0.84, Math.min(1, seqProg / 0.34))),
+            y: lerp(0.50 - fl * 0.08, nodeC.y, Math.min(1, seqProg / 0.34)),
+          });
+          defOverrides.set(2, { x: atkX(isH, 0.78), y: halfSpaceY + fl * 0.06 });
+          defOverrides.set(3, { x: atkX(isH, 0.83), y: 0.50 - fl * 0.06 });
+          shotOrigin = nodeC;
+          shotControl = { x: atkX(isH, 0.90), y: seq.targetY };
+
+          if (seqProg < 0.34) {
+            if (seqProg < 0.16) {
+              const t1 = seqProg / 0.16;
+              ballTargetX = lerp(nodeA.x, nodeB.x, t1);
+              ballTargetY = lerp(nodeA.y, nodeB.y, t1);
+              curvePath = { p0: nodeA, p1: nodeB, p2: nodeC, alpha: 0.78, color: '#34d399' };
+            } else {
+              const t2 = (seqProg - 0.16) / 0.18;
+              ballTargetX = lerp(nodeB.x, nodeC.x, t2);
+              ballTargetY = lerp(nodeB.y, nodeC.y, t2);
+              curvePath = { p0: nodeB, p1: { x: lerp(nodeB.x, nodeC.x, 0.5), y: lerp(nodeB.y, nodeC.y, 0.5) }, p2: nodeC, alpha: 0.88, color: '#34d399' };
+            }
+          }
+        } else if (seq.attackRoute === 'low_block_counter') {
+          // Deep own-half recovery -> towering diagonal long ball -> blistering counter sprint!
+          const deepOrigin: Vec2 = { x: atkX(isH, 0.28), y: fl < 0 ? 0.64 : 0.36 };
+          const sprintStart: Vec2 = { x: atkX(isH, 0.56), y: halfSpaceY };
+          const sprintEnd: Vec2 = { x: atkX(isH, 0.855), y: seq.targetY };
+          const sT = Math.min(1, seqProg / 0.34);
+          atkOverrides.set(seq.passerIdx, deepOrigin);
+          atkOverrides.set(seq.attackerIdx, {
+            x: lerp(sprintStart.x, sprintEnd.x, sT),
+            y: lerp(sprintStart.y, sprintEnd.y, sT),
+          });
+          defOverrides.set(2, { x: atkX(isH, lerp(0.58, 0.77, sT)), y: 0.44 });
+          defOverrides.set(3, { x: atkX(isH, lerp(0.60, 0.79, sT)), y: 0.58 });
+          shotOrigin = sprintEnd;
+          shotControl = { x: atkX(isH, 0.91), y: seq.targetY };
+
+          if (seqProg < 0.34) {
+            const t = seqProg / 0.34;
+            const ctrl: Vec2 = { x: atkX(isH, 0.58), y: 0.50 };
+            const pt = quadBezier(deepOrigin, ctrl, sprintEnd, t);
+            ballTargetX = pt.x;
+            ballTargetY = pt.y;
+            ballLift = Math.sin(t * Math.PI) * 1.15;
+            curvePath = { p0: deepOrigin, p1: ctrl, p2: sprintEnd, alpha: 0.85, color: '#fbbf24' };
+          }
+        } else if (seq.pattern === 'wing_cross_header') {
           const wingerPos: Vec2 = {
             x: atkX(isH, lerp(0.68, 0.86, Math.min(1, seqProg * 3.4))),
             y: flankY,
@@ -979,17 +1115,24 @@ export function PitchMatch2D({
         }
 
         const buildupEnd =
-          seq.pattern === 'direct_free_kick'
-            ? 0.25
-            : seq.pattern === 'corner_kick'
-              ? 0.32
-              : seq.pattern === 'u_buildup_switch' || seq.pattern === 'rebound_finish'
-                ? 0.36
-                : seq.pattern === 'penalty_kick'
-                  ? 0.35
-                  : seq.pattern === 'cut_inside_curler'
-                    ? 0.28
-                    : 0.30;
+          seq.attackRoute === 'solo_dribble'
+            ? 0.36
+            : seq.attackRoute === 'tiki_taka_triangle' ||
+                seq.attackRoute === 'low_block_counter'
+              ? 0.34
+              : seq.attackRoute === 'long_range_cannon'
+                ? 0.26
+                : seq.pattern === 'direct_free_kick'
+                  ? 0.25
+                  : seq.pattern === 'corner_kick'
+                    ? 0.32
+                    : seq.pattern === 'u_buildup_switch' || seq.pattern === 'rebound_finish'
+                      ? 0.36
+                      : seq.pattern === 'penalty_kick'
+                        ? 0.35
+                        : seq.pattern === 'cut_inside_curler'
+                          ? 0.28
+                          : 0.30;
 
         if (seqProg < buildupEnd) {
           topAlertPill = {
@@ -998,7 +1141,9 @@ export function PitchMatch2D({
                 ? `🎯 ${seq.teamShortName} · 페널티킥 대치! · SLOW-MO`
                 : seq.pattern === 'rebound_finish' && seqProg >= 0.20
                   ? `⚡ 세컨찬스 리바운드 쇄도! · SLOW-MO`
-                  : `🔥 ${seq.teamShortName} · ${patternLabel} · SLOW-MO`,
+                  : seq.attackRoute === 'solo_dribble'
+                    ? `🔥 ${seq.teamShortName} · ${seq.scorerName} 원맨 드리블 쇼! · SLOW-MO`
+                    : `🔥 ${seq.teamShortName} · ${patternLabel} · SLOW-MO`,
             color: '#fef08a',
             border: '#f59e0b',
           };
@@ -1016,7 +1161,8 @@ export function PitchMatch2D({
           ballTargetY = pt.y;
           ballLift =
             seq.pattern === 'direct_free_kick' ||
-            seq.pattern === 'cut_inside_curler'
+            seq.pattern === 'cut_inside_curler' ||
+            seq.attackRoute === 'long_range_cannon'
               ? Math.sin(t * Math.PI) * 0.95
               : seq.pattern === 'wing_cross_header' || seq.pattern === 'corner_kick'
                 ? Math.sin(t * Math.PI) * 0.55
@@ -1227,29 +1373,15 @@ export function PitchMatch2D({
           const activeTacticNow = possessionIsHome
             ? curHomeTactic
             : curAwayTactic;
-          const pool =
-            attackPhase === 0
-              ? [1, 2, 3, 4]
-              : attackPhase === 1
-                ? [4, 5, 6, 7]
-                : [7, 8, 9, 10];
-          // Wingplay strongly prefers wide flank players (closest to top/bottom touchline)
-          let chosen = pool[Math.floor(Math.random() * pool.length)];
-          if (activeTacticNow === 'wingplay' && attackPhase >= 1) {
-            const wideSorted = [...pool].sort(
-              (a, b) =>
-                Math.abs(activeBase[b].y - 0.5) -
-                Math.abs(activeBase[a].y - 0.5),
-            );
-            chosen =
-              Math.random() < 0.74
-                ? wideSorted[0]
-                : wideSorted[Math.min(1, wideSorted.length - 1)];
-          }
-          if (chosen === carrierIdx) {
-            chosen = pool[(pool.indexOf(chosen) + 1) % pool.length];
-          }
-          carrierIdx = chosen;
+          const nextPass = pickTacticalPassNext({
+            tactic: activeTacticNow,
+            attackPhase,
+            carrierIdx,
+            activeBase,
+          });
+          carrierIdx = nextPass.nextCarrierIdx;
+          nextPassClock =
+            simClock + nextPass.passDelay + Math.abs(Math.sin(simClock * 2.9)) * 0.36;
         }
         const carrier = possessionIsHome
           ? homePos[carrierIdx]
@@ -1316,8 +1448,25 @@ export function PitchMatch2D({
         let hx = homeBase[i].x;
         let hy = homeBase[i].y;
 
+        const homeTacOff = isLiveRunning
+          ? computeTacticalPlayerOffset({
+              slotIndex: i,
+              base: homeBase[i],
+              isHome: true,
+              hasBall: possessionIsHome,
+              tactic: propsRef.current.homeTactic,
+              formation: hForm,
+              attackPhase,
+              ball,
+              simClock,
+            })
+          : { x: 0, y: 0 };
+
         if (i === 0) {
-          hx = 0.055 + Math.max(0, ball.x - 0.5) * 0.05;
+          hx = Math.max(
+            0.045,
+            Math.min(0.14, 0.055 + Math.max(0, ball.x - 0.5) * 0.05 + homeTacOff.x),
+          );
           hy = 0.5 + (ball.y - 0.5) * 0.28;
           if (seq && !seq.isHomeAttack && seqProg >= 0.42) {
             hy = seq.targetY;
@@ -1325,20 +1474,24 @@ export function PitchMatch2D({
         } else {
           const lineFactor = i >= 8 ? 1.15 : i >= 5 ? 1.0 : 0.78;
           hx = Math.max(
-            0.12,
+            0.10,
             Math.min(
-              0.9,
+              0.91,
               hx +
                 (ballShiftX + territorialShiftX * 0.65) * lineFactor +
                 homeLineOffset +
-                Math.sin(simClock * 1.4 + i * 1.7) * 0.013,
+                homeTacOff.x +
+                Math.sin(simClock * 1.4 + i * 1.7) * 0.011,
             ),
           );
           hy = Math.max(
-            0.07,
+            0.06,
             Math.min(
-              0.93,
-              hy + ballShiftY + Math.cos(simClock * 1.2 + i * 2.1) * 0.017,
+              0.94,
+              hy +
+                ballShiftY +
+                homeTacOff.y +
+                Math.cos(simClock * 1.2 + i * 2.1) * 0.014,
             ),
           );
         }
@@ -1359,8 +1512,25 @@ export function PitchMatch2D({
         let ax = awayBase[i].x;
         let ay = awayBase[i].y;
 
+        const awayTacOff = isLiveRunning
+          ? computeTacticalPlayerOffset({
+              slotIndex: i,
+              base: awayBase[i],
+              isHome: false,
+              hasBall: !possessionIsHome,
+              tactic: propsRef.current.awayTactic,
+              formation: aForm,
+              attackPhase,
+              ball,
+              simClock,
+            })
+          : { x: 0, y: 0 };
+
         if (i === 0) {
-          ax = 0.945 - Math.max(0, 0.5 - ball.x) * 0.05;
+          ax = Math.max(
+            0.86,
+            Math.min(0.955, 0.945 - Math.max(0, 0.5 - ball.x) * 0.05 + awayTacOff.x),
+          );
           ay = 0.5 + (ball.y - 0.5) * 0.28;
           if (seq && seq.isHomeAttack && seqProg >= 0.42) {
             ay = seq.targetY;
@@ -1368,20 +1538,24 @@ export function PitchMatch2D({
         } else {
           const lineFactor = i >= 8 ? 1.15 : i >= 5 ? 1.0 : 0.78;
           ax = Math.max(
-            0.1,
+            0.09,
             Math.min(
-              0.88,
+              0.90,
               ax +
                 (ballShiftX + territorialShiftX * 0.65) * lineFactor +
                 awayLineOffset +
-                Math.cos(simClock * 1.3 + i * 1.9) * 0.013,
+                awayTacOff.x +
+                Math.cos(simClock * 1.3 + i * 1.9) * 0.011,
             ),
           );
           ay = Math.max(
-            0.07,
+            0.06,
             Math.min(
-              0.93,
-              ay + ballShiftY + Math.sin(simClock * 1.1 + i * 2.3) * 0.017,
+              0.94,
+              ay +
+                ballShiftY +
+                awayTacOff.y +
+                Math.sin(simClock * 1.1 + i * 2.3) * 0.014,
             ),
           );
         }

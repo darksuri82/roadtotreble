@@ -30,6 +30,7 @@ import type { Player, SubPosition } from '../../types/player';
 import type { PlayerCompetitionStatsBreakdown } from '../../utils/playerLookup';
 import { CountryFlagSvg } from './CountryFlagSvg';
 import { PixelStatusIcon } from './PixelStatusIcon';
+import { PlayerSubAttributesCard } from './PlayerSubAttributesCard';
 
 interface PlayerDetailModalProps {
   player: Player | null;
@@ -546,6 +547,9 @@ export function PlayerDetailModal({
               </div>
             </div>
           </div>
+
+          {/* Detailed Sub-Attributes (Radar + Stat Bars + Archetype) */}
+          <PlayerSubAttributesCard player={player} effectiveOvr={displayOvr} />
 
           {/* Competition-Split Detailed Season Stats Table (v2.5) */}
           {hasBreakdown ? (

@@ -4,10 +4,17 @@ import leaguesRaw from '../data/leagues.json';
 import legendPlayersRaw from '../data/legendPlayers.json';
 import type { Club, LeagueData, LeagueId } from '../types/league';
 import type { Player, PlaystyleId, Position, SubPosition } from '../types/player';
+import { getPlayerAttributes } from './attributeEngine';
 import { getLineForSubPosition } from './positionEngine';
 
-export const ACTIVE_PLAYERS: Player[] = activePlayersRaw as Player[];
-export const LEGEND_PLAYERS: Player[] = legendPlayersRaw as Player[];
+export const ACTIVE_PLAYERS: Player[] = (activePlayersRaw as Player[]).map((p) => ({
+  ...p,
+  attrs: getPlayerAttributes(p),
+}));
+export const LEGEND_PLAYERS: Player[] = (legendPlayersRaw as Player[]).map((p) => ({
+  ...p,
+  attrs: getPlayerAttributes(p),
+}));
 export const ALL_PLAYERS: Player[] = [...ACTIVE_PLAYERS, ...LEGEND_PLAYERS];
 export const LEAGUES: LeagueData[] = leaguesRaw as LeagueData[];
 
@@ -259,7 +266,7 @@ export function generateClubRotationPlayer(params: {
     Math.min(89, baseStamina + ((seed % 7) - 3)),
   );
 
-  return {
+  const basePlayer: Player = {
     id: `gen-${club.id}-${subPosition.toLowerCase()}-${seed}`,
     name,
     position: broadPos,
@@ -279,6 +286,8 @@ export function generateClubRotationPlayer(params: {
     isLegend: false,
     isGenerated: true,
   };
+  basePlayer.attrs = getPlayerAttributes(basePlayer);
+  return basePlayer;
 }
 
 /**

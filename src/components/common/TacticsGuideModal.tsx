@@ -1,4 +1,4 @@
-import { ArrowRight, BookOpen, Compass, HeartPulse, Shield, Sparkles, Swords, X } from 'lucide-react';
+import { ArrowRight, BookOpen, Compass, HeartPulse, Radar, Shield, Sparkles, Swords, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PLAYSTYLES } from '../../data/playstyles';
 import { COMPLEMENTARY_STYLE_PAIRS } from '../../engine/chemistryEngine';
@@ -10,12 +10,13 @@ import {
 } from '../../engine/tacticEngine';
 import type { TacticId } from '../../types/league';
 import type { PlaystyleId } from '../../types/player';
+import { AttributeRoutesGuideContent } from '../guide/AttributeRoutesGuideContent';
 import { InjuryMoraleGuideContent } from '../guide/InjuryMoraleGuideContent';
 
 interface TacticsGuideModalProps {
   open: boolean;
   onClose: () => void;
-  initialTab?: 'tactics' | 'condition';
+  initialTab?: 'tactics' | 'condition' | 'attributes';
 }
 
 const TACTIC_ORDER: TacticId[] = [
@@ -38,7 +39,7 @@ export function TacticsGuideModal({
   onClose,
   initialTab = 'tactics',
 }: TacticsGuideModalProps) {
-  const [activeTab, setActiveTab] = useState<'tactics' | 'condition'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'tactics' | 'condition' | 'attributes'>(initialTab);
 
   useEffect(() => {
     if (!open) return;
@@ -66,10 +67,10 @@ export function TacticsGuideModal({
             <BookOpen className="h-4 w-4 text-emerald-400" />
             <div>
               <h2 className="text-sm sm:text-base font-extrabold text-white">
-                전술 상성 &amp; 부상 · 사기 시스템 가이드
+                전술 상성 · 부상/사기 · 세부 능력치 가이드
               </h2>
               <p className="text-[11px] text-slate-400">
-                전술·플레이스타일 상성표와 부상·사기 실효 OVR 보정 수치를 한눈에 확인할 수 있습니다.
+                전술·플레이스타일 상성표, 부상·사기 보정, 세부 능력치 및 공격 루트를 한눈에 확인할 수 있습니다.
               </p>
             </div>
           </div>
@@ -85,7 +86,7 @@ export function TacticsGuideModal({
 
         {/* Top Tab Switcher */}
         <div className="border-b border-slate-800 bg-[#0a1018] px-4 sm:px-5 py-2.5">
-          <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-slate-950/80 p-1">
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 rounded-xl border border-slate-800 bg-slate-950/80 p-1">
             <button
               type="button"
               onClick={() => setActiveTab('tactics')}
@@ -110,12 +111,26 @@ export function TacticsGuideModal({
               <HeartPulse className="h-3.5 w-3.5" />
               🩺 부상 &amp; 사기 가이드
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('attributes')}
+              className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-colors cursor-pointer ${
+                activeTab === 'attributes'
+                  ? 'bg-emerald-500 text-slate-950'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Radar className="h-3.5 w-3.5" />
+              📊 세부 능력치 &amp; 득점 루트
+            </button>
           </div>
         </div>
 
         <div className="max-h-[76vh] overflow-y-auto p-4 sm:p-5 space-y-5">
           {activeTab === 'condition' ? (
             <InjuryMoraleGuideContent />
+          ) : activeTab === 'attributes' ? (
+            <AttributeRoutesGuideContent />
           ) : (
             <>
               {/* Section 1: 4-Tactic Rock-Paper-Scissors Cycle + Balanced */}

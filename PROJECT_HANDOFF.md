@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v3.3)
+# PITCH MANAGER — PROJECT HANDOFF GUIDE (v4.0)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,10 +9,14 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **20개 파일 / 79개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **21개 파일 / 82개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
+- **v4.0 주요 신규 모듈·기능**:
+  - **전 선수 세부 능력치(Sub-Attributes) 체계 (`src/types/player.ts`, `src/data/attributeOverrides.ts`, `src/engine/attributeEngine.ts`, `activePlayers.json`, `legendPlayers.json`)**: 전 선수 2,239명(현역 2,206 + 레전드 33) + 생성 자원에 필드 7대(`SHO·PAS·CRO·DRI·AER·DEF·PHY`) + GK 5대(`DIV·HAN·REF·KIC·POS`) 세부 능력치 부여(40~99, 포지션 가중 평균 `OVR ±2` 정합성 유지). 기존 디자인 톤을 그대로 유지한 `PlayerSubAttributesCard.tsx`(7각/5각 SVG 레이더 차트 + 스탯 바 + 아키타입 배지)를 `PlayerDetailModal.tsx`에 통합
+  - **단계별 공격 체인 경기 시뮬레이션 엔진 (`src/engine/attackChainEngine.ts`, `src/engine/matchEngine.ts`, `src/types/league.ts`)**: 팀 단위 `Poisson(λ)` 승점 밸런스를 보존하면서 득점·어시스트·찬스·세이브 이벤트를 **빌드업 → 14종 공격 루트(`AttackRouteId`: 원맨 드리블 쇼 `solo_dribble` · 중거리 대포알 `long_range_cannon` · 티키타카 삼각 연계 `tiki_taka_triangle` · 선수비 후역습 `low_block_counter` · 게겐프레싱 탈취 · 얼리 크로스 · 컷백 · 스루패스 · 세트피스 등) → 창출자(`PAS/CRO/DRI`) → 수비수(`DEF/AER`) 경합 → 마무리자(`SHO/AER`)** 단계 체인으로 전면 개편. 4시즌×3리그 아키타입 검증(`v40AttributeEngine.test.ts`: 어시스트 비율 ~70%, 헤더 ~13%, 원맨 드리블 ~4.2%, 세트피스 ~18.5%, 정통 9번 vs 크랙 윙어 vs 10번 자연 분포 확인)
+  - **현대 축구 2D 전술 움직임 심화 & `[📊 세부 능력치 & 득점 루트]` 가이드 탭 (`src/engine/tacticalMovement.ts`, `PitchMatch2D.tsx`, `AttributeRoutesGuideContent.tsx`, `SystemGuideModal.tsx`, `TacticsGuideModal.tsx`)**: 전술별 2D 오프더볼·빌드업·수비 블록(점유율 GK 빌드업/인버티드 풀백/삼각 패스, 게겐프레싱 하이 라인/3인 압박 트랩, 역습 로우 블록/직선 침투, 측면 공략 풀백 오버래핑) 및 신규 공격 루트 4종 슬로우모션 애니메이션 구현, `[가이드]`/`[전술 도감]` 모달에 전용 탭 신설
 - **v3.3 주요 신규 모듈·기능**:
   - **상대 AI 구단 벤치 누락 해결 · 5대 리그 96구단 풀스쿼드 보강 & 핵심 벤치 5인(16인 규격) 표준화 (`dataLoader.ts`, `transferEngine.ts`, `playerLookup.ts`, `GameContext.tsx`, `activePlayers.json`)**: `buildAiClubRoster`가 선발 11명만 생성한 뒤 `buildTransferClubSquad`가 `aiRoster.length >= 11` 분기에서 후보 풀을 건너뛰어 벤치가 0명으로 나오던 버그를 해결. `buildAiClubSquad16`을 도입해 모든 AI 구단을 우리 팀과 동일한 **16인 규격(선발 11명 + 핵심 벤치 5명: OVR 높은 순 `GK 1 / DF 2 / FW·MF 2`)**으로 표준화하고, FotMob 2026-27 실존 선수 18명 보강으로 96개 전 구단 `총원 ≥ 20, GK ≥ 2, DF ≥ 6, MF ≥ 5, FW ≥ 4`(총 현역 2,206명, 전 세계 중복 0건, 레벤수 레전드 유지) 완비
   - **트레이드 `가치` 한국어 표기 통일 · 포지션 니즈 비중 강화 & 루카 돈치치급 `🚨 충격 급매물` (`TransferMarketModal.tsx`, `transferEngine.ts`)**: `TP` 표기를 전부 **`가치`**로 통일, 상대 구단 포지션 니즈 비중 대폭 강화(`#1 최우선 니즈 +32% & 성사율 +8%p`, `#2 보강 니즈 +18% & +4%p`, `포화 포지션 -25% & -10%p`, 상대 포화 포지션 영입 `-12%`), 선수당 ~4.5% 확률(구단당 최대 1명)로 요구 가치 `-35%` 할인 및 87+ 가드 면제가 적용되는 **`🚨 충격 급매물(evaluateShockBargainStatus)`** 및 타 구단 먼저 오는 **`🚨 블록버스터 급매 제안(isBlockbusterBargain)`** 추가
