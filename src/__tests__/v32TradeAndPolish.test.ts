@@ -706,7 +706,7 @@ describe('v3.2 / v3.3 NBA-Style Trade System, 16-Player AI Squad (11 Starters + 
       positionPenalty: 0,
       synergyBonus: 2,
       condition: {
-        morale: 4, // 최상 (+2)
+        morale: 5, // 최상 (+2)
         injury: null,
         consecutiveBenchMatches: 0,
         consecutiveMatchesPlayed: 3,
@@ -723,7 +723,7 @@ describe('v3.2 / v3.3 NBA-Style Trade System, 16-Player AI Squad (11 Starters + 
       positionPenalty: -3,
       synergyBonus: 1,
       condition: {
-        morale: -4, // 최악 (-2)
+        morale: -5, // 최악 (-2)
         injury: {
           id: 'inj-1',
           name: '발목 타박상',

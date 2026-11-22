@@ -54,6 +54,7 @@ import {
 } from '../../types/player';
 import { buildPlayerCompetitionBreakdown } from '../../utils/playerLookup';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
+import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
 import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
@@ -649,33 +650,35 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       }`}
     >
       {/* Top Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#090f19] px-4 py-3">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-sky-400/40 bg-sky-500/15 text-sky-300">
-            <ArrowLeftRight className="h-4.5 w-4.5" />
+      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-800 bg-[#090f19] px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-sky-400/35 bg-sky-500/12 text-sky-300">
+            <ArrowLeftRight className="h-4 w-4" />
           </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-sm sm:text-base font-black text-white">
-                {isUclSpecial
-                  ? '⭐ UCL 특별 트레이드 시장'
-                  : `🔄 제 ${tm.windowIndex}차 구단 트레이드 시장 (${tm.triggerRound}R)`}
-              </h2>
-              <span className="rounded-md border border-emerald-400/40 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-extrabold text-emerald-300 tabular-nums">
-                협상 기회 {tm.attemptsRemaining} / {tm.maxAttempts}
+          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+            <h2 className="text-sm sm:text-base font-black text-white">
+              {isUclSpecial
+                ? 'UCL 특별 트레이드'
+                : `제 ${tm.windowIndex}차 트레이드 (${tm.triggerRound}R)`}
+            </h2>
+            <span className="rounded-md border border-emerald-400/35 bg-emerald-500/12 px-2 py-0.5 text-[11px] font-extrabold text-emerald-300 tabular-nums">
+              {tm.attemptsRemaining}/{tm.maxAttempts}회
+            </span>
+            {tm.legendBonusActive && (
+              <span className="rounded-md border border-amber-400/35 bg-amber-500/12 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                👑 {isChampBonus ? '5.5%' : '4.0%'}
               </span>
-              {tm.legendBonusActive && (
-                <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                  👑{' '}
-                  {isChampBonus
-                    ? '우승 레전드 보너스 5.5%'
-                    : '상위권 레전드 보너스 4.0%'}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400">
-              양 팀 포메이션 보면서 1:1 · 2:1 · 3:1 트레이드 · 선수 이름 클릭 시 상세 카드 확인
-            </p>
+            )}
+            <InfoHelpButton
+              title="트레이드 규칙"
+              align="left"
+              items={[
+                '1:1 · 2:1 · 3:1 패키지 트레이드 (로스터 16인 유지)',
+                '상대 구단의 부족 포지션(🔥/✨) 제공 시 가치 보너스 적용',
+                'OVR 87+ 슈퍼스타는 핵심 자산 포함이 필요(저가치 묶음 꼼수 차단)',
+                '선수 이름 클릭 시 세부 능력치 카드 확인 가능',
+              ]}
+            />
           </div>
         </div>
 
@@ -683,10 +686,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           id="close-transfer-window-btn"
           type="button"
           onClick={transferCloseWindow}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-extrabold text-slate-200 hover:border-emerald-400/60 hover:text-white cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-extrabold text-slate-200 hover:border-emerald-400/60 hover:text-white cursor-pointer touch-manipulation"
         >
           <X className="h-3.5 w-3.5" />
-          {isUclSpecial ? '트레이드 종료 → UCL 시작' : '이적시장 닫고 계속'}
+          {isUclSpecial ? 'UCL 시작' : '닫기'}
         </button>
       </div>
 
@@ -744,10 +747,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         {/* Last Negotiation Result Banner */}
         {tm.lastOfferResult && (
           <div
-            className={`rounded-xl border-2 px-4 py-3 space-y-1.5 ${
+            className={`rounded-xl border px-4 py-3 space-y-1 ${
               tm.lastOfferResult.success
-                ? 'border-emerald-400/60 bg-emerald-950/35 text-emerald-100'
-                : 'border-rose-400/55 bg-rose-950/35 text-rose-100'
+                ? 'border-emerald-500/45 bg-emerald-950/30 text-emerald-100'
+                : 'border-rose-500/45 bg-rose-950/30 text-rose-100'
             }`}
           >
             <div className="flex items-start gap-2.5">
@@ -774,31 +777,23 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         {activeTab === 'incoming' && (
           <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="text-sm font-black text-white">
-                  📩 타 구단으로부터 도착한 트레이드 제안 ({incomingOffers.length}건)
-                </h3>
-                <p className="text-[11px] text-slate-400">
-                  선수 이름을 클릭하면 상세 능력치 카드를 볼 수 있습니다. 즉시 수락(100%) 또는 [조건 수정 · 역제안]을 선택하세요.
-                </p>
-              </div>
+              <h3 className="text-sm font-black text-white">
+                받은 트레이드 제안 ({incomingOffers.length}건)
+              </h3>
             </div>
 
             {incomingOffers.length === 0 ? (
               <div className="rounded-2xl border border-slate-800 bg-[#0b111c] p-8 text-center space-y-3">
-                <Inbox className="h-9 w-9 mx-auto text-slate-600" />
+                <Inbox className="h-8 w-8 mx-auto text-slate-600" />
                 <div className="text-sm font-bold text-slate-300">
-                  이번 이적시장에는 타 구단에서 먼저 도착한 트레이드 제안이 없습니다.
+                  도착한 트레이드 제안이 없습니다.
                 </div>
-                <p className="text-xs text-slate-500">
-                  [구단 트레이드 탐색] 탭에서 구단 룰렛을 돌려 직접 트레이드를 제안해 보세요!
-                </p>
                 <button
                   type="button"
                   onClick={() => setActiveTab('explore')}
                   className="rounded-xl bg-sky-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-sky-300 cursor-pointer"
                 >
-                  구단 트레이드 탐색으로 이동 →
+                  구단 탐색으로 이동 →
                 </button>
               </div>
             ) : (
@@ -1003,17 +998,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           <div className="space-y-4">
             {/* Step 1: 3-Club Roulette Banner */}
             {!tm.hasSpunClubs && !counterOfferClub ? (
-              <div className="rounded-2xl border border-sky-500/35 bg-gradient-to-b from-[#111c30] to-[#0c1320] p-6 text-center space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/35 bg-sky-500/15 px-3 py-1 text-xs font-bold text-sky-200">
+              <div className="rounded-2xl border border-slate-800 bg-[#0c1320] p-5 sm:p-6 text-center space-y-4">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[11px] font-bold text-sky-200">
                   <Dices className="h-3.5 w-3.5" />
-                  트레이드 협상 구단 3곳 추첨
+                  협상 구단 3곳 추첨
                 </div>
-                <h3 className="text-lg sm:text-xl font-black text-white">
-                  이번 이적시장에서 협상 테이블을 열 3개 구단을 추첨하세요!
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  트레이드 협상 구단 추첨
                 </h3>
-                <p className="max-w-xl mx-auto text-xs text-slate-400">
-                  각 구단의 포메이션과 실제 스쿼드 약점(포지션 니즈)이 공개됩니다. 양 팀 포메이션을 비교하며 1:1 · 2:1 · 3:1 트레이드를 구성해 보세요!
-                </p>
 
                 <div className="grid grid-cols-3 gap-3 max-w-xl mx-auto">
                   {[0, 1, 2].map((rIdx) => {

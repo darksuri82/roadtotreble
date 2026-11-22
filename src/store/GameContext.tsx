@@ -59,6 +59,7 @@ import {
   computeUserSeasonManagerRating,
   deleteHallOfFameEntry,
   evaluateAchievements,
+  isEligibleForAutoHofInduction,
   loadLegacyState,
   recordDreamMatchResult,
   unlockAchievementsInStorage,
@@ -6443,7 +6444,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'MARK_LEGACY_ARCHIVED' });
   }, [state, ratings.rawOvr, chemistry]);
 
-  // Auto-archive completed runs into Hall of Fame strictly ONCE when full season (including UCL) is complete
+  // Auto-archive completed runs into Hall of Fame ONLY when reaching historical-team caliber
+  // (score >= 5,500, S+ grade, UCL title, or Treble). Other seasons can be manually registered from SeasonSummary.
   useEffect(() => {
     if (
       state.phase !== 'season_end' ||
@@ -6453,13 +6455,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return;
     }
     const uclDone = Boolean(state.season.ucl?.completed);
-    if (uclDone) {
+    if (!uclDone) return;
+
+    const score =
+      state.season.seasonScore ?? computeSeasonScoreFromState(state);
+    if (!score) return;
+
+    const wonLeague =
+      getUserRank(state.season.standings, USER_CLUB_ID) === 1;
+    const wonCup = didUserWinCup(state.season.cup, USER_CLUB_ID);
+    const wonUcl = didUserWinUcl(state.season.ucl, USER_CLUB_ID);
+    const isTreble = wonLeague && wonCup && wonUcl;
+
+    if (
+      isEligibleForAutoHofInduction({
+        seasonScore: score,
+        wonUcl,
+        isTreble,
+      })
+    ) {
       const timer = window.setTimeout(() => {
         archiveCurrentSeasonNow();
       }, 0);
       return () => window.clearTimeout(timer);
     }
-  }, [state.phase, state.season, archiveCurrentSeasonNow]);
+  }, [state, archiveCurrentSeasonNow]);
 
   const dismissUnlockToast = useCallback((achievementId: string) => {
     setRecentUnlocks((prev) => prev.filter((id) => id !== achievementId));

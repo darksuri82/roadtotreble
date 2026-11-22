@@ -849,6 +849,27 @@ export function archiveSeasonToHallOfFame(params: {
   return updated;
 }
 
+/**
+ * Minimum season score to automatically enter the Hall of Fame (comparable to
+ * the lowest Historical Benchmark team: 15-16 Leicester City at 5,684 pts).
+ * Seasons below this threshold can still be manually inducted from Season Summary.
+ */
+export const HOF_AUTO_INDUCTION_MIN_SCORE = 5500;
+
+export function isEligibleForAutoHofInduction(params: {
+  seasonScore: SeasonScoreBreakdown;
+  wonUcl: boolean;
+  isTreble: boolean;
+}): boolean {
+  const { seasonScore, wonUcl, isTreble } = params;
+  return (
+    seasonScore.totalScore >= HOF_AUTO_INDUCTION_MIN_SCORE ||
+    seasonScore.grade === 'S+' ||
+    wonUcl ||
+    isTreble
+  );
+}
+
 export function deleteHallOfFameEntry(entryId: string): LegacyStorageState {
   const current = loadLegacyState();
   const updated: LegacyStorageState = {

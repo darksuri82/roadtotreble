@@ -245,6 +245,7 @@ describe('v4.0 Sub-Attributes, Staged Attack Chain & Tactical 2D Movement', () =
     const yamalRec = playerTotals.get('act-004')!;
     const oliseRec = playerTotals.get('act-017')!;
     const odegaardRec = playerTotals.get('act-024')!;
+    const brunoRec = playerTotals.get('act-0031')!;
 
     expect(haalandRec.goals).toBeGreaterThan(haalandRec.assists * 2.2);
     expect(haalandRec.headerGoals).toBeGreaterThanOrEqual(4);
@@ -254,7 +255,8 @@ describe('v4.0 Sub-Attributes, Staged Attack Chain & Tactical 2D Movement', () =
     expect(yamalRec.goals / seasons).toBeGreaterThanOrEqual(5.0);
     expect(oliseRec.assists / seasons).toBeGreaterThanOrEqual(7.0);
     expect(oliseRec.goals / seasons).toBeGreaterThanOrEqual(5.0);
-    expect(odegaardRec.assists).toBeGreaterThan(odegaardRec.goals * 0.85);
+    expect(brunoRec.assists).toBeGreaterThan(brunoRec.goals * 0.85);
+    expect(odegaardRec.assists / seasons).toBeGreaterThanOrEqual(5.5);
   }, 30000);
 
   it('produces distinct tactical possession, route profiles, and 2D off-ball offsets per tactic', () => {

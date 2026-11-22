@@ -151,7 +151,7 @@ export function SquadManagerModal({
         <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold text-slate-400">
-              포메이션 (6종 · 변경 시 스마트 유지)
+              포메이션
             </span>
             <button
               id="quick-best-xi-btn"

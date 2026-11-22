@@ -77,7 +77,7 @@ export function HeaderNav() {
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <span className="font-display text-xs sm:text-base font-bold tracking-wider text-white whitespace-nowrap">
-                  PITCH MANAGER
+                  ROAD TO TREBLE
                 </span>
                 <button
                   type="button"

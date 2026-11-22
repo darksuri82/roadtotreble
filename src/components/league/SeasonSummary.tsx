@@ -202,6 +202,7 @@ export function SeasonSummary() {
     enterUclMode,
     skipUclToFinalSummary,
     setLegacyModalOpen,
+    archiveCurrentSeasonNow,
     markCupCelebrated,
     resetGame,
   } = useGame();
@@ -611,16 +612,27 @@ export function SeasonSummary() {
                 </button>
               )}
 
-              {season.legacyArchived && (
+              {season.legacyArchived ? (
                 <button
                   type="button"
                   onClick={() => setLegacyModalOpen(true)}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/45 bg-amber-500/15 px-4 py-2.5 text-xs font-bold text-amber-300 hover:bg-amber-500/25 cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  명예의 전당 등재 완료 · 레거시 확인 →
+                  명예의 전당 등재 완료 · 보기 →
                 </button>
-              )}
+              ) : !canStartUcl && Boolean(season.ucl?.completed) ? (
+                <button
+                  id="manual-hof-register-btn"
+                  type="button"
+                  onClick={archiveCurrentSeasonNow}
+                  title="자동 등재 기준(5,500점 이상 · 역대 강팀급) 미만 시즌도 원하면 직접 명예의 전당에 등록할 수 있습니다"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/50 bg-amber-500/15 px-4 py-2.5 text-xs font-extrabold text-amber-200 hover:bg-amber-500/25 cursor-pointer"
+                >
+                  <Crown className="w-3.5 h-3.5 text-amber-300" />
+                  명예의 전당 수동 등록
+                </button>
+              ) : null}
 
               <button
                 type="button"

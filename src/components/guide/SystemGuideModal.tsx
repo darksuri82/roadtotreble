@@ -298,7 +298,7 @@ export function SystemGuideModal({ onClose }: { onClose: () => void }) {
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-emerald-400" />
             <h2 className="text-sm font-extrabold text-white">
-              PITCH MANAGER 시스템 가이드
+              Road To Treble 시스템 가이드
             </h2>
           </div>
           <button

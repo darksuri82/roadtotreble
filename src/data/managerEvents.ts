@@ -9,6 +9,7 @@ import {
 } from '../engine/conditionEngine';
 import type {
   ActiveManagerEvent,
+  ManagerChoiceRiskTier,
   ManagerEventChoiceDef,
   ManagerEventMatchContext,
   ManagerEventOutcomeItem,
@@ -565,10 +566,10 @@ export function pickNextManagerEvent(
     });
   }
 
-  // Decide whether to trigger on this match based on cooldown + drama
+  // Decide whether to trigger on this match based on cooldown + drama (v5.1: interviews drive morale)
   const hasHighDrama = triggerCandidates.some((c) => c.priority >= 8);
   const triggerChance =
-    since >= 4 ? 1.0 : since === 3 ? 0.68 : hasHighDrama ? 0.36 : 0;
+    since >= 3 ? 1.0 : since === 2 ? 0.62 : hasHighDrama ? 0.42 : 0;
   if (rng() > triggerChance) return null;
 
   // Pick matching template (prefer contextual triggers, fallback to 'any' / 'transfer_rumor')
@@ -622,21 +623,32 @@ export function pickNextManagerEvent(
       : undefined,
   };
 
-  const interpolatedChoices: ManagerEventChoiceDef[] = chosenTemplate.choices.map((c) => ({
-    ...c,
-    label: interpolateEventText(c.label, vars),
-    quote: interpolateEventText(c.quote, vars),
-    successEffect: {
-      ...c.successEffect,
-      reactionText: interpolateEventText(c.successEffect.reactionText, vars),
-    },
-    failEffect: c.failEffect
-      ? {
-          ...c.failEffect,
-          reactionText: interpolateEventText(c.failEffect.reactionText, vars),
-        }
-      : undefined,
-  }));
+  const interpolatedChoices: ManagerEventChoiceDef[] = chosenTemplate.choices.map((c) => {
+    const tier = classifyChoiceRiskTier(c);
+    const tunedChance =
+      tier === 'high'
+        ? Math.min(0.58, Math.max(0.48, (c.successChance ?? 0.55) - 0.06))
+        : tier === 'medium'
+          ? Math.min(0.72, Math.max(0.64, c.successChance ?? 0.68))
+          : undefined;
+    return {
+      ...c,
+      riskTier: tier,
+      successChance: tunedChance,
+      label: interpolateEventText(c.label, vars),
+      quote: interpolateEventText(c.quote, vars),
+      successEffect: {
+        ...c.successEffect,
+        reactionText: interpolateEventText(c.successEffect.reactionText, vars),
+      },
+      failEffect: c.failEffect
+        ? {
+            ...c.failEffect,
+            reactionText: interpolateEventText(c.failEffect.reactionText, vars),
+          }
+        : undefined,
+    };
+  });
 
   const sceneId = resolveManagerEventSceneId({
     template: chosenTemplate,
@@ -678,13 +690,52 @@ export function pickNextManagerEvent(
   };
 }
 
+export function classifyChoiceRiskTier(
+  choice: Pick<ManagerEventChoiceDef, 'riskTier' | 'successChance' | 'failEffect' | 'riskLabel'>,
+): ManagerChoiceRiskTier {
+  if (choice.riskTier) return choice.riskTier;
+  if (typeof choice.successChance === 'number' && choice.failEffect) {
+    if (choice.successChance <= 0.65 || choice.riskLabel?.includes('하이리스크')) {
+      return 'high';
+    }
+    return 'medium';
+  }
+  return 'safe';
+}
+
 function moraleNote(delta: number, isRiskSuccess: boolean, wasRisky: boolean): string {
   if (delta >= 3) return wasRisky && isRiskSuccess ? '충격 각성!' : '사기 폭발!';
   if (delta === 2) return wasRisky && isRiskSuccess ? '강력 각성!' : '사기 급상승';
   if (delta === 1) return '사기 상승';
   if (delta === -1) return '압박감 증가';
-  if (delta <= -2) return '멘탈 위축';
+  if (delta <= -2) return '역풍 · 멘탈 추락';
   return '변동 없음';
+}
+
+function scaleChoiceDelta(
+  raw: number | undefined,
+  tier: ManagerChoiceRiskTier,
+  riskSucceeded: boolean,
+  isIndividual: boolean,
+): number {
+  if (!raw || raw === 0) return 0;
+  if (tier === 'high') {
+    if (riskSucceeded) {
+      if (raw > 0) return isIndividual ? Math.max(4, raw + 1) : Math.max(3, raw + 1);
+      return raw;
+    }
+    // High-risk backlash hurts sharply
+    if (raw < 0) return isIndividual ? Math.min(-3, raw - 1) : Math.min(-2, raw - 1);
+    return raw;
+  }
+  if (tier === 'medium') {
+    if (riskSucceeded && raw > 0) return Math.max(2, raw);
+    if (!riskSucceeded && raw < 0) return Math.min(-2, raw);
+    return raw;
+  }
+  // Safe choice: steady, low-return (+1 max positive)
+  if (raw > 1) return 1;
+  return raw;
 }
 
 /**
@@ -716,7 +767,11 @@ export function resolveManagerEventChoice(params: {
 
   const choice =
     event.choices.find((c) => c.id === choiceId) ?? event.choices[0];
-  const wasRisky = typeof choice.successChance === 'number' && Boolean(choice.failEffect);
+  const riskTier = classifyChoiceRiskTier(choice);
+  const wasRisky =
+    riskTier !== 'safe' &&
+    typeof choice.successChance === 'number' &&
+    Boolean(choice.failEffect);
   const riskSucceeded = !wasRisky || rng() < (choice.successChance ?? 1);
   const effect = riskSucceeded
     ? choice.successEffect
@@ -727,6 +782,11 @@ export function resolveManagerEventChoice(params: {
   const benchPlayers = bench.filter((p): p is Player => Boolean(p));
   const allPlayers = [...starterPlayers, ...benchPlayers];
 
+  // Safe choices keep players in steady equilibrium (up to +2);
+  // Medium choices push into +3/+4 (OVR +1); High-risk success unlocks +5 🔥 (OVR +2)!
+  const tierMaxPositiveCap =
+    riskTier === 'high' ? 5 : riskTier === 'medium' ? 4 : 2;
+
   const applyDeltaToPlayer = (
     playerId: string,
     delta: number,
@@ -736,12 +796,13 @@ export function resolveManagerEventChoice(params: {
     const prev = getPlayerCondition(nextMap, playerId);
     let next = clampMorale(prev.morale + delta);
     if (delta > 0) {
-      const allowFire = options?.allowFireIgnition ?? true;
-      if (!allowFire && prev.morale < 4 && next >= 4) {
-        next = 3;
+      const allowFire = options?.allowFireIgnition ?? (riskTier === 'high');
+      if (!allowFire && prev.morale < 5 && next >= 5) {
+        next = 4;
       }
-      if (typeof options?.capAt === 'number' && prev.morale <= options.capAt && next > options.capAt) {
-        next = options.capAt;
+      const cap = options?.capAt ?? tierMaxPositiveCap;
+      if (prev.morale <= cap && next > cap) {
+        next = cap;
       }
     }
     nextMap[playerId] = {
@@ -754,97 +815,118 @@ export function resolveManagerEventChoice(params: {
   let nextTeamMorale = currentTeamMorale;
 
   // 1. Primary target effect (player or position_group)
-  if (effect.targetMoraleDelta && effect.targetMoraleDelta !== 0) {
+  const scaledTargetDelta = scaleChoiceDelta(
+    effect.targetMoraleDelta,
+    riskTier,
+    riskSucceeded,
+    event.targetScope === 'player',
+  );
+  if (scaledTargetDelta !== 0) {
     if (event.targetScope === 'player' && event.targetPlayerId) {
-      // Individual target can always ignite solo 🔥 (or freeze ❄️ on fail/backlash)
-      applyDeltaToPlayer(event.targetPlayerId, effect.targetMoraleDelta, {
-        allowFireIgnition: true,
+      applyDeltaToPlayer(event.targetPlayerId, scaledTargetDelta, {
+        allowFireIgnition: riskTier === 'high' && riskSucceeded,
+        capAt: riskTier === 'safe' ? 3 : tierMaxPositiveCap,
       });
       outcomes.push({
         label: event.targetPlayerName ?? '대상 선수',
-        delta: effect.targetMoraleDelta,
-        note: moraleNote(effect.targetMoraleDelta, riskSucceeded, wasRisky),
+        delta: scaledTargetDelta,
+        note: moraleNote(scaledTargetDelta, riskSucceeded, wasRisky),
       });
     } else if (event.targetScope === 'position_group' && event.positionGroup) {
-      const canIgniteLine = effect.targetMoraleDelta >= 2;
       for (const p of allPlayers) {
         if (getPositionGroup(p.position) === event.positionGroup) {
-          applyDeltaToPlayer(p.id, effect.targetMoraleDelta, {
-            allowFireIgnition: canIgniteLine,
-            capAt: canIgniteLine ? 4 : undefined,
+          applyDeltaToPlayer(p.id, scaledTargetDelta, {
+            allowFireIgnition: riskTier === 'high' && riskSucceeded,
           });
         }
       }
       outcomes.push({
         label: POSITION_GROUP_LABELS[event.positionGroup],
-        delta: effect.targetMoraleDelta,
-        note: moraleNote(effect.targetMoraleDelta, riskSucceeded, wasRisky),
+        delta: scaledTargetDelta,
+        note: moraleNote(scaledTargetDelta, riskSucceeded, wasRisky),
       });
     }
   }
 
   // 2. Whole-team effect
-  if (effect.teamMoraleDelta && effect.teamMoraleDelta !== 0) {
-    const canIgniteTeam = effect.teamMoraleDelta >= 2;
+  const scaledTeamDelta = scaleChoiceDelta(
+    effect.teamMoraleDelta,
+    riskTier,
+    riskSucceeded,
+    false,
+  );
+  if (scaledTeamDelta !== 0) {
     for (const p of allPlayers) {
-      applyDeltaToPlayer(p.id, effect.teamMoraleDelta, {
-        allowFireIgnition: canIgniteTeam,
-        capAt: canIgniteTeam ? 4 : undefined,
+      applyDeltaToPlayer(p.id, scaledTeamDelta, {
+        allowFireIgnition: riskTier === 'high' && riskSucceeded,
       });
     }
-    nextTeamMorale = clampMorale(nextTeamMorale + effect.teamMoraleDelta);
+    nextTeamMorale = clampMorale(nextTeamMorale + scaledTeamDelta);
     outcomes.push({
       label: '팀 전체',
-      delta: effect.teamMoraleDelta,
-      note: moraleNote(effect.teamMoraleDelta, riskSucceeded, wasRisky),
+      delta: scaledTeamDelta,
+      note: moraleNote(scaledTeamDelta, riskSucceeded, wasRisky),
     });
   }
 
   // 3. Starter-only / Bench-only effects
-  if (effect.starterMoraleDelta && effect.starterMoraleDelta !== 0) {
-    const canIgniteStarters = effect.starterMoraleDelta >= 2;
+  const scaledStarterDelta = scaleChoiceDelta(
+    effect.starterMoraleDelta,
+    riskTier,
+    riskSucceeded,
+    false,
+  );
+  if (scaledStarterDelta !== 0) {
     for (const p of starterPlayers) {
-      applyDeltaToPlayer(p.id, effect.starterMoraleDelta, {
-        allowFireIgnition: canIgniteStarters,
-        capAt: canIgniteStarters ? 4 : undefined,
+      applyDeltaToPlayer(p.id, scaledStarterDelta, {
+        allowFireIgnition: riskTier === 'high' && riskSucceeded,
       });
     }
     outcomes.push({
       label: '선발 11인',
-      delta: effect.starterMoraleDelta,
-      note: moraleNote(effect.starterMoraleDelta, riskSucceeded, wasRisky),
+      delta: scaledStarterDelta,
+      note: moraleNote(scaledStarterDelta, riskSucceeded, wasRisky),
     });
   }
 
-  if (effect.benchMoraleDelta && effect.benchMoraleDelta !== 0) {
-    const canIgniteBench = effect.benchMoraleDelta >= 2;
+  const scaledBenchDelta = scaleChoiceDelta(
+    effect.benchMoraleDelta,
+    riskTier,
+    riskSucceeded,
+    false,
+  );
+  if (scaledBenchDelta !== 0) {
     for (const p of benchPlayers) {
-      applyDeltaToPlayer(p.id, effect.benchMoraleDelta, {
-        allowFireIgnition: canIgniteBench,
-        capAt: canIgniteBench ? 4 : undefined,
+      applyDeltaToPlayer(p.id, scaledBenchDelta, {
+        allowFireIgnition: riskTier === 'high' && riskSucceeded,
       });
     }
     outcomes.push({
       label: '벤치 멤버',
-      delta: effect.benchMoraleDelta,
-      note: moraleNote(effect.benchMoraleDelta, riskSucceeded, wasRisky),
+      delta: scaledBenchDelta,
+      note: moraleNote(scaledBenchDelta, riskSucceeded, wasRisky),
     });
   }
 
   // 4. Secondary position-group bonus
-  if (effect.secondaryGroup && effect.secondaryGroupDelta && effect.secondaryGroupDelta !== 0) {
+  const scaledSecDelta = scaleChoiceDelta(
+    effect.secondaryGroupDelta,
+    riskTier,
+    riskSucceeded,
+    false,
+  );
+  if (effect.secondaryGroup && scaledSecDelta !== 0) {
     for (const p of allPlayers) {
       if (getPositionGroup(p.position) === effect.secondaryGroup) {
-        applyDeltaToPlayer(p.id, effect.secondaryGroupDelta, {
-          allowFireIgnition: effect.secondaryGroupDelta >= 2,
-          capAt: 4,
+        applyDeltaToPlayer(p.id, scaledSecDelta, {
+          allowFireIgnition: riskTier === 'high' && riskSucceeded,
         });
       }
     }
     outcomes.push({
       label: POSITION_GROUP_LABELS[effect.secondaryGroup],
-      delta: effect.secondaryGroupDelta,
-      note: moraleNote(effect.secondaryGroupDelta, riskSucceeded, wasRisky),
+      delta: scaledSecDelta,
+      note: moraleNote(scaledSecDelta, riskSucceeded, wasRisky),
     });
   }
 
@@ -854,7 +936,10 @@ export function resolveManagerEventChoice(params: {
     for (const p of allPlayers) {
       const prev = getPlayerCondition(conditionMap, p.id);
       if (prev.morale <= -3) {
-        applyDeltaToPlayer(p.id, effect.frozenReliefBonus, { allowFireIgnition: false });
+        applyDeltaToPlayer(p.id, effect.frozenReliefBonus, {
+          allowFireIgnition: false,
+          capAt: 0,
+        });
         relievedCount += 1;
       }
     }

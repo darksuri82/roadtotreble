@@ -378,16 +378,26 @@ export function ManagerEventModal({
               {managerName ? `${managerName} 감독님의 답변을 선택하세요` : '감독님의 답변을 선택하세요'}
             </div>
             {activeEvent.choices.map((choice, idx) => {
-              const isRisky = Boolean(choice.riskLabel);
+              const tier =
+                choice.riskTier ??
+                (typeof choice.successChance === 'number' && choice.failEffect
+                  ? choice.successChance <= 0.65 || choice.riskLabel?.includes('하이리스크')
+                    ? 'high'
+                    : 'medium'
+                  : 'safe');
+              const isHigh = tier === 'high';
+              const isMedium = tier === 'medium';
               return (
                 <button
                   key={choice.id}
                   type="button"
                   onClick={() => onSelectChoice(choice.id)}
                   className={`group w-full rounded-xl border p-3 sm:p-3.5 text-left transition-colors cursor-pointer ${
-                    isRisky
-                      ? 'border-amber-500/35 bg-[#121620] hover:border-amber-400/75 hover:bg-amber-950/25'
-                      : 'border-slate-800 bg-[#101722] hover:border-emerald-400/65 hover:bg-emerald-950/20'
+                    isHigh
+                      ? 'border-rose-500/35 bg-[#121520] hover:border-rose-400/75 hover:bg-rose-950/20'
+                      : isMedium
+                        ? 'border-amber-500/35 bg-[#121620] hover:border-amber-400/75 hover:bg-amber-950/20'
+                        : 'border-slate-800 bg-[#101722] hover:border-emerald-400/65 hover:bg-emerald-950/15'
                   }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
@@ -400,13 +410,31 @@ export function ManagerEventModal({
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="rounded bg-slate-800/90 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                      <span className="rounded bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-semibold text-slate-400">
                         {choice.toneTag}
                       </span>
-                      {choice.riskLabel && (
-                        <span className="inline-flex items-center gap-0.5 rounded border border-amber-400/45 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-200">
-                          <Zap className="h-2.5 w-2.5" />
-                          {choice.riskLabel}
+                      {isHigh ? (
+                        <span
+                          title="하이리스크 · 하이리턴: 성공 시 사기 대폭 상승(OVR 각성 가능), 실패 시 큰 역풍"
+                          className="inline-flex items-center gap-0.5 rounded border border-rose-400/45 bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-extrabold text-rose-200"
+                        >
+                          <Flame className="h-2.5 w-2.5 text-rose-300" />
+                          고위험
+                        </span>
+                      ) : isMedium ? (
+                        <span
+                          title="승부수: 성공 시 사기 상승(OVR +1 도달 가능), 실패 시 소폭 하락"
+                          className="inline-flex items-center gap-0.5 rounded border border-amber-400/45 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-extrabold text-amber-200"
+                        >
+                          <Zap className="h-2.5 w-2.5 text-amber-300" />
+                          승부수
+                        </span>
+                      ) : (
+                        <span
+                          title="안정 답변: 역풍 위험 없이 안정적 사기 관리"
+                          className="inline-flex items-center gap-0.5 rounded border border-slate-700 bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-bold text-slate-300"
+                        >
+                          안정
                         </span>
                       )}
                     </div>
@@ -417,13 +445,6 @@ export function ManagerEventModal({
                 </button>
               );
             })}
-          </div>
-
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 pt-0.5">
-            <Flame className="h-3.5 w-3.5 text-amber-400/70 shrink-0" />
-            <span>
-              선택에 따라 대상 선수·포지션 라인·팀 전체의 사기(Morale)가 즉시 변동되어 경기 실효 OVR에 반영됩니다.
-            </span>
           </div>
         </div>
       </div>

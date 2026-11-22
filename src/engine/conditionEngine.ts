@@ -192,9 +192,9 @@ export function getInjuryMoralePenalty(severity: InjurySeverity): number {
 /**
  * Rolls whether a player who played in a match sustains a new injury (or aggravates a minor injury).
  * Standalone base probabilities per player per 90-min match (no cumulative fatigue dependency):
- * - minor: 0.42% (~2-2.5 minor injuries per full season across entire squad)
- * - moderate: 0.030% (~0.16 per season — roughly 1 in 6 seasons, genuinely uncommon)
- * - severe: 0.006% (~0.03 per season — truly rare season-ending event)
+ * - minor: 0.13% (~0.70 minor injuries per full 52-match season — occasional realistic variable)
+ * - moderate: 0.011% (~0.06 per season — roughly 1 in 16 seasons)
+ * - severe: 0.0018% (~0.010 per season — ultra-rare ~1 in 100 seasons event)
  * Scaled by minutes ratio and GK factor (0.35x).
  */
 export function rollPlayerMatchInjury(params: {
@@ -215,13 +215,13 @@ export function rollPlayerMatchInjury(params: {
   } = params;
   if (minutesPlayed <= 0) return { injury: null, wasAggravated: false };
 
-  // Playing through an existing minor injury => fixed 6% aggravation risk
+  // Playing through an existing minor injury => fixed 4% aggravation risk
   if (
     currentCondition.injury &&
     currentCondition.injury.matchesRemaining > 0 &&
     currentCondition.injury.canPlayThrough
   ) {
-    if (rng() < 0.06) {
+    if (rng() < 0.04) {
       // 30% escalate to moderate, 70% extend minor by +2 matches
       if (rng() < 0.3) {
         return {
@@ -252,9 +252,9 @@ export function rollPlayerMatchInjury(params: {
   const minMult = Math.min(1.25, Math.max(0.35, minutesPlayed / 90));
   const totalMult = gkMult * minMult;
 
-  const severeProb = 0.00006 * totalMult;
-  const moderateProb = 0.0003 * totalMult;
-  const minorProb = 0.0042 * totalMult;
+  const severeProb = 0.000018 * totalMult;
+  const moderateProb = 0.00011 * totalMult;
+  const minorProb = 0.0013 * totalMult;
 
   const roll = rng();
   if (roll < severeProb) {
@@ -295,13 +295,13 @@ export function tickInjuryOneMatch(injury: PlayerInjury | null): PlayerInjury | 
   return null;
 }
 
-// ── Morale Evaluation ────────────────────────────────────────────────────────
+// ── Morale Evaluation (v5.1 Strict Thresholds — Interviews Drive Swings) ────
 
 export function getMoraleTier(morale: number): MoraleTier {
-  if (morale >= 4) return 'ecstatic';
-  if (morale >= 2) return 'high';
-  if (morale <= -4) return 'frozen';
-  if (morale <= -2) return 'low';
+  if (morale >= 5) return 'ecstatic';
+  if (morale >= 3) return 'high';
+  if (morale <= -5) return 'frozen';
+  if (morale <= -3) return 'low';
   return 'normal';
 }
 
@@ -315,8 +315,8 @@ export function getMoraleOvrBonus(morale: number): number {
 }
 
 export function getTeamMoraleBonus(teamMorale: number): number {
-  if (teamMorale >= 4) return 0.5;
-  if (teamMorale <= -4) return -0.5;
+  if (teamMorale >= 5) return 0.5;
+  if (teamMorale <= -5) return -0.5;
   return 0;
 }
 
@@ -545,46 +545,45 @@ export function updateSquadConditionsAfterMatch(
   const sortedOvrs = squad.map((p) => p.ovr).sort((a, b) => b - a);
   const starterCaliberThreshold = sortedOvrs[Math.min(10, Math.max(0, sortedOvrs.length - 1))] ?? 78;
 
-  // True collective explosion: 7+ win streak, 4+ goal demolition, or big-match 3+ goal thrashing
+  // True collective explosion: 8+ win streak, 4+ goal demolition, or big-match 3+ goal thrashing
   const isCollectiveExplosion =
     outcome === 'W' &&
-    (goalDiff >= 4 || teamWinStreak >= 7 || (isBigMatch && goalDiff >= 3));
+    (goalDiff >= 4 || teamWinStreak >= 8 || (isBigMatch && goalDiff >= 3));
 
-  // Moderate team warmup (warms players toward +2/+3 without igniting the whole squad)
+  // Moderate team warmup (nudges toward +1..+2 without pushing whole squad into OVR boost)
   const isTeamWarmup =
     outcome === 'W' &&
     !isCollectiveExplosion &&
-    (teamWinStreak >= 4 || goalDiff >= 3 || isBigMatch);
+    (teamWinStreak >= 5 || goalDiff >= 3);
 
-  // Team-level morale shift for match participants
+  // Team-level morale shift for match participants (kept modest so interviews dominate OVR swings)
   let teamPartDelta = 0;
   let teamMoraleDelta = 0;
   if (outcome === 'W') {
     if (isCollectiveExplosion) {
-      teamPartDelta = 2;
-      teamMoraleDelta = 2;
+      teamPartDelta = 1;
+      teamMoraleDelta = 1;
     } else if (isTeamWarmup) {
       teamPartDelta = 1;
       teamMoraleDelta = 1;
     }
   } else if (outcome === 'L') {
-    if (teamLossStreak >= 2) {
+    if (teamLossStreak >= 3) {
       teamPartDelta -= 1;
       teamMoraleDelta -= 1;
     }
     if (goalDiff <= -3) {
-      teamPartDelta -= 2;
-      teamMoraleDelta -= 1;
-    }
-    if (isBigMatch) {
       teamPartDelta -= 1;
       teamMoraleDelta -= 1;
     }
+    if (isBigMatch && goalDiff <= -2) {
+      teamPartDelta -= 1;
+    }
   }
-  teamPartDelta = Math.max(-3, Math.min(2, teamPartDelta));
-  teamMoraleDelta = Math.max(-2, Math.min(2, teamMoraleDelta));
+  teamPartDelta = Math.max(-2, Math.min(1, teamPartDelta));
+  teamMoraleDelta = Math.max(-2, Math.min(1, teamMoraleDelta));
 
-  // On a winning clean sheet, award +1 morale ONLY to the single highest-rated GK/DF hero
+  // On a winning clean sheet, identify the top GK/DF (used only to thaw negative morale)
   let cleanSheetHeroId: string | null = null;
   if (cleanSheet && outcome === 'W') {
     let bestRating = -1;
@@ -653,7 +652,7 @@ export function updateSquadConditionsAfterMatch(
       }
     }
 
-    // 3. Morale update (individual heroics + natural cooldown + injury setback + strict fire gating)
+    // 3. Morale update (v5.1: ordinary matches stay calm; interviews drive ±3..±5 OVR tiers)
     const goals = goalsByPlayerId[player.id] ?? (goalScorerIds?.has(player.id) ? 1 : 0);
     const assists = assistsByPlayerId[player.id] ?? (assisterIds?.has(player.id) ? 1 : 0);
     const rating = ratingsByPlayerId[player.id];
@@ -661,19 +660,23 @@ export function updateSquadConditionsAfterMatch(
     let indivDelta = 0;
     let isPersonalHero = false;
     if (played) {
-      if (momPlayerId && momPlayerId === player.id) {
-        indivDelta += 3;
+      if (
+        (momPlayerId && momPlayerId === player.id) ||
+        goals >= 3 ||
+        (typeof rating === 'number' && rating >= 9.2)
+      ) {
+        indivDelta += 1;
         isPersonalHero = true;
-      } else if (goals >= 2 || (typeof rating === 'number' && rating >= 9.0)) {
-        indivDelta += 2;
-        isPersonalHero = true;
-      } else if (goals === 1 || assists >= 1 || player.id === cleanSheetHeroId) {
+      } else if (
+        prev.morale < 0 &&
+        (goals >= 1 || assists >= 1 || player.id === cleanSheetHeroId)
+      ) {
+        // Routine goal/assist helps thaw negative morale back toward 0 without inflating OVR
         indivDelta += 1;
       }
 
-      if (typeof rating === 'number') {
-        if (rating <= 5.3) indivDelta -= 2;
-        else if (rating <= 5.9) indivDelta -= 1;
+      if (typeof rating === 'number' && rating <= 5.2) {
+        indivDelta -= 1;
       }
     }
 
@@ -692,39 +695,38 @@ export function updateSquadConditionsAfterMatch(
 
     let benchPenalty = 0;
     if (!played && isHealthy && player.ovr >= starterCaliberThreshold) {
-      if (nextBenchStreak === 3 || (nextBenchStreak > 3 && (nextBenchStreak - 3) % 2 === 0)) {
+      if (nextBenchStreak === 4 || (nextBenchStreak > 4 && (nextBenchStreak - 4) % 3 === 0)) {
         benchPenalty = -1;
       }
     }
 
-    // Step 3a: Natural cooldown / mean reversion toward calm equilibrium
+    // Step 3a: Natural cooldown / mean reversion toward calm equilibrium (-2..+2)
     let baseMorale = prev.morale;
-    if (baseMorale >= 4) {
-      // Ecstatic (🔥) cools back to +3 (high) after a match unless refreshed by heroics or collective explosion
+    if (baseMorale >= 5) {
+      // Ecstatic (+5 🔥) cools back to +4 after a match unless refreshed by personal heroics
+      if (!isPersonalHero) {
+        baseMorale = 4;
+      }
+    } else if (baseMorale >= 3) {
+      // High (+3/+4) cools by -1 when neither personal heroics nor collective explosion occurred
       if (!isPersonalHero && !isCollectiveExplosion) {
-        baseMorale = 3;
-      }
-    } else if (baseMorale >= 2) {
-      // High (+2/+3) gradually cools when neither personal heroics nor team surge occurred
-      if (indivDelta <= 0 && teamPartDelta <= 0) {
         baseMorale -= 1;
       }
-    } else if (baseMorale === 1) {
-      if (outcome !== 'W' || (!played && indivDelta <= 0)) {
+    } else if (baseMorale >= 1) {
+      if (outcome !== 'W' && !isPersonalHero) {
         baseMorale -= 1;
       }
-    } else if (baseMorale <= -4) {
-      // Frozen (❄️) slowly thaws on a clean winning appearance
+    } else if (baseMorale <= -5) {
       if (outcome === 'W' && played && indivDelta >= 0 && injuryMoralePenalty === 0) {
-        baseMorale += 1;
+        baseMorale = -4;
       }
-    } else if (baseMorale <= -2) {
-      if (outcome === 'W' && played && indivDelta >= 0 && injuryMoralePenalty === 0 && rng() < 0.5) {
+    } else if (baseMorale <= -3) {
+      if (outcome === 'W' && played && indivDelta >= 0 && injuryMoralePenalty === 0) {
         baseMorale += 1;
       }
     }
 
-    // Step 3b: Apply match deltas (unavailable/benched players don't ride positive team surges)
+    // Step 3b: Apply match deltas
     const teamContribution = played
       ? teamPartDelta
       : teamPartDelta < 0 && !wasUnavailable
@@ -732,21 +734,22 @@ export function updateSquadConditionsAfterMatch(
         : 0;
     const clampedDelta = Math.max(
       -3,
-      Math.min(3, teamContribution + indivDelta + injuryMoralePenalty + benchPenalty),
+      Math.min(2, teamContribution + indivDelta + injuryMoralePenalty + benchPenalty),
     );
     let nextMorale = baseMorale + clampedDelta;
 
-    // Step 3c: Strict fire gate (>= 4) so solo heroics fire more often than whole-team fire
-    const earnedSoloFire =
-      (isPersonalHero && injuryMoralePenalty === 0) ||
-      (goals >= 1 && baseMorale >= 3 && injuryMoralePenalty === 0);
-    const earnedCollectiveFire =
-      isCollectiveExplosion && isStarter && baseMorale >= 2 && injuryMoralePenalty === 0;
-
-    if (!earnedSoloFire && !earnedCollectiveFire && baseMorale < 4 && nextMorale >= 4) {
-      nextMorale = 3;
+    // Step 3c: Strict match cap — routine matches alone never exceed +2 (OVR 0);
+    // only sustained personal heroics + existing surge can reach +3, while interviews unlock +4/+5 🔥!
+    if (prev.morale < 3 && nextMorale >= 3) {
+      const earnedMatchHigh =
+        isPersonalHero && isCollectiveExplosion && prev.morale >= 2 && injuryMoralePenalty === 0;
+      if (!earnedMatchHigh) {
+        nextMorale = 2;
+      } else {
+        nextMorale = Math.min(3, nextMorale);
+      }
     }
-    if (earnedCollectiveFire && !earnedSoloFire && nextMorale > 4) {
+    if (prev.morale < 5 && nextMorale >= 5) {
       nextMorale = 4;
     }
 

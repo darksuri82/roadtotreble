@@ -97,11 +97,14 @@ export interface ManagerEventChoiceEffect {
   reactionText: string;
 }
 
+export type ManagerChoiceRiskTier = 'high' | 'medium' | 'safe';
+
 export interface ManagerEventChoiceDef {
   id: string;
   label: string;
   toneTag: string;
   quote: string;
+  riskTier?: ManagerChoiceRiskTier;
   riskLabel?: string;
   successChance?: number; // 0..1, omitted => deterministic success
   successEffect: ManagerEventChoiceEffect;

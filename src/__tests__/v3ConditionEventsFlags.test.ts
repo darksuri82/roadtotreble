@@ -72,13 +72,13 @@ describe('v3.1 Standalone 3-Tier Injuries, Auto-Return Lineup, Morale, 72 Manage
     }
 
     const fwTotal = fwMinor + fwModerate + fwSevere;
-    expect(fwMinor).toBeGreaterThan(fwModerate * 5);
+    expect(fwMinor).toBeGreaterThan(fwModerate * 4);
     expect(fwModerate).toBeGreaterThanOrEqual(fwSevere);
-    // ~0.456% outfield rate => roughly 65..125 injuries over 20000 player-matches (~2.2-2.5 minor/season)
-    expect(fwTotal).toBeGreaterThan(60);
-    expect(fwTotal).toBeLessThan(130);
+    // v5.1 rare-event outfield rate (~0.143%) => roughly 15..50 injuries over 20000 player-matches (~0.8/season)
+    expect(fwTotal).toBeGreaterThan(14);
+    expect(fwTotal).toBeLessThan(55);
     // GK (0.35x) must be substantially lower than outfield
-    expect(gkTotal).toBeLessThan(fwTotal * 0.55);
+    expect(gkTotal).toBeLessThan(fwTotal * 0.65);
 
     // Per-team per-match safety cap: never more than 1 fresh injury in a single match even with rng=0
     const squad11 = ACTIVE_PLAYERS.slice(0, 11);
@@ -90,10 +90,10 @@ describe('v3.1 Standalone 3-Tier Injuries, Auto-Return Lineup, Morale, 72 Manage
       conditionMap: {},
       competition: 'league',
       trackUserAlerts: true,
-      rng: () => 0.00001,
+      rng: () => 0.000005,
     });
     expect(capped.newInjuries.length).toBe(1);
-    // Severe injury (rng=0.00001 < 0.00006) drops injured player morale by -3 and shocks teamMoraleDelta
+    // Severe injury (rng=0.000005 < 0.000018) drops injured player morale by -3 and shocks teamMoraleDelta
     const injuredId = capped.newInjuries[0].playerId;
     expect(capped.conditionMap[injuredId].morale).toBe(-3);
     expect(capped.teamMoraleDelta).toBe(-1);
@@ -231,13 +231,13 @@ describe('v3.1 Standalone 3-Tier Injuries, Auto-Return Lineup, Morale, 72 Manage
     expect(recs[recs.length - 1].player.id).toBe(gk.id);
   });
 
-  it('enforces natural morale cooldown, solo MOM ignition over mass team fire, and collective explosion surges', () => {
+  it('enforces restrained routine-match morale, natural cooldown, and collective demolition surges', () => {
     const squad11 = ACTIVE_PLAYERS.slice(0, 11);
     const starterIds = new Set(squad11.map((p) => p.id));
     const minutesByPlayerId = Object.fromEntries(squad11.map((p) => [p.id, 90]));
     const momId = squad11[8].id;
 
-    // 1. Ordinary 1-0 win: ONLY MOM ignites (🔥 >= 4), teammates stay calm (<= 3)
+    // 1. v5.1: Ordinary 1-0 win keeps team restrained (all <= 2, no free OVR boost) while MOM leads the squad
     const warmStart: PlayerConditionMap = Object.fromEntries(
       squad11.map((p) => [p.id, { ...createDefaultCondition(), morale: 1 }]),
     );
@@ -255,24 +255,32 @@ describe('v3.1 Standalone 3-Tier Injuries, Auto-Return Lineup, Morale, 72 Manage
       teamWinStreak: 2,
       rng: () => 0.99,
     });
-    const fireAfterOrd = squad11.filter((p) => ordinaryWin.conditionMap[p.id].morale >= 4);
-    expect(fireAfterOrd.map((p) => p.id)).toEqual([momId]);
+    expect(ordinaryWin.conditionMap[momId].morale).toBe(2);
+    expect(
+      squad11.every((p) => ordinaryWin.conditionMap[p.id].morale <= 2),
+    ).toBe(true);
 
-    // 2. Next ordinary match without fresh heroics: previous MOM cools from >=4 back to 3
+    // 2. Next ordinary draw without heroics: elevated morale (+4 from interview) cools back down toward 0
+    const afterInterview: PlayerConditionMap = {
+      ...ordinaryWin.conditionMap,
+      [momId]: { ...createDefaultCondition(), morale: 4 },
+    };
     const nextMatch = updateSquadConditionsAfterMatch({
       squad: squad11,
       starterIds,
       minutesByPlayerId,
       tactic: 'balanced',
-      conditionMap: ordinaryWin.conditionMap,
+      conditionMap: afterInterview,
       competition: 'league',
       outcome: 'D',
       goalDiff: 0,
       rng: () => 0.99,
     });
-    expect(nextMatch.conditionMap[momId].morale).toBe(3);
+    expect(nextMatch.conditionMap[momId].morale).toBeLessThan(4);
 
-    // 3. True collective explosion (4-0 demolition on a warm squad): multiple starters ignite together
+    // 3. v5.1 demolition (4-0 on a hot squad + 5-match win streak):
+    // MOM with personal heroics + collective demolition breaks into +3 (+1 OVR),
+    // while regular teammates remain capped at <= 2 so interviews remain the key driver for team-wide +OVR.
     const hotStart: PlayerConditionMap = Object.fromEntries(
       squad11.map((p) => [p.id, { ...createDefaultCondition(), morale: 2 }]),
     );
@@ -290,8 +298,11 @@ describe('v3.1 Standalone 3-Tier Injuries, Auto-Return Lineup, Morale, 72 Manage
       teamWinStreak: 5,
       rng: () => 0.99,
     });
-    const fireAfterDemo = squad11.filter((p) => demolition.conditionMap[p.id].morale >= 4);
-    expect(fireAfterDemo.length).toBeGreaterThanOrEqual(8);
+    expect(demolition.conditionMap[momId].morale).toBe(3);
+    const surgedAfterDemo = squad11.filter(
+      (p) => demolition.conditionMap[p.id].morale >= 3,
+    );
+    expect(surgedAfterDemo.map((p) => p.id)).toEqual([momId]);
   });
 
   it('handles 3-tier injury recovery countdown, minor play-through penalty, and AI injury substitution', () => {
@@ -337,20 +348,24 @@ describe('v3.1 Standalone 3-Tier Injuries, Auto-Return Lineup, Morale, 72 Manage
     expect(aiPick.injuredPlayers.some((x) => x.player.id === injuredStar.id)).toBe(true);
   });
 
-  it('applies morale and condition modifiers cleanly to effective player OVR', () => {
+  it('applies v5.1 strict morale and condition modifiers cleanly to effective player OVR', () => {
     expect(getMoraleOvrBonus(5)).toBe(2);
-    expect(getMoraleOvrBonus(2)).toBe(1);
+    expect(getMoraleOvrBonus(4)).toBe(1);
+    expect(getMoraleOvrBonus(3)).toBe(1);
+    expect(getMoraleOvrBonus(2)).toBe(0);
     expect(getMoraleOvrBonus(0)).toBe(0);
-    expect(getMoraleOvrBonus(-2)).toBe(-1);
+    expect(getMoraleOvrBonus(-2)).toBe(0);
+    expect(getMoraleOvrBonus(-3)).toBe(-1);
     expect(getMoraleOvrBonus(-5)).toBe(-2);
-    expect(getTeamMoraleBonus(4)).toBe(0.5);
-    expect(getTeamMoraleBonus(-4)).toBe(-0.5);
+    expect(getTeamMoraleBonus(5)).toBe(0.5);
+    expect(getTeamMoraleBonus(4)).toBe(0);
+    expect(getTeamMoraleBonus(-5)).toBe(-0.5);
 
     const sample = ACTIVE_PLAYERS[0];
     const boosted = applyConditionToPlayers(
       [sample],
       { [sample.id]: { ...createDefaultCondition(), morale: 5 } },
-      4,
+      5,
     );
     expect(boosted[0].ovr).toBe(Math.min(99, sample.ovr + 3)); // +2 + 0.5 rounded = +3
   });

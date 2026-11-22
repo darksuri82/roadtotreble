@@ -1,4 +1,4 @@
-# PITCH MANAGER — PROJECT HANDOFF GUIDE (v5.0.2)
+# Road To Treble — PROJECT HANDOFF GUIDE (v5.1)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -7,14 +7,19 @@
 ## 1. 기술 스택 및 실행 환경
 
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
-- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
-- **Icons**: `lucide-react` + 커스텀 도트 SVG (`PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **23개 파일 / 91개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
+- **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
+- **Testing & Lint**: Vitest (`npm run test` — **24개 파일 / 94개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (v5.0 전술 개편 직전 `v4.1` 안정 커밋 `a77f6a4`)
+- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
-- **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 토글 패널(`UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v5.1 주요 신규 모듈·기능**:
+  - **공식 타이틀 `Road To Treble` 통일 & 첫 화면 트레블 로드 도트 일러스트 리뉴얼 (`index.html`, `RoadToTrebleHeroSvg.tsx`, `TitleScreen.tsx`, `HeaderNav.tsx`, `PatchNotesModal.tsx`, `SystemGuideModal.tsx`, `LegacyHubModal.tsx`)**: 전 화면 브랜드명 통일, 드래프트(도트 감독·축구공·깃발)→리그→컵→정상 빅이어로 이어지는 픽셀 아트 "길(Road)" 히어로 중심의 깔끔한 원스크린 첫 화면 구축.
+  - **부상 확률 대폭 하향 & 사기/인터뷰 리스크-리턴 재밸런싱 (`conditionEngine.ts`, `managerEvents.ts`, `condition.ts`, `ManagerEventModal.tsx`, `InjuryMoraleGuideContent.tsx`, `v51PolishAndRebalance.test.ts`)**: 부상 기본 확률 약 1/3 이하 하향(`minor 0.13%` / `moderate 0.011%` / `severe 0.0018%` / `aggravation 4%`), 사기 OVR 임계치 상향(`-2..+2 => 0`, `±3..±4 => ±1`, `±5 => ±2`, 팀 `±5 => ±0.5`), 일반 경기 승패 변동폭 축소 및 72종 인터뷰 `🔥 고위험` / `⚡ 승부수` / `안정` 리스크 배지·양극화 적용.
+  - **명예의 전당 자동 등재 기준 상향(5,500+) & 수동 등록 (`legacyEngine.ts`, `GameContext.tsx`, `SeasonSummary.tsx`)**: `isEligibleForAutoHofInduction`(5,500점+ / S+ / UCL 우승 / 트레블) 충족 시에만 자동 등재, 미만 시즌은 결산 화면 `[명예의 전당 수동 등록]` 버튼 지원.
+  - **전역 UI/UX 모던 다이어트 — 모바일 & Phase 2 UCL (`InfoHelpButton.tsx`, `DraftScreen.tsx`, `TransferMarketModal.tsx`, `UclDashboard.tsx`, `LegacyHubModal.tsx`, `SquadManagerModal.tsx`)**: 드래프트 대형 아코디언 배너·트레이드 설명 문구·UCL 진행 안내를 클릭형 `?` 팝오버로 수납하고 Phase 2 헤더·모바일 3열 KPI·5탭 바를 Phase 1과 통일된 차분한 다크 스포츠 톤으로 마감.
 - **v5.0 ~ v5.0.2 주요 신규 모듈·기능**:
   - **신규 포메이션 3종(총 9종 확장) (`src/data/formations.ts`, `src/types/game.ts`, `src/engine/positionEngine.ts`, `src/engine/lineupOptimizer.ts`, `src/engine/tacticalMovement.ts`)**: `4-4-2-diamond`(4-4-2 다이아몬드), `3-3-3-1`, `3-5-2-dm`(3-5-2 DM) 3종 포메이션의 좌표·슬롯·`alternateSubPositions` 호환 포지션·케미 링크·2D 오프더볼 움직임·9종 선택 UI 전면 구현.
   - **현실 축구형 [통합 전술 수싸움] 엔진 (`src/engine/unifiedTacticsEngine.ts`, `src/engine/matchEngine.ts`, `src/components/league/MatchDayTacticsRoom.tsx`)**: 분리된 포메이션/전술 `+OVR!` 스택을 폐지하고 1단계 내부 전술 완성도(`tacticalFit`: 포메이션×전술 구조 35% + 스쿼드 OVR 정규화 세부 능력치/스타일 45% + 감독 스타일/OVR 20%) → 2단계 5대 구역 대결(`midfield` · `flanks` · `transition` · `box` · `pressing`)로 점유율·ATT/MID/DEF·임계치 임상 xG·공격 루트 비중(`routeWeightMods`) 산출. 프리뷰는 `[완성도 N% + 5구역 ▲/─/▼ + ? 툴팁]` 1줄 요약 표시.

@@ -1,7 +1,25 @@
-# PITCH MANAGER — CHANGELOG
+# Road To Treble — CHANGELOG
 
-유럽 5대 리그 · 자국 컵대회 · 36팀 UEFA 챔피언스리그 드래프트 & 전술 시뮬레이션 **PITCH MANAGER**의 전체 버전 변경 이력입니다.  
+유럽 5대 리그 · 자국 컵대회 · 36팀 UEFA 챔피언스리그 드래프트 & 전술 시뮬레이션 **Road To Treble**의 전체 버전 변경 이력입니다.  
 최신 버전이 상단에 표시됩니다.
+
+---
+
+## v5.1 — 공식 타이틀 [Road To Treble] & 트레블 로드 도트 첫 화면 리뉴얼 · 부상 빈도 대폭 하향 · 사기 OVR 임계치 상향 & 기자회견 리스크-리턴 개편 · 명전 자동 등재 기준 상향 & 전역 UI 모던 다이어트
+
+- **공식 타이틀 `Road To Treble` 통일 & 첫 화면 트레블 로드 도트 일러스트 리뉴얼 (`index.html`, `src/components/setup/RoadToTrebleHeroSvg.tsx`, `src/components/setup/TitleScreen.tsx`, `HeaderNav.tsx`, `PatchNotesModal.tsx`, `SystemGuideModal.tsx`, `LegacyHubModal.tsx`)**:
+  - 전 화면의 구 명칭(`PITCH MANAGER`)을 공식 명칭 **`Road To Treble`**로 통일.
+  - 드래프트(코너플래그·축구공·2등신 도트 감독) → 5대 리그 → 자국 컵 → 정상 빅이어 트로피로 이어지는 픽셀 아트 "길(Road)" 일러스트(`RoadToTrebleHeroSvg`) 중심의 첫 화면 구성 및 불필요한 소개 문구 제거로 PC·모바일 원스크린 완성도 강화.
+- **부상 발생 확률 대폭 하향 (`src/engine/conditionEngine.ts`, `src/components/guide/InjuryMoraleGuideContent.tsx`)**:
+  - 부상 3단계·도트 아이콘·완치 자동복귀 구조는 유지하면서 기본 확률을 약 1/3 이하로 대폭 하향(`minor 0.13%`, `moderate 0.011%`, `severe 0.0018%`, 경상 강행 악화 `4%`)해 한 시즌 동안 드물게 터지는 희귀 변수 수준으로 조정.
+- **사기 OVR 임계치 상향 & 기자회견/라커룸 하이리스크·안정 리스크-리턴 개편 (`src/engine/conditionEngine.ts`, `src/data/managerEvents.ts`, `src/types/condition.ts`, `src/components/common/ManagerEventModal.tsx`)**:
+  - 사기 OVR 보정 임계치 상향(`-2..+2 => 0`, `+3..+4 => +1`, `+5 => +2 🔥`, `-3..-4 => -1`, `-5 => -2 ❄️`, 팀 사기 `±5 => ±0.5`) 및 일반 경기 승패 변동폭 대폭 축소.
+  - 2~3경기 주기로 발동하는 72종 기자회견·라커룸 선택지를 `🔥 고위험`(+3~+4 폭등 / -2~-3 역풍) · `⚡ 승부수`(+2 / -1~-2) · `안정`(+1 고정 / 역풍 없음) 리스크 등급과 초미니 배지로 정비해 인터뷰가 사기 관리의 핵심 비중을 차지하도록 개편.
+- **명예의 전당 자동 등재 기준 상향(5,500+) & 수동 등록 지원 (`src/engine/legacyEngine.ts`, `src/store/GameContext.tsx`, `src/components/league/SeasonSummary.tsx`)**:
+  - 역대 강팀급 시즌(`totalScore >= 5500` · `S+` · `UCL 우승` · `트레블`)만 자동 등재되도록 상향(`isEligibleForAutoHofInduction`), 기준 미만 시즌은 결산 화면 `[명예의 전당 수동 등록]` 버튼으로 선택 등록 가능(도전과제는 매 시즌 자동 평가 유지).
+- **전역 UI/UX 모던 다이어트 — 모바일 & Phase 2 UCL 집중 정돈 (`src/components/common/InfoHelpButton.tsx`, `DraftScreen.tsx`, `TransferMarketModal.tsx`, `UclDashboard.tsx`, `LegacyHubModal.tsx`, `SquadManagerModal.tsx`)**:
+  - 클릭형 `?` 팝오버(`InfoHelpButton`)를 도입해 드래프트 대형 가이드 배너, 트레이드 시장 설명 문구, UCL 진행 규칙, 명전 등재 기준 등 AI식 장황한 설명 텍스트를 전부 `?` 안으로 이동.
+  - Phase 2 UCL 헤더·모바일 3열 KPI·5탭 바 및 모달 테두리·배경 톤을 Phase 1과 통일된 차분한 다크 네이비 스포츠 대시보드로 정돈.
 
 ---
 

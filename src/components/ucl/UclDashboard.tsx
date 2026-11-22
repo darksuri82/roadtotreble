@@ -45,6 +45,7 @@ import {
 } from '../../utils/playerLookup';
 import { ClubSquadModal } from '../common/ClubSquadModal';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
+import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
 import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { MatchDetailModal } from '../common/MatchDetailModal';
@@ -246,78 +247,87 @@ export function UclDashboard() {
         />
       )}
 
-      {/* Starry UCL Header */}
-      <div className="rounded-3xl border border-sky-500/35 bg-gradient-to-r from-[#081329] via-[#0d1c3d] to-[#0a1324] p-5 shadow-xl shadow-sky-950/30">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-sky-400/40 bg-sky-500/20 text-sky-300 shadow-inner">
-              <Trophy className="h-6 w-6" />
+      {/* Modern Phase 2 UCL Header */}
+      <div className="rounded-2xl border border-slate-800/90 bg-[#0d1422] p-3.5 sm:p-5 shadow-xl">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl border border-sky-400/30 bg-sky-500/12 text-sky-300">
+              <Trophy className="h-5 w-5" />
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-sky-500/20 px-2 py-0.5 text-[10px] font-black tracking-wider text-sky-300">
-                  UEFA CHAMPIONS LEAGUE · 36 TEAMS
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded bg-sky-500/15 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-sky-300">
+                  UCL · 36 TEAMS
                 </span>
-                <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                <span className="rounded bg-slate-800/80 px-2 py-0.5 text-[10px] font-bold text-slate-300">
                   {UCL_STAGE_LABELS[ucl.stage]}
                   {ucl.stage === 'league_phase'
-                    ? ` (${ucl.leaguePhaseRound} / 8R)`
+                    ? ` ${ucl.leaguePhaseRound}/8R`
                     : ucl.stage !== 'special_transfer' &&
                         ucl.stage !== 'completed' &&
                         ucl.stage !== 'final'
                       ? ` · ${ucl.knockoutLeg}차전`
                       : ''}
                 </span>
+                <InfoHelpButton
+                  title="챔피언스리그 진행 방식"
+                  align="left"
+                  items={[
+                    '리그 페이즈 8경기: 1~8위 16강 직행 · 9~24위 플레이오프 · 25~36위 탈락',
+                    '토너먼트(PO~4강): 홈·원정 2차전 합산 스코어 (동률 시 연장/PK)',
+                    '결승전: 단판 승부 (무승부 시 연장/PK)',
+                  ]}
+                />
               </div>
-              <h1 className="mt-1 text-xl sm:text-2xl font-black text-white">
-                {state.userClub.name} 유럽 챔피언스리그 원정
+              <h1 className="mt-1 truncate text-base sm:text-xl font-black text-white">
+                {state.userClub.name} 챔피언스리그
               </h1>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <div className="rounded-xl border border-slate-700/80 bg-slate-950/60 px-3.5 py-2 text-center">
+          <div className="grid grid-cols-3 gap-2 shrink-0 tabular-nums">
+            <div className="rounded-xl border border-slate-800 bg-[#090e18] px-2.5 py-2 text-center sm:px-3.5">
               <div className="text-[10px] text-slate-400">리그 페이즈</div>
-              <div className="font-mono text-sm font-black text-sky-300">
+              <div className="font-mono text-xs sm:text-sm font-black text-sky-300">
                 {ucl.leaguePhaseRound > 0
-                  ? `${ucl.userLeaguePhaseRank ?? userUclRank}위 / 36`
-                  : '개막 대기'}
+                  ? `${ucl.userLeaguePhaseRank ?? userUclRank}위/36`
+                  : '대기'}
               </div>
             </div>
-            <div className="rounded-xl border border-slate-700/80 bg-slate-950/60 px-3.5 py-2 text-center">
+            <div className="rounded-xl border border-slate-800 bg-[#090e18] px-2.5 py-2 text-center sm:px-3.5">
               <div className="text-[10px] text-slate-400">현재 성적</div>
-              <div className="text-sm font-black text-amber-300">
+              <div className="truncate text-xs sm:text-sm font-black text-amber-300">
                 {getUserUclResultLabel(ucl, USER_CLUB_ID)}
               </div>
             </div>
-            <div className="rounded-xl border border-slate-700/80 bg-slate-950/60 px-3.5 py-2 text-center">
+            <div className="rounded-xl border border-slate-800 bg-[#090e18] px-2.5 py-2 text-center sm:px-3.5">
               <div className="text-[10px] text-slate-400">팀 전력</div>
-              <div className="font-mono text-sm font-black text-emerald-300">
-                OVR {ratings.ovr} · 케미 {chemistry.total}
+              <div className="font-mono text-xs sm:text-sm font-black text-emerald-300">
+                {ratings.ovr} · {chemistry.total}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div className="mt-4 flex flex-wrap gap-1.5 border-t border-sky-500/20 pt-3">
+        {/* Clean Unified Navigation Tabs */}
+        <div className="mt-3.5 grid grid-cols-5 gap-1 rounded-xl border border-slate-800/90 bg-[#090e18] p-1">
           {(
             [
-              ['match', '⚽ 경기 & 진행'],
-              ['standings', '📊 36팀 순위표'],
-              ['bracket', '🏆 토너먼트 대진표'],
-              ['stats', '⭐ UCL 개인 기록'],
-              ['squad', '📋 내 스쿼드 / 전술'],
+              ['match', '경기'],
+              ['standings', '순위표'],
+              ['bracket', '대진표'],
+              ['stats', '개인기록'],
+              ['squad', '스쿼드'],
             ] as [UclTab, string][]
           ).map(([id, label]) => (
             <button
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`rounded-xl px-3.5 py-2 text-xs font-extrabold transition cursor-pointer ${
+              className={`rounded-lg px-2 py-2 text-[11px] sm:text-xs font-extrabold transition-colors cursor-pointer touch-manipulation truncate ${
                 tab === id
-                  ? 'bg-sky-400 text-slate-950 shadow'
-                  : 'bg-slate-900/70 text-slate-300 hover:bg-slate-800 hover:text-white'
+                  ? 'bg-sky-400 text-slate-950'
+                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
               }`}
             >
               {label}
@@ -438,7 +448,7 @@ export function UclDashboard() {
               className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
             >
               <div
-                className={`w-full max-w-xl max-h-[90dvh] overflow-y-auto rounded-2xl border-2 bg-[#0f1724] shadow-2xl ${outcome.ringCls}`}
+                className={`w-full max-w-xl max-h-[90dvh] overflow-y-auto rounded-2xl border bg-[#0f1724] shadow-2xl ${outcome.ringCls}`}
               >
                 {/* Modal Header */}
                 <div className="flex items-center justify-between gap-2 border-b border-slate-800 bg-[#0a101a] px-4 py-3">
@@ -847,60 +857,54 @@ export function UclDashboard() {
               })()
             ) : (
               /* User Eliminated or Bye (Top 8 skipping Playoff!) */
-              <div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-6 text-center space-y-4">
+              <div className="rounded-2xl border border-slate-800 bg-[#0e141d] p-5 sm:p-6 text-center space-y-3.5">
                 {userEliminated ? (
                   <>
-                    <div className="text-xs font-bold text-rose-400">
-                      CHAMPIONS LEAGUE JOURNEY ENDED
+                    <div className="text-[11px] font-bold tracking-wider text-rose-400 uppercase">
+                      UCL JOURNEY ENDED
                     </div>
-                    <h3 className="text-xl font-black text-white">
-                      우리 팀이 {getUserUclResultLabel(ucl, USER_CLUB_ID)}에서 여정을 마쳤습니다.
+                    <h3 className="text-lg sm:text-xl font-black text-white">
+                      {getUserUclResultLabel(ucl, USER_CLUB_ID)} 마감
                     </h3>
-                    <p className="text-xs text-slate-400">
-                      남은 토너먼트를 시뮬레이션하여 이번 시즌 유럽 챔피언을 확인하고 최종 결산으로 이동하세요.
-                    </p>
-                    <div className="flex flex-wrap justify-center gap-2.5">
+                    <div className="flex flex-wrap justify-center gap-2">
                       <button
                         type="button"
                         onClick={simulateUclToEnd}
-                        className="rounded-xl bg-sky-400 px-5 py-2.5 text-sm font-black text-slate-950 hover:bg-sky-300 cursor-pointer"
+                        className="rounded-xl bg-sky-400 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 hover:bg-sky-300 cursor-pointer touch-manipulation"
                       >
-                        남은 챔스 토너먼트 완료하기 →
+                        남은 토너먼트 시뮬레이션 →
                       </button>
                       <button
                         type="button"
                         onClick={finishUclToSummary}
-                        className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
+                        className="rounded-xl border border-slate-700 bg-[#131b27] px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer touch-manipulation"
                       >
-                        남은 토너먼트 자동 완료 후 최종 결산 →
+                        최종 결산으로 이동 →
                       </button>
                     </div>
                   </>
                 ) : (
                   /* User finished 1~8th in Swiss League -> Direct R16 Bye during Playoff! */
                   <>
-                    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-black text-emerald-300">
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-xs font-bold text-emerald-300">
                       <Sparkles className="h-3.5 w-3.5" />
-                      리그 페이즈 {ucl.userLeaguePhaseRank}위 · 16강 직행 (부전승)
+                      리그 페이즈 {ucl.userLeaguePhaseRank}위 · 16강 직행
                     </div>
-                    <h3 className="text-xl font-black text-white">
-                      9~24위 16강 플레이오프 진행 중 ({ucl.knockoutLeg}차전)
+                    <h3 className="text-lg sm:text-xl font-black text-white">
+                      9~24위 플레이오프 진행 중 ({ucl.knockoutLeg}차전)
                     </h3>
-                    <p className="text-xs text-slate-400">
-                      우리 팀은 상위 8위 직행 자격으로 플레이오프를 면제받았습니다. 플레이오프 승자가 결정되면 16강 대진이 완성됩니다.
-                    </p>
-                    <div className="flex flex-wrap justify-center gap-2.5">
+                    <div className="flex flex-wrap justify-center gap-2">
                       <button
                         type="button"
                         onClick={simulateUclPlayoffBye}
-                        className="rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-black text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                        className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 hover:bg-emerald-400 cursor-pointer touch-manipulation"
                       >
-                        플레이오프 일괄 완료 → 16강 대진 확정
+                        플레이오프 완료 → 16강 대진 확정
                       </button>
                       <button
                         type="button"
                         onClick={simulateSingleMatchInstant}
-                        className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
+                        className="rounded-xl border border-slate-700 bg-[#131b27] px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer touch-manipulation"
                       >
                         {ucl.knockoutLeg}차전만 진행
                       </button>

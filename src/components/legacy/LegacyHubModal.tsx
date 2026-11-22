@@ -25,6 +25,7 @@ import type {
 } from '../../types/legacy';
 import type { Player } from '../../types/player';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
+import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
@@ -98,23 +99,34 @@ export function LegacyHubModal() {
   const isViewingDetail = Boolean(selectedEntry || selectedHistorical);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 backdrop-blur-sm sm:p-5">
-      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-slate-700/80 bg-slate-900 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-5">
+      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0e141d] shadow-2xl">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/70 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#0a0f17] px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-yellow-600 text-slate-950">
-              <Crown className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400/15 border border-amber-400/35 text-amber-300">
+              <Crown className="h-4.5 w-4.5" />
             </div>
             <div>
-              <h2 className="text-lg font-black text-white">
-                PITCH MANAGER 레거시 &amp; 명예의 전당
-              </h2>
-              <p className="text-xs text-slate-400">
-                유저 기록 {legacyState.hallOfFame.length}시즌 · 역대 강팀{' '}
-                {HISTORICAL_BENCHMARK_TEAMS.length}팀 · 히든 도전과제{' '}
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-black text-white">
+                  Road To Treble 명예의 전당
+                </h2>
+                <InfoHelpButton
+                  title="명예의 전당 등재 기준"
+                  align="left"
+                  items={[
+                    '자동 등재: 시즌 스코어 5,500+ (역대 강팀급) · S+ 등급 · UCL 우승 · 트레블 달성 시',
+                    '수동 등재: 기준 미만 시즌도 시즌 결산 화면의 [수동 등록] 버튼으로 직접 등재 가능',
+                    '도전과제(24종)는 등재 여부와 무관하게 매 시즌 자동 해금됩니다.',
+                  ]}
+                />
+              </div>
+              <p className="text-[11px] text-slate-400 tabular-nums">
+                내 기록 {legacyState.hallOfFame.length} · 역대 강팀{' '}
+                {HISTORICAL_BENCHMARK_TEAMS.length} · 업적{' '}
                 <span className="font-bold text-amber-300">
-                  {progress.unlocked} / {progress.total}
+                  {progress.unlocked}/{progress.total}
                 </span>
               </p>
             </div>
