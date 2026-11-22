@@ -642,6 +642,7 @@ export function DreamMatchArena() {
           allPlayerStats: {},
         },
       },
+      opponentRoster: oppMatchBundle?.starters ?? [],
       chemistry,
       changeFormation: handleChangeFormation,
       optimizeHalftimeStarters: handleOptimizeHalftimeStarters,

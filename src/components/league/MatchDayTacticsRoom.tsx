@@ -4,7 +4,6 @@ import {
   Columns2,
   Compass,
   Eye,
-  HelpCircle,
   Shield,
   Users,
   Wand2,
@@ -30,6 +29,7 @@ import { JerseySvg } from '../common/JerseySvg';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
 import { TacticsGuideModal } from '../common/TacticsGuideModal';
+import { UnifiedTacticsStrip } from '../common/UnifiedTacticsStrip';
 import { OpponentPitchView } from './OpponentPitchView';
 
 function shortFormationLabel(id: FormationId): string {
@@ -227,17 +227,6 @@ export function MatchDayTacticsRoom({
         ? 'border-sky-500/40 bg-[#0e1520]'
         : 'border-slate-800 bg-[#111822]';
 
-  const fitTooltipText = useMemo(() => {
-    const p = unifiedMatchup.myProfile;
-    const zoneLines = unifiedMatchup.zones.map(
-      (z) => `${z.label}: ${z.detail}`,
-    );
-    return [
-      `전술 완성도 ${p.tacticalFit}% (구조 ${p.structureFit} · 선수 ${p.personnelFit} · 감독 ${p.managerFit})`,
-      ...zoneLines,
-    ].join('\n');
-  }, [unifiedMatchup]);
-
   return (
     <div className={`rounded-2xl border p-3.5 sm:p-4 space-y-3.5 ${borderCls}`}>
       {/* 1) Top Match Header Bar */}
@@ -346,7 +335,7 @@ export function MatchDayTacticsRoom({
               MY TEAM
             </span>
             <span className="font-mono text-xs font-bold text-white whitespace-nowrap">
-              {formation}
+              {shortFormationLabel(formation)}
             </span>
             <span className="text-slate-600">·</span>
             <span className="text-xs font-bold text-emerald-300 whitespace-nowrap">
@@ -428,51 +417,8 @@ export function MatchDayTacticsRoom({
           />
         </div>
 
-        {/* Minimal 1-Line Unified Tactical Zone Summary Strip (Zero clutter) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-[#090e15] px-2.5 py-1.5 text-[11px]">
-          <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={`rounded px-1.5 py-0.5 text-[10px] font-black tabular-nums ${
-                unifiedMatchup.myProfile.tacticalFit >= 84
-                  ? 'bg-emerald-500/20 text-emerald-300'
-                  : unifiedMatchup.myProfile.tacticalFit >= 72
-                    ? 'bg-sky-500/15 text-sky-300'
-                    : 'bg-rose-500/20 text-rose-300'
-              }`}
-              title={fitTooltipText}
-            >
-              완성도 {unifiedMatchup.myProfile.tacticalFit}%
-            </span>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-1.5">
-            {unifiedMatchup.zones.map((z) => {
-              const cls =
-                z.status === 'up'
-                  ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300'
-                  : z.status === 'down'
-                    ? 'border-rose-500/35 bg-rose-500/10 text-rose-300'
-                    : 'border-slate-700/80 bg-slate-800/50 text-slate-400';
-              const arrow = z.status === 'up' ? '▲' : z.status === 'down' ? '▼' : '▬';
-              return (
-                <span
-                  key={z.id}
-                  title={`${z.label}: ${z.detail}`}
-                  className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap ${cls}`}
-                >
-                  <span>{z.shortLabel}</span>
-                  <span className="text-[9px]">{arrow}</span>
-                </span>
-              );
-            })}
-            <span
-              title={fitTooltipText}
-              className="inline-flex items-center text-slate-500 hover:text-slate-300 cursor-help"
-            >
-              <HelpCircle className="w-3.5 h-3.5" />
-            </span>
-          </div>
-        </div>
+        {/* Minimal 1-Line Unified Tactical Zone Summary Strip + Interactive ? Help */}
+        <UnifiedTacticsStrip matchup={unifiedMatchup} />
       </div>
 
       {/* 3) Always-Visible Compact Tactic & Formation Bar */}

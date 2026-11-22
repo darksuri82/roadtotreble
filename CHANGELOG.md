@@ -5,6 +5,14 @@
 
 ---
 
+## v5.0.1 — 하프타임·연장 라커룸 통합 전술 UI 통일(구 상성 배지 제거) & 클릭형 `?` 지표 안내 패널 추가
+
+- **하프타임·연장 라커룸 v5.0 통합 전술 UI 통일 (`src/components/common/UnifiedTacticsStrip.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/components/league/MatchDayTacticsRoom.tsx`, `src/components/dream/DreamMatchArena.tsx`)**:
+  - 하프타임/연장 라커룸에 잔존하던 구버전 `evaluateTacticMatchup`/`evaluateFormationMatchup` 배지(`상성 우위 +2.8`, `호각`)를 완전 제거하고 경기 전과 동일한 `완성도 %` · `5대 구역(중원·측면·전환·박스·압박)` · `전술 버튼별 완성도 %` · 상대 감독 OVR 표기로 통일.
+  - PC·모바일 공통으로 `?` 아이콘 클릭/터치 시 완성도 구성 비율(구조 35% · 선수 45% · 감독 20%), 전술 버튼 아래 `%` 의미, 5대 구역별 역할 및 실시간 대결 수치(하프타임 시 상대 감독 후반 변경 가능성 안내 포함)를 깔끔하게 토글 표시하는 공통 `UnifiedTacticsStrip` 컴포넌트 도입.
+
+---
+
 ## v5.0 — 신규 포메이션 3종(4-4-2 다이아몬드 · 3-3-3-1 · 3-5-2 DM) · 현실 축구형 [통합 전술 수싸움] 엔진 · 선수 시너지 4원칙(전 소속팀 · 엘리트 페어) & 감독 궁합 독립 분리 · 전 구단 AI 감독(OVR/스타일) & 하프타임 능동적 수싸움
 
 ### 1. 신규 포메이션 3종 추가 (총 9종 포메이션 전면 확장)

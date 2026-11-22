@@ -17,10 +17,12 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { getClubManager } from '../../data/aiManagers';
 import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import { calculateChemistry } from '../../engine/chemistryEngine';
+import { buildAiClubRoster } from '../../engine/dataLoader';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import {
   computePlayerStaminaPct,
@@ -31,11 +33,13 @@ import {
 import {
   buildExtraTimeCoachBriefing,
   buildHalftimeCoachRecommendations,
-  evaluateFormationMatchup,
-  evaluateTacticMatchup,
   TACTIC_LIST,
   TACTICS,
 } from '../../engine/tacticEngine';
+import {
+  evaluateTeamTacticalProfile,
+  evaluateUnifiedTacticalMatchup,
+} from '../../engine/unifiedTacticsEngine';
 import { useGame } from '../../store/GameContext';
 import type {
   ChemistryResult,
@@ -57,6 +61,7 @@ import type { SlotRef } from '../common/PitchBoard';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { TacticsGuideModal } from '../common/TacticsGuideModal';
+import { UnifiedTacticsStrip } from '../common/UnifiedTacticsStrip';
 import {
   DRAMATIC_REVEAL_MS,
   DRAMATIC_TOTAL_MS,
@@ -77,6 +82,7 @@ export interface LiveMatchBroadcastOverride {
       allPlayerStats?: Record<string, PlayerSeasonStats>;
     };
   };
+  opponentRoster?: Player[];
   chemistry: ChemistryResult;
   changeFormation: (formation: FormationId) => void;
   optimizeHalftimeStarters: (tactic?: TacticId) => void;
@@ -654,12 +660,73 @@ export function LiveMatchBroadcast({
               : Math.sin(minute * 0.45) * 1.5),
         );
 
+  const oppClub = halftime.isUserHome ? away : home;
+  const oppManager = getClubManager(oppClub);
   const oppTactic = halftime.isUserHome ? halftime.awayTactic : halftime.homeTactic;
   const oppFormation = halftime.isUserHome
     ? halftime.awayFormation
     : halftime.homeFormation;
-  const tacticMatch = evaluateTacticMatchup(selectedTactic, oppTactic);
-  const formMatch = evaluateFormationMatchup(state.formation, oppFormation);
+  const oppRoster =
+    override?.opponentRoster ??
+    gameCtx.state.season?.aiRosters?.[oppClub.id] ??
+    gameCtx.state.season?.ucl?.aiRosters?.[oppClub.id] ??
+    buildAiClubRoster(oppClub, gameCtx.state.season?.leagueId ?? 'epl');
+
+  const htUnifiedMatchup = evaluateUnifiedTacticalMatchup(
+    {
+      starters: state.starters,
+      formation: state.formation,
+      tactic: selectedTactic,
+      managerTraitId: state.manager.traitId,
+      managerOvr: 86,
+    },
+    {
+      starters: oppRoster.slice(0, 11),
+      formation: oppFormation,
+      tactic: oppTactic,
+      managerTraitId: oppManager.traitId,
+      managerOvr: oppManager.ovr,
+    },
+  );
+
+  const htTacticFits: Record<TacticId, number> = {
+    possession: evaluateTeamTacticalProfile({
+      starters: state.starters,
+      formation: state.formation,
+      tactic: 'possession',
+      managerTraitId: state.manager.traitId,
+      managerOvr: 86,
+    }).tacticalFit,
+    gegenpressing: evaluateTeamTacticalProfile({
+      starters: state.starters,
+      formation: state.formation,
+      tactic: 'gegenpressing',
+      managerTraitId: state.manager.traitId,
+      managerOvr: 86,
+    }).tacticalFit,
+    counter: evaluateTeamTacticalProfile({
+      starters: state.starters,
+      formation: state.formation,
+      tactic: 'counter',
+      managerTraitId: state.manager.traitId,
+      managerOvr: 86,
+    }).tacticalFit,
+    wingplay: evaluateTeamTacticalProfile({
+      starters: state.starters,
+      formation: state.formation,
+      tactic: 'wingplay',
+      managerTraitId: state.manager.traitId,
+      managerOvr: 86,
+    }).tacticalFit,
+    balanced: evaluateTeamTacticalProfile({
+      starters: state.starters,
+      formation: state.formation,
+      tactic: 'balanced',
+      managerTraitId: state.manager.traitId,
+      managerOvr: 86,
+    }).tacticalFit,
+  };
+
   const isWizard = state.manager.traitId === 'halftime_wizard';
   const activeTrait = state.manager.traitId
     ? MANAGER_TRAITS[state.manager.traitId]
@@ -1897,52 +1964,68 @@ export function LiveMatchBroadcast({
                   )}
                 </div>
 
-                {/* Tactic & Formation Controls */}
-                <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-3">
-                  <div className="flex items-center justify-between text-xs">
+                {/* Tactic & Formation Controls (Unified v5.0 Engine UI — consistent with Pre-Match) */}
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs">
                     <span className="inline-flex items-center gap-1.5 font-bold text-white">
                       <Compass className="w-3.5 h-3.5 text-emerald-400" />
                       {phase === 'halftime'
                         ? '후반전 전술'
                         : phase === 'extra_time_break'
                           ? '연장 전반 전술'
-                          : '연장 후반 전술'}{' '}
-                      (상대: {TACTICS[oppTactic].shortName})
+                          : '연장 후반 전술'}
+                      <span className="text-[11px] font-medium text-slate-400">
+                        (전반 상대: {TACTICS[oppTactic].shortName} · {oppManager.name}{' '}
+                        <span className="font-bold text-amber-300 tabular-nums">
+                          {oppManager.ovr}
+                        </span>
+                        )
+                      </span>
                     </span>
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                        tacticMatch.delta > 0
-                          ? 'bg-emerald-500/20 text-emerald-300'
-                          : tacticMatch.delta < 0
-                            ? 'bg-rose-500/20 text-rose-300'
-                            : 'bg-slate-800 text-slate-300'
-                      }`}
-                    >
-                      {tacticMatch.label}
+                    <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+                      {TACTICS[selectedTactic].name} · {htTacticFits[selectedTactic]}%
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-snug">
-                    {tacticMatch.reason}
-                  </p>
+
+                  {/* Unified 1-Line Fit % + 5-Zone Summary + Interactive ? Help */}
+                  <UnifiedTacticsStrip matchup={htUnifiedMatchup} isHalftime />
+
                   <div className="grid grid-cols-5 gap-1">
                     {TACTIC_LIST.map((t) => {
                       const active = selectedTactic === t.id;
+                      const fitPct = htTacticFits[t.id];
                       const isRec = halftime.recommendedTactic === t.id;
                       return (
                         <button
                           key={t.id}
                           type="button"
                           onClick={() => setSelectedTactic(t.id)}
-                          className={`relative rounded-lg py-2 text-xs font-bold cursor-pointer ${
+                          title={`${t.name} (현재 라인업 완성도 ${fitPct}%)`}
+                          className={`relative min-w-0 rounded-lg py-1.5 px-1 text-center transition-colors cursor-pointer ${
                             active
-                              ? 'bg-emerald-500 text-slate-950'
-                              : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
+                              ? 'bg-emerald-500 text-slate-950 font-extrabold shadow'
+                              : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600 font-bold'
                           }`}
                         >
-                          {t.shortName}
+                          <div className="truncate text-[10px] sm:text-[11px] leading-tight">
+                            {t.shortName}
+                          </div>
+                          <div
+                            className={`mt-0.5 truncate text-[8px] sm:text-[9px] font-bold tabular-nums ${
+                              active
+                                ? 'text-slate-900'
+                                : fitPct >= 84
+                                  ? 'text-emerald-400'
+                                  : fitPct >= 74
+                                    ? 'text-slate-400'
+                                    : 'text-rose-400'
+                            }`}
+                          >
+                            {fitPct}%
+                          </div>
                           {isRec && !active && (
                             <span className="absolute -top-1.5 right-0.5 rounded bg-amber-400 px-1 text-[8px] font-black text-slate-950">
-                              추천
+                              코치
                             </span>
                           )}
                         </button>
@@ -1953,30 +2036,26 @@ export function LiveMatchBroadcast({
                   <div className="pt-2 border-t border-slate-800 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs">
                       <span className="font-bold text-white">
-                        {isEtBreakPhase ? '연장 포메이션' : '후반 포메이션'} (상대: {oppFormation})
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                            formMatch.delta > 0
-                              ? 'bg-emerald-500/20 text-emerald-300'
-                              : formMatch.delta < 0
-                                ? 'bg-rose-500/20 text-rose-300'
-                                : 'bg-slate-800 text-slate-300'
-                          }`}
-                        >
-                          {formMatch.label}
+                        {isEtBreakPhase ? '연장 포메이션' : '후반 포메이션'}{' '}
+                        <span className="text-[11px] font-medium text-slate-400">
+                          (전반 상대:{' '}
+                          {oppFormation === '4-4-2-diamond'
+                            ? '4-4-2◇'
+                            : oppFormation === '3-5-2-dm'
+                              ? '3-5-2 DM'
+                              : oppFormation}
+                          )
                         </span>
-                        <button
-                          type="button"
-                          onClick={handleHalftimeQuickBestXi}
-                          title="현재 그라운드의 선발 11명(교체 아웃 선수 제외)을 선택한 포메이션에 맞춰 최적 포지션으로 자동 재배치합니다"
-                          className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-[10px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
-                        >
-                          <Wand2 className="w-3 h-3" />
-                          빠른 선발
-                        </button>
-                      </div>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleHalftimeQuickBestXi}
+                        title="현재 그라운드의 선발 11명(교체 아웃 선수 제외)을 선택한 포메이션에 맞춰 최적 포지션으로 자동 재배치합니다"
+                        className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-[10px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                      >
+                        <Wand2 className="w-3 h-3" />
+                        빠른 선발
+                      </button>
                     </div>
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
                       {FORMATION_LIST.map((f) => (
@@ -1988,7 +2067,7 @@ export function LiveMatchBroadcast({
                           className={`rounded-lg py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate ${
                             state.formation === f.id
                               ? 'bg-sky-400 text-slate-950'
-                              : 'bg-[#111822] text-slate-300 border border-slate-800'
+                              : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
                           }`}
                         >
                           {f.id === '4-4-2-diamond'
