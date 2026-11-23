@@ -139,6 +139,8 @@ function PodiumColumn({
           clubSecondaryColor={human?.profile.secondaryColor}
           size={size}
           className="block"
+          expression={place === 1 ? 'cheer_grin' : place === 3 ? 'crying_wail' : 'default'}
+          pose={place === 1 ? 'arms_up_cheer' : 'default'}
         />
         {place === 3 && <TearOverlay avatarSize={size} />}
       </div>
@@ -161,9 +163,9 @@ function FloorCharacter({
   row: MpFriendRankRow;
   human: MpLeagueHuman | undefined;
 }) {
-  const size = 46;
+  const size = 54;
   const fullH = Math.round((size * 34) / 28);
-  const visibleH = Math.round(fullH * 0.74);
+  const visibleH = Math.round(fullH * 0.8);
   return (
     <div className="flex w-24 min-w-0 flex-col items-center">
       {/* Floor line clips the lower body so the character reads as sitting on the ground */}
@@ -179,7 +181,7 @@ function FloorCharacter({
             <div
               className="relative leading-none"
               style={{
-                transform: `translateY(${Math.round(fullH * 0.2)}px) rotate(12deg)`,
+                transform: `translateY(${Math.round(fullH * 0.1)}px) rotate(10deg)`,
                 transformOrigin: '50% 100%',
               }}
             >
@@ -189,6 +191,8 @@ function FloorCharacter({
                 clubSecondaryColor={human?.profile.secondaryColor}
                 size={size}
                 className="block"
+                expression="crying_wail"
+                pose="hands_on_head_despair"
               />
               <TearOverlay avatarSize={size} strong />
             </div>

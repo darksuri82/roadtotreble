@@ -59,6 +59,8 @@ import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
 import { UclBracketTree } from './UclBracketTree';
+import { UclLeaguePhaseFastSimModal } from './UclLeaguePhaseFastSimModal';
+import { UclLeaguePhaseStandingsModal } from './UclLeaguePhaseStandingsModal';
 import {
   UclMilestoneModal,
   type UclMilestoneStage,
@@ -80,13 +82,14 @@ export function UclDashboard() {
     startLiveMatch,
     simulateSingleMatchInstant,
     simulateUclPlayoffBye,
-    simulateUclLeaguePhaseToEnd,
     simulateUclToEnd,
     finishUclToSummary,
   } = useGame();
 
   const [tab, setTab] = useState<UclTab>('match');
   const [showLpSummary, setShowLpSummary] = useState(false);
+  const [lpFastSimOpen, setLpFastSimOpen] = useState(false);
+  const [lpStandingsModalOpen, setLpStandingsModalOpen] = useState(false);
   const [skipResultModalOpen, setSkipResultModalOpen] = useState(false);
   const [pendingMilestone, setPendingMilestone] =
     useState<UclMilestoneStage | null>(null);
@@ -102,6 +105,21 @@ export function UclDashboard() {
 
   const season = state.season;
   const ucl = season?.ucl ?? null;
+
+  const prevLpRoundRef = useRef<number>(ucl?.leaguePhaseRound ?? 0);
+  useEffect(() => {
+    if (!ucl) return;
+    const prevRound = prevLpRoundRef.current;
+    const currRound = ucl.leaguePhaseRound;
+    if (prevRound < 8 && currRound >= 8) {
+      prevLpRoundRef.current = currRound;
+      setShowLpSummary(true);
+      // Automatically pop up the 36-team League Phase Final Standings modal when 8R completes
+      setLpStandingsModalOpen(true);
+    } else if (prevRound !== currRound) {
+      prevLpRoundRef.current = currRound;
+    }
+  }, [ucl]);
 
   const prevStageRef = useRef<UclTournamentState['stage'] | null>(
     ucl?.stage ?? null,
@@ -227,8 +245,41 @@ export function UclDashboard() {
       {/* Live Match Broadcast Modal (reuses full 2D pitch + Slow-Mo + Stamina + ET/PK!) */}
       {season.liveHalftime && <LiveMatchBroadcast clubsById={clubsById} />}
 
+      {/* UCL League Phase Animated Fast-Sim Modal */}
+      <UclLeaguePhaseFastSimModal
+        open={lpFastSimOpen}
+        clubsById={clubsById}
+        onSelectMatch={(m) => {
+          setInspectedTie(null);
+          setInspectedMatch(m);
+        }}
+        onFinishAndOpenStandings={() => {
+          setLpFastSimOpen(false);
+          setLpStandingsModalOpen(true);
+        }}
+        onClose={() => setLpFastSimOpen(false)}
+      />
+
+      {/* UCL 36-Team League Phase Standings Popup Modal */}
+      {lpStandingsModalOpen &&
+        !lpFastSimOpen &&
+        !skipResultModalOpen &&
+        !season.liveHalftime &&
+        !season.transferMarket.isOpen && (
+          <UclLeaguePhaseStandingsModal
+            ucl={ucl}
+            clubsById={clubsById}
+            teamEntryById={teamEntryById}
+            onInspectClub={(c) => setInspectedClub(c)}
+            onGoToBracket={() => setTab('bracket')}
+            onClose={() => setLpStandingsModalOpen(false)}
+          />
+        )}
+
       {/* UCL Knockout Round Advancement & Grand Champion Celebration Modal */}
       {pendingMilestone &&
+        !lpFastSimOpen &&
+        !lpStandingsModalOpen &&
         !skipResultModalOpen &&
         !season.liveHalftime &&
         !season.transferMarket.isOpen && (
@@ -342,14 +393,19 @@ export function UclDashboard() {
           </div>
 
           <div className="grid grid-cols-3 gap-2 shrink-0 tabular-nums">
-            <div className="rounded-xl border border-slate-800 bg-[#090e18] px-2.5 py-2 text-center sm:px-3.5">
-              <div className="text-[10px] text-slate-400">리그 페이즈</div>
+            <button
+              type="button"
+              onClick={() => setLpStandingsModalOpen(true)}
+              title="클릭하여 36팀 리그 페이즈 순위표 팝업 열기"
+              className="rounded-xl border border-slate-800 bg-[#090e18] px-2.5 py-2 text-center sm:px-3.5 hover:border-sky-400/50 transition-colors cursor-pointer"
+            >
+              <div className="text-[10px] text-slate-400">리그 페이즈 ↗</div>
               <div className="font-mono text-xs sm:text-sm font-black text-sky-300">
                 {ucl.leaguePhaseRound > 0
                   ? `${ucl.userLeaguePhaseRank ?? userUclRank}위/36`
-                  : '대기'}
+                  : '순위표'}
               </div>
-            </div>
+            </button>
             <div className="rounded-xl border border-slate-800 bg-[#090e18] px-2.5 py-2 text-center sm:px-3.5">
               <div className="text-[10px] text-slate-400">현재 성적</div>
               <div className="truncate text-xs sm:text-sm font-black text-amber-300">
@@ -751,10 +807,10 @@ export function UclDashboard() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setTab('standings')}
+                      onClick={() => setLpStandingsModalOpen(true)}
                       className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
                     >
-                      36팀 순위표
+                      36팀 순위표 팝업
                     </button>
                     <button
                       type="button"
@@ -889,10 +945,11 @@ export function UclDashboard() {
                       </button>
                       {ucl.stage === 'league_phase' && ucl.leaguePhaseRound < 8 && (
                         <button
+                          id="ucl-lp-fastsim-btn"
                           type="button"
                           onClick={() => {
                             setShowLpSummary(true);
-                            simulateUclLeaguePhaseToEnd();
+                            setLpFastSimOpen(true);
                           }}
                           className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-500/45 bg-sky-500/15 px-4 py-3 text-xs font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
                         >
@@ -943,7 +1000,7 @@ export function UclDashboard() {
                   /* User finished 1~8th in Swiss League -> Direct R16 Bye during Playoff! */
                   <>
                     <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-xs font-bold text-emerald-300">
-                      <Sparkles className="h-3.5 w-3.5" />
+                      <Sparkles className="h-3.5 h-3.5" />
                       리그 페이즈 {ucl.userLeaguePhaseRank}위 · 16강 직행
                     </div>
                     <h3 className="text-lg sm:text-xl font-black text-white">
@@ -1014,10 +1071,10 @@ export function UclDashboard() {
               </h3>
               <button
                 type="button"
-                onClick={() => setTab('standings')}
+                onClick={() => setLpStandingsModalOpen(true)}
                 className="text-[11px] font-bold text-sky-400 hover:underline cursor-pointer"
               >
-                전체 36팀 보기 →
+                전체 36팀 팝업 →
               </button>
             </div>
             <div className="space-y-1 text-xs">

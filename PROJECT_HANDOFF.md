@@ -28,9 +28,10 @@
   - **결산**: 친구 순위 = `computeSeasonScore` 총점 + 맞대결 점수(최대 1,500), 역대 강팀 비교 = `computeSeasonScore` 총점만. 멀티 시즌은 명예의 전당에 저장하지 않습니다.
   - **Supabase**: `supabase/schema.sql` 하단 v8.0 구간을 SQL Editor에서 1회 실행해야 멀티 리그 방이 만들어집니다(미적용 시 방 생성 단계에서 안내 문구 표시).
   - **검증 범위**: `v80MultiLeague.test.ts`(엔진 풀시즌) + 로컬 가짜 백엔드로 브라우저 3개 실플레이. 실제 Supabase Realtime 환경에서의 2~4인 접속은 배포 후 확인이 필요합니다.
-- **v7.2 주요 버그 수정 & 멀티플레이 커스텀/연출**:
+- **v7.2 주요 버그 수정 · 멀티플레이 커스텀/연출 · UCL 리그 페이즈 고속진행 & 36팀 순위표 팝업**:
   - **4대 버그 수정 (`formations.ts`, `positionEngine.ts`, `PitchBoard.tsx`, `OpponentPitchView.tsx`, `GameContext.tsx`, `playerLookup.ts`, `awardsEngine.ts`, `standingsEngine.ts`, `matchEngine.ts`, `LiveMatchBroadcast.tsx`, `DreamMatchArena.tsx`)**: ① 9개 전 포메이션 피치·상세 카드 포지션 부적합 OVR 페널티 단일화(`3-3-3-1` `RAM` 등), ② 피치 선수 재클릭/빈 공간 클릭 시 케미선 호버·선택 강조 즉시 해제, ③ 타 리그 트레이드 선수 스탯 이중 합산(66경기 버그) 차단 및 단일 리그 최대 라운드(38R/34R) 상한 보장, ④ 전 모드 교체 아웃 확정 선수 영구 잠금(`교체됨`) 및 잔여 체력 유지(체력 100 초기화 방지).
-  - **멀티플레이 감독·유니폼·구단명 커스텀 & 피치 공개/승패 감독 팝업 (`MpProfileCustomizerModal.tsx`, `PreKickoffRevealModal.tsx`, `MpPostMatchManagerPopup.tsx`, `MultiplayerLobby.tsx`, `MultiplayerArena.tsx`, `multiplayerService.ts`, `v72BugfixAndMpCustom.test.ts`)**: 로비 감독 외형·유니폼 패턴/컬러·구단명 커스텀 및 프리셋 불러오기(`updatePlayerProfile` 실시간 동기화), 킥오프 직전 양 팀 포메이션 피치 뷰 공개 모달, 1대1 종료 후 승자 축하 / 패자 상대 커스텀 감독 도발 팝업 구현.
+  - **멀티플레이 감독·유니폼·구단명 커스텀 & 피치 공개/승패 감독 도트 모션 팝업 (`MpProfileCustomizerModal.tsx`, `PreKickoffRevealModal.tsx`, `MpPostMatchManagerPopup.tsx`, `PixelManagerAvatar.tsx`, `MultiplayerLobby.tsx`, `MultiplayerArena.tsx`, `multiplayerService.ts`, `v72BugfixAndMpCustom.test.ts`)**: 로비 감독 외형·유니폼 패턴/컬러·구단명 커스텀 및 프리셋 불러오기(`updatePlayerProfile` 실시간 동기화), 킥오프 직전 양 팀 포메이션 피치 뷰 공개 모달, 1대1 종료 후 승장(축하 포즈 4종) + 패장(엎드려 땅치기·무릎 꿇고 오열·대자로 뻗어 영혼 가출·OTL 얼굴 파묻기 등 좌절 모션 4종) 동시 등장 및 랜덤 멘트 팝업 구현.
+  - **UCL 리그 페이즈 단계별 고속진행 모달 & 36팀 순위표 팝업 (`UclLeaguePhaseFastSimModal.tsx`, `UclLeaguePhaseStandingsModal.tsx`, `UclDashboard.tsx`)**: `[리그 페이즈 끝까지 고속진행]` 클릭 시 1R~8R 라운드별 경기 결과·순위 변동·실시간 상위 8위+내 구단 순위표를 단계별로 보여주는 고속진행 모달(속도 조절·일시정지·부상 자동 정지·즉시 완료) 및 8R 완료 시 자동 표시되는 36팀 스위스 리그 페이즈 순위표 팝업(1~8위 직행 / 9~24위 PO / 25~36위 탈락 커트라인 포함) 구현.
 - **v7.1 주요 개선**:
   - **1대1 전술실 블라인드 상태 · 최종 전술 공개/비교 팝업 · 1배속 동기화 (`MatchDayTacticsRoom.tsx`, `PreKickoffRevealModal.tsx`, `LiveMatchBroadcast.tsx`, `MultiplayerArena.tsx`)**: 전술실 상대 상태 `[전술·포메이션 수정 중...]`/`[전술 확정 (공개 대기)]` 표시, 양측 확정 후 최종 전술 비교 팝업(양측 준비 완료 → 방장 킥오프), 멀티 2D 중계 `lockSpeed: 1` 고정.
 - **v7.0.2 핫픽스**:

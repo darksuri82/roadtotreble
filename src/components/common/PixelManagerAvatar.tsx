@@ -189,17 +189,106 @@ export function normalizeAvatarForGender(
   };
 }
 
+export type ManagerExpressionId =
+  | 'default'
+  | 'cheer_grin'
+  | 'smug_wink'
+  | 'cool_shades'
+  | 'crying_wail'
+  | 'dizzy_shock'
+  | 'fierce_glare';
+
+export type ManagerPoseId =
+  | 'default'
+  | 'arms_up_cheer'
+  | 'fist_pump'
+  | 'arms_crossed_smug'
+  | 'hands_on_head_despair';
+
+export function resolveManagerPalette(
+  avatar?: Partial<ManagerAvatarConfig> | null,
+  clubPrimaryColor = '#10b981',
+  clubSecondaryColor = '#f8fafc',
+) {
+  const cfg = normalizeAvatarForGender(avatar);
+  const isFemale = cfg.gender === 'female';
+  const skin =
+    SKIN_TONE_OPTIONS.find((s) => s.id === cfg.skinTone) ?? SKIN_TONE_OPTIONS[1];
+  const hair =
+    HAIR_COLOR_OPTIONS.find((h) => h.id === cfg.hairColor) ??
+    HAIR_COLOR_OPTIONS[0];
+
+  let topMain = isFemale ? '#232938' : '#1e2430';
+  let topShade = isFemale ? '#141824' : '#12161f';
+  let topHighlight = isFemale ? '#3b455e' : '#364156';
+  let bottomMain = isFemale ? '#1e2432' : '#1e2530';
+  let shoeMain = '#1b1d24';
+
+  if (cfg.outfit === 'female_trench') {
+    topMain = '#c89e70';
+    topShade = '#9b7247';
+    topHighlight = '#e0bd94';
+    bottomMain = '#c89e70';
+    shoeMain = '#3b241c';
+  } else if (
+    cfg.outfit === 'female_tracksuit' ||
+    cfg.outfit === 'team_tracksuit'
+  ) {
+    topMain = clubPrimaryColor;
+    topShade = '#151c26';
+    topHighlight = clubSecondaryColor;
+    bottomMain = '#19202c';
+    shoeMain = '#f1f5f9';
+  } else if (cfg.outfit === 'female_knit_skirt') {
+    topMain = '#f3e8d8';
+    topShade = '#d6c3a8';
+    topHighlight = '#ffffff';
+    bottomMain = '#1e3454';
+    shoeMain = '#261b18';
+  } else if (cfg.outfit === 'navy_coat') {
+    topMain = '#1f365c';
+    topShade = '#142440';
+    topHighlight = '#345891';
+    bottomMain = '#202630';
+  } else if (cfg.outfit === 'casual_shirt') {
+    topMain = '#e2e8f0';
+    topShade = '#cbd5e1';
+    topHighlight = '#ffffff';
+    bottomMain = '#2b3445';
+  } else if (cfg.outfit === 'puffer_jacket') {
+    topMain = '#2d3748';
+    topShade = '#1a202c';
+    topHighlight = '#4a5568';
+    bottomMain = '#1a202c';
+  }
+
+  return {
+    cfg,
+    isFemale,
+    skin,
+    hair,
+    topMain,
+    topShade,
+    topHighlight,
+    bottomMain,
+    shoeMain,
+  };
+}
+
 interface PixelManagerAvatarProps {
   avatar?: Partial<ManagerAvatarConfig> | null;
   clubPrimaryColor?: string;
   clubSecondaryColor?: string;
   size?: number;
   className?: string;
+  expression?: ManagerExpressionId;
+  pose?: ManagerPoseId;
 }
 
 /**
  * 2-head-tall chibi pixel-art football manager avatar (28x34 pixel grid)
- * with strictly separated Male/Female silhouettes, faces, hairstyles, and outfits.
+ * with strictly separated Male/Female silhouettes, faces, hairstyles, outfits,
+ * plus optional dynamic facial expressions and celebration/despair arm poses.
  */
 export function PixelManagerAvatar({
   avatar,
@@ -207,6 +296,8 @@ export function PixelManagerAvatar({
   clubSecondaryColor = '#f8fafc',
   size = 84,
   className = '',
+  expression = 'default',
+  pose = 'default',
 }: PixelManagerAvatarProps) {
   const cfg = normalizeAvatarForGender(avatar);
   const isFemale = cfg.gender === 'female';
@@ -1024,6 +1115,200 @@ export function PixelManagerAvatar({
     rect(15, 32, 5, 1, O);
     px(14, 30, O);
     px(14, 31, O);
+  }
+
+  // =========================================================================
+  // 5) OPTIONAL DYNAMIC FACIAL EXPRESSION OVERLAY
+  // =========================================================================
+  if (expression !== 'default') {
+    // Clear standard eyes & mouth plane cleanly with skin base first
+    rect(8, 11, 12, 6, skin.base);
+    rect(10, 9, 8, 1, skin.highlight);
+
+    if (expression === 'cheer_grin') {
+      // Joyful arched laughing eyes (^ ^) + big cheering open smile
+      px(9, 13, O);
+      px(10, 12, O);
+      px(11, 12, O);
+      px(12, 13, O);
+
+      px(15, 13, O);
+      px(16, 12, O);
+      px(17, 12, O);
+      px(18, 13, O);
+
+      // Rosy happy cheeks
+      rect(8, 14, 2, 1, '#f43f5e');
+      rect(18, 14, 2, 1, '#f43f5e');
+
+      // Big open cheering mouth with white teeth & tongue
+      rect(11, 15, 6, 1, '#ffffff');
+      rect(11, 16, 6, 2, '#be123c');
+      rect(12, 17, 4, 1, '#fb7185');
+    } else if (expression === 'smug_wink') {
+      // Left eye winking (>), right eye gleaming, cocky tilted smirk
+      px(9, 12, O);
+      px(10, 13, O);
+      px(11, 13, O);
+      px(9, 14, O);
+
+      rect(16, 11, 3, 1, O);
+      rect(16, 12, 2, 3, '#161822');
+      px(18, 12, '#ffffff');
+      px(17, 12, '#38bdf8');
+
+      // Cocky asymmetric smirk
+      rect(12, 16, 4, 1, O);
+      px(16, 15, O);
+      px(15, 15, '#ffffff');
+    } else if (expression === 'cool_shades') {
+      // Deal-with-it pixel sunglasses + confident grin
+      rect(7, 12, 14, 1, O);
+      rect(8, 12, 5, 3, '#090d16');
+      rect(15, 12, 5, 3, '#090d16');
+      // Lens shine
+      px(9, 12, '#ffffff');
+      px(10, 13, '#38bdf8');
+      px(16, 12, '#ffffff');
+      px(17, 13, '#38bdf8');
+      // Confident white-teeth grin
+      rect(11, 16, 6, 1, '#ffffff');
+      px(10, 15, O);
+      px(17, 15, O);
+    } else if (expression === 'crying_wail') {
+      // Sad upturned brows + crying shut eyes + waterfall tears + wailing mouth
+      px(9, 12, O);
+      px(10, 11, O);
+      px(11, 11, O);
+      px(18, 12, O);
+      px(17, 11, O);
+      px(16, 11, O);
+
+      rect(9, 13, 3, 1, O);
+      rect(16, 13, 3, 1, O);
+
+      // Streaming cyan waterfall tears down both cheeks
+      rect(9, 14, 2, 5, '#38bdf8');
+      px(10, 15, '#bae6fd');
+      rect(17, 14, 2, 5, '#38bdf8');
+      px(17, 15, '#bae6fd');
+
+      // Wailing open crying mouth
+      rect(12, 15, 4, 2, '#881337');
+      rect(12, 15, 4, 1, '#ffffff');
+      px(11, 17, O);
+      px(16, 17, O);
+    } else if (expression === 'dizzy_shock') {
+      // X-eyes + pale shock lines + open gasping mouth
+      px(9, 12, O);
+      px(11, 12, O);
+      px(10, 13, O);
+      px(9, 14, O);
+      px(11, 14, O);
+
+      px(16, 12, O);
+      px(18, 12, O);
+      px(17, 13, O);
+      px(16, 14, O);
+      px(18, 14, O);
+
+      // Trembling shock mouth
+      rect(12, 15, 4, 2, '#1e293b');
+      px(13, 16, '#fb7185');
+    } else if (expression === 'fierce_glare') {
+      // Competitive V-angled brows + glowing eyes + grit teeth
+      px(9, 11, O);
+      px(10, 11, O);
+      px(11, 12, O);
+      px(18, 11, O);
+      px(17, 11, O);
+      px(16, 12, O);
+
+      rect(9, 12, 3, 2, '#161822');
+      px(10, 12, '#fbbf24');
+      rect(16, 12, 3, 2, '#161822');
+      px(17, 12, '#fbbf24');
+
+      rect(11, 16, 6, 1, '#ffffff');
+      rect(11, 15, 6, 1, O);
+    }
+  }
+
+  // =========================================================================
+  // 6) OPTIONAL DYNAMIC ARM POSE OVERLAY
+  // =========================================================================
+  if (pose !== 'default') {
+    const pal = resolveManagerPalette(
+      avatar,
+      clubPrimaryColor,
+      clubSecondaryColor,
+    );
+    // Clear default side arms (x=5..7 & x=20..22, y=20..26)
+    for (let y = 20; y <= 26; y += 1) {
+      for (let x = 5; x <= 7; x += 1) {
+        if (!isFemale || x <= 7) pixels[y][x] = null;
+      }
+      for (let x = 20; x <= 22; x += 1) {
+        if (!isFemale || x >= 19) pixels[y][x] = null;
+      }
+    }
+    if (isFemale) {
+      for (let y = 20; y <= 25; y += 1) {
+        pixels[y][7] = null;
+        pixels[y][8] = y >= 24 ? pixels[y][8] : null;
+        pixels[y][19] = y >= 24 ? pixels[y][19] : null;
+        pixels[y][20] = null;
+      }
+    }
+
+    if (pose === 'arms_up_cheer') {
+      // Both arms raised high cheering in a V-shape!
+      rect(5, 13, 2, 7, pal.topMain);
+      rect(4, 12, 1, 8, O);
+      rect(7, 13, 1, 6, O);
+      rect(5, 11, 2, 2, skin.base);
+      rect(5, 10, 2, 1, O);
+
+      rect(21, 13, 2, 7, pal.topMain);
+      rect(23, 12, 1, 8, O);
+      rect(20, 13, 1, 6, O);
+      rect(21, 11, 2, 2, skin.base);
+      rect(21, 10, 2, 1, O);
+    } else if (pose === 'fist_pump') {
+      // Left arm on hip, right arm pumping fist high!
+      rect(6, 20, 2, 4, pal.topMain);
+      rect(6, 24, 2, 2, skin.base);
+      px(5, 21, O);
+      px(5, 22, O);
+      px(5, 23, O);
+
+      rect(21, 12, 2, 8, pal.topMain);
+      rect(23, 12, 1, 8, O);
+      rect(21, 9, 3, 3, skin.base);
+      rect(21, 8, 3, 1, O);
+    } else if (pose === 'arms_crossed_smug') {
+      // Arms folded smugly across the chest
+      rect(7, 20, 2, 3, pal.topMain);
+      rect(19, 20, 2, 3, pal.topMain);
+      rect(8, 22, 12, 3, pal.topMain);
+      rect(8, 21, 12, 1, O);
+      rect(8, 25, 12, 1, O);
+      rect(9, 22, 2, 2, skin.base);
+      rect(17, 22, 2, 2, skin.base);
+    } else if (pose === 'hands_on_head_despair') {
+      // Both hands raised clutching sides of the head in disbelief!
+      rect(5, 14, 2, 7, pal.topMain);
+      rect(6, 11, 2, 3, skin.base);
+      px(4, 15, O);
+      px(4, 16, O);
+      px(4, 17, O);
+
+      rect(21, 14, 2, 7, pal.topMain);
+      rect(20, 11, 2, 3, skin.base);
+      px(23, 15, O);
+      px(23, 16, O);
+      px(23, 17, O);
+    }
   }
 
   const rects: { x: number; y: number; w: number; fill: string }[] = [];
