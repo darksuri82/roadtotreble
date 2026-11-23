@@ -30,6 +30,7 @@ import { MpLeagueFinalBoard } from './MpLeagueFinalBoard';
 import { MpLeagueH2HView } from './MpLeagueH2HView';
 import { MpLeaguePodiumPopup } from './MpLeaguePodiumPopup';
 import { MpLeagueSnakeDraft } from './MpLeagueSnakeDraft';
+import { isMpTickerPlayed } from './MpLiveTicker';
 import { useMpLeagueHost } from './useMpLeagueHost';
 
 const LEAGUE_LABEL: Record<LeagueId, string> = {
@@ -215,14 +216,38 @@ export function MpLeagueRoot({
     [savePayload, remoteRev, optimisticSquad?.rev],
   );
 
-  // Global pause lock: any of these screens on my side stops the auto-advance for everyone
+  const [tickerDoneKey, setTickerDoneKey] = useState<string | null>(null);
+
+  // Global pause lock: only engage interview/injury locks once the live scoreboard has finished replaying
+  const tickerKey = live?.ticker?.key ?? null;
+  const tickerPlaying = Boolean(
+    live?.ticker &&
+      tickerDoneKey !== tickerKey &&
+      !isMpTickerPlayed(tickerKey),
+  );
+  const transferActiveNow = Boolean(
+    live?.flow.kind === 'transfer' && mine && mine.offers.length > 0,
+  );
+  const summaryActiveNow = Boolean(
+    live?.flow.kind === 'summary' && live?.summary !== null,
+  );
   const resolutionKey = mine?.resolution
     ? `${mine.resolution.eventTitle}:${mine.resolution.chosenLabel}`
     : null;
   const interviewOpen = Boolean(
-    mine?.event || (resolutionKey && resolutionKey !== dismissedResolutionKey),
+    !tickerPlaying &&
+      !transferActiveNow &&
+      !summaryActiveNow &&
+      (mine?.event || (resolutionKey && resolutionKey !== dismissedResolutionKey)),
   );
-  const injuryOpen = Boolean(mine && mine.alerts.length > 0);
+  const injuryOpen = Boolean(
+    !tickerPlaying &&
+      !transferActiveNow &&
+      !summaryActiveNow &&
+      !mine?.event &&
+      mine &&
+      mine.alerts.length > 0,
+  );
   const inSeason = live?.stage === 'league' || live?.stage === 'ucl';
   const desiredLock: MpLeagueLockReason | null = !inSeason
     ? null
@@ -439,6 +464,8 @@ export function MpLeagueRoot({
       actionBusy={actionBusy}
       editorOpen={editorOpen}
       dismissedResolutionKey={dismissedResolutionKey}
+      tickerDoneKey={tickerDoneKey}
+      onTickerDoneKey={setTickerDoneKey}
       hostMissing={host.hostMissing}
       errorMsg={errorMsg ?? host.hostError}
       onOpenEditor={() => setEditorOpen(true)}

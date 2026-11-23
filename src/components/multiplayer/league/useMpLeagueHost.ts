@@ -37,6 +37,9 @@ import {
   mpH2HDoneKey,
   mpH2HNeedsExtraTime,
   mpH2HPreMatchKey,
+  mpH2HPreSkipKey,
+  mpH2HSkipKey,
+  resolveMpH2HFullInstant,
   secondHalfMpH2H,
 } from '../../../engine/mpLeagueH2H';
 import { DEFAULT_MP_LEAGUE_POOL } from '../../../services/multiplayerService';
@@ -438,6 +441,31 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
 
       if (!match) {
         const key = mpH2HPreMatchKey(spec, st.seasonKey);
+        const preSkipKey = mpH2HPreSkipKey(spec, st.seasonKey);
+        const bothPreSkip = [spec.homeClubId, spec.awayClubId].every((clubId) => {
+          const human = st.humans.find((h) => h.clubId === clubId);
+          const row = p.players.find((r) => r.player_id === human?.playerId);
+          return Boolean(row?.activity?.ackKeys?.includes(preSkipKey));
+        });
+        if (bothPreSkip) {
+          const home =
+            sideFromBarrier(st, squads, p, spec.homeClubId, key, null, true) ??
+            fallbackSide(st, squads, spec.homeClubId, null);
+          const away =
+            sideFromBarrier(st, squads, p, spec.awayClubId, key, null, true) ??
+            fallbackSide(st, squads, spec.awayClubId, null);
+          if (!home || !away) return;
+          const finishedMatch = resolveMpH2HFullInstant({
+            spec,
+            seasonKey: st.seasonKey,
+            home,
+            away,
+            conditions: st.conditions,
+          });
+          await publishMatch(finishedMatch);
+          return;
+        }
+
         const timedOut = waited > PRE_MATCH_TIMEOUT_MS;
         const home = sideFromBarrier(st, squads, p, spec.homeClubId, key, null, timedOut);
         const away = sideFromBarrier(st, squads, p, spec.awayClubId, key, null, timedOut);
@@ -454,36 +482,29 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         return;
       }
 
-      // Both managers agreed to skip: resolve every remaining phase right now with the current line-ups
-      const skipKey = `h2h-skip:${match.matchId}`;
-      const bothSkip = [spec.homeClubId, spec.awayClubId].every((clubId) => {
-        const human = st.humans.find((h) => h.clubId === clubId);
-        const row = p.players.find((r) => r.player_id === human?.playerId);
-        return Boolean(row?.activity?.ackKeys?.includes(skipKey));
-      });
-      if (bothSkip) {
-        const home = fallbackSide(st, squads, spec.homeClubId, match);
-        const away = fallbackSide(st, squads, spec.awayClubId, match);
-        if (!home || !away) return;
-        const base = { spec, home, away, conditions: st.conditions };
-        let m = match;
-        if (m.phase === 'first_half') m = secondHalfMpH2H({ ...base, match: m });
-        if (m.phase === 'second_half' && mpH2HNeedsExtraTime(spec, m)) {
-          m = extraTimeFirstHalfMpH2H({ ...base, match: m });
+      // Both managers agreed to skip mid-match: compute full result and publish `finished` so everyone sees the Result Popup
+      if (match.phase !== 'finished') {
+        const skipKey = mpH2HSkipKey(match.matchId);
+        const bothSkip = [spec.homeClubId, spec.awayClubId].every((clubId) => {
+          const human = st.humans.find((h) => h.clubId === clubId);
+          const row = p.players.find((r) => r.player_id === human?.playerId);
+          return Boolean(row?.activity?.ackKeys?.includes(skipKey));
+        });
+        if (bothSkip) {
+          const home = fallbackSide(st, squads, spec.homeClubId, match);
+          const away = fallbackSide(st, squads, spec.awayClubId, match);
+          if (!home || !away) return;
+          const finishedMatch = resolveMpH2HFullInstant({
+            spec,
+            seasonKey: st.seasonKey,
+            home,
+            away,
+            conditions: st.conditions,
+            existingMatch: match,
+          });
+          await publishMatch(finishedMatch);
+          return;
         }
-        if (m.phase === 'extra_time') m = extraTimeSecondHalfMpH2H({ ...base, match: m });
-        if (!m.finalResult) return;
-        let next = completeMpLeagueH2H(
-          { ...st, h2hLive: { ...live, match: m } },
-          m.finalResult,
-        );
-        if (next.flow.kind === 'auto') next = runMpLeague(next, { squads });
-        nextAutoAtRef.current = Date.now() + st.settings.autoMs;
-        if (next.flow.kind === 'cast') {
-          castUntilRef.current = Date.now() + getMpCastDurationMs(next);
-        }
-        await commit(next, squads, p.room.id);
-        return;
       }
 
       const timedOut = waited > BARRIER_TIMEOUT_MS;
@@ -499,10 +520,10 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
 
       const finishIfAcked = async () => {
         const doneKey = mpH2HDoneKey(match.matchId);
-        const acked = [spec.homeClubId, spec.awayClubId].every((clubId) => {
-          const human = st.humans.find((h) => h.clubId === clubId);
-          const row = p.players.find((r) => r.player_id === human?.playerId);
-          if (!row || !human) return true;
+        // Every online manager (participants + spectators) clicks [확인] on the Result Popup before advancing
+        const acked = st.humans.every((human) => {
+          const row = p.players.find((r) => r.player_id === human.playerId);
+          if (!row) return true;
           if (row.activity?.ackKeys?.includes(doneKey)) return true;
           return (
             !p.onlinePlayerIds.includes(human.playerId) && waited > OFFLINE_TIMEOUT_MS

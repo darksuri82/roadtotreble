@@ -1,4 +1,4 @@
-import { Check, Eye, FastForward, Loader2, Play, Swords } from 'lucide-react';
+import { Check, Eye, FastForward, Loader2, Play, Star, Swords } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { calculateChemistry } from '../../../engine/chemistryEngine';
 import {
@@ -10,7 +10,10 @@ import {
   buildMpH2HClubs,
   mpH2HDoneKey,
   mpH2HPreMatchKey,
+  mpH2HPreSkipKey,
+  mpH2HSkipKey,
 } from '../../../engine/mpLeagueH2H';
+import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
 import type { FormationId, ManagerRouletteState } from '../../../types/game';
 import type { Club, LiveHalftimeState, TacticId } from '../../../types/league';
 import type { MpH2HLive, MpLeagueHuman } from '../../../types/mpLeague';
@@ -248,12 +251,19 @@ function MpLeagueH2HInner({
   // ── Pre-match ──────────────────────────────────────────────────────────────
   if (!match) {
     const preKey = mpH2HPreMatchKey(spec, seasonKey);
+    const preSkipKey = mpH2HPreSkipKey(spec, seasonKey);
     const lockedOf = (row: MpRoomPlayerRow | null) =>
       row?.tactic_submission?.barrierKey === preKey;
+    const preSkipOf = (row: MpRoomPlayerRow | null) =>
+      Boolean(row?.activity?.ackKeys?.includes(preSkipKey));
     const myLocked = isParticipant && (submittingKey === preKey || lockedOf(viewRow));
     const oppLocked = lockedOf(oppRow);
+    const myPreSkip = isParticipant && ackKeys.includes(preSkipKey);
+    const oppPreSkip = isParticipant && preSkipOf(oppRow);
 
     if (!isParticipant) {
+      const homeRow = rowOf(homeHuman);
+      const awayRow = rowOf(awayHuman);
       return (
         <div className="mx-auto max-w-xl px-3 py-10 sm:py-14 space-y-4">
           {spectatorBadge}
@@ -265,12 +275,24 @@ function MpLeagueH2HInner({
             <div className="flex items-center justify-around gap-3">
               <ManagerFace
                 human={homeHuman}
-                sub={lockedOf(rowOf(homeHuman)) ? '전술 확정' : '전술 수정 중'}
+                sub={
+                  preSkipOf(homeRow)
+                    ? '스킵 요청'
+                    : lockedOf(homeRow)
+                      ? '전술 확정'
+                      : '전술 수정 중'
+                }
               />
               <span className="text-lg font-black text-slate-500">VS</span>
               <ManagerFace
                 human={awayHuman}
-                sub={lockedOf(rowOf(awayHuman)) ? '전술 확정' : '전술 수정 중'}
+                sub={
+                  preSkipOf(awayRow)
+                    ? '스킵 요청'
+                    : lockedOf(awayRow)
+                      ? '전술 확정'
+                      : '전술 수정 중'
+                }
               />
             </div>
             <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-400">
@@ -364,48 +386,77 @@ function MpLeagueH2HInner({
           <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
             <span
               className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold ${
-                oppLocked
-                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
-                  : 'border-slate-800 bg-[#0b1018] text-slate-400'
+                oppPreSkip
+                  ? 'border-amber-400/50 bg-amber-500/15 text-amber-200'
+                  : oppLocked
+                    ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                    : 'border-slate-800 bg-[#0b1018] text-slate-400'
               }`}
             >
-              {oppLocked ? (
+              {oppPreSkip ? (
+                <FastForward className="w-3.5 h-3.5" />
+              ) : oppLocked ? (
                 <Check className="w-3.5 h-3.5" />
               ) : (
                 <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
               )}
-              {oppHuman.nickname}: {oppLocked ? '전술 확정' : '전술 수정 중'}
+              {oppHuman.nickname}:{' '}
+              {oppPreSkip ? '스킵 요청 중' : oppLocked ? '전술 확정' : '전술 수정 중'}
             </span>
-            {myLocked ? (
-              <div className="flex flex-wrap items-center gap-2">
-                {!oppLocked && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSubmittingKey(null);
-                      void onClearBarrier();
-                    }}
-                    className="rounded-xl border border-slate-700 bg-[#111822] px-3.5 py-2.5 text-xs font-bold text-slate-200 hover:border-amber-400/50 hover:text-amber-200 cursor-pointer"
-                  >
-                    전술 수정
-                  </button>
-                )}
-                <div className="inline-flex items-center gap-2 rounded-xl border border-sky-400/45 bg-sky-500/15 px-5 py-2.5 text-sm font-extrabold text-sky-200">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  킥오프 대기
-                </div>
-              </div>
-            ) : (
+
+            <div className="flex flex-wrap items-center gap-2">
               <button
-                id="mpl-lock-h2h-btn"
+                id="mpl-pre-h2h-skip-btn"
                 type="button"
-                onClick={() => void submitBarrier('pre_match', preKey, current.tactic)}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-2.5 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                disabled={myPreSkip}
+                onClick={() => onAck(preSkipKey)}
+                className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2.5 text-xs font-extrabold transition-colors ${
+                  myPreSkip
+                    ? 'border-slate-700 bg-slate-900 text-slate-400'
+                    : oppPreSkip
+                      ? 'border-amber-400/60 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 cursor-pointer'
+                      : 'border-slate-700 bg-[#111822] text-slate-200 hover:border-sky-400/60 hover:text-sky-200 cursor-pointer'
+                }`}
               >
-                <Play className="w-4 h-4 fill-current" />
-                전술 확정
+                <FastForward className="w-3.5 h-3.5" />
+                {myPreSkip
+                  ? '상대 스킵 동의 대기'
+                  : oppPreSkip
+                    ? '상대 스킵 요청 · 동의'
+                    : '스킵 요청'}
               </button>
-            )}
+
+              {myLocked ? (
+                <>
+                  {!oppLocked && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSubmittingKey(null);
+                        void onClearBarrier();
+                      }}
+                      className="rounded-xl border border-slate-700 bg-[#111822] px-3.5 py-2.5 text-xs font-bold text-slate-200 hover:border-amber-400/50 hover:text-amber-200 cursor-pointer"
+                    >
+                      전술 수정
+                    </button>
+                  )}
+                  <div className="inline-flex items-center gap-2 rounded-xl border border-sky-400/45 bg-sky-500/15 px-5 py-2.5 text-sm font-extrabold text-sky-200">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    킥오프 대기
+                  </div>
+                </>
+              ) : (
+                <button
+                  id="mpl-lock-h2h-btn"
+                  type="button"
+                  onClick={() => void submitBarrier('pre_match', preKey, current.tactic)}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-2.5 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  전술 확정
+                </button>
+              )}
+            </div>
           </div>
         </MatchDayTacticsRoom>
         {inspected && (
@@ -421,41 +472,204 @@ function MpLeagueH2HInner({
 
   // ── Live synced broadcast (participants play, everyone else spectates) ─────
   const doneKey = mpH2HDoneKey(match.matchId);
-  const skipKey = `h2h-skip:${match.matchId}`;
+  const skipKey = mpH2HSkipKey(match.matchId);
   const skipOf = (human: MpLeagueHuman | null) =>
     Boolean(rowOf(human)?.activity?.ackKeys?.includes(skipKey));
   const mySkip = isParticipant && ackKeys.includes(skipKey);
   const oppSkip = isParticipant && skipOf(oppHuman);
-  // Both managers agreed: everyone (spectators too) jumps straight to the result
   const bothSkip = isParticipant
     ? mySkip && oppSkip
     : skipOf(homeHuman) && skipOf(awayHuman);
-  const finished = closed || bothSkip || ackKeys.includes(doneKey);
+  const myDoneAcked = ackKeys.includes(doneKey);
+  const showResultPopup =
+    closed || effectivePhase === 'finished' || bothSkip || myDoneAcked;
 
-  if (finished || !effectivePhase || effectivePhase === 'finished') {
+  if (showResultPopup || !effectivePhase) {
     const res = match.finalResult;
+    const goalEvents = res
+      ? (() => {
+          const hasEt = res.events.some((e) => e.minute > 90);
+          const all = hasEt ? res.events : [...res.events, ...(res.extraTime?.etEvents ?? [])];
+          return all.filter((e) => e.type === 'goal').sort((a, b) => a.minute - b.minute);
+        })()
+      : [];
+    const pendingConfirmNames = humans
+      .filter((h) => !rowOf(h)?.activity?.ackKeys?.includes(doneKey))
+      .map((h) => h.nickname);
+    const aggHome =
+      spec.ctx === 'ucl_ko' && spec.aggHomeBefore !== undefined && res
+        ? spec.aggHomeBefore + res.homeGoals
+        : null;
+    const aggAway =
+      spec.ctx === 'ucl_ko' && spec.aggAwayBefore !== undefined && res
+        ? spec.aggAwayBefore + res.awayGoals
+        : null;
+
     return (
-      <div className="mx-auto max-w-xl px-3 py-10 sm:py-14">
-        <div className="rounded-2xl border border-slate-800/90 bg-[#0d131c] p-5 space-y-4">
-          <div className="text-center text-xs font-extrabold text-sky-300">{spec.label}</div>
-          <div className="flex items-center justify-around gap-3">
-            <ManagerFace human={homeHuman} />
-            <div className="text-center">
-              <div className="font-mono text-3xl font-black text-white tabular-nums">
-                {res ? `${res.homeGoals} : ${res.awayGoals}` : '-'}
-              </div>
-              {res?.extraTime?.penalties && (
-                <div className="text-[11px] font-bold text-amber-300 tabular-nums">
-                  PK {res.extraTime.penalties.homePenGoals}–
-                  {res.extraTime.penalties.awayPenGoals}
-                </div>
-              )}
+      <div className="modal-backdrop fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/90 p-3 sm:p-5">
+        <ModalBodyLock />
+        <div className="modal-panel flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-700/90 bg-[#0d131c] shadow-2xl">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-[#0a0f17] px-5 py-3.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="rounded bg-sky-500/20 border border-sky-400/40 px-2 py-0.5 text-[10px] font-extrabold text-sky-200">
+                맞대결 결과
+              </span>
+              <span className="truncate text-xs sm:text-sm font-extrabold text-white">
+                {spec.label}
+              </span>
             </div>
-            <ManagerFace human={awayHuman} />
+            {!isParticipant && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/35 bg-sky-500/10 px-2 py-0.5 text-[10px] font-bold text-sky-300">
+                <Eye className="w-3 h-3" />
+                관전
+              </span>
+            )}
           </div>
-          <div className="flex items-center justify-center gap-2 text-xs font-bold text-slate-400">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            결과 반영 중
+
+          <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4">
+            {!res ? (
+              <div className="flex flex-col items-center gap-2.5 py-8 text-xs font-bold text-slate-400">
+                <Loader2 className="w-6 h-6 animate-spin text-emerald-400" />
+                경기 결과 산출 중...
+              </div>
+            ) : (
+              <>
+                {/* Scoreboard */}
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-4">
+                  <div className="flex items-center justify-around gap-3">
+                    <ManagerFace human={homeHuman} sub={homeHuman.profile.shortName} />
+                    <div className="text-center">
+                      <div className="font-mono text-3xl sm:text-4xl font-black text-white tabular-nums">
+                        {res.homeGoals}
+                        <span className="mx-1.5 text-slate-600">:</span>
+                        {res.awayGoals}
+                      </div>
+                      {res.extraTime?.penalties && (
+                        <div className="mt-1 text-[11px] font-extrabold text-amber-300 tabular-nums">
+                          PK {res.extraTime.penalties.homePenGoals}–
+                          {res.extraTime.penalties.awayPenGoals}
+                        </div>
+                      )}
+                      {!res.extraTime?.penalties && res.extraTime && (
+                        <div className="mt-1 text-[10px] font-bold text-sky-300">
+                          연장 종료 (AET)
+                        </div>
+                      )}
+                      {aggHome !== null && aggAway !== null && (
+                        <div className="mt-1 text-[10px] font-bold text-slate-400 tabular-nums">
+                          합산 {aggHome} : {aggAway}
+                        </div>
+                      )}
+                    </div>
+                    <ManagerFace human={awayHuman} sub={awayHuman.profile.shortName} />
+                  </div>
+                </div>
+
+                {/* Goal & Assist list */}
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-1.5">
+                  <div className="text-[11px] font-bold text-slate-400">득점 기록</div>
+                  {goalEvents.length === 0 ? (
+                    <div className="text-xs text-slate-500">득점 없이 종료되었습니다.</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {goalEvents.map((ev, idx) => {
+                        const isHomeGoal = ev.teamId === spec.homeClubId;
+                        const scorerClub = isHomeGoal
+                          ? homeHuman.profile.shortName
+                          : awayHuman.profile.shortName;
+                        return (
+                          <div
+                            key={`${ev.minute}-${idx}`}
+                            className="flex items-center gap-2 text-xs"
+                          >
+                            <span className="w-7 font-mono font-bold text-slate-500 tabular-nums">
+                              {ev.minute}&apos;
+                            </span>
+                            <span
+                              className={`rounded px-1.5 py-px text-[10px] font-extrabold ${
+                                isHomeGoal
+                                  ? 'bg-emerald-500/15 text-emerald-300'
+                                  : 'bg-sky-500/15 text-sky-300'
+                              }`}
+                            >
+                              {scorerClub}
+                            </span>
+                            <span className="font-bold text-white">
+                              ⚽ {ev.scorerName ?? '득점'}
+                            </span>
+                            {ev.assistName && (
+                              <span className="text-[11px] text-slate-400">
+                                ({ev.assistName})
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Match Stats */}
+                <div className="grid grid-cols-4 gap-2 text-center tabular-nums">
+                  <div className="rounded-lg bg-[#0b1018] p-2">
+                    <div className="text-[10px] text-slate-500">점유율</div>
+                    <div className="font-mono text-xs sm:text-sm font-bold text-white">
+                      {Math.round(res.homePossession)}:{100 - Math.round(res.homePossession)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-[#0b1018] p-2">
+                    <div className="text-[10px] text-slate-500">xG</div>
+                    <div className="font-mono text-xs sm:text-sm font-bold text-emerald-300">
+                      {res.homeXg.toFixed(1)}:{res.awayXg.toFixed(1)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-[#0b1018] p-2">
+                    <div className="text-[10px] text-slate-500">슈팅</div>
+                    <div className="font-mono text-xs sm:text-sm font-bold text-white">
+                      {res.homeShots}:{res.awayShots}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-[#0b1018] p-2">
+                    <div className="text-[10px] text-slate-500">유효슈팅</div>
+                    <div className="font-mono text-xs sm:text-sm font-bold text-sky-300">
+                      {res.homeShotsOnTarget}:{res.awayShotsOnTarget}
+                    </div>
+                  </div>
+                </div>
+
+                {/* MOM */}
+                {res.momPlayerName && (
+                  <div className="flex items-center justify-center gap-1.5 rounded-xl border border-amber-400/30 bg-amber-950/20 px-3 py-2 text-xs font-bold text-amber-200">
+                    <Star className="w-3.5 h-3.5 text-amber-300 fill-current" />
+                    MOM: {res.momPlayerName} ({res.momRating.toFixed(1)})
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-slate-800 bg-[#0a0f17] px-5 py-3">
+            <div className="text-[11px] font-bold text-slate-400">
+              {pendingConfirmNames.length > 0
+                ? `확인 대기: ${pendingConfirmNames.join(', ')}`
+                : '전원 확인 완료'}
+            </div>
+            {res && !myDoneAcked ? (
+              <button
+                id="mpl-h2h-result-confirm-btn"
+                type="button"
+                onClick={() => onAck(doneKey)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-5 py-2 text-xs sm:text-sm font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+              >
+                <Check className="w-4 h-4" />
+                확인
+              </button>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                {pendingConfirmNames.length > 0 ? '다른 감독 확인 대기 중' : '다음 단계 이동 중'}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -570,8 +784,8 @@ function MpLeagueH2HInner({
     },
     enterPenaltyShootout: () => goLocal('penalties'),
     commitLiveMatch: () => {
+      // Open the H2H Match Result Popup; doneKey is sent when the user clicks [확인]
       setClosed(true);
-      if (isParticipant) onAck(doneKey);
     },
   };
 

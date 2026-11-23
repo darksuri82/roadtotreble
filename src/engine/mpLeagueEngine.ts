@@ -271,13 +271,17 @@ function emptyHumanSeason(): MpHumanSeasonState {
   };
 }
 
+export const MP_LEAGUE_MAX_EVENTS_PER_SEASON = 4;
+export const MP_LEAGUE_MIN_EVENT_COOLDOWN = 8;
+
 function buildEventRounds(
   totalRounds: number,
   transferWindows: [number, number, number],
 ): number[] {
   const blocked = new Set<number>(transferWindows);
   const rounds: number[] = [];
-  for (let r = 4; r < totalRounds; r += 5) {
+  // Sparse anchor rounds (~3 per season: 9R, 19R, 29R) so interviews stay rare & meaningful
+  for (let r = 9; r < totalRounds - 1; r += 10) {
     let pick = r;
     while (blocked.has(pick) && pick < totalRounds - 1) pick += 1;
     if (!blocked.has(pick)) rounds.push(pick);
@@ -914,7 +918,50 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
   for (const k of usedKeys) delete nextH2HResults[k];
 
   const followUps: MpLeagueStep[] = [{ t: 'cup_stage' }];
-  if (state.eventRounds.includes(nextRound)) followUps.push({ t: 'events' });
+  const isTransferRound = state.transferWindows.includes(nextRound);
+  const humanEventStates = state.humans
+    .map((h) => perHuman[h.clubId]?.events)
+    .filter((e): e is NonNullable<typeof e> => Boolean(e));
+  const usedCount =
+    humanEventStates.length > 0
+      ? Math.max(...humanEventStates.map((e) => e.usedEventIds.length))
+      : 0;
+  const minCooldown =
+    humanEventStates.length > 0
+      ? Math.min(...humanEventStates.map((e) => e.matchesSinceLastEvent))
+      : 0;
+  const roundsSinceLastEvent =
+    state.lastEventRound !== undefined ? nextRound - state.lastEventRound : nextRound;
+  const cooldownMet =
+    usedCount === 0
+      ? nextRound >= 6
+      : minCooldown >= MP_LEAGUE_MIN_EVENT_COOLDOWN &&
+        roundsSinceLastEvent >= MP_LEAGUE_MIN_EVENT_COOLDOWN;
+  const keyMomentOccurred = humanOutcomes.some((o) => {
+    const ev = perHuman[o.human.clubId]?.events;
+    if (!ev) return false;
+    const streakMoment = ev.recentWinStreak >= 3 || ev.recentLossStreak >= 3;
+    const oppId =
+      o.result.homeTeamId === o.human.clubId
+        ? o.result.awayTeamId
+        : o.result.homeTeamId;
+    const oppRank = rankOf(applied.standings, oppId);
+    const bigMatchMoment = o.isH2H || (oppRank !== undefined && oppRank <= 4);
+    const standoutMoment = o.result.playerRatings.some(
+      (pr) => pr.teamId === o.human.clubId && pr.rating >= 8.5,
+    );
+    return streakMoment || bigMatchMoment || standoutMoment;
+  });
+  const isAnchorRound = state.eventRounds.includes(nextRound);
+  if (
+    !isTransferRound &&
+    nextRound < state.totalRounds &&
+    usedCount < MP_LEAGUE_MAX_EVENTS_PER_SEASON &&
+    cooldownMet &&
+    (keyMomentOccurred || isAnchorRound)
+  ) {
+    followUps.push({ t: 'events' });
+  }
   followUps.push({ t: 'transfer' });
   followUps.push(
     nextRound >= state.totalRounds ? { t: 'finish_league' } : { t: 'league_round' },
@@ -1205,6 +1252,7 @@ function stepEvents(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostSta
   return {
     ...state,
     perHuman,
+    lastEventRound: state.round,
     flow: { kind: 'event', key: `event-r${state.round}` },
   };
 }

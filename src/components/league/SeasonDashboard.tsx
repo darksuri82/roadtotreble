@@ -1,11 +1,11 @@
 import {
-  AlertTriangle,
   ArrowLeftRight,
   Award,
   Calendar,
   FastForward,
   Globe,
   Play,
+  Radio,
   SkipForward,
   Star,
   Trophy,
@@ -13,7 +13,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
 import {
   getMoraleLabel,
@@ -38,7 +38,9 @@ import type {
   LeagueId,
   MatchResult,
   PlayerSeasonStats,
+  StandingRow,
 } from '../../types/league';
+import type { MpCastMatch } from '../../types/mpLeague';
 import {
   buildPlayerCompetitionBreakdown,
   getPlayerNationalityMeta,
@@ -50,14 +52,22 @@ import { ClubTag } from '../common/ClubTag';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
 import { MatchDetailModal } from '../common/MatchDetailModal';
+import {
+  getDomesticCupTrophyVariant,
+  PixelTrophySvg,
+} from '../common/PixelTrophySvg';
 import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
+import {
+  matchResultToCastMatch,
+  SoloLiveScoreboard,
+} from '../common/SoloLiveScoreboard';
+import type { SoloLiveDurationMs } from '../common/SoloLiveScoreboard';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
 import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
 import { FastSimModal } from './FastSimModal';
-import type { FastSimMode } from './FastSimModal';
 import { LeagueLeadersSideCard } from './LeagueLeadersSideCard';
 import { LiveMatchBroadcast } from './LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from './MatchDayTacticsRoom';
@@ -67,6 +77,7 @@ import { StandingsTable } from './StandingsTable';
 
 type SeasonTab = 'match' | 'cup' | 'squad' | 'standings' | 'transfer';
 type RecordSubTab = 'goals' | 'assists' | 'cleanSheets' | 'rating';
+type SkipFlowState = 'idle' | 'running' | 'paused_for_transfer' | 'prompt_resume';
 
 export function SeasonDashboard() {
   const {
@@ -74,6 +85,7 @@ export function SeasonDashboard() {
     activeTactic,
     chemistry,
     ratings,
+    setSoloTickerPlaying,
     changeFormation,
     autoOptimizeLineup,
     swapSquadPositions,
@@ -85,8 +97,7 @@ export function SeasonDashboard() {
 
   const [activeTab, setActiveTab] = useState<SeasonTab>('match');
   const [recordTab, setRecordTab] = useState<RecordSubTab>('goals');
-  const [confirmSkipModal, setConfirmSkipModal] = useState(false);
-  const [fastSimMode, setFastSimMode] = useState<FastSimMode | null>(null);
+  const [skipFlowState, setSkipFlowState] = useState<SkipFlowState>('idle');
   const [quickSkipModalOpen, setQuickSkipModalOpen] = useState(false);
   const [standingsLeagueId, setStandingsLeagueId] = useState<LeagueId | null>(
     null,
@@ -101,6 +112,24 @@ export function SeasonDashboard() {
     leagueId?: LeagueId;
   } | null>(null);
 
+  // Solo Live Scoreboard Auto-Advance state (5s / 7s / 9s)
+  const [liveAutoActive, setLiveAutoActive] = useState(false);
+  const [liveAutoUserPaused, setLiveAutoUserPaused] = useState(false);
+  const [liveAutoDurationMs, setLiveAutoDurationMs] =
+    useState<SoloLiveDurationMs>(5000);
+  const [liveAutoMatch, setLiveAutoMatch] = useState<MpCastMatch | null>(null);
+  const [liveAutoFrozen, setLiveAutoFrozen] = useState<{
+    standings: StandingRow[];
+    round: number;
+    lastMatch: MatchResult | null;
+  } | null>(null);
+  const [liveAutoCupPromptOpen, setLiveAutoCupPromptOpen] = useState(false);
+  const liveAutoWaitingRef = useRef<{
+    prevFixtureId: string | null;
+    label: string;
+  } | null>(null);
+  const prevTransferOpenRef = useRef<boolean>(false);
+
   const season = state.season;
 
   const clubsById = useMemo(() => {
@@ -111,7 +140,168 @@ export function SeasonDashboard() {
     return map;
   }, [season]);
 
+  // Ensure global ticker flag is cleared on unmount
+  useEffect(() => {
+    return () => {
+      setSoloTickerPlaying(false);
+    };
+  }, [setSoloTickerPlaying]);
+
+  // Unified skip flow: detect transfer market closing after auto-pause → show resume prompt
+  const isTransferOpen = Boolean(season?.transferMarket.isOpen);
+  useEffect(() => {
+    const wasOpen = prevTransferOpenRef.current;
+    prevTransferOpenRef.current = isTransferOpen;
+    if (wasOpen && !isTransferOpen && skipFlowState === 'paused_for_transfer') {
+      const t = window.setTimeout(() => setSkipFlowState('prompt_resume'), 0);
+      return () => window.clearTimeout(t);
+    }
+  }, [isTransferOpen, skipFlowState]);
+
+  const pendingCupStage = season?.cup?.pendingStage ?? null;
+  const pendingCupNode =
+    season?.cup && pendingCupStage
+      ? findUserCupMatch(season.cup, pendingCupStage, USER_CLUB_ID)
+      : null;
+
+  const hasPendingInjury = Boolean(
+    season?.pendingInjuryAlerts && season.pendingInjuryAlerts.length > 0,
+  );
+  const hasPendingEvent = Boolean(
+    season?.managerEvents?.activeEvent || season?.managerEvents?.lastResolution,
+  );
+  const uncelebratedCupWin = Boolean(
+    season?.cup?.completed &&
+      didUserWinCup(season.cup, USER_CLUB_ID) &&
+      !season.cupChampionCelebrated,
+  );
+
+  // Capture newly simulated user match into the live scoreboard card
+  const latestUserMatch = season?.lastUserMatch ?? null;
+  useEffect(() => {
+    const waiting = liveAutoWaitingRef.current;
+    if (!waiting || !latestUserMatch) return;
+    if (latestUserMatch.fixtureId === waiting.prevFixtureId) return;
+    liveAutoWaitingRef.current = null;
+    const cast = matchResultToCastMatch(
+      latestUserMatch,
+      waiting.label,
+      USER_CLUB_ID,
+    );
+    const t = window.setTimeout(() => setLiveAutoMatch(cast), 0);
+    return () => window.clearTimeout(t);
+  }, [latestUserMatch]);
+
+  const launchNextLiveAutoMatch = useCallback(
+    (allowCup = false) => {
+      if (!season || state.phase !== 'season') return;
+      if (season.currentRound >= season.totalRounds && !pendingCupNode) {
+        setLiveAutoActive(false);
+        setSoloTickerPlaying(false);
+        return;
+      }
+      if (pendingCupNode && !allowCup) {
+        setLiveAutoCupPromptOpen(true);
+        return;
+      }
+      const nextLabel =
+        pendingCupNode && season.cup && pendingCupStage
+          ? `${season.cup.meta.koreanName} ${CUP_STAGE_LABELS[pendingCupStage]}`
+          : `리그 ${season.currentRound + 1}R`;
+
+      setLiveAutoFrozen({
+        standings: season.standings,
+        round: season.currentRound,
+        lastMatch: season.lastUserMatch,
+      });
+      liveAutoWaitingRef.current = {
+        prevFixtureId: season.lastUserMatch?.fixtureId ?? null,
+        label: nextLabel,
+      };
+      setSoloTickerPlaying(true);
+      simulateSingleMatchInstant();
+    },
+    [
+      season,
+      state.phase,
+      pendingCupNode,
+      pendingCupStage,
+      setSoloTickerPlaying,
+      simulateSingleMatchInstant,
+    ],
+  );
+
+  const handleLiveAutoMatchDone = useCallback(() => {
+    setLiveAutoMatch(null);
+    setLiveAutoFrozen(null);
+    setSoloTickerPlaying(false);
+  }, [setSoloTickerPlaying]);
+
+  const stopLiveAuto = useCallback(() => {
+    liveAutoWaitingRef.current = null;
+    setLiveAutoActive(false);
+    setLiveAutoUserPaused(false);
+    setLiveAutoMatch(null);
+    setLiveAutoFrozen(null);
+    setLiveAutoCupPromptOpen(false);
+    setSoloTickerPlaying(false);
+  }, [setSoloTickerPlaying]);
+
+  // Schedule next live auto-advance match once current scoreboard finishes & no blocking event/popup is open
+  const liveAutoBlockedByEvent =
+    isTransferOpen ||
+    hasPendingInjury ||
+    hasPendingEvent ||
+    uncelebratedCupWin ||
+    Boolean(season?.liveHalftime) ||
+    liveAutoCupPromptOpen;
+
+  useEffect(() => {
+    if (
+      !season ||
+      state.phase !== 'season' ||
+      !liveAutoActive ||
+      liveAutoUserPaused ||
+      liveAutoMatch !== null ||
+      liveAutoWaitingRef.current !== null ||
+      liveAutoBlockedByEvent
+    ) {
+      return;
+    }
+    if (season.currentRound >= season.totalRounds && !pendingCupNode) {
+      const stopT = window.setTimeout(() => setLiveAutoActive(false), 0);
+      return () => window.clearTimeout(stopT);
+    }
+    if (pendingCupNode) {
+      const cupT = window.setTimeout(() => setLiveAutoCupPromptOpen(true), 120);
+      return () => window.clearTimeout(cupT);
+    }
+    const timer = window.setTimeout(() => {
+      launchNextLiveAutoMatch(false);
+    }, 620);
+    return () => window.clearTimeout(timer);
+  }, [
+    season,
+    state.phase,
+    liveAutoActive,
+    liveAutoUserPaused,
+    liveAutoMatch,
+    liveAutoBlockedByEvent,
+    pendingCupNode,
+    launchNextLiveAutoMatch,
+  ]);
+
   if (!season) return null;
+
+  const liveTickerPlaying = liveAutoMatch !== null;
+  const displayStandings =
+    liveTickerPlaying && liveAutoFrozen ? liveAutoFrozen.standings : season.standings;
+  const displayRound =
+    liveTickerPlaying && liveAutoFrozen ? liveAutoFrozen.round : season.currentRound;
+  const displayLastMatch =
+    liveTickerPlaying && liveAutoFrozen
+      ? liveAutoFrozen.lastMatch
+      : season.lastUserMatch;
 
   const league = getLeagueById(season.leagueId);
   const viewedLeagueId: LeagueId = standingsLeagueId ?? season.leagueId;
@@ -126,19 +316,12 @@ export function SeasonDashboard() {
         (viewedBgLeague?.clubs ?? viewedLeagueMeta.clubs).map((c) => [c.id, c]),
       );
   const viewedStandings = isViewingUserLeague
-    ? season.standings
+    ? displayStandings
     : viewedBgLeague?.standings ?? [];
 
-  const userRank = getUserRank(season.standings, USER_CLUB_ID);
-  const userRow = season.standings.find((r) => r.teamId === USER_CLUB_ID);
+  const userRank = getUserRank(displayStandings, USER_CLUB_ID);
+  const userRow = displayStandings.find((r) => r.teamId === USER_CLUB_ID);
   const inUclZone = userRank <= 4;
-
-  // Check if a Domestic Cup match is pending right now (takes priority over next league round)
-  const pendingCupStage = season.cup?.pendingStage ?? null;
-  const pendingCupNode =
-    season.cup && pendingCupStage
-      ? findUserCupMatch(season.cup, pendingCupStage, USER_CLUB_ID)
-      : null;
 
   const nextRoundNumber = season.currentRound + 1;
   const nextLeagueFixture = season.fixtures.find(
@@ -186,7 +369,7 @@ export function SeasonDashboard() {
     ? season.allPlayerStats
     : (viewedBgLeague?.playerStats ?? {});
   const viewedRoundForMin = isViewingUserLeague
-    ? season.currentRound
+    ? displayRound
     : (viewedBgLeague?.currentRound ?? 0);
   const allStatsList = Object.values(viewedStatsMap).filter(
     (s) => s.appearances > 0,
@@ -209,28 +392,53 @@ export function SeasonDashboard() {
     })
     .slice(0, 10);
 
-  const handleSkipSeasonClick = () => {
-    if (nextTransferRound !== null) {
-      setConfirmSkipModal(true);
-    } else {
-      setFastSimMode('to_season_end');
+  const handleStartUnifiedSkip = () => {
+    stopLiveAuto();
+    setSkipFlowState('running');
+  };
+
+  const handleStartLiveAuto = () => {
+    setSkipFlowState('idle');
+    setLiveAutoActive(true);
+    setLiveAutoUserPaused(false);
+    setActiveTab('match');
+    if (pendingCupNode) {
+      setLiveAutoCupPromptOpen(true);
+    } else if (!liveAutoBlockedByEvent) {
+      launchNextLiveAutoMatch(false);
     }
   };
 
   const handleSingleMatchSkip = () => {
+    stopLiveAuto();
     simulateSingleMatchInstant();
     setQuickSkipModalOpen(true);
   };
 
   const progressPct = Math.round(
-    (season.currentRound / season.totalRounds) * 100,
+    (displayRound / season.totalRounds) * 100,
   );
+
+  const liveAutoPauseReason = !liveAutoActive
+    ? null
+    : liveAutoCupPromptOpen
+      ? '컵대회 일시정지'
+      : isTransferOpen
+        ? '이적시장 일시정지'
+        : hasPendingEvent
+          ? '인터뷰 일시정지'
+          : hasPendingInjury
+            ? '부상 알림 일시정지'
+            : uncelebratedCupWin
+              ? '컵 우승 축하'
+              : null;
 
   const controlsBlocked =
     season.transferMarket.isOpen ||
     Boolean(season.liveHalftime) ||
-    fastSimMode !== null ||
-    quickSkipModalOpen;
+    skipFlowState === 'running' ||
+    quickSkipModalOpen ||
+    liveTickerPlaying;
 
   const navTabs: { id: SeasonTab; label: string; icon: React.ReactNode; badge?: string }[] = [
     {
@@ -269,7 +477,7 @@ export function SeasonDashboard() {
                 {league.koreanName}
               </span>
               <span className="font-display text-[11px] sm:text-xs font-bold text-slate-200 tabular-nums">
-                {season.currentRound}/{season.totalRounds}R
+                {displayRound}/{season.totalRounds}R
               </span>
               <span
                 className={`rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold ${
@@ -400,6 +608,25 @@ export function SeasonDashboard() {
         </div>
       </section>
 
+      {/* Solo Live Scoreboard Auto-Advance Strip (5초 / 7초 / 9초) */}
+      {liveAutoActive && (
+        <SoloLiveScoreboard
+          match={liveAutoMatch}
+          clubsById={clubsById}
+          myClubId={USER_CLUB_ID}
+          durationMs={liveAutoDurationMs}
+          onChangeDurationMs={setLiveAutoDurationMs}
+          paused={liveAutoUserPaused || Boolean(liveAutoPauseReason)}
+          pauseReasonLabel={liveAutoPauseReason}
+          onTogglePause={() => {
+            if (liveAutoPauseReason) return;
+            setLiveAutoUserPaused((p) => !p);
+          }}
+          onStop={stopLiveAuto}
+          onMatchDone={handleLiveAutoMatchDone}
+        />
+      )}
+
       {/* TAB 1: 경기장/일정 */}
       {activeTab === 'match' && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
@@ -442,7 +669,10 @@ export function SeasonDashboard() {
                     <button
                       id="play-next-round-btn"
                       type="button"
-                      onClick={startLiveMatch}
+                      onClick={() => {
+                        stopLiveAuto();
+                        startLiveMatch();
+                      }}
                       disabled={controlsBlocked}
                       className="sm:col-span-8 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-colors cursor-pointer"
                     >
@@ -464,27 +694,29 @@ export function SeasonDashboard() {
 
                   <div className="grid grid-cols-2 gap-2">
                     <button
-                      id="sim-to-transfer-btn"
+                      id="solo-live-auto-btn"
                       type="button"
-                      onClick={() => setFastSimMode('to_transfer')}
-                      disabled={controlsBlocked || nextTransferRound === null}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20 disabled:opacity-40 cursor-pointer"
+                      onClick={liveAutoActive ? stopLiveAuto : handleStartLiveAuto}
+                      disabled={!liveAutoActive && controlsBlocked}
+                      className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-colors cursor-pointer disabled:opacity-45 ${
+                        liveAutoActive
+                          ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
+                          : 'border-sky-500/40 bg-sky-500/10 text-sky-200 hover:bg-sky-500/20'
+                      }`}
                     >
-                      <FastForward className="w-3.5 h-3.5" />
-                      {nextTransferRound !== null
-                        ? `이적시장(${nextTransferRound}R)까지`
-                        : '이적시장 완료'}
+                      <Radio className={`w-3.5 h-3.5 ${liveAutoActive ? 'animate-pulse' : ''}`} />
+                      {liveAutoActive ? '자동진행 중단' : '라이브 자동진행'}
                     </button>
 
                     <button
-                      id="skip-season-btn"
+                      id="unified-skip-btn"
                       type="button"
-                      onClick={handleSkipSeasonClick}
+                      onClick={handleStartUnifiedSkip}
                       disabled={controlsBlocked}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-200 hover:border-slate-500 hover:text-white disabled:opacity-50 cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-amber-400/35 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-200 hover:bg-amber-500/20 disabled:opacity-45 cursor-pointer"
                     >
                       <SkipForward className="w-3.5 h-3.5" />
-                      시즌 끝까지 진행
+                      경기 스킵
                     </button>
                   </div>
                 </div>
@@ -543,9 +775,9 @@ export function SeasonDashboard() {
 
           {/* Right: Latest Match Report + League Top Scorers & Assisters Side Card (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
-            {season.lastUserMatch ? (
+            {displayLastMatch ? (
               <MatchReportPanel
-                match={season.lastUserMatch}
+                match={displayLastMatch}
                 clubsById={clubsById}
                 onSelectPlayer={(playerId) => setInspectedPlayer({ playerId })}
                 onOpenDetail={(m) => setInspectedMatch(m)}
@@ -887,11 +1119,12 @@ export function SeasonDashboard() {
       {/* Real-Time Match Broadcast Modal (0' -> 45' HT -> 90' FT -> ET/PK) */}
       <LiveMatchBroadcast clubsById={clubsById} />
 
-      {/* Fast-Forward Animated Simulation Modal */}
+      {/* Fast-Forward Unified Simulation Modal */}
       <FastSimModal
-        mode={fastSimMode}
+        mode={skipFlowState === 'running' ? 'unified' : null}
         clubsById={clubsById}
-        onClose={() => setFastSimMode(null)}
+        onPausedForTransfer={() => setSkipFlowState('paused_for_transfer')}
+        onClose={() => setSkipFlowState('idle')}
       />
 
       {/* 1-Match Instant Skip Summary Modal */}
@@ -1095,7 +1328,8 @@ export function SeasonDashboard() {
         didUserWinCup(season.cup, USER_CLUB_ID) &&
         !season.cupChampionCelebrated &&
         !season.liveHalftime &&
-        fastSimMode === null &&
+        !liveTickerPlaying &&
+        skipFlowState !== 'running' &&
         !quickSkipModalOpen && (
           <CupChampionModal
             cup={season.cup}
@@ -1108,52 +1342,123 @@ export function SeasonDashboard() {
           />
         )}
 
-      {/* Mid-Season Transfer Market Modal (auto-pops when opened outside transfer tab & not in fast-sim/quick-skip) */}
+      {/* Mid-Season Transfer Market Modal (auto-pops when opened outside transfer tab & not in fast-sim/quick-skip/live-ticker) */}
       {activeTab !== 'transfer' &&
-        fastSimMode === null &&
+        skipFlowState !== 'running' &&
+        !liveTickerPlaying &&
         !quickSkipModalOpen && <TransferMarketModal />}
 
-      {/* Confirm Skip Season Modal */}
-      {confirmSkipModal && (
-        <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4">
-          <ModalBodyLock />
-          <div className="modal-panel w-full max-w-md rounded-2xl border border-slate-700 bg-[#111822] p-5 shadow-2xl">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
-                <AlertTriangle className="w-5 h-5" />
+      {/* Post-Transfer Skip Resume Prompt ([계속 스킵] vs [일시중지]) */}
+      {skipFlowState === 'prompt_resume' &&
+        !season.transferMarket.isOpen &&
+        state.phase === 'season' &&
+        (season.currentRound < season.totalRounds || Boolean(pendingCupNode)) && (
+          <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4">
+            <ModalBodyLock />
+            <div className="modal-panel w-full max-w-sm rounded-2xl border border-slate-700 bg-[#111822] p-5 shadow-2xl space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300">
+                  <SkipForward className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white">
+                    이적시장 종료
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                    {nextTransferRound !== null
+                      ? `다음 이적시장(${nextTransferRound}R)까지 계속 스킵할까요?`
+                      : `시즌 종료(${season.totalRounds}R)까지 계속 스킵할까요?`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-base font-extrabold text-white">
-                  시즌 끝까지 고속 진행할까요?
-                </h3>
-                <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                  남아있는 이적시장(다음: {nextTransferRound}R 종료 후)을 건너뛰고 기본 전술({TACTICS[season.defaultTactic].name})로 {season.totalRounds}R까지 고속 시뮬레이션을 진행합니다.
-                </p>
-              </div>
-            </div>
 
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmSkipModal(false)}
-                className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setConfirmSkipModal(false);
-                  setFastSimMode('to_season_end');
-                }}
-                className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
-              >
-                고속 진행 시작
-              </button>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  id="skip-transfer-pause-btn"
+                  type="button"
+                  onClick={() => setSkipFlowState('idle')}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+                >
+                  일시중지
+                </button>
+                <button
+                  id="skip-transfer-resume-btn"
+                  type="button"
+                  onClick={() => setSkipFlowState('running')}
+                  className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                >
+                  계속 스킵
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+      {/* Live Auto-Advance Domestic Cup Alert Popup */}
+      {liveAutoCupPromptOpen && pendingCupNode && pendingCupStage && season.cup && (() => {
+        const cupOpp =
+          clubsById[
+            pendingCupNode.homeTeamId === USER_CLUB_ID
+              ? pendingCupNode.awayTeamId
+              : pendingCupNode.homeTeamId
+          ];
+        return (
+          <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4">
+            <ModalBodyLock />
+            <div className="modal-panel w-full max-w-md rounded-2xl border border-amber-400/45 bg-[#111822] p-5 shadow-2xl space-y-4">
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-amber-400/30 bg-amber-500/10">
+                  <PixelTrophySvg
+                    variant={getDomesticCupTrophyVariant(season.leagueId)}
+                    size={34}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold text-amber-300">
+                    🏆 자국 컵대회 도달 · 자동진행 일시정지
+                  </div>
+                  <h3 className="mt-0.5 text-sm font-extrabold text-white">
+                    {season.cup.meta.koreanName} {CUP_STAGE_LABELS[pendingCupStage]} vs{' '}
+                    <span className="text-emerald-300">{cupOpp?.name ?? '상대팀'}</span>
+                  </h3>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={stopLiveAuto}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+                >
+                  자동진행 중단
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLiveAutoCupPromptOpen(false);
+                    launchNextLiveAutoMatch(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/45 bg-sky-500/15 px-3.5 py-2 text-xs font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                >
+                  <Radio className="w-3.5 h-3.5" />
+                  스코어보드 진행
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLiveAutoCupPromptOpen(false);
+                    startLiveMatch();
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  2D 직접 지휘
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Club Squad Modal */}
       <ClubSquadModal

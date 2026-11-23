@@ -81,6 +81,8 @@ interface MpLeagueDashboardProps {
   actionBusy: boolean;
   editorOpen: boolean;
   dismissedResolutionKey: string | null;
+  tickerDoneKey: string | null;
+  onTickerDoneKey: (key: string) => void;
   hiddenEventId: string | null;
   hostMissing: boolean;
   errorMsg: string | null;
@@ -282,6 +284,8 @@ export function MpLeagueDashboard({
   actionBusy,
   editorOpen,
   dismissedResolutionKey,
+  tickerDoneKey,
+  onTickerDoneKey,
   hiddenEventId,
   hostMissing,
   errorMsg,
@@ -300,7 +304,6 @@ export function MpLeagueDashboard({
   onLeaveRoom,
 }: MpLeagueDashboardProps) {
   const [tabChoice, setTabChoice] = useState<DashTab | null>(null);
-  const [tickerDoneKey, setTickerDoneKey] = useState<string | null>(null);
   const [frozen, setFrozen] = useState<FrozenView | null>(null);
   const [popupTick, setPopupTick] = useState(0);
   const [summaryReviewOpen, setSummaryReviewOpen] = useState(false);
@@ -359,7 +362,7 @@ export function MpLeagueDashboard({
       };
   const handleTickerDone = useCallback(
     (key: string) => {
-      setTickerDoneKey(key);
+      onTickerDoneKey(key);
       setFrozen({
         standings: live.standings,
         byClub: live.byClub,
@@ -370,6 +373,7 @@ export function MpLeagueDashboard({
       });
     },
     [
+      onTickerDoneKey,
       live.standings,
       live.byClub,
       live.lastRound,
@@ -440,14 +444,22 @@ export function MpLeagueDashboard({
   const myStandingRow = myRankIdx === -1 ? null : view.standings[myRankIdx];
 
   const lockNotes = players
-    .filter((p) => p.activity?.lock)
+    .filter((p) => {
+      const reason = p.activity?.lock?.reason;
+      if (!reason) return false;
+      // Never spoil or display interview/injury locks while the round scoreboard is still playing
+      if (tickerPlaying && (reason === 'interview' || reason === 'injury')) {
+        return false;
+      }
+      return true;
+    })
     .map((p) => ({
       text: `${p.nickname}님 ${MP_LEAGUE_LOCK_LABELS[p.activity?.lock?.reason ?? 'tactics']}`,
       offline: !onlinePlayerIds.includes(p.player_id),
     }));
   const flow = live.flow;
   const eventNames =
-    flow.kind === 'event'
+    !tickerPlaying && flow.kind === 'event'
       ? live.humans.filter((h) => live.byClub[h.clubId]?.event).map((h) => h.nickname)
       : [];
   const pendingAckNames = (key: string) =>
@@ -455,7 +467,7 @@ export function MpLeagueDashboard({
       .filter((h) => !rowByPlayer(h)?.activity?.ackKeys?.includes(key))
       .map((h) => h.nickname);
   const transferWaiting =
-    flow.kind === 'transfer'
+    !tickerPlaying && flow.kind === 'transfer'
       ? live.humans
           .filter((h) => {
             const hl = live.byClub[h.clubId];
@@ -466,9 +478,9 @@ export function MpLeagueDashboard({
       : [];
 
   let pauseText: string | null = null;
-  if (flow.kind === 'event' && eventNames.length > 0) {
+  if (!tickerPlaying && flow.kind === 'event' && eventNames.length > 0) {
     pauseText = `${eventNames.join(', ')}님 인터뷰 답변 중`;
-  } else if (flow.kind === 'transfer') {
+  } else if (!tickerPlaying && flow.kind === 'transfer') {
     pauseText =
       transferWaiting.length > 0
         ? `이적시장 · ${transferWaiting.join(', ')}님 진행 중`
@@ -788,7 +800,7 @@ export function MpLeagueDashboard({
           clubsById={clubsById}
           humans={live.humans}
           myClubId={myClubId}
-          durationMs={Math.max(3000, Math.min(6000, live.autoMs - 900))}
+          durationMs={Math.max(3600, Math.min(8200, live.autoMs - 900))}
           onDone={handleTickerDone}
         />
       )}

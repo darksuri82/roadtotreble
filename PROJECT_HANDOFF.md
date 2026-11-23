@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v8.3)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.4)
 
 > Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
@@ -12,12 +12,17 @@
 - **Realtime Backend**: Supabase (`@supabase/supabase-js` — Postgres `mp_rooms` / `mp_room_players` + Realtime Postgres Changes + Presence, `supabase/schema.sql`)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, 차분한 슬레이트 UI 크롬 + 웅장한 레전드/슈퍼스타/월클 카드 글로우 & 선명한 4색 피치 시너지선)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **30개 파일 / 122개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **31개 파일 / 125개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환, `.github/workflows/deploy.yml`에서 `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY` Secret 주입)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`)
+- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`), `stable-before-v8.4-live-skip` (`v8.3` `600c7da`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.4 라이브 스코어보드 자동진행 · 솔로 스킵 단일화 · 멀티 H2H 프리뷰 스킵/결과 확인 · 인터뷰 빈도/조기 배지 수정**:
+  - **솔로 라이브 자동진행(5·7·9초) & 스코어보드 rAF 최적화 (`SoloLiveScoreboard.tsx`, `MpLiveTicker.tsx`, `index.css`, `GameContext.tsx` `soloTickerPlaying`, `App.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 60fps DOM ref 진행률 바 보간 + 정수 분 커밋 + 스코어 플립/골 속보 연출을 솔로·멀티 공용화하고, 솔로 리그·UCL 리그 페이즈에 5/7/9초 라이브 자동진행 도입(인터뷰·부상·자국 컵·이적시장 시 자동 일시정지 → 처리 후 자동 재개).
+  - **솔로 경기 스킵 단일화 (`FastSimModal.tsx`, `SeasonDashboard.tsx`)**: 단일 `[경기 스킵]`(`mode='unified'`)으로 통합, 이적시장 자동 중지 후 이적시장 마감 시 `[계속 스킵 / 일시중지]` 재질문 팝업 표시.
+  - **멀티 H2H 프리뷰 스킵 & 결과 팝업 `[확인]` 대기 (`mpLeagueH2H.ts` `resolveMpH2HFullInstant`, `useMpLeagueHost.ts`, `MpLeagueH2HView.tsx`)**: 프리뷰 `[스킵 요청]` 지원, 일반 종료/합의 스킵 모두 `phase='finished'` 결과 팝업에서 온라인 전원(관전자 포함) `[확인]` 클릭 후 전이.
+  - **멀티 인터뷰 빈도 축소 & 조기 배지 수정 (`mpLeagueEngine.ts`, `mpLeague.ts`, `MpLeagueRoot.tsx`, `MpLeagueDashboard.tsx`)**: 8라운드 쿨다운·시즌 최대 4회 상한·핵심 분기점 트리거 적용, `tickerDoneKey`를 `MpLeagueRoot`로 끌어올려 스코어보드 재생 중 `~님 인터뷰 답변 중` 배지 및 lock 조기 노출 원천 차단(`v84LiveScoreboardAndSkip.test.ts`).
 - **v8.3 UI·레이아웃 컴팩트화 & 벤치 포지션 종속 해제**:
   - **자유 벤치 전환 & 부상 교체 수정 (`lineupOptimizer.ts`, `mpLeagueDraft.ts`, `mpLeagueEngine.ts`, `transferEngine.ts`, `PitchBoard.tsx`, `InjuryAlertModal.tsx`, `TransferMarketModal.tsx`, `MpLeagueTransferModal.tsx`, `MpLeagueRoot.tsx`)**: 드래프트 픽 단계에서만 `BENCH_SLOTS` 가이드를 유지(`draftBenchHints`)하고 드래프트 이후 벤치는 포지션 제약 없는 자유 배열로 전환(항상 선수 실제 `player.position` 표시·판정). `InjuryAlertModal` 벤치 부상 시 0번(GK) 슬롯 오폴백 수정, `resolveAvailableLineup` 포메이션 슬롯 기반 대체, `MpLeagueRoot` 낙관적 스쿼드 반영, `toCastMatch` 연장전 이벤트 중복 집계 버그 수정.
   - **UCL 우상단 실시간 `A / M / D` & 모바일 팝업 스크롤 안정화 (`UclDashboard.tsx`, `src/hooks/useBodyScrollLock.ts`, `src/index.css`, 전체 29개 모달)**: Phase 2 스쿼드 우상단 `A/M/D` OVR 추가, 전역 ref-counted 바디 스크롤 잠금 + `.modal-backdrop`/`.modal-panel`/`.modal-scroll`(`100dvh`, `overscroll-behavior: contain`) 일괄 적용.

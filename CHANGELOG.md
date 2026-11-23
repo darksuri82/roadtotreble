@@ -5,6 +5,23 @@
 
 ---
 
+## v8.4 — 솔로 라이브 스코어보드 자동진행(5·7·9초) · 스킵 단일화 · 멀티 H2H 프리뷰 스킵/결과 확인 · 인터뷰 빈도 축소 & 조기 배지 수정
+
+- **솔로 플레이 [라이브 스코어보드 자동진행] 도입 & 전역 스코어보드 최적화 (`src/components/common/SoloLiveScoreboard.tsx`, `src/components/multiplayer/league/MpLiveTicker.tsx`, `src/index.css`, `src/store/GameContext.tsx`, `src/App.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - 공용 `MpLiveTicker` / `LiveTickerMatchCard`를 `requestAnimationFrame` + `performance.now()` 60fps 진행률 바 보간(DOM ref 직접 갱신), 정수 분 변경 시에만 React 상태 커밋, `useMemo` 이벤트/골 사전 정렬, CSS 키프레임(`scorePop`, `feedSlideIn`, `goalFlashBorder`)으로 리팩터링.
+  - 솔로 정규 리그(`SeasonDashboard`)와 UCL 리그 페이즈(`UclDashboard`)에 `SoloLiveScoreboard` 기반 `[라이브 자동진행]`(`5초 / 7초 / 9초` 3단계 토글 + 일시정지/재개/중단) 도입. 재생 중(`soloTickerPlaying`)에는 순위표·최근 경기 스포일러와 글로벌 인터뷰/부상/이적시장 모달을 유예하고, `FT` 직후 감독 인터뷰·부상·자국 컵 경기·이적시장 오픈 시 자동 일시정지 및 팝업 처리 후 자동 이어가기 연결.
+- **솔로 경기 스킵 단일화 (`src/components/league/FastSimModal.tsx`, `src/components/league/SeasonDashboard.tsx`)**:
+  - 기존 `[이적시장까지]` / `[시즌 끝까지]` 2버튼을 단일 `[경기 스킵]` 버튼(`FastSimMode = 'unified'`)으로 통합. 이적시장 도달 시 무조건 자동 일시정지 후 이적시장 진입(`paused_for_transfer`), 이적시장 마감 직후 `[계속 스킵]` vs `[일시중지]` 재질문 팝업(`prompt_resume`) 표시.
+- **멀티 리그 맞대결 프리뷰 `[스킵 요청]` & 경기 결과 팝업 `[확인]` 대기 (`src/engine/mpLeagueH2H.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `src/components/multiplayer/league/MpLeagueH2HView.tsx`)**:
+  - 프리뷰(매치 데이 전술실) 단계에서부터 `mpH2HPreSkipKey` 기반 `[스킵 요청]` 버튼 추가. 프리뷰/중계 중 양측 스킵 동의 시 `resolveMpH2HFullInstant`로 풀 결과를 산출해 `phase: 'finished'`로 먼저 발행.
+  - 일반 2D 종료 및 합의 스킵 모두에서 즉시 넘어가지 않고 스코어·득점자·스탯·MOM이 포함된 `[맞대결 경기 결과 팝업]`을 띄우며, 온라인 참가자 전원(관전자 포함)이 `[확인]`(`doneKey`)을 클릭해야 다음 단계로 전이.
+- **멀티 리그 인터뷰 빈도 축소 & `~님이 인터뷰 중...` 조기 노출 버그 수정 (`src/engine/mpLeagueEngine.ts`, `src/types/mpLeague.ts`, `src/components/multiplayer/league/MpLeagueRoot.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`)**:
+  - `MP_LEAGUE_MIN_EVENT_COOLDOWN = 8` (리그 라운드 + 매치 기준), `MP_LEAGUE_MAX_EVENTS_PER_SEASON = 4`, 핵심 분기점(3연승/3연패+, 친구 H2H/상위 4위 빅매치, 평점 8.5+ 대활약) 우선 트리거 + 희소 앵커(`9R, 19R, 29R`)로 시즌당 3~4회 수준 압축. 멀티 자동진행 속도 옵션도 `5초 / 7초 / 9초`로 통일.
+  - `tickerDoneKey` 상태를 `MpLeagueRoot`로 끌어올려 `tickerPlaying` 동안 `activity.lock = 'interview' | 'injury'` 발행과 대시보드 `pauseText` 인터뷰/부상/이적 대기 배지 노출을 정확히 차단(경기 종료 후 실제 팝업 오픈 시점에만 활성화).
+- **테스트 (`src/__tests__/v84LiveScoreboardAndSkip.test.ts`)**: `5·7·9초` 속도 옵션 및 `matchResultToCastMatch` 연장전 중복 제거, `resolveMpH2HFullInstant` 프리뷰·중계 중 스킵 `phase='finished'` 산출, 멀티 리그 풀시즌 인터뷰 상한(≤4)·8라운드 쿨다운·이적시장 비중첩 검증 3건 추가.
+
+---
+
 ## v8.3 — 벤치 포지션 종속 해제 · 챔스 A/M/D OVR · 모바일 모달 안정화 · 컴팩트 피치/후보 · 멀티 단일 피치+탭 · 3인+ 4팀 룰렛
 
 - **벤치 슬롯 포지션 종속 해제 & 포지션 오표시·부상 교체 근본 수정 (`src/engine/lineupOptimizer.ts`, `src/engine/mpLeagueDraft.ts`, `src/engine/mpLeagueEngine.ts`, `src/engine/transferEngine.ts`, `src/components/common/PitchBoard.tsx`, `src/components/common/InjuryAlertModal.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`, `src/components/multiplayer/league/MpLeagueRoot.tsx`)**:

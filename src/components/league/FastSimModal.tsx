@@ -28,12 +28,14 @@ import {
 } from '../common/PixelTrophySvg';
 import { CupChampionModal } from './CupChampionModal';
 
-export type FastSimMode = 'to_transfer' | 'to_season_end';
+export type FastSimMode = 'unified' | 'to_transfer' | 'to_season_end';
 
 interface FastSimModalProps {
   mode: FastSimMode | null;
   clubsById: Record<string, Club>;
   onClose: () => void;
+  /** Called when skip automatically pauses because a transfer window opened. */
+  onPausedForTransfer?: () => void;
 }
 
 type FastSimSpeed = 'fast' | 'ultra';
@@ -43,7 +45,12 @@ const FAST_SIM_INTERVAL_MS: Record<FastSimSpeed, number> = {
   ultra: 180,
 };
 
-export function FastSimModal({ mode, clubsById, onClose }: FastSimModalProps) {
+export function FastSimModal({
+  mode,
+  clubsById,
+  onClose,
+  onPausedForTransfer,
+}: FastSimModalProps) {
   if (!mode) return null;
   return (
     <FastSimModalInner
@@ -51,6 +58,7 @@ export function FastSimModal({ mode, clubsById, onClose }: FastSimModalProps) {
       mode={mode}
       clubsById={clubsById}
       onClose={onClose}
+      onPausedForTransfer={onPausedForTransfer}
     />
   );
 }
@@ -59,10 +67,12 @@ function FastSimModalInner({
   mode,
   clubsById,
   onClose,
+  onPausedForTransfer,
 }: {
   mode: FastSimMode;
   clubsById: Record<string, Club>;
   onClose: () => void;
+  onPausedForTransfer?: () => void;
 }) {
   useBodyScrollLock(true);
   const {
@@ -80,10 +90,12 @@ function FastSimModalInner({
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState<FastSimSpeed>('fast');
 
+  const stopAtTransfer = mode !== 'to_season_end';
+
   // Snapshot initial round/rank once on modal open
   const [sessionSnap] = useState(() => {
     if (!season) {
-      return { startRound: 0, startRank: 1, targetRound: 38 };
+      return { startRound: 0, startRank: 1, targetRound: 38, hasUpcomingTransfer: false };
     }
     const startRank = getUserRank(season.standings, USER_CLUB_ID);
     const nextTransfer = getNextTransferWindowRound(
@@ -94,8 +106,9 @@ function FastSimModalInner({
     return {
       startRound: season.currentRound,
       startRank,
+      hasUpcomingTransfer: stopAtTransfer && nextTransfer !== null,
       targetRound:
-        mode === 'to_transfer' && nextTransfer !== null
+        stopAtTransfer && nextTransfer !== null
           ? nextTransfer
           : season.totalRounds,
     };
@@ -122,15 +135,30 @@ function FastSimModalInner({
     season?.pendingInjuryAlerts && season.pendingInjuryAlerts.length > 0,
   );
 
+  const hasPendingEvent = Boolean(
+    season?.managerEvents?.activeEvent || season?.managerEvents?.lastResolution,
+  );
+
+  const reachedTransferOpen = Boolean(stopAtTransfer && season?.transferMarket.isOpen);
+
   const isTargetReached = useMemo(() => {
     if (!season) return true;
     if (state.phase === 'season_end') return true;
     if (season.currentRound >= season.totalRounds && !pendingCupNode) return true;
-    if (mode === 'to_transfer' && season.transferMarket.isOpen) return true;
+    if (reachedTransferOpen) return true;
     return false;
-  }, [mode, season, state.phase, pendingCupNode]);
+  }, [reachedTransferOpen, season, state.phase, pendingCupNode]);
 
-  // Step 1 round at a time with smooth animation interval, auto-pausing for Domestic Cup matches, trophy celebration, and user injuries
+  // Auto-handoff into Transfer Market once transfer window opens during unified skip
+  useEffect(() => {
+    if (!reachedTransferOpen || !onPausedForTransfer) return;
+    const t = window.setTimeout(() => {
+      onPausedForTransfer();
+    }, 650);
+    return () => window.clearTimeout(t);
+  }, [reachedTransferOpen, onPausedForTransfer]);
+
+  // Step 1 round at a time with smooth animation interval, auto-pausing for Domestic Cup matches, trophy celebration, events, and user injuries
   useEffect(() => {
     if (
       !season ||
@@ -138,18 +166,19 @@ function FastSimModalInner({
       isTargetReached ||
       Boolean(pendingCupNode) ||
       uncelebratedCupWin ||
-      hasPendingInjury
+      hasPendingInjury ||
+      hasPendingEvent
     ) {
       return;
     }
 
     const timer = window.setTimeout(() => {
-      simulateOneFastRound(mode === 'to_transfer', true);
+      simulateOneFastRound(stopAtTransfer, true);
     }, FAST_SIM_INTERVAL_MS[speed]);
 
     return () => window.clearTimeout(timer);
   }, [
-    mode,
+    stopAtTransfer,
     season,
     season?.currentRound,
     paused,
@@ -158,12 +187,13 @@ function FastSimModalInner({
     pendingCupNode,
     uncelebratedCupWin,
     hasPendingInjury,
+    hasPendingEvent,
     simulateOneFastRound,
   ]);
 
   if (!season) return null;
 
-  const { startRound, startRank, targetRound } = sessionSnap;
+  const { startRound, startRank, targetRound, hasUpcomingTransfer } = sessionSnap;
   const rankDelta = startRank - currentRank; // positive => climbed up
   const totalSteps = Math.max(1, targetRound - startRound);
   const doneSteps = Math.max(0, season.currentRound - startRound);
@@ -200,11 +230,23 @@ function FastSimModalInner({
     : null;
 
   const handleInstantComplete = () => {
-    if (mode === 'to_transfer') {
+    const remainingTransfer = stopAtTransfer
+      ? getNextTransferWindowRound(
+          season.currentRound,
+          season.transferWindows,
+          season.transferMarket.completedWindows,
+        )
+      : null;
+    if (remainingTransfer !== null) {
       simulateToNextTransfer();
-    } else {
-      skipToSeasonEnd();
+      if (onPausedForTransfer) {
+        onPausedForTransfer();
+      } else {
+        onClose();
+      }
+      return;
     }
+    skipToSeasonEnd();
     onClose();
   };
 
@@ -215,6 +257,14 @@ function FastSimModalInner({
 
   const handleSkipCupAndContinue = () => {
     simulateSingleMatchInstant();
+  };
+
+  const handleFinishAction = () => {
+    if (reachedTransferOpen && onPausedForTransfer) {
+      onPausedForTransfer();
+      return;
+    }
+    onClose();
   };
 
   return (
@@ -247,18 +297,20 @@ function FastSimModalInner({
               }`}
             >
               <FastForward className="w-3 h-3" />
-              {isTargetReached
-                ? '도달 완료'
-                : pendingCupNode
-                  ? '컵대회 일시정지'
-                  : paused
-                    ? '일시정지'
-                    : '고속 진행 중'}
+              {reachedTransferOpen
+                ? '이적시장 자동 일시정지'
+                : isTargetReached
+                  ? '도달 완료'
+                  : pendingCupNode
+                    ? '컵대회 일시정지'
+                    : paused
+                      ? '일시정지'
+                      : '경기 스킵 중'}
             </span>
             <h2 className="text-sm sm:text-base font-extrabold text-white">
-              {mode === 'to_transfer'
-                ? `이적시장(${targetRound}R)까지 고속 진행`
-                : `시즌 종료(${season.totalRounds}R)까지 고속 진행`}
+              {hasUpcomingTransfer
+                ? `경기 스킵 (이적시장 ${targetRound}R 자동 정지)`
+                : `경기 스킵 (${season.totalRounds}R까지)`}
             </h2>
           </div>
 
@@ -322,7 +374,7 @@ function FastSimModalInner({
             {isTargetReached && (
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleFinishAction}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />

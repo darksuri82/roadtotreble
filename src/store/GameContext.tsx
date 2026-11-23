@@ -6172,6 +6172,8 @@ interface GameContextValue {
   openDreamMatch: (opponentId?: string | null) => void;
   closeDreamMatch: () => void;
   multiplayerOpen: boolean;
+  soloTickerPlaying: boolean;
+  setSoloTickerPlaying: (playing: boolean) => void;
   multiplayerInitialRoomCode: string | null;
   openMultiplayer: (roomCode?: string | null) => void;
   closeMultiplayer: () => void;
@@ -6306,6 +6308,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [multiplayerOpen, setMultiplayerOpen] = useState<boolean>(() =>
     Boolean(extractRoomCodeFromUrl()),
   );
+  const [soloTickerPlaying, setSoloTickerPlaying] = useState(false);
   const [recentUnlocks, setRecentUnlocks] = useState<string[]>([]);
 
   useEffect(() => {
@@ -6601,6 +6604,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       openDreamMatch,
       closeDreamMatch,
       multiplayerOpen,
+      soloTickerPlaying,
+      setSoloTickerPlaying,
       multiplayerInitialRoomCode,
       openMultiplayer,
       closeMultiplayer,
@@ -6732,6 +6737,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       openDreamMatch,
       closeDreamMatch,
       multiplayerOpen,
+      soloTickerPlaying,
       multiplayerInitialRoomCode,
       openMultiplayer,
       closeMultiplayer,

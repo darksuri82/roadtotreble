@@ -23,6 +23,7 @@ function GameRouter() {
     ratings,
     dreamMatchOpen,
     multiplayerOpen,
+    soloTickerPlaying,
     swapSquadPositions,
     resolveManagerEvent,
     dismissManagerEventResolution,
@@ -33,6 +34,7 @@ function GameRouter() {
   const isPlayableSeason =
     !dreamMatchOpen &&
     !multiplayerOpen &&
+    !soloTickerPlaying &&
     (state.phase === 'season' || state.phase === 'ucl');
   const pendingInjuryAlerts =
     isPlayableSeason ? (state.season?.pendingInjuryAlerts ?? []) : [];

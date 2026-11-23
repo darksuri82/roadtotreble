@@ -2,6 +2,7 @@ import {
   Award,
   FastForward,
   Play,
+  Radio,
   Shield,
   Sparkles,
   Trophy,
@@ -9,7 +10,7 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import {
@@ -38,6 +39,7 @@ import type {
   PlayerSeasonStats,
   TacticId,
 } from '../../types/league';
+import type { MpCastMatch } from '../../types/mpLeague';
 import type { Player, SubPosition } from '../../types/player';
 import type { UclKnockoutTie, UclTournamentState } from '../../types/ucl';
 import {
@@ -57,6 +59,11 @@ import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
+import {
+  matchResultToCastMatch,
+  SoloLiveScoreboard,
+} from '../common/SoloLiveScoreboard';
+import type { SoloLiveDurationMs } from '../common/SoloLiveScoreboard';
 import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
@@ -76,6 +83,7 @@ export function UclDashboard() {
     activeTactic,
     chemistry,
     ratings,
+    setSoloTickerPlaying,
     changeFormation,
     autoOptimizeLineup,
     setDefaultTactic,
@@ -105,8 +113,128 @@ export function UclDashboard() {
   const [inspectedTie, setInspectedTie] = useState<UclKnockoutTie | null>(null);
   const [inspectedClub, setInspectedClub] = useState<Club | null>(null);
 
+  // Solo UCL League Phase Live Scoreboard Auto-Advance (5s / 7s / 9s)
+  const [liveAutoActive, setLiveAutoActive] = useState(false);
+  const [liveAutoUserPaused, setLiveAutoUserPaused] = useState(false);
+  const [liveAutoDurationMs, setLiveAutoDurationMs] =
+    useState<SoloLiveDurationMs>(5000);
+  const [liveAutoMatch, setLiveAutoMatch] = useState<MpCastMatch | null>(null);
+  const liveAutoWaitingRef = useRef<{
+    prevFixtureId: string | null;
+    label: string;
+  } | null>(null);
+
   const season = state.season;
   const ucl = season?.ucl ?? null;
+
+  useEffect(() => {
+    return () => {
+      setSoloTickerPlaying(false);
+    };
+  }, [setSoloTickerPlaying]);
+
+  const hasPendingInjury = Boolean(
+    season?.pendingInjuryAlerts && season.pendingInjuryAlerts.length > 0,
+  );
+  const hasPendingEvent = Boolean(
+    season?.managerEvents?.activeEvent || season?.managerEvents?.lastResolution,
+  );
+  const latestUclMatch =
+    season && season.userUclMatchHistory.length > 0
+      ? season.userUclMatchHistory[season.userUclMatchHistory.length - 1]
+      : null;
+
+  useEffect(() => {
+    const waiting = liveAutoWaitingRef.current;
+    if (!waiting || !latestUclMatch) return;
+    if (latestUclMatch.fixtureId === waiting.prevFixtureId) return;
+    liveAutoWaitingRef.current = null;
+    const cast = matchResultToCastMatch(
+      latestUclMatch,
+      waiting.label,
+      USER_CLUB_ID,
+    );
+    const t = window.setTimeout(() => setLiveAutoMatch(cast), 0);
+    return () => window.clearTimeout(t);
+  }, [latestUclMatch]);
+
+  const launchNextUclLiveMatch = useCallback(() => {
+    if (!season || !ucl || ucl.stage !== 'league_phase' || ucl.leaguePhaseRound >= 8) {
+      setLiveAutoActive(false);
+      setSoloTickerPlaying(false);
+      return;
+    }
+    const prevId =
+      season.userUclMatchHistory.length > 0
+        ? season.userUclMatchHistory[season.userUclMatchHistory.length - 1].fixtureId
+        : null;
+    liveAutoWaitingRef.current = {
+      prevFixtureId: prevId,
+      label: `UCL 리그 페이즈 ${ucl.leaguePhaseRound + 1}R`,
+    };
+    setSoloTickerPlaying(true);
+    simulateSingleMatchInstant();
+  }, [season, ucl, setSoloTickerPlaying, simulateSingleMatchInstant]);
+
+  const handleUclLiveMatchDone = useCallback(() => {
+    setLiveAutoMatch(null);
+    setSoloTickerPlaying(false);
+  }, [setSoloTickerPlaying]);
+
+  const stopUclLiveAuto = useCallback(() => {
+    liveAutoWaitingRef.current = null;
+    setLiveAutoActive(false);
+    setLiveAutoUserPaused(false);
+    setLiveAutoMatch(null);
+    setSoloTickerPlaying(false);
+  }, [setSoloTickerPlaying]);
+
+  const liveAutoBlocked =
+    Boolean(season?.transferMarket.isOpen) ||
+    Boolean(season?.liveHalftime) ||
+    hasPendingInjury ||
+    hasPendingEvent;
+
+  useEffect(() => {
+    if (
+      !season ||
+      !ucl ||
+      !liveAutoActive ||
+      liveAutoUserPaused ||
+      liveAutoMatch !== null ||
+      liveAutoWaitingRef.current !== null ||
+      liveAutoBlocked
+    ) {
+      return;
+    }
+    if (ucl.stage !== 'league_phase' || ucl.leaguePhaseRound >= 8) {
+      const stopT = window.setTimeout(() => setLiveAutoActive(false), 0);
+      return () => window.clearTimeout(stopT);
+    }
+    const timer = window.setTimeout(() => {
+      launchNextUclLiveMatch();
+    }, 620);
+    return () => window.clearTimeout(timer);
+  }, [
+    season,
+    ucl,
+    liveAutoActive,
+    liveAutoUserPaused,
+    liveAutoMatch,
+    liveAutoBlocked,
+    launchNextUclLiveMatch,
+  ]);
+
+  const liveTickerPlaying = liveAutoMatch !== null;
+  const liveAutoPauseReason = !liveAutoActive
+    ? null
+    : season?.transferMarket.isOpen
+      ? '이적시장 일시정지'
+      : hasPendingEvent
+        ? '인터뷰 일시정지'
+        : hasPendingInjury
+          ? '부상 알림 일시정지'
+          : null;
 
   const prevLpRoundRef = useRef<number>(ucl?.leaguePhaseRound ?? 0);
   useEffect(() => {
@@ -266,6 +394,7 @@ export function UclDashboard() {
       {lpStandingsModalOpen &&
         !lpFastSimOpen &&
         !skipResultModalOpen &&
+        !liveTickerPlaying &&
         !season.liveHalftime &&
         !season.transferMarket.isOpen && (
           <UclLeaguePhaseStandingsModal
@@ -283,6 +412,7 @@ export function UclDashboard() {
         !lpFastSimOpen &&
         !lpStandingsModalOpen &&
         !skipResultModalOpen &&
+        !liveTickerPlaying &&
         !season.liveHalftime &&
         !season.transferMarket.isOpen && (
           <UclMilestoneModal
@@ -782,7 +912,25 @@ export function UclDashboard() {
       {tab === 'match' && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
           <div className="lg:col-span-8 space-y-4">
-            {showLpSummary && ucl.leaguePhaseRound >= 8 && (() => {
+            {liveAutoActive && (
+              <SoloLiveScoreboard
+                match={liveAutoMatch}
+                clubsById={clubsById}
+                myClubId={USER_CLUB_ID}
+                durationMs={liveAutoDurationMs}
+                onChangeDurationMs={setLiveAutoDurationMs}
+                paused={liveAutoUserPaused || Boolean(liveAutoPauseReason)}
+                pauseReasonLabel={liveAutoPauseReason}
+                onTogglePause={() => {
+                  if (liveAutoPauseReason) return;
+                  setLiveAutoUserPaused((p) => !p);
+                }}
+                onStop={stopUclLiveAuto}
+                onMatchDone={handleUclLiveMatchDone}
+              />
+            )}
+
+            {showLpSummary && ucl.leaguePhaseRound >= 8 && !liveTickerPlaying && (() => {
               const finalRank = ucl.userLeaguePhaseRank ?? userUclRank;
               const uRow = ucl.standings.find((r) => r.teamId === USER_CLUB_ID);
               const badge =
@@ -928,8 +1076,12 @@ export function UclDashboard() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        onClick={startLiveMatch}
-                        className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 cursor-pointer"
+                        onClick={() => {
+                          stopUclLiveAuto();
+                          startLiveMatch();
+                        }}
+                        disabled={liveTickerPlaying}
+                        className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 disabled:opacity-50 cursor-pointer"
                       >
                         <Play className="h-4 w-4 fill-current" />
                         2D 실시간 중계 시작
@@ -938,32 +1090,64 @@ export function UclDashboard() {
                         id="ucl-skip-single-match-btn"
                         type="button"
                         onClick={() => {
+                          stopUclLiveAuto();
                           setSkipResultModalOpen(true);
                           simulateSingleMatchInstant();
                         }}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white cursor-pointer"
+                        disabled={liveTickerPlaying}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white disabled:opacity-50 cursor-pointer"
                       >
                         <FastForward className="h-4 w-4" />
                         1경기 스킵
                       </button>
                       {ucl.stage === 'league_phase' && ucl.leaguePhaseRound < 8 && (
-                        <button
-                          id="ucl-lp-fastsim-btn"
-                          type="button"
-                          onClick={() => {
-                            setShowLpSummary(true);
-                            setLpFastSimOpen(true);
-                          }}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-500/45 bg-sky-500/15 px-4 py-3 text-xs font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
-                        >
-                          <FastForward className="h-4 w-4" />
-                          리그 페이즈 끝까지 고속진행
-                        </button>
+                        <>
+                          <button
+                            id="ucl-lp-live-auto-btn"
+                            type="button"
+                            onClick={() => {
+                              if (liveAutoActive) {
+                                stopUclLiveAuto();
+                              } else {
+                                setLiveAutoActive(true);
+                                setLiveAutoUserPaused(false);
+                                if (!liveAutoBlocked) launchNextUclLiveMatch();
+                              }
+                            }}
+                            disabled={!liveAutoActive && liveTickerPlaying}
+                            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-4 py-3 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 ${
+                              liveAutoActive
+                                ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
+                                : 'border-emerald-500/45 bg-emerald-500/12 text-emerald-200 hover:bg-emerald-500/22'
+                            }`}
+                          >
+                            <Radio className={`h-4 w-4 ${liveAutoActive ? 'animate-pulse' : ''}`} />
+                            {liveAutoActive ? '자동진행 중단' : '라이브 자동진행'}
+                          </button>
+                          <button
+                            id="ucl-lp-fastsim-btn"
+                            type="button"
+                            onClick={() => {
+                              stopUclLiveAuto();
+                              setShowLpSummary(true);
+                              setLpFastSimOpen(true);
+                            }}
+                            disabled={liveTickerPlaying}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-500/45 bg-sky-500/15 px-4 py-3 text-xs font-bold text-sky-200 hover:bg-sky-500/25 disabled:opacity-50 cursor-pointer"
+                          >
+                            <FastForward className="h-4 w-4" />
+                            리그 페이즈 고속진행
+                          </button>
+                        </>
                       )}
                       <button
                         type="button"
-                        onClick={simulateUclToEnd}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-xs font-bold text-slate-300 hover:border-amber-400/60 hover:text-amber-300 cursor-pointer"
+                        onClick={() => {
+                          stopUclLiveAuto();
+                          simulateUclToEnd();
+                        }}
+                        disabled={liveTickerPlaying}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-xs font-bold text-slate-300 hover:border-amber-400/60 hover:text-amber-300 disabled:opacity-50 cursor-pointer"
                       >
                         대회 끝까지 고속 진행
                       </button>

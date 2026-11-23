@@ -39,7 +39,7 @@ import type {
 
 export const MP_LEAGUE_MIN_PLAYERS = 2;
 export const MP_LEAGUE_MAX_PLAYERS = 4;
-export const MP_LEAGUE_AUTO_MS_OPTIONS = [4000, 5000, 6000, 7000] as const;
+export const MP_LEAGUE_AUTO_MS_OPTIONS = [5000, 7000, 9000] as const;
 export const MP_LEAGUE_TURN_SEC_OPTIONS = [15, 20, 30] as const;
 export const MP_LEAGUE_DEFAULT_AUTO_MS = 5000;
 export const MP_LEAGUE_DEFAULT_TURN_SEC = 30;
@@ -63,7 +63,7 @@ export function normalizeMpLeagueSettings(
     leagueId: raw?.leagueId ?? 'epl',
     uclEnabled: raw?.uclEnabled ?? true,
     autoMs: Number.isFinite(autoMs)
-      ? Math.max(4000, Math.min(7000, autoMs))
+      ? Math.max(4000, Math.min(9000, autoMs))
       : MP_LEAGUE_DEFAULT_AUTO_MS,
     turnSec: Number.isFinite(turnSec)
       ? Math.max(15, Math.min(30, turnSec))
@@ -424,6 +424,7 @@ export interface MpLeagueHostState {
   completedWindows: number[];
   transferWindowIndex: number | null;
   eventRounds: number[];
+  lastEventRound?: number;
   standings: StandingRow[];
   allPlayerStats: Record<string, PlayerSeasonStats>;
   cup: DomesticCupState | null;

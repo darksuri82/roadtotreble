@@ -38,6 +38,14 @@ export function mpH2HPreMatchKey(spec: MpH2HSpec, seasonKey: string): string {
   return `pre_match:${mpH2HMatchId(spec, seasonKey)}`;
 }
 
+export function mpH2HPreSkipKey(spec: MpH2HSpec, seasonKey: string): string {
+  return `h2h-pre-skip:${mpH2HMatchId(spec, seasonKey)}`;
+}
+
+export function mpH2HSkipKey(matchId: string): string {
+  return `h2h-skip:${matchId}`;
+}
+
 export function mpH2HDoneKey(matchId: string): string {
   return `h2h-done:${matchId}`;
 }
@@ -593,3 +601,48 @@ export function buildMpH2HClubs(
   }
   return map;
 }
+
+/**
+ * Resolves a friend-vs-friend match immediately to a `finished` MpMatchState (with `finalResult`).
+ * Works both from preview (no existingMatch) and from mid-match consensus skip.
+ */
+export function resolveMpH2HFullInstant(params: {
+  spec: MpH2HSpec;
+  seasonKey: string;
+  home: MpH2HSideInput;
+  away: MpH2HSideInput;
+  conditions: PlayerConditionMap;
+  existingMatch?: MpMatchState | null;
+  rng?: () => number;
+}): MpMatchState {
+  const { spec, seasonKey, home, away, conditions, rng } = params;
+  let m: MpMatchState =
+    params.existingMatch ??
+    kickoffMpH2H({
+      spec,
+      seasonKey,
+      home,
+      away,
+      conditions,
+      rng,
+    });
+  const base = { spec, home, away, conditions, rng };
+  if (m.phase === 'first_half' || m.phase === 'halftime') {
+    m = secondHalfMpH2H({ ...base, match: m });
+  }
+  if (
+    (m.phase === 'second_half' || m.phase === 'extra_time_break') &&
+    mpH2HNeedsExtraTime(spec, m)
+  ) {
+    m = extraTimeFirstHalfMpH2H({ ...base, match: m });
+  }
+  if (m.phase === 'extra_time' || m.phase === 'extra_time_ht') {
+    m = extraTimeSecondHalfMpH2H({ ...base, match: m });
+  }
+  return {
+    ...m,
+    phase: 'finished',
+    updatedAt: new Date().toISOString(),
+  };
+}
+
