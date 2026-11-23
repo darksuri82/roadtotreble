@@ -221,6 +221,8 @@ export function advanceCupStage(params: {
   cupPlayerStats: Record<string, PlayerSeasonStats>;
   userContext?: UserMatchContext;
   precomputedUserResult?: MatchResult | null;
+  /** Multi league: fully resolved results (incl. ET/PK) keyed by cup node id */
+  precomputedResults?: Record<string, MatchResult>;
   userClubId?: string;
   conditionMap?: PlayerConditionMap;
   excludeIds?: Set<string>;
@@ -234,6 +236,7 @@ export function advanceCupStage(params: {
     cupPlayerStats,
     userContext,
     precomputedUserResult = null,
+    precomputedResults,
     userClubId = USER_CLUB_ID,
     conditionMap,
     excludeIds,
@@ -253,6 +256,23 @@ export function advanceCupStage(params: {
   for (const node of existingMatches) {
     if (node.played && node.result && node.winnerId) {
       updatedMatches.push(node);
+      continue;
+    }
+
+    const preResolved = precomputedResults?.[node.id];
+    if (preResolved) {
+      const taggedPre: MatchResult = {
+        ...preResolved,
+        competition: 'cup',
+        competitionLabel,
+      };
+      stageResults.push(taggedPre);
+      updatedMatches.push({
+        ...node,
+        played: true,
+        result: taggedPre,
+        winnerId: resolveKnockoutWinnerId(taggedPre),
+      });
       continue;
     }
 

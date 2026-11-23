@@ -10,6 +10,11 @@ import type {
   MatchResult,
   TacticId,
 } from './league';
+import type {
+  MpLeagueActivity,
+  MpLeagueSettings,
+  MpLeagueSquadPayload,
+} from './mpLeague';
 import type { Player } from './player';
 
 /** Extensible multiplayer room modes (Phase 2 multi-league ready) */
@@ -60,6 +65,8 @@ export interface MpRoomSettings {
   draftGeneration?: number;
   /** Incremented on every match start / same-team rematch */
   matchNumber?: number;
+  /** v8.0 multi league host settings (only present when mode === 'multi_league') */
+  league?: MpLeagueSettings;
 }
 
 /**
@@ -170,6 +177,10 @@ export interface MpRoomPlayerRow {
   draft_completed: boolean;
   lineup_payload: MpLineupPayload | null;
   tactic_submission: MpTacticSubmission | null;
+  /** v8.0 multi league: player-owned squad (absent until the v8.0 SQL is applied) */
+  league_payload?: MpLeagueSquadPayload | null;
+  /** v8.0 multi league: pause lock + acknowledgements */
+  activity?: MpLeagueActivity | null;
   updated_at: string;
 }
 
