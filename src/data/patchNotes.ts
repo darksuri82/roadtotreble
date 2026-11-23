@@ -12,15 +12,40 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v7.0.1';
+export const CURRENT_APP_VERSION = 'v7.0.2';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v7.0.2',
+    codename:
+      '1대1 매치 전술 확정 후 킥오프 멈춤 수정 · 확정 시 전술/라인업 잠금 & [전술 수정] 토글 추가',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '양측이 전술 확정을 완료했는데도 경기가 시작되지 않던 status CHECK 제약조건·동기화 누락 문제를 근본 수정하고, 전술 확정 이후에는 포메이션·전술·선발 교체가 잠기도록 개선했습니다(상대 확정 전까지 [전술 수정]으로 해제 가능).',
+    sections: [
+      {
+        category: '1. 양측 전술 확정 후 킥오프 멈춤 근본 수정',
+        items: [
+          'publishMatchState의 status 호환 목록을 확장하고, DB status 제약조건 충돌 시에도 match_state를 저장·감지(isMatchLiveNow)해 양측 확정 즉시 2D 경기가 시작되도록 보강했습니다.',
+          '전술 확정·경기 상태 발행 직후 즉시 스냅샷을 재조회하고, 모든 호스트 전환 로직에 오류 표시 및 자동 재시도 가드 해제를 추가했습니다.',
+        ],
+      },
+      {
+        category: '2. 전술 확정 잠금 & [전술 수정] · 상대 확정 표기 정리',
+        items: [
+          '매치 데이 전술실과 하프타임/연장 라커룸에서 전술 확정 후에는 전술·포메이션·최적 선발·선수 스왑 입력을 잠가 혼선을 없앴습니다.',
+          '상대가 아직 확정하지 않은 동안에는 [전술 수정] 버튼으로 확정을 해제하고 다시 조정할 수 있으며, 상대의 최종 전술은 킥오프 시 동시 공개됩니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v7.0.1',
     codename:
       '멀티플레이 방 생성 시 Supabase CHECK 제약조건(mp_rooms_mode_check / status / seat) 호환 핫픽스',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'FEATURE',
     summary:
       '멀티플레이 방 생성 및 경기 단계 전환 시 Supabase 테이블의 CHECK 제약조건(mode/status/seat)과 100% 호환되도록 DB 기본값 사용 및 자동 폴백 처리를 적용했습니다.',
     sections: [

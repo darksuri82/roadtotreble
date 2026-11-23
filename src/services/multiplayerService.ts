@@ -586,11 +586,32 @@ export async function submitBlindDraftLineup(
 }
 
 function getStatusCandidates(status: MpRoomStatus): MpRoomStatus[] {
-  if (status === 'live_match' || status === 'playing' || status === 'match') {
-    return ['live_match', 'playing', 'match'];
+  if (
+    status === 'live_match' ||
+    status === 'live' ||
+    status === 'playing' ||
+    status === 'match' ||
+    status === 'in_match' ||
+    status === 'in_progress' ||
+    status === 'first_half' ||
+    status === 'simulating'
+  ) {
+    return [
+      'live_match',
+      'live',
+      'playing',
+      'match',
+      'in_match',
+      'in_progress',
+      'first_half',
+      'simulating',
+    ];
   }
   if (status === 'tactics' || status === 'pre_match') {
     return ['tactics', 'pre_match'];
+  }
+  if (status === 'finished' || status === 'completed' || status === 'ended') {
+    return ['finished', 'completed', 'ended'];
   }
   return [status];
 }
@@ -633,6 +654,22 @@ export async function submitTacticBarrier(
   return { data: true, error: null };
 }
 
+export async function clearMyTacticBarrier(
+  roomId: string,
+  playerId: string,
+): Promise<MpServiceResult<boolean>> {
+  const client = getSupabaseClient();
+  if (!client) return { data: null, error: 'Supabase 미연결' };
+
+  const { error } = await client
+    .from('mp_room_players')
+    .update({ tactic_submission: null })
+    .eq('room_id', roomId)
+    .eq('player_id', playerId);
+  if (error) return { data: null, error: normalizeError(error, '전술 확정 해제 실패') };
+  return { data: true, error: null };
+}
+
 export async function publishMatchState(
   roomId: string,
   status: MpRoomStatus,
@@ -643,6 +680,8 @@ export async function publishMatchState(
 
   const candidates = getStatusCandidates(status);
   let lastErr: unknown = null;
+  let hitCheckConstraint = false;
+
   for (const candidate of candidates) {
     const { error } = await client
       .from('mp_rooms')
@@ -653,8 +692,23 @@ export async function publishMatchState(
       .eq('id', roomId);
     if (!error) return { data: true, error: null };
     lastErr = error;
-    if (error.code !== '23514') break;
+    if (error.code === '23514') {
+      hitCheckConstraint = true;
+      continue;
+    }
+    break;
   }
+
+  // Ultimate resilience: if DB has a custom status CHECK constraint, still persist match_state so both clients launch & sync!
+  if (hitCheckConstraint) {
+    const { error: stateOnlyErr } = await client
+      .from('mp_rooms')
+      .update({ match_state: matchState })
+      .eq('id', roomId);
+    if (!stateOnlyErr) return { data: true, error: null };
+    lastErr = stateOnlyErr;
+  }
+
   return { data: null, error: normalizeError(lastErr, '경기 상태 동기화 실패') };
 }
 
@@ -800,12 +854,12 @@ export function subscribeToRoom(params: {
       }
     });
 
-  // Periodic safety poll (every 4s) in case a mobile tab was backgrounded & missed a realtime packet
+  // Periodic safety poll (every 2s) in case a mobile tab was backgrounded & missed a realtime packet
   const pollInterval = window.setInterval(() => {
     if (!disposed && document.visibilityState === 'visible') {
       scheduleRefresh();
     }
-  }, 4000);
+  }, 2000);
 
   return () => {
     disposed = true;

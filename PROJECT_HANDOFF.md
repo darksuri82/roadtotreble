@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v7.0.1)
+# Road To Treble — PROJECT HANDOFF GUIDE (v7.0.2)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -16,6 +16,8 @@
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v7.0.2 핫픽스**:
+  - **양측 전술 확정 후 킥오프 멈춤 수정 & 전술 잠금 (`multiplayerService.ts`, `MultiplayerArena.tsx`, `MatchDayTacticsRoom.tsx`, `LiveMatchBroadcast.tsx`)**: `publishMatchState` status CHECK 폴백·`match_state` 단독 저장 폴백·`isMatchLiveNow` 판별·즉시 스냅샷 재조회 적용, 전술 확정 시 전술/포메이션/스왑 잠금 및 `[전술 수정]` 해제 버튼 추가.
 - **v7.0.1 핫픽스**:
   - **Supabase CHECK 제약조건 호환성 (`multiplayerService.ts`, `multiplayer.ts`, `MultiplayerArena.tsx`, `MultiplayerLobby.tsx`)**: 1대1 방 생성 시 `mode`를 DB `DEFAULT`에 위임하고 `status`/`seat` CHECK 제약조건(`23514`) 자동 폴백 추가.
 - **v7.0 주요 신규 모듈·기능**:

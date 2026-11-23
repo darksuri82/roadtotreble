@@ -5,6 +5,16 @@
 
 ---
 
+## v7.0.2 — 1대1 전술 확정 후 킥오프 멈춤 수정 & 전술 잠금·수정 토글
+
+- **양측 전술 확정 후 킥오프 멈춤 근본 수정 (`src/services/multiplayerService.ts`, `src/types/multiplayer.ts`, `src/components/multiplayer/MultiplayerArena.tsx`)**:
+  - `publishMatchState`에 `live_match`/`live`/`playing`/`match`/`in_match`/`in_progress`/`first_half` status 폴백 및 최후 `match_state` 단독 저장 폴백을 적용하고, `isMatchLiveNow` 판별로 DB status 제약조건과 무관하게 양측 확정 즉시 2D 경기가 시작되도록 수정.
+  - 전술 확정·상태 발행 직후 즉시 스냅샷을 재조회하고, 호스트 전환 에러 시 가드 해제 및 화면 오류 표시 추가, 안전 폴링 주기 2초 단축.
+- **전술 확정 잠금 & `[전술 수정]` 버튼 (`src/components/league/MatchDayTacticsRoom.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`)**:
+  - 전술 확정 시 매치 데이 전술실(`locked`) 및 하프타임/연장 라커룸의 전술·포메이션·최적 선발·선수 스왑 조작을 잠금 처리하고, 상대 확정 전까지 `[전술 수정]`으로 해제 가능하도록 개선.
+
+---
+
 ## v7.0.1 — 멀티플레이 방 생성 Supabase CHECK 제약조건 호환 핫픽스
 
 - **Supabase `mp_rooms_mode_check` / `status` / `seat` 호환성 수정 (`src/services/multiplayerService.ts`, `src/types/multiplayer.ts`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/components/multiplayer/MultiplayerLobby.tsx`)**:

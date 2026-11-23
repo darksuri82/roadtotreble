@@ -21,16 +21,36 @@ export type MpRoomStatus =
   | 'tactics'
   | 'pre_match'
   | 'live_match'
+  | 'live'
   | 'playing'
   | 'match'
-  | 'finished';
+  | 'in_match'
+  | 'in_progress'
+  | 'first_half'
+  | 'simulating'
+  | 'finished'
+  | 'completed'
+  | 'ended';
 
 export function isMpTacticsStatus(status: string | undefined | null): boolean {
   return status === 'tactics' || status === 'pre_match';
 }
 
 export function isMpLiveMatchStatus(status: string | undefined | null): boolean {
-  return status === 'live_match' || status === 'playing' || status === 'match';
+  return (
+    status === 'live_match' ||
+    status === 'live' ||
+    status === 'playing' ||
+    status === 'match' ||
+    status === 'in_match' ||
+    status === 'in_progress' ||
+    status === 'first_half' ||
+    status === 'simulating'
+  );
+}
+
+export function isMpFinishedStatus(status: string | undefined | null): boolean {
+  return status === 'finished' || status === 'completed' || status === 'ended';
 }
 
 export interface MpRoomSettings {

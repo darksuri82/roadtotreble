@@ -2007,13 +2007,19 @@ export function LiveMatchBroadcast({
                       const active = selectedTactic === t.id;
                       const fitPct = htTacticFits[t.id];
                       const isRec = halftime.recommendedTactic === t.id;
+                      const htLocked = Boolean(override?.waitingForOpponentLabel);
                       return (
                         <button
                           key={t.id}
                           type="button"
-                          onClick={() => setSelectedTactic(t.id)}
+                          disabled={htLocked}
+                          onClick={() => {
+                            if (!htLocked) setSelectedTactic(t.id);
+                          }}
                           title={`${t.name} (현재 라인업 완성도 ${fitPct}%)`}
-                          className={`relative min-w-0 rounded-lg border py-1.5 px-1 text-center transition-colors cursor-pointer ${
+                          className={`relative min-w-0 rounded-lg border py-1.5 px-1 text-center transition-colors ${
+                            htLocked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                          } ${
                             active
                               ? 'border-emerald-400/60 bg-emerald-500/18 text-white font-extrabold'
                               : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200 font-bold'
@@ -2061,34 +2067,43 @@ export function LiveMatchBroadcast({
                       </span>
                       <button
                         type="button"
+                        disabled={Boolean(override?.waitingForOpponentLabel)}
                         onClick={handleHalftimeQuickBestXi}
                         title="현재 그라운드의 선발 11명(교체 아웃 선수 제외)을 선택한 포메이션에 맞춰 최적 포지션으로 자동 재배치합니다"
-                        className="inline-flex items-center gap-1 rounded-md border border-emerald-500/45 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer transition-colors"
+                        className="inline-flex items-center gap-1 rounded-md border border-emerald-500/45 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer transition-colors"
                       >
                         <Wand2 className="w-3 h-3" />
                         빠른 선발
                       </button>
                     </div>
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
-                      {FORMATION_LIST.map((f) => (
-                        <button
-                          key={f.id}
-                          type="button"
-                          title={f.name}
-                          onClick={() => changeFormation(f.id)}
-                          className={`rounded-lg border py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate transition-colors ${
-                            state.formation === f.id
-                              ? 'border-sky-400/55 bg-sky-500/18 text-white'
-                              : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
-                          }`}
-                        >
-                          {f.id === '4-4-2-diamond'
-                            ? '4-4-2◇'
-                            : f.id === '3-5-2-dm'
-                              ? '3-5-2 DM'
-                              : f.id}
-                        </button>
-                      ))}
+                      {FORMATION_LIST.map((f) => {
+                        const htLocked = Boolean(override?.waitingForOpponentLabel);
+                        return (
+                          <button
+                            key={f.id}
+                            type="button"
+                            disabled={htLocked}
+                            title={f.name}
+                            onClick={() => {
+                              if (!htLocked) changeFormation(f.id);
+                            }}
+                            className={`rounded-lg border py-1.5 px-1 text-[10px] sm:text-[11px] font-bold truncate transition-colors ${
+                              htLocked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                            } ${
+                              state.formation === f.id
+                                ? 'border-sky-400/55 bg-sky-500/18 text-white'
+                                : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
+                            }`}
+                          >
+                            {f.id === '4-4-2-diamond'
+                              ? '4-4-2◇'
+                              : f.id === '3-5-2-dm'
+                                ? '3-5-2 DM'
+                                : f.id}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -2172,11 +2187,15 @@ export function LiveMatchBroadcast({
                   bench={state.bench}
                   chemistry={chemistry}
                   managerTraitId={state.manager.traitId}
-                  selectedSlot={swapPick}
+                  selectedSlot={override?.waitingForOpponentLabel ? null : swapPick}
                   staminaByPlayerId={staminaByPlayerId}
                   disabledBenchIds={subbedOutIdSet}
-                  onSlotClick={handleSlotClick}
-                  onSlotSwap={performHalftimeSwap}
+                  onSlotClick={
+                    override?.waitingForOpponentLabel ? undefined : handleSlotClick
+                  }
+                  onSlotSwap={
+                    override?.waitingForOpponentLabel ? undefined : performHalftimeSwap
+                  }
                   onInspectPlayer={(player, slotSubPosition) =>
                     setInspected({ player, slotSubPosition })
                   }

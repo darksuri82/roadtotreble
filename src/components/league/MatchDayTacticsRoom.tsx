@@ -63,6 +63,7 @@ interface MatchDayTacticsRoomProps {
   onAutoOptimize: () => void;
   onInspectPlayer?: (player: Player, slotSubPosition?: SubPosition) => void;
   onClickOpponentPlayerName?: (playerId: string) => void;
+  locked?: boolean;
   firstLegBanner?: {
     stageLabel: string;
     homeName: string;
@@ -135,6 +136,7 @@ export function MatchDayTacticsRoom({
   onAutoOptimize,
   onInspectPlayer,
   onClickOpponentPlayerName,
+  locked = false,
   firstLegBanner = null,
   children,
 }: MatchDayTacticsRoomProps) {
@@ -219,6 +221,7 @@ export function MatchDayTacticsRoom({
   }, [starters, formation, managerTraitId]);
 
   const handleSlotClick = (area: 'starter' | 'bench', index: number) => {
+    if (locked) return;
     const clicked = area === 'starter' ? starters[index] : bench[index];
     if (!selectedSlot) {
       if (!clicked) return;
@@ -442,6 +445,11 @@ export function MatchDayTacticsRoom({
             <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
               <Compass className="w-3.5 h-3.5 text-emerald-400" />
               전술
+              {locked && (
+                <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] font-extrabold text-sky-300">
+                  확정됨
+                </span>
+              )}
             </span>
             <span className="text-[10px] font-bold text-slate-400 tabular-nums">
               {TACTICS[activeTactic].name} · {tacticFits[activeTactic]}%
@@ -456,9 +464,14 @@ export function MatchDayTacticsRoom({
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => onSelectTactic(t.id)}
+                  disabled={locked}
+                  onClick={() => {
+                    if (!locked) onSelectTactic(t.id);
+                  }}
                   title={`${t.name} (현재 라인업 완성도 ${fitPct}%)`}
-                  className={`relative min-w-0 rounded-lg py-1.5 px-1 text-center transition-colors cursor-pointer ${
+                  className={`relative min-w-0 rounded-lg py-1.5 px-1 text-center transition-colors ${
+                    locked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                  } ${
                     active
                       ? 'bg-emerald-500/18 text-emerald-100 border border-emerald-400/55 font-extrabold'
                       : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600 font-bold'
@@ -495,11 +508,13 @@ export function MatchDayTacticsRoom({
             </span>
             <button
               type="button"
+              disabled={locked}
               onClick={() => {
+                if (locked) return;
                 setSelectedSlot(null);
                 onAutoOptimize();
               }}
-              className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 border border-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-200 hover:border-emerald-400/50 hover:text-emerald-200 cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 border border-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-200 hover:border-emerald-400/50 hover:text-emerald-200 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
             >
               <Wand2 className="w-3 h-3 text-emerald-400" />
               빠른 최적 선발
@@ -510,12 +525,16 @@ export function MatchDayTacticsRoom({
               <button
                 key={f.id}
                 type="button"
+                disabled={locked}
                 title={`${f.name} · ${f.shortTag}`}
                 onClick={() => {
+                  if (locked) return;
                   setSelectedSlot(null);
                   onChangeFormation(f.id);
                 }}
-                className={`rounded-lg py-1.5 px-1 text-[10px] sm:text-[11px] font-bold transition-colors cursor-pointer truncate ${
+                className={`rounded-lg py-1.5 px-1 text-[10px] sm:text-[11px] font-bold transition-colors truncate ${
+                  locked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
+                } ${
                   formation === f.id
                     ? 'bg-sky-500/18 text-sky-100 border border-sky-400/55 font-extrabold'
                     : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
@@ -595,11 +614,13 @@ export function MatchDayTacticsRoom({
             <div className="flex items-center justify-between text-[11px] px-1">
               <span className="inline-flex items-center gap-1 text-slate-400">
                 <ArrowLeftRight className="w-3 h-3 text-emerald-400" />
-                {selectedSlot
-                  ? '교체할 대상 슬롯을 클릭하세요'
-                  : '선발 ↔ 벤치 클릭·드래그로 즉시 교체'}
+                {locked
+                  ? '전술 확정됨 · 수정하려면 아래 [전술 수정]을 누르세요'
+                  : selectedSlot
+                    ? '교체할 대상 슬롯을 클릭하세요'
+                    : '선발 ↔ 벤치 클릭·드래그로 즉시 교체'}
               </span>
-              {selectedSlot && (
+              {selectedSlot && !locked && (
                 <button
                   type="button"
                   onClick={() => setSelectedSlot(null)}
@@ -615,12 +636,16 @@ export function MatchDayTacticsRoom({
               bench={bench}
               chemistry={chemistry}
               managerTraitId={managerTraitId}
-              selectedSlot={selectedSlot}
-              onSlotClick={handleSlotClick}
-              onSlotSwap={(from, to) => {
-                onSwapSquad(from, to);
-                setSelectedSlot(null);
-              }}
+              selectedSlot={locked ? null : selectedSlot}
+              onSlotClick={locked ? undefined : handleSlotClick}
+              onSlotSwap={
+                locked
+                  ? undefined
+                  : (from, to) => {
+                      onSwapSquad(from, to);
+                      setSelectedSlot(null);
+                    }
+              }
               onInspectPlayer={onInspectPlayer}
               showBench
               showChemBreakdown={false}
@@ -638,19 +663,23 @@ export function MatchDayTacticsRoom({
                 bench={bench}
                 chemistry={chemistry}
                 managerTraitId={managerTraitId}
-                selectedSlot={selectedSlot}
-                onSlotClick={handleSlotClick}
-                onSlotSwap={(from, to) => {
-                  onSwapSquad(from, to);
-                  setSelectedSlot(null);
-                }}
+                selectedSlot={locked ? null : selectedSlot}
+                onSlotClick={locked ? undefined : handleSlotClick}
+                onSlotSwap={
+                  locked
+                    ? undefined
+                    : (from, to) => {
+                        onSwapSquad(from, to);
+                        setSelectedSlot(null);
+                      }
+                }
                 onInspectPlayer={onInspectPlayer}
                 showBench
                 showChemBreakdown={false}
                 compact
                 headerLabel="우리 팀 선발 · 벤치"
                 headerRight={
-                  selectedSlot ? (
+                  selectedSlot && !locked ? (
                     <button
                       type="button"
                       onClick={() => setSelectedSlot(null)}
