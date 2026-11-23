@@ -158,6 +158,7 @@ import {
   type SeasonAchievementTrackers,
 } from '../types/legacy';
 import type { Player } from '../types/player';
+import { extractRoomCodeFromUrl } from '../services/multiplayerService';
 import { normalizeManagerAvatar, saveClubPreset } from '../utils/clubPresets';
 
 const GAME_STORAGE_KEY = 'football_draft_game_state_v5';
@@ -6141,6 +6142,10 @@ interface GameContextValue {
   dreamMatchInitialOpponentId: string | null;
   openDreamMatch: (opponentId?: string | null) => void;
   closeDreamMatch: () => void;
+  multiplayerOpen: boolean;
+  multiplayerInitialRoomCode: string | null;
+  openMultiplayer: (roomCode?: string | null) => void;
+  closeMultiplayer: () => void;
   recordDreamMatchOutcome: (params: {
     historicalTeamId: string;
     outcome: 'W' | 'D' | 'L';
@@ -6267,6 +6272,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [dreamMatchOpen, setDreamMatchOpen] = useState(false);
   const [dreamMatchInitialOpponentId, setDreamMatchInitialOpponentId] =
     useState<string | null>(null);
+  const [multiplayerInitialRoomCode, setMultiplayerInitialRoomCode] =
+    useState<string | null>(() => extractRoomCodeFromUrl());
+  const [multiplayerOpen, setMultiplayerOpen] = useState<boolean>(() =>
+    Boolean(extractRoomCodeFromUrl()),
+  );
   const [recentUnlocks, setRecentUnlocks] = useState<string[]>([]);
 
   useEffect(() => {
@@ -6515,6 +6525,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const openDreamMatch = useCallback((opponentId?: string | null) => {
     setLegacyModalOpen(false);
+    setMultiplayerOpen(false);
     setDreamMatchInitialOpponentId(opponentId ?? null);
     setDreamMatchOpen(true);
   }, []);
@@ -6522,6 +6533,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const closeDreamMatch = useCallback(() => {
     setDreamMatchOpen(false);
     setDreamMatchInitialOpponentId(null);
+  }, []);
+
+  const openMultiplayer = useCallback((roomCode?: string | null) => {
+    setLegacyModalOpen(false);
+    setDreamMatchOpen(false);
+    setMultiplayerInitialRoomCode(roomCode ?? null);
+    setMultiplayerOpen(true);
+  }, []);
+
+  const closeMultiplayer = useCallback(() => {
+    setMultiplayerOpen(false);
+    setMultiplayerInitialRoomCode(null);
   }, []);
 
   const recordDreamMatchOutcome = useCallback(
@@ -6548,6 +6571,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       dreamMatchInitialOpponentId,
       openDreamMatch,
       closeDreamMatch,
+      multiplayerOpen,
+      multiplayerInitialRoomCode,
+      openMultiplayer,
+      closeMultiplayer,
       recordDreamMatchOutcome,
       recentUnlocks,
       dismissUnlockToast,
@@ -6675,6 +6702,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       dreamMatchInitialOpponentId,
       openDreamMatch,
       closeDreamMatch,
+      multiplayerOpen,
+      multiplayerInitialRoomCode,
+      openMultiplayer,
+      closeMultiplayer,
       recordDreamMatchOutcome,
       recentUnlocks,
       dismissUnlockToast,

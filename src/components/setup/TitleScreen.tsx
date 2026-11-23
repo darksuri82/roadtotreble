@@ -5,6 +5,7 @@ import {
   Play,
   ScrollText,
   Swords,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import { CURRENT_APP_VERSION } from '../../data/patchNotes';
@@ -22,8 +23,13 @@ const ROAD_STAGES = [
 ] as const;
 
 export function TitleScreen() {
-  const { startNewCareer, legacyState, setLegacyModalOpen, openDreamMatch } =
-    useGame();
+  const {
+    startNewCareer,
+    legacyState,
+    setLegacyModalOpen,
+    openDreamMatch,
+    openMultiplayer,
+  } = useGame();
   const [showGuide, setShowGuide] = useState(false);
   const [showPatchNotes, setShowPatchNotes] = useState(false);
   const achProgress = getAchievementProgress(legacyState);
@@ -83,7 +89,7 @@ export function TitleScreen() {
                 id="title-start-btn"
                 type="button"
                 onClick={startNewCareer}
-                className="group inline-flex items-center justify-center gap-1.5 sm:gap-2.5 rounded-xl bg-emerald-500 px-3 py-3 sm:px-8 sm:py-3.5 text-xs font-extrabold text-slate-950 shadow-lg shadow-emerald-500/20 transition-colors hover:bg-emerald-400 cursor-pointer touch-manipulation sm:w-auto sm:text-base"
+                className="col-span-2 sm:col-span-1 group inline-flex items-center justify-center gap-1.5 sm:gap-2.5 rounded-xl bg-emerald-500 px-3 py-3 sm:px-7 sm:py-3.5 text-sm font-extrabold text-slate-950 shadow-lg shadow-emerald-500/20 transition-colors hover:bg-emerald-400 cursor-pointer touch-manipulation sm:w-auto sm:text-base"
               >
                 <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-current shrink-0" />
                 <span className="whitespace-nowrap">새 시즌 시작</span>
@@ -91,10 +97,23 @@ export function TitleScreen() {
               </button>
 
               <button
+                id="title-multiplayer-btn"
+                type="button"
+                onClick={() => openMultiplayer(null)}
+                className="group inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-sky-400/45 bg-sky-500/12 px-3 py-3 sm:px-5 sm:py-3.5 text-xs font-extrabold text-sky-200 transition-colors hover:border-sky-300/70 hover:bg-sky-500/20 cursor-pointer touch-manipulation sm:w-auto sm:text-base"
+              >
+                <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-300 shrink-0" />
+                <span className="whitespace-nowrap">멀티플레이</span>
+                <span className="hidden sm:inline rounded bg-sky-400/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">
+                  1v1
+                </span>
+              </button>
+
+              <button
                 id="title-dream-match-btn"
                 type="button"
                 onClick={() => openDreamMatch(null)}
-                className="group inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-amber-400/45 bg-amber-500/12 px-3 py-3 sm:px-6 sm:py-3.5 text-xs font-extrabold text-amber-200 transition-colors hover:border-amber-300/70 hover:bg-amber-500/20 cursor-pointer touch-manipulation sm:w-auto sm:text-base"
+                className="group inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-amber-400/45 bg-amber-500/12 px-3 py-3 sm:px-5 sm:py-3.5 text-xs font-extrabold text-amber-200 transition-colors hover:border-amber-300/70 hover:bg-amber-500/20 cursor-pointer touch-manipulation sm:w-auto sm:text-base"
               >
                 <Swords className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-300 shrink-0" />
                 <span className="whitespace-nowrap">드림 매치</span>

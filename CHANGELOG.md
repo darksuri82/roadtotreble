@@ -5,6 +5,23 @@
 
 ---
 
+## v7.0 — Supabase 실시간 멀티플레이 인프라 구축 & 친구와 1대1 블라인드 드래프트 대전
+
+- **Supabase 실시간 멀티플레이 인프라 & 배포 연동 (`supabase/schema.sql`, `src/lib/supabaseClient.ts`, `src/types/multiplayer.ts`, `src/services/multiplayerService.ts`, `.github/workflows/deploy.yml`)**:
+  - `mp_rooms` / `mp_room_players` 테이블 스키마 + RLS + Realtime Publication SQL 구축 및 GitHub Actions 빌드 단계에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` Secret 주입 추가.
+  - 환경변수 미설정/네트워크 오류 시 크래시 없는 안전한 안내 상태(`isSupabaseConfigured`), `localStorage` 기반 클라이언트 세션 ID·드래프트 자동 백업·재접속 복구 구현.
+- **확장형 멀티플레이 로비 & 초대 UX (`src/components/multiplayer/MultiplayerLobby.tsx`, `src/components/setup/TitleScreen.tsx`, `src/store/GameContext.tsx`, `src/App.tsx`, `src/components/common/HeaderNav.tsx`)**:
+  - 첫 화면 `[멀티플레이]` 진입 버튼 및 모드 선택형 로비(`1대1 블라인드 대전` 활성 + 2단계 `멀티 리그` 확장 슬롯).
+  - 커스텀 감독 프로필 자동 연동, 6자리 초대 코드·원클릭 초대 링크(`?room=XXXXXX`) 복사 및 자동 참가, Supabase Presence 실시간 접속 표시·준비 완료 토글, 방장 전용 드래프트 풀(5대 리그) 및 연장·PK 규칙 설정 지원.
+- **상호 비공개 감독 선택 & 동시 블라인드 드래프트 (`src/components/multiplayer/MultiplayerBlindDraft.tsx`)**:
+  - 감독 스타일·초기 포메이션 비공개 선택 + 싱글과 동일한 임시 배치·자리 스왑·시너지 프리뷰 UX로 16명 동시 드래프트.
+  - 드래프트 중에는 `draft_progress`만 전송해 상대 픽·감독 완전 비공개 보장 및 양 팀 중복 선수 허용.
+- **라인업 공개 · 대칭 1대1 동기화 2D 중계 · 재대결 (`src/components/multiplayer/MultiplayerArena.tsx`, `src/engine/matchEngine.ts`, `src/components/league/MatchDayTacticsRoom.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/components/league/MatchReportPanel.tsx`, `src/__tests__/v70Multiplayer1v1.test.ts`)**:
+  - `resolveMatchStrengths` / `simulateFirstHalf` / `simulateSecondHalf` / `simulateExtraTimeFirstHalf` / `simulateExtraTimeSecondHalfAndPenalties`에 대칭 `opponentUserContext`를 도입해 AI 자동 대응을 배제하고 양측 감독의 전술·포메이션·하프타임/연장 교체를 100% 동일 기준으로 시뮬레이션.
+  - 호스트 권위형 타임라인 동기화로 양쪽 화면에 100% 동일한 스코어·2D 경기 중계·하프타임/연장 동시 수싸움·승부차기 제공, 경기 종료 후 `MatchReportPanel` + `[같은 팀으로 재대결]` / `[새 드래프트로 1대1]` 및 시리즈 전적 누적 지원.
+
+---
+
 ## v6.2.1 — 피치 시너지 연결선 & 월클/슈퍼스타/레전드 카드 웅장한 테두리·글로우 복원
 
 - **피치 시너지 연결선 & 최상급 티어 카드 비주얼 복원 (`src/index.css`, `src/components/common/PlayerCard.tsx`, `src/components/common/PitchBoard.tsx`, `src/components/league/OpponentPitchView.tsx`)**:

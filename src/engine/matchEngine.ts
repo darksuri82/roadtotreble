@@ -368,10 +368,12 @@ function resolveMatchStrengths(params: {
   isHomeUser: boolean;
   isAwayUser: boolean;
   userContext?: UserMatchContext;
+  opponentUserContext?: UserMatchContext;
   isSecondHalf?: boolean;
   scoreDiffHome?: number; // homeGoals - awayGoals entering 2nd half
   evalMinute?: number;
   enteredAtMinute?: Record<string, number>;
+  opponentEnteredAtMinute?: Record<string, number>;
   aiOverrideFormation?: FormationId;
   aiOverrideTactic?: TacticId;
   aiHalftimeAdjusted?: boolean;
@@ -393,48 +395,58 @@ function resolveMatchStrengths(params: {
     isHomeUser,
     isAwayUser,
     userContext,
+    opponentUserContext,
     isSecondHalf = false,
     scoreDiffHome = 0,
     evalMinute = isSecondHalf ? 72 : 30,
     enteredAtMinute = {},
+    opponentEnteredAtMinute = {},
     aiOverrideFormation,
     aiOverrideTactic,
     aiHalftimeAdjusted = false,
   } = params;
 
-  const homeManager = isHomeUser ? null : getClubManager(homeClub);
-  const awayManager = isAwayUser ? null : getClubManager(awayClub);
+  const homeUserCtx = isHomeUser ? userContext : opponentUserContext;
+  const awayUserCtx = isAwayUser ? userContext : opponentUserContext;
+  const homeIsHuman = Boolean(homeUserCtx);
+  const awayIsHuman = Boolean(awayUserCtx);
 
-  const homeTactic =
-    isHomeUser && userContext
-      ? userContext.tactic
-      : !isHomeUser && isAwayUser && aiOverrideTactic
-        ? aiOverrideTactic
-        : homeClub.defaultTactic;
-  const awayTactic =
-    isAwayUser && userContext
-      ? userContext.tactic
-      : !isAwayUser && isHomeUser && aiOverrideTactic
-        ? aiOverrideTactic
-        : awayClub.defaultTactic;
-  const homeFormation =
-    isHomeUser && userContext
-      ? userContext.formation
-      : !isHomeUser && isAwayUser && aiOverrideFormation
-        ? aiOverrideFormation
-        : homeClub.formation;
-  const awayFormation =
-    isAwayUser && userContext
-      ? userContext.formation
-      : !isAwayUser && isHomeUser && aiOverrideFormation
-        ? aiOverrideFormation
-        : awayClub.formation;
+  const homeManager = homeIsHuman ? null : getClubManager(homeClub);
+  const awayManager = awayIsHuman ? null : getClubManager(awayClub);
 
-  const userSynergyRoster =
-    userContext && userContext.starters.length > 0
+  const homeTactic = homeUserCtx
+    ? homeUserCtx.tactic
+    : !homeIsHuman && isAwayUser && aiOverrideTactic
+      ? aiOverrideTactic
+      : homeClub.defaultTactic;
+  const awayTactic = awayUserCtx
+    ? awayUserCtx.tactic
+    : !awayIsHuman && isHomeUser && aiOverrideTactic
+      ? aiOverrideTactic
+      : awayClub.defaultTactic;
+  const homeFormation = homeUserCtx
+    ? homeUserCtx.formation
+    : !homeIsHuman && isAwayUser && aiOverrideFormation
+      ? aiOverrideFormation
+      : homeClub.formation;
+  const awayFormation = awayUserCtx
+    ? awayUserCtx.formation
+    : !awayIsHuman && isHomeUser && aiOverrideFormation
+      ? aiOverrideFormation
+      : awayClub.formation;
+
+  const homeHumanSynergyRoster =
+    homeUserCtx && homeUserCtx.starters.length > 0
       ? applySlotSynergiesToStarters(
-          userContext.starters,
-          userContext.slotSynergies,
+          homeUserCtx.starters,
+          homeUserCtx.slotSynergies,
+        )
+      : [];
+  const awayHumanSynergyRoster =
+    awayUserCtx && awayUserCtx.starters.length > 0
+      ? applySlotSynergiesToStarters(
+          awayUserCtx.starters,
+          awayUserCtx.slotSynergies,
         )
       : [];
 
@@ -518,23 +530,23 @@ function resolveMatchStrengths(params: {
   };
 
   const homeAiBundle =
-    !isHomeUser && homeManager
+    !homeIsHuman && homeManager
       ? computeAiSynergyBundle(homeClub, homeRoster, homeFormation, homeTactic, homeManager)
       : null;
   const awayAiBundle =
-    !isAwayUser && awayManager
+    !awayIsHuman && awayManager
       ? computeAiSynergyBundle(awayClub, awayRoster, awayFormation, awayTactic, awayManager)
       : null;
 
   const effectiveHomeRoster =
-    isHomeUser && userSynergyRoster.length > 0
-      ? userSynergyRoster
+    homeIsHuman && homeHumanSynergyRoster.length > 0
+      ? homeHumanSynergyRoster
       : homeAiBundle
         ? homeAiBundle.effectiveRoster
         : homeRoster;
   const effectiveAwayRoster =
-    isAwayUser && userSynergyRoster.length > 0
-      ? userSynergyRoster
+    awayIsHuman && awayHumanSynergyRoster.length > 0
+      ? awayHumanSynergyRoster
       : awayAiBundle
         ? awayAiBundle.effectiveRoster
         : awayRoster;
@@ -548,43 +560,42 @@ function resolveMatchStrengths(params: {
       ? computeIndividualRosterImpact(effectiveAwayRoster)
       : null;
 
-  // When a caller provides userContext with a managerTraitId but omits precomputed slotSynergies,
-  // apply v5.0's independent Manager Compatibility direct OVR boost (no double-counting when slotSynergies is present).
-  const userDirectMgrLift =
-    userContext && !userContext.slotSynergies && userContext.managerTraitId && userContext.starters.length > 0
-      ? (userContext.starters.reduce((sum, p) => {
-          const ev = evaluateManagerPlayerSynergy(p, userContext.managerTraitId, 88);
+  const computeDirectMgrLift = (ctx?: UserMatchContext) =>
+    ctx && !ctx.slotSynergies && ctx.managerTraitId && ctx.starters.length > 0
+      ? (ctx.starters.reduce((sum, p) => {
+          const ev = evaluateManagerPlayerSynergy(p, ctx.managerTraitId, 88);
           return sum + (ev.isMatch ? ev.bonus : 0);
         }, 0) /
-          userContext.starters.length) *
+          ctx.starters.length) *
         1.0
       : 0;
 
-  const homeBase =
-    isHomeUser && userContext
-      ? {
-          att: userContext.ratings.effectiveAtt + userDirectMgrLift,
-          mid: userContext.ratings.effectiveMid + userDirectMgrLift,
-          def: userContext.ratings.effectiveDef + userDirectMgrLift,
-        }
-      : {
-          att: homeAiBundle ? homeAiBundle.att : homeClub.att,
-          mid: homeAiBundle ? homeAiBundle.mid : homeClub.mid,
-          def: homeAiBundle ? homeAiBundle.def : homeClub.def,
-        };
+  const homeDirectMgrLift = computeDirectMgrLift(homeUserCtx);
+  const awayDirectMgrLift = computeDirectMgrLift(awayUserCtx);
 
-  const awayBase =
-    isAwayUser && userContext
-      ? {
-          att: userContext.ratings.effectiveAtt + userDirectMgrLift,
-          mid: userContext.ratings.effectiveMid + userDirectMgrLift,
-          def: userContext.ratings.effectiveDef + userDirectMgrLift,
-        }
-      : {
-          att: awayAiBundle ? awayAiBundle.att : awayClub.att,
-          mid: awayAiBundle ? awayAiBundle.mid : awayClub.mid,
-          def: awayAiBundle ? awayAiBundle.def : awayClub.def,
-        };
+  const homeBase = homeUserCtx
+    ? {
+        att: homeUserCtx.ratings.effectiveAtt + homeDirectMgrLift,
+        mid: homeUserCtx.ratings.effectiveMid + homeDirectMgrLift,
+        def: homeUserCtx.ratings.effectiveDef + homeDirectMgrLift,
+      }
+    : {
+        att: homeAiBundle ? homeAiBundle.att : homeClub.att,
+        mid: homeAiBundle ? homeAiBundle.mid : homeClub.mid,
+        def: homeAiBundle ? homeAiBundle.def : homeClub.def,
+      };
+
+  const awayBase = awayUserCtx
+    ? {
+        att: awayUserCtx.ratings.effectiveAtt + awayDirectMgrLift,
+        mid: awayUserCtx.ratings.effectiveMid + awayDirectMgrLift,
+        def: awayUserCtx.ratings.effectiveDef + awayDirectMgrLift,
+      }
+    : {
+        att: awayAiBundle ? awayAiBundle.att : awayClub.att,
+        mid: awayAiBundle ? awayAiBundle.mid : awayClub.mid,
+        def: awayAiBundle ? awayAiBundle.def : awayClub.def,
+      };
 
   const homeAvgOvr = (homeBase.att + homeBase.mid + homeBase.def) / 3;
   const awayAvgOvr = (awayBase.att + awayBase.mid + awayBase.def) / 3;
@@ -597,15 +608,15 @@ function resolveMatchStrengths(params: {
           starters: effectiveHomeRoster.slice(0, 11),
           formation: homeFormation,
           tactic: homeTactic,
-          managerTraitId: isHomeUser ? (userContext?.managerTraitId ?? null) : (homeManager?.traitId ?? null),
-          managerOvr: isHomeUser ? 86 : (homeManager?.ovr ?? 80),
+          managerTraitId: homeUserCtx ? (homeUserCtx.managerTraitId ?? null) : (homeManager?.traitId ?? null),
+          managerOvr: homeIsHuman ? 86 : (homeManager?.ovr ?? 80),
         },
         {
           starters: effectiveAwayRoster.slice(0, 11),
           formation: awayFormation,
           tactic: awayTactic,
-          managerTraitId: isAwayUser ? (userContext?.managerTraitId ?? null) : (awayManager?.traitId ?? null),
-          managerOvr: isAwayUser ? 86 : (awayManager?.ovr ?? 80),
+          managerTraitId: awayUserCtx ? (awayUserCtx.managerTraitId ?? null) : (awayManager?.traitId ?? null),
+          managerOvr: awayIsHuman ? 86 : (awayManager?.ovr ?? 80),
         },
       )
     : null;
@@ -619,27 +630,40 @@ function resolveMatchStrengths(params: {
     ? evaluateFormationMatchup(homeFormation, awayFormation).possessionDelta
     : 0;
 
-  const userTraitMod =
-    (isHomeUser || isAwayUser) && userContext
-      ? computeManagerTraitModifiers({
-          traitId: userContext.managerTraitId,
-          starters: userContext.starters,
-          userTactic: userContext.tactic,
-          userAvgOvr: isHomeUser ? homeAvgOvr : awayAvgOvr,
-          oppAvgOvr: isHomeUser ? awayAvgOvr : homeAvgOvr,
-          opponentRank: userContext.opponentRank,
-          halftimeAdjusted: userContext.halftimeAdjusted,
-          halftimeSubsMade: userContext.halftimeSubsMade,
-          isSecondHalf,
-        })
-      : null;
+  const homeHumanTraitMod = homeUserCtx
+    ? computeManagerTraitModifiers({
+        traitId: homeUserCtx.managerTraitId,
+        starters: homeUserCtx.starters,
+        userTactic: homeUserCtx.tactic,
+        userAvgOvr: homeAvgOvr,
+        oppAvgOvr: awayAvgOvr,
+        opponentRank: homeUserCtx.opponentRank,
+        halftimeAdjusted: homeUserCtx.halftimeAdjusted,
+        halftimeSubsMade: homeUserCtx.halftimeSubsMade,
+        isSecondHalf,
+      })
+    : null;
+
+  const awayHumanTraitMod = awayUserCtx
+    ? computeManagerTraitModifiers({
+        traitId: awayUserCtx.managerTraitId,
+        starters: awayUserCtx.starters,
+        userTactic: awayUserCtx.tactic,
+        userAvgOvr: awayAvgOvr,
+        oppAvgOvr: homeAvgOvr,
+        opponentRank: awayUserCtx.opponentRank,
+        halftimeAdjusted: awayUserCtx.halftimeAdjusted,
+        halftimeSubsMade: awayUserCtx.halftimeSubsMade,
+        isSecondHalf,
+      })
+    : null;
 
   // AI Manager tactical trait modifiers (scaled smoothly by manager OVR so top coaches leave a genuine footprint)
   const computeAiTraitScale = (mgrOvr: number) =>
     clamp(0.08 + ((mgrOvr - 75) / 20) * 0.12, 0.08, 0.22);
 
   const homeAiTraitMod =
-    !isHomeUser && homeManager && effectiveHomeRoster.length > 0
+    !homeIsHuman && homeManager && effectiveHomeRoster.length > 0
       ? computeManagerTraitModifiers({
           traitId: homeManager.traitId,
           starters: effectiveHomeRoster.slice(0, 11),
@@ -651,7 +675,7 @@ function resolveMatchStrengths(params: {
         })
       : null;
   const awayAiTraitMod =
-    !isAwayUser && awayManager && effectiveAwayRoster.length > 0
+    !awayIsHuman && awayManager && effectiveAwayRoster.length > 0
       ? computeManagerTraitModifiers({
           traitId: awayManager.traitId,
           starters: effectiveAwayRoster.slice(0, 11),
@@ -666,70 +690,75 @@ function resolveMatchStrengths(params: {
   const homeAiScale = homeManager ? computeAiTraitScale(homeManager.ovr) : 0;
   const awayAiScale = awayManager ? computeAiTraitScale(awayManager.ovr) : 0;
 
-  // Stamina impact relative to AI baseline fatigue
-  const oppRawAvg = isHomeUser
-    ? (awayClub.att + awayClub.mid + awayClub.def) / 3
-    : (homeClub.att + homeClub.mid + homeClub.def) / 3;
+  // Stamina impact relative to baseline fatigue (computed symmetrically for both human players in PvP)
+  const computeHumanStaminaMod = (
+    ctx: UserMatchContext | undefined,
+    oppClubForBaseline: Club,
+    entryMap: Record<string, number>,
+  ) => {
+    if (!ctx || ctx.starters.length === 0) return null;
+    const oppRawAvg = (oppClubForBaseline.att + oppClubForBaseline.mid + oppClubForBaseline.def) / 3;
+    const impact = computeLineupStaminaImpact({
+      starters: ctx.starters,
+      formation: ctx.formation,
+      tactic: ctx.tactic,
+      minute: evalMinute,
+      enteredAtMinute: entryMap,
+    });
+    const aiBaseline =
+      evalMinute >= 60 ? (oppRawAvg >= 85 ? -0.75 : -0.95) : -0.15;
+    return {
+      attDelta: clamp((impact.attDelta - aiBaseline) * 0.65, -4.2, 1.8),
+      midDelta: clamp((impact.midDelta - aiBaseline) * 0.65, -4.2, 1.8),
+      defDelta: clamp((impact.defDelta - aiBaseline) * 0.65, -4.2, 1.8),
+      freshSubXgBonus: isSecondHalf ? impact.freshSubXgBonus : 0,
+      oppXgFatigueLeak:
+        impact.avgStaminaPct < 48
+          ? 0.22
+          : impact.avgStaminaPct < 58
+            ? 0.1
+            : 0,
+    };
+  };
 
-  const userStaminaMod =
-    (isHomeUser || isAwayUser) && userContext && userContext.starters.length > 0
-      ? (() => {
-          const impact = computeLineupStaminaImpact({
-            starters: userContext.starters,
-            formation: userContext.formation,
-            tactic: userContext.tactic,
-            minute: evalMinute,
-            enteredAtMinute,
-          });
-          const aiBaseline =
-            evalMinute >= 60 ? (oppRawAvg >= 85 ? -0.75 : -0.95) : -0.15;
-          return {
-            attDelta: clamp((impact.attDelta - aiBaseline) * 0.65, -4.2, 1.8),
-            midDelta: clamp((impact.midDelta - aiBaseline) * 0.65, -4.2, 1.8),
-            defDelta: clamp((impact.defDelta - aiBaseline) * 0.65, -4.2, 1.8),
-            freshSubXgBonus: isSecondHalf ? impact.freshSubXgBonus : 0,
-            oppXgFatigueLeak:
-              impact.avgStaminaPct < 48
-                ? 0.22
-                : impact.avgStaminaPct < 58
-                  ? 0.1
-                  : 0,
-          };
-        })()
-      : null;
+  const homeEntryMap = isHomeUser ? enteredAtMinute : opponentEnteredAtMinute;
+  const awayEntryMap = isAwayUser ? enteredAtMinute : opponentEnteredAtMinute;
+  const homeStaminaMod = computeHumanStaminaMod(homeUserCtx, awayClub, homeEntryMap);
+  const awayStaminaMod = computeHumanStaminaMod(awayUserCtx, homeClub, awayEntryMap);
 
-  // Halftime tactical adaptation boost in 2nd half (both user and AI manager can reap tactical swings!)
-  const userHtSwingMult =
-    isSecondHalf && userContext?.halftimeAdjusted
-      ? 1.25 * (userTraitMod?.halftimeTacticMultiplier ?? 1.0)
-      : 1.0;
-  const aiHtSwingMult =
-    isSecondHalf && aiHalftimeAdjusted
-      ? 1.18 + ((isHomeUser ? (awayManager?.ovr ?? 80) : (homeManager?.ovr ?? 80)) >= 88 ? 0.12 : 0)
-      : 1.0;
-
-  const homeMult = isHomeUser ? userHtSwingMult : isAwayUser ? aiHtSwingMult : 1.0;
-  const awayMult = isAwayUser ? userHtSwingMult : isHomeUser ? aiHtSwingMult : 1.0;
+  // Halftime tactical adaptation boost in 2nd half (both user and opponent can reap tactical swings!)
+  const homeHtSwingMult =
+    isSecondHalf && homeUserCtx?.halftimeAdjusted
+      ? 1.25 * (homeHumanTraitMod?.halftimeTacticMultiplier ?? 1.0)
+      : !homeIsHuman && isAwayUser && isSecondHalf && aiHalftimeAdjusted
+        ? 1.18 + ((homeManager?.ovr ?? 80) >= 88 ? 0.12 : 0)
+        : 1.0;
+  const awayHtSwingMult =
+    isSecondHalf && awayUserCtx?.halftimeAdjusted
+      ? 1.25 * (awayHumanTraitMod?.halftimeTacticMultiplier ?? 1.0)
+      : !awayIsHuman && isHomeUser && isSecondHalf && aiHalftimeAdjusted
+        ? 1.18 + ((awayManager?.ovr ?? 80) >= 88 ? 0.12 : 0)
+        : 1.0;
 
   const homeAttTac = unifiedMatchup
-    ? unifiedMatchup.attDelta * 0.78 * (unifiedMatchup.attDelta > 0 ? homeMult : 1.0)
-    : fallbackTacticHome * (fallbackTacticHome > 0 ? homeMult : 1.0);
+    ? unifiedMatchup.attDelta * 0.78 * (unifiedMatchup.attDelta > 0 ? homeHtSwingMult : 1.0)
+    : fallbackTacticHome * (fallbackTacticHome > 0 ? homeHtSwingMult : 1.0);
   const homeMidTac = unifiedMatchup
-    ? unifiedMatchup.midDelta * 0.78 * (unifiedMatchup.midDelta > 0 ? homeMult : 1.0)
-    : fallbackTacticHome * (fallbackTacticHome > 0 ? homeMult : 1.0);
+    ? unifiedMatchup.midDelta * 0.78 * (unifiedMatchup.midDelta > 0 ? homeHtSwingMult : 1.0)
+    : fallbackTacticHome * (fallbackTacticHome > 0 ? homeHtSwingMult : 1.0);
   const homeDefTac = unifiedMatchup
-    ? unifiedMatchup.defDelta * 0.78 * (unifiedMatchup.defDelta > 0 ? homeMult : 1.0)
-    : fallbackTacticHome * (fallbackTacticHome > 0 ? homeMult : 1.0);
+    ? unifiedMatchup.defDelta * 0.78 * (unifiedMatchup.defDelta > 0 ? homeHtSwingMult : 1.0)
+    : fallbackTacticHome * (fallbackTacticHome > 0 ? homeHtSwingMult : 1.0);
 
   const awayAttTac = unifiedMatchup
-    ? -unifiedMatchup.attDelta * 0.78 * (-unifiedMatchup.attDelta > 0 ? awayMult : 1.0)
-    : -fallbackTacticHome * (-fallbackTacticHome > 0 ? awayMult : 1.0);
+    ? -unifiedMatchup.attDelta * 0.78 * (-unifiedMatchup.attDelta > 0 ? awayHtSwingMult : 1.0)
+    : -fallbackTacticHome * (-fallbackTacticHome > 0 ? awayHtSwingMult : 1.0);
   const awayMidTac = unifiedMatchup
-    ? -unifiedMatchup.midDelta * 0.78 * (-unifiedMatchup.midDelta > 0 ? awayMult : 1.0)
-    : -fallbackTacticHome * (-fallbackTacticHome > 0 ? awayMult : 1.0);
+    ? -unifiedMatchup.midDelta * 0.78 * (-unifiedMatchup.midDelta > 0 ? awayHtSwingMult : 1.0)
+    : -fallbackTacticHome * (-fallbackTacticHome > 0 ? awayHtSwingMult : 1.0);
   const awayDefTac = unifiedMatchup
-    ? -unifiedMatchup.defDelta * 0.78 * (-unifiedMatchup.defDelta > 0 ? awayMult : 1.0)
-    : -fallbackTacticHome * (-fallbackTacticHome > 0 ? awayMult : 1.0);
+    ? -unifiedMatchup.defDelta * 0.78 * (-unifiedMatchup.defDelta > 0 ? awayHtSwingMult : 1.0)
+    : -fallbackTacticHome * (-fallbackTacticHome > 0 ? awayHtSwingMult : 1.0);
 
   // Second-half score-state urgency (trailing team pushes harder; leading team defends deeper)
   const homeSecondHalfAttUrgency = isSecondHalf && scoreDiffHome < 0 ? 0.35 : 0;
@@ -762,40 +791,40 @@ function resolveMatchStrengths(params: {
       homeAttTac +
       homeSecondHalfAttUrgency +
       (homeIndiv ? homeIndiv.attDelta * 0.35 : 0) +
-      (isHomeUser && userTraitMod ? userTraitMod.attDelta : 0) +
-      (!isHomeUser && homeAiTraitMod ? homeAiTraitMod.attDelta * homeAiScale : 0) +
-      (isHomeUser && userStaminaMod ? userStaminaMod.attDelta : 0),
+      (homeHumanTraitMod ? homeHumanTraitMod.attDelta : 0) +
+      (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.attDelta * homeAiScale : 0) +
+      (homeStaminaMod ? homeStaminaMod.attDelta : 0),
     mid:
       homeBase.mid +
       homeMidTac +
       (homeIndiv ? homeIndiv.midDelta * 0.35 : 0) +
-      (isHomeUser && userTraitMod ? userTraitMod.midDelta : 0) +
-      (!isHomeUser && homeAiTraitMod ? homeAiTraitMod.midDelta * homeAiScale : 0) +
-      (isHomeUser && userStaminaMod ? userStaminaMod.midDelta : 0),
+      (homeHumanTraitMod ? homeHumanTraitMod.midDelta : 0) +
+      (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.midDelta * homeAiScale : 0) +
+      (homeStaminaMod ? homeStaminaMod.midDelta : 0),
     def:
       homeBase.def +
       homeDefTac +
       homeSecondHalfDefUrgency +
       (homeIndiv ? homeIndiv.defDelta * 0.35 : 0) +
-      (isHomeUser && userTraitMod ? userTraitMod.defDelta : 0) +
-      (!isHomeUser && homeAiTraitMod ? homeAiTraitMod.defDelta * homeAiScale : 0) +
-      (isHomeUser && userStaminaMod ? userStaminaMod.defDelta : 0),
+      (homeHumanTraitMod ? homeHumanTraitMod.defDelta : 0) +
+      (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.defDelta * homeAiScale : 0) +
+      (homeStaminaMod ? homeStaminaMod.defDelta : 0),
     tacticBonus: Math.round((unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
     xgBonus:
-      (isHomeUser && userTraitMod ? userTraitMod.xgBonus : 0) +
-      (!isHomeUser && homeAiTraitMod ? homeAiTraitMod.xgBonus * homeAiScale : 0) +
-      (isHomeUser && userStaminaMod ? userStaminaMod.freshSubXgBonus : 0) +
-      (isAwayUser && userStaminaMod ? userStaminaMod.oppXgFatigueLeak : 0) +
+      (homeHumanTraitMod ? homeHumanTraitMod.xgBonus : 0) +
+      (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.xgBonus * homeAiScale : 0) +
+      (homeStaminaMod ? homeStaminaMod.freshSubXgBonus : 0) +
+      (awayStaminaMod ? awayStaminaMod.oppXgFatigueLeak : 0) +
       (unifiedMatchup ? unifiedMatchup.xgBonus : 0) +
       homeSubMod.xgDelta,
     oppXgPenalty:
-      (isHomeUser && userTraitMod ? userTraitMod.oppXgPenalty : 0) +
-      (!isHomeUser && homeAiTraitMod ? homeAiTraitMod.oppXgPenalty * homeAiScale : 0) +
+      (homeHumanTraitMod ? homeHumanTraitMod.oppXgPenalty : 0) +
+      (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.oppXgPenalty * homeAiScale : 0) +
       (unifiedMatchup ? unifiedMatchup.oppXgPenalty : 0) +
       (homeIndiv ? homeIndiv.gkSaveMod * 0.28 : 0),
     possessionBonus:
-      (isHomeUser && userTraitMod ? userTraitMod.possessionBonus : 0) +
-      (!isHomeUser && homeAiTraitMod ? homeAiTraitMod.possessionBonus * homeAiScale : 0) +
+      (homeHumanTraitMod ? homeHumanTraitMod.possessionBonus : 0) +
+      (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.possessionBonus * homeAiScale : 0) +
       homeSubMod.possessionDelta,
   };
 
@@ -805,40 +834,40 @@ function resolveMatchStrengths(params: {
       awayAttTac +
       awaySecondHalfAttUrgency +
       (awayIndiv ? awayIndiv.attDelta * 0.35 : 0) +
-      (isAwayUser && userTraitMod ? userTraitMod.attDelta : 0) +
-      (!isAwayUser && awayAiTraitMod ? awayAiTraitMod.attDelta * awayAiScale : 0) +
-      (isAwayUser && userStaminaMod ? userStaminaMod.attDelta : 0),
+      (awayHumanTraitMod ? awayHumanTraitMod.attDelta : 0) +
+      (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.attDelta * awayAiScale : 0) +
+      (awayStaminaMod ? awayStaminaMod.attDelta : 0),
     mid:
       awayBase.mid +
       awayMidTac +
       (awayIndiv ? awayIndiv.midDelta * 0.35 : 0) +
-      (isAwayUser && userTraitMod ? userTraitMod.midDelta : 0) +
-      (!isAwayUser && awayAiTraitMod ? awayAiTraitMod.midDelta * awayAiScale : 0) +
-      (isAwayUser && userStaminaMod ? userStaminaMod.midDelta : 0),
+      (awayHumanTraitMod ? awayHumanTraitMod.midDelta : 0) +
+      (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.midDelta * awayAiScale : 0) +
+      (awayStaminaMod ? awayStaminaMod.midDelta : 0),
     def:
       awayBase.def +
       awayDefTac +
       awaySecondHalfDefUrgency +
       (awayIndiv ? awayIndiv.defDelta * 0.35 : 0) +
-      (isAwayUser && userTraitMod ? userTraitMod.defDelta : 0) +
-      (!isAwayUser && awayAiTraitMod ? awayAiTraitMod.defDelta * awayAiScale : 0) +
-      (isAwayUser && userStaminaMod ? userStaminaMod.defDelta : 0),
+      (awayHumanTraitMod ? awayHumanTraitMod.defDelta : 0) +
+      (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.defDelta * awayAiScale : 0) +
+      (awayStaminaMod ? awayStaminaMod.defDelta : 0),
     tacticBonus: Math.round(-(unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
     xgBonus:
-      (isAwayUser && userTraitMod ? userTraitMod.xgBonus : 0) +
-      (!isAwayUser && awayAiTraitMod ? awayAiTraitMod.xgBonus * awayAiScale : 0) +
-      (isAwayUser && userStaminaMod ? userStaminaMod.freshSubXgBonus : 0) +
-      (isHomeUser && userStaminaMod ? userStaminaMod.oppXgFatigueLeak : 0) +
+      (awayHumanTraitMod ? awayHumanTraitMod.xgBonus : 0) +
+      (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.xgBonus * awayAiScale : 0) +
+      (awayStaminaMod ? awayStaminaMod.freshSubXgBonus : 0) +
+      (homeStaminaMod ? homeStaminaMod.oppXgFatigueLeak : 0) +
       (unifiedMatchup ? unifiedMatchup.awayXgBonus : 0) +
       awaySubMod.xgDelta,
     oppXgPenalty:
-      (isAwayUser && userTraitMod ? userTraitMod.oppXgPenalty : 0) +
-      (!isAwayUser && awayAiTraitMod ? awayAiTraitMod.oppXgPenalty * awayAiScale : 0) +
+      (awayHumanTraitMod ? awayHumanTraitMod.oppXgPenalty : 0) +
+      (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.oppXgPenalty * awayAiScale : 0) +
       (unifiedMatchup ? unifiedMatchup.awayOppXgPenalty : 0) +
       (awayIndiv ? awayIndiv.gkSaveMod * 0.28 : 0),
     possessionBonus:
-      (isAwayUser && userTraitMod ? userTraitMod.possessionBonus : 0) +
-      (!isAwayUser && awayAiTraitMod ? awayAiTraitMod.possessionBonus * awayAiScale : 0) +
+      (awayHumanTraitMod ? awayHumanTraitMod.possessionBonus : 0) +
+      (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.possessionBonus * awayAiScale : 0) +
       awaySubMod.possessionDelta,
   };
 
@@ -1865,6 +1894,7 @@ export function simulateFirstHalf(params: {
   homeRoster: Player[];
   awayRoster: Player[];
   userContext: UserMatchContext;
+  opponentUserContext?: UserMatchContext;
   rng?: () => number;
 }): LiveHalftimeState {
   const {
@@ -1874,6 +1904,7 @@ export function simulateFirstHalf(params: {
     homeRoster,
     awayRoster,
     userContext,
+    opponentUserContext,
     rng = Math.random,
   } = params;
 
@@ -1888,6 +1919,7 @@ export function simulateFirstHalf(params: {
     isHomeUser,
     isAwayUser,
     userContext,
+    opponentUserContext,
     isSecondHalf: false,
     evalMinute: 28,
   });
@@ -1921,6 +1953,13 @@ export function simulateFirstHalf(params: {
     Math.max(awayGoals, Math.round(awayShots * (0.36 + rng() * 0.16))),
   );
 
+  const homeTraitForGoals = isHomeUser
+    ? userContext.managerTraitId
+    : opponentUserContext?.managerTraitId ?? userContext.managerTraitId;
+  const awayTraitForGoals = isAwayUser
+    ? userContext.managerTraitId
+    : opponentUserContext?.managerTraitId ?? userContext.managerTraitId;
+
   const events: MatchEvent[] = [
     {
       minute: 0,
@@ -1939,7 +1978,7 @@ export function simulateFirstHalf(params: {
       roster: homeRoster,
       defendingRoster: awayRoster,
       tactic: resolved.homeTactic,
-      managerTraitId: userContext.managerTraitId,
+      managerTraitId: homeTraitForGoals,
       isUser: isHomeUser,
       rng,
     }),
@@ -1950,7 +1989,7 @@ export function simulateFirstHalf(params: {
       roster: awayRoster,
       defendingRoster: homeRoster,
       tactic: resolved.awayTactic,
-      managerTraitId: userContext.managerTraitId,
+      managerTraitId: awayTraitForGoals,
       isUser: isAwayUser,
       rng,
     }),
@@ -2061,6 +2100,8 @@ export function simulateSecondHalf(params: {
   homeRoster: Player[];
   awayRoster: Player[];
   userContext: UserMatchContext;
+  opponentUserContext?: UserMatchContext;
+  opponentHalftimeSubs?: { outPlayerName: string; inPlayerName: string }[];
   rng?: () => number;
 }): MatchResult {
   const {
@@ -2070,6 +2111,8 @@ export function simulateSecondHalf(params: {
     homeRoster,
     awayRoster,
     userContext,
+    opponentUserContext,
+    opponentHalftimeSubs = [],
     rng = Math.random,
   } = params;
 
@@ -2081,11 +2124,11 @@ export function simulateSecondHalf(params: {
   const oppManager = getClubManager(oppClub);
 
   // Active AI Manager Halftime Counterplay (League + Cup + UCL + Dream Match)
-  // AI reads 1st-half state & user's 1st-half kickoff setup (true simultaneous mind-game!)
+  // In 1v1 PvP (opponentUserContext provided), bypass AI counterplay completely and honor the human opponent's choices!
   const aiStarters1st = oppFullRoster.slice(0, 11);
   const aiBench1st = oppFullRoster.slice(11);
   const aiHalftimeAdjustment: AiHalftimeAdjustment | null =
-    aiStarters1st.length >= 11
+    !opponentUserContext && aiStarters1st.length >= 11
       ? decideAiHalftimeAdjustment({
           aiManager: oppManager,
           aiStarters: aiStarters1st,
@@ -2109,9 +2152,11 @@ export function simulateSecondHalf(params: {
       : null;
 
   const effectiveOppRoster2nd =
-    aiHalftimeAdjustment?.updatedStarters && aiHalftimeAdjustment.updatedStarters.length >= 11
-      ? aiHalftimeAdjustment.updatedStarters
-      : oppFullRoster;
+    opponentUserContext && opponentUserContext.starters.length > 0
+      ? opponentUserContext.starters
+      : aiHalftimeAdjustment?.updatedStarters && aiHalftimeAdjustment.updatedStarters.length >= 11
+        ? aiHalftimeAdjustment.updatedStarters
+        : oppFullRoster;
 
   const existingLiveSubs = [
     ...(halftime.liveSubs ?? []),
@@ -2128,6 +2173,13 @@ export function simulateSecondHalf(params: {
   for (const rec of existingLiveSubs) {
     enteredAtMinute[rec.inPlayerId] = rec.minute;
     freshSubEntryMap.set(rec.inPlayerId, rec.minute);
+  }
+
+  const opponentEnteredAtMinute: Record<string, number> = {};
+  const opponentFreshSubEntryMap = new Map<string, number>();
+  for (const id of opponentUserContext?.halftimeSubIds ?? []) {
+    opponentEnteredAtMinute[id] = 45;
+    opponentFreshSubEntryMap.set(id, 45);
   }
 
   // Optional auto-subs (used on instant finish from 1st half / halftime)
@@ -2164,6 +2216,15 @@ export function simulateSecondHalf(params: {
     userContext.formation !== halftime.userFormationAtKickoff ||
     totalSubsMade > 0;
 
+  const oppHalftimeAdjusted = opponentUserContext
+    ? Boolean(
+        opponentUserContext.halftimeAdjusted ||
+          opponentUserContext.tactic !== (isHomeUser ? halftime.awayTactic : halftime.homeTactic) ||
+          opponentUserContext.formation !== (isHomeUser ? halftime.awayFormation : halftime.homeFormation) ||
+          (opponentUserContext.halftimeSubsMade ?? 0) > 0,
+      )
+    : false;
+
   const homeRoster2nd = isHomeUser ? effectiveUserEndingRoster : effectiveOppRoster2nd;
   const awayRoster2nd = isAwayUser ? effectiveUserEndingRoster : effectiveOppRoster2nd;
 
@@ -2180,10 +2241,17 @@ export function simulateSecondHalf(params: {
       halftimeAdjusted,
       halftimeSubsMade: totalSubsMade,
     },
+    opponentUserContext: opponentUserContext
+      ? {
+          ...opponentUserContext,
+          halftimeAdjusted: oppHalftimeAdjusted,
+        }
+      : undefined,
     isSecondHalf: true,
     scoreDiffHome: halftime.homeGoals - halftime.awayGoals,
     evalMinute: 72,
     enteredAtMinute,
+    opponentEnteredAtMinute,
     aiOverrideFormation: aiHalftimeAdjustment?.newFormation,
     aiOverrideTactic: aiHalftimeAdjustment?.newTactic,
     aiHalftimeAdjusted: Boolean(aiHalftimeAdjustment),
@@ -2235,7 +2303,36 @@ export function simulateSecondHalf(params: {
     });
   }
 
-  if (aiHalftimeAdjustment) {
+  if (opponentUserContext && oppHalftimeAdjusted) {
+    const oppSubsCount = Math.max(
+      opponentUserContext.halftimeSubsMade ?? 0,
+      opponentHalftimeSubs.length,
+    );
+    secondHalfEvents.push({
+      minute: 46,
+      half: 2,
+      type: 'sub',
+      teamId: oppClub.id,
+      teamShortName: oppClub.shortName,
+      teamColor: oppClub.primaryColor,
+      isUserTeam: false,
+      description: `하프타임 전술 지시 (${opponentUserContext.formation} · ${TACTICS[opponentUserContext.tactic].name}${oppSubsCount > 0 ? ` · 교체 ${oppSubsCount}명` : ''})`,
+    });
+    for (const s of opponentHalftimeSubs) {
+      secondHalfEvents.push({
+        minute: 46,
+        half: 2,
+        type: 'sub',
+        teamId: oppClub.id,
+        teamShortName: oppClub.shortName,
+        teamColor: oppClub.primaryColor,
+        isUserTeam: false,
+        subOutName: s.outPlayerName,
+        subInName: s.inPlayerName,
+        description: `🔄 ${oppClub.shortName} 교체 (46'): OUT ${s.outPlayerName} → IN ${s.inPlayerName}`,
+      });
+    }
+  } else if (aiHalftimeAdjustment) {
     secondHalfEvents.push({
       minute: 46,
       half: 2,
@@ -2297,9 +2394,15 @@ export function simulateSecondHalf(params: {
       roster: homeRoster2nd,
       defendingRoster: awayRoster2nd,
       tactic: resolved.homeTactic,
-      managerTraitId: userContext.managerTraitId,
+      managerTraitId: isHomeUser
+        ? userContext.managerTraitId
+        : opponentUserContext?.managerTraitId ?? userContext.managerTraitId,
       isUser: isHomeUser,
-      freshSubEntryMinute: isHomeUser ? freshSubEntryMap : undefined,
+      freshSubEntryMinute: isHomeUser
+        ? freshSubEntryMap
+        : opponentUserContext
+          ? opponentFreshSubEntryMap
+          : undefined,
       rosterAtMinute: isHomeUser ? userRosterAtMin : undefined,
       rng,
     }),
@@ -2310,9 +2413,15 @@ export function simulateSecondHalf(params: {
       roster: awayRoster2nd,
       defendingRoster: homeRoster2nd,
       tactic: resolved.awayTactic,
-      managerTraitId: userContext.managerTraitId,
+      managerTraitId: isAwayUser
+        ? userContext.managerTraitId
+        : opponentUserContext?.managerTraitId ?? userContext.managerTraitId,
       isUser: isAwayUser,
-      freshSubEntryMinute: isAwayUser ? freshSubEntryMap : undefined,
+      freshSubEntryMinute: isAwayUser
+        ? freshSubEntryMap
+        : opponentUserContext
+          ? opponentFreshSubEntryMap
+          : undefined,
       rosterAtMinute: isAwayUser ? userRosterAtMin : undefined,
       rng,
     }),
@@ -3466,7 +3575,9 @@ export function simulateExtraTimeFirstHalf(params: {
   homeRoster: Player[];
   awayRoster: Player[];
   userContext?: UserMatchContext;
+  opponentUserContext?: UserMatchContext;
   extraTimeSubIds?: string[];
+  opponentExtraTimeSubIds?: string[];
   rng?: () => number;
 }): MatchResult {
   const {
@@ -3476,7 +3587,9 @@ export function simulateExtraTimeFirstHalf(params: {
     homeRoster,
     awayRoster,
     userContext,
+    opponentUserContext,
     extraTimeSubIds = [],
+    opponentExtraTimeSubIds = [],
     rng = Math.random,
   } = params;
 
@@ -3505,6 +3618,14 @@ export function simulateExtraTimeFirstHalf(params: {
     freshSubEntryMap.set(id, 90);
   }
 
+  const opponentEnteredAtMinute: Record<string, number> = {};
+  for (const id of opponentUserContext?.halftimeSubIds ?? []) {
+    opponentEnteredAtMinute[id] = 45;
+  }
+  for (const id of opponentExtraTimeSubIds) {
+    opponentEnteredAtMinute[id] = 90;
+  }
+
   const resolved = resolveMatchStrengths({
     homeClub,
     awayClub,
@@ -3513,9 +3634,11 @@ export function simulateExtraTimeFirstHalf(params: {
     isHomeUser,
     isAwayUser,
     userContext,
+    opponentUserContext,
     isSecondHalf: true,
     evalMinute: 98,
     enteredAtMinute,
+    opponentEnteredAtMinute,
   });
 
   const { lambdaHome, lambdaAway } = computeExpectedGoals(
@@ -3646,9 +3769,11 @@ export function simulateExtraTimeSecondHalfAndPenalties(params: {
   homeRoster: Player[];
   awayRoster: Player[];
   userContext?: UserMatchContext;
+  opponentUserContext?: UserMatchContext;
   aggHomeBeforeMatch?: number;
   aggAwayBeforeMatch?: number;
   extraTimeSubIds?: string[];
+  opponentExtraTimeSubIds?: string[];
   rng?: () => number;
 }): MatchResult {
   const {
@@ -3658,9 +3783,11 @@ export function simulateExtraTimeSecondHalfAndPenalties(params: {
     homeRoster,
     awayRoster,
     userContext,
+    opponentUserContext,
     aggHomeBeforeMatch,
     aggAwayBeforeMatch,
     extraTimeSubIds = [],
+    opponentExtraTimeSubIds = [],
     rng = Math.random,
   } = params;
 
@@ -3696,6 +3823,16 @@ export function simulateExtraTimeSecondHalfAndPenalties(params: {
     }
   }
 
+  const opponentEnteredAtMinute: Record<string, number> = {};
+  for (const id of opponentUserContext?.halftimeSubIds ?? []) {
+    opponentEnteredAtMinute[id] = 45;
+  }
+  for (const id of opponentExtraTimeSubIds) {
+    if (opponentEnteredAtMinute[id] === undefined) {
+      opponentEnteredAtMinute[id] = 105;
+    }
+  }
+
   const scoreDiffHome =
     aggBeforeH + home90 + homeEt1Goals - (aggBeforeA + away90 + awayEt1Goals);
 
@@ -3707,10 +3844,12 @@ export function simulateExtraTimeSecondHalfAndPenalties(params: {
     isHomeUser,
     isAwayUser,
     userContext,
+    opponentUserContext,
     isSecondHalf: true,
     scoreDiffHome,
     evalMinute: 114,
     enteredAtMinute,
+    opponentEnteredAtMinute,
   });
 
   const { lambdaHome, lambdaAway } = computeExpectedGoals(

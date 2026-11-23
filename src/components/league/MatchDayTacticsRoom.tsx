@@ -42,6 +42,11 @@ interface MatchDayTacticsRoomProps {
   opponent: Club;
   opponentRoster: Player[];
   opponentSubtitle?: string;
+  opponentManagerOverride?: {
+    name: string;
+    ovr: number;
+    traitId: ManagerTraitId;
+  };
   isHome: boolean;
   headerBadge: string;
   headerAccent?: 'league' | 'cup' | 'ucl';
@@ -114,6 +119,7 @@ export function MatchDayTacticsRoom({
   opponent,
   opponentRoster,
   opponentSubtitle,
+  opponentManagerOverride,
   isHome,
   headerBadge,
   headerAccent = 'league',
@@ -145,7 +151,10 @@ export function MatchDayTacticsRoom({
     [starters],
   );
 
-  const oppManager = useMemo(() => getClubManager(opponent), [opponent]);
+  const oppManager = useMemo(
+    () => opponentManagerOverride ?? getClubManager(opponent),
+    [opponentManagerOverride, opponent],
+  );
 
   const ourRatings = useMemo(
     () =>

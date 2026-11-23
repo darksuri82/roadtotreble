@@ -9,6 +9,7 @@ import { SeasonDashboard } from './components/league/SeasonDashboard';
 import { SeasonSummary } from './components/league/SeasonSummary';
 import { AchievementToast } from './components/legacy/AchievementToast';
 import { LegacyHubModal } from './components/legacy/LegacyHubModal';
+import { MultiplayerArena } from './components/multiplayer/MultiplayerArena';
 import { FormationSelect } from './components/setup/FormationSelect';
 import { ManagerRouletteScreen } from './components/setup/ManagerRouletteScreen';
 import { TitleScreen } from './components/setup/TitleScreen';
@@ -21,6 +22,7 @@ function GameRouter() {
     chemistry,
     ratings,
     dreamMatchOpen,
+    multiplayerOpen,
     swapSquadPositions,
     resolveManagerEvent,
     dismissManagerEventResolution,
@@ -29,7 +31,9 @@ function GameRouter() {
   } = useGame();
 
   const isPlayableSeason =
-    !dreamMatchOpen && (state.phase === 'season' || state.phase === 'ucl');
+    !dreamMatchOpen &&
+    !multiplayerOpen &&
+    (state.phase === 'season' || state.phase === 'ucl');
   const pendingInjuryAlerts =
     isPlayableSeason ? (state.season?.pendingInjuryAlerts ?? []) : [];
   const injuryReturnToasts =
@@ -47,7 +51,9 @@ function GameRouter() {
     <div className="min-h-dvh w-full max-w-full overflow-x-clip flex flex-col">
       <HeaderNav />
       <main className="flex-1 w-full max-w-full pb-10">
-        {dreamMatchOpen ? (
+        {multiplayerOpen ? (
+          <MultiplayerArena />
+        ) : dreamMatchOpen ? (
           <DreamMatchArena />
         ) : (
           <>

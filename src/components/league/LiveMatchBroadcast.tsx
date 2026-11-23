@@ -45,6 +45,7 @@ import type {
   ChemistryResult,
   FormationId,
   ManagerRouletteState,
+  ManagerTraitId,
   UserClubProfile,
 } from '../../types/game';
 import type {
@@ -82,7 +83,17 @@ export interface LiveMatchBroadcastOverride {
       allPlayerStats?: Record<string, PlayerSeasonStats>;
     };
   };
+  myTeamId?: string;
   opponentRoster?: Player[];
+  opponentManagerOverride?: {
+    name: string;
+    ovr: number;
+    traitId: ManagerTraitId;
+  };
+  disableInstantFinish?: boolean;
+  disableLiveSub?: boolean;
+  waitingForOpponentLabel?: string | null;
+  commitButtonLabel?: string;
   chemistry: ChemistryResult;
   changeFormation: (formation: FormationId) => void;
   optimizeHalftimeStarters: (tactic?: TacticId) => void;
@@ -660,8 +671,9 @@ export function LiveMatchBroadcast({
               : Math.sin(minute * 0.45) * 1.5),
         );
 
+  const myTeamId = override?.myTeamId ?? USER_CLUB_ID;
   const oppClub = halftime.isUserHome ? away : home;
-  const oppManager = getClubManager(oppClub);
+  const oppManager = override?.opponentManagerOverride ?? getClubManager(oppClub);
   const oppTactic = halftime.isUserHome ? halftime.awayTactic : halftime.homeTactic;
   const oppFormation = halftime.isUserHome
     ? halftime.awayFormation
@@ -1244,7 +1256,7 @@ export function LiveMatchBroadcast({
                 </div>
               )}
 
-            {phase === 'second_half' && !isSecondHalfDone && (
+            {phase === 'second_half' && !isSecondHalfDone && !override?.disableLiveSub && (
               <button
                 type="button"
                 onClick={handleOpenLiveSub}
@@ -1295,7 +1307,7 @@ export function LiveMatchBroadcast({
               </button>
             )}
 
-            {!isSecondHalfDone && phase !== 'penalties' && (
+            {!isSecondHalfDone && phase !== 'penalties' && !override?.disableInstantFinish && (
               <button
                 id="instant-match-result-btn"
                 type="button"
@@ -1314,7 +1326,7 @@ export function LiveMatchBroadcast({
                 onClick={() => commitLiveMatch()}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
               >
-                경기 종료 · 결과 확정 →
+                {override?.commitButtonLabel ?? '경기 종료 · 결과 확정 →'}
               </button>
             )}
           </div>
@@ -1638,7 +1650,7 @@ export function LiveMatchBroadcast({
                 onClick={() => commitLiveMatch()}
                 className="rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
               >
-                라운드 결과 확정 →
+                {override?.commitButtonLabel ?? '라운드 결과 확정 →'}
               </button>
             </div>
           )}
@@ -1687,7 +1699,7 @@ export function LiveMatchBroadcast({
                         key={`${ev.minute}-${ev.type}-${idx}`}
                         className={`flex items-start gap-1.5 sm:gap-2 rounded-lg px-2 py-1 sm:px-2.5 sm:py-2 ${
                           ev.type === 'goal'
-                            ? ev.teamId === USER_CLUB_ID
+                            ? ev.teamId === myTeamId
                               ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-100 font-semibold'
                               : 'bg-rose-500/12 border border-rose-500/25 text-rose-100 font-semibold'
                             : ev.type === 'var_offside'
@@ -1712,7 +1724,7 @@ export function LiveMatchBroadcast({
                               <ClubTag
                                 shortName={evClub.shortName}
                                 primaryColor={evClub.primaryColor}
-                                isUserTeam={evClub.id === USER_CLUB_ID}
+                                isUserTeam={evClub.id === myTeamId}
                               />
                             )}
                           <span className="leading-snug text-[11px]">
@@ -2099,35 +2111,42 @@ export function LiveMatchBroadcast({
                   <strong className="text-emerald-300">선발 ↔ 벤치</strong> 교체는 실수 방지를 위해 확인창을 거칩니다. 경기 종료 후 원래 선발로 자동 복원됩니다.
                 </div>
 
-                <button
-                  id={
-                    phase === 'halftime'
-                      ? 'start-second-half-btn'
+                {override?.waitingForOpponentLabel ? (
+                  <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/40 bg-sky-950/35 py-3 text-sm font-extrabold text-sky-200">
+                    <span className="h-2.5 w-2.5 rounded-full bg-sky-400 animate-pulse" />
+                    {override.waitingForOpponentLabel}
+                  </div>
+                ) : (
+                  <button
+                    id={
+                      phase === 'halftime'
+                        ? 'start-second-half-btn'
+                        : phase === 'extra_time_break'
+                          ? 'start-extra-time-btn'
+                          : 'start-et-second-half-btn'
+                    }
+                    type="button"
+                    onClick={
+                      phase === 'halftime'
+                        ? handleStartSecondHalf
+                        : phase === 'extra_time_break'
+                          ? handleStartExtraTime
+                          : handleStartEtSecondHalf
+                    }
+                    className={`inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-extrabold text-slate-950 cursor-pointer ${
+                      isEtBreakPhase
+                        ? 'bg-amber-400 hover:bg-amber-300'
+                        : 'bg-emerald-500 hover:bg-emerald-400'
+                    }`}
+                  >
+                    <Play className="w-4 h-4 fill-current" />
+                    {phase === 'halftime'
+                      ? "후반전 46' → 90' 중계 시작"
                       : phase === 'extra_time_break'
-                        ? 'start-extra-time-btn'
-                        : 'start-et-second-half-btn'
-                  }
-                  type="button"
-                  onClick={
-                    phase === 'halftime'
-                      ? handleStartSecondHalf
-                      : phase === 'extra_time_break'
-                        ? handleStartExtraTime
-                        : handleStartEtSecondHalf
-                  }
-                  className={`inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-extrabold text-slate-950 cursor-pointer ${
-                    isEtBreakPhase
-                      ? 'bg-amber-400 hover:bg-amber-300'
-                      : 'bg-emerald-500 hover:bg-emerald-400'
-                  }`}
-                >
-                  <Play className="w-4 h-4 fill-current" />
-                  {phase === 'halftime'
-                    ? "후반전 46' → 90' 중계 시작"
-                    : phase === 'extra_time_break'
-                      ? "연장 전반 91' → 105' 중계 시작"
-                      : "연장 후반 106' → 120' 중계 시작"}
-                </button>
+                        ? "연장 전반 91' → 105' 중계 시작"
+                        : "연장 후반 106' → 120' 중계 시작"}
+                  </button>
+                )}
               </div>
 
               <div className="lg:col-span-6 space-y-2">
@@ -2193,7 +2212,7 @@ export function LiveMatchBroadcast({
                         <ClubTag
                           shortName={evClub.shortName}
                           primaryColor={evClub.primaryColor}
-                          isUserTeam={evClub.id === USER_CLUB_ID}
+                          isUserTeam={evClub.id === myTeamId}
                         />
                       )}
                       <span>{ev.description}</span>

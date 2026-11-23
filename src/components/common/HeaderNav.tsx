@@ -34,6 +34,7 @@ export function HeaderNav() {
     chemistry,
     ratings,
     legacyState,
+    multiplayerOpen,
     setLegacyModalOpen,
     resetGame,
   } = useGame();
@@ -44,7 +45,7 @@ export function HeaderNav() {
 
   const currentStepIdx = STEPS.findIndex((s) => s.phase === state.phase);
   const achProgress = getAchievementProgress(legacyState);
-  const isTitle = state.phase === 'title';
+  const isTitle = state.phase === 'title' || multiplayerOpen;
 
   return (
     <>

@@ -10,6 +10,7 @@ import { PlayerNameButton } from '../common/PlayerNameButton';
 interface MatchReportPanelProps {
   match: MatchResult;
   clubsById: Record<string, Club>;
+  myTeamId?: string;
   onSelectPlayer?: (playerId: string) => void;
   onOpenDetail?: (match: MatchResult) => void;
 }
@@ -17,6 +18,7 @@ interface MatchReportPanelProps {
 export function MatchReportPanel({
   match,
   clubsById,
+  myTeamId = USER_CLUB_ID,
   onSelectPlayer,
   onOpenDetail,
 }: MatchReportPanelProps) {
@@ -25,11 +27,18 @@ export function MatchReportPanel({
   const away = clubsById[match.awayTeamId];
   if (!home || !away) return null;
 
-  const isUserHome = home.id === USER_CLUB_ID;
+  const isUserHome = home.id === myTeamId;
   const userGoals = isUserHome ? match.homeGoals : match.awayGoals;
   const oppGoals = isUserHome ? match.awayGoals : match.homeGoals;
-  const outcome =
-    userGoals > oppGoals ? 'WIN' : userGoals < oppGoals ? 'LOSS' : 'DRAW';
+  const outcome = match.extraTime?.penalties
+    ? match.extraTime.penalties.winnerTeamId === myTeamId
+      ? 'WIN'
+      : 'LOSS'
+    : userGoals > oppGoals
+      ? 'WIN'
+      : userGoals < oppGoals
+        ? 'LOSS'
+        : 'DRAW';
 
   const homeGoalEvents = match.events.filter(
     (e) => e.type === 'goal' && e.teamId === home.id,
@@ -38,14 +47,14 @@ export function MatchReportPanel({
     (e) => e.type === 'goal' && e.teamId === away.id,
   );
 
-  const userClub = clubsById[USER_CLUB_ID];
+  const userClub = clubsById[myTeamId];
   const oppClub = isUserHome ? away : home;
 
   const userRatings = match.playerRatings
-    .filter((r) => r.teamId === USER_CLUB_ID)
+    .filter((r) => r.teamId === myTeamId)
     .sort((a, b) => b.rating - a.rating);
   const oppRatings = match.playerRatings
-    .filter((r) => r.teamId !== USER_CLUB_ID)
+    .filter((r) => r.teamId !== myTeamId)
     .sort((a, b) => b.rating - a.rating)
     .slice(0, 6);
 
