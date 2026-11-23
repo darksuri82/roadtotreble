@@ -203,6 +203,16 @@ function diffSubstitutions(
   return subs;
 }
 
+function isSameRoomSnapshot(a: MpRoomSnapshot | null, b: MpRoomSnapshot): boolean {
+  if (!a) return false;
+  if (a.room.id !== b.room.id || a.room.updated_at !== b.room.updated_at) return false;
+  if (a.players.length !== b.players.length) return false;
+  return a.players.every((p, i) => {
+    const q = b.players[i];
+    return p.id === q.id && p.updated_at === q.updated_at;
+  });
+}
+
 export function MultiplayerArena() {
   const {
     state,
@@ -309,7 +319,8 @@ export function MultiplayerArena() {
       playerId,
       nickname: nickname.trim() || DEFAULT_MANAGER_NAME,
       onSnapshot: (nextSnap) => {
-        setSnapshot(nextSnap);
+        // The 2s safety poll returns identical rows most of the time: keep the same object so nothing re-renders
+        setSnapshot((prev) => (isSameRoomSnapshot(prev, nextSnap) ? prev : nextSnap));
       },
       onPresenceChange: (ids) => {
         setOnlinePlayerIds(ids);

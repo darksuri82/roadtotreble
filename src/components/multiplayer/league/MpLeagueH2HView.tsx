@@ -1,4 +1,4 @@
-import { Check, Eye, Loader2, Play, Swords } from 'lucide-react';
+import { Check, Eye, FastForward, Loader2, Play, Swords } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { calculateChemistry } from '../../../engine/chemistryEngine';
 import {
@@ -421,7 +421,16 @@ function MpLeagueH2HInner({
 
   // ── Live synced broadcast (participants play, everyone else spectates) ─────
   const doneKey = mpH2HDoneKey(match.matchId);
-  const finished = closed || ackKeys.includes(doneKey);
+  const skipKey = `h2h-skip:${match.matchId}`;
+  const skipOf = (human: MpLeagueHuman | null) =>
+    Boolean(rowOf(human)?.activity?.ackKeys?.includes(skipKey));
+  const mySkip = isParticipant && ackKeys.includes(skipKey);
+  const oppSkip = isParticipant && skipOf(oppHuman);
+  // Both managers agreed: everyone (spectators too) jumps straight to the result
+  const bothSkip = isParticipant
+    ? mySkip && oppSkip
+    : skipOf(homeHuman) && skipOf(awayHuman);
+  const finished = closed || bothSkip || ackKeys.includes(doneKey);
 
   if (finished || !effectivePhase || effectivePhase === 'finished') {
     const res = match.finalResult;
@@ -569,6 +578,24 @@ function MpLeagueH2HInner({
   return (
     <div className="relative">
       {spectatorBadge}
+      {isParticipant && (
+        <button
+          id="mpl-h2h-skip-btn"
+          type="button"
+          disabled={mySkip}
+          onClick={() => onAck(skipKey)}
+          className={`fixed bottom-3 right-3 z-[70] inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[11px] font-extrabold shadow-lg ${
+            mySkip
+              ? 'border-slate-700 bg-slate-950/95 text-slate-400'
+              : oppSkip
+                ? 'border-amber-400/60 bg-slate-950/95 text-amber-200 hover:bg-amber-500/15 cursor-pointer'
+                : 'border-slate-700 bg-slate-950/95 text-slate-200 hover:border-slate-500 cursor-pointer'
+          }`}
+        >
+          <FastForward className="w-3.5 h-3.5" />
+          {mySkip ? '상대 스킵 동의 대기' : oppSkip ? '상대 스킵 요청 · 동의' : '스킵 요청'}
+        </button>
+      )}
       <LiveMatchBroadcast clubsById={clubsById} override={override} />
     </div>
   );

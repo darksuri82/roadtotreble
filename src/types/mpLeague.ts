@@ -12,6 +12,7 @@ import type {
   ManagerAvatarConfig,
   ManagerTraitId,
   OtherLeagueSeasonState,
+  RouletteReelResult,
   UserClubProfile,
 } from './game';
 import type {
@@ -27,7 +28,7 @@ import type {
 } from './league';
 import type { SeasonScoreBreakdown } from './legacy';
 import type { MpMatchState } from './multiplayer';
-import type { Player } from './player';
+import type { Player, SubPosition } from './player';
 import type {
   UclKnockoutStage,
   UclKnockoutTie,
@@ -37,9 +38,9 @@ import type {
 
 export const MP_LEAGUE_MIN_PLAYERS = 2;
 export const MP_LEAGUE_MAX_PLAYERS = 4;
-export const MP_LEAGUE_AUTO_MS_OPTIONS = [2500, 3000, 3500, 4000] as const;
+export const MP_LEAGUE_AUTO_MS_OPTIONS = [4000, 5000, 6000, 7000] as const;
 export const MP_LEAGUE_TURN_SEC_OPTIONS = [15, 20, 30] as const;
-export const MP_LEAGUE_DEFAULT_AUTO_MS = 3000;
+export const MP_LEAGUE_DEFAULT_AUTO_MS = 5000;
 export const MP_LEAGUE_DEFAULT_TURN_SEC = 30;
 export const MP_LEAGUE_DRAFT_PICKS = 16;
 
@@ -61,7 +62,7 @@ export function normalizeMpLeagueSettings(
     leagueId: raw?.leagueId ?? 'epl',
     uclEnabled: raw?.uclEnabled ?? true,
     autoMs: Number.isFinite(autoMs)
-      ? Math.max(2500, Math.min(4000, autoMs))
+      ? Math.max(4000, Math.min(7000, autoMs))
       : MP_LEAGUE_DEFAULT_AUTO_MS,
     turnSec: Number.isFinite(turnSec)
       ? Math.max(15, Math.min(30, turnSec))
@@ -101,6 +102,17 @@ export interface MpLeagueActivity {
   lock?: { reason: MpLeagueLockReason; since: string } | null;
   /** Latest block key this player acknowledged (stage consent, transfer window done, H2H report closed) */
   ackKeys?: string[];
+  /** Shared draft roulette this manager spun as the first picker of a round */
+  roll?: MpDraftRoll | null;
+}
+
+export interface MpDraftRoll {
+  generation: number;
+  round: number;
+  /** Slot the round was spun for (the first picker's next open slot) */
+  subPosition: SubPosition;
+  label: string;
+  reels: RouletteReelResult[];
 }
 
 export interface MpLeagueHuman {
@@ -178,6 +190,7 @@ export type MpLeagueFlow =
   | { kind: 'event'; key: string }
   | { kind: 'transfer'; key: string }
   | { kind: 'consent'; key: string; label: string }
+  | { kind: 'summary'; key: string }
   | { kind: 'cast'; key: string }
   | { kind: 'done' };
 
@@ -187,6 +200,7 @@ export type MpLeagueStep =
   | { t: 'events' }
   | { t: 'transfer' }
   | { t: 'finish_league' }
+  | { t: 'league_summary' }
   | { t: 'ucl_lp_round' }
   | { t: 'ucl_ko_leg' }
   | { t: 'finalize' };
@@ -247,12 +261,41 @@ export interface MpCastMatch {
   penalties?: { home: number; away: number; winnerId: string } | null;
   winnerId?: string | null;
   humanClubIds: string[];
+  /** Key moments (goals, big saves, chances) shown only on the viewer's own match card */
+  feed?: MpFeedItem[];
+  stats?: MpMatchStatLine;
+  /** Already watched live (friend match): show the final state without replay */
+  instant?: boolean;
+}
+
+export interface MpFeedItem {
+  minute: number;
+  teamId: string;
+  kind: 'goal' | 'save' | 'chance' | 'var';
+  text: string;
+}
+
+export interface MpMatchStatLine {
+  homePossession: number;
+  homeShots: number;
+  awayShots: number;
+  homeXg: number;
+  awayXg: number;
+}
+
+/** League season review shown to everyone once the league finishes (before the UCL / final board). */
+export interface MpLeagueSummary {
+  awards: SeasonAwards;
+  squadStats: Record<string, PlayerSeasonStats[]>;
+  cupChampionId: string | null;
 }
 
 export interface MpCastLive {
   key: string;
   title: string;
   matches: MpCastMatch[];
+  /** League table before this round, shown while the scoreboard is still replaying */
+  prevStandings?: StandingRow[];
 }
 
 export interface MpFriendRankRow {
@@ -341,6 +384,9 @@ export interface MpLeagueLive {
   h2h: MpH2HLive | null;
   ucl: MpUclLive | null;
   cast: MpCastLive | null;
+  /** Live scoreboard replay of the friends' matches in the round that was just simulated */
+  ticker: MpCastLive | null;
+  summary: MpLeagueSummary | null;
   final: MpLeagueFinal | null;
   transferWindowIndex: number | null;
   updatedAt: string;
@@ -386,6 +432,8 @@ export interface MpLeagueHostState {
   uclLastScores: MpLiteMatch[];
   uclConsentedStage: string | null;
   cast: MpCastLive | null;
+  ticker: MpCastLive | null;
+  summary: MpLeagueSummary | null;
   awards: SeasonAwards | null;
   globalAwards: GlobalSeasonAwards | null;
   final: MpLeagueFinal | null;

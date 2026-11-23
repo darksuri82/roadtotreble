@@ -5,6 +5,33 @@
 
 ---
 
+## v8.1 — 멀티 리그 몰입도 개편 (공유 룰렛 드래프트 · 라이브 스코어보드 · 리그 시즌 정산 · 맞대결 합의 스킵 · 챔스 연출 · 최적화)
+
+- **공유 룰렛 스네이크 드래프트 (`src/engine/mpLeagueDraft.ts`, `src/components/multiplayer/league/MpLeagueDraftBoard.tsx`, `MpLeagueSnakeDraft.tsx`, `MpMiniPitch.tsx`, `useMpLeagueHost.ts`)**:
+  - 라운드마다 첫 순번 감독이 룰렛을 한 번 돌리고(자신의 다음 빈 슬롯 포지션 기준), 전원이 그 한 룰렛의 후보에서 순서대로 가져갑니다. 순서는 라운드마다 스네이크로 뒤집힙니다.
+  - 가져온 선수는 각자 포메이션의 가장 맞는 빈 슬롯에 자동 배치(`chooseSlotForPlayer`)되며 이후 자리 이동 가능. 룰렛 결과는 첫 순번 감독 행의 `activity.roll`로 공유(추가 SQL 없음).
+  - 상단에 전원의 드래프트 현황을 소형 포메이션(`MpMiniPitch`)으로 표시. 전원이 `[자동 드래프트]`에 동의하면 남은 픽이 자동 진행.
+  - 턴 타이머를 별도 컴포넌트로 분리해 0.25초마다 화면 전체가 다시 그려지던 문제 제거.
+- **라이브 스코어보드 & 리그 화면 재배치 (`MpLiveTicker.tsx`, `MpLeagueDashboard.tsx`, `mpLeagueEngine.ts`)**:
+  - 자동진행 라운드마다 상단에 친구들 경기 스코어보드가 `1'→90'`(컵 연장·승부차기 포함)으로 흐릅니다. 내 경기 카드에는 골·선방·찬스 등 굵직한 중계가 뜨고, 다른 감독 경기는 실시간 스코어만 표시. 재생이 끝나면 득점자와 점유·슈팅·xG가 남습니다.
+  - 재생 중에는 순위표·라운드 결과를 이전 상태로 유지해 결과가 미리 보이지 않습니다.
+  - 순위표를 소형 사이드 표로 이동, 본문은 라운드 결과·컵·챔스 탭. 자동진행 간격은 4~7초(기본 5초)로 조정.
+- **리그 시즌 정산 (`MpLeagueSeasonSummary.tsx`, `mpLeagueEngine.ts` `league_summary` 단계)**:
+  - 리그 종료 직후(챔스 전) 전원에게 올해의 선수·리그 베스트 11·득점/도움/평점 순위·최종 순위표·감독별 스쿼드 기록을 보여주고, 전원이 `[계속]`을 눌러야 다음으로 진행. 이후에도 상단 `[시즌 정산]`으로 다시 열람 가능.
+- **친구 맞대결 합의 스킵 (`MpLeagueH2HView.tsx`, `useMpLeagueHost.ts`)**:
+  - 중계 중 두 당사자가 모두 `[스킵 요청]`을 누르면 남은 구간(후반·연장·승부차기)을 현재 라인업으로 즉시 계산해 결과로 넘어갑니다. 관전자는 누를 수 없습니다.
+- **이적시장 역제안 포메이션 선택 (`MpLeagueTransferModal.tsx`)**: 보낼 선수를 소형 포메이션 피치에서 눌러 선택.
+- **챔피언스리그 연출 (`mpUclView.ts`, `MpLeagueDashboard.tsx`)**:
+  - 싱글 플레이의 `UclMilestoneModal`(16강·8강·4강·결승 진출, 우승·트레블 축하)과 `UclLeaguePhaseStandingsModal`(36팀 순위표)을 수정 없이 재사용(감독별로 구단 id를 바꿔 끼운 뷰 제공). 리그 페이즈 라운드에도 라이브 스코어보드 적용.
+- **최종 결과 팝업 (`MpLeaguePodiumPopup.tsx`, `MpLeagueDuelResultPopup.tsx`)**:
+  - 2명일 때 승자 축하 / 패자 놀림 커스텀 감독 팝업 추가, 3~4명 시상대는 등수·인원별로 다른 멘트 표시.
+- **최적화 (`MpLeagueRoot.tsx`, `mpLeagueService.ts`, `MultiplayerArena.tsx`)**:
+  - 공개 상태는 리비전 번호만 먼저 확인하고 실제로 바뀌었을 때만 전체를 내려받도록 변경(기존: 2.5초마다 전체 다운로드).
+  - 2초 안전 폴링 결과가 이전과 같으면 화면을 다시 그리지 않도록 스냅샷 동일성 검사 추가, 대시보드 순위표·결과 줄 메모이제이션.
+- **테스트 (`src/__tests__/v80MultiLeague.test.ts`)**: 공유 룰렛(라운드 내 모든 픽이 같은 룰렛에서 나옴)·슬롯 자동 배치·라운드별 스코어보드·리그 정산 대기 단계 검증 추가.
+
+---
+
 ## v8.0 — 멀티 리그 & 챔피언스리그 (친구 2~4명 · 공개 스네이크 드래프트 · 느린 자동진행 + 전역 일시정지 · 맞대결 2D 중계/관전 · 단계별 동의 UCL · 2종 결산 보드)
 
 - **멀티 리그 방 & 로비 (`src/components/multiplayer/MultiplayerLobby.tsx`, `src/components/multiplayer/league/MpLeagueLobbyRoom.tsx`, `src/services/multiplayerService.ts`, `src/types/multiplayer.ts`, `src/types/mpLeague.ts`)**:

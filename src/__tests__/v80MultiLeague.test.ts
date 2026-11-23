@@ -3,14 +3,20 @@ import { DEFAULT_MANAGER_AVATAR } from '../types/game';
 import type { ManagerTraitId } from '../types/game';
 import {
   buildAutoPick,
+  chooseSlotForPlayer,
   collectTakenIds,
+  draftRoundOf,
   rebuildSquadFromPicks,
+  rollCandidates,
+  roundSpinnerId,
   snakePickerId,
+  spinSharedRoll,
   totalSnakePicks,
 } from '../engine/mpLeagueDraft';
 import {
   buildHumanMatchSetup,
   buildMpLeagueLive,
+  closeMpLeagueSummary,
   closeMpLeagueTransferWindow,
   completeMpLeagueH2H,
   createMpLeagueSeason,
@@ -76,17 +82,38 @@ function runSnakeDraft(humans: MpLeagueHuman[], rng: () => number) {
   const picks: MpLeaguePickRow[] = [];
   const total = totalSnakePicks(order.length);
   const turnLog: string[] = [];
+  const pool = ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1'] as const;
+  const rollIdsByRound: string[][] = [];
+  let roll: ReturnType<typeof spinSharedRoll> = [];
   for (let pickNo = 0; pickNo < total; pickNo += 1) {
     const pickerId = snakePickerId(pickNo, order);
     if (!pickerId) throw new Error('no picker');
     turnLog.push(pickerId);
+    const round = draftRoundOf(pickNo, order.length);
+    if (pickNo % order.length === 0) {
+      // The round's first picker spins ONE roulette that everybody picks from
+      const spinnerId = roundSpinnerId(round, order);
+      if (spinnerId !== pickerId) throw new Error('spinner must pick first');
+      const sBoard = rebuildSquadFromPicks(picks, pickerId);
+      roll = spinSharedRoll({
+        formation: '4-3-3',
+        starters: sBoard.starters,
+        bench: sBoard.bench,
+        takenIds: collectTakenIds(picks),
+        allowedLeagueIds: [...pool],
+        playerCount: order.length,
+        rng,
+      });
+      rollIdsByRound[round] = roll.flatMap((r) => r.candidates.map((c) => c.id));
+    }
     const board = rebuildSquadFromPicks(picks, pickerId);
     const pick = buildAutoPick({
       formation: '4-3-3',
       starters: board.starters,
       bench: board.bench,
       takenIds: collectTakenIds(picks),
-      allowedLeagueIds: ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1'],
+      allowedLeagueIds: [...pool],
+      shownCandidates: rollCandidates(roll, collectTakenIds(picks)),
       rng,
     });
     if (!pick) throw new Error(`auto pick failed at ${pickNo}`);
@@ -99,7 +126,7 @@ function runSnakeDraft(humans: MpLeagueHuman[], rng: () => number) {
       player_json: pick,
     });
   }
-  return { picks, turnLog };
+  return { picks, turnLog, rollIdsByRound };
 }
 
 function squadsFromPicks(
@@ -185,7 +212,12 @@ function assertWorldUnique(
 describe('v8.0 multi league — snake draft', () => {
   it('follows 1→2→3→3→2→1 turns and never hands out the same player twice', () => {
     const humans = makeHumans(3);
-    const { picks, turnLog } = runSnakeDraft(humans, mulberry32(11));
+    const { picks, turnLog, rollIdsByRound } = runSnakeDraft(humans, mulberry32(11));
+    // Every pick of a round comes out of that round's single shared roulette
+    for (const row of picks) {
+      const round = draftRoundOf(row.pick_no, humans.length);
+      expect(rollIdsByRound[round]).toContain(row.player_ref);
+    }
     expect(turnLog.slice(0, 9)).toEqual([
       'p1', 'p2', 'p3', 'p3', 'p2', 'p1', 'p1', 'p2', 'p3',
     ]);
@@ -196,6 +228,27 @@ describe('v8.0 multi league — snake draft', () => {
       expect(board.starters.every(Boolean)).toBe(true);
       expect(board.bench.every(Boolean)).toBe(true);
     }
+  });
+
+  it('places a shared-roulette player on a fitting open slot of my own formation', () => {
+    const humans = makeHumans(2);
+    const { picks } = runSnakeDraft(humans, mulberry32(21));
+    const keeper = picks.map((p) => p.player_json.player).find((p) => p.position === 'GK');
+    const striker = picks.map((p) => p.player_json.player).find((p) => p.position === 'FW');
+    if (!keeper || !striker) throw new Error('missing sample players');
+    const empty = {
+      starters: Array.from({ length: 11 }, () => null),
+      bench: Array.from({ length: 5 }, () => null),
+    };
+    const gkSlot = chooseSlotForPlayer('4-3-3', empty.starters, empty.bench, keeper);
+    expect(gkSlot?.position).toBe('GK');
+    const fwSlot = chooseSlotForPlayer('3-5-2', empty.starters, empty.bench, striker);
+    expect(fwSlot?.position).toBe('FW');
+    // Starting keeper already taken: a second keeper goes to the bench keeper slot, never outfield
+    const withKeeper: (Player | null)[] = [...empty.starters];
+    withKeeper[0] = keeper;
+    const second = chooseSlotForPlayer('4-3-3', withKeeper, empty.bench, { ...keeper, id: 'gk-2' });
+    expect(second).toMatchObject({ area: 'bench', position: 'GK' });
   });
 
   it('auto pick prefers on-screen candidates but skips ones a friend already took', () => {
@@ -273,21 +326,33 @@ describe('v8.0 multi league — full shared season', () => {
         trades: 0,
         consents: [] as string[],
         casts: 0,
+        summaries: 0,
+        tickers: new Set<string>(),
       };
       let pacedCalls = 0;
 
       for (let guard = 0; guard < 4000 && state.flow.kind !== 'done'; guard += 1) {
         const env = { squads, rng };
         const flow = state.flow;
+        if (state.ticker && !seen.tickers.has(state.ticker.key)) {
+          seen.tickers.add(state.ticker.key);
+          for (const m of state.ticker.matches) {
+            expect(m.goals.length).toBe(m.homeGoals + m.awayGoals);
+            expect(m.humanClubIds.length).toBeGreaterThan(0);
+          }
+        }
 
         if (flow.kind === 'auto') {
           const before = state.round;
           const beforeLp = state.ucl?.leaguePhaseRound ?? 0;
           state = runMpLeague(state, env);
           pacedCalls += 1;
+
           // One timer tick never simulates more than ONE league / UCL round
           expect(state.round - before).toBeLessThanOrEqual(1);
-          expect((state.ucl?.leaguePhaseRound ?? 0) - beforeLp).toBeLessThanOrEqual(1);
+          if (state.stage === 'ucl' && state.uclHumanClubIds.length > 0) {
+            expect((state.ucl?.leaguePhaseRound ?? 0) - beforeLp).toBeLessThanOrEqual(1);
+          }
           continue;
         }
 
@@ -356,6 +421,19 @@ describe('v8.0 multi league — full shared season', () => {
           continue;
         }
 
+        if (flow.kind === 'summary') {
+          seen.summaries += 1;
+          expect(state.round).toBe(38);
+          expect(state.summary?.awards.bestXi.length).toBeGreaterThan(0);
+          for (const h of humans) {
+            expect(state.summary?.squadStats[h.clubId].length).toBeGreaterThan(10);
+          }
+          // The season waits here until every friend has continued
+          expect(runMpLeague(state, env).flow.kind).toBe('summary');
+          state = closeMpLeagueSummary(state);
+          continue;
+        }
+
         if (flow.kind === 'consent') {
           seen.consents.push(flow.key);
           const stageBefore = state.ucl?.stage;
@@ -390,6 +468,9 @@ describe('v8.0 multi league — full shared season', () => {
       // 3 friends meet each other home & away: 3 pairs x 2 = 6 league head-to-heads
       expect(seen.leagueH2H).toBe(6);
       expect(seen.transferWindows).toBe(3);
+      expect(seen.summaries).toBe(1);
+      // A live scoreboard exists for every league round
+      expect(seen.tickers.size).toBeGreaterThanOrEqual(38);
       expect(seen.eventRounds.length).toBeGreaterThanOrEqual(3);
       expect(new Set(seen.eventRounds).size).toBe(seen.eventRounds.length);
 

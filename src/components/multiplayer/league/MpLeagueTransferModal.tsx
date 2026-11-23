@@ -7,11 +7,19 @@ import {
   Send,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
-import type { IncomingTradeOffer } from '../../../types/game';
+import { useMemo, useState } from 'react';
+import { calculateChemistry } from '../../../engine/chemistryEngine';
+import type {
+  FormationId,
+  IncomingTradeOffer,
+  ManagerTraitId,
+} from '../../../types/game';
+import type { TacticId } from '../../../types/league';
 import type { MpTradeResultNote } from '../../../types/mpLeague';
 import type { Player } from '../../../types/player';
 import { JerseySvg } from '../../common/JerseySvg';
+import { PitchBoard } from '../../common/PitchBoard';
+import type { SlotRef } from '../../common/PitchBoard';
 
 export interface MpLeagueTransferModalProps {
   windowIndex: number;
@@ -27,6 +35,10 @@ export interface MpLeagueTransferModalProps {
   onReject: (offerId: string) => void;
   onCounter: (offerId: string, sendPlayerId: string) => void;
   onFinish: () => void;
+  /** When set, the counter-offer picker shows my squad on a pitch */
+  myFormation?: FormationId;
+  myTactic?: TacticId;
+  managerTraitId?: ManagerTraitId | null;
 }
 
 function positionLabel(player: Player): string {
@@ -86,6 +98,9 @@ export function MpLeagueTransferModal({
   onReject,
   onCounter,
   onFinish,
+  myFormation,
+  myTactic,
+  managerTraitId,
 }: MpLeagueTransferModalProps) {
   const [picker, setPicker] = useState<{
     offerId: string;
@@ -95,6 +110,19 @@ export function MpLeagueTransferModal({
   const locked = busy || done;
   const noAttempts = attemptsLeft <= 0;
   const squad = [...myStarters, ...myBench];
+
+  const chemistry = useMemo(
+    () =>
+      myFormation
+        ? calculateChemistry(
+            myFormation,
+            myStarters,
+            myTactic ?? 'balanced',
+            managerTraitId ?? null,
+          )
+        : null,
+    [myFormation, myStarters, myTactic, managerTraitId],
+  );
 
   const btnBase =
     'inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-2 text-xs font-extrabold transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-40';
@@ -177,6 +205,24 @@ export function MpLeagueTransferModal({
               const pickerOpen = pending && !locked && picker?.offerId === offer.id;
               const selectedId = pickerOpen ? (picker?.playerId ?? null) : null;
               const candidates = squad.filter((p) => p.id !== requested?.id);
+              const selectedPlayer =
+                selectedId === null
+                  ? null
+                  : (squad.find((p) => p.id === selectedId) ?? null);
+              const starterIdx =
+                selectedId === null
+                  ? -1
+                  : myStarters.findIndex((p) => p.id === selectedId);
+              const benchIdx =
+                selectedId === null
+                  ? -1
+                  : myBench.findIndex((p) => p.id === selectedId);
+              const selectedSlot: SlotRef | null =
+                starterIdx >= 0
+                  ? { area: 'starter', index: starterIdx }
+                  : benchIdx >= 0
+                    ? { area: 'bench', index: benchIdx }
+                    : null;
 
               return (
                 <div
@@ -274,49 +320,101 @@ export function MpLeagueTransferModal({
 
                   {pickerOpen && !noAttempts && (
                     <div className="mt-2.5 rounded-lg border border-slate-800 bg-[#0b1018] p-2">
-                      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
-                        {candidates.map((p) => {
-                          const selected = selectedId === p.id;
-                          return (
-                            <button
-                              key={p.id}
-                              type="button"
-                              onClick={() =>
-                                setPicker({ offerId: offer.id, playerId: p.id })
-                              }
-                              aria-pressed={selected}
-                              className={`flex min-w-0 items-center gap-1.5 rounded-md border px-1.5 py-1.5 text-left transition-colors cursor-pointer ${
-                                selected
-                                  ? 'border-sky-400/60 bg-sky-500/15'
-                                  : 'border-slate-800 bg-[#111822] hover:border-slate-600'
-                              }`}
-                            >
+                      {myFormation && chemistry ? (
+                        <div className="mx-auto w-full max-w-[420px]">
+                          <PitchBoard
+                            formation={myFormation}
+                            starters={myStarters}
+                            bench={myBench}
+                            chemistry={chemistry}
+                            managerTraitId={managerTraitId ?? null}
+                            conditionByPlayerId={{}}
+                            selectedSlot={selectedSlot}
+                            disabledBenchIds={
+                              requested ? new Set([requested.id]) : undefined
+                            }
+                            onSlotClick={(area, index) => {
+                              const p =
+                                area === 'starter'
+                                  ? myStarters[index]
+                                  : myBench[index];
+                              if (!p || p.id === requested?.id) return;
+                              setPicker({
+                                offerId: offer.id,
+                                playerId: selectedId === p.id ? null : p.id,
+                              });
+                            }}
+                            showBench
+                            showChemBreakdown={false}
+                            compact
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-4">
+                          {candidates.map((p) => {
+                            const selected = selectedId === p.id;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() =>
+                                  setPicker({ offerId: offer.id, playerId: p.id })
+                                }
+                                aria-pressed={selected}
+                                className={`flex min-w-0 items-center gap-1.5 rounded-md border px-1.5 py-1.5 text-left transition-colors cursor-pointer ${
+                                  selected
+                                    ? 'border-sky-400/60 bg-sky-500/15'
+                                    : 'border-slate-800 bg-[#111822] hover:border-slate-600'
+                                }`}
+                              >
+                                <span className="shrink-0 text-[9px] font-black text-slate-400">
+                                  {positionLabel(p)}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-slate-100">
+                                  {p.name}
+                                </span>
+                                <span className="shrink-0 text-[11px] font-bold tabular-nums text-amber-300">
+                                  {p.ovr}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg border border-slate-800 bg-[#111822] px-2 py-2">
+                          {selectedPlayer ? (
+                            <>
                               <span className="shrink-0 text-[9px] font-black text-slate-400">
-                                {positionLabel(p)}
+                                {positionLabel(selectedPlayer)}
                               </span>
-                              <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-slate-100">
-                                {p.name}
+                              <span className="min-w-0 flex-1 truncate text-xs font-bold text-white">
+                                {selectedPlayer.name}
                               </span>
-                              <span className="shrink-0 text-[11px] font-bold tabular-nums text-amber-300">
-                                {p.ovr}
+                              <span className="shrink-0 font-display text-sm font-bold tabular-nums text-amber-300">
+                                {selectedPlayer.ovr}
                               </span>
-                            </button>
-                          );
-                        })}
+                            </>
+                          ) : (
+                            <span className="text-xs font-bold text-slate-600">
+                              보낼 선수 선택
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={selectedId === null}
+                          onClick={() => {
+                            if (selectedId === null) return;
+                            onCounter(offer.id, selectedId);
+                            setPicker(null);
+                          }}
+                          className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-sky-400/45 bg-sky-500/20 px-3 py-2 text-xs font-extrabold text-sky-100 transition-colors hover:bg-sky-500/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                          역제안 보내기
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        disabled={selectedId === null}
-                        onClick={() => {
-                          if (selectedId === null) return;
-                          onCounter(offer.id, selectedId);
-                          setPicker(null);
-                        }}
-                        className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-sky-400/45 bg-sky-500/20 px-3 py-2 text-xs font-extrabold text-sky-100 transition-colors hover:bg-sky-500/30 cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <Send className="h-3.5 w-3.5" />
-                        역제안 보내기
-                      </button>
                     </div>
                   )}
                 </div>

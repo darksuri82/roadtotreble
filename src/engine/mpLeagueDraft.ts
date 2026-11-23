@@ -1,5 +1,5 @@
 import { BENCH_SLOTS, FORMATIONS } from '../data/formations';
-import type { FormationId } from '../types/game';
+import type { FormationId, RouletteReelResult } from '../types/game';
 import type { LeagueId } from '../types/league';
 import type {
   MpDraftLive,
@@ -109,9 +109,123 @@ export function collectTakenIds(picks: MpLeaguePickRow[]): Set<string> {
   return new Set(picks.map((p) => p.player_ref));
 }
 
+export function draftRoundOf(pickNo: number, playerCount: number): number {
+  return playerCount <= 0 ? 0 : Math.floor(pickNo / playerCount);
+}
+
+/** The manager who picks first in a round also spins that round's shared roulette. */
+export function roundSpinnerId(round: number, order: string[]): string | null {
+  if (order.length === 0) return null;
+  return order[snakePickerIndex(round * order.length, order.length)] ?? null;
+}
+
 /**
- * Timer-expiry safety pick: spins fresh candidates for the manager's next open slot
- * (excluding every player already taken worldwide) and takes the highest OVR one.
+ * Where a player taken from the shared roulette lands on MY board:
+ * exact sub-position slot → same line starter → matching bench slot → any open slot.
+ */
+export function chooseSlotForPlayer(
+  formation: FormationId,
+  starters: (Player | null)[],
+  bench: (Player | null)[],
+  player: Player,
+): OpenSlot | null {
+  const cfg = FORMATIONS[formation] ?? FORMATIONS['4-3-3'];
+  const mains = new Set<SubPosition>(player.mainPositions ?? []);
+  const starterSlot = (i: number): OpenSlot => ({
+    area: 'starter',
+    index: i,
+    subPosition: cfg.slots[i].subPosition,
+    position: cfg.slots[i].position,
+    label: cfg.slots[i].label,
+  });
+  const benchSlot = (i: number): OpenSlot => ({
+    area: 'bench',
+    index: i,
+    subPosition: BENCH_SLOTS[i].subPosition,
+    position: BENCH_SLOTS[i].position,
+    label: BENCH_SLOTS[i].label,
+  });
+  const openStarters = cfg.slots.map((_, i) => i).filter((i) => i < 11 && !starters[i]);
+  const openBench = BENCH_SLOTS.map((_, i) => i).filter((i) => !bench[i]);
+
+  const exact = openStarters.find((i) => mains.has(cfg.slots[i].subPosition));
+  if (exact !== undefined) return starterSlot(exact);
+  const alt = openStarters.find((i) =>
+    (cfg.slots[i].alternateSubPositions ?? []).some((sp) => mains.has(sp)),
+  );
+  if (alt !== undefined) return starterSlot(alt);
+  const sameLine = openStarters.find((i) => cfg.slots[i].position === player.position);
+  if (sameLine !== undefined) return starterSlot(sameLine);
+  const benchLine = openBench.find((i) => BENCH_SLOTS[i].position === player.position);
+  if (benchLine !== undefined) return benchSlot(benchLine);
+  // Never put an outfield player in goal (or a keeper outfield) unless nothing else is left
+  const safeBench = openBench.find(
+    (i) => (BENCH_SLOTS[i].position === 'GK') === (player.position === 'GK'),
+  );
+  if (safeBench !== undefined) return benchSlot(safeBench);
+  const safeStarter = openStarters.find(
+    (i) => (cfg.slots[i].position === 'GK') === (player.position === 'GK'),
+  );
+  if (safeStarter !== undefined) return starterSlot(safeStarter);
+  if (openStarters.length > 0) return starterSlot(openStarters[0]);
+  if (openBench.length > 0) return benchSlot(openBench[0]);
+  return null;
+}
+
+/**
+ * One shared roulette per round: spun for the first picker's next open slot,
+ * guaranteed to hold at least one free candidate per manager.
+ */
+export function spinSharedRoll(params: {
+  formation: FormationId;
+  starters: (Player | null)[];
+  bench: (Player | null)[];
+  takenIds: Set<string>;
+  allowedLeagueIds: LeagueId[];
+  playerCount: number;
+  rng?: () => number;
+}): RouletteReelResult[] {
+  const slot = findNextOpenDraftSlot(params.formation, params.starters, params.bench);
+  const sub: SubPosition = slot?.subPosition ?? 'CM';
+  const pos: Position = slot?.position ?? 'MF';
+  let best: RouletteReelResult[] = [];
+  let bestCount = -1;
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const reels = spinClubRoulette(sub, pos, params.takenIds, {
+      legendRate: DEFAULT_ROULETTE_LEGEND_RATE,
+      allowedLeagueIds: params.allowedLeagueIds,
+      rng: params.rng,
+    });
+    const count = new Set(reels.flatMap((r) => r.candidates.map((c) => c.id))).size;
+    if (count > bestCount) {
+      best = reels;
+      bestCount = count;
+    }
+    if (count >= params.playerCount) break;
+  }
+  return best;
+}
+
+export function rollCandidates(
+  reels: RouletteReelResult[],
+  takenIds: Set<string>,
+): Player[] {
+  const seen = new Set<string>();
+  const out: Player[] = [];
+  for (const reel of reels) {
+    for (const c of reel.candidates) {
+      if (takenIds.has(c.id) || seen.has(c.id)) continue;
+      seen.add(c.id);
+      out.push(c);
+    }
+  }
+  return out;
+}
+
+/**
+ * Timer-expiry / auto-draft pick: best OVR still free in the round's shared roulette,
+ * placed on the manager's best fitting open slot. Falls back to a private spin only
+ * if the shared roulette has nothing left.
  */
 export function buildAutoPick(params: {
   formation: FormationId;
@@ -119,28 +233,38 @@ export function buildAutoPick(params: {
   bench: (Player | null)[];
   takenIds: Set<string>;
   allowedLeagueIds: LeagueId[];
-  /** Candidates already on screen (preferred so the pick matches what the manager was looking at) */
+  /** Free candidates of the round's shared roulette */
   shownCandidates?: Player[];
   rng?: () => number;
 }): MpLeaguePickJson | null {
-  const slot = findNextOpenDraftSlot(params.formation, params.starters, params.bench);
-  if (!slot) return null;
-  const shown = (params.shownCandidates ?? []).filter(
-    (p) => !params.takenIds.has(p.id),
-  );
-  let pool = shown;
-  for (let attempt = 0; attempt < 6 && pool.length === 0; attempt += 1) {
-    pool = spinClubRoulette(slot.subPosition, slot.position, params.takenIds, {
-      legendRate: DEFAULT_ROULETTE_LEGEND_RATE,
-      allowedLeagueIds: params.allowedLeagueIds,
-      rng: params.rng,
-    })
-      .flatMap((r) => r.candidates)
-      .filter((p) => !params.takenIds.has(p.id));
+  if (!findNextOpenDraftSlot(params.formation, params.starters, params.bench)) return null;
+  let pool = (params.shownCandidates ?? []).filter((p) => !params.takenIds.has(p.id));
+  if (pool.length === 0) {
+    pool = rollCandidates(
+      spinSharedRoll({
+        formation: params.formation,
+        starters: params.starters,
+        bench: params.bench,
+        takenIds: params.takenIds,
+        allowedLeagueIds: params.allowedLeagueIds,
+        playerCount: 1,
+        rng: params.rng,
+      }),
+      params.takenIds,
+    );
   }
-  const best = [...pool].sort((a, b) => b.ovr - a.ovr)[0];
-  if (!best) return null;
-  return { player: best, area: slot.area, index: slot.index, auto: true };
+  // Prefer a candidate that fits one of my open slots; otherwise simply the best one
+  const ranked = [...pool].sort((a, b) => b.ovr - a.ovr);
+  for (const candidate of ranked) {
+    const slot = chooseSlotForPlayer(
+      params.formation,
+      params.starters,
+      params.bench,
+      candidate,
+    );
+    if (slot) return { player: candidate, area: slot.area, index: slot.index, auto: true };
+  }
+  return null;
 }
 
 /** Public room state before the season exists (manager setup → snake draft). */
@@ -175,6 +299,8 @@ export function createPreSeasonLive(params: {
     h2h: null,
     ucl: null,
     cast: null,
+    ticker: null,
+    summary: null,
     final: null,
     transferWindowIndex: null,
     updatedAt: new Date().toISOString(),
