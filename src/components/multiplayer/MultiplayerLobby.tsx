@@ -6,7 +6,6 @@ import {
   Crown,
   Link2,
   Loader2,
-  Lock,
   LogOut,
   Palette,
   Play,
@@ -28,6 +27,7 @@ import {
 } from '../../services/multiplayerService';
 import type { ManagerAvatarConfig, UserClubProfile } from '../../types/game';
 import type { LeagueId } from '../../types/league';
+import { normalizeMpLeagueSettings } from '../../types/mpLeague';
 import type {
   MpRoomMode,
   MpRoomSettings,
@@ -35,6 +35,7 @@ import type {
 } from '../../types/multiplayer';
 import { JerseySvg } from '../common/JerseySvg';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
+import { MpLeagueLobbyRoom } from './league/MpLeagueLobbyRoom';
 import { MpProfileCustomizerModal } from './MpProfileCustomizerModal';
 
 const LEAGUE_OPTIONS: { id: LeagueId; shortLabel: string; count: number }[] =
@@ -106,6 +107,9 @@ export function MultiplayerLobby({
   const [joinCode, setJoinCode] = useState<string>(sanitizeRoomCode(initialJoinCode));
   const [createPool, setCreatePool] = useState<LeagueId[]>([...DEFAULT_MP_LEAGUE_POOL]);
   const [createKnockout, setCreateKnockout] = useState<boolean>(true);
+  const [createLeagueId, setCreateLeagueId] = useState<LeagueId>('epl');
+  const [createUcl, setCreateUcl] = useState<boolean>(true);
+  const isLeagueMode = selectedMode === 'multi_league';
   const [copiedType, setCopiedType] = useState<'code' | 'link' | null>(null);
   const [customizerOpen, setCustomizerOpen] = useState<boolean>(false);
 
@@ -257,23 +261,28 @@ export function MultiplayerLobby({
             </button>
 
             <button
+              id="mp-mode-league-btn"
               type="button"
-              disabled
-              className="flex items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#0a0f17] px-3.5 py-3 text-left text-slate-500 cursor-not-allowed opacity-70"
+              onClick={() => setSelectedMode('multi_league')}
+              className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-3 text-left transition-colors cursor-pointer ${
+                isLeagueMode
+                  ? 'border-sky-400/50 bg-sky-500/10 text-white'
+                  : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-700'
+              }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <Lock className="w-4 h-4 text-slate-600 shrink-0" />
+                <Users className="w-4 h-4 text-sky-300 shrink-0" />
                 <div className="min-w-0">
                   <div className="text-xs sm:text-sm font-extrabold truncate">
                     멀티 리그
                   </div>
-                  <div className="text-[10px] text-slate-500 truncate">
-                    2단계 업데이트 예정
+                  <div className="text-[10px] text-slate-400 truncate">
+                    2~4명 · 리그 · 챔스
                   </div>
                 </div>
               </div>
-              <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-400 shrink-0">
-                SOON
+              <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] font-bold text-sky-300 shrink-0">
+                NEW
               </span>
             </button>
           </div>
@@ -391,23 +400,60 @@ export function MultiplayerLobby({
                 </div>
               </div>
 
-              {/* Knockout Rules Toggle */}
-              <div className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-[#0b1018] px-3 py-2">
-                <span className="text-[11px] font-bold text-slate-300">
-                  90분 동점 시 연장 · 승부차기
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setCreateKnockout((v) => !v)}
-                  className={`rounded-md px-2.5 py-1 text-[10px] font-extrabold transition-colors cursor-pointer ${
-                    createKnockout
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-slate-800 text-slate-400 border border-slate-700'
-                  }`}
-                >
-                  {createKnockout ? 'ON' : 'OFF'}
-                </button>
-              </div>
+              {isLeagueMode ? (
+                <>
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-bold text-slate-300">진행 리그</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {LEAGUE_OPTIONS.map((lg) => (
+                        <button
+                          key={lg.id}
+                          type="button"
+                          onClick={() => setCreateLeagueId(lg.id)}
+                          className={`rounded-lg border px-2.5 py-1 text-[11px] font-bold transition-colors cursor-pointer ${
+                            createLeagueId === lg.id
+                              ? 'border-sky-400/55 bg-sky-500/15 text-sky-200'
+                              : 'border-slate-800 bg-[#111822] text-slate-500 hover:text-slate-300'
+                          }`}
+                        >
+                          {lg.shortLabel}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-[#0b1018] px-3 py-2">
+                    <span className="text-[11px] font-bold text-slate-300">챔피언스리그</span>
+                    <button
+                      type="button"
+                      onClick={() => setCreateUcl((v) => !v)}
+                      className={`rounded-md px-2.5 py-1 text-[10px] font-extrabold transition-colors cursor-pointer ${
+                        createUcl
+                          ? 'bg-sky-500/20 text-sky-300 border border-sky-400/40'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                      }`}
+                    >
+                      {createUcl ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-[#0b1018] px-3 py-2">
+                  <span className="text-[11px] font-bold text-slate-300">
+                    90분 동점 시 연장 · 승부차기
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCreateKnockout((v) => !v)}
+                    className={`rounded-md px-2.5 py-1 text-[10px] font-extrabold transition-colors cursor-pointer ${
+                      createKnockout
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}
+                  >
+                    {createKnockout ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+              )}
             </div>
 
             <button
@@ -420,6 +466,14 @@ export function MultiplayerLobby({
                   knockoutRules: createKnockout,
                   draftGeneration: 1,
                   matchNumber: 1,
+                  ...(isLeagueMode
+                    ? {
+                        league: normalizeMpLeagueSettings({
+                          leagueId: createLeagueId,
+                          uclEnabled: createUcl,
+                        }),
+                      }
+                    : {}),
                 })
               }
               className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-50 cursor-pointer"
@@ -487,6 +541,30 @@ export function MultiplayerLobby({
   // =========================================================================
   // VIEW B: Active Lobby Room
   // =========================================================================
+  if (snapshot.room.mode === 'multi_league') {
+    return (
+      <MpLeagueLobbyRoom
+        snapshot={snapshot}
+        playerId={playerId}
+        nickname={nickname}
+        avatar={avatar}
+        clubProfile={clubProfile}
+        onlinePlayerIds={onlinePlayerIds}
+        connectionStatus={connectionStatus}
+        busy={busy}
+        errorMsg={errorMsg}
+        onUpdateSettings={onUpdateSettings}
+        onApplyCustomProfile={(payload) => {
+          onChangeNickname(payload.nickname);
+          onUpdateCustomProfile?.(payload);
+        }}
+        onToggleReady={onToggleReady}
+        onStart={onStartDraft}
+        onLeaveRoom={onLeaveRoom}
+      />
+    );
+  }
+
   const { room, players } = snapshot;
   const isHost = room.host_player_id === playerId;
   const hostPlayer =

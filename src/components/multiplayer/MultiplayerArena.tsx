@@ -50,6 +50,8 @@ import {
   updateRoomSettings,
   updateRoomStatus,
 } from '../../services/multiplayerService';
+import { createPreSeasonLive } from '../../engine/mpLeagueDraft';
+import { startMpLeagueRoom } from '../../services/mpLeagueService';
 import { useGame } from '../../store/GameContext';
 import type {
   FormationId,
@@ -80,6 +82,7 @@ import type {
   MpRoomSnapshot,
   MpTacticBarrierPhase,
 } from '../../types/multiplayer';
+import { normalizeMpLeagueSettings } from '../../types/mpLeague';
 import type { Player, SubPosition } from '../../types/player';
 import { MatchDetailModal } from '../common/MatchDetailModal';
 import type { SlotRef } from '../common/PitchBoard';
@@ -88,6 +91,7 @@ import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
 import type { LiveMatchBroadcastOverride } from '../league/LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { MatchReportPanel } from '../league/MatchReportPanel';
+import { MpLeagueRoot } from './league/MpLeagueRoot';
 import { MpPostMatchManagerPopup } from './MpPostMatchManagerPopup';
 import { MultiplayerBlindDraft } from './MultiplayerBlindDraft';
 import { MultiplayerLobby } from './MultiplayerLobby';
@@ -1044,6 +1048,29 @@ export function MultiplayerArena() {
     setBusy(true);
     setErrorMsg(null);
     transitionGuardRef.current.clear();
+    if (room.mode === 'multi_league') {
+      const leagueSettings = normalizeMpLeagueSettings(room.settings.league);
+      const nextGeneration = (room.settings.draftGeneration ?? 1) + 1;
+      const res = await startMpLeagueRoom({
+        roomId: room.id,
+        settings: { ...room.settings, league: leagueSettings },
+        draftGeneration: nextGeneration,
+        live: createPreSeasonLive({
+          seasonKey: `s${Date.now().toString(36)}`,
+          settings: leagueSettings,
+          stage: 'setup',
+          draft: null,
+          rev: 1,
+        }),
+      });
+      setBusy(false);
+      if (res.error) setErrorMsg(res.error);
+      else {
+        const snap = await fetchRoomSnapshot(room.id);
+        if (snap.data) setSnapshot(snap.data);
+      }
+      return;
+    }
     clearLocalMpDraft(room.code, playerId);
     const res = await startBlindDraft(room.id, room.settings);
     setBusy(false);
@@ -1539,6 +1566,23 @@ export function MultiplayerArena() {
         onStartDraft={handleStartDraft}
         onLeaveRoom={handleLeaveRoom}
         onCloseMultiplayer={closeMultiplayer}
+      />
+    );
+  }
+
+  // v8.0 Multi league (2~4 friends): fully separate screen flow, 1v1 logic below is untouched
+  if (room.mode === 'multi_league') {
+    return (
+      <MpLeagueRoot
+        snapshot={snapshot}
+        playerId={playerId}
+        onlinePlayerIds={onlinePlayerIds}
+        connectionStatus={connectionStatus}
+        onLeaveRoom={() => {
+          // Keep my seat so I can reconnect with the saved room code mid-season
+          setSnapshot(null);
+          setErrorMsg(null);
+        }}
       />
     );
   }

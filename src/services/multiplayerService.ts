@@ -309,6 +309,9 @@ export async function createRoom(params: {
     knockoutRules: params.settings?.knockoutRules ?? true,
     draftGeneration: 1,
     matchNumber: 1,
+    ...(params.mode === 'multi_league' && params.settings?.league
+      ? { league: params.settings.league }
+      : {}),
   };
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -334,6 +337,13 @@ export async function createRoom(params: {
 
       if (roomErr) {
         if (roomErr.code === '23505') continue; // duplicate code collision
+        if (roomErr.code === '23514' && params.mode === 'multi_league') {
+          return {
+            data: null,
+            error:
+              '멀티 리그용 Supabase SQL(v8.0)이 아직 적용되지 않았습니다. supabase/schema.sql의 v8.0 구간을 실행해 주세요.',
+          };
+        }
         return { data: null, error: normalizeError(roomErr, '방 생성에 실패했습니다.') };
       }
 
@@ -425,7 +435,10 @@ export async function joinRoomByCode(params: {
     return { data: null, error: '이미 경기가 진행 중인 방입니다.' };
   }
 
-  const maxPlayers = room.mode === 'multi_league' ? 8 : 2;
+  const maxPlayers =
+    room.mode === 'multi_league'
+      ? Math.max(2, Math.min(4, room.settings?.league?.maxPlayers ?? 4))
+      : 2;
   if (players.length >= maxPlayers) {
     return { data: null, error: '방 인원이 가득 찼습니다.' };
   }

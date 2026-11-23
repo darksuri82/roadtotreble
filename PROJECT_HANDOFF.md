@@ -1,4 +1,6 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v7.2)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.0)
+
+> Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -10,12 +12,22 @@
 - **Realtime Backend**: Supabase (`@supabase/supabase-js` — Postgres `mp_rooms` / `mp_room_players` + Realtime Postgres Changes + Presence, `supabase/schema.sql`)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, 차분한 슬레이트 UI 크롬 + 웅장한 레전드/슈퍼스타/월클 카드 글로우 & 선명한 4색 피치 시너지선)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **27개 파일 / 107개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **28개 파일 / 112개 테스트**, `balanceVerification.test.ts`는 난수 기반이라 간헐 실패 가능), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환, `.github/workflows/deploy.yml`에서 `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY` Secret 주입)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`)
+- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), v8.0 작업 기준점은 `v7.2` `b3bd618`(브랜치 `claude/v7.2-handoff`가 이 커밋에서 분기)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.0 멀티 리그 & 챔피언스리그 (친구 2~4명 공유 시즌)**:
+  - **구조 — 방장 권위형**: 방장 브라우저가 시즌 전체(`MpLeagueHostState`)를 계산해 공개 스냅샷(`MpLeagueLive`)만 `mp_league_state.live`에 발행하고, 나머지는 받아서 그립니다. 방장 전용 전체 상태는 방장 브라우저 IndexedDB(`rtt_mp_league_host_v1`)에 라운드마다 저장되어 새로고침 시 이어집니다(다른 기기에서는 이어받기 불가, 방장 자동 승계 없음).
+  - **분리 원칙**: 싱글 플레이(`GameContext.tsx`, 유저 구단 1개 전제)와 1대1(`MultiplayerArena.tsx`)은 건드리지 않았습니다. 멀티 리그는 `src/engine/mpLeagueEngine.ts`(시즌 진행 상태 머신 `runMpLeague`), `mpLeagueDraft.ts`(스네이크 순번·자동픽), `mpLeagueH2H.ts`(친구 맞대결 단계 시뮬), `mpLeagueScore.ts`(결산 2종 점수), `src/services/mpLeagueService.ts`(Supabase 동기화), `src/components/multiplayer/league/*`(화면)로 분리되어 있습니다.
+  - **기존 엔진 재사용**: `matchEngine`·`conditionEngine`·`transferEngine`·`awardsEngine`·`legacyEngine.computeSeasonScore`를 그대로 호출합니다. `cupEngine.advanceCupStage`, `uclEngine.simulateUclLeaguePhaseRound`/`advanceUclKnockoutLeg`에는 사람 경기 결과를 주입하는 선택 파라미터 `precomputedResults`만 추가했습니다(없으면 기존 동작 100% 동일).
+  - **진행 흐름(`MpLeagueFlow`)**: `auto`(라운드당 2.5~4초 타이머) ↔ `h2h`(친구 맞대결) / `event`(전원 같은 라운드 인터뷰) / `transfer`(받은 제안·역제안만) / `consent`(UCL 토너먼트 단계별 전원 동의) / `cast`(UCL 멀티캐스트 전광판) → `done`. 전역 일시정지는 각 참가자 행의 `mp_room_players.activity.lock`으로 표현됩니다.
+  - **테이블 역할**: `mp_room_players.league_payload`(본인 스쿼드, 트레이드 시 방장이 갱신), `mp_room_players.activity`(일시정지 사유 + 동의/완료 확인 키), `mp_room_players.tactic_submission`(맞대결 전술 확정, 1대1과 공용), `mp_league_picks`(공개 드래프트 픽, 유일 키로 중복 차단), `mp_league_actions`(참가자→방장 요청 큐).
+  - **맞대결 배속**: 리그·컵·UCL 리그 페이즈 4배속, UCL 토너먼트 2배속(`MpH2HSpec.speed`). 비당사자는 `LiveMatchBroadcast`를 조작 잠금 상태로 관전합니다.
+  - **결산**: 친구 순위 = `computeSeasonScore` 총점 + 맞대결 점수(최대 1,500), 역대 강팀 비교 = `computeSeasonScore` 총점만. 멀티 시즌은 명예의 전당에 저장하지 않습니다.
+  - **Supabase**: `supabase/schema.sql` 하단 v8.0 구간을 SQL Editor에서 1회 실행해야 멀티 리그 방이 만들어집니다(미적용 시 방 생성 단계에서 안내 문구 표시).
+  - **검증 범위**: `v80MultiLeague.test.ts`(엔진 풀시즌) + 로컬 가짜 백엔드로 브라우저 3개 실플레이. 실제 Supabase Realtime 환경에서의 2~4인 접속은 배포 후 확인이 필요합니다.
 - **v7.2 주요 버그 수정 · 멀티플레이 커스텀/연출 · UCL 리그 페이즈 고속진행 & 36팀 순위표 팝업**:
   - **4대 버그 수정 (`formations.ts`, `positionEngine.ts`, `PitchBoard.tsx`, `OpponentPitchView.tsx`, `GameContext.tsx`, `playerLookup.ts`, `awardsEngine.ts`, `standingsEngine.ts`, `matchEngine.ts`, `LiveMatchBroadcast.tsx`, `DreamMatchArena.tsx`)**: ① 9개 전 포메이션 피치·상세 카드 포지션 부적합 OVR 페널티 단일화(`3-3-3-1` `RAM` 등), ② 피치 선수 재클릭/빈 공간 클릭 시 케미선 호버·선택 강조 즉시 해제, ③ 타 리그 트레이드 선수 스탯 이중 합산(66경기 버그) 차단 및 단일 리그 최대 라운드(38R/34R) 상한 보장, ④ 전 모드 교체 아웃 확정 선수 영구 잠금(`교체됨`) 및 잔여 체력 유지(체력 100 초기화 방지).
   - **멀티플레이 감독·유니폼·구단명 커스텀 & 피치 공개/승패 감독 도트 모션 팝업 (`MpProfileCustomizerModal.tsx`, `PreKickoffRevealModal.tsx`, `MpPostMatchManagerPopup.tsx`, `PixelManagerAvatar.tsx`, `MultiplayerLobby.tsx`, `MultiplayerArena.tsx`, `multiplayerService.ts`, `v72BugfixAndMpCustom.test.ts`)**: 로비 감독 외형·유니폼 패턴/컬러·구단명 커스텀 및 프리셋 불러오기(`updatePlayerProfile` 실시간 동기화), 킥오프 직전 양 팀 포메이션 피치 뷰 공개 모달, 1대1 종료 후 승장(축하 포즈 4종) + 패장(엎드려 땅치기·무릎 꿇고 오열·대자로 뻗어 영혼 가출·OTL 얼굴 파묻기 등 좌절 모션 4종) 동시 등장 및 랜덤 멘트 팝업 구현.
@@ -277,12 +289,10 @@
 
 ## 5. 다음 단계 예정 작업 (Phase 3 로드맵)
 
-새 Antigravity 프로젝트 대화창(`darksuri82/-38-0` 연결)에서 이어서 진행할 우선순위 작업 목록입니다:
+이어서 진행할 우선순위 작업 목록입니다 (저장소: `darksuri82/roadtotreble`, 라이브: `https://darksuri82.github.io/roadtotreble/`):
 
-1. **GitHub Push & GitHub Pages 라이브 웹사이트 배포 (최우선)**
-   - 이 저장소를 `darksuri82/-38-0`의 `main` 브랜치에 푸시.
-   - GitHub Pages 설정(`build_type: workflow`)을 활성화해 `.github/workflows/deploy.yml`로 즉시 라이브 URL(`https://darksuri82.github.io/-38-0/`) 배포.
-   - 이후 모든 패치·기능 추가 시 `src/data/patchNotes.ts`와 `CHANGELOG.md`를 함께 업데이트하고 푸시하여 자동 반영.
+1. **멀티 리그 후속 (v8.x)**
+   - 실제 Supabase 환경 2~4인 실전 테스트 후 타이밍(턴·전술 확정 제한 시간) 조정, 방장 자동 승계, 참가자 간 직접 트레이드, 시즌 중 재접속 UX 보강.
 2. **글로벌 랭킹 보드 (Backend / Serverless 연동)**
    - Supabase 또는 Firebase Firestore / Cloudflare Workers KV 연동으로 유저 완료 시즌의 `SeasonScoreBreakdown`·우승 트로피·스쿼드 스냅샷을 공유 랭킹 보드에 등록(시즌/전체/언더독/트레블 리더보드).
 3. **PWA (Progressive Web App) 지원**

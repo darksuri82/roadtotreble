@@ -543,6 +543,8 @@ export function simulateUclLeaguePhaseRound(params: {
   uclPlayerStats: Record<string, PlayerSeasonStats>;
   userContext?: UserMatchContext;
   precomputedUserResult?: MatchResult | null;
+  /** Multi league: fully resolved results (incl. ET/PK) keyed by fixture id */
+  precomputedResults?: Record<string, MatchResult>;
   userClubId?: string;
   conditionMap?: PlayerConditionMap;
   excludeIds?: Set<string>;
@@ -557,6 +559,7 @@ export function simulateUclLeaguePhaseRound(params: {
     uclPlayerStats,
     userContext,
     precomputedUserResult = null,
+    precomputedResults,
     userClubId = USER_CLUB_ID,
     conditionMap,
     excludeIds,
@@ -578,6 +581,16 @@ export function simulateUclLeaguePhaseRound(params: {
 
   const updatedFixtures = ucl.leaguePhaseFixtures.map((fix) => {
     if (fix.round !== targetRound || fix.played) return fix;
+    const preResolved = precomputedResults?.[fix.id];
+    if (preResolved) {
+      const taggedPre: MatchResult = {
+        ...preResolved,
+        competition: 'ucl',
+        competitionLabel,
+      };
+      roundResults.push(taggedPre);
+      return { ...fix, played: true, result: taggedPre };
+    }
     const involvesUser =
       fix.homeTeamId === userClubId || fix.awayTeamId === userClubId;
     const homeClub = clubsById[fix.homeTeamId];
@@ -837,6 +850,8 @@ export function advanceUclKnockoutLeg(params: {
   uclPlayerStats: Record<string, PlayerSeasonStats>;
   userContext?: UserMatchContext;
   precomputedUserResult?: MatchResult | null;
+  /** Multi league: fully resolved results (incl. ET/PK) keyed by fixture id */
+  precomputedResults?: Record<string, MatchResult>;
   userClubId?: string;
   conditionMap?: PlayerConditionMap;
   excludeIds?: Set<string>;
@@ -851,6 +866,7 @@ export function advanceUclKnockoutLeg(params: {
     uclPlayerStats,
     userContext,
     precomputedUserResult = null,
+    precomputedResults,
     userClubId = USER_CLUB_ID,
     conditionMap,
     excludeIds,
@@ -950,6 +966,49 @@ export function advanceUclKnockoutLeg(params: {
   const updatedTies: UclKnockoutTie[] = ucl.ties[stage].map((tie) => {
     const involvesUser =
       tie.teamAId === userClubId || tie.teamBId === userClubId;
+
+    const preResolved =
+      precomputedResults?.[
+        isFinal ? `${tie.id}-final` : `${tie.id}-leg${currentLeg}`
+      ];
+    if (preResolved) {
+      const res: MatchResult = {
+        ...preResolved,
+        competition: 'ucl',
+        competitionLabel,
+      };
+      legResults.push(res);
+      if (!isFinal && currentLeg === 1) {
+        return {
+          ...tie,
+          leg1: res,
+          aggTeamB: res.homeGoals,
+          aggTeamA: res.awayGoals,
+        };
+      }
+      const preAggA = isFinal ? res.homeGoals : tie.aggTeamA + res.homeGoals;
+      const preAggB = isFinal ? res.awayGoals : tie.aggTeamB + res.awayGoals;
+      const preWinnerId = res.extraTime
+        ? res.extraTime.winnerTeamId
+        : preAggA > preAggB
+          ? tie.teamAId
+          : tie.teamBId;
+      const preDecidedBy: UclKnockoutTie['decidedBy'] = res.extraTime?.penalties
+        ? 'penalties'
+        : res.extraTime
+          ? 'et'
+          : 'regular';
+      return {
+        ...tie,
+        ...(isFinal ? { leg1: res } : { leg2: res }),
+        aggTeamA: preAggA,
+        aggTeamB: preAggB,
+        winnerId: preWinnerId,
+        decidedBy: preDecidedBy,
+        penaltyScoreA: res.extraTime?.penalties?.homePenGoals,
+        penaltyScoreB: res.extraTime?.penalties?.awayPenGoals,
+      };
+    }
 
     if (isFinal) {
       const homeClub = clubsById[tie.teamAId];
