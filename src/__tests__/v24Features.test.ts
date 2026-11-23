@@ -16,15 +16,19 @@ import type { Club } from '../types/league';
 import { normalizeManagerAvatar } from '../utils/clubPresets';
 
 describe('v2.4 Features: Historical Benchmarks, 0-Rank Bug Fix & Manager Avatar Gender/Bald', () => {
-  it('computes all 14 historical benchmark teams fairly using the exact same season score engine', () => {
-    expect(HISTORICAL_BENCHMARK_TEAMS).toHaveLength(14);
+  it('computes all 24 historical benchmark teams fairly using the exact same season score engine', () => {
+    expect(HISTORICAL_BENCHMARK_TEAMS).toHaveLength(24);
 
     // Every historical team must have 11 representative Best XI players & positive score breakdown
     for (const team of HISTORICAL_BENCHMARK_TEAMS) {
       expect(team.bestXi).toHaveLength(11);
       expect(team.seasonScore.totalScore).toBeGreaterThan(2000);
       expect(team.seasonScore.leagueConvertedScore).toBeGreaterThan(1500);
-      expect(team.seasonScore.leagueRankBonus).toBe(1200);
+      if (team.isLeagueChampion) {
+        expect(team.seasonScore.leagueRankBonus).toBe(1200);
+      } else {
+        expect(team.seasonScore.leagueRankBonus).toBeGreaterThanOrEqual(380);
+      }
       expect(team.trophies.length).toBeGreaterThanOrEqual(1);
     }
 
@@ -58,7 +62,7 @@ describe('v2.4 Features: Historical Benchmarks, 0-Rank Bug Fix & Manager Avatar 
       filter: 'historical',
       sortBy: 'score',
     });
-    expect(histOnly).toHaveLength(14);
+    expect(histOnly).toHaveLength(24);
     expect(histOnly[0].totalScore).toBeGreaterThanOrEqual(histOnly[1].totalScore);
 
     const topScore = HISTORICAL_BENCHMARK_TEAMS[0].seasonScore.totalScore;

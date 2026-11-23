@@ -7,6 +7,7 @@ import type {
   Position,
   SubPosition,
 } from '../types/player';
+import { getPlayerFormerClubs } from './formerClubs';
 
 interface HistPlayerSeed {
   slug: string;
@@ -76,7 +77,7 @@ function buildSquad(
       def = Math.min(99, Math.round(s.ovr * 0.65 + (defAttr * 0.6 + aer * 0.2 + phy * 0.2) * 0.35));
     }
 
-    return {
+    const basePlayer: Player = {
       id: `${teamId}__${s.slug}`,
       name: s.name,
       position: s.pos,
@@ -96,6 +97,8 @@ function buildSquad(
       isLegend: false,
       attrs,
     };
+    const formerClubs = getPlayerFormerClubs(basePlayer);
+    return formerClubs.length > 0 ? { ...basePlayer, formerClubs } : basePlayer;
   });
 }
 
@@ -1683,6 +1686,1136 @@ export const HISTORICAL_SQUADS: Record<string, HistoricalTeamSquadBundle> = {
         nat: '아르헨티나', code: 'AR', sta: 82, styles: ['poacher'],
         note: '노리치·웨스트햄전 극장골로 승점을 구해낸 슈퍼 서브 타겟맨',
         f: [80, 68, 62, 72, 85, 48, 84],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 15. 71-72 AFC 아약스 (4-3-3 · 점유율 · 슈테판 코바치 · 토탈 풋볼 트레블)
+  // Slots: [GK, LB, CB, CB, RB, CDM, CM, CM, LW, ST, RW]
+  // =========================================================================
+  'hist-7172-ajax': {
+    starters: buildSquad('hist-7172-ajax', '71-72 AFC 아약스', 'bundesliga', [
+      {
+        slug: 'stuy', name: '하인츠 스투이', pos: 'GK', main: ['GK'], ovr: 84,
+        nat: '네덜란드', code: 'NL', sta: 80, styles: ['sweeper_keeper', 'shot_stopper'],
+        note: '유러피언컵 3연패 골문을 지킨 토탈 풋볼의 스위퍼 골키퍼',
+        f: [36, 76, 60, 58, 72, 74, 78], gk: [84, 83, 85, 84, 85],
+      },
+      {
+        slug: 'krol', name: '뤼트 크롤', pos: 'DF', main: ['LB', 'CB'], sec: ['LWB'], ovr: 91,
+        nat: '네덜란드', code: 'NL', sta: 93, styles: ['ball_playing_cb', 'attacking_wingback'],
+        note: '수비와 공격을 자유롭게 오간 역대 최고급 스위핑 풀백',
+        f: [74, 89, 88, 86, 84, 92, 90],
+      },
+      {
+        slug: 'hulshoff', name: '바리 휠스호프', pos: 'DF', main: ['CB'], sec: ['CDM'], ovr: 88,
+        nat: '네덜란드', code: 'NL', sta: 88, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '공격 가담과 공중 장악을 겸비한 토탈 풋볼 센터백',
+        f: [72, 82, 72, 76, 90, 90, 90],
+      },
+      {
+        slug: 'blankenburg', name: '호르스트 블랑켄부르크', pos: 'DF', main: ['CB'], sec: ['CDM'], ovr: 87,
+        nat: '독일', code: 'DE', sta: 87, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '최후방 리베로 역할로 아약스 하이 라인의 균형을 잡은 지휘관',
+        f: [64, 86, 74, 80, 85, 89, 86],
+      },
+      {
+        slug: 'suurbier', name: '빔 쉬르비르', pos: 'DF', main: ['RB', 'RWB'], ovr: 87,
+        nat: '네덜란드', code: 'NL', sta: 94, styles: ['attacking_wingback', 'box_to_box'],
+        note: '끝없는 오버래핑과 측면 스위칭으로 우측을 지배한 철인 풀백',
+        f: [70, 82, 86, 84, 76, 86, 92],
+      },
+      {
+        slug: 'haan', name: '아리 한', pos: 'MF', main: ['CDM', 'CM'], sec: ['CB'], ovr: 88,
+        nat: '네덜란드', code: 'NL', sta: 92, styles: ['deep_playmaker', 'box_to_box'],
+        note: '강력한 중거리 슛과 수비·중원 멀티 스위칭의 핵심 축',
+        f: [85, 87, 82, 82, 82, 87, 90],
+      },
+      {
+        slug: 'neeskens', name: '요한 네스켄스', pos: 'MF', main: ['CM', 'CDM'], sec: ['RB'], ovr: 92,
+        nat: '네덜란드', code: 'NL', sta: 96, styles: ['box_to_box', 'ball_winner'],
+        note: '압박·태클·침투·득점을 모두 해낸 역대급 박스투박스 미드필더',
+        f: [86, 89, 84, 88, 84, 90, 95],
+      },
+      {
+        slug: 'g_muhren', name: '헤리 뮈런', pos: 'MF', main: ['CM', 'LM'], sec: ['CAM'], ovr: 86,
+        nat: '네덜란드', code: 'NL', sta: 90, styles: ['deep_playmaker', 'box_to_box'],
+        note: '유려한 패스 워크와 침착한 볼 키핑으로 중원 리듬을 조율한 테크니션',
+        f: [79, 89, 85, 87, 74, 78, 84],
+      },
+      {
+        slug: 'keizer', name: '피트 카이저', pos: 'FW', main: ['LW', 'LM'], sec: ['CAM'], ovr: 90,
+        nat: '네덜란드', code: 'NL', sta: 87, styles: ['classic_winger', 'playmaker_10'],
+        note: '정교한 왼발 크로스와 드리블로 크루이프와 환상의 호흡을 맞춘 주장',
+        f: [86, 90, 93, 93, 72, 54, 84],
+      },
+      {
+        slug: 'cruyff', name: '요한 크루이프', pos: 'FW', main: ['ST', 'CAM'], sec: ['LW', 'RW'], ovr: 96,
+        nat: '네덜란드', code: 'NL', sta: 91, styles: ['complete_forward', 'playmaker_10'],
+        note: '결승 인터 밀란전 멀티골·리그 25골·토탈 풋볼 그 자체인 혁명가',
+        f: [94, 96, 90, 98, 78, 58, 90],
+      },
+      {
+        slug: 'swart', name: '샤크 스바르트', pos: 'FW', main: ['RW', 'RM'], ovr: 86,
+        nat: '네덜란드', code: 'NL', sta: 86, styles: ['classic_winger', 'line_breaker'],
+        note: '미스터 아약스 · 우측 터치라인에서 결정적 크로스와 침투를 공급',
+        f: [83, 85, 88, 89, 72, 56, 84],
+      },
+    ]),
+    bench: buildSquad('hist-7172-ajax', '71-72 AFC 아약스', 'bundesliga', [
+      {
+        slug: 'wever', name: '시스 베버르', pos: 'GK', main: ['GK'], ovr: 76,
+        nat: '네덜란드', code: 'NL', sta: 75, styles: ['shot_stopper'],
+        note: '아약스 황금기를 뒷받침한 백업 골키퍼',
+        f: [32, 66, 52, 50, 68, 68, 72], gk: [76, 76, 77, 72, 77],
+      },
+      {
+        slug: 'schilcher', name: '하인츠 실허', pos: 'DF', main: ['CB', 'RB'], sec: ['CDM'], ovr: 78,
+        nat: '오스트리아', code: 'AT', sta: 84, styles: ['stopper_cb'],
+        note: '수비 전 지역을 커버한 성실한 멀티 수비수',
+        f: [54, 74, 70, 70, 78, 81, 82],
+      },
+      {
+        slug: 'suurendonk', name: '뤼트 쉬렌동크', pos: 'MF', main: ['CM', 'CDM'], sec: ['CB'], ovr: 79,
+        nat: '네덜란드', code: 'NL', sta: 86, styles: ['box_to_box'],
+        note: '12번째 사도로 불린 아약스 핵심 로테이션 멀티플레이어',
+        f: [72, 79, 74, 77, 76, 79, 84],
+      },
+      {
+        slug: 'a_muhren', name: '아르놀트 뮈런', pos: 'MF', main: ['CM', 'LM'], ovr: 82,
+        nat: '네덜란드', code: 'NL', sta: 85, styles: ['deep_playmaker', 'playmaker_10'],
+        note: '정교한 왼발 패스로 후반 중원 장악력을 높인 신예 플레이메이커',
+        f: [76, 86, 86, 84, 68, 72, 78],
+      },
+      {
+        slug: 'rep', name: '조니 레프', pos: 'FW', main: ['RW', 'ST'], ovr: 84,
+        nat: '네덜란드', code: 'NL', sta: 88, styles: ['line_breaker', 'poacher'],
+        note: '폭발적인 스피드와 득점 감각을 겸비한 차세대 우측 공격수',
+        f: [86, 79, 82, 85, 82, 52, 88],
+      },
+      {
+        slug: 'vandijk_d', name: '딕 판 데이크', pos: 'FW', main: ['ST'], ovr: 82,
+        nat: '네덜란드', code: 'NL', sta: 83, styles: ['poacher'],
+        note: '제공권과 문전 결정력으로 리그 16골을 터뜨린 정통 스트라이커',
+        f: [85, 74, 68, 78, 88, 48, 84],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 16. 10-11 FC 바르셀로나 (4-3-3 · 점유율 · 펩 과르디올라 · 티키타카 완성체)
+  // Slots: [GK, LB, CB, CB, RB, CDM, CM, CM, LW, ST, RW]
+  // =========================================================================
+  'hist-1011-barca': {
+    starters: buildSquad('hist-1011-barca', '10-11 FC 바르셀로나', 'laliga', [
+      {
+        slug: 'valdes', name: '빅토르 발데스', pos: 'GK', main: ['GK'], ovr: 88,
+        nat: '스페인', code: 'ES', sta: 82, styles: ['sweeper_keeper', 'shot_stopper'],
+        note: '라리가 최소 실점(21실점) 사모라상 · 후방 빌드업의 시발점',
+        f: [40, 85, 68, 66, 74, 80, 82], gk: [88, 86, 90, 89, 88],
+      },
+      {
+        slug: 'abidal', name: '에릭 아비달', pos: 'DF', main: ['LB', 'CB'], ovr: 87,
+        nat: '프랑스', code: 'FR', sta: 88, styles: ['stopper_cb', 'ball_playing_cb'],
+        note: '투병을 딛고 웸블리 결승 선발로 빅이어를 들어 올린 철벽 레프트백',
+        f: [62, 82, 80, 81, 84, 90, 89],
+      },
+      {
+        slug: 'pique', name: '제라르 피케', pos: 'DF', main: ['CB'], ovr: 90,
+        nat: '스페인', code: 'ES', sta: 86, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '전진 패스와 제공권을 겸비한 펩 바르사 빌드업 수비의 핵',
+        f: [66, 87, 72, 80, 92, 91, 87],
+      },
+      {
+        slug: 'puyol', name: '카를레스 푸욜', pos: 'DF', main: ['CB'], sec: ['RB', 'LB'], ovr: 92,
+        nat: '스페인', code: 'ES', sta: 90, styles: ['stopper_cb', 'ball_playing_cb'],
+        note: '불굴의 투지와 대인 방어로 높은 수비 라인을 지휘한 위대한 주장',
+        f: [60, 80, 72, 76, 92, 95, 92],
+      },
+      {
+        slug: 'alves', name: '다니 알베스', pos: 'DF', main: ['RB', 'RWB'], ovr: 91,
+        nat: '브라질', code: 'BR', sta: 95, styles: ['attacking_wingback', 'playmaker_10'],
+        note: '리그 15도움 · 메시와 우측을 완전히 파괴한 역대 최고급 공격형 풀백',
+        f: [80, 90, 93, 91, 72, 84, 91],
+      },
+      {
+        slug: 'busquets', name: '세르히오 부스케츠', pos: 'MF', main: ['CDM'], sec: ['CM'], ovr: 91,
+        nat: '스페인', code: 'ES', sta: 88, styles: ['deep_playmaker', 'ball_winner'],
+        note: '원터치 탈압박과 공간 예측으로 티키타카의 척추가 된 앵커맨',
+        f: [68, 94, 78, 89, 84, 91, 82],
+      },
+      {
+        slug: 'xavi', name: '사비 에르난데스', pos: 'MF', main: ['CM'], sec: ['CDM', 'CAM'], ovr: 94,
+        nat: '스페인', code: 'ES', sta: 91, styles: ['deep_playmaker', 'playmaker_10'],
+        note: '발롱도르 3위 · 웸블리 결승 완벽 지배, 축구사 최고의 패스 마스터',
+        f: [82, 99, 92, 95, 64, 78, 82],
+      },
+      {
+        slug: 'iniesta', name: '안드레스 이니에스타', pos: 'MF', main: ['CM', 'CAM'], sec: ['LW'], ovr: 94,
+        nat: '스페인', code: 'ES', sta: 88, styles: ['playmaker_10', 'inverted_winger'],
+        note: '발롱도르 2위 · 좁은 공간을 찢는 탈압박과 환상적 전진 드리블',
+        f: [84, 96, 88, 98, 60, 72, 80],
+      },
+      {
+        slug: 'villa', name: '다비드 비야', pos: 'FW', main: ['LW', 'ST'], ovr: 90,
+        nat: '스페인', code: 'ES', sta: 88, styles: ['inverted_winger', 'poacher'],
+        note: '웸블리 결승 감아차기 쐐기골 · 좌측에서 침투하는 완벽한 양발 킬러',
+        f: [93, 85, 84, 90, 74, 52, 85],
+      },
+      {
+        slug: 'messi', name: '리오넬 메시', pos: 'FW', main: ['ST', 'RW'], sec: ['CAM'], ovr: 97,
+        nat: '아르헨티나', code: 'AR', sta: 88, styles: ['complete_forward', 'playmaker_10'],
+        note: '발롱도르 · 공식전 53골·UCL 12골 득점왕, 펄스 나인의 전설',
+        f: [97, 96, 90, 99, 70, 44, 86],
+      },
+      {
+        slug: 'pedro', name: '페드로 로드리게스', pos: 'FW', main: ['RW', 'LW'], ovr: 86,
+        nat: '스페인', code: 'ES', sta: 92, styles: ['line_breaker', 'inverted_winger'],
+        note: '웸블리 결승 선제골 · 양발 마무리와 전방 압박의 완벽한 조연',
+        f: [86, 84, 84, 88, 66, 62, 87],
+      },
+    ]),
+    bench: buildSquad('hist-1011-barca', '10-11 FC 바르셀로나', 'laliga', [
+      {
+        slug: 'pinto', name: '호세 마누엘 핀토', pos: 'GK', main: ['GK'], ovr: 78,
+        nat: '스페인', code: 'ES', sta: 75, styles: ['shot_stopper'],
+        note: '코파 델 레이 주전으로 나선 베테랑 백업 골키퍼',
+        f: [32, 68, 54, 54, 70, 70, 74], gk: [78, 78, 80, 74, 78],
+      },
+      {
+        slug: 'mascherano', name: '하비에르 마스체라노', pos: 'DF', main: ['CB', 'CDM'], ovr: 87,
+        nat: '아르헨티나', code: 'AR', sta: 91, styles: ['ball_winner', 'stopper_cb'],
+        note: '웸블리 결승 선발 센터백으로 완벽 변신한 투지의 수비 리더',
+        f: [62, 83, 72, 78, 80, 91, 89],
+      },
+      {
+        slug: 'adriano', name: '아드리아누', pos: 'DF', main: ['LB', 'RB'], sec: ['LWB'], ovr: 82,
+        nat: '브라질', code: 'BR', sta: 86, styles: ['attacking_wingback'],
+        note: '좌우 풀백과 윙어를 모두 소화한 양발 멀티 수비 자원',
+        f: [76, 80, 83, 83, 70, 80, 84],
+      },
+      {
+        slug: 'keita', name: '세이두 케이타', pos: 'MF', main: ['CM', 'CDM'], ovr: 83,
+        nat: '말리', code: 'ML', sta: 90, styles: ['box_to_box', 'ball_winner'],
+        note: '펩 과르디올라가 가장 신뢰한 중원 피지컬·압박 로테이션 카드',
+        f: [76, 82, 74, 80, 84, 84, 88],
+      },
+      {
+        slug: 'thiago', name: '티아고 알칸타라', pos: 'MF', main: ['CM', 'CAM'], ovr: 81,
+        nat: '스페인', code: 'ES', sta: 82, styles: ['deep_playmaker', 'playmaker_10'],
+        note: '라 마시아가 배출한 차세대 천재 미드필더',
+        f: [74, 86, 80, 88, 66, 72, 76],
+      },
+      {
+        slug: 'afellay', name: '이브라힘 아펠라이', pos: 'FW', main: ['LW', 'RW'], sec: ['CAM'], ovr: 81,
+        nat: '네덜란드', code: 'NL', sta: 84, styles: ['classic_winger', 'line_breaker'],
+        note: 'UCL 4강 레알전 메시 결승골 어시스트를 기록한 조커 윙어',
+        f: [78, 80, 82, 86, 64, 52, 84],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 17. 16-17 레알 마드리드 (4-4-2 다이아몬드 · 균형 · 지네딘 지단 · 라리가+UCL 더블)
+  // Slots: [GK, LB, CB, CB, RB, CDM, LCM, RCM, CAM, ST, ST]
+  // =========================================================================
+  'hist-1617-realmadrid': {
+    starters: buildSquad('hist-1617-realmadrid', '16-17 레알 마드리드', 'laliga', [
+      {
+        slug: 'navas', name: '케일러 나바스', pos: 'GK', main: ['GK'], ovr: 88,
+        nat: '코스타리카', code: 'CR', sta: 82, styles: ['shot_stopper'],
+        note: '동물적인 반사신경으로 UCL 2연패 골문을 지킨 수호신',
+        f: [36, 76, 62, 60, 74, 78, 82], gk: [90, 85, 93, 80, 88],
+      },
+      {
+        slug: 'marcelo', name: '마르셀루', pos: 'DF', main: ['LB', 'LWB'], ovr: 91,
+        nat: '브라질', code: 'BR', sta: 90, styles: ['attacking_wingback', 'playmaker_10'],
+        note: '윙어급 기술과 크로스로 좌측 공격을 전담한 월드클래스 레프트백',
+        f: [78, 89, 93, 94, 70, 82, 86],
+      },
+      {
+        slug: 'ramos', name: '세르히오 라모스', pos: 'DF', main: ['CB'], sec: ['RB'], ovr: 92,
+        nat: '스페인', code: 'ES', sta: 90, styles: ['stopper_cb', 'ball_playing_cb'],
+        note: '엘 클라시코·데포르티보전 극장 헤더와 압도적 리더십의 캡틴',
+        f: [74, 84, 76, 80, 96, 94, 91],
+      },
+      {
+        slug: 'varane', name: '라파엘 바란', pos: 'DF', main: ['CB'], ovr: 88,
+        nat: '프랑스', code: 'FR', sta: 88, styles: ['stopper_cb', 'ball_playing_cb'],
+        note: '압도적 스피드와 공중전으로 라모스의 뒷공간을 완벽 커버',
+        f: [58, 80, 68, 76, 90, 90, 91],
+      },
+      {
+        slug: 'carvajal', name: '다니 카르바할', pos: 'DF', main: ['RB', 'RWB'], ovr: 88,
+        nat: '스페인', code: 'ES', sta: 93, styles: ['attacking_wingback', 'ball_winner'],
+        note: '카디프 결승 어시스트 · 공수 밸런스 최상급의 우측 수비수',
+        f: [70, 84, 88, 84, 74, 87, 90],
+      },
+      {
+        slug: 'casemiro', name: '카세미루', pos: 'MF', main: ['CDM'], ovr: 89,
+        nat: '브라질', code: 'BR', sta: 92, styles: ['ball_winner', 'stopper_cb'],
+        note: '카디프 결승 중거리 역전골 · 크카모 중원의 철벽 방패',
+        f: [78, 82, 74, 78, 88, 93, 92],
+      },
+      {
+        slug: 'kroos', name: '토니 크로스', pos: 'MF', main: ['CM'], sec: ['CDM'], ovr: 92,
+        nat: '독일', code: 'DE', sta: 88, styles: ['deep_playmaker'],
+        note: '93%대 패스 성공률과 날카로운 전환 롱패스의 정밀한 메트로놈',
+        f: [84, 97, 94, 88, 70, 80, 80],
+      },
+      {
+        slug: 'modric', name: '루카 모드리치', pos: 'MF', main: ['CM'], sec: ['CAM', 'CDM'], ovr: 93,
+        nat: '크로아티아', code: 'HR', sta: 92, styles: ['deep_playmaker', 'box_to_box'],
+        note: '카디프 결승 중원 완전 장악 · 아웃프런트 패스와 탈압박의 마에스트로',
+        f: [82, 96, 91, 95, 66, 82, 85],
+      },
+      {
+        slug: 'isco', name: '이스코', pos: 'MF', main: ['CAM', 'CM'], sec: ['LW'], ovr: 89,
+        nat: '스페인', code: 'ES', sta: 87, styles: ['playmaker_10', 'inverted_winger'],
+        note: '지단 4-4-2 다이아몬드의 열쇠 · 하반기 환상적 폼과 결승전 선발 활약',
+        f: [84, 90, 85, 95, 62, 66, 80],
+      },
+      {
+        slug: 'benzema', name: '카림 벤제마', pos: 'FW', main: ['ST'], sec: ['CAM'], ovr: 89,
+        nat: '프랑스', code: 'FR', sta: 86, styles: ['complete_forward', 'playmaker_10'],
+        note: '아틀레티코전 칼데론 마법 드리블 · 호날두를 완벽 보좌한 연계형 9번',
+        f: [89, 89, 80, 91, 84, 48, 85],
+      },
+      {
+        slug: 'ronaldo', name: '크리스티아누 호날두', pos: 'FW', main: ['ST', 'LW'], ovr: 96,
+        nat: '포르투갈', code: 'PT', sta: 90, styles: ['complete_forward', 'poacher'],
+        note: '발롱도르 · UCL 8강~결승 10골 폭격(바이에른·AT·유베전 클러치 지배)',
+        f: [98, 86, 86, 92, 96, 44, 93],
+      },
+    ]),
+    bench: buildSquad('hist-1617-realmadrid', '16-17 레알 마드리드', 'laliga', [
+      {
+        slug: 'casilla', name: '키코 카시야', pos: 'GK', main: ['GK'], ovr: 79,
+        nat: '스페인', code: 'ES', sta: 76, styles: ['shot_stopper'],
+        note: '시즌 로테이션을 안정적으로 소화한 백업 골키퍼',
+        f: [34, 70, 56, 54, 74, 72, 78], gk: [79, 78, 81, 76, 79],
+      },
+      {
+        slug: 'pepe', name: '페페', pos: 'DF', main: ['CB'], ovr: 87,
+        nat: '포르투갈', code: 'PT', sta: 84, styles: ['stopper_cb'],
+        note: '압도적 대인 수비와 투지로 후방을 지킨 베테랑 센터백',
+        f: [58, 76, 66, 72, 90, 91, 89],
+      },
+      {
+        slug: 'nacho', name: '나초 페르난데스', pos: 'DF', main: ['CB', 'RB', 'LB'], ovr: 83,
+        nat: '스페인', code: 'ES', sta: 88, styles: ['stopper_cb'],
+        note: '수비 전 포지션을 빈틈없이 메운 역대급 원클럽 멀티 수비수',
+        f: [62, 78, 76, 76, 82, 86, 86],
+      },
+      {
+        slug: 'kovacic', name: '마테오 코바치치', pos: 'MF', main: ['CM', 'CDM'], ovr: 84,
+        nat: '크로아티아', code: 'HR', sta: 88, styles: ['box_to_box', 'deep_playmaker'],
+        note: '폭발적 전진 드리블로 B팀 중원을 이끈 크로아티아 미드필더',
+        f: [74, 85, 76, 90, 68, 80, 84],
+      },
+      {
+        slug: 'bale', name: '가레스 베일', pos: 'FW', main: ['RW', 'LW'], sec: ['ST'], ovr: 89,
+        nat: '웨일스', code: 'GB-WLS', sta: 85, styles: ['inverted_winger', 'line_breaker'],
+        note: '고향 카디프 결승 무대에 선 폭발적 왼발·스피드 슈퍼스타',
+        f: [90, 84, 88, 88, 88, 58, 94],
+      },
+      {
+        slug: 'morata', name: '알바로 모라타', pos: 'FW', main: ['ST'], ovr: 84,
+        nat: '스페인', code: 'ES', sta: 86, styles: ['poacher', 'line_breaker'],
+        note: '라리가 15골·공식전 20골로 역대급 B팀 우승을 견인한 특급 조커',
+        f: [86, 76, 72, 82, 88, 48, 86],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 18. 24-25 파리 생제르맹 (4-3-3 · 게겐프레싱 · 루이스 엔리케 · 프랑스 최초 트레블)
+  // Slots: [GK, LB, CB, CB, RB, CDM, CM, CM, LW, ST, RW]
+  // =========================================================================
+  'hist-2425-psg': {
+    starters: buildSquad('hist-2425-psg', '24-25 파리 생제르맹', 'ligue1', [
+      {
+        slug: 'donnarumma', name: '잔루이지 돈나룸마', pos: 'GK', main: ['GK'], ovr: 91,
+        nat: '이탈리아', code: 'IT', sta: 83, styles: ['shot_stopper'],
+        note: '리버풀·아스널·인테르전 토너먼트 철벽 선방으로 빅이어 견인',
+        f: [36, 75, 62, 60, 80, 82, 86], gk: [93, 89, 95, 78, 91],
+      },
+      {
+        slug: 'nuno_mendes', name: '누누 멘데스', pos: 'DF', main: ['LB', 'LWB'], ovr: 89,
+        nat: '포르투갈', code: 'PT', sta: 94, styles: ['attacking_wingback', 'line_breaker'],
+        note: '살라·사카를 봉쇄하고 공격까지 폭발시킨 유럽 최고 레프트백',
+        f: [76, 84, 88, 89, 76, 87, 94],
+      },
+      {
+        slug: 'pacho', name: '윌리안 파초', pos: 'DF', main: ['CB'], ovr: 87,
+        nat: '에콰도르', code: 'EC', sta: 90, styles: ['stopper_cb', 'ball_playing_cb'],
+        note: '데뷔 시즌 곧바로 하이 라인 뒷공간을 완벽히 지배한 왼발 센터백',
+        f: [54, 82, 70, 76, 88, 90, 91],
+      },
+      {
+        slug: 'marquinhos', name: '마르키뉴스', pos: 'DF', main: ['CB'], sec: ['CDM'], ovr: 89,
+        nat: '브라질', code: 'BR', sta: 89, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '파리 최초 트레블 빅이어를 들어 올린 베테랑 캡틴 센터백',
+        f: [62, 86, 74, 80, 88, 92, 88],
+      },
+      {
+        slug: 'hakimi', name: '아슈라프 하키미', pos: 'DF', main: ['RB', 'RWB'], ovr: 91,
+        nat: '모로코', code: 'MA', sta: 96, styles: ['attacking_wingback', 'line_breaker'],
+        note: 'UCL 결승 선제골 포함 공수 전역 폭발 · 세계 최고 라이트백',
+        f: [82, 87, 90, 90, 76, 85, 96],
+      },
+      {
+        slug: 'vitinha', name: '비티냐', pos: 'MF', main: ['CDM', 'CM'], ovr: 91,
+        nat: '포르투갈', code: 'PT', sta: 92, styles: ['deep_playmaker', 'playmaker_10'],
+        note: '엔리케 PSG의 두뇌 · 압박 속 완벽한 템포 조절과 전진 패스',
+        f: [82, 95, 86, 94, 62, 82, 82],
+      },
+      {
+        slug: 'joao_neves', name: '주앙 네베스', pos: 'MF', main: ['CM', 'CDM'], ovr: 89,
+        nat: '포르투갈', code: 'PT', sta: 96, styles: ['box_to_box', 'ball_winner'],
+        note: '미친 활동량과 탈압박·태클로 중원을 집어삼킨 20세 압박 엔진',
+        f: [76, 89, 80, 90, 74, 89, 92],
+      },
+      {
+        slug: 'fabian_ruiz', name: '파비안 루이스', pos: 'MF', main: ['CM'], sec: ['CDM', 'CAM'], ovr: 88,
+        nat: '스페인', code: 'ES', sta: 90, styles: ['box_to_box', 'deep_playmaker'],
+        note: '아스널전 중거리 결승골 · 유려한 왼발과 박스 침투의 중원 핵심',
+        f: [84, 90, 83, 88, 82, 82, 85],
+      },
+      {
+        slug: 'kvaratskhelia', name: '흐비차 크바라츠헬리아', pos: 'FW', main: ['LW'], sec: ['RW', 'CAM'], ovr: 90,
+        nat: '조지아', code: 'GE', sta: 90, styles: ['inverted_winger', 'line_breaker'],
+        note: '겨울 합류 후 트레블 퍼즐 완성 · UCL 결승 득점 & 압박 헌신',
+        f: [88, 87, 88, 95, 72, 64, 88],
+      },
+      {
+        slug: 'dembele', name: '우스만 뎀벨레', pos: 'FW', main: ['ST', 'RW'], sec: ['LW'], ovr: 93,
+        nat: '프랑스', code: 'FR', sta: 89, styles: ['complete_forward', 'inverted_winger'],
+        note: '2025 발롱도르 · 공식전 35골·리그1 득점왕·UCL 시즌 최우수 선수',
+        f: [92, 90, 90, 96, 66, 56, 90],
+      },
+      {
+        slug: 'doue', name: '데지레 두에', pos: 'FW', main: ['RW', 'LW'], sec: ['CAM'], ovr: 88,
+        nat: '프랑스', code: 'FR', sta: 89, styles: ['inverted_winger', 'playmaker_10'],
+        note: 'UCL 결승 인테르전 2골 1도움 MOM · 19세에 세계를 정복한 신성',
+        f: [87, 86, 85, 94, 68, 60, 87],
+      },
+    ]),
+    bench: buildSquad('hist-2425-psg', '24-25 파리 생제르맹', 'ligue1', [
+      {
+        slug: 'safonov', name: '마트베이 사포노프', pos: 'GK', main: ['GK'], ovr: 81,
+        nat: '러시아', code: 'RU', sta: 78, styles: ['shot_stopper'],
+        note: '쿠프 드 프랑스 우승 여정을 책임진 든든한 백업 골키퍼',
+        f: [34, 72, 58, 56, 74, 74, 78], gk: [82, 80, 83, 76, 81],
+      },
+      {
+        slug: 'l_hernandez', name: '뤼카 에르난데스', pos: 'DF', main: ['LB', 'CB'], ovr: 83,
+        nat: '프랑스', code: 'FR', sta: 85, styles: ['stopper_cb'],
+        note: '부상 복귀 후 수비 라인 로테이션을 지킨 투지의 멀티 수비수',
+        f: [62, 78, 78, 78, 82, 86, 86],
+      },
+      {
+        slug: 'zaire_emery', name: '워렌 자이르에머리', pos: 'MF', main: ['CM', 'CDM'], ovr: 84,
+        nat: '프랑스', code: 'FR', sta: 92, styles: ['box_to_box', 'ball_winner'],
+        note: '강인한 추진력과 전진 드리블을 갖춘 파리 유스 중원 핵심',
+        f: [76, 84, 78, 85, 76, 83, 89],
+      },
+      {
+        slug: 'lee_kangin', name: '이강인', pos: 'MF', main: ['CAM', 'RW', 'CM'], ovr: 83,
+        nat: '대한민국', code: 'KR', sta: 84, styles: ['playmaker_10', 'deep_playmaker'],
+        note: '정교한 왼발 킥과 탈압박으로 리그1 트레블 로테이션에 기여',
+        f: [80, 88, 89, 89, 60, 62, 78],
+      },
+      {
+        slug: 'barcola', name: '브래들리 바르콜라', pos: 'FW', main: ['LW', 'RW'], ovr: 87,
+        nat: '프랑스', code: 'FR', sta: 91, styles: ['classic_winger', 'line_breaker'],
+        note: '리그1 14골 10도움 · 폭발적 스피드로 시즌 전반기를 견인한 윙어',
+        f: [85, 84, 86, 92, 68, 56, 91],
+      },
+      {
+        slug: 'goncalo_ramos', name: '곤살루 하무스', pos: 'FW', main: ['ST'], ovr: 83,
+        nat: '포르투갈', code: 'PT', sta: 87, styles: ['poacher'],
+        note: '짧은 출전 시간에도 높은 득점 효율을 보인 박스 내 킬러',
+        f: [86, 75, 70, 80, 85, 54, 84],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 19. 88-89 AC 밀란 (4-4-2 · 게겐프레싱 · 아리고 사키 · 불멸의 밀란)
+  // Slots: [GK, LB, CB, CB, RB, LM, CM, CM, RM, ST, ST]
+  // =========================================================================
+  'hist-8889-milan': {
+    starters: buildSquad('hist-8889-milan', '88-89 AC 밀란', 'seriea', [
+      {
+        slug: 'g_galli', name: '조반니 갈리', pos: 'GK', main: ['GK'], ovr: 85,
+        nat: '이탈리아', code: 'IT', sta: 80, styles: ['shot_stopper', 'sweeper_keeper'],
+        note: '사키 하이 라인의 최후방을 침착하게 지킨 노련한 골키퍼',
+        f: [34, 74, 58, 56, 74, 76, 80], gk: [85, 86, 85, 80, 88],
+      },
+      {
+        slug: 'maldini', name: '파올로 말디니', pos: 'DF', main: ['LB', 'CB'], ovr: 93,
+        nat: '이탈리아', code: 'IT', sta: 93, styles: ['stopper_cb', 'attacking_wingback'],
+        note: '20세의 나이에 세계 최정상 수비력을 보여준 역사상 최고 레프트백',
+        f: [68, 86, 87, 86, 88, 96, 92],
+      },
+      {
+        slug: 'baresi', name: '프랑코 바레시', pos: 'DF', main: ['CB'], ovr: 95,
+        nat: '이탈리아', code: 'IT', sta: 91, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '오프사이드 트랩과 존 프레싱의 절대 지휘관 · 불멸의 캡틴 6번',
+        f: [66, 91, 78, 85, 90, 98, 91],
+      },
+      {
+        slug: 'costacurta', name: '알레산드로 코스타쿠르타', pos: 'DF', main: ['CB'], sec: ['RB'], ovr: 89,
+        nat: '이탈리아', code: 'IT', sta: 89, styles: ['stopper_cb', 'ball_playing_cb'],
+        note: '바레시와 완벽한 라인 컨트롤을 맞춘 지능형 수비수',
+        f: [58, 82, 72, 78, 87, 92, 88],
+      },
+      {
+        slug: 'tassotti', name: '마우로 타소티', pos: 'DF', main: ['RB'], sec: ['CB'], ovr: 88,
+        nat: '이탈리아', code: 'IT', sta: 90, styles: ['attacking_wingback', 'stopper_cb'],
+        note: '우측 수비 안정과 정교한 오버래핑으로 밀란 4백을 완성한 주축',
+        f: [66, 84, 86, 82, 78, 90, 88],
+      },
+      {
+        slug: 'evani', name: '알베리고 에바니', pos: 'MF', main: ['LM', 'CM'], sec: ['LB'], ovr: 85,
+        nat: '이탈리아', code: 'IT', sta: 91, styles: ['classic_winger', 'box_to_box'],
+        note: '왕성한 활동량과 날카로운 왼발 킥으로 좌측 압박을 수행',
+        f: [78, 86, 88, 85, 68, 78, 86],
+      },
+      {
+        slug: 'rijkaard', name: '프랑크 레이카르트', pos: 'MF', main: ['CM', 'CDM'], sec: ['CB'], ovr: 93,
+        nat: '네덜란드', code: 'NL', sta: 94, styles: ['ball_winner', 'box_to_box'],
+        note: '오렌지 삼총사의 중원 척추 · 압도적 피지컬과 패스의 완성형 홀딩',
+        f: [82, 91, 80, 87, 92, 94, 95],
+      },
+      {
+        slug: 'ancelotti', name: '카를로 안첼로티', pos: 'MF', main: ['CM', 'CDM'], ovr: 89,
+        nat: '이탈리아', code: 'IT', sta: 88, styles: ['deep_playmaker', 'box_to_box'],
+        note: '4강 레알전 5-0 대승 선제 대포알 중거리골 · 사키의 필드 위 감독',
+        f: [83, 92, 84, 85, 80, 86, 86],
+      },
+      {
+        slug: 'donadoni', name: '로베르토 도나도니', pos: 'MF', main: ['RM', 'RW'], sec: ['LM'], ovr: 89,
+        nat: '이탈리아', code: 'IT', sta: 91, styles: ['classic_winger', 'playmaker_10'],
+        note: '현란한 드리블과 크로스로 우측을 지배한 이탈리아 최고 윙어',
+        f: [82, 89, 91, 93, 66, 68, 86],
+      },
+      {
+        slug: 'gullit', name: '루드 굴리트', pos: 'FW', main: ['ST', 'CAM'], sec: ['RW', 'CM'], ovr: 94,
+        nat: '네덜란드', code: 'NL', sta: 94, styles: ['complete_forward', 'box_to_box'],
+        note: '결승 슈테아우아전 멀티골 · 피지컬·스피드·기술을 모두 갖춘 괴물',
+        f: [92, 91, 87, 93, 93, 76, 97],
+      },
+      {
+        slug: 'van_basten', name: '마르코 판 바스턴', pos: 'FW', main: ['ST'], ovr: 95,
+        nat: '네덜란드', code: 'NL', sta: 88, styles: ['complete_forward', 'poacher'],
+        note: '1988·1989 발롱도르 연속 수상 · 공식전 33골·결승전 멀티골의 백조',
+        f: [98, 87, 82, 92, 95, 48, 90],
+      },
+    ]),
+    bench: buildSquad('hist-8889-milan', '88-89 AC 밀란', 'seriea', [
+      {
+        slug: 'pinato', name: '다비데 피나토', pos: 'GK', main: ['GK'], ovr: 76,
+        nat: '이탈리아', code: 'IT', sta: 74, styles: ['shot_stopper'],
+        note: '밀란의 든든한 세컨드 골키퍼',
+        f: [30, 64, 52, 50, 70, 68, 72], gk: [76, 76, 77, 70, 77],
+      },
+      {
+        slug: 'f_galli', name: '필리포 갈리', pos: 'DF', main: ['CB'], ovr: 83,
+        nat: '이탈리아', code: 'IT', sta: 85, styles: ['stopper_cb'],
+        note: '밀란 철벽 수비 로테이션의 핵심 센터백',
+        f: [52, 74, 64, 68, 86, 86, 85],
+      },
+      {
+        slug: 'mussi', name: '로베르토 무시', pos: 'DF', main: ['RB', 'LB'], ovr: 80,
+        nat: '이탈리아', code: 'IT', sta: 86, styles: ['attacking_wingback'],
+        note: '양 측면 풀백을 탄탄하게 메운 수비 백업',
+        f: [60, 75, 78, 76, 74, 82, 84],
+      },
+      {
+        slug: 'colombo', name: '안젤로 콜롬보', pos: 'MF', main: ['CM', 'RM'], ovr: 83,
+        nat: '이탈리아', code: 'IT', sta: 93, styles: ['box_to_box', 'ball_winner'],
+        note: '결승전 선발 출전 · 사키식 4-4-2 압박의 엔진을 담당한 언성 히어로',
+        f: [74, 81, 80, 80, 76, 83, 90],
+      },
+      {
+        slug: 'virdis', name: '피에트로 파올로 비르디스', pos: 'FW', main: ['ST'], ovr: 84,
+        nat: '이탈리아', code: 'IT', sta: 84, styles: ['poacher'],
+        note: '세리에A 10골로 오렌지 듀오와 공격을 분담한 노련한 골잡이',
+        f: [87, 76, 72, 81, 86, 48, 84],
+      },
+      {
+        slug: 'massaro', name: '다니엘레 마사로', pos: 'FW', main: ['ST', 'LW'], ovr: 82,
+        nat: '이탈리아', code: 'IT', sta: 87, styles: ['line_breaker', 'poacher'],
+        note: '투지 넘치는 전방 압박과 문전 침투의 핵심 조커',
+        f: [84, 76, 74, 80, 82, 56, 86],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 20. 07-08 맨체스터 유나이티드 (4-3-3 · 역습 · 알렉스 퍼거슨 · EPL+UCL 더블)
+  // Slots: [GK, LB, CB, CB, RB, CDM, CM, CM, LW, ST, RW]
+  // =========================================================================
+  'hist-0708-manutd': {
+    starters: buildSquad('hist-0708-manutd', '07-08 맨체스터 유나이티드', 'epl', [
+      {
+        slug: 'vandersar', name: '에드윈 판 데르 사르', pos: 'GK', main: ['GK'], ovr: 90,
+        nat: '네덜란드', code: 'NL', sta: 82, styles: ['shot_stopper', 'sweeper_keeper'],
+        note: '모스크바 결승 승부차기 아넬카 킥 선방 · EPL 최소 실점(22실점)',
+        f: [36, 84, 66, 62, 82, 82, 84], gk: [90, 91, 91, 87, 94],
+      },
+      {
+        slug: 'evra', name: '파트리스 에브라', pos: 'DF', main: ['LB', 'LWB'], ovr: 88,
+        nat: '프랑스', code: 'FR', sta: 93, styles: ['attacking_wingback'],
+        note: '폭발적 오버래핑과 호날두 배후 커버를 완벽 수행한 정상급 레프트백',
+        f: [68, 82, 86, 86, 78, 87, 91],
+      },
+      {
+        slug: 'vidic', name: '네마냐 비디치', pos: 'DF', main: ['CB'], ovr: 91,
+        nat: '세르비아', code: 'RS', sta: 90, styles: ['stopper_cb'],
+        note: '몸을 아끼지 않는 태클과 압도적 제공권의 최강 파이터 센터백',
+        f: [62, 76, 66, 72, 95, 94, 94],
+      },
+      {
+        slug: 'ferdinand', name: '리오 퍼디난드', pos: 'DF', main: ['CB'], ovr: 92,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 89, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '스피드·빌드업·수비 지능이 절정에 달했던 역대급 우아한 센터백',
+        f: [62, 86, 72, 82, 91, 94, 92],
+      },
+      {
+        slug: 'brown', name: '웨스 브라운', pos: 'DF', main: ['RB', 'CB'], ovr: 83,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 88, styles: ['stopper_cb'],
+        note: '모스크바 결승 호날두 선제 헤더를 도운 견고한 우측 풀백',
+        f: [58, 76, 81, 74, 84, 86, 86],
+      },
+      {
+        slug: 'carrick', name: '마이클 캐릭', pos: 'MF', main: ['CDM', 'CM'], ovr: 87,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 88, styles: ['deep_playmaker'],
+        note: '조용히 중원 패스 길목을 차단하고 역습 기점을 연 딥라잉 마에스트로',
+        f: [76, 90, 84, 83, 80, 86, 83],
+      },
+      {
+        slug: 'scholes', name: '폴 스콜스', pos: 'MF', main: ['CM'], sec: ['CDM', 'CAM'], ovr: 91,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 86, styles: ['deep_playmaker', 'playmaker_10'],
+        note: 'UCL 4강 바르사전 환상적 중거리 결승골 · 시야와 롱패스의 천재',
+        f: [89, 96, 90, 88, 72, 78, 82],
+      },
+      {
+        slug: 'hargreaves', name: '오언 하그리브스', pos: 'MF', main: ['CM', 'CDM'], sec: ['RM', 'RB'], ovr: 85,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 93, styles: ['ball_winner', 'box_to_box'],
+        note: '아스널전 프리킥 결승골 · 왕성한 기동력과 수비 커버의 핵심 엔진',
+        f: [78, 83, 86, 81, 76, 87, 90],
+      },
+      {
+        slug: 'ronaldo', name: '크리스티아누 호날두', pos: 'FW', main: ['LW', 'RW', 'ST'], ovr: 95,
+        nat: '포르투갈', code: 'PT', sta: 93, styles: ['complete_forward', 'inverted_winger'],
+        note: '2008 발롱도르 · 공식전 42골·EPL 31골·UCL 8골 득점왕의 괴물 시즌',
+        f: [96, 87, 89, 96, 93, 46, 95],
+      },
+      {
+        slug: 'tevez', name: '카를로스 테베스', pos: 'FW', main: ['ST'], sec: ['CAM'], ovr: 88,
+        nat: '아르헨티나', code: 'AR', sta: 94, styles: ['complete_forward', 'line_breaker'],
+        note: '공식전 19골 · 지치지 않는 압박과 연계로 황금 삼각편대를 완성',
+        f: [89, 85, 80, 90, 76, 62, 91],
+      },
+      {
+        slug: 'rooney', name: '웨인 루니', pos: 'FW', main: ['RW', 'ST'], sec: ['LW', 'CAM'], ovr: 91,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 94, styles: ['complete_forward', 'box_to_box'],
+        note: '공격 전 지역을 스위칭하며 18골 14도움을 올린 퍼거슨 축구의 심장',
+        f: [91, 89, 86, 89, 84, 68, 93],
+      },
+    ]),
+    bench: buildSquad('hist-0708-manutd', '07-08 맨체스터 유나이티드', 'epl', [
+      {
+        slug: 'kuszczak', name: '토마시 쿠슈차크', pos: 'GK', main: ['GK'], ovr: 78,
+        nat: '폴란드', code: 'PL', sta: 75, styles: ['shot_stopper'],
+        note: '리그 9경기 출전으로 우승에 기여한 백업 골키퍼',
+        f: [32, 66, 54, 52, 74, 72, 76], gk: [79, 77, 81, 72, 78],
+      },
+      {
+        slug: 'oshea', name: '존 오셰이', pos: 'DF', main: ['RB', 'LB', 'CB'], sec: ['CDM'], ovr: 80,
+        nat: '아일랜드', code: 'IE', sta: 86, styles: ['stopper_cb'],
+        note: '수비와 미드필드 전 포지션을 소화한 퍼거슨의 만능 땜빵',
+        f: [62, 76, 75, 74, 82, 83, 84],
+      },
+      {
+        slug: 'anderson', name: '안데르송', pos: 'MF', main: ['CM', 'CAM'], ovr: 82,
+        nat: '브라질', code: 'BR', sta: 89, styles: ['box_to_box'],
+        note: '에너지 넘치는 전진 드리블과 결승전 PK 성공으로 빛난 젊은 미들',
+        f: [74, 82, 76, 86, 70, 78, 86],
+      },
+      {
+        slug: 'park', name: '박지성', pos: 'MF', main: ['LM', 'RM', 'CM'], sec: ['LW'], ovr: 84,
+        nat: '대한민국', code: 'KR', sta: 97, styles: ['box_to_box', 'ball_winner'],
+        note: 'UCL 8강 로마·4강 바르사전 맹활약으로 결승행을 견인한 산소탱크',
+        f: [78, 83, 82, 84, 74, 83, 93],
+      },
+      {
+        slug: 'giggs', name: '라이언 긱스', pos: 'FW', main: ['LW', 'LM'], sec: ['CM'], ovr: 86,
+        nat: '웨일스', code: 'GB-WLS', sta: 85, styles: ['classic_winger', 'playmaker_10'],
+        note: '최종전 우승 쐐기골 & 구단 역대 최다 출전·결승 PK 성공의 전설',
+        f: [83, 88, 90, 90, 68, 62, 82],
+      },
+      {
+        slug: 'nani', name: '나니', pos: 'FW', main: ['RW', 'LW'], ovr: 83,
+        nat: '포르투갈', code: 'PT', sta: 86, styles: ['inverted_winger', 'classic_winger'],
+        note: '화려한 양발 드리블과 모스크바 승부차기 5번 키커 강심장',
+        f: [82, 81, 85, 90, 68, 50, 84],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 21. 19-20 리버풀 (4-3-3 · 게겐프레싱 · 위르겐 클롭 · 30년 만의 EPL 승점 99 우승)
+  // Slots: [GK, LB, CB, CB, RB, CDM, CM, CM, LW, ST, RW]
+  // =========================================================================
+  'hist-1920-liverpool': {
+    starters: buildSquad('hist-1920-liverpool', '19-20 리버풀', 'epl', [
+      {
+        slug: 'alisson', name: '알리송 베케르', pos: 'GK', main: ['GK'], ovr: 91,
+        nat: '브라질', code: 'BR', sta: 83, styles: ['sweeper_keeper', 'shot_stopper'],
+        note: '1대1 선방과 정확한 롱킥으로 리버풀 수비를 완성한 월드클래스 GK',
+        f: [40, 86, 70, 66, 80, 82, 85], gk: [91, 90, 93, 90, 93],
+      },
+      {
+        slug: 'robertson', name: '앤드류 로버트슨', pos: 'DF', main: ['LB', 'LWB'], ovr: 89,
+        nat: '스코틀랜드', code: 'GB-SCT', sta: 96, styles: ['attacking_wingback'],
+        note: 'EPL 12도움 · 지치지 않는 오버래핑과 면도날 왼발 크로스의 철인',
+        f: [68, 85, 93, 84, 72, 86, 93],
+      },
+      {
+        slug: 'vandijk', name: '버질 판 다이크', pos: 'DF', main: ['CB'], ovr: 93,
+        nat: '네덜란드', code: 'NL', sta: 91, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: 'EPL 38경기 풀타임 · 대인 수비·공중볼·롱패스 모두 압도적인 벽',
+        f: [68, 88, 76, 80, 96, 95, 95],
+      },
+      {
+        slug: 'gomez', name: '조 고메스', pos: 'DF', main: ['CB'], sec: ['RB'], ovr: 84,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 88, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '폭발적 회복 스피드로 판 다이크 옆에서 높은 수비 라인을 지탱',
+        f: [52, 80, 72, 76, 82, 86, 90],
+      },
+      {
+        slug: 'trent', name: '트렌트 알렉산더아놀드', pos: 'DF', main: ['RB', 'RWB'], ovr: 90,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 90, styles: ['attacking_wingback', 'deep_playmaker'],
+        note: 'EPL 4골 13도움 · 측면에서 경기를 조율한 역대급 플레이메이킹 풀백',
+        f: [82, 94, 97, 86, 68, 79, 84],
+      },
+      {
+        slug: 'fabinho', name: '파비뉴', pos: 'MF', main: ['CDM'], sec: ['CB'], ovr: 89,
+        nat: '브라질', code: 'BR', sta: 91, styles: ['ball_winner', 'deep_playmaker'],
+        note: '등대 같은 긴 다리 태클과 맨시티전 중거리포 · 중원의 등불',
+        f: [78, 86, 78, 82, 86, 92, 91],
+      },
+      {
+        slug: 'henderson', name: '조던 헨더슨', pos: 'MF', main: ['CM', 'CDM'], ovr: 88,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 95, styles: ['box_to_box', 'deep_playmaker'],
+        note: 'FWA 올해의 선수 · 30년 만의 리그 트로피를 들어 올린 위대한 주장',
+        f: [78, 89, 87, 82, 80, 86, 92],
+      },
+      {
+        slug: 'wijnaldum', name: '조르지니오 바이날둠', pos: 'MF', main: ['CM'], sec: ['CDM', 'CAM'], ovr: 86,
+        nat: '네덜란드', code: 'NL', sta: 94, styles: ['box_to_box', 'ball_winner'],
+        note: '극강의 탈압박과 볼 키핑으로 중원 밸런스를 유지한 철강왕',
+        f: [78, 86, 78, 88, 82, 84, 91],
+      },
+      {
+        slug: 'mane', name: '사디오 마네', pos: 'FW', main: ['LW'], sec: ['RW', 'ST'], ovr: 91,
+        nat: '세네갈', code: 'SN', sta: 93, styles: ['inverted_winger', 'line_breaker'],
+        note: 'EPL 18골 7도움 · 폭발적 침투와 압박, 클러치 득점의 화신',
+        f: [91, 84, 84, 92, 84, 62, 93],
+      },
+      {
+        slug: 'firmino', name: '호베르투 피르미누', pos: 'FW', main: ['ST'], sec: ['CAM'], ovr: 88,
+        nat: '브라질', code: 'BR', sta: 92, styles: ['complete_forward', 'playmaker_10'],
+        note: '전방 압박의 시발점이자 살라·마네의 공간을 열어준 최고의 펄스 나인',
+        f: [85, 89, 80, 91, 80, 70, 86],
+      },
+      {
+        slug: 'salah', name: '모하메드 살라', pos: 'FW', main: ['RW'], sec: ['ST'], ovr: 92,
+        nat: '이집트', code: 'EG', sta: 92, styles: ['inverted_winger', 'line_breaker'],
+        note: 'EPL 19골 10도움 팀 최다 득점 · 우측 하프스페이스의 절대 지배자',
+        f: [93, 86, 86, 94, 70, 56, 92],
+      },
+    ]),
+    bench: buildSquad('hist-1920-liverpool', '19-20 리버풀', 'epl', [
+      {
+        slug: 'adrian', name: '아드리안', pos: 'GK', main: ['GK'], ovr: 78,
+        nat: '스페인', code: 'ES', sta: 75, styles: ['shot_stopper'],
+        note: 'UEFA 슈퍼컵 PK 선방 우승 & 리그 초반 연승을 지킨 백업 키퍼',
+        f: [32, 68, 56, 54, 74, 72, 78], gk: [79, 77, 81, 74, 78],
+      },
+      {
+        slug: 'matip', name: '조엘 마팁', pos: 'DF', main: ['CB'], ovr: 84,
+        nat: '카메룬', code: 'CM', sta: 84, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '전진 드리블과 제공권이 뛰어난 판 다이크의 든든한 파트너',
+        f: [58, 81, 68, 80, 88, 86, 85],
+      },
+      {
+        slug: 'milner', name: '제임스 밀너', pos: 'MF', main: ['CM', 'LB'], sec: ['RB', 'CDM'], ovr: 82,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 94, styles: ['box_to_box'],
+        note: '부주장 리더십과 멀티 포지션·완벽한 PK로 팀을 지탱한 베테랑',
+        f: [76, 84, 85, 79, 74, 83, 88],
+      },
+      {
+        slug: 'ox', name: '알렉스 옥슬레이드체임벌린', pos: 'MF', main: ['CM', 'RW'], sec: ['CAM'], ovr: 82,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 86, styles: ['box_to_box', 'line_breaker'],
+        note: '강력한 중거리 슈팅과 추진력으로 중원에 역동성을 더한 로테이션',
+        f: [82, 81, 80, 85, 70, 72, 86],
+      },
+      {
+        slug: 'keita', name: '나비 케이타', pos: 'MF', main: ['CM'], sec: ['CAM'], ovr: 82,
+        nat: '기니', code: 'GN', sta: 86, styles: ['box_to_box', 'playmaker_10'],
+        note: '전방 압박과 좁은 공간 침투 패스가 날카로운 8번 미드필더',
+        f: [77, 84, 76, 87, 64, 78, 84],
+      },
+      {
+        slug: 'origi', name: '디보크 오리기', pos: 'FW', main: ['ST', 'LW'], ovr: 80,
+        nat: '벨기에', code: 'BE', sta: 84, styles: ['poacher', 'line_breaker'],
+        note: '중요한 순간 득점을 터뜨려낸 클롭 시대의 상징적 슈퍼 서브',
+        f: [83, 73, 70, 80, 84, 48, 86],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 22. 06-07 AC 밀란 (4-4-2 다이아몬드 · 점유율 · 카를로 안첼로티 · 카카 발롱도르 UCL 우승)
+  // Slots: [GK, LB, CB, CB, RB, CDM, LCM, RCM, CAM, ST, ST]
+  // =========================================================================
+  'hist-0607-milan': {
+    starters: buildSquad('hist-0607-milan', '06-07 AC 밀란', 'seriea', [
+      {
+        slug: 'dida', name: '지다', pos: 'GK', main: ['GK'], ovr: 87,
+        nat: '브라질', code: 'BR', sta: 80, styles: ['shot_stopper'],
+        note: '아테네 결승전 안정적 선방으로 두 번째 빅이어를 품은 브라질 수문장',
+        f: [34, 74, 60, 58, 80, 78, 84], gk: [89, 85, 90, 78, 87],
+      },
+      {
+        slug: 'jankulovski', name: '마렉 얀쿨로프스키', pos: 'DF', main: ['LB', 'LWB'], sec: ['LM'], ovr: 85,
+        nat: '체코', code: 'CZ', sta: 90, styles: ['attacking_wingback'],
+        note: '다이아몬드 전술의 좌측 폭을 책임진 공격적 왼발 풀백',
+        f: [74, 83, 88, 84, 74, 83, 88],
+      },
+      {
+        slug: 'maldini', name: '파올로 말디니', pos: 'DF', main: ['CB', 'LB'], ovr: 90,
+        nat: '이탈리아', code: 'IT', sta: 84, styles: ['stopper_cb', 'ball_playing_cb'],
+        note: '38세의 나이로 통산 5번째 빅이어를 들어 올린 영원한 밀란의 심장',
+        f: [62, 84, 80, 80, 88, 94, 86],
+      },
+      {
+        slug: 'nesta', name: '알레산드로 네스타', pos: 'DF', main: ['CB'], ovr: 93,
+        nat: '이탈리아', code: 'IT', sta: 87, styles: ['stopper_cb', 'ball_playing_cb'],
+        note: '완벽한 태클 타이밍과 우아한 수비 지휘력의 세계 최고 센터백',
+        f: [58, 84, 72, 81, 91, 96, 90],
+      },
+      {
+        slug: 'oddo', name: '마시모 오도', pos: 'DF', main: ['RB', 'RWB'], ovr: 85,
+        nat: '이탈리아', code: 'IT', sta: 89, styles: ['attacking_wingback'],
+        note: '겨울 합류 후 정교한 우측 크로스로 UCL 우승 퍼즐을 맞춘 풀백',
+        f: [72, 83, 90, 81, 74, 84, 86],
+      },
+      {
+        slug: 'pirlo', name: '안드레아 피를로', pos: 'MF', main: ['CDM', 'CM'], ovr: 93,
+        nat: '이탈리아', code: 'IT', sta: 89, styles: ['deep_playmaker'],
+        note: '결승전 선제골 프리킥 & 후방에서 경기를 설계한 위대한 레지스타',
+        f: [84, 98, 95, 92, 66, 78, 80],
+      },
+      {
+        slug: 'seedorf', name: '클라렌스 세도르프', pos: 'MF', main: ['CM', 'CAM'], sec: ['LM'], ovr: 90,
+        nat: '네덜란드', code: 'NL', sta: 90, styles: ['box_to_box', 'playmaker_10'],
+        note: '바이에른·맨유전 결승골 · UCL 4회 우승에 빛나는 강철 테크니션',
+        f: [86, 91, 86, 92, 80, 82, 91],
+      },
+      {
+        slug: 'gattuso', name: '젠나로 가투소', pos: 'MF', main: ['CM', 'CDM'], ovr: 89,
+        nat: '이탈리아', code: 'IT', sta: 96, styles: ['ball_winner'],
+        note: '피를로 옆을 철통 경호하며 맨유·리버풀 중원을 집어삼킨 투견',
+        f: [68, 80, 74, 78, 78, 93, 95],
+      },
+      {
+        slug: 'kaka', name: '카카', pos: 'MF', main: ['CAM'], sec: ['ST'], ovr: 95,
+        nat: '브라질', code: 'BR', sta: 91, styles: ['playmaker_10', 'line_breaker'],
+        note: '2007 발롱도르 · UCL 10골 득점왕, 올드 트래포드를 찢은 치달의 황제',
+        f: [93, 94, 88, 97, 78, 56, 93],
+      },
+      {
+        slug: 'inzaghi', name: '필리포 인자기', pos: 'FW', main: ['ST'], ovr: 89,
+        nat: '이탈리아', code: 'IT', sta: 86, styles: ['poacher', 'line_breaker'],
+        note: '아테네 결승전 멀티골 MOM · 오프사이드 라인 위에서 태어난 천재 골잡이',
+        f: [94, 76, 70, 82, 86, 42, 82],
+      },
+      {
+        slug: 'gilardino', name: '알베르토 질라르디노', pos: 'FW', main: ['ST'], ovr: 85,
+        nat: '이탈리아', code: 'IT', sta: 86, styles: ['poacher', 'complete_forward'],
+        note: '세리에A 팀 최다 12골 & 맨유 4강 쐐기골의 정통 9번 스트라이커',
+        f: [88, 77, 72, 81, 88, 48, 84],
+      },
+    ]),
+    bench: buildSquad('hist-0607-milan', '06-07 AC 밀란', 'seriea', [
+      {
+        slug: 'kalac', name: '젤코 칼라치', pos: 'GK', main: ['GK'], ovr: 78,
+        nat: '호주', code: 'AU', sta: 74, styles: ['shot_stopper'],
+        note: '202cm 장신으로 제공권을 장악한 백업 골키퍼',
+        f: [30, 64, 52, 50, 82, 72, 78], gk: [78, 78, 79, 72, 80],
+      },
+      {
+        slug: 'cafu', name: '카푸', pos: 'DF', main: ['RB', 'RWB'], ovr: 85,
+        nat: '브라질', code: 'BR', sta: 88, styles: ['attacking_wingback'],
+        note: '노련한 오버래핑과 리더십을 보탠 전설적인 브라질 라이트백',
+        f: [72, 84, 88, 86, 72, 83, 86],
+      },
+      {
+        slug: 'kaladze', name: '카하 칼라제', pos: 'DF', main: ['CB', 'LB'], ovr: 83,
+        nat: '조지아', code: 'GE', sta: 86, styles: ['stopper_cb'],
+        note: '센터백과 레프트백을 모두 소화한 밀란의 핵심 수비 로테이션',
+        f: [60, 77, 76, 76, 84, 86, 86],
+      },
+      {
+        slug: 'ambrosini', name: '마시모 암브로시니', pos: 'MF', main: ['CM', 'CDM'], ovr: 86,
+        nat: '이탈리아', code: 'IT', sta: 92, styles: ['ball_winner', 'box_to_box'],
+        note: '크리스마스 트리 결승전 선발 · 공중볼과 압박의 핵심 중원 리더',
+        f: [74, 82, 76, 79, 90, 89, 90],
+      },
+      {
+        slug: 'gourcuff', name: '요안 구르퀴프', pos: 'MF', main: ['CAM', 'CM'], ovr: 80,
+        nat: '프랑스', code: 'FR', sta: 83, styles: ['playmaker_10'],
+        note: '우아한 볼 터치와 패스 감각을 보여준 프랑스 신예 플레이메이커',
+        f: [76, 84, 82, 85, 72, 64, 78],
+      },
+      {
+        slug: 'brocchi', name: '크리스티안 브로키', pos: 'MF', main: ['CM', 'CDM'], ovr: 80,
+        nat: '이탈리아', code: 'IT', sta: 90, styles: ['box_to_box', 'ball_winner'],
+        note: '왕성한 활동량으로 세리에A 중원 로테이션을 책임진 살림꾼',
+        f: [70, 79, 76, 78, 72, 82, 86],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 23. 01-02 레알 마드리드 (4-4-2 다이아몬드 · 균형 · 비센테 델 보스케 · 갈락티코스 1기 라 노베나)
+  // Slots: [GK, LB, CB, CB, RB, CDM, LCM, RCM, CAM, ST, ST]
+  // =========================================================================
+  'hist-0102-realmadrid': {
+    starters: buildSquad('hist-0102-realmadrid', '01-02 레알 마드리드', 'laliga', [
+      {
+        slug: 'casillas', name: '이케르 카시야스', pos: 'GK', main: ['GK'], ovr: 90,
+        nat: '스페인', code: 'ES', sta: 84, styles: ['shot_stopper'],
+        note: '글래스고 결승 후반 교체 투입 후 기적의 연속 선방으로 우승 사수',
+        f: [34, 76, 62, 60, 74, 80, 82], gk: [92, 87, 96, 78, 90],
+      },
+      {
+        slug: 'roberto_carlos', name: '호베르투 카를루스', pos: 'DF', main: ['LB', 'LWB'], ovr: 92,
+        nat: '브라질', code: 'BR', sta: 96, styles: ['attacking_wingback', 'line_breaker'],
+        note: '글래스고 결승 지단 발리슛 어시스트 · 초음속 스피드와 UFO 왼발',
+        f: [86, 85, 94, 89, 72, 86, 96],
+      },
+      {
+        slug: 'hierro', name: '페르난도 이에로', pos: 'DF', main: ['CB'], sec: ['CDM'], ovr: 90,
+        nat: '스페인', code: 'ES', sta: 84, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '정확한 롱패스와 카리스마로 갈락티코스 후방을 통솔한 위대한 주장',
+        f: [78, 89, 82, 80, 92, 92, 88],
+      },
+      {
+        slug: 'helguera', name: '이반 엘게라', pos: 'DF', main: ['CB'], sec: ['CDM'], ovr: 86,
+        nat: '스페인', code: 'ES', sta: 88, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '안정적 빌드업과 대인 방어로 이에로와 중앙 수비를 완성',
+        f: [68, 83, 74, 78, 86, 88, 86],
+      },
+      {
+        slug: 'salgado', name: '미첼 살가도', pos: 'DF', main: ['RB'], ovr: 85,
+        nat: '스페인', code: 'ES', sta: 92, styles: ['attacking_wingback', 'ball_winner'],
+        note: '끈질긴 대인 마크와 우측 돌파로 피구를 지원한 투지의 라이트백',
+        f: [66, 80, 84, 81, 74, 87, 89],
+      },
+      {
+        slug: 'makelele', name: '클로드 마켈렐레', pos: 'MF', main: ['CDM'], ovr: 91,
+        nat: '프랑스', code: 'FR', sta: 96, styles: ['ball_winner'],
+        note: '갈락티코스 벤틀리의 엔진 · 수비형 미드필더의 교과서를 새로 쓴 앵커',
+        f: [62, 86, 74, 84, 74, 96, 94],
+      },
+      {
+        slug: 'solari', name: '산티아고 솔라리', pos: 'MF', main: ['CM', 'LM'], sec: ['LW'], ovr: 84,
+        nat: '아르헨티나', code: 'AR', sta: 88, styles: ['classic_winger', 'box_to_box'],
+        note: '결승전 카를루스에게 찔러준 천금 스루패스의 기점 · 좌측 밸런스 축',
+        f: [78, 85, 86, 87, 70, 74, 82],
+      },
+      {
+        slug: 'figo', name: '루이스 피구', pos: 'MF', main: ['CM', 'RM', 'RW'], sec: ['CAM'], ovr: 92,
+        nat: '포르투갈', code: 'PT', sta: 89, styles: ['classic_winger', 'playmaker_10'],
+        note: '세계 최고급 드리블과 날카로운 크로스로 우측을 지배한 갈락티코 1호',
+        f: [87, 92, 95, 95, 74, 62, 86],
+      },
+      {
+        slug: 'zidane', name: '지네딘 지단', pos: 'MF', main: ['CAM'], sec: ['CM', 'LM'], ovr: 96,
+        nat: '프랑스', code: 'FR', sta: 88, styles: ['playmaker_10'],
+        note: '글래스고 결승전 역사상 최고의 왼발 발리 결승골 · 우아함의 정점',
+        f: [91, 97, 91, 99, 86, 70, 88],
+      },
+      {
+        slug: 'raul', name: '라울 곤살레스', pos: 'FW', main: ['ST'], sec: ['CAM'], ovr: 92,
+        nat: '스페인', code: 'ES', sta: 92, styles: ['complete_forward', 'poacher'],
+        note: '결승전 선제골·공식전 29골 · 천재적 위치선정과 칩슛의 마드리드 왕자',
+        f: [94, 88, 82, 91, 82, 56, 86],
+      },
+      {
+        slug: 'morientes', name: '페르난도 모리엔테스', pos: 'FW', main: ['ST'], ovr: 87,
+        nat: '스페인', code: 'ES', sta: 86, styles: ['poacher'],
+        note: '라리가 18골 · 압도적 공중볼과 연계로 라울과 환상 투톱을 이룬 9번',
+        f: [90, 79, 74, 82, 93, 48, 87],
+      },
+    ]),
+    bench: buildSquad('hist-0102-realmadrid', '01-02 레알 마드리드', 'laliga', [
+      {
+        slug: 'cesar', name: '세사르 산체스', pos: 'GK', main: ['GK'], ovr: 81,
+        nat: '스페인', code: 'ES', sta: 78, styles: ['shot_stopper'],
+        note: '글래스고 결승전 선발 출전해 전반을 지킨 베테랑 골키퍼',
+        f: [32, 70, 56, 54, 74, 74, 78], gk: [81, 80, 83, 75, 81],
+      },
+      {
+        slug: 'pavon', name: '프란시스코 파본', pos: 'DF', main: ['CB'], ovr: 79,
+        nat: '스페인', code: 'ES', sta: 84, styles: ['stopper_cb'],
+        note: '지단과 파본들 정책의 상징 · 카스티야 출신 탄탄한 수비 백업',
+        f: [50, 72, 62, 68, 82, 82, 82],
+      },
+      {
+        slug: 'flavio', name: '플라비우 콘세이상', pos: 'MF', main: ['CDM', 'CM'], ovr: 82,
+        nat: '브라질', code: 'BR', sta: 89, styles: ['ball_winner', 'box_to_box'],
+        note: '마켈렐레와 중원 수비를 분담한 브라질 국가대표 홀딩',
+        f: [72, 82, 74, 80, 76, 85, 87],
+      },
+      {
+        slug: 'guti', name: '구티', pos: 'MF', main: ['CM', 'CAM'], sec: ['ST'], ovr: 85,
+        nat: '스페인', code: 'ES', sta: 84, styles: ['playmaker_10', 'deep_playmaker'],
+        note: '예측 불가 킬패스와 천재적 시야를 뽐낸 마드리드 성골 플레이메이커',
+        f: [81, 91, 85, 87, 74, 66, 78],
+      },
+      {
+        slug: 'mcmanaman', name: '스티브 맥마나만', pos: 'MF', main: ['RM', 'CM'], sec: ['LM'], ovr: 84,
+        nat: '잉글랜드', code: 'GB-ENG', sta: 90, styles: ['classic_winger', 'box_to_box'],
+        note: 'UCL 4강 바르사 원정 쐐기골 · 중요한 무대마다 빛난 만능 조커',
+        f: [80, 85, 86, 88, 70, 68, 84],
+      },
+      {
+        slug: 'savio', name: '사비우', pos: 'FW', main: ['LW', 'LM'], ovr: 81,
+        nat: '브라질', code: 'BR', sta: 84, styles: ['classic_winger', 'inverted_winger'],
+        note: '날렵한 왼발 드리블로 측면 변화를 준 브라질 테크니션',
+        f: [78, 80, 84, 87, 62, 48, 80],
+      },
+    ]),
+  },
+
+  // =========================================================================
+  // 24. 94-95 AFC 아약스 (3-3-3-1 · 점유율 · 루이 판 할 · 리그+UCL 무패 더블)
+  // Slots: [GK, LCB, CB, RCB, LWB(LM/LB), CDM(CM), RWB(RM/RB), LAM(CAM/LW/LM), CAM(CM), RAM(CAM/RW/RM), ST]
+  // =========================================================================
+  'hist-9495-ajax': {
+    starters: buildSquad('hist-9495-ajax', '94-95 AFC 아약스', 'bundesliga', [
+      {
+        slug: 'vandersar', name: '에드윈 판 데르 사르', pos: 'GK', main: ['GK'], ovr: 89,
+        nat: '네덜란드', code: 'NL', sta: 84, styles: ['sweeper_keeper', 'shot_stopper'],
+        note: 'UCL 11경기 4실점·8클린시트 · 11번째 필드 플레이어 같은 빌드업 GK',
+        f: [38, 85, 68, 66, 82, 82, 84], gk: [89, 89, 90, 89, 92],
+      },
+      {
+        slug: 'f_deboer', name: '프랑크 더 부르', pos: 'DF', main: ['CB', 'LB'], ovr: 89,
+        nat: '네덜란드', code: 'NL', sta: 90, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '레이저 같은 왼발 롱패스로 3백 좌측 빌드업을 지휘한 수비 핵심',
+        f: [76, 91, 88, 82, 86, 90, 88],
+      },
+      {
+        slug: 'blind', name: '다니 블린트', pos: 'DF', main: ['CB'], sec: ['RB', 'CDM'], ovr: 88,
+        nat: '네덜란드', code: 'NL', sta: 88, styles: ['ball_playing_cb', 'stopper_cb'],
+        note: '젊은 아약스 군단을 완벽히 통솔한 베테랑 주장 리베로',
+        f: [66, 87, 78, 81, 86, 91, 87],
+      },
+      {
+        slug: 'reiziger', name: '미하얼 레이지허르', pos: 'DF', main: ['CB', 'RB'], ovr: 85,
+        nat: '네덜란드', code: 'NL', sta: 92, styles: ['stopper_cb', 'attacking_wingback'],
+        note: '빠른 스피드와 밀착 마크로 우측 뒷공간을 완벽 봉쇄한 수비수',
+        f: [60, 80, 81, 80, 78, 87, 91],
+      },
+      {
+        slug: 'davids', name: '에드가르 다비즈', pos: 'MF', main: ['LM', 'CM', 'LWB'], sec: ['CDM'], ovr: 89,
+        nat: '네덜란드', code: 'NL', sta: 96, styles: ['ball_winner', 'box_to_box'],
+        note: '지치지 않는 투지와 압박·드리블로 중원 좌측을 삼킨 핏불',
+        f: [79, 86, 82, 90, 74, 90, 94],
+      },
+      {
+        slug: 'rijkaard', name: '프랑크 레이카르트', pos: 'MF', main: ['CDM', 'CM'], sec: ['CB'], ovr: 91,
+        nat: '네덜란드', code: 'NL', sta: 89, styles: ['deep_playmaker', 'ball_winner'],
+        note: '결승 클라위버르트 결승골 어시스트 · 경험으로 팀을 완성한 거장',
+        f: [80, 91, 80, 86, 90, 92, 91],
+      },
+      {
+        slug: 'seedorf', name: '클라렌스 세도르프', pos: 'MF', main: ['RM', 'CM', 'RWB'], sec: ['CAM'], ovr: 87,
+        nat: '네덜란드', code: 'NL', sta: 92, styles: ['box_to_box', 'deep_playmaker'],
+        note: '19세에 첫 빅이어를 품은 압도적 피지컬과 기술의 천재 미드필더',
+        f: [82, 88, 84, 89, 78, 83, 91],
+      },
+      {
+        slug: 'overmars', name: '마르크 오베르마르스', pos: 'FW', main: ['LW', 'LM'], sec: ['CAM'], ovr: 89,
+        nat: '네덜란드', code: 'NL', sta: 91, styles: ['classic_winger', 'line_breaker'],
+        note: '유럽 최정상급 가속력과 양발 돌파로 밀란 수비를 흔든 번개 윙어',
+        f: [85, 84, 90, 93, 62, 54, 95],
+      },
+      {
+        slug: 'litmanen', name: '야리 리트마넨', pos: 'MF', main: ['CAM'], sec: ['ST'], ovr: 91,
+        nat: '핀란드', code: 'FI', sta: 88, styles: ['playmaker_10', 'complete_forward'],
+        note: '공식전 27골·UCL 6골 · 판 할 3-3-3-1의 완벽한 10번이자 발롱도르 3위',
+        f: [91, 93, 86, 92, 78, 58, 82],
+      },
+      {
+        slug: 'finidi', name: '피니디 조지', pos: 'FW', main: ['RW', 'RM'], sec: ['CAM'], ovr: 86,
+        nat: '나이지리아', code: 'NG', sta: 91, styles: ['classic_winger', 'line_breaker'],
+        note: '4강 바이에른전 환상적 중거리골 · 우측 터치라인의 정교한 크로서',
+        f: [83, 84, 90, 88, 76, 62, 88],
+      },
+      {
+        slug: 'kluivert', name: '파트릭 클라위버르트', pos: 'FW', main: ['ST'], ovr: 88,
+        nat: '네덜란드', code: 'NL', sta: 89, styles: ['complete_forward', 'poacher'],
+        note: '18세에 리그 18골 팀 최다 득점 & UCL 결승 85분 결승골의 신동',
+        f: [90, 83, 76, 88, 91, 48, 89],
+      },
+    ]),
+    bench: buildSquad('hist-9495-ajax', '94-95 AFC 아약스', 'bundesliga', [
+      {
+        slug: 'grim', name: '프레드 그림', pos: 'GK', main: ['GK'], ovr: 77,
+        nat: '네덜란드', code: 'NL', sta: 75, styles: ['shot_stopper'],
+        note: '판 데르 사르의 뒤를 지킨 안정적 백업 골키퍼',
+        f: [30, 66, 54, 52, 70, 70, 74], gk: [77, 77, 78, 72, 78],
+      },
+      {
+        slug: 'bogarde', name: '빈스턴 보가르더', pos: 'DF', main: ['CB', 'LB'], ovr: 81,
+        nat: '네덜란드', code: 'NL', sta: 87, styles: ['stopper_cb'],
+        note: '강인한 피지컬과 스피드로 수비 로테이션을 책임진 멀티 수비수',
+        f: [58, 74, 74, 76, 83, 84, 88],
+      },
+      {
+        slug: 'r_deboer', name: '로날트 더 부르', pos: 'MF', main: ['CM', 'RW', 'ST'], sec: ['CAM'], ovr: 86,
+        nat: '네덜란드', code: 'NL', sta: 90, styles: ['complete_forward', 'box_to_box'],
+        note: '결승전 선발 · 공격과 중원 전 포지션을 넘나든 토탈 풋볼 만능 카드',
+        f: [84, 87, 84, 88, 80, 76, 86],
+      },
+      {
+        slug: 'oulida', name: '타릭 울리다', pos: 'MF', main: ['CM', 'CAM'], ovr: 79,
+        nat: '네덜란드', code: 'NL', sta: 84, styles: ['playmaker_10'],
+        note: 'AEK 아테네전 멀티골을 기록한 아약스 유스 테크니션',
+        f: [76, 82, 78, 84, 64, 68, 78],
+      },
+      {
+        slug: 'kanu', name: '은완코 카누', pos: 'FW', main: ['ST'], sec: ['CAM'], ovr: 84,
+        nat: '나이지리아', code: 'NG', sta: 84, styles: ['complete_forward', 'playmaker_10'],
+        note: '197cm 장신에 마법 같은 발기술을 겸비한 결승전 특급 조커',
+        f: [85, 83, 74, 90, 88, 46, 84],
+      },
+      {
+        slug: 'van_vossen', name: '페테르 판 포선', pos: 'FW', main: ['RW', 'LW', 'ST'], ovr: 80,
+        nat: '네덜란드', code: 'NL', sta: 85, styles: ['classic_winger', 'line_breaker'],
+        note: '빠른 측면 돌파로 무패 시즌 공격 로테이션을 뒷받침',
+        f: [80, 76, 81, 84, 68, 50, 84],
       },
     ]),
   },

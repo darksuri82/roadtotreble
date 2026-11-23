@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v5.2)
+# Road To Treble — PROJECT HANDOFF GUIDE (v6.0)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -9,12 +9,17 @@
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **24개 파일 / 94개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **25개 파일 / 97개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`)
+- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v6.0 주요 신규 모듈·기능**:
+  - **트레이드 `[받은 제안 → 역제안]` 뒤로가기 동선 수정 (`TransferMarketModal.tsx`)**: 역제안 진입 후 `[← 이전으로]` 클릭 시 이적시장 이탈 없이 직전 화면(받은 제안 목록 / 트레이드 룰렛 화면)으로 정확히 복귀, PC·모바일 상·하단 고정 바 명확 배치.
+  - **명예의 전당 피치 스쿼드 상세 뷰 & 감독 시너지·실효 OVR 순위 개편 (`LegacyHubModal.tsx`, `legacyEngine.ts`, `historicalTeams.ts`)**: `PitchBoard` 재사용으로 역대 24팀·유저 명전 팀 모두 선발 11명 피치·4색 케미선·실효 OVR·벤치·감독(OVR·스타일) 한눈에 시각화(구버전 자동 복원 지원), `squadCraftBonus`에 감독 시너지 비율과 실효 OVR 완성도 비중 강화(유저·역대 팀 100% 동일 공식 적용).
+  - **명예의 전당 역대 최강 10팀 대거 추가 — 총 24팀 (`historicalSquadsData.ts`, `historicalTeams.ts`, `formerClubs.ts`)**: `71-72 아약스`, `10-11 바르셀로나`, `16-17 레알 마드리드`, `24-25 PSG`, `88-89 AC 밀란`, `07-08 맨유`, `19-20 리버풀`, `06-07 AC 밀란`, `01-02 레알 마드리드`, `94-95 아약스` 10팀(170명 풀스쿼드 + 명장 + 전 소속팀 시너지 하이드레이션 + 드림 매치 연동, 전 24팀 264명 선발 포지션 페널티 0, 비리그 우승 UCL 챔피언 순위 표기 수정).
+  - **브라이튼 파스칼 그로스 & 5대 리그 2026-27 로스터 전수 보강 (`activePlayers.json`, `leagues.json`, `formerClubs.ts`, `v60HofAndRoster.test.ts`)**: 파스칼 그로스(`act-263`, `73 → 83`)·루이스 덩크(`74 → 80`) 상향 및 브라이튼 표기 정비, 3건 음차 중복 완전 해소(`룰리`·`비얄리브레`·`콜 캠벨`), 누락 주전 첼시 조던 헨더슨(`act-v6-henderson`, 79) 추가, 도르트문트 막시밀리안 바이어 `FW` 정상화, 5대 리그 2026-27 베테랑·주전 25명 OVR 보정(현역 2,204명 · 레전드 33명 · 96구단 최소 뎁스 100% 충족).
 - **v5.2 주요 신규 모듈·기능**:
   - **첫 페이지 실제 `24×28` 도트 트로피 복원 & 모바일 `100dvh` 원스크린 (`PixelTrophySvg.tsx` `getPixelTrophyRects`, `RoadToTrebleHeroSvg.tsx`, `TitleScreen.tsx`)**: EPL 골드 왕관 트로피·FA컵·대형 UCL 빅이어 실제 픽셀 아트를 트레블 로드(`240×94`)에 직접 복원하고 모바일 첫 화면을 한 화면 안에 수납.
   - **모바일 교체·트레이드 오터치(선수 상세 카드 겹침) 완전 해결 (`PitchBoard.tsx`, `TransferMarketModal.tsx`)**: 모바일 피치/벤치/트레이드 카드 전체를 선택·교체 전용 영역으로 통일하고, 선택 시 상단 `[선수 상세]` 바·리스트 우측 분리 `ⓘ` 버튼·하단 고정 트레이드 바 선수 칩에서만 상세 카드가 열리도록 분리.

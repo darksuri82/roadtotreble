@@ -25,8 +25,8 @@ import type { Fixture, MatchResult } from '../types/league';
 import type { HallOfFameEntry } from '../types/legacy';
 
 describe('v4.1 Features: Historical 17-Player Full Squads, Fair Synergy Score, Dream Match & 8 Pixel Scenes', () => {
-  it('populates all 14 historical teams with 11 starters + 6 bench (17 players), curated sub-attributes, legendary managers, and real chemistry/synergy', () => {
-    expect(HISTORICAL_BENCHMARK_TEAMS).toHaveLength(14);
+  it('populates all 24 historical teams with 11 starters + 6 bench (17 players), curated sub-attributes, legendary managers, and real chemistry/synergy', () => {
+    expect(HISTORICAL_BENCHMARK_TEAMS).toHaveLength(24);
 
     for (const team of HISTORICAL_BENCHMARK_TEAMS) {
       expect(team.starters).toHaveLength(11);

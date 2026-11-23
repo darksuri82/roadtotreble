@@ -168,8 +168,8 @@
         "formation": "4-2-3-1",
         "defaultTactic": "possession",
         "att": 78,
-        "mid": 77,
-        "def": 79,
+        "mid": 79,
+        "def": 80,
         "topScorers": [
           "얀쿠바 민테",
           "조르지니오 뤼터",
@@ -454,9 +454,9 @@
         "pattern": "stripes",
         "formation": "4-2-3-1",
         "defaultTactic": "wingplay",
-        "att": 80,
+        "att": 81,
         "mid": 77,
-        "def": 78,
+        "def": 79,
         "topScorers": [
           "니코 윌리엄스",
           "오이안 산세트",
@@ -1448,7 +1448,7 @@
         "topScorers": [
           "뇔 푸트코이",
           "다비 모콰",
-          "콜 캄프벨"
+          "콜 캠벨"
         ]
       },
       {
@@ -1515,7 +1515,7 @@
         "defaultTactic": "possession",
         "att": 76,
         "mid": 74,
-        "def": 75,
+        "def": 76,
         "topScorers": [
           "이고르 파이샹",
           "아민 구이리",
@@ -1533,7 +1533,7 @@
         "defaultTactic": "gegenpressing",
         "att": 77,
         "mid": 78,
-        "def": 76,
+        "def": 77,
         "topScorers": [
           "폴라린 발로건",
           "알렉산드르 골로빈",

@@ -626,7 +626,10 @@ export function LegacyHubModal() {
                     </p>
                     <p className="mt-1 text-xs text-slate-300">
                       {selectedHistorical.leagueKoreanName} {selectedHistorical.leagueTotalRounds}R{' '}
-                      {selectedHistorical.leaguePoints}점 우승 ({selectedHistorical.leagueRecord},{' '}
+                      {selectedHistorical.isLeagueChampion
+                        ? `${selectedHistorical.leaguePoints}점 우승`
+                        : `${selectedHistorical.finalLeagueRank}위 (${selectedHistorical.leaguePoints}점)`}{' '}
+                      ({selectedHistorical.leagueRecord},{' '}
                       {selectedHistorical.goalsFor}득점 {selectedHistorical.goalsAgainst}실점) ·{' '}
                       {selectedHistorical.cupName} {selectedHistorical.cupResultLabel} · UCL{' '}
                       {selectedHistorical.uclResultLabel}

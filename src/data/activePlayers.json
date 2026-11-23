@@ -8325,29 +8325,29 @@
       "CDM"
     ],
     "secondaryPositions": [],
-    "ovr": 82,
+    "ovr": 83,
     "nationality": "크로아티아",
     "nationalityCode": "HR",
     "leagueId": "seriea",
     "club": "AC 밀란",
-    "att": 77,
-    "mid": 83,
-    "def": 73,
+    "att": 78,
+    "mid": 84,
+    "def": 74,
     "stamina": 75,
     "playstyles": [
       "deep_playmaker",
       "playmaker_10"
     ],
-    "scoutNote": "AC 밀란의 공수 연결과 전진 패스를 주도하는 중앙 미드필더",
+    "scoutNote": "AC 밀란 중원의 마에스트로로 2026-27시즌 세리에A 롱패스 성공 1위를 기록 중인 월드클래스 베테랑",
     "isLegend": false,
     "attrs": {
-      "sho": 69,
-      "pas": 93,
-      "cro": 81,
-      "dri": 79,
-      "aer": 73,
-      "def": 76,
-      "phy": 80
+      "sho": 70,
+      "pas": 94,
+      "cro": 82,
+      "dri": 80,
+      "aer": 74,
+      "def": 77,
+      "phy": 81
     }
   },
   {
@@ -9449,37 +9449,38 @@
   {
     "id": "act-352",
     "name": "막시밀리안 바이어",
-    "position": "MF",
+    "position": "FW",
     "mainPositions": [
-      "CAM",
-      "LWB"
+      "ST",
+      "LW"
     ],
     "secondaryPositions": [
-      "ST",
-      "LM"
+      "CAM",
+      "RW"
     ],
     "ovr": 81,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "bundesliga",
     "club": "보루시아 도르트문트",
-    "att": 80,
-    "mid": 82,
-    "def": 65,
+    "att": 83,
+    "mid": 76,
+    "def": 52,
     "stamina": 83,
     "playstyles": [
-      "playmaker_10"
+      "poacher",
+      "inside_forward"
     ],
     "scoutNote": "보루시아 도르트문트의 박스 안 위치 선정과 마무리 능력을 갖춘 최전방 공격수",
     "isLegend": false,
     "attrs": {
-      "sho": 74,
-      "pas": 90,
-      "cro": 82,
-      "dri": 80,
-      "aer": 60,
-      "def": 59,
-      "phy": 69
+      "sho": 83,
+      "pas": 76,
+      "cro": 74,
+      "dri": 82,
+      "aer": 77,
+      "def": 52,
+      "phy": 82
     }
   },
   {
@@ -11417,28 +11418,28 @@
       "CDM"
     ],
     "secondaryPositions": [],
-    "ovr": 81,
+    "ovr": 82,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "아틀레티코 마드리드",
-    "att": 76,
-    "mid": 82,
-    "def": 72,
+    "att": 77,
+    "mid": 83,
+    "def": 73,
     "stamina": 79,
     "playstyles": [
       "deep_playmaker"
     ],
-    "scoutNote": "아틀레티코 마드리드의 공수 연결과 전진 패스를 주도하는 중앙 미드필더",
+    "scoutNote": "아틀레티코 마드리드의 주장으로 높은 패스 성공률과 경기 조율 능력을 유지하는 핵심 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 70,
-      "pas": 90,
-      "cro": 78,
-      "dri": 81,
-      "aer": 69,
-      "def": 79,
-      "phy": 81
+      "sho": 71,
+      "pas": 91,
+      "cro": 79,
+      "dri": 82,
+      "aer": 70,
+      "def": 80,
+      "phy": 82
     }
   },
   {
@@ -16860,7 +16861,7 @@
   },
   {
     "id": "act-0069",
-    "name": "오리빌 보스카그리",
+    "name": "올리비에 보스칼리",
     "position": "DF",
     "mainPositions": [
       "CB",
@@ -21818,34 +21819,34 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 78,
+    "ovr": 79,
     "nationality": "아르헨티나",
     "nationalityCode": "AR",
     "leagueId": "epl",
     "club": "맨체스터 시티",
     "att": 30,
-    "mid": 58,
-    "def": 79,
+    "mid": 59,
+    "def": 80,
     "stamina": 70,
     "playstyles": [
       "shot_stopper"
     ],
-    "scoutNote": "맨체스터 시티 1군 로테이션의 핵심 GK 선수",
+    "scoutNote": "맨체스터 시티의 베테랑 골키퍼로 안정적인 선방과 빌드업 지원 능력 보유",
     "isLegend": false,
     "attrs": {
       "sho": 40,
-      "pas": 65,
+      "pas": 66,
       "cro": 56,
       "dri": 54,
-      "aer": 78,
-      "def": 78,
-      "phy": 75,
+      "aer": 79,
+      "def": 79,
+      "phy": 76,
       "gk": {
-        "div": 79,
-        "han": 77,
-        "ref": 80,
-        "kic": 71,
-        "pos": 79
+        "div": 80,
+        "han": 78,
+        "ref": 81,
+        "kic": 72,
+        "pos": 80
       }
     }
   },
@@ -21916,7 +21917,7 @@
   },
   {
     "id": "act-0074",
-    "name": "마테우 오리레이",
+    "name": "매트 오라일리",
     "position": "FW",
     "mainPositions": [
       "RW",
@@ -21982,7 +21983,7 @@
   },
   {
     "id": "act-0080",
-    "name": "에반 펠구손",
+    "name": "에반 퍼거슨",
     "position": "FW",
     "mainPositions": [
       "ST"
@@ -27322,14 +27323,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 77,
+    "ovr": 78,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "맨체스터 유나이티드",
-    "att": 55,
-    "mid": 67,
-    "def": 78,
+    "att": 56,
+    "mid": 68,
+    "def": 79,
     "stamina": 74,
     "playstyles": [
       "stopper_cb"
@@ -27337,13 +27338,13 @@
     "scoutNote": "맨체스터 유나이티드의 후방 빌드업과 대인 수비를 이끄는 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 52,
-      "pas": 65,
-      "cro": 52,
-      "dri": 61,
-      "aer": 81,
-      "def": 80,
-      "phy": 77
+      "sho": 53,
+      "pas": 66,
+      "cro": 53,
+      "dri": 62,
+      "aer": 82,
+      "def": 81,
+      "phy": 78
     }
   },
   {
@@ -28209,28 +28210,28 @@
     "secondaryPositions": [
       "LM"
     ],
-    "ovr": 77,
+    "ovr": 80,
     "nationality": "스코틀랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "토트넘 홋스퍼",
-    "att": 62,
-    "mid": 70,
-    "def": 78,
-    "stamina": 82,
+    "att": 65,
+    "mid": 73,
+    "def": 81,
+    "stamina": 85,
     "playstyles": [
       "attacking_wingback"
     ],
-    "scoutNote": "토트넘 홋스퍼 1군 로테이션의 핵심 LB/LWB 선수",
+    "scoutNote": "토트넘 홋스퍼 왼쪽 측면을 왕복하며 날카로운 크로스와 높은 활동량을 제공하는 베테랑 풀백",
     "isLegend": false,
     "attrs": {
-      "sho": 60,
-      "pas": 73,
-      "cro": 81,
-      "dri": 75,
-      "aer": 63,
-      "def": 75,
-      "phy": 82
+      "sho": 63,
+      "pas": 76,
+      "cro": 84,
+      "dri": 78,
+      "aer": 66,
+      "def": 78,
+      "phy": 85
     }
   },
   {
@@ -32593,7 +32594,7 @@
   },
   {
     "id": "act-0075",
-    "name": "마리크 주니오르 얄쿠예",
+    "name": "말릭 주니오르 얄쿠예",
     "position": "MF",
     "mainPositions": [
       "CAM",
@@ -36563,14 +36564,14 @@
       "CDM"
     ],
     "secondaryPositions": [],
-    "ovr": 75,
+    "ovr": 76,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "bundesliga",
     "club": "바이어 레버쿠젠",
-    "att": 53,
-    "mid": 65,
-    "def": 76,
+    "att": 54,
+    "mid": 66,
+    "def": 77,
     "stamina": 77,
     "playstyles": [
       "ball_playing_cb"
@@ -36578,13 +36579,13 @@
     "scoutNote": "바이어 레버쿠젠의 중원 압박과 수비 보호의 핵심 수비형 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 49,
-      "pas": 73,
-      "cro": 53,
-      "dri": 67,
-      "aer": 77,
-      "def": 75,
-      "phy": 75
+      "sho": 50,
+      "pas": 74,
+      "cro": 54,
+      "dri": 68,
+      "aer": 78,
+      "def": 76,
+      "phy": 76
     }
   },
   {
@@ -38283,28 +38284,28 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 75,
+    "ovr": 79,
     "nationality": "아르헨티나",
     "nationalityCode": "AR",
     "leagueId": "laliga",
     "club": "비야레알",
-    "att": 53,
-    "mid": 65,
-    "def": 76,
+    "att": 56,
+    "mid": 68,
+    "def": 79,
     "stamina": 80,
     "playstyles": [
       "ball_playing_cb"
     ],
-    "scoutNote": "비야레알의 후방 빌드업과 대인 수비를 이끄는 센터백",
+    "scoutNote": "비야레알 수비 라인의 핵심으로 정확한 패스 전개와 뛰어난 태클 타이밍을 갖춘 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 52,
-      "pas": 72,
-      "cro": 55,
-      "dri": 66,
-      "aer": 75,
-      "def": 77,
-      "phy": 75
+      "sho": 56,
+      "pas": 76,
+      "cro": 59,
+      "dri": 70,
+      "aer": 79,
+      "def": 81,
+      "phy": 79
     }
   },
   {
@@ -40950,28 +40951,28 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 74,
+    "ovr": 80,
     "nationality": "헝가리",
     "nationalityCode": "HU",
     "leagueId": "bundesliga",
     "club": "RB 라이프치히",
-    "att": 52,
-    "mid": 64,
-    "def": 75,
-    "stamina": 74,
+    "att": 58,
+    "mid": 69,
+    "def": 82,
+    "stamina": 82,
     "playstyles": [
       "stopper_cb"
     ],
-    "scoutNote": "강력한 공중볼과 리더십의 라이프치히 수비 주장",
+    "scoutNote": "RB 라이프치히의 주장으로 최다 출전과 클리어링을 책임지는 공중볼 최강 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 48,
-      "pas": 64,
-      "cro": 52,
-      "dri": 60,
-      "aer": 77,
-      "def": 78,
-      "phy": 76
+      "sho": 58,
+      "pas": 73,
+      "cro": 56,
+      "dri": 64,
+      "aer": 85,
+      "def": 82,
+      "phy": 80
     }
   },
   {
@@ -41549,14 +41550,14 @@
       "CM",
       "CAM"
     ],
-    "ovr": 74,
+    "ovr": 76,
     "nationality": "오스트리아",
     "nationalityCode": "AT",
     "leagueId": "bundesliga",
     "club": "보루시아 도르트문트",
-    "att": 63,
-    "mid": 75,
-    "def": 72,
+    "att": 65,
+    "mid": 77,
+    "def": 74,
     "stamina": 82,
     "playstyles": [
       "box_to_box"
@@ -41564,13 +41565,13 @@
     "scoutNote": "보루시아 도르트문트의 공수 연결과 전진 패스를 주도하는 중앙 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 62,
-      "pas": 74,
-      "cro": 63,
-      "dri": 70,
-      "aer": 70,
-      "def": 76,
-      "phy": 78
+      "sho": 64,
+      "pas": 76,
+      "cro": 65,
+      "dri": 72,
+      "aer": 72,
+      "def": 78,
+      "phy": 80
     }
   },
   {
@@ -41816,67 +41817,67 @@
   },
   {
     "id": "act-0041",
-    "name": "다니엘 불느",
+    "name": "댄 번",
     "position": "DF",
     "mainPositions": [
       "CB",
       "LB"
     ],
     "secondaryPositions": [],
-    "ovr": 74,
+    "ovr": 78,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "뉴캐슬 유나이티드",
-    "att": 59,
-    "mid": 67,
-    "def": 75,
+    "att": 62,
+    "mid": 70,
+    "def": 78,
     "stamina": 74,
     "playstyles": [
       "stopper_cb"
     ],
-    "scoutNote": "뉴캐슬 유나이티드 소속 CB/LB 스쿼드 자원",
+    "scoutNote": "뉴캐슬 유나이티드 수비의 장신 핵심으로 압도적 제공권과 멀티 수비 능력을 보유한 잉글랜드 대표",
     "isLegend": false,
     "attrs": {
-      "sho": 47,
-      "pas": 64,
-      "cro": 52,
-      "dri": 60,
-      "aer": 78,
-      "def": 77,
-      "phy": 73
+      "sho": 51,
+      "pas": 68,
+      "cro": 56,
+      "dri": 64,
+      "aer": 82,
+      "def": 81,
+      "phy": 77
     }
   },
   {
     "id": "act-0042",
-    "name": "파비안 살",
+    "name": "파비안 셰어",
     "position": "DF",
     "mainPositions": [
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 74,
+    "ovr": 78,
     "nationality": "스위스",
     "nationalityCode": "CH",
     "leagueId": "epl",
     "club": "뉴캐슬 유나이티드",
-    "att": 52,
-    "mid": 64,
-    "def": 75,
+    "att": 55,
+    "mid": 67,
+    "def": 78,
     "stamina": 74,
     "playstyles": [
       "ball_playing_cb"
     ],
-    "scoutNote": "뉴캐슬 유나이티드 소속 CB 스쿼드 자원",
+    "scoutNote": "뉴캐슬 유나이티드의 클리어링과 롱패스 전개를 책임지는 스위스 출신 베테랑 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 48,
-      "pas": 72,
-      "cro": 51,
-      "dri": 63,
-      "aer": 75,
-      "def": 75,
-      "phy": 75
+      "sho": 52,
+      "pas": 76,
+      "cro": 55,
+      "dri": 67,
+      "aer": 79,
+      "def": 79,
+      "phy": 79
     }
   },
   {
@@ -41919,28 +41920,29 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 74,
+    "ovr": 80,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "브라이튼",
-    "att": 52,
-    "mid": 64,
-    "def": 75,
-    "stamina": 74,
+    "att": 56,
+    "mid": 72,
+    "def": 82,
+    "stamina": 81,
     "playstyles": [
-      "ball_playing_cb"
+      "ball_playing_cb",
+      "stopper_cb"
     ],
-    "scoutNote": "브라이튼의 후방 빌드업과 대인 수비를 이끄는 센터백",
+    "scoutNote": "브라이튼 수비 라인을 지휘하고 정확한 후방 빌드업을 주도하는 베테랑 주장 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 49,
-      "pas": 71,
-      "cro": 50,
-      "dri": 65,
-      "aer": 74,
-      "def": 77,
-      "phy": 72
+      "sho": 55,
+      "pas": 79,
+      "cro": 62,
+      "dri": 66,
+      "aer": 83,
+      "def": 82,
+      "phy": 79
     }
   },
   {
@@ -43578,28 +43580,28 @@
       "CM"
     ],
     "secondaryPositions": [],
-    "ovr": 74,
+    "ovr": 79,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "ligue1",
     "club": "LOSC 릴",
-    "att": 63,
-    "mid": 75,
-    "def": 72,
-    "stamina": 75,
+    "att": 67,
+    "mid": 79,
+    "def": 76,
+    "stamina": 83,
     "playstyles": [
       "ball_winner"
     ],
-    "scoutNote": "리그1 최상위 태클과 인터셉트의 릴 주장",
+    "scoutNote": "LOSC 릴의 주장으로 왕성한 수비 가담과 중원 장악력을 발휘하는 베테랑 수비형 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 56,
-      "pas": 72,
-      "cro": 64,
-      "dri": 68,
-      "aer": 72,
-      "def": 77,
-      "phy": 77
+      "sho": 61,
+      "pas": 77,
+      "cro": 69,
+      "dri": 73,
+      "aer": 77,
+      "def": 82,
+      "phy": 82
     }
   },
   {
@@ -43780,28 +43782,28 @@
       "RW"
     ],
     "secondaryPositions": [],
-    "ovr": 74,
+    "ovr": 79,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "ligue1",
     "club": "RC 랑스",
-    "att": 73,
-    "mid": 75,
-    "def": 58,
+    "att": 77,
+    "mid": 79,
+    "def": 62,
     "stamina": 75,
     "playstyles": [
       "playmaker_10"
     ],
-    "scoutNote": "RC 랑스의 우측면 돌파와 찬스 메이킹에 능한 공격 자원",
+    "scoutNote": "RC 랑스 공격의 창조자이자 2026-27시즌 리그1 빅찬스 창출 선두를 달리는 왼발 테크니션",
     "isLegend": false,
     "attrs": {
-      "sho": 67,
-      "pas": 83,
-      "cro": 73,
-      "dri": 75,
-      "aer": 51,
-      "def": 52,
-      "phy": 62
+      "sho": 72,
+      "pas": 88,
+      "cro": 78,
+      "dri": 80,
+      "aer": 56,
+      "def": 57,
+      "phy": 67
     }
   },
   {
@@ -44555,14 +44557,14 @@
       "RB"
     ],
     "secondaryPositions": [],
-    "ovr": 74,
+    "ovr": 78,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "seriea",
     "club": "AC 밀란",
-    "att": 59,
-    "mid": 67,
-    "def": 75,
+    "att": 62,
+    "mid": 70,
+    "def": 78,
     "stamina": 80,
     "playstyles": [
       "stopper_cb"
@@ -44570,13 +44572,13 @@
     "scoutNote": "AC 밀란의 후방 빌드업과 대인 수비를 이끄는 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 46,
-      "pas": 64,
-      "cro": 52,
-      "dri": 59,
-      "aer": 77,
-      "def": 76,
-      "phy": 73
+      "sho": 50,
+      "pas": 68,
+      "cro": 56,
+      "dri": 63,
+      "aer": 81,
+      "def": 80,
+      "phy": 77
     }
   },
   {
@@ -45259,14 +45261,14 @@
       "CM"
     ],
     "secondaryPositions": [],
-    "ovr": 74,
+    "ovr": 77,
     "nationality": "아르메니아",
     "nationalityCode": "AM",
     "leagueId": "seriea",
     "club": "인테르 밀란",
-    "att": 69,
-    "mid": 75,
-    "def": 65,
+    "att": 72,
+    "mid": 78,
+    "def": 68,
     "stamina": 75,
     "playstyles": [
       "deep_playmaker"
@@ -45274,13 +45276,13 @@
     "scoutNote": "인테르 밀란의 공수 연결과 전진 패스를 주도하는 중앙 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 63,
-      "pas": 84,
-      "cro": 69,
-      "dri": 74,
-      "aer": 65,
-      "def": 70,
-      "phy": 71
+      "sho": 66,
+      "pas": 87,
+      "cro": 72,
+      "dri": 77,
+      "aer": 68,
+      "def": 73,
+      "phy": 74
     }
   },
   {
@@ -46122,7 +46124,7 @@
   },
   {
     "id": "act-1086",
-    "name": "콜 캄프벨",
+    "name": "콜 캠벨",
     "position": "FW",
     "mainPositions": [
       "LW",
@@ -46141,7 +46143,7 @@
     "playstyles": [
       "inverted_winger"
     ],
-    "scoutNote": "SV 엘버스베르크 소속 LW/RW 스쿼드 자원",
+    "scoutNote": "SV 엘버스베르크 측면에서 돌파와 득점력을 보여주는 미국 대표 윙어",
     "isLegend": false,
     "attrs": {
       "sho": 74,
@@ -46533,14 +46535,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 73,
+    "ovr": 76,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "bundesliga",
     "club": "보루시아 도르트문트",
-    "att": 51,
-    "mid": 63,
-    "def": 74,
+    "att": 54,
+    "mid": 66,
+    "def": 77,
     "stamina": 77,
     "playstyles": [
       "ball_playing_cb"
@@ -46548,13 +46550,13 @@
     "scoutNote": "보루시아 도르트문트 소속 CB 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 46,
-      "pas": 70,
-      "cro": 52,
-      "dri": 64,
-      "aer": 76,
-      "def": 72,
-      "phy": 75
+      "sho": 49,
+      "pas": 73,
+      "cro": 55,
+      "dri": 67,
+      "aer": 79,
+      "def": 75,
+      "phy": 78
     }
   },
   {
@@ -47141,34 +47143,36 @@
     "name": "파스칼 그로스",
     "position": "MF",
     "mainPositions": [
-      "CDM",
-      "CM"
+      "CM",
+      "CDM"
     ],
     "secondaryPositions": [
-      "CAM"
+      "CAM",
+      "RB"
     ],
-    "ovr": 73,
+    "ovr": 83,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "epl",
     "club": "브라이튼",
-    "att": 62,
-    "mid": 74,
-    "def": 71,
-    "stamina": 75,
+    "att": 78,
+    "mid": 85,
+    "def": 77,
+    "stamina": 84,
     "playstyles": [
-      "deep_playmaker"
+      "deep_playmaker",
+      "playmaker_10"
     ],
-    "scoutNote": "브라이튼의 공수 연결과 전진 패스를 주도하는 중앙 미드필더",
+    "scoutNote": "브라이튼의 중원을 지휘하며 2026-27시즌 최다 기회 창출과 득점·도움을 이끄는 핵심 플레이메이커",
     "isLegend": false,
     "attrs": {
-      "sho": 58,
-      "pas": 78,
-      "cro": 63,
-      "dri": 71,
+      "sho": 80,
+      "pas": 89,
+      "cro": 88,
+      "dri": 83,
       "aer": 70,
-      "def": 73,
-      "phy": 76
+      "def": 78,
+      "phy": 77
     }
   },
   {
@@ -48149,28 +48153,28 @@
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 73,
+    "ovr": 78,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "비야레알",
-    "att": 74,
-    "mid": 64,
+    "att": 78,
+    "mid": 68,
     "def": 37,
     "stamina": 75,
     "playstyles": [
       "complete_forward"
     ],
-    "scoutNote": "비야레알의 박스 안 위치 선정과 마무리 능력을 갖춘 최전방 공격수",
+    "scoutNote": "비야레알 최전방에서 결정력과 연계 플레이를 겸비한 베테랑 왼발 스트라이커",
     "isLegend": false,
     "attrs": {
-      "sho": 77,
-      "pas": 68,
-      "cro": 56,
-      "dri": 71,
-      "aer": 72,
-      "def": 43,
-      "phy": 74
+      "sho": 82,
+      "pas": 73,
+      "cro": 61,
+      "dri": 76,
+      "aer": 77,
+      "def": 48,
+      "phy": 79
     }
   },
   {
@@ -48448,34 +48452,34 @@
   },
   {
     "id": "act-0280",
-    "name": "이니고 뤼스 데 가라레타",
+    "name": "이니고 루이스 데 갈라레타",
     "position": "MF",
     "mainPositions": [
       "CDM"
     ],
     "secondaryPositions": [],
-    "ovr": 73,
+    "ovr": 77,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "아틀레틱 빌바오",
-    "att": 62,
-    "mid": 74,
-    "def": 71,
+    "att": 65,
+    "mid": 77,
+    "def": 74,
     "stamina": 79,
     "playstyles": [
       "deep_playmaker"
     ],
-    "scoutNote": "아틀레틱 빌바오 소속 CDM 스쿼드 자원",
+    "scoutNote": "아틀레틱 빌바오 중원에서 정확한 짧은 패스와 압박 탈출을 주도하는 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 57,
-      "pas": 77,
-      "cro": 63,
-      "dri": 69,
-      "aer": 72,
-      "def": 74,
-      "phy": 72
+      "sho": 61,
+      "pas": 81,
+      "cro": 67,
+      "dri": 73,
+      "aer": 76,
+      "def": 78,
+      "phy": 76
     }
   },
   {
@@ -48829,28 +48833,29 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 73,
+    "ovr": 80,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "ligue1",
     "club": "AS 모나코",
-    "att": 51,
-    "mid": 63,
-    "def": 74,
-    "stamina": 77,
+    "att": 56,
+    "mid": 74,
+    "def": 82,
+    "stamina": 81,
     "playstyles": [
+      "ball_playing_cb",
       "stopper_cb"
     ],
-    "scoutNote": "AS 모나코의 후방 빌드업과 대인 수비를 이끄는 센터백",
+    "scoutNote": "AS 모나코 수비의 핵심으로 93%대 패스 정확도와 공중볼 지배력을 보여주는 베테랑 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 46,
-      "pas": 62,
-      "cro": 49,
-      "dri": 59,
-      "aer": 76,
-      "def": 75,
-      "phy": 74
+      "sho": 58,
+      "pas": 80,
+      "cro": 64,
+      "dri": 68,
+      "aer": 82,
+      "def": 81,
+      "phy": 79
     }
   },
   {
@@ -53070,28 +53075,28 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 72,
+    "ovr": 78,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "아틀레틱 빌바오",
-    "att": 57,
-    "mid": 65,
-    "def": 73,
+    "att": 62,
+    "mid": 70,
+    "def": 78,
     "stamina": 75,
     "playstyles": [
       "attacking_wingback"
     ],
-    "scoutNote": "아틀레틱 빌바오의 측면 오버래핑과 수비 밸런스를 갖춘 레프트백",
+    "scoutNote": "아틀레틱 빌바오 왼쪽 수비를 책임지며 공수 밸런스와 투지를 불어넣는 베테랑 풀백",
     "isLegend": false,
     "attrs": {
-      "sho": 54,
-      "pas": 68,
-      "cro": 72,
-      "dri": 72,
-      "aer": 59,
-      "def": 69,
-      "phy": 77
+      "sho": 60,
+      "pas": 74,
+      "cro": 78,
+      "dri": 78,
+      "aer": 65,
+      "def": 75,
+      "phy": 83
     }
   },
   {
@@ -53141,28 +53146,28 @@
     "secondaryPositions": [
       "CAM"
     ],
-    "ovr": 72,
+    "ovr": 79,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "아틀레틱 빌바오",
-    "att": 73,
-    "mid": 63,
+    "att": 79,
+    "mid": 69,
     "def": 36,
     "stamina": 80,
     "playstyles": [
       "inverted_winger"
     ],
-    "scoutNote": "아틀레틱 빌바오의 안쪽으로 파고드는 드리블과 슈팅이 날카로운 윙어",
+    "scoutNote": "아틀레틱 빌바오 최다 공격포인트를 기록하며 양 측면을 흔드는 핵심 공격 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 73,
-      "pas": 70,
-      "cro": 69,
-      "dri": 78,
-      "aer": 49,
-      "def": 45,
-      "phy": 68
+      "sho": 80,
+      "pas": 77,
+      "cro": 76,
+      "dri": 85,
+      "aer": 56,
+      "def": 52,
+      "phy": 75
     }
   },
   {
@@ -57680,34 +57685,34 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 71,
+    "ovr": 77,
     "nationality": "헝가리",
     "nationalityCode": "HU",
     "leagueId": "laliga",
     "club": "비야레알",
     "att": 27,
-    "mid": 53,
-    "def": 72,
+    "mid": 58,
+    "def": 77,
     "stamina": 64,
     "playstyles": [
       "shot_stopper"
     ],
-    "scoutNote": "풍부한 경험과 안정적 위치 선정의 베테랑 수문장",
+    "scoutNote": "비야레알에서 0점대 실점률을 기록하며 안정감을 불어넣는 헝가리 베테랑 골키퍼",
     "isLegend": false,
     "attrs": {
       "sho": 40,
-      "pas": 58,
+      "pas": 62,
       "cro": 49,
       "dri": 47,
-      "aer": 72,
-      "def": 71,
-      "phy": 68,
+      "aer": 76,
+      "def": 75,
+      "phy": 72,
       "gk": {
-        "div": 74,
-        "han": 71,
-        "ref": 73,
-        "kic": 64,
-        "pos": 71
+        "div": 80,
+        "han": 77,
+        "ref": 79,
+        "kic": 70,
+        "pos": 77
       }
     }
   },
@@ -58432,34 +58437,34 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 71,
+    "ovr": 77,
     "nationality": "핀란드",
     "nationalityCode": "FI",
     "leagueId": "ligue1",
     "club": "AS 모나코",
     "att": 27,
-    "mid": 53,
-    "def": 72,
+    "mid": 58,
+    "def": 77,
     "stamina": 64,
     "playstyles": [
       "sweeper_keeper"
     ],
-    "scoutNote": "AS 모나코 소속 GK 스쿼드 자원",
+    "scoutNote": "AS 모나코의 골문을 지키며 2026-27시즌 리그1 최상위권 기대실점 방어력을 보여주는 베테랑 GK",
     "isLegend": false,
     "attrs": {
       "sho": 40,
-      "pas": 67,
+      "pas": 71,
       "cro": 57,
       "dri": 55,
-      "aer": 72,
-      "def": 72,
-      "phy": 68,
+      "aer": 76,
+      "def": 76,
+      "phy": 72,
       "gk": {
-        "div": 70,
-        "han": 71,
-        "ref": 72,
-        "kic": 72,
-        "pos": 72
+        "div": 76,
+        "han": 77,
+        "ref": 78,
+        "kic": 78,
+        "pos": 78
       }
     }
   },
@@ -59441,34 +59446,34 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 71,
+    "ovr": 77,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "ligue1",
     "club": "파리 FC",
     "att": 27,
-    "mid": 53,
-    "def": 72,
+    "mid": 58,
+    "def": 77,
     "stamina": 64,
     "playstyles": [
       "shot_stopper"
     ],
-    "scoutNote": "파리 FC의 골문을 지키는 안정적인 수문장",
+    "scoutNote": "파리 FC 골문을 지키며 2026-27시즌 리그1 상위권 클린시트와 최소 실점을 이끄는 베테랑 골키퍼",
     "isLegend": false,
     "attrs": {
       "sho": 40,
-      "pas": 58,
+      "pas": 62,
       "cro": 49,
       "dri": 47,
-      "aer": 68,
-      "def": 71,
-      "phy": 66,
+      "aer": 72,
+      "def": 75,
+      "phy": 70,
       "gk": {
-        "div": 72,
-        "han": 71,
-        "ref": 75,
-        "kic": 65,
-        "pos": 72
+        "div": 78,
+        "han": 77,
+        "ref": 81,
+        "kic": 71,
+        "pos": 78
       }
     }
   },
@@ -62502,29 +62507,29 @@
     "secondaryPositions": [
       "ST"
     ],
-    "ovr": 70,
+    "ovr": 75,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "셀타 비고",
-    "att": 71,
-    "mid": 61,
+    "att": 75,
+    "mid": 65,
     "def": 34,
     "stamina": 73,
     "playstyles": [
       "playmaker_10",
       "complete_forward"
     ],
-    "scoutNote": "노련한 시야와 마무리의 셀타 비고 레전드 캡틴",
+    "scoutNote": "셀타 비고의 영원한 상징이자 여전히 날카로운 왼발 킥과 연계로 팀을 이끄는 베테랑 주장",
     "isLegend": false,
     "attrs": {
-      "sho": 68,
-      "pas": 74,
-      "cro": 71,
-      "dri": 72,
-      "aer": 51,
-      "def": 44,
-      "phy": 64
+      "sho": 73,
+      "pas": 79,
+      "cro": 76,
+      "dri": 77,
+      "aer": 56,
+      "def": 49,
+      "phy": 69
     }
   },
   {
@@ -63390,29 +63395,29 @@
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 70,
+    "ovr": 76,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "ligue1",
     "club": "LOSC 릴",
-    "att": 71,
-    "mid": 61,
+    "att": 76,
+    "mid": 66,
     "def": 34,
     "stamina": 71,
     "playstyles": [
       "complete_forward",
       "poacher"
     ],
-    "scoutNote": "LOSC 릴의 박스 안 위치 선정과 마무리 능력을 갖춘 최전방 공격수",
+    "scoutNote": "LOSC 릴 최전방에서 뛰어난 포스트 플레이와 헤더 결정력을 발휘하는 베테랑 타깃맨",
     "isLegend": false,
     "attrs": {
-      "sho": 77,
-      "pas": 60,
-      "cro": 49,
-      "dri": 68,
-      "aer": 74,
-      "def": 40,
-      "phy": 69
+      "sho": 83,
+      "pas": 66,
+      "cro": 55,
+      "dri": 74,
+      "aer": 80,
+      "def": 46,
+      "phy": 75
     }
   },
   {
@@ -67164,34 +67169,34 @@
   },
   {
     "id": "act-0490",
-    "name": "아시엘 비야리브레",
+    "name": "아시에르 비얄리브레",
     "position": "FW",
     "mainPositions": [
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 69,
+    "ovr": 72,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "라싱 산탄데르",
-    "att": 70,
-    "mid": 60,
+    "att": 73,
+    "mid": 63,
     "def": 33,
     "stamina": 81,
     "playstyles": [
       "poacher"
     ],
-    "scoutNote": "라싱 산탄데르 소속 ST 스쿼드 자원",
+    "scoutNote": "라싱 산탄데르의 라리가 승격을 이끈 왼발잡이 타깃형 스트라이커",
     "isLegend": false,
     "attrs": {
-      "sho": 73,
-      "pas": 57,
-      "cro": 49,
-      "dri": 66,
-      "aer": 72,
-      "def": 41,
-      "phy": 67
+      "sho": 76,
+      "pas": 60,
+      "cro": 52,
+      "dri": 69,
+      "aer": 75,
+      "def": 44,
+      "phy": 70
     }
   },
   {
@@ -68950,7 +68955,7 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 69,
+    "ovr": 78,
     "nationality": "네덜란드",
     "nationalityCode": "NL",
     "leagueId": "ligue1",
@@ -68962,22 +68967,22 @@
     "playstyles": [
       "sweeper_keeper"
     ],
-    "scoutNote": "올랭피크 마르세유 소속 GK 스쿼드 자원",
+    "scoutNote": "올랭피크 마르세유의 주전 골키퍼로 2026-27시즌 리그1 최상위권 선방률과 공중볼 장악력을 과시",
     "isLegend": false,
     "attrs": {
       "sho": 40,
-      "pas": 65,
-      "cro": 55,
-      "dri": 53,
-      "aer": 69,
-      "def": 68,
-      "phy": 64,
+      "pas": 71,
+      "cro": 58,
+      "dri": 58,
+      "aer": 77,
+      "def": 76,
+      "phy": 71,
       "gk": {
-        "div": 69,
-        "han": 67,
-        "ref": 69,
-        "kic": 72,
-        "pos": 69
+        "div": 79,
+        "han": 76,
+        "ref": 80,
+        "kic": 75,
+        "pos": 78
       }
     }
   },
@@ -70419,7 +70424,7 @@
   },
   {
     "id": "act-0066",
-    "name": "자손 스틸",
+    "name": "제이슨 스틸",
     "position": "GK",
     "mainPositions": [
       "GK"
@@ -74361,46 +74366,6 @@
     }
   },
   {
-    "id": "p-om-rulli",
-    "name": "헤로니모 루이",
-    "position": "GK",
-    "mainPositions": [
-      "GK"
-    ],
-    "secondaryPositions": [],
-    "ovr": 80,
-    "nationality": "아르헨티나",
-    "nationalityCode": "AR",
-    "leagueId": "ligue1",
-    "club": "올랭피크 마르세유",
-    "att": 28,
-    "mid": 63,
-    "def": 81,
-    "stamina": 77,
-    "playstyles": [
-      "sweeper_keeper",
-      "shot_stopper"
-    ],
-    "scoutNote": "올랭피크 마르세유 주전 수문장 · 반사신경과 후방 빌드업 안정감 겸비",
-    "isLegend": false,
-    "attrs": {
-      "sho": 40,
-      "pas": 76,
-      "cro": 66,
-      "dri": 64,
-      "aer": 80,
-      "def": 81,
-      "phy": 79,
-      "gk": {
-        "div": 81,
-        "han": 78,
-        "ref": 82,
-        "kic": 84,
-        "pos": 81
-      }
-    }
-  },
-  {
     "id": "p-om-blanco",
     "name": "루벤 블랑코",
     "position": "GK",
@@ -74543,38 +74508,6 @@
       "aer": 52,
       "def": 49,
       "phy": 76
-    }
-  },
-  {
-    "id": "p-ala-villalibre",
-    "name": "아시에르 비얄리브레",
-    "position": "FW",
-    "mainPositions": [
-      "ST"
-    ],
-    "secondaryPositions": [],
-    "ovr": 73,
-    "nationality": "스페인",
-    "nationalityCode": "ES",
-    "leagueId": "laliga",
-    "club": "알라베스",
-    "att": 74,
-    "mid": 64,
-    "def": 43,
-    "stamina": 77,
-    "playstyles": [
-      "poacher"
-    ],
-    "scoutNote": "알라베스 타깃형 스트라이커 · 박스 안 몸싸움과 헤더 마무리",
-    "isLegend": false,
-    "attrs": {
-      "sho": 79,
-      "pas": 61,
-      "cro": 51,
-      "dri": 72,
-      "aer": 75,
-      "def": 40,
-      "phy": 71
     }
   },
   {
@@ -74924,39 +74857,6 @@
     }
   },
   {
-    "id": "p-bvb-ccampbell",
-    "name": "콜 캠벨",
-    "position": "FW",
-    "mainPositions": [
-      "RW",
-      "LW"
-    ],
-    "secondaryPositions": [],
-    "ovr": 73,
-    "nationality": "미국",
-    "nationalityCode": "US",
-    "leagueId": "bundesliga",
-    "club": "보루시아 도르트문트",
-    "att": 74,
-    "mid": 68,
-    "def": 41,
-    "stamina": 80,
-    "playstyles": [
-      "inverted_winger"
-    ],
-    "scoutNote": "보루시아 도르트문트 측면 유망주 · 빠른 발과 저돌적인 1대1 돌파",
-    "isLegend": false,
-    "attrs": {
-      "sho": 75,
-      "pas": 71,
-      "cro": 70,
-      "dri": 77,
-      "aer": 53,
-      "def": 43,
-      "phy": 72
-    }
-  },
-  {
     "id": "p-m05-hanche",
     "name": "안드레아스 한체올센",
     "position": "DF",
@@ -74988,6 +74888,42 @@
       "aer": 78,
       "def": 76,
       "phy": 76
+    }
+  },
+  {
+    "id": "act-v6-henderson",
+    "name": "조던 헨더슨",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [
+      "CB"
+    ],
+    "ovr": 79,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB-ENG",
+    "leagueId": "epl",
+    "club": "첼시",
+    "att": 71,
+    "mid": 81,
+    "def": 78,
+    "stamina": 84,
+    "playstyles": [
+      "deep_playmaker",
+      "box_to_box"
+    ],
+    "scoutNote": "첼시 중원에 경험과 리더십을 더하며 2026-27시즌 높은 평점과 공수 조율을 보여주는 베테랑 미드필더",
+    "isLegend": false,
+    "attrs": {
+      "sho": 72,
+      "pas": 82,
+      "cro": 78,
+      "dri": 74,
+      "aer": 75,
+      "def": 79,
+      "phy": 80
     }
   }
 ]
