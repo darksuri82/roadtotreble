@@ -5,7 +5,7 @@
 
 ---
 
-## v7.2 — 4대 핵심 버그 수정(포지션 페널티·케미선 해제·트레이드 스탯 중복·교체 아웃 잠금) & 멀티플레이 커스텀·피치 공개·승패 감독 팝업
+## v7.2 — 4대 핵심 버그 수정(포지션 페널티·케미선 해제·트레이드 스탯 중복·교체 아웃 잠금) · 멀티플레이 커스텀/승패 도트 모션 · UCL 리그 페이즈 고속진행 & 36팀 순위표 팝업
 
 - **포지션 부적합 OVR 감소 피치·상세 카드 단일화 (`src/data/formations.ts`, `src/engine/positionEngine.ts`, `src/components/league/SeasonDashboard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/league/SeasonSummary.tsx`)**:
   - `3-3-3-1`(`RAM`, `LAM`, `LWB`, `RWB` 등) 및 `3-5-2-dm` 슬롯의 `alternateSubPositions` 0-페널티 예외를 제거하고 9개 전 포메이션 피치(`PitchBoard`)와 선수 상세 모달(`PlayerDetailModal`)이 단일 `evaluatePositionFit` 함수를 공유하도록 통일.
@@ -20,6 +20,9 @@
 - **킥오프 직전 포메이션 피치 뷰 공개 & 종료 후 승장 축하 / 패장 좌절 도트 모션 팝업 (`src/components/multiplayer/PreKickoffRevealModal.tsx`, `src/components/multiplayer/MpPostMatchManagerPopup.tsx`, `src/components/common/PixelManagerAvatar.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/__tests__/v72BugfixAndMpCustom.test.ts`)**:
   - `PreKickoffRevealModal`을 양 팀 포메이션 피치 뷰(4색 시너지선·티어 카드·포지션 페널티·선수 상세 연동)로 개편.
   - 1대1 경기 종료 팝업에 승장·패장 양측 커스텀 감독이 나란히 등장하며, 승장의 축하 포즈/표정 4종과 패장의 좌절 도트 모션 4종(엎드려 땅 치며 오열 · 무릎 꿇고 전술판 파손 · 대자로 뻗어 영혼 가출 · 땅에 얼굴 파묻고 좌절 OTL) 및 승리/도발 멘트가 매 경기 랜덤으로 연출되도록 구현.
+- **UCL 리그 페이즈 단계별 고속진행 모달 & 36팀 순위표 팝업 (`src/components/ucl/UclLeaguePhaseFastSimModal.tsx`, `src/components/ucl/UclLeaguePhaseStandingsModal.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - `[리그 페이즈 끝까지 고속진행]` 클릭 시 자국 리그 `FastSimModal`과 동일하게 1R~8R 라운드별 경기 결과·순위 변동·실시간 상위 8위+내 구단 순위표를 단계별로 진행하는 고속 시뮬레이션 모달(속도 전환·일시정지·부상 자동 정지·즉시 완료 지원) 적용.
+  - 리그 페이즈 8R 종료 시 1~8위 16강 직행 / 9~24위 플레이오프 / 25~36위 탈락 커트라인 구분선과 내 구단 진출 요약이 담긴 `[36팀 리그 페이즈 순위표 팝업]` 자동 표시 및 상단 헤더/대진표 상시 열람 버튼 추가.
 
 ---
 
