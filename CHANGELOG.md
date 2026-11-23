@@ -5,6 +5,13 @@
 
 ---
 
+## v7.0.1 — 멀티플레이 방 생성 Supabase CHECK 제약조건 호환 핫픽스
+
+- **Supabase `mp_rooms_mode_check` / `status` / `seat` 호환성 수정 (`src/services/multiplayerService.ts`, `src/types/multiplayer.ts`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/components/multiplayer/MultiplayerLobby.tsx`)**:
+  - 1대1 방 생성 시 `mode` 필드를 DB 컬럼 `DEFAULT`에 위임해 `mp_rooms_mode_check` 위반 오류를 해결하고, `status`(`tactics`/`pre_match`, `live_match`/`playing`/`match`) 및 `seat`(0/1 기반) CHECK 제약조건 위반(`23514`) 시 호환 값으로 자동 재시도하도록 보강.
+
+---
+
 ## v7.0 — Supabase 실시간 멀티플레이 인프라 구축 & 친구와 1대1 블라인드 드래프트 대전
 
 - **Supabase 실시간 멀티플레이 인프라 & 배포 연동 (`supabase/schema.sql`, `src/lib/supabaseClient.ts`, `src/types/multiplayer.ts`, `src/services/multiplayerService.ts`, `.github/workflows/deploy.yml`)**:

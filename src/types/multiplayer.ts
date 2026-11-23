@@ -13,14 +13,25 @@ import type {
 import type { Player } from './player';
 
 /** Extensible multiplayer room modes (Phase 2 multi-league ready) */
-export type MpRoomMode = '1v1_blind_draft' | 'multi_league';
+export type MpRoomMode = '1v1' | '1v1_blind' | '1v1_blind_draft' | 'multi_league';
 
 export type MpRoomStatus =
   | 'lobby'
   | 'drafting'
   | 'tactics'
+  | 'pre_match'
   | 'live_match'
+  | 'playing'
+  | 'match'
   | 'finished';
+
+export function isMpTacticsStatus(status: string | undefined | null): boolean {
+  return status === 'tactics' || status === 'pre_match';
+}
+
+export function isMpLiveMatchStatus(status: string | undefined | null): boolean {
+  return status === 'live_match' || status === 'playing' || status === 'match';
+}
 
 export interface MpRoomSettings {
   draftLeaguePool: LeagueId[];

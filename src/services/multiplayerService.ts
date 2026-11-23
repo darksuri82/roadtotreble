@@ -314,16 +314,21 @@ export async function createRoom(params: {
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = generateRoomCode();
     try {
+      const insertRoomPayload: Record<string, unknown> = {
+        code,
+        status: 'lobby',
+        host_player_id: params.playerId,
+        settings,
+        match_state: null,
+      };
+      // Only pass explicit mode for non-default modes; for 1v1, let DB column DEFAULT satisfy any mode CHECK constraint.
+      if (params.mode === 'multi_league') {
+        insertRoomPayload.mode = 'multi_league';
+      }
+
       const { data: roomData, error: roomErr } = await client
         .from('mp_rooms')
-        .insert({
-          code,
-          mode: params.mode ?? '1v1_blind_draft',
-          status: 'lobby',
-          host_player_id: params.playerId,
-          settings,
-          match_state: null,
-        })
+        .insert(insertRoomPayload)
         .select('*')
         .single();
 
@@ -332,33 +337,45 @@ export async function createRoom(params: {
         return { data: null, error: normalizeError(roomErr, '방 생성에 실패했습니다.') };
       }
 
-      const { data: playerData, error: playerErr } = await client
+      const basePlayerPayload = {
+        room_id: roomData.id,
+        player_id: params.playerId,
+        nickname: params.nickname.trim() || '감독',
+        avatar_json: params.avatar,
+        club_profile: params.clubProfile,
+        is_ready: false,
+        draft_progress: 0,
+        draft_completed: false,
+        lineup_payload: null,
+        tactic_submission: null,
+      };
+
+      let playerRes = await client
         .from('mp_room_players')
-        .insert({
-          room_id: roomData.id,
-          player_id: params.playerId,
-          seat: 0,
-          nickname: params.nickname.trim() || '감독',
-          avatar_json: params.avatar,
-          club_profile: params.clubProfile,
-          is_ready: false,
-          draft_progress: 0,
-          draft_completed: false,
-          lineup_payload: null,
-          tactic_submission: null,
-        })
+        .insert({ ...basePlayerPayload, seat: 0 })
         .select('*')
         .single();
 
-      if (playerErr) {
-        return { data: null, error: normalizeError(playerErr, '방장 등록에 실패했습니다.') };
+      if (playerRes.error?.code === '23514') {
+        playerRes = await client
+          .from('mp_room_players')
+          .insert({ ...basePlayerPayload, seat: 1 })
+          .select('*')
+          .single();
+      }
+
+      if (playerRes.error || !playerRes.data) {
+        return {
+          data: null,
+          error: normalizeError(playerRes.error, '방장 등록에 실패했습니다.'),
+        };
       }
 
       saveActiveRoomCode(code);
       return {
         data: {
           room: roomData as MpRoomRow,
-          players: [playerData as MpRoomPlayerRow],
+          players: [playerRes.data as MpRoomPlayerRow],
         },
         error: null,
       };
@@ -408,20 +425,20 @@ export async function joinRoomByCode(params: {
     return { data: null, error: '이미 경기가 진행 중인 방입니다.' };
   }
 
-  const maxPlayers = room.mode === '1v1_blind_draft' ? 2 : 8;
+  const maxPlayers = room.mode === 'multi_league' ? 8 : 2;
   if (players.length >= maxPlayers) {
     return { data: null, error: '방 인원이 가득 찼습니다.' };
   }
 
   const usedSeats = new Set(players.map((p) => p.seat));
-  let nextSeat = 1;
+  const minSeat = players.some((p) => p.seat === 0) ? 0 : 1;
+  let nextSeat = minSeat + 1;
   while (usedSeats.has(nextSeat)) nextSeat += 1;
 
   try {
-    const { error: insertErr } = await client.from('mp_room_players').insert({
+    const baseJoinPayload = {
       room_id: room.id,
       player_id: params.playerId,
-      seat: nextSeat,
       nickname: params.nickname.trim() || '도전자',
       avatar_json: params.avatar,
       club_profile: params.clubProfile,
@@ -430,7 +447,19 @@ export async function joinRoomByCode(params: {
       draft_completed: false,
       lineup_payload: null,
       tactic_submission: null,
-    });
+    };
+
+    let { error: insertErr } = await client
+      .from('mp_room_players')
+      .insert({ ...baseJoinPayload, seat: nextSeat });
+
+    if (insertErr?.code === '23514') {
+      const altSeat = nextSeat === 1 ? 2 : 1;
+      const retry = await client
+        .from('mp_room_players')
+        .insert({ ...baseJoinPayload, seat: altSeat });
+      insertErr = retry.error;
+    }
 
     if (insertErr) {
       return { data: null, error: normalizeError(insertErr, '방 참가에 실패했습니다.') };
@@ -556,6 +585,16 @@ export async function submitBlindDraftLineup(
   return { data: true, error: null };
 }
 
+function getStatusCandidates(status: MpRoomStatus): MpRoomStatus[] {
+  if (status === 'live_match' || status === 'playing' || status === 'match') {
+    return ['live_match', 'playing', 'match'];
+  }
+  if (status === 'tactics' || status === 'pre_match') {
+    return ['tactics', 'pre_match'];
+  }
+  return [status];
+}
+
 export async function updateRoomStatus(
   roomId: string,
   status: MpRoomStatus,
@@ -563,12 +602,18 @@ export async function updateRoomStatus(
   const client = getSupabaseClient();
   if (!client) return { data: null, error: 'Supabase 미연결' };
 
-  const { error } = await client
-    .from('mp_rooms')
-    .update({ status })
-    .eq('id', roomId);
-  if (error) return { data: null, error: normalizeError(error, '방 상태 변경 실패') };
-  return { data: true, error: null };
+  const candidates = getStatusCandidates(status);
+  let lastErr: unknown = null;
+  for (const candidate of candidates) {
+    const { error } = await client
+      .from('mp_rooms')
+      .update({ status: candidate })
+      .eq('id', roomId);
+    if (!error) return { data: true, error: null };
+    lastErr = error;
+    if (error.code !== '23514') break;
+  }
+  return { data: null, error: normalizeError(lastErr, '방 상태 변경 실패') };
 }
 
 export async function submitTacticBarrier(
@@ -596,15 +641,21 @@ export async function publishMatchState(
   const client = getSupabaseClient();
   if (!client) return { data: null, error: 'Supabase 미연결' };
 
-  const { error } = await client
-    .from('mp_rooms')
-    .update({
-      status,
-      match_state: matchState,
-    })
-    .eq('id', roomId);
-  if (error) return { data: null, error: normalizeError(error, '경기 상태 동기화 실패') };
-  return { data: true, error: null };
+  const candidates = getStatusCandidates(status);
+  let lastErr: unknown = null;
+  for (const candidate of candidates) {
+    const { error } = await client
+      .from('mp_rooms')
+      .update({
+        status: candidate,
+        match_state: matchState,
+      })
+      .eq('id', roomId);
+    if (!error) return { data: true, error: null };
+    lastErr = error;
+    if (error.code !== '23514') break;
+  }
+  return { data: null, error: normalizeError(lastErr, '경기 상태 동기화 실패') };
 }
 
 export async function resetRoomForSameTeamRematch(
@@ -625,21 +676,27 @@ export async function resetRoomForSameTeamRematch(
     .update({ tactic_submission: null })
     .eq('room_id', roomId);
 
-  const { error } = await client
-    .from('mp_rooms')
-    .update({
-      status: 'tactics',
-      settings: nextSettings,
-      match_state: prevSeriesWins
-        ? ({
-            seriesWins: prevSeriesWins,
-          } as unknown as MpMatchState)
-        : null,
-    })
-    .eq('id', roomId);
+  const candidates = getStatusCandidates('tactics');
+  let lastErr: unknown = null;
+  for (const candidate of candidates) {
+    const { error } = await client
+      .from('mp_rooms')
+      .update({
+        status: candidate,
+        settings: nextSettings,
+        match_state: prevSeriesWins
+          ? ({
+              seriesWins: prevSeriesWins,
+            } as unknown as MpMatchState)
+          : null,
+      })
+      .eq('id', roomId);
+    if (!error) return { data: true, error: null };
+    lastErr = error;
+    if (error.code !== '23514') break;
+  }
 
-  if (error) return { data: null, error: normalizeError(error, '재대결 준비 실패') };
-  return { data: true, error: null };
+  return { data: null, error: normalizeError(lastErr, '재대결 준비 실패') };
 }
 
 export async function leaveRoom(

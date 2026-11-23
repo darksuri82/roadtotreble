@@ -457,7 +457,8 @@ export function MultiplayerLobby({
   // =========================================================================
   const { room, players } = snapshot;
   const isHost = room.host_player_id === playerId;
-  const hostPlayer = players.find((p) => p.seat === 0) ?? players[0] ?? null;
+  const hostPlayer =
+    players.find((p) => p.player_id === room.host_player_id) ?? players[0] ?? null;
   const guestPlayer = players.find((p) => p.player_id !== hostPlayer?.player_id) ?? null;
   const myPlayer = players.find((p) => p.player_id === playerId) ?? null;
 

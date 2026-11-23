@@ -12,15 +12,33 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v7.0';
+export const CURRENT_APP_VERSION = 'v7.0.1';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v7.0.1',
+    codename:
+      '멀티플레이 방 생성 시 Supabase CHECK 제약조건(mp_rooms_mode_check / status / seat) 호환 핫픽스',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '멀티플레이 방 생성 및 경기 단계 전환 시 Supabase 테이블의 CHECK 제약조건(mode/status/seat)과 100% 호환되도록 DB 기본값 사용 및 자동 폴백 처리를 적용했습니다.',
+    sections: [
+      {
+        category: '1. 멀티플레이 DB 제약조건 호환성 핫픽스',
+        items: [
+          '1대1 방 생성 시 mode 컬럼에 테이블 기본값(DEFAULT)이 적용되도록 수정해 mp_rooms_mode_check 오류를 즉시 해결했습니다.',
+          '방 상태(tactics/pre_match, live_match/playing/match) 및 좌석 번호(seat 0/1 기반) 업데이트 시 CHECK 제약조건 위반(23514)을 감지하면 호환 값으로 자동 재시도하도록 보강했습니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v7.0',
     codename:
       'Supabase 실시간 멀티플레이 인프라 구축 & 친구와 1대1 블라인드 드래프트 대전 모드',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'MAJOR',
     summary:
       'Supabase Realtime·Presence 기반의 실시간 멀티플레이 로비와 친구와 1대1 블라인드 드래프트 대전 모드를 출시했습니다. 첫 화면 [멀티플레이]에서 6자리 초대 코드·원클릭 초대 링크로 방을 만들고 참가할 수 있으며, 상호 비공개 감독 능력 선택 및 동시 블라인드 드래프트(중복 선수 허용) 후 매치 데이 전술실에서 라인업을 전격 공개합니다. 호스트 권위형 대칭 매치 엔진으로 양쪽 화면이 100% 동일한 스코어·2D 경기 전개·하프타임 및 연장 수싸움·승부차기로 동기화되며, 경기 후 같은 팀 재대결·새 드래프트 1대1도 즉시 지원합니다.',
     sections: [

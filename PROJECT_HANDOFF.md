@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v7.0)
+# Road To Treble — PROJECT HANDOFF GUIDE (v7.0.1)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -16,6 +16,8 @@
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v7.0.1 핫픽스**:
+  - **Supabase CHECK 제약조건 호환성 (`multiplayerService.ts`, `multiplayer.ts`, `MultiplayerArena.tsx`, `MultiplayerLobby.tsx`)**: 1대1 방 생성 시 `mode`를 DB `DEFAULT`에 위임하고 `status`/`seat` CHECK 제약조건(`23514`) 자동 폴백 추가.
 - **v7.0 주요 신규 모듈·기능**:
   - **Supabase 실시간 멀티플레이 인프라 & 로비 (`supabase/schema.sql`, `src/lib/supabaseClient.ts`, `src/types/multiplayer.ts`, `src/services/multiplayerService.ts`, `MultiplayerLobby.tsx`, `.github/workflows/deploy.yml`)**: `mp_rooms`/`mp_room_players` 스키마·RLS·Realtime, 6자리 초대 코드·원클릭 초대 링크(`?room=XXXXXX`) 자동 입장, Presence 접속 표시·준비 완료 토글, 미설정 환경 안전 안내 UI, 추후 2단계 멀티 리그 확장형 모드 선택 구조.
   - **1대1 블라인드 드래프트 & 호스트 권위형 대칭 2D 경기 동기화 (`MultiplayerBlindDraft.tsx`, `MultiplayerArena.tsx`, `matchEngine.ts`, `MatchDayTacticsRoom.tsx`, `LiveMatchBroadcast.tsx`, `MatchReportPanel.tsx`, `v70Multiplayer1v1.test.ts`)**: 상호 비공개 감독 능력·16인 동시 드래프트(중복 선수 허용, 진행 중 `draft_progress`만 전송해 제로 리크 보장) → 매치 데이 전술실 라인업 공개 → `opponentUserContext` 대칭 PvP 엔진(AI 자동 대응 배제) 기반 전반·하프타임 동시 수싸움·후반·연장·PK 100% 동일 2D 중계 및 `[같은 팀으로 재대결]` / `[새 드래프트로 1대1]`.

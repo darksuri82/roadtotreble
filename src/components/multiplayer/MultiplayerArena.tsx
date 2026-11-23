@@ -61,6 +61,10 @@ import type {
   MatchResult,
   TacticId,
 } from '../../types/league';
+import {
+  isMpLiveMatchStatus,
+  isMpTacticsStatus,
+} from '../../types/multiplayer';
 import type {
   MpLineupPayload,
   MpMatchPhase,
@@ -335,7 +339,7 @@ export function MultiplayerArena() {
     const matchNum = room.settings.matchNumber ?? 1;
     const draftGen = room.settings.draftGeneration ?? 1;
 
-    if (room.status === 'tactics' && myRow.lineup_payload) {
+    if (isMpTacticsStatus(room.status) && myRow.lineup_payload) {
       const key = `tactics:${room.id}:${draftGen}:${matchNum}`;
       if (syncedSquadKeyRef.current !== key) {
         syncedSquadKeyRef.current = key;
@@ -347,7 +351,7 @@ export function MultiplayerArena() {
         setLocalCommittedMatchId(null);
         setSubmittingBarrier(null);
       }
-    } else if (room.status === 'live_match' && matchState) {
+    } else if (isMpLiveMatchStatus(room.status) && matchState) {
       const key = `live:${matchState.matchId}:${matchState.phase}`;
       if (syncedSquadKeyRef.current !== key) {
         syncedSquadKeyRef.current = key;
@@ -397,7 +401,7 @@ export function MultiplayerArena() {
 
   // 2) Both confirmed pre-match tactics -> Host computes 1st half & publishes live_match!
   useEffect(() => {
-    if (!isHost || !room || room.status !== 'tactics') return;
+    if (!isHost || !room || !isMpTacticsStatus(room.status)) return;
     if (!hostRow?.lineup_payload || !guestRow?.lineup_payload) return;
 
     const matchNumber = room.settings.matchNumber ?? 1;
@@ -515,7 +519,7 @@ export function MultiplayerArena() {
 
   // 3) Both submitted Halftime tactics -> Host runs simulateSecondHalf with BOTH real human choices!
   useEffect(() => {
-    if (!isHost || !room || room.status !== 'live_match' || !matchState) return;
+    if (!isHost || !room || !isMpLiveMatchStatus(room.status) || !matchState) return;
     if (matchState.phase !== 'first_half') return;
     if (!hostRow || !guestRow) return;
 
@@ -651,7 +655,7 @@ export function MultiplayerArena() {
 
   // 4) Both submitted Extra Time 1st Half tactics (90' tied under knockoutRules)
   useEffect(() => {
-    if (!isHost || !room || room.status !== 'live_match' || !matchState) return;
+    if (!isHost || !room || !isMpLiveMatchStatus(room.status) || !matchState) return;
     if (matchState.phase !== 'second_half' || !matchState.liveHalftime.fullMatchResult) {
       return;
     }
@@ -766,7 +770,7 @@ export function MultiplayerArena() {
 
   // 5) Both submitted Extra Time 2nd Half tactics (105' ET Halftime) -> computes ET2 + PK!
   useEffect(() => {
-    if (!isHost || !room || room.status !== 'live_match' || !matchState) return;
+    if (!isHost || !room || !isMpLiveMatchStatus(room.status) || !matchState) return;
     if (matchState.phase !== 'extra_time' || !matchState.liveHalftime.fullMatchResult) {
       return;
     }
@@ -1199,7 +1203,7 @@ export function MultiplayerArena() {
       return undefined;
     }
     if (
-      room.status !== 'live_match' ||
+      !isMpLiveMatchStatus(room.status) ||
       localCommittedMatchId === matchState.matchId ||
       effectiveLivePhase === 'finished'
     ) {
@@ -1377,7 +1381,7 @@ export function MultiplayerArena() {
   }
 
   // 3) Pre-Match Reveal & Tactics Room
-  if (room.status === 'tactics' && myRow?.lineup_payload && oppRow?.lineup_payload) {
+  if (isMpTacticsStatus(room.status) && myRow?.lineup_payload && oppRow?.lineup_payload) {
     const matchNumber = room.settings.matchNumber ?? 1;
     const preMatchKey = `pre_match:${room.settings.draftGeneration ?? 1}:${matchNumber}`;
     const myLocked =
