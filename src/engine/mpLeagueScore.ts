@@ -1,6 +1,7 @@
 import { compareScoreWithHistoricalTeams } from '../data/historicalTeams';
 import { evaluateManagerPlayerSynergy } from '../data/managerTraits';
 import type { CupStageId, DomesticCupState } from '../types/cup';
+import type { PlayerSeasonStats } from '../types/league';
 import type { SeasonScoreBreakdown } from '../types/legacy';
 import type {
   MpFriendRankRow,
@@ -12,6 +13,7 @@ import type {
   MpSquadInput,
 } from '../types/mpLeague';
 import type { UclKnockoutStage, UclPhaseStage, UclTournamentState } from '../types/ucl';
+import { mergePlayerStatsMaps } from './analyticsEngine';
 import { computeGlobalSeasonAwards } from './awardsEngine';
 import { calculateChemistry, calculateTeamRatings } from './chemistryEngine';
 import { getUserCupResultLabel } from './cupEngine';
@@ -296,6 +298,20 @@ export function finalizeMpLeagueSeason(
   });
   const withAwards: MpLeagueHostState = { ...state, globalAwards };
   const rows = buildMpFriendRanking(withAwards, squads);
+  const combinedStats = mergePlayerStatsMaps(
+    state.allPlayerStats,
+    state.cupPlayerStats,
+    state.uclPlayerStats,
+  );
+  const squadStats: Record<string, PlayerSeasonStats[]> = {};
+  for (const h of state.humans) {
+    const sq = squads[h.clubId];
+    squadStats[h.clubId] = sq
+      ? [...sq.starters, ...sq.bench]
+          .map((p) => combinedStats[p.id])
+          .filter((x): x is PlayerSeasonStats => Boolean(x))
+      : [];
+  }
   return {
     ...withAwards,
     stage: 'final',
@@ -310,6 +326,7 @@ export function finalizeMpLeagueSeason(
       championClubId: state.standings[0]?.teamId ?? null,
       cupChampionId: state.cup?.championTeamId ?? null,
       uclChampionId: state.ucl?.championTeamId ?? null,
+      squadStats,
     },
   };
 }

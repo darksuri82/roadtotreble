@@ -5,6 +5,25 @@
 
 ---
 
+## v8.2 — 멀티플레이 UX·디자인 통일 & 리그 도움 순위 (원본 피치 균등 그리드 · 대기 턴 후보 유지/잠금 · 우상단 A/M/D OVR · 역제안/시즌 정산 원본 통합 · 사이드 득점·도움 순위)
+
+- **멀티 드래프트 원본 피치 그리드 & 대기 턴 UX (`src/components/common/ScaledPitchFrame.tsx`, `PitchBoard.tsx`, `PlayerCard.tsx`, `src/components/draft/RouletteReelsView.tsx`, `src/components/multiplayer/league/MpLeagueDraftBoard.tsx`)**:
+  - 기존 간략 피치(`MpMiniPitch.tsx` 삭제)와 별도 대형 내 피치 레이아웃을 제거하고, 원본 `PitchBoard`(선수 카드 · 4색 케미선 · 시너지 수치 · 실효 OVR · 벤치)를 `ResizeObserver` + `transform: scale()` 기반 `ScaledPitchFrame`(CSS `zoom` 미사용)으로 정상 비율 그대로 축소해 2인(2열) · 3인(PC 3열 / 모바일 2+1 중앙 균등) · 4인(PC 4열 / 모바일 2×2) 전원 동일 크기 그리드로 통합.
+  - 내 팀은 에메랄드 테두리 + `MY` 배지, 현재 지명 중인 상대는 앰버 하이라이트로 구분하고 개별 확대 모달 유지.
+  - 상대 지명 턴에도 `RouletteReelsView`가 축소·접힘 없이 원본 크기 그대로 유지되며, 다른 참가자가 지명한 카드는 자리 이동 없이 즉시 `선택됨 · [닉네임]` 잠금 처리. 대기 중에도 남은 후보 클릭 시 내 피치 임시 배치 프리뷰가 동작하며 지명 확정만 비활성화.
+- **멀티 스쿼드 · 전술 화면 우상단 `A / M / D` 실시간 OVR (`src/components/multiplayer/league/MpLeagueSquadEditor.tsx`, `src/components/league/MatchDayTacticsRoom.tsx`)**:
+  - `calculateTeamRatings` 기반 `⚡ A / M / D` 실효 라인 OVR을 멀티 리그 스쿼드 에디터와 매치 데이 전술실 우상단에 추가해 포메이션·전술·선발 변경 시 실시간 반영.
+- **이적시장 역제안 원본 통일 & 멀티 리그/정산 디자인 일관성 복원 (`src/types/mpLeague.ts`, `src/engine/mpLeagueEngine.ts`, `src/engine/mpLeagueScore.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `MpLeagueTransferModal.tsx`, `MpLeagueDashboard.tsx`, `MpLeagueSeasonSummary.tsx`, `MpLeagueFinalBoard.tsx`, `MpLeagueRoot.tsx`, `mpUclView.ts`)**:
+  - 이적시장 진입 시 제안 구단별 16인 `TransferClubOffer`(`offerClubs`)를 생성·동기화하고, 방장 트레이드 처리(`executeMpTradePackage` / `submitMpLeagueTrade`)를 다중 패키지 역제안(`userSentPlayerIds`, `aiTargetPlayerIds`, `aiFillerPlayerIds`, 급매 `shockBargainIds`, 중복 0건 보장)까지 지원하도록 확장.
+  - `MpLeagueTransferModal`의 `[조건 수정 · 역제안]`을 싱글 `TransferMarketModal`과 동일한 UI·동선(우상단 `[← 받은 제안으로]` + `[이적시장 끝내기]`, 포메이션/리스트 전환, 상대 니즈 배지, 실시간 성사 확률, 실수 종료 확인 모달, `PlayerDetailModal`)으로 통일.
+  - 멀티 리그 대시보드 헤더·시즌 진행 바(이적시장 마커)·순위표(UCL/강등 커트라인)·탭 바를 싱글플레이 톤으로 통일하고, 이적시장/시즌 정산 활성 시 이전 이벤트 결과·부상 알림 모달이 겹쳐 뜨는 버그 수정.
+  - `MpLeagueSeasonSummary`(참가자 맞대결·UCL 배지·컵 대진표·UCL 36팀 진입 게이트), `mpUclView.ts`(실제 `topPlayerStats` 연동으로 UCL MVP 표시), `MpLeagueFinalBoard`(트로피 히어로 · 참가자 순위/맞대결/8항목 세부 점수 · 발롱도르 · FIFA 월드베스트 XI · 역대 24팀 비교 · 참가자 스쿼드)를 싱글 시즌 정산 양식과 조화롭게 통합.
+- **사이드 득점 순위 + 도움 순위 (`src/components/league/LeagueLeadersSideCard.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`)**:
+  - 싱글 리그와 멀티 리그 모두 사이드 영역에 득점 순위 + 도움 순위(TOP 5) 동시 제공. PC는 동시 표시, 모바일은 `[득점 | 도움]` 원터치 전환 컴팩트 카드로 세로 스크롤 최소화 및 선수 상세 조회 지원.
+- **테스트 (`src/__tests__/v82MultiLeaguePolish.test.ts`)**: 2/3/4인 멀티 리그 풀시즌 시뮬레이션으로 `topScorers`/`topAssisters`, `offerClubs` 생성·초기화, 다중 패키지 역제안 및 중복 0건, `uclPlayerStats`·`globalAwards`·`squadStats`, 포메이션 변경 시 `A/M/D` 실시간 재계산 검증 추가.
+
+---
+
 ## v8.1 — 멀티 리그 몰입도 개편 (공유 룰렛 드래프트 · 라이브 스코어보드 · 리그 시즌 정산 · 맞대결 합의 스킵 · 챔스 연출 · 최적화)
 
 - **공유 룰렛 스네이크 드래프트 (`src/engine/mpLeagueDraft.ts`, `src/components/multiplayer/league/MpLeagueDraftBoard.tsx`, `MpLeagueSnakeDraft.tsx`, `MpMiniPitch.tsx`, `useMpLeagueHost.ts`)**:

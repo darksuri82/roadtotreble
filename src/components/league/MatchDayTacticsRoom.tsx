@@ -7,6 +7,7 @@ import {
   Shield,
   Users,
   Wand2,
+  Zap,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { getClubManager } from '../../data/aiManagers';
@@ -272,14 +273,25 @@ export function MatchDayTacticsRoom({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setGuideOpen(true)}
-          className="inline-flex items-center gap-1 rounded-lg border border-sky-400/35 bg-sky-500/10 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/20 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-        >
-          <BookOpen className="w-3.5 h-3.5" />
-          전술·상성 도감
-        </button>
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+          <span
+            id="tactics-room-line-ovr"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2 py-1 text-[11px] font-bold text-slate-300 tabular-nums whitespace-nowrap"
+          >
+            <Zap className="w-3 h-3 text-emerald-400" />
+            A <strong className="text-white">{ourRatings.effectiveAtt}</strong> / M{' '}
+            <strong className="text-white">{ourRatings.effectiveMid}</strong> / D{' '}
+            <strong className="text-white">{ourRatings.effectiveDef}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => setGuideOpen(true)}
+            className="inline-flex items-center gap-1 rounded-lg border border-sky-400/35 bg-sky-500/10 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/20 transition-colors cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            전술·상성 도감
+          </button>
+        </div>
       </div>
 
       {/* Prominent UCL 2nd-Leg 1st-Leg Score & Required Goals Banner */}

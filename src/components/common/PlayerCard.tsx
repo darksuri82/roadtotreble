@@ -1,4 +1,4 @@
-import { Crown, Diamond, Star } from 'lucide-react';
+import { Crown, Diamond, Lock, Star } from 'lucide-react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
@@ -30,6 +30,12 @@ interface PlayerCardProps {
   disabled?: boolean;
   compact?: boolean;
   actionLabel?: string;
+  /** When set, locks the card in place with a picked badge (e.g. picker nickname in snake draft) */
+  lockedBadgeLabel?: string | null;
+  /** When true, card can still be previewed on click, while confirm button stays disabled */
+  disableConfirmAction?: boolean;
+  /** Text displayed on the disabled confirm button while waiting for opponent turn */
+  disabledActionLabel?: string | null;
 }
 
 const TIER_STYLES: Record<
@@ -86,6 +92,9 @@ export function PlayerCard({
   disabled = false,
   compact = false,
   actionLabel,
+  lockedBadgeLabel = null,
+  disableConfirmAction = false,
+  disabledActionLabel = null,
 }: PlayerCardProps) {
   const tier = getCardTier(player);
   const style = TIER_STYLES[tier];
@@ -250,10 +259,10 @@ export function PlayerCard({
         selected ? 'ring-2 ring-emerald-400' : ''
       } ${
         onClick && !disabled ? 'cursor-pointer' : 'cursor-default'
-      } ${disabled ? 'opacity-50' : ''}`}
+      } ${lockedBadgeLabel ? 'opacity-45 grayscale-[35%]' : disabled ? 'opacity-50' : ''}`}
     >
       {/* Hologram Shimmer ONLY for Legend & Active Superstar */}
-      {(isLegend || isSuperstar) && (
+      {(isLegend || isSuperstar) && !lockedBadgeLabel && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div
             className={`legend-shimmer-bar absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent ${
@@ -420,22 +429,38 @@ export function PlayerCard({
         </div>
       </div>
 
-      {onConfirmAction ? (
+      {lockedBadgeLabel ? (
+        <div className="relative z-10 mt-2.5 flex w-full items-center justify-center gap-1 rounded-lg border border-slate-700/80 bg-slate-950/90 py-2 text-center text-xs font-extrabold text-slate-400">
+          <Lock className="w-3 h-3 shrink-0" />
+          <span className="truncate">선택됨 · {lockedBadgeLabel}</span>
+        </div>
+      ) : onConfirmAction ? (
         selected ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onConfirmAction();
-            }}
-            className={`relative z-10 mt-2.5 w-full rounded-lg py-2 text-center text-xs font-extrabold transition-colors cursor-pointer ${
-              isLegend
-                ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
-                : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
-            }`}
-          >
-            {actionLabel ?? '영입하기'} 확정 ✓
-          </button>
+          disableConfirmAction ? (
+            <button
+              type="button"
+              disabled
+              onClick={(e) => e.stopPropagation()}
+              className="relative z-10 mt-2.5 w-full rounded-lg border border-slate-700 bg-slate-900/90 py-2 text-center text-xs font-bold text-slate-400 cursor-not-allowed"
+            >
+              {disabledActionLabel ?? '상대 지명 중'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onConfirmAction();
+              }}
+              className={`relative z-10 mt-2.5 w-full rounded-lg py-2 text-center text-xs font-extrabold transition-colors cursor-pointer ${
+                isLegend
+                  ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                  : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
+              }`}
+            >
+              {actionLabel ?? '영입하기'} 확정 ✓
+            </button>
+          )
         ) : (
           <div className="relative z-10 mt-2.5 w-full rounded-lg border border-slate-700/80 bg-slate-900/75 py-2 text-center text-xs font-semibold text-slate-400 group-hover:border-emerald-500/50 group-hover:text-emerald-200">
             클릭하여 피치 임시 배치 · 프리뷰

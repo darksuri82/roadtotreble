@@ -1,5 +1,5 @@
 import { USER_CLUB_ID } from '../../../engine/matchEngine';
-import type { Club, MatchResult } from '../../../types/league';
+import type { Club, MatchResult, PlayerSeasonStats } from '../../../types/league';
 import type { MpUclLive } from '../../../types/mpLeague';
 import type {
   UclKnockoutStage,
@@ -23,6 +23,7 @@ export function buildUclViewForViewer(
   ucl: UclTournamentState;
   clubsById: Record<string, Club>;
   teamEntryById: Record<string, UclTeamEntry>;
+  uclPlayerStats: Record<string, PlayerSeasonStats>;
 } {
   const map = (id: string): string => (viewerClubId && id === viewerClubId ? USER_CLUB_ID : id);
   const mapOpt = (id: string | null): string | null => (id === null ? null : map(id));
@@ -106,9 +107,19 @@ export function buildUclViewForViewer(
     ]),
   );
 
+  const uclPlayerStats: Record<string, PlayerSeasonStats> = {};
+  for (const [pid, st] of Object.entries(ucl.topPlayerStats ?? {})) {
+    uclPlayerStats[pid] = {
+      ...st,
+      teamId: map(st.teamId),
+      isUserTeam: viewerClubId !== null && st.teamId === viewerClubId,
+    };
+  }
+
   return {
     clubsById,
     teamEntryById,
+    uclPlayerStats,
     ucl: {
       stage: ucl.stage,
       teams: Object.values(teamEntryById),

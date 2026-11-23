@@ -13,6 +13,7 @@ import type {
   ManagerTraitId,
   OtherLeagueSeasonState,
   RouletteReelResult,
+  TransferClubOffer,
   UserClubProfile,
 } from './game';
 import type {
@@ -241,6 +242,8 @@ export interface MpHumanSeasonState {
   uclHistory: MpLiteMatch[];
   h2h: MpH2HRecord;
   offers: IncomingTradeOffer[];
+  /** Partner club 16-man squad & needs for each incoming offer (populated only during transfer window) */
+  offerClubs?: Record<string, TransferClubOffer>;
   attemptsLeft: number;
   tradeNote: MpTradeResultNote | null;
   lastMatch: MatchResult | null;
@@ -321,6 +324,8 @@ export interface MpLeagueFinal {
   championClubId: string | null;
   cupChampionId: string | null;
   uclChampionId: string | null;
+  /** Combined season stats (league + cup + UCL) per friend club for the final squad tab */
+  squadStats?: Record<string, PlayerSeasonStats[]>;
 }
 
 /** Slim UCL snapshot published to every client */
@@ -334,6 +339,8 @@ export interface MpUclLive {
   championTeamId: string | null;
   humanClubIds: string[];
   lastScores: MpLiteMatch[];
+  /** Top UCL player stats (used for UCL MVP display in UclMilestoneModal) */
+  topPlayerStats?: Record<string, PlayerSeasonStats>;
 }
 
 export interface MpHumanLive {
@@ -344,6 +351,8 @@ export interface MpHumanLive {
   event: ActiveManagerEvent | null;
   resolution: ManagerEventResolution | null;
   offers: IncomingTradeOffer[];
+  /** Partner club 16-man squad & needs for original counter-offer UI (transfer window only) */
+  offerClubs?: Record<string, TransferClubOffer>;
   attemptsLeft: number;
   tradeNote: MpTradeResultNote | null;
   h2h: MpH2HRecord;
@@ -372,6 +381,8 @@ export interface MpLeagueLive {
   autoMs: number;
   round: number;
   totalRounds: number;
+  transferWindows?: [number, number, number];
+  completedWindows?: number[];
   humans: MpLeagueHuman[];
   clubs: Club[];
   standings: StandingRow[];

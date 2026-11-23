@@ -328,6 +328,22 @@ export function MpLeagueRoot({
   if (live.stage === 'final' && live.final) {
     const showPodium = podiumOpen && live.final.rows.length >= 3;
     const showDuel = podiumOpen && live.final.rows.length === 2;
+    const finalClubsById: Record<string, (typeof live.clubs)[number]> = {};
+    for (const c of live.ucl?.clubs ?? []) finalClubsById[c.id] = c;
+    for (const c of live.clubs) finalClubsById[c.id] = c;
+    const finalSquads: Record<string, MpSquadInput> = {};
+    for (const h of live.humans) {
+      const p = players.find((r) => r.player_id === h.playerId)?.league_payload;
+      if (p && p.starters?.length === 11) {
+        finalSquads[h.clubId] = {
+          managerTraitId: p.managerTraitId,
+          formation: p.formation,
+          tactic: p.tactic,
+          starters: p.starters,
+          bench: p.bench,
+        };
+      }
+    }
     return (
       <>
         <MpLeagueFinalBoard
@@ -335,6 +351,12 @@ export function MpLeagueRoot({
           humans={live.humans}
           myClubId={myClubId}
           leagueLabel={LEAGUE_LABEL[live.leagueId]}
+          leagueId={live.leagueId}
+          standings={live.standings}
+          clubsById={finalClubsById}
+          cup={live.cup}
+          ucl={live.ucl}
+          squads={finalSquads}
           onOpenPodium={
             live.final.rows.length >= 2 ? () => setPodiumOpen(true) : undefined
           }
@@ -422,8 +444,14 @@ export function MpLeagueRoot({
       onInjuryAck={() => void sendAction('injury_ack', {})}
       onTradeAccept={(offerId) => void sendAction('trade_accept', { offerId })}
       onTradeReject={(offerId) => void sendAction('trade_reject', { offerId })}
-      onTradeCounter={(offerId, sendPlayerId) =>
-        void sendAction('trade_counter', { offerId, sendPlayerId })
+      onTradeCounter={(payload) =>
+        void sendAction('trade_counter', {
+          offerId: payload.offerId,
+          sendPlayerId: payload.sendPlayerId,
+          userSentPlayerIds: payload.userSentPlayerIds,
+          aiTargetPlayerIds: payload.aiTargetPlayerIds,
+          aiFillerPlayerIds: payload.aiFillerPlayerIds,
+        })
       }
       onSetAutoMs={host.setAutoMs}
       onForceResume={host.forceResume}

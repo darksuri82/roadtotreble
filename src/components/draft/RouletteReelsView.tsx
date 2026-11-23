@@ -32,6 +32,14 @@ interface RouletteReelsViewProps {
   onSpin: () => void;
   onPickPlayer: (player: Player) => void;
   pickActionLabel: string;
+  /** False when waiting for another manager's turn in multiplayer draft (keeps full size, disables confirm) */
+  canPick?: boolean;
+  /** False when another manager is responsible for spinning the shared roulette */
+  canSpin?: boolean;
+  /** Concise status label displayed when waiting for another manager (e.g. "철수 지명 중") */
+  waitingStatusLabel?: string | null;
+  /** Map of playerId -> picker nickname; keeps taken cards locked in place instead of removing them */
+  takenByPlayerId?: Record<string, string>;
 }
 
 export function RouletteReelsView({
@@ -48,6 +56,10 @@ export function RouletteReelsView({
   onSpin,
   onPickPlayer,
   pickActionLabel,
+  canPick = true,
+  canSpin = true,
+  waitingStatusLabel = null,
+  takenByPlayerId,
 }: RouletteReelsViewProps) {
   const [lockedCount, setLockedCount] = useState(hasSpun ? 3 : 0);
   const [tick, setTick] = useState(0);
@@ -57,8 +69,10 @@ export function RouletteReelsView({
     null,
   );
 
-  const selectedCandidate =
+  const rawSelected =
     previewCandidate !== undefined ? previewCandidate : internalCandidate;
+  const selectedCandidate =
+    rawSelected && takenByPlayerId?.[rawSelected.id] ? null : rawSelected;
 
   const updateSelectedCandidate = (player: Player | null) => {
     setInternalCandidate(player);
@@ -97,7 +111,7 @@ export function RouletteReelsView({
   }, [animating]);
 
   const handleSpinClick = () => {
-    if (hasSpun || animating) return;
+    if (hasSpun || animating || !canSpin) return;
     setLockedCount(0);
     setActiveClubTab('all');
     updateSelectedCandidate(null);
@@ -106,19 +120,23 @@ export function RouletteReelsView({
   };
 
   const handleConfirmPick = (player: Player) => {
+    if (!canPick || takenByPlayerId?.[player.id]) return;
     updateSelectedCandidate(null);
     onPickPlayer(player);
   };
 
   const handleCandidateCardClick = (player: Player) => {
+    if (takenByPlayerId?.[player.id]) return;
     if (selectedCandidate?.id === player.id) {
-      handleConfirmPick(player);
+      if (canPick) handleConfirmPick(player);
+      else updateSelectedCandidate(null);
       return;
     }
     updateSelectedCandidate(player);
   };
 
-  const allRevealed = hasSpun && !animating && lockedCount >= 3;
+  const effectiveLockedCount = hasSpun && !animating ? 3 : lockedCount;
+  const allRevealed = hasSpun && !animating && effectiveLockedCount >= 3;
   const visibleReels =
     activeClubTab === 'all'
       ? reels
@@ -129,6 +147,11 @@ export function RouletteReelsView({
     : null;
   const synBonus = previewSlotSynergy?.totalBonus ?? 0;
   const finalBoostedOvr = selectedFit ? selectedFit.effectiveOvr + synBonus : 0;
+  const remainingCount = reels.reduce(
+    (sum, r) =>
+      sum + r.candidates.filter((c) => !takenByPlayerId?.[c.id]).length,
+    0,
+  );
 
   return (
     <div className="space-y-4">
@@ -148,7 +171,8 @@ export function RouletteReelsView({
         {/* 3 Visual Reels */}
         <div className="grid grid-cols-3 gap-2.5">
           {[0, 1, 2].map((reelIdx) => {
-            const isLocked = hasSpun && lockedCount > reelIdx && reels[reelIdx];
+            const isLocked =
+              hasSpun && effectiveLockedCount > reelIdx && reels[reelIdx];
             const reelData = isLocked ? reels[reelIdx] : null;
             const spinningEntry =
               activePreviewPool[
@@ -237,17 +261,24 @@ export function RouletteReelsView({
           })}
         </div>
 
-        {/* Spin Button */}
+        {/* Spin Button or Waiting Bar */}
         {!hasSpun && (
-          <button
-            id="spin-club-roulette-btn"
-            type="button"
-            onClick={handleSpinClick}
-            className="mt-3.5 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 active:scale-[0.99] transition-all cursor-pointer"
-          >
-            <Dices className="w-4 h-4" />
-            룰렛 돌리기 ({targetSubPosition} 슬롯 · 3구단 추첨)
-          </button>
+          canSpin ? (
+            <button
+              id="spin-club-roulette-btn"
+              type="button"
+              onClick={handleSpinClick}
+              className="mt-3.5 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 active:scale-[0.99] transition-all cursor-pointer"
+            >
+              <Dices className="w-4 h-4" />
+              룰렛 돌리기 ({targetSubPosition} 슬롯 · 3구단 추첨)
+            </button>
+          ) : (
+            <div className="mt-3.5 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-800 bg-[#0b1018] py-3 text-xs font-bold text-slate-400">
+              <Dices className="w-4 h-4 text-slate-500" />
+              {waitingStatusLabel ?? '상대 룰렛 대기 중'}
+            </div>
+          )
         )}
       </div>
 
@@ -297,15 +328,25 @@ export function RouletteReelsView({
                 </div>
 
                 <div className="flex items-center gap-1.5 w-full sm:w-auto shrink-0">
-                  <button
-                    id="confirm-draft-pick-btn"
-                    type="button"
-                    onClick={() => handleConfirmPick(selectedCandidate)}
-                    className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 transition-colors cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    {selectedCandidate.name} {pickActionLabel} 확정
-                  </button>
+                  {canPick ? (
+                    <button
+                      id="confirm-draft-pick-btn"
+                      type="button"
+                      onClick={() => handleConfirmPick(selectedCandidate)}
+                      className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 transition-colors cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {selectedCandidate.name} {pickActionLabel} 확정
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="inline-flex flex-1 sm:flex-initial items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900/90 px-4 py-2 text-xs font-bold text-slate-400 cursor-not-allowed"
+                    >
+                      {waitingStatusLabel ?? '상대 지명 중'}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => updateSelectedCandidate(null)}
@@ -369,11 +410,21 @@ export function RouletteReelsView({
               </div>
             </div>
           ) : (
-            <div className="min-h-[84px] flex items-center rounded-xl border border-slate-800 bg-[#0d131c] px-3.5 py-2.5 text-xs text-slate-400">
-              <div>
-                후보 카드를 <strong className="text-emerald-300">1회 클릭하면 포메이션 피치에 임시 배치</strong>되어 시너지 OVR 상승량과 연결선이 실시간 표시됩니다. 마음에 들면{' '}
-                <strong className="text-white">[영입 확정]</strong>(또는 재클릭)으로 확정하세요.
-              </div>
+            <div className="min-h-[60px] flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-[#0d131c] px-3.5 py-2.5 text-xs text-slate-400">
+              {canPick ? (
+                <span>
+                  <strong className="text-emerald-300">1클릭</strong> 피치 임시 배치 ·{' '}
+                  <strong className="text-white">확정</strong>(또는 재클릭) 지명
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2 font-bold text-amber-200">
+                  <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                  {waitingStatusLabel ?? '상대 지명 중'}
+                </span>
+              )}
+              <span className="text-[11px] font-bold text-slate-500 tabular-nums">
+                남은 후보 {remainingCount}명
+              </span>
             </div>
           )}
 
@@ -389,7 +440,7 @@ export function RouletteReelsView({
                     : 'bg-[#111822] text-slate-400 border-slate-800 hover:text-white'
                 }`}
               >
-                전체 구단 ({reels.reduce((sum, r) => sum + r.candidates.length, 0)})
+                전체 구단 ({remainingCount})
               </button>
               {reels.map((reel) => {
                 const active = activeClubTab === reel.reelIndex;
@@ -427,7 +478,7 @@ export function RouletteReelsView({
               })}
             </div>
             <span className="text-[11px] text-slate-400">
-              1클릭 임시 배치 · 2클릭 영입 확정
+              {canPick ? '1클릭 임시 배치 · 2클릭 확정' : '클릭 시 내 피치 미리보기'}
             </span>
           </div>
 
@@ -482,37 +533,51 @@ export function RouletteReelsView({
 
                 {reel.isLegendSlot ? (
                   <div className="mx-auto max-w-sm">
-                    {reel.candidates.map((player) => (
-                      <PlayerCard
-                        key={player.id}
-                        player={player}
-                        targetSubPosition={targetSubPosition}
-                        managerTraitId={managerTraitId}
-                        selected={selectedCandidate?.id === player.id}
-                        onClick={() => handleCandidateCardClick(player)}
-                        onConfirmAction={() => handleConfirmPick(player)}
-                        actionLabel={pickActionLabel}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex gap-2 overflow-x-auto pb-1 snap-x sm:grid sm:grid-cols-3 sm:gap-2.5 sm:overflow-visible sm:pb-0">
-                    {reel.candidates.map((player) => (
-                      <div
-                        key={player.id}
-                        className="w-[215px] shrink-0 snap-start sm:w-auto sm:shrink"
-                      >
+                    {reel.candidates.map((player) => {
+                      const pickedBy = takenByPlayerId?.[player.id] ?? null;
+                      return (
                         <PlayerCard
+                          key={player.id}
                           player={player}
                           targetSubPosition={targetSubPosition}
                           managerTraitId={managerTraitId}
-                          selected={selectedCandidate?.id === player.id}
+                          selected={!pickedBy && selectedCandidate?.id === player.id}
+                          disabled={Boolean(pickedBy)}
+                          lockedBadgeLabel={pickedBy}
+                          disableConfirmAction={!canPick}
+                          disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
                           onClick={() => handleCandidateCardClick(player)}
                           onConfirmAction={() => handleConfirmPick(player)}
                           actionLabel={pickActionLabel}
                         />
-                      </div>
-                    ))}
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex gap-2 overflow-x-auto pb-1 snap-x sm:grid sm:grid-cols-3 sm:gap-2.5 sm:overflow-visible sm:pb-0">
+                    {reel.candidates.map((player) => {
+                      const pickedBy = takenByPlayerId?.[player.id] ?? null;
+                      return (
+                        <div
+                          key={player.id}
+                          className="w-[215px] shrink-0 snap-start sm:w-auto sm:shrink"
+                        >
+                          <PlayerCard
+                            player={player}
+                            targetSubPosition={targetSubPosition}
+                            managerTraitId={managerTraitId}
+                            selected={!pickedBy && selectedCandidate?.id === player.id}
+                            disabled={Boolean(pickedBy)}
+                            lockedBadgeLabel={pickedBy}
+                            disableConfirmAction={!canPick}
+                            disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
+                            onClick={() => handleCandidateCardClick(player)}
+                            onConfirmAction={() => handleConfirmPick(player)}
+                            actionLabel={pickActionLabel}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

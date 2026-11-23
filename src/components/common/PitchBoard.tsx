@@ -48,6 +48,7 @@ interface PitchBoardProps {
   onInspectPlayer?: (player: Player, slotSubPosition?: SubPosition) => void;
   showBench?: boolean;
   showChemBreakdown?: boolean;
+  showChemLegend?: boolean;
   compact?: boolean;
   headerLabel?: string;
   headerRight?: React.ReactNode;
@@ -117,6 +118,7 @@ export function PitchBoard({
   onInspectPlayer,
   showBench = true,
   showChemBreakdown = true,
+  showChemLegend = true,
   compact = false,
   headerLabel,
   headerRight,
@@ -744,41 +746,43 @@ export function PitchBoard({
       </div>
 
       {/* Multi-Line Chemistry Legend (4 official synergy line colors) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#0e141e] px-3 py-1.5 text-[10px] text-slate-400">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-0.5 w-3.5 rounded-full"
-              style={{ backgroundColor: LINE_COLORS.club }}
-            />
-            구단·전소속
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-0.5 w-3.5 rounded-full"
-              style={{ backgroundColor: LINE_COLORS.nation }}
-            />
-            국적
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-0.5 w-3.5 rounded-full"
-              style={{ backgroundColor: LINE_COLORS.style }}
-            />
-            스타일
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span
-              className="h-0.5 w-3.5 rounded-full"
-              style={{ backgroundColor: LINE_COLORS.elite }}
-            />
-            엘리트 88+
+      {showChemLegend && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#0e141e] px-3 py-1.5 text-[10px] text-slate-400">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-0.5 w-3.5 rounded-full"
+                style={{ backgroundColor: LINE_COLORS.club }}
+              />
+              구단·전소속
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-0.5 w-3.5 rounded-full"
+                style={{ backgroundColor: LINE_COLORS.nation }}
+              />
+              국적
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-0.5 w-3.5 rounded-full"
+                style={{ backgroundColor: LINE_COLORS.style }}
+              />
+              스타일
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="h-0.5 w-3.5 rounded-full"
+                style={{ backgroundColor: LINE_COLORS.elite }}
+              />
+              엘리트 88+
+            </span>
+          </div>
+          <span className="text-[10px] text-slate-500">
+            {onInspectPlayer ? '호버 선 강조 · ⓘ 상세' : '호버 시 선 강조'}
           </span>
         </div>
-        <span className="text-[10px] text-slate-500">
-          {onInspectPlayer ? '호버 선 강조 · ⓘ 상세' : '호버 시 선 강조'}
-        </span>
-      </div>
+      )}
 
       {/* 4-Pillar Player Synergy Breakdown */}
       {showChemBreakdown && (

@@ -1,4 +1,13 @@
-import { Check, FastForward, Loader2, LogOut, Timer, Users } from 'lucide-react';
+import {
+  Check,
+  FastForward,
+  Loader2,
+  LogOut,
+  Maximize2,
+  Timer,
+  Users,
+  X,
+} from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MANAGER_TRAITS } from '../../../data/managerTraits';
 import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemistryEngine';
@@ -31,8 +40,8 @@ import { PitchBoard } from '../../common/PitchBoard';
 import type { SlotRef } from '../../common/PitchBoard';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
 import { PlayerDetailModal } from '../../common/PlayerDetailModal';
+import { ScaledPitchFrame } from '../../common/ScaledPitchFrame';
 import { RouletteReelsView } from '../../draft/RouletteReelsView';
-import { MpMiniPitch } from './MpMiniPitch';
 
 interface MpLeagueDraftBoardProps {
   room: MpRoomRow;
@@ -158,6 +167,7 @@ export function MpLeagueDraftBoard({
   const [previewCandidate, setPreviewCandidate] = useState<Player | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<SlotRef | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
   const [inspected, setInspected] = useState<{
     player: Player;
     slotSubPosition?: SubPosition;
@@ -187,34 +197,39 @@ export function MpLeagueDraftBoard({
   );
   const takenIds = useMemo(() => collectTakenIds(picks), [picks]);
 
+  const nicknameByPlayerId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of players) map[p.player_id] = p.nickname;
+    return map;
+  }, [players]);
+
+  const takenByPlayerId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const row of picks) {
+      map[row.player_ref] = nicknameByPlayerId[row.picker_id] ?? '선택됨';
+    }
+    return map;
+  }, [picks, nicknameByPlayerId]);
+
   // The round's shared roulette lives on the spinner's row (optimistic copy for the spinner)
   const spinnerRow = players.find((p) => p.player_id === spinnerId) ?? null;
   const remoteRoll = spinnerRow?.activity?.roll ?? null;
-  const roll: MpDraftRoll | null = [remoteRoll, localRoll].find(
-    (r): r is MpDraftRoll =>
-      Boolean(r && r.generation === generation && r.round === round),
-  ) ?? null;
-  const freeCandidates = useMemo(
-    () => (roll ? rollCandidates(roll.reels, takenIds) : []),
-    [roll, takenIds],
-  );
-  const visibleReels = useMemo(
-    () =>
-      roll
-        ? roll.reels.map((r) => ({
-            ...r,
-            candidates: r.candidates.filter((c) => !takenIds.has(c.id)),
-          }))
-        : [],
-    [roll, takenIds],
-  );
+  const roll: MpDraftRoll | null =
+    [remoteRoll, localRoll].find(
+      (r): r is MpDraftRoll =>
+        Boolean(r && r.generation === generation && r.round === round),
+    ) ?? null;
 
   const autoKey = `draft-auto:${generation}`;
   const iAgreedAuto = ackKeys.includes(autoKey);
   const allAuto =
     players.length > 0 && players.every((p) => p.activity?.ackKeys?.includes(autoKey));
 
-  const activePreview = isMyTurn && roll ? previewCandidate : null;
+  // Allow planning/previewing on my pitch even during opponents' turns; automatically clear if taken
+  const activePreview =
+    roll && previewCandidate && !takenIds.has(previewCandidate.id)
+      ? previewCandidate
+      : null;
   const previewSlot = useMemo(
     () =>
       activePreview
@@ -244,7 +259,18 @@ export function MpLeagueDraftBoard({
     setPreviewCandidate(null);
     onSetRoll(next);
     return next;
-  }, [iAmSpinner, roll, formation, board, generation, round, takenIds, draftPool, order.length, onSetRoll]);
+  }, [
+    iAmSpinner,
+    roll,
+    formation,
+    board,
+    generation,
+    round,
+    takenIds,
+    draftPool,
+    order.length,
+    onSetRoll,
+  ]);
 
   const submitPick = useCallback(
     async (player: Player, auto: boolean) => {
@@ -317,7 +343,17 @@ export function MpLeagueDraftBoard({
       rev: (myPayload.rev ?? 0) + 1,
       by: 'player',
     });
-  }, [draftFinished, draft, myPayload, board, generation, managerTraitId, formation, tactic, onSavePayload]);
+  }, [
+    draftFinished,
+    draft,
+    myPayload,
+    board,
+    generation,
+    managerTraitId,
+    formation,
+    tactic,
+    onSavePayload,
+  ]);
 
   const previewStarters = useMemo(() => {
     if (!activePreview || !previewSlot || previewSlot.area !== 'starter') return board.starters;
@@ -339,17 +375,6 @@ export function MpLeagueDraftBoard({
   const displayChemistry = useMemo(
     () => calculateChemistry(formation, previewStarters, tactic, managerTraitId),
     [formation, previewStarters, tactic, managerTraitId],
-  );
-  const ratings = useMemo(
-    () =>
-      calculateTeamRatings(
-        formation,
-        previewStarters.filter((p): p is Player => p !== null),
-        displayChemistry.total,
-        managerTraitId,
-        displayChemistry.slotSynergies,
-      ),
-    [formation, previewStarters, displayChemistry, managerTraitId],
   );
   const previewSlotSynergy =
     activePreview && previewSlot?.area === 'starter'
@@ -395,24 +420,63 @@ export function MpLeagueDraftBoard({
       .filter((p): p is MpRoomPlayerRow => Boolean(p));
   }, [order, players]);
 
-  const boards = useMemo(() => {
-    const map: Record<string, { starters: (Player | null)[]; bench: (Player | null)[] }> = {};
-    for (const p of orderedPlayers) {
-      map[p.player_id] =
-        p.player_id === playerId ? board : rebuildSquadFromPicks(picks, p.player_id);
-    }
-    return map;
-  }, [orderedPlayers, playerId, board, picks]);
+  const participantViews = useMemo(() => {
+    return orderedPlayers.map((p) => {
+      const isMe = p.player_id === playerId;
+      const pFormation: FormationId = p.league_payload?.formation ?? '4-3-3';
+      const pTactic: TacticId = p.league_payload?.tactic ?? 'possession';
+      const pTrait: ManagerTraitId = p.league_payload?.managerTraitId ?? 'big_game_hunter';
+      const squad = isMe
+        ? { starters: previewStarters, bench: previewBench }
+        : rebuildSquadFromPicks(picks, p.player_id);
+      const chemistry = isMe
+        ? displayChemistry
+        : calculateChemistry(pFormation, squad.starters, pTactic, pTrait);
+      const ratings = calculateTeamRatings(
+        pFormation,
+        squad.starters.filter((x): x is Player => x !== null),
+        chemistry.total,
+        pTrait,
+        chemistry.slotSynergies,
+      );
+      const pickCount = picks.filter((x) => x.picker_id === p.player_id).length;
+      return {
+        row: p,
+        isMe,
+        formation: pFormation,
+        tactic: pTactic,
+        traitId: pTrait,
+        starters: squad.starters,
+        bench: squad.bench,
+        chemistry,
+        ratings,
+        pickCount,
+      };
+    });
+  }, [orderedPlayers, playerId, previewStarters, previewBench, picks, displayChemistry]);
 
-  const lastPick = picks.length > 0 ? picks[picks.length - 1] : null;
   const currentPicker = players.find((p) => p.player_id === currentPickerId) ?? null;
-  const pickedByName = (id: string) => {
-    const row = picks.find((x) => x.player_ref === id);
-    return players.find((p) => p.player_id === row?.picker_id)?.nickname ?? null;
-  };
+  const waitingLabel = draftFinished
+    ? '드래프트 완료'
+    : !roll
+      ? `${spinnerRow?.nickname ?? '첫 순번'} 룰렛 대기 중`
+      : `${currentPicker?.nickname ?? '상대'} 지명 중`;
+
+  const playerCount = participantViews.length;
+  const gridContainerCls =
+    playerCount === 2
+      ? 'mx-auto grid max-w-4xl grid-cols-2 gap-2 sm:gap-3'
+      : playerCount === 3
+        ? 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3'
+        : 'grid grid-cols-2 gap-2 xl:grid-cols-4 sm:gap-2.5';
+
+  const expandedView = expandedPlayerId
+    ? participantViews.find((v) => v.row.player_id === expandedPlayerId) ?? null
+    : null;
 
   return (
-    <div className="mx-auto max-w-6xl px-2.5 py-3 sm:px-4 sm:py-5 space-y-3">
+    <div className="mx-auto max-w-7xl px-2.5 py-3 sm:px-4 sm:py-4 space-y-3">
+      {/* Top Bar */}
       <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1 rounded-md border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-extrabold text-sky-300">
@@ -423,8 +487,36 @@ export function MpLeagueDraftBoard({
           <span className="text-xs font-bold text-white tabular-nums">
             {Math.min(round + 1, 16)}/16R · {Math.min(pickNo, totalPicks)}/{totalPicks}
           </span>
+          <span className="hidden sm:inline text-[11px] text-slate-400">
+            ({MANAGER_TRAITS[managerTraitId]?.name})
+          </span>
         </div>
-        <div className="flex items-center gap-1.5">
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {!draftFinished && draft && (
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`rounded-md border px-2 py-1 text-[11px] font-extrabold ${
+                  isMyTurn
+                    ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-300'
+                    : 'border-slate-700 bg-[#111822] text-slate-300'
+                }`}
+              >
+                {isMyTurn ? '내 차례' : `${currentPicker?.nickname ?? '상대'} 차례`}
+              </span>
+              <TurnTimer
+                turnKey={`${generation}:${pickNo}`}
+                turnSec={draft.turnSec}
+                onExpire={handleExpire}
+              />
+            </div>
+          )}
+          {draftFinished && (
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              시즌 준비 중
+            </span>
+          )}
           {!draftFinished && (
             <button
               id="mpl-auto-draft-btn"
@@ -454,219 +546,297 @@ export function MpLeagueDraftBoard({
         </div>
       </div>
 
-      {/* Everyone's board at a glance */}
+      {/* Uniform Original Formation Pitch Grid for ALL Participants (2 / 3 / 4 equal-size cards) */}
+      <div className="space-y-2">
+        <div className={gridContainerCls}>
+          {participantViews.map((pv, idx) => {
+            const onClock = pv.row.player_id === currentPickerId;
+            const online = onlinePlayerIds.includes(pv.row.player_id);
+            const isThirdOnMobile = playerCount === 3 && idx === 2;
+
+            const card = (
+              <div
+                className={`rounded-xl border p-2 space-y-1.5 transition-colors ${
+                  onClock && pv.isMe
+                    ? 'border-emerald-400/75 bg-[#0e1a1b] ring-1 ring-emerald-400/40'
+                    : onClock
+                      ? 'border-amber-400/70 bg-[#17140d] ring-1 ring-amber-400/35'
+                      : pv.isMe
+                        ? 'border-emerald-500/45 bg-[#0e1620]'
+                        : 'border-slate-800/90 bg-[#0d131c]'
+                }`}
+              >
+                {/* Participant Header */}
+                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <PixelManagerAvatar
+                      avatar={pv.row.avatar_json}
+                      clubPrimaryColor={pv.row.club_profile.primaryColor}
+                      clubSecondaryColor={pv.row.club_profile.secondaryColor}
+                      size={22}
+                    />
+                    <span className="truncate text-[11px] font-extrabold text-slate-100">
+                      {pv.row.nickname}
+                    </span>
+                    {pv.isMe && (
+                      <span className="shrink-0 rounded bg-emerald-400 px-1 py-0.5 text-[8px] font-black leading-none text-slate-950">
+                        MY
+                      </span>
+                    )}
+                    {onClock && (
+                      <span
+                        className={`h-2 w-2 shrink-0 rounded-full animate-pulse ${
+                          pv.isMe ? 'bg-emerald-400' : 'bg-amber-400'
+                        }`}
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0 tabular-nums">
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {pv.pickCount}/16
+                      {!online && ' · 오프'}
+                    </span>
+                    {pv.isMe && selectedSlot && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSlot(null)}
+                        className="rounded border border-amber-400/40 bg-amber-500/15 px-1 py-0.5 text-[9px] font-bold text-amber-200 cursor-pointer"
+                      >
+                        취소
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setExpandedPlayerId(pv.row.player_id)}
+                      aria-label={`${pv.row.nickname} 피치 크게 보기`}
+                      title="크게 보기"
+                      className="rounded border border-slate-800 bg-[#111822] p-0.5 text-slate-400 hover:border-slate-600 hover:text-white cursor-pointer"
+                    >
+                      <Maximize2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Original PitchBoard scaled proportionally to exact cell width (zero zoom, zero distortion) */}
+                <ScaledPitchFrame baseWidth={376}>
+                  <PitchBoard
+                    formation={pv.formation}
+                    starters={pv.starters}
+                    bench={pv.bench}
+                    chemistry={pv.chemistry}
+                    managerTraitId={pv.traitId}
+                    conditionByPlayerId={{}}
+                    activeSlot={
+                      pv.isMe && previewSlot
+                        ? { area: previewSlot.area, index: previewSlot.index }
+                        : null
+                    }
+                    previewSlot={
+                      pv.isMe && previewSlot
+                        ? { area: previewSlot.area, index: previewSlot.index }
+                        : null
+                    }
+                    selectedSlot={pv.isMe ? selectedSlot : null}
+                    onSlotClick={
+                      pv.isMe
+                        ? handleSlotClick
+                        : (area, slotIdx) => {
+                            const target =
+                              area === 'starter'
+                                ? pv.starters[slotIdx]
+                                : pv.bench[slotIdx];
+                            if (target) setInspected({ player: target });
+                          }
+                    }
+                    onSlotSwap={pv.isMe ? handleSwap : undefined}
+                    onInspectPlayer={(player, slotSubPosition) =>
+                      setInspected({ player, slotSubPosition })
+                    }
+                    headerRight={
+                      <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
+                        OVR {Math.round(pv.ratings.ovr || 0)}
+                      </span>
+                    }
+                    showBench
+                    showChemBreakdown={false}
+                    showChemLegend={false}
+                    compact
+                  />
+                </ScaledPitchFrame>
+              </div>
+            );
+
+            if (isThirdOnMobile) {
+              return (
+                <div
+                  key={pv.row.player_id}
+                  className="col-span-2 flex justify-center sm:col-span-1 sm:block"
+                >
+                  <div className="w-[calc(50%-0.25rem)] sm:w-full">{card}</div>
+                </div>
+              );
+            }
+            return <div key={pv.row.player_id}>{card}</div>;
+          })}
+        </div>
+
+        {/* Single Shared 4-Color Synergy Legend */}
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#0d131c] px-3 py-1.5 text-[10px] text-slate-400">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-0.5 w-3.5 rounded-full bg-emerald-500" />
+              구단·전소속
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-0.5 w-3.5 rounded-full bg-sky-400" />
+              국적
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-0.5 w-3.5 rounded-full bg-amber-500" />
+              스타일
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-0.5 w-3.5 rounded-full bg-purple-400" />
+              엘리트 88+
+            </span>
+          </div>
+          {allAuto && !draftFinished ? (
+            <span className="font-bold text-emerald-300">자동 드래프트 진행 중</span>
+          ) : draftFinished ? (
+            <span className="inline-flex items-center gap-1 font-bold text-emerald-300">
+              <Check className="w-3 h-3" />
+              16인 구성 완료
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Full-Size Draft Candidate Pool — ALWAYS kept at original size & layout on every turn */}
       <div
-        className={`grid gap-2 ${
-          orderedPlayers.length >= 4
-            ? 'grid-cols-2 lg:grid-cols-4'
-            : orderedPlayers.length === 3
-              ? 'grid-cols-3'
-              : 'grid-cols-2'
+        className={`rounded-2xl border bg-[#0d131c] p-3 space-y-2.5 ${
+          isMyTurn ? 'border-emerald-500/40' : 'border-slate-800/90'
         }`}
       >
-        {orderedPlayers.map((p) => {
-          const b = boards[p.player_id];
-          const count = picks.filter((x) => x.picker_id === p.player_id).length;
-          const onClock = p.player_id === currentPickerId;
-          const online = onlinePlayerIds.includes(p.player_id);
-          return (
-            <div
-              key={p.player_id}
-              className={`rounded-xl border p-1.5 space-y-1 ${
-                onClock
-                  ? 'border-emerald-400/55 bg-emerald-500/10'
-                  : 'border-slate-800 bg-[#0d131c]'
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <span
+              className={`rounded-md px-2 py-0.5 font-extrabold ${
+                isMyTurn
+                  ? 'bg-emerald-500/15 text-emerald-300'
+                  : 'bg-slate-800 text-slate-300'
               }`}
             >
-              <div className="flex items-center gap-1.5 min-w-0">
-                <PixelManagerAvatar
-                  avatar={p.avatar_json}
-                  clubPrimaryColor={p.club_profile.primaryColor}
-                  clubSecondaryColor={p.club_profile.secondaryColor}
-                  size={20}
-                />
-                <span className="truncate text-[11px] font-extrabold text-slate-100">
-                  {p.nickname}
-                  {p.player_id === playerId && <span className="ml-1 text-emerald-300">나</span>}
-                </span>
-                <span className="ml-auto shrink-0 text-[10px] font-bold text-slate-400 tabular-nums">
-                  {count}/16{!online && ' · 오프'}
-                </span>
-              </div>
-              <MpMiniPitch
-                formation={p.league_payload?.formation ?? '4-3-3'}
-                starters={b?.starters ?? []}
-                bench={b?.bench ?? []}
-                highlightId={
-                  lastPick?.picker_id === p.player_id ? lastPick.player_ref : null
-                }
-                height={112}
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="text-xs font-bold text-slate-300">
-          {draftFinished ? (
-            <span className="inline-flex items-center gap-1.5 text-emerald-300">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              시즌 준비 중
+              {Math.min(round + 1, 16)}라운드
             </span>
-          ) : (
-            <>
-              <span className={isMyTurn ? 'text-emerald-300' : 'text-white'}>
-                {isMyTurn ? '내 차례' : `${currentPicker?.nickname ?? '상대'} 차례`}
-              </span>
-              {roll && <span className="ml-1.5 text-slate-400">· {roll.label} 룰렛</span>}
-              {allAuto && <span className="ml-1.5 text-emerald-300">· 자동 진행</span>}
-            </>
-          )}
-        </div>
-        {!draftFinished && draft && (
-          <TurnTimer
-            turnKey={`${generation}:${pickNo}`}
-            turnSec={draft.turnSec}
-            onExpire={handleExpire}
-          />
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
-        <div className="lg:col-span-7 space-y-3">
-          {isMyTurn && (roll || iAmSpinner) ? (
-            <div className="rounded-2xl border border-emerald-500/30 bg-[#0d131c] p-3 space-y-2.5">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 font-extrabold text-emerald-300">
-                  {round + 1}라운드
-                </span>
-                <span className="text-[11px] text-slate-400">
-                  ({MANAGER_TRAITS[managerTraitId]?.name})
-                </span>
-              </div>
-              <RouletteReelsView
-                key={`${generation}:${round}`}
-                hasSpun={Boolean(roll)}
-                reels={visibleReels}
-                legendRatePercent={Number((DEFAULT_ROULETTE_LEGEND_RATE * 100).toFixed(1))}
-                targetSubPosition={previewSlot?.subPosition ?? roll?.subPosition ?? 'CM'}
-                managerTraitId={managerTraitId}
-                allowedLeagueIds={draftPool}
-                previewCandidate={activePreview}
-                onSelectPreviewCandidate={setPreviewCandidate}
-                previewSlotSynergy={previewSlotSynergy}
-                previewChemDelta={previewChemDelta}
-                onSpin={() => {
-                  doSpin();
-                }}
-                onPickPlayer={(player) => void submitPick(player, false)}
-                pickActionLabel={previewSlot?.label ?? ''}
-              />
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-slate-800/90 bg-[#0d131c] p-3 space-y-2">
-              <div className="text-[11px] font-bold text-slate-400">
-                {roll ? `${round + 1}라운드 후보 · ${roll.label}` : '룰렛 대기'}
-              </div>
-              {roll ? (
-                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-                  {roll.reels.map((reel) => (
-                    <div
-                      key={reel.reelIndex}
-                      className="rounded-xl border border-slate-800 bg-[#0b1018] p-2 space-y-1"
-                    >
-                      <div className="truncate text-[11px] font-extrabold text-slate-200">
-                        {reel.isLegendSlot ? 'LEGEND' : reel.club?.name ?? '-'}
-                      </div>
-                      {reel.candidates.map((c) => {
-                        const by = pickedByName(c.id);
-                        return (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => setInspected({ player: c })}
-                            className={`flex w-full items-center justify-between gap-1.5 rounded-md px-1.5 py-0.5 text-left cursor-pointer hover:bg-slate-800/60 ${
-                              by ? 'opacity-45' : ''
-                            }`}
-                          >
-                            <span className="truncate text-[11px] text-slate-300">
-                              <span className="mr-1 font-mono text-[10px] text-slate-500">
-                                {c.mainPositions?.[0] ?? c.position}
-                              </span>
-                              {c.name}
-                              {by && <span className="ml-1 text-[10px] text-slate-500">{by}</span>}
-                            </span>
-                            <span className="font-mono text-[11px] font-bold text-slate-200 tabular-nums">
-                              {c.ovr}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 py-3 text-xs font-bold text-slate-500">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  {spinnerRow?.nickname ?? '첫 순번'} 룰렛 대기
-                </div>
-              )}
-              {roll && !draftFinished && (
-                <div className="text-[10px] font-bold text-slate-500 tabular-nums">
-                  남은 후보 {freeCandidates.length}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="lg:col-span-5 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#0d131c] px-3 py-1.5 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-white">{formation}</span>
-              <span className="text-slate-600">·</span>
-              <span className="font-bold text-emerald-300 tabular-nums">
-                케미 {displayChemistry.total}
-              </span>
-              <span className="text-slate-600">·</span>
-              <span className="font-bold text-slate-200 tabular-nums">
-                OVR {Math.round(ratings.ovr || 0)}
-              </span>
-            </div>
-            {selectedSlot ? (
-              <button
-                type="button"
-                onClick={() => setSelectedSlot(null)}
-                className="text-[11px] font-bold text-amber-300 hover:underline cursor-pointer"
-              >
-                스왑 취소
-              </button>
-            ) : (
-              draftFinished && <Check className="w-3.5 h-3.5 text-emerald-400" />
+            {roll?.label && (
+              <span className="font-bold text-slate-300">{roll.label} 룰렛</span>
             )}
           </div>
-          <PitchBoard
-            formation={formation}
-            starters={previewStarters}
-            bench={previewBench}
-            chemistry={displayChemistry}
-            managerTraitId={managerTraitId}
-            conditionByPlayerId={{}}
-            activeSlot={
-              previewSlot ? { area: previewSlot.area, index: previewSlot.index } : null
-            }
-            selectedSlot={selectedSlot}
-            onSlotClick={handleSlotClick}
-            onSlotSwap={handleSwap}
-            onInspectPlayer={(player, slotSubPosition) =>
-              setInspected({ player, slotSubPosition })
-            }
-            showBench
-            compact
-          />
+          {!isMyTurn && !draftFinished && (
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/35 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+              {waitingLabel}
+            </span>
+          )}
         </div>
+
+        <RouletteReelsView
+          key={`${generation}:${round}`}
+          hasSpun={Boolean(roll)}
+          reels={roll?.reels ?? []}
+          legendRatePercent={Number((DEFAULT_ROULETTE_LEGEND_RATE * 100).toFixed(1))}
+          targetSubPosition={previewSlot?.subPosition ?? roll?.subPosition ?? 'CM'}
+          managerTraitId={managerTraitId}
+          allowedLeagueIds={draftPool}
+          previewCandidate={activePreview}
+          onSelectPreviewCandidate={setPreviewCandidate}
+          previewSlotSynergy={previewSlotSynergy}
+          previewChemDelta={previewChemDelta}
+          canPick={isMyTurn && !draftFinished && !submitting}
+          canSpin={isMyTurn && iAmSpinner && !draftFinished}
+          waitingStatusLabel={waitingLabel}
+          takenByPlayerId={takenByPlayerId}
+          onSpin={() => {
+            doSpin();
+          }}
+          onPickPlayer={(player) => void submitPick(player, false)}
+          pickActionLabel={previewSlot?.label ?? ''}
+        />
       </div>
+
+      {/* Optional Full-Size Pitch Expand Modal (useful on small mobile screens) */}
+      {expandedView && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/85 p-3 sm:p-5"
+          onClick={() => setExpandedPlayerId(null)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[92dvh] overflow-y-auto rounded-2xl border border-slate-800 bg-[#0d131c] p-3.5 sm:p-4 space-y-2.5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <PixelManagerAvatar
+                  avatar={expandedView.row.avatar_json}
+                  clubPrimaryColor={expandedView.row.club_profile.primaryColor}
+                  clubSecondaryColor={expandedView.row.club_profile.secondaryColor}
+                  size={28}
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-sm font-extrabold text-white">
+                    <span className="truncate">{expandedView.row.nickname}</span>
+                    {expandedView.isMe && (
+                      <span className="rounded bg-emerald-400 px-1 py-0.5 text-[8px] font-black text-slate-950">
+                        MY
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] font-bold text-slate-400 tabular-nums">
+                    A {expandedView.ratings.effectiveAtt} / M{' '}
+                    {expandedView.ratings.effectiveMid} / D{' '}
+                    {expandedView.ratings.effectiveDef} · {expandedView.pickCount}/16
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpandedPlayerId(null)}
+                aria-label="닫기"
+                className="rounded-lg border border-slate-800 bg-[#111822] p-1.5 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <PitchBoard
+              formation={expandedView.formation}
+              starters={expandedView.starters}
+              bench={expandedView.bench}
+              chemistry={expandedView.chemistry}
+              managerTraitId={expandedView.traitId}
+              conditionByPlayerId={{}}
+              selectedSlot={expandedView.isMe ? selectedSlot : null}
+              onSlotClick={
+                expandedView.isMe
+                  ? handleSlotClick
+                  : (area, slotIdx) => {
+                      const target =
+                        area === 'starter'
+                          ? expandedView.starters[slotIdx]
+                          : expandedView.bench[slotIdx];
+                      if (target) setInspected({ player: target });
+                    }
+              }
+              onSlotSwap={expandedView.isMe ? handleSwap : undefined}
+              onInspectPlayer={(player, slotSubPosition) =>
+                setInspected({ player, slotSubPosition })
+              }
+              showBench
+              showChemBreakdown
+              compact
+            />
+          </div>
+        </div>
+      )}
 
       {inspected && (
         <PlayerDetailModal

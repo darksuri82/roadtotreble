@@ -57,6 +57,7 @@ import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
 import { FastSimModal } from './FastSimModal';
 import type { FastSimMode } from './FastSimModal';
+import { LeagueLeadersSideCard } from './LeagueLeadersSideCard';
 import { LiveMatchBroadcast } from './LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from './MatchDayTacticsRoom';
 import { MatchReportPanel } from './MatchReportPanel';
@@ -539,8 +540,8 @@ export function SeasonDashboard() {
             )}
           </div>
 
-          {/* Right: Latest Match Report (5 cols) */}
-          <div className="lg:col-span-5 space-y-5">
+          {/* Right: Latest Match Report + League Top Scorers & Assisters Side Card (5 cols) */}
+          <div className="lg:col-span-5 space-y-4">
             {season.lastUserMatch ? (
               <MatchReportPanel
                 match={season.lastUserMatch}
@@ -558,6 +559,35 @@ export function SeasonDashboard() {
                 </span>
               </div>
             )}
+
+            {season.currentRound > 0 && (() => {
+              const leagueList = Object.values(season.allPlayerStats).filter(
+                (s) => s.appearances > 0,
+              );
+              const sideScorers = [...leagueList]
+                .filter((s) => s.goals > 0)
+                .sort((a, b) => b.goals - a.goals || b.assists - a.assists)
+                .slice(0, 5);
+              const sideAssisters = [...leagueList]
+                .filter((s) => s.assists > 0)
+                .sort((a, b) => b.assists - a.assists || b.goals - a.goals)
+                .slice(0, 5);
+              return (
+                <LeagueLeadersSideCard
+                  scorers={sideScorers}
+                  assisters={sideAssisters}
+                  myClubId={USER_CLUB_ID}
+                  maxRows={5}
+                  desktopLayout="stack"
+                  onSelectPlayer={(entry) =>
+                    setInspectedPlayer({
+                      playerId: entry.playerId,
+                      fallbackStats: entry,
+                    })
+                  }
+                />
+              );
+            })()}
           </div>
         </div>
       )}

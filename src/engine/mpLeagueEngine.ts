@@ -2,7 +2,7 @@ import { FORMATIONS } from '../data/formations';
 import { pickNextManagerEvent, resolveManagerEventChoice } from '../data/managerEvents';
 import type { InjuryAlertItem, PlayerConditionMap } from '../types/condition';
 import type { CupStageId, DomesticCupState } from '../types/cup';
-import type { IncomingTradeOffer } from '../types/game';
+import type { IncomingTradeOffer, TransferClubOffer } from '../types/game';
 import type {
   Club,
   Fixture,
@@ -63,6 +63,7 @@ import {
 import {
   analyzeClubPositionNeeds,
   ATTEMPTS_PER_WINDOW,
+  buildTradeClubOfferForClub,
   checkTransferWindowTrigger,
   evaluateTradePackage,
   generateIncomingTradeOffers,
@@ -1295,6 +1296,12 @@ function stepTransfer(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
       rng,
     });
     const offers: IncomingTradeOffer[] = [];
+    const offerClubs: Record<string, TransferClubOffer> = {};
+    const mySquadIds = new Set(squadPlayers(squad).map((p) => p.id));
+    const baseExcludeIds = new Set<string>([
+      ...state.departedIds,
+      ...allHumanPlayerIds(env.squads),
+    ]);
     for (const offer of raw) {
       if (offers.length >= MAX_OFFERS_PER_HUMAN) break;
       // One AI club never negotiates with two friends at once (no duplicate players possible)
@@ -1312,11 +1319,40 @@ function stepTransfer(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
       }
       usedClubIds.add(offer.club.id);
       for (const p of offer.aiOffersPlayers) usedAiPlayerIds.add(p.id);
-      offers.push({ ...offer, id: `${human.clubId}-${offer.id}` });
+      const taggedOffer: IncomingTradeOffer = {
+        ...offer,
+        id: `${human.clubId}-${offer.id}`,
+      };
+      offers.push(taggedOffer);
+
+      const isUserLeague = offer.leagueId === state.settings.leagueId;
+      const liveRoster = isUserLeague
+        ? state.aiRosters[offer.club.id]
+        : state.otherLeagues[offer.leagueId]?.aiRosters?.[offer.club.id];
+      const statsMap = isUserLeague
+        ? state.allPlayerStats
+        : state.otherLeagues[offer.leagueId]?.playerStats ?? state.allPlayerStats;
+      offerClubs[taggedOffer.id] = buildTradeClubOfferForClub({
+        club: offer.club,
+        leagueId: offer.leagueId,
+        clubRank: offer.clubRank,
+        leagueSize: offer.leagueSize,
+        currentRound: state.round,
+        totalRounds: state.totalRounds,
+        windowIndex: trigger.windowIndex,
+        userRank: rankOf(state.standings, human.clubId) ?? 10,
+        userLeagueSize: state.standings.length || 20,
+        isUserLeague,
+        aiRoster: liveRoster,
+        allPlayerStats: statsMap,
+        ownedIds: mySquadIds,
+        excludeIds: baseExcludeIds,
+      });
     }
     perHuman[human.clubId] = {
       ...hs,
       offers,
+      offerClubs,
       attemptsLeft: ATTEMPTS_PER_WINDOW,
       tradeNote: null,
     };
@@ -1334,7 +1370,13 @@ export function closeMpLeagueTransferWindow(state: MpLeagueHostState): MpLeagueH
   if (state.flow.kind !== 'transfer' || state.transferWindowIndex === null) return state;
   const perHuman: Record<string, MpHumanSeasonState> = {};
   for (const [clubId, hs] of Object.entries(state.perHuman)) {
-    perHuman[clubId] = { ...hs, offers: [], attemptsLeft: 0, tradeNote: null };
+    perHuman[clubId] = {
+      ...hs,
+      offers: [],
+      offerClubs: {},
+      attemptsLeft: 0,
+      tradeNote: null,
+    };
   }
   return {
     ...state,
@@ -1389,35 +1431,44 @@ function retagStats(
   };
 }
 
-/** Swaps players between one friend and one AI club everywhere (rosters, 5 leagues, stats) with zero duplicates. */
-function executeMpTrade(params: {
+/** Swaps 1:1 or N:N package players between one friend and one AI club everywhere with zero duplicates. */
+function executeMpTradePackage(params: {
   state: MpLeagueHostState;
   human: MpLeagueHuman;
   squad: MpSquadInput;
   offer: IncomingTradeOffer;
-  sent: Player;
-  incoming: Player;
+  sentPlayers: Player[];
+  incomingPlayers: Player[];
 }): { state: MpLeagueHostState; squad: MpSquadInput } {
-  const { state, human, squad, offer, sent, incoming } = params;
-  const incomingForHuman: Player = {
-    ...incoming,
+  const { state, human, squad, offer, sentPlayers, incomingPlayers } = params;
+  const incomingForHuman: Player[] = incomingPlayers.map((p) => ({
+    ...p,
     club: human.profile.name,
     leagueId: state.settings.leagueId,
-  };
-  const sentForPartner: Player = {
-    ...sent,
+  }));
+  const sentForPartner: Player[] = sentPlayers.map((p) => ({
+    ...p,
     club: offer.club.name,
     leagueId: offer.leagueId,
-  };
+  }));
+
+  const replaceBySentId = new Map<string, Player>();
+  for (let i = 0; i < sentPlayers.length; i += 1) {
+    const replacement = incomingForHuman[i];
+    if (replacement) replaceBySentId.set(sentPlayers[i].id, replacement);
+  }
   const replace = (list: Player[]) =>
-    list.map((p) => (p.id === sent.id ? incomingForHuman : p));
+    list.map((p) => replaceBySentId.get(p.id) ?? p);
   const nextSquad: MpSquadInput = {
     ...squad,
     starters: replace(squad.starters),
     bench: replace(squad.bench),
   };
 
-  const moved = new Set([sent.id, incoming.id]);
+  const moved = new Set([
+    ...sentPlayers.map((p) => p.id),
+    ...incomingPlayers.map((p) => p.id),
+  ]);
   const scrub = (roster: Player[]) => roster.filter((p) => !moved.has(p.id));
 
   const aiRosters: Record<string, Player[]> = {};
@@ -1425,7 +1476,7 @@ function executeMpTrade(params: {
     const cleaned = scrub(roster);
     aiRosters[cid] =
       offer.leagueId === state.settings.leagueId && cid === offer.club.id
-        ? [...cleaned, sentForPartner]
+        ? [...cleaned, ...sentForPartner]
         : cleaned;
   }
 
@@ -1438,7 +1489,7 @@ function executeMpTrade(params: {
       const cleaned = scrub(roster);
       rosters[cid] =
         lid === offer.leagueId && cid === offer.club.id
-          ? [...cleaned, sentForPartner]
+          ? [...cleaned, ...sentForPartner]
           : cleaned;
     }
     otherLeagues[lid] = { ...ol, aiRosters: rosters };
@@ -1446,8 +1497,14 @@ function executeMpTrade(params: {
 
   const humanClub = state.clubs.find((c) => c.id === human.clubId);
   let allPlayerStats = state.allPlayerStats;
-  if (humanClub) allPlayerStats = retagStats(allPlayerStats, incoming, humanClub);
-  allPlayerStats = retagStats(allPlayerStats, sent, offer.club);
+  if (humanClub) {
+    for (const inc of incomingPlayers) {
+      allPlayerStats = retagStats(allPlayerStats, inc, humanClub);
+    }
+  }
+  for (const sent of sentPlayers) {
+    allPlayerStats = retagStats(allPlayerStats, sent, offer.club);
+  }
 
   return {
     squad: nextSquad,
@@ -1456,7 +1513,9 @@ function executeMpTrade(params: {
       aiRosters,
       otherLeagues,
       allPlayerStats,
-      departedIds: Array.from(new Set([...state.departedIds, sent.id, incoming.id])),
+      departedIds: Array.from(
+        new Set([...state.departedIds, ...Array.from(moved)]),
+      ),
     },
   };
 }
@@ -1498,8 +1557,8 @@ export function rejectMpLeagueOffer(
 }
 
 /**
- * Accepts an incoming offer as-is (sendPlayerId omitted) or sends a counter offer
- * that swaps in a different player of mine for the same AI player.
+ * Accepts an incoming offer as-is or evaluates & executes a counter-offer
+ * (supports both legacy 1:1 `sendPlayerId` and original NBA-style multi-player package counter-offers).
  */
 export function submitMpLeagueTrade(params: {
   state: MpLeagueHostState;
@@ -1507,8 +1566,20 @@ export function submitMpLeagueTrade(params: {
   clubId: string;
   offerId: string;
   sendPlayerId?: string;
+  userSentPlayerIds?: string[];
+  aiTargetPlayerIds?: string[];
+  aiFillerPlayerIds?: string[];
 }): MpTradeOutcome {
-  const { state, env, clubId, offerId, sendPlayerId } = params;
+  const {
+    state,
+    env,
+    clubId,
+    offerId,
+    sendPlayerId,
+    userSentPlayerIds,
+    aiTargetPlayerIds,
+    aiFillerPlayerIds,
+  } = params;
   const rng = env.rng ?? Math.random;
   const human = humanById(state, clubId);
   const squad = env.squads[clubId];
@@ -1526,49 +1597,98 @@ export function submitMpLeagueTrade(params: {
   if (!offer) return fail('이미 처리된 제안입니다.');
   if (hs.attemptsLeft <= 0) return fail('이번 이적시장의 협상 기회를 모두 사용했습니다.');
 
-  const incoming = offer.aiOffersPlayers[0];
   const mySquad = squadPlayers(squad);
-  const isCounter = Boolean(
-    sendPlayerId && sendPlayerId !== offer.userRequestedPlayers[0]?.id,
+  const isPackageCounter = Boolean(
+    userSentPlayerIds && userSentPlayerIds.length > 0,
   );
-  const sent = mySquad.find(
-    (p) => p.id === (sendPlayerId ?? offer.userRequestedPlayers[0]?.id),
+  const isLegacyCounter = Boolean(
+    !isPackageCounter &&
+      sendPlayerId &&
+      sendPlayerId !== offer.userRequestedPlayers[0]?.id,
   );
-  if (!incoming || !sent) return fail('제안 대상 선수가 스쿼드에 없습니다.');
+  const isCounter = isPackageCounter || isLegacyCounter;
 
-  // Worldwide unique players: the incoming player must not already belong to any friend
-  if (allHumanPlayerIds(env.squads).includes(incoming.id)) {
+  const sentIds = isPackageCounter
+    ? Array.from(new Set(userSentPlayerIds!))
+    : [sendPlayerId ?? offer.userRequestedPlayers[0]?.id ?? ''].filter(Boolean);
+  const sentPlayers = sentIds
+    .map((id) => mySquad.find((p) => p.id === id))
+    .filter((p): p is Player => Boolean(p));
+  if (sentPlayers.length === 0 || sentPlayers.length !== sentIds.length) {
+    return fail('제안 대상 선수가 스쿼드에 없습니다.');
+  }
+
+  const ownedIds = new Set(mySquad.map((p) => p.id));
+  const liveAiRoster =
+    offer.leagueId === state.settings.leagueId
+      ? state.aiRosters[offer.club.id] ?? []
+      : state.otherLeagues[offer.leagueId]?.aiRosters?.[offer.club.id] ?? [];
+  const partnerClubOffer = hs.offerClubs?.[offerId];
+  const partner16 = partnerClubOffer
+    ? partnerClubOffer.squad.map((t) => t.player)
+    : buildAiClubSquad16({
+        club: offer.club,
+        leagueId: offer.leagueId,
+        liveAiRoster,
+        ownedIds,
+        excludeIds: buildExcludeIds(state, env.squads),
+      }).all16;
+  const partnerById = new Map<string, Player>();
+  for (const p of [...partner16, ...offer.aiOffersPlayers]) {
+    partnerById.set(p.id, p);
+  }
+
+  const targetIds =
+    isPackageCounter && aiTargetPlayerIds && aiTargetPlayerIds.length > 0
+      ? Array.from(new Set(aiTargetPlayerIds))
+      : [offer.aiOffersPlayers[0]?.id ?? ''].filter(Boolean);
+  const fillerIds =
+    isPackageCounter && aiFillerPlayerIds && aiFillerPlayerIds.length > 0
+      ? Array.from(new Set(aiFillerPlayerIds)).filter((id) => !targetIds.includes(id))
+      : [];
+
+  const targetPlayers = targetIds
+    .map((id) => partnerById.get(id))
+    .filter((p): p is Player => Boolean(p));
+  const fillerPlayers = fillerIds
+    .map((id) => partnerById.get(id))
+    .filter((p): p is Player => Boolean(p));
+  const incomingPlayers = [...targetPlayers, ...fillerPlayers];
+
+  if (
+    targetPlayers.length === 0 ||
+    targetPlayers.length !== targetIds.length ||
+    fillerPlayers.length !== fillerIds.length
+  ) {
+    return fail('상대 구단 영입 대상 선수를 찾을 수 없습니다.');
+  }
+  if (sentPlayers.length !== incomingPlayers.length) {
+    return fail('16인 로스터 유지를 위해 보내는 선수와 받는 선수 수가 같아야 합니다.');
+  }
+
+  // Worldwide unique players: no incoming player may already belong to any friend
+  const allFriendIds = new Set(allHumanPlayerIds(env.squads));
+  if (incomingPlayers.some((p) => allFriendIds.has(p.id))) {
     return fail('해당 선수는 이미 다른 팀 소속입니다.');
   }
 
+  const sentIdSet = new Set(sentPlayers.map((p) => p.id));
   const gkAfter =
-    mySquad.filter((p) => p.id !== sent.id && p.position === 'GK').length +
-    (incoming.position === 'GK' ? 1 : 0);
+    mySquad.filter((p) => !sentIdSet.has(p.id) && p.position === 'GK').length +
+    incomingPlayers.filter((p) => p.position === 'GK').length;
   if (gkAfter < 1) {
     return fail('골키퍼를 최소 1명 남겨야 해서 이 트레이드는 진행할 수 없습니다.');
   }
 
   let probability = 100;
   if (isCounter) {
-    const ownedIds = new Set(mySquad.map((p) => p.id));
-    const liveAiRoster =
-      offer.leagueId === state.settings.leagueId
-        ? state.aiRosters[offer.club.id] ?? []
-        : state.otherLeagues[offer.leagueId]?.aiRosters?.[offer.club.id] ?? [];
-    const partner16 = buildAiClubSquad16({
-      club: offer.club,
-      leagueId: offer.leagueId,
-      liveAiRoster,
-      ownedIds,
-      excludeIds: buildExcludeIds(state, env.squads),
-    }).all16;
     const evaluation = evaluateTradePackage({
-      userSentPlayers: [sent],
-      aiTargetPlayers: [incoming],
-      aiFillerPlayers: [],
+      userSentPlayers: sentPlayers,
+      aiTargetPlayers: targetPlayers,
+      aiFillerPlayers: fillerPlayers,
       aiClub: offer.club,
       aiRoster: partner16,
-      aiNeeds: analyzeClubPositionNeeds(partner16),
+      aiNeeds: partnerClubOffer?.clubNeeds ?? analyzeClubPositionNeeds(partner16),
       userSquad: mySquad,
       userRank: rankOf(state.standings, clubId) ?? 10,
       userLeagueSize: state.standings.length || 20,
@@ -1576,6 +1696,13 @@ export function submitMpLeagueTrade(params: {
       aiLeagueSize: offer.leagueSize,
       allPlayerStats: state.allPlayerStats,
       conditionMap: state.conditions,
+      shockBargainIds: partnerClubOffer
+        ? new Set(
+            partnerClubOffer.squad
+              .filter((t) => t.isShockBargain)
+              .map((t) => t.player.id),
+          )
+        : undefined,
     });
     if (evaluation.blockedReason) return fail(evaluation.blockedReason);
     probability = evaluation.acceptanceChance;
@@ -1594,11 +1721,20 @@ export function submitMpLeagueTrade(params: {
     }
   }
 
-  const traded = executeMpTrade({ state, human, squad, offer, sent, incoming });
+  const traded = executeMpTradePackage({
+    state,
+    human,
+    squad,
+    offer,
+    sentPlayers,
+    incomingPlayers,
+  });
+  const sentLabel = sentPlayers.map((p) => p.name).join('·');
+  const inLabel = targetPlayers.map((p) => p.name).join('·');
   const note: MpTradeResultNote = {
     success: true,
     probability,
-    message: `${sent.name} ↔ ${incoming.name} 트레이드 성사 (${offer.club.name})`,
+    message: `${sentLabel} ↔ ${inLabel} 트레이드 성사 (${offer.club.name})`,
   };
   const nextHs = traded.state.perHuman[clubId];
   return {
@@ -2402,6 +2538,18 @@ function slimTies(ties: UclKnockoutTie[]): UclKnockoutTie[] {
 function buildUclLive(state: MpLeagueHostState): MpUclLive | null {
   const ucl = state.ucl;
   if (!ucl || state.stage === 'league') return null;
+  const topList = Object.values(state.uclPlayerStats)
+    .filter((s) => s.appearances > 0)
+    .sort(
+      (a, b) =>
+        b.goals * 2 +
+        b.assists * 1.4 +
+        b.avgRating * 2 -
+        (a.goals * 2 + a.assists * 1.4 + a.avgRating * 2),
+    )
+    .slice(0, 24);
+  const topPlayerStats: Record<string, PlayerSeasonStats> = {};
+  for (const s of topList) topPlayerStats[s.playerId] = s;
   return {
     stage: ucl.stage,
     knockoutLeg: ucl.knockoutLeg,
@@ -2418,6 +2566,7 @@ function buildUclLive(state: MpLeagueHostState): MpUclLive | null {
     championTeamId: ucl.championTeamId,
     humanClubIds: state.uclHumanClubIds,
     lastScores: state.uclLastScores,
+    topPlayerStats,
   };
 }
 
@@ -2441,6 +2590,7 @@ export function buildMpLeagueLive(
       event: hs.events.activeEvent,
       resolution: hs.events.lastResolution,
       offers: hs.offers,
+      offerClubs: state.flow.kind === 'transfer' ? hs.offerClubs : undefined,
       attemptsLeft: hs.attemptsLeft,
       tradeNote: hs.tradeNote,
       h2h: hs.h2h,
@@ -2464,6 +2614,8 @@ export function buildMpLeagueLive(
     autoMs: state.settings.autoMs,
     round: state.round,
     totalRounds: state.totalRounds,
+    transferWindows: state.transferWindows,
+    completedWindows: state.completedWindows,
     humans: state.humans,
     clubs: state.clubs,
     standings: state.standings,

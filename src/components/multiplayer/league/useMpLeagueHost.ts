@@ -582,14 +582,28 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
             String(action.payload.offerId ?? ''),
           );
         } else if (action.kind === 'trade_accept' || action.kind === 'trade_counter') {
+          const toIdList = (val: unknown): string[] | undefined =>
+            Array.isArray(val) ? val.map(String).filter(Boolean) : undefined;
           const outcome = submitMpLeagueTrade({
             state: current,
             env,
             clubId: human.clubId,
             offerId: String(action.payload.offerId ?? ''),
             sendPlayerId:
+              action.kind === 'trade_counter' && typeof action.payload.sendPlayerId === 'string'
+                ? action.payload.sendPlayerId
+                : undefined,
+            userSentPlayerIds:
               action.kind === 'trade_counter'
-                ? String(action.payload.sendPlayerId ?? '')
+                ? toIdList(action.payload.userSentPlayerIds)
+                : undefined,
+            aiTargetPlayerIds:
+              action.kind === 'trade_counter'
+                ? toIdList(action.payload.aiTargetPlayerIds)
+                : undefined,
+            aiFillerPlayerIds:
+              action.kind === 'trade_counter'
+                ? toIdList(action.payload.aiFillerPlayerIds)
                 : undefined,
           });
           current = outcome.state;

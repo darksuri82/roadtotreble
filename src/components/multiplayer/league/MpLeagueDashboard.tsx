@@ -1,7 +1,7 @@
 import {
+  Calendar,
   Check,
   ClipboardList,
-  Crown,
   FastForward,
   Loader2,
   LogOut,
@@ -9,15 +9,18 @@ import {
   Shield,
   Swords,
   Trophy,
-  Users,
   Wifi,
   WifiOff,
+  Zap,
 } from 'lucide-react';
 import { memo, useCallback, useMemo, useState } from 'react';
 import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemistryEngine';
 import { getMoraleLabel } from '../../../engine/conditionEngine';
+import { getLeagueById } from '../../../engine/dataLoader';
+import { getNextTransferWindowRound } from '../../../engine/transferEngine';
 import type { Club, LeagueId, PlayerSeasonStats, StandingRow } from '../../../types/league';
 import type {
+  MpH2HRecord,
   MpHumanLive,
   MpLeagueHuman,
   MpLeagueLive,
@@ -29,11 +32,16 @@ import {
   MP_LEAGUE_LOCK_LABELS,
 } from '../../../types/mpLeague';
 import type { MpRoomPlayerRow } from '../../../types/multiplayer';
+import type { Player } from '../../../types/player';
+import { resolvePlayerById } from '../../../utils/playerLookup';
 import { InjuryAlertModal } from '../../common/InjuryAlertModal';
 import { ManagerEventModal } from '../../common/ManagerEventModal';
 import type { SlotRef } from '../../common/PitchBoard';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
+import { PixelTrophySvg } from '../../common/PixelTrophySvg';
+import { PlayerDetailModal } from '../../common/PlayerDetailModal';
 import { CupBracketView } from '../../league/CupBracketView';
+import { LeagueLeadersSideCard } from '../../league/LeagueLeadersSideCard';
 import { StandingsTable } from '../../league/StandingsTable';
 import { UclBracketTree } from '../../ucl/UclBracketTree';
 import { UclLeaguePhaseStandingsModal } from '../../ucl/UclLeaguePhaseStandingsModal';
@@ -41,6 +49,7 @@ import { UclMilestoneModal } from '../../ucl/UclMilestoneModal';
 import { MpLeagueSeasonSummary } from './MpLeagueSeasonSummary';
 import { MpLeagueSquadEditor } from './MpLeagueSquadEditor';
 import { MpLeagueTransferModal } from './MpLeagueTransferModal';
+import type { MpCounterTradePayload } from './MpLeagueTransferModal';
 import { isMpTickerPlayed, MpLiveTicker } from './MpLiveTicker';
 import { MpUclMulticastBoard } from './MpUclMulticastBoard';
 import { buildUclViewForViewer, reachedUclMilestone } from './mpUclView';
@@ -84,7 +93,7 @@ interface MpLeagueDashboardProps {
   onInjuryAck: () => void;
   onTradeAccept: (offerId: string) => void;
   onTradeReject: (offerId: string) => void;
-  onTradeCounter: (offerId: string, sendPlayerId: string) => void;
+  onTradeCounter: (payload: MpCounterTradePayload) => void;
   onSetAutoMs: (ms: number) => void;
   onForceResume: () => void;
   onLeaveRoom: () => void;
@@ -96,6 +105,7 @@ interface FrozenView {
   lastRound: MpLeagueLive['lastRound'];
   cupNews: MpLiteMatch[];
   topScorers: PlayerSeasonStats[];
+  topAssisters: PlayerSeasonStats[];
 }
 
 function resultTone(m: MpLiteMatch, clubId: string): string {
@@ -153,20 +163,38 @@ const ScoreLine = memo(function ScoreLine({
   );
 });
 
-/** Narrow side table: rank, club, played, goal difference, points. */
+/** Compact side league table with UCL & relegation cutlines matching original StandingsTable tone. */
 const SideStandings = memo(function SideStandings({
   standings,
   humans,
   myClubId,
+  uclSpots = 4,
+  relegationSpots = 3,
 }: {
   standings: StandingRow[];
   humans: MpLeagueHuman[];
   myClubId: string | null;
+  uclSpots?: number;
+  relegationSpots?: number;
 }) {
   const humanByClub = new Map(humans.map((h) => [h.clubId, h]));
+  const relegationStart = standings.length - relegationSpots;
   return (
     <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] overflow-hidden">
-      <div className="grid grid-cols-[20px_1fr_22px_28px_26px] items-center gap-1 border-b border-slate-800 px-2 py-1 text-[9px] font-bold text-slate-500">
+      <div className="flex items-center justify-between border-b border-slate-800/80 bg-[#0b1018] px-2.5 py-1.5 text-[10px]">
+        <span className="font-bold text-slate-200">리그 순위표</span>
+        <div className="flex items-center gap-2 text-[9px] text-slate-500">
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+            UCL
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />
+            강등
+          </span>
+        </div>
+      </div>
+      <div className="grid grid-cols-[20px_1fr_22px_28px_26px] items-center gap-1 border-b border-slate-800/80 px-2 py-1 text-[9px] font-bold text-slate-500">
         <span>#</span>
         <span>구단</span>
         <span className="text-center">경기</span>
@@ -176,19 +204,31 @@ const SideStandings = memo(function SideStandings({
       {standings.map((r, idx) => {
         const human = humanByClub.get(r.teamId);
         const isMine = r.teamId === myClubId;
+        const uclCut = idx === uclSpots - 1;
+        const relCut = idx === relegationStart - 1 && relegationSpots > 0;
         return (
           <div
             key={r.teamId}
-            className={`grid grid-cols-[20px_1fr_22px_28px_26px] items-center gap-1 px-2 py-[3px] text-[10px] tabular-nums ${
-              isMine ? 'bg-emerald-500/12' : human ? 'bg-sky-500/8' : ''
+            className={`grid grid-cols-[20px_1fr_22px_28px_26px] items-center gap-1 px-2 py-[3.5px] text-[10px] tabular-nums ${
+              isMine
+                ? 'bg-emerald-500/14'
+                : human
+                  ? 'bg-sky-500/8'
+                  : ''
+            } ${
+              uclCut
+                ? 'border-b border-sky-400/35'
+                : relCut
+                  ? 'border-b border-rose-400/35'
+                  : 'border-b border-slate-800/35 last:border-b-0'
             }`}
           >
             <span
               className={`font-mono font-bold ${
-                idx < 4
+                idx < uclSpots
                   ? 'text-sky-300'
-                  : idx >= standings.length - 3
-                    ? 'text-rose-300/80'
+                  : idx >= relegationStart
+                    ? 'text-rose-300/85'
                     : 'text-slate-500'
               }`}
             >
@@ -211,6 +251,11 @@ const SideStandings = memo(function SideStandings({
               <span className={`truncate font-bold ${human ? 'text-white' : 'text-slate-300'}`}>
                 {r.teamName}
               </span>
+              {isMine && (
+                <span className="shrink-0 rounded bg-emerald-400 px-1 text-[7px] font-black leading-tight text-slate-950">
+                  MY
+                </span>
+              )}
             </span>
             <span className="text-center text-slate-500">{r.played}</span>
             <span className="text-center text-slate-400">
@@ -259,11 +304,27 @@ export function MpLeagueDashboard({
   const [frozen, setFrozen] = useState<FrozenView | null>(null);
   const [popupTick, setPopupTick] = useState(0);
   const [summaryReviewOpen, setSummaryReviewOpen] = useState(false);
+  const [inspected, setInspected] = useState<{
+    player: Player;
+    stats?: PlayerSeasonStats | null;
+  } | null>(null);
   const tab: DashTab = tabChoice ?? (live.stage === 'ucl' && live.ucl ? 'ucl' : 'results');
 
+  const leagueMeta = getLeagueById(live.leagueId);
   const myHuman = live.humans.find((h) => h.playerId === playerId) ?? null;
   const myClubId = myHuman?.clubId ?? null;
   const humanIds = useMemo(() => new Set(live.humans.map((h) => h.clubId)), [live.humans]);
+  const friendLabelByClub = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const h of live.humans) {
+      if (h.clubId !== myClubId) {
+        const nick = Array.from(h.nickname.trim()).slice(0, 2).join('');
+        map[h.clubId] = nick || h.profile.shortName;
+      }
+    }
+    return map;
+  }, [live.humans, myClubId]);
+
   const clubsById = useMemo<Record<string, Club>>(() => {
     const map: Record<string, Club> = {};
     for (const c of live.ucl?.clubs ?? []) map[c.id] = c;
@@ -273,7 +334,7 @@ export function MpLeagueDashboard({
   const rowByPlayer = (human: MpLeagueHuman) =>
     players.find((p) => p.player_id === human.playerId) ?? null;
 
-  // While the live scoreboard is replaying a round, keep the previous table on screen (no spoilers)
+  // While the live scoreboard is replaying a round, keep previous table & leaders (no spoilers)
   const tickerKey = live.ticker?.key ?? null;
   const tickerPlaying = Boolean(
     live.ticker && tickerDoneKey !== tickerKey && !isMpTickerPlayed(tickerKey),
@@ -286,6 +347,7 @@ export function MpLeagueDashboard({
         lastRound: null,
         cupNews: [],
         topScorers: [],
+        topAssisters: [],
       }
     : {
         standings: live.standings,
@@ -293,6 +355,7 @@ export function MpLeagueDashboard({
         lastRound: live.lastRound,
         cupNews: live.cupNews,
         topScorers: live.topScorers,
+        topAssisters: live.topAssisters ?? [],
       };
   const handleTickerDone = useCallback(
     (key: string) => {
@@ -303,9 +366,17 @@ export function MpLeagueDashboard({
         lastRound: live.lastRound,
         cupNews: live.cupNews,
         topScorers: live.topScorers,
+        topAssisters: live.topAssisters ?? [],
       });
     },
-    [live.standings, live.byClub, live.lastRound, live.cupNews, live.topScorers],
+    [
+      live.standings,
+      live.byClub,
+      live.lastRound,
+      live.cupNews,
+      live.topScorers,
+      live.topAssisters,
+    ],
   );
 
   const mine: MpHumanLive | null = myClubId ? live.byClub[myClubId] ?? null : null;
@@ -352,6 +423,21 @@ export function MpLeagueDashboard({
     }
     return map;
   }, [live.humans, players]);
+
+  const h2hByClub = useMemo(() => {
+    const map: Record<string, MpH2HRecord> = {};
+    for (const h of live.humans) {
+      const hl = live.byClub[h.clubId];
+      if (hl) map[h.clubId] = hl.h2h;
+    }
+    return map;
+  }, [live.humans, live.byClub]);
+
+  const myRankIdx = myClubId
+    ? view.standings.findIndex((r) => r.teamId === myClubId)
+    : -1;
+  const myRank = myRankIdx === -1 ? 10 : myRankIdx + 1;
+  const myStandingRow = myRankIdx === -1 ? null : view.standings[myRankIdx];
 
   const lockNotes = players
     .filter((p) => p.activity?.lock)
@@ -419,7 +505,6 @@ export function MpLeagueDashboard({
   const lpKey =
     live.ucl && live.ucl.leaguePhaseRound >= 8 ? `${live.seasonKey}:lp-table` : null;
   const popupsAllowed = !live.cast && !tickerPlaying && flow.kind !== 'cast';
-  // popupTick only forces a re-read of the module-level "seen" set after a popup closes
   const showLpTable = Boolean(
     popupTick >= 0 && popupsAllowed && lpKey && !seenPopups.has(lpKey) && uclView,
   );
@@ -437,12 +522,18 @@ export function MpLeagueDashboard({
       live.standings[0]?.teamId === myClubId,
   );
 
-  const stageBadge =
-    live.stage === 'ucl' && live.ucl
-      ? live.ucl.stage === 'league_phase'
-        ? `챔스 리그 페이즈 ${live.ucl.leaguePhaseRound}/8`
-        : '챔스 토너먼트'
-      : `${LEAGUE_LABEL[live.leagueId]} ${live.round}/${live.totalRounds}R`;
+  const progressPct = Math.min(
+    100,
+    Math.round((live.round / Math.max(1, live.totalRounds)) * 100),
+  );
+  const nextTransferRound =
+    live.stage === 'league' && live.transferWindows
+      ? getNextTransferWindowRound(
+          live.round,
+          live.transferWindows,
+          live.completedWindows ?? [],
+        )
+      : null;
 
   const handleInjurySwap = (from: SlotRef, to: SlotRef) => {
     if (!mySquad) return;
@@ -458,84 +549,173 @@ export function MpLeagueDashboard({
     onSaveSquad({ ...mySquad, starters: nextS, bench: nextB });
   };
 
+  const handleInspectLeader = useCallback(
+    (entry: PlayerSeasonStats) => {
+      const allPlayers = Object.values(publicSquads).flatMap((s) => [
+        ...s.starters,
+        ...s.bench,
+      ]);
+      const found =
+        allPlayers.find((p) => p.id === entry.playerId) ??
+        resolvePlayerById({ playerId: entry.playerId, fallbackStats: entry });
+      if (found) setInspected({ player: found, stats: entry });
+    },
+    [publicSquads],
+  );
+
   const summaryActive = flow.kind === 'summary' && live.summary !== null;
   const showSummary = (summaryActive || summaryReviewOpen) && live.summary !== null;
 
   return (
-    <div className="mx-auto max-w-6xl px-2.5 py-3 sm:px-4 sm:py-5 space-y-2.5">
-      {/* Top bar */}
-      <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-extrabold text-sky-300">
-            <Users className="w-3.5 h-3.5" />
-            멀티 리그
-          </span>
-          <span className="text-xs font-extrabold text-white tabular-nums">{stageBadge}</span>
-          <span className="font-mono text-xs text-slate-500">#{roomCode}</span>
-          <span
-            className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
-              connectionStatus === 'connected'
-                ? 'bg-emerald-500/10 text-emerald-300'
-                : 'bg-amber-500/15 text-amber-300'
-            }`}
-          >
-            {connectionStatus === 'connected' ? (
-              <Wifi className="w-3 h-3" />
-            ) : (
-              <WifiOff className="w-3 h-3" />
-            )}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {isHost && (
-            <div className="flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0a0f17] px-1.5 py-1">
-              <FastForward className="w-3 h-3 text-slate-500" />
-              {MP_LEAGUE_AUTO_MS_OPTIONS.map((ms) => (
-                <button
-                  key={ms}
-                  type="button"
-                  onClick={() => onSetAutoMs(ms)}
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums cursor-pointer ${
-                    live.autoMs === ms
-                      ? 'bg-emerald-500/20 text-emerald-300'
-                      : 'text-slate-500 hover:text-slate-300'
+    <div className="mx-auto max-w-6xl px-2.5 py-2.5 sm:px-4 sm:py-4 space-y-3">
+      {/* Unified Top Season Status Card — aligned with single-player SeasonDashboard.tsx */}
+      <section className="rounded-xl sm:rounded-2xl border border-slate-800 bg-[#111822] p-2.5 sm:p-4 space-y-2.5">
+        <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span
+                className="rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold text-slate-950"
+                style={{ backgroundColor: leagueMeta.accentColor }}
+              >
+                {leagueMeta.koreanName}
+              </span>
+              <span className="font-display text-[11px] sm:text-xs font-bold text-slate-200 tabular-nums">
+                {live.stage === 'ucl' && live.ucl
+                  ? live.ucl.stage === 'league_phase'
+                    ? `UCL 리그 페이즈 ${live.ucl.leaguePhaseRound}/8R`
+                    : 'UCL 토너먼트'
+                  : `${live.round}/${live.totalRounds}R`}
+              </span>
+              {myStandingRow && (
+                <span
+                  className={`rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold tabular-nums ${
+                    myRank <= (leagueMeta.uclSpots ?? 4)
+                      ? 'bg-emerald-500/15 text-emerald-300'
+                      : 'bg-slate-800 text-slate-300'
                   }`}
                 >
-                  {ms / 1000}s
-                </button>
-              ))}
+                  {myRank}위 · {myStandingRow.points}점 ({myStandingRow.won}승{' '}
+                  {myStandingRow.drawn}무 {myStandingRow.lost}패)
+                </span>
+              )}
+              <span className="font-mono text-[10px] text-slate-500">#{roomCode}</span>
+              <span
+                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                  connectionStatus === 'connected'
+                    ? 'bg-emerald-500/10 text-emerald-300'
+                    : 'bg-amber-500/15 text-amber-300'
+                }`}
+              >
+                {connectionStatus === 'connected' ? (
+                  <Wifi className="w-3 h-3" />
+                ) : (
+                  <WifiOff className="w-3 h-3" />
+                )}
+              </span>
             </div>
-          )}
-          {live.summary && !summaryActive && (
+
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-400 tabular-nums">
+              {ratings && (
+                <span>
+                  A <strong className="text-slate-200">{ratings.effectiveAtt}</strong> · M{' '}
+                  <strong className="text-slate-200">{ratings.effectiveMid}</strong> · D{' '}
+                  <strong className="text-slate-200">{ratings.effectiveDef}</strong>
+                </span>
+              )}
+              {chemistry && (
+                <span className="inline-flex items-center gap-0.5 text-emerald-300 font-semibold">
+                  <Zap className="w-3 h-3" />
+                  {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
+                  {chemistry.chemistryOvrBonus.toFixed(1)})
+                </span>
+              )}
+              {mine && (
+                <span className="font-semibold text-slate-300">
+                  사기 {getMoraleLabel(mine.morale)}
+                </span>
+              )}
+              {nextTransferRound !== null && (
+                <span className="inline-flex items-center gap-0.5 text-amber-300/90">
+                  <Calendar className="w-3 h-3" />
+                  이적 {nextTransferRound}R
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {isHost && (
+              <div className="flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-1.5 py-1">
+                <FastForward className="w-3 h-3 text-slate-500" />
+                {MP_LEAGUE_AUTO_MS_OPTIONS.map((ms) => (
+                  <button
+                    key={ms}
+                    type="button"
+                    onClick={() => onSetAutoMs(ms)}
+                    className={`rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums cursor-pointer ${
+                      live.autoMs === ms
+                        ? 'bg-emerald-500/20 text-emerald-300'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    {ms / 1000}s
+                  </button>
+                ))}
+              </div>
+            )}
+            {live.summary && !summaryActive && (
+              <button
+                type="button"
+                onClick={() => setSummaryReviewOpen(true)}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#0b1018] px-2.5 py-1.5 text-[11px] font-bold text-slate-300 hover:text-white cursor-pointer"
+              >
+                <ClipboardList className="w-3 h-3" />
+                시즌 정산
+              </button>
+            )}
+            <button
+              id="mpl-open-squad-btn"
+              type="button"
+              disabled={!mySquad}
+              onClick={onOpenEditor}
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/45 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-extrabold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 cursor-pointer"
+            >
+              <Shield className="w-3 h-3" />
+              스쿼드 · 전술
+            </button>
             <button
               type="button"
-              onClick={() => setSummaryReviewOpen(true)}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#111822] px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:text-white cursor-pointer"
+              onClick={onLeaveRoom}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2.5 py-1.5 text-[11px] font-bold text-slate-400 hover:text-rose-300 cursor-pointer"
             >
-              <ClipboardList className="w-3 h-3" />
-              시즌 정산
+              <LogOut className="w-3 h-3" />
+              나가기
             </button>
-          )}
-          <button
-            id="mpl-open-squad-btn"
-            type="button"
-            disabled={!mySquad}
-            onClick={onOpenEditor}
-            className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/12 px-2.5 py-1 text-[11px] font-extrabold text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-40 cursor-pointer"
-          >
-            <Shield className="w-3 h-3" />
-            스쿼드 · 전술
-          </button>
-          <button
-            type="button"
-            onClick={onLeaveRoom}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#111822] px-2.5 py-1 text-[11px] font-bold text-slate-400 hover:text-rose-300 cursor-pointer"
-          >
-            <LogOut className="w-3 h-3" />
-            나가기
-          </button>
+          </div>
         </div>
-      </div>
+
+        {/* Minimal Season Progress Bar with Transfer Window Markers (matches SeasonDashboard.tsx) */}
+        <div className="relative h-1 sm:h-1.5 w-full rounded-full bg-slate-900">
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+            style={{ width: `${progressPct}%` }}
+          />
+          {live.transferWindows?.map((winRound, i) => {
+            const leftPct = (winRound / Math.max(1, live.totalRounds)) * 100;
+            const doneWin = live.completedWindows?.includes(i + 1);
+            return (
+              <div
+                key={winRound}
+                style={{ left: `${leftPct}%` }}
+                title={`제 ${i + 1}차 이적시장 (${winRound}R 종료 후)`}
+                className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full border border-slate-950 ${
+                  doneWin ? 'bg-emerald-400' : 'bg-amber-400'
+                }`}
+              />
+            );
+          })}
+        </div>
+      </section>
 
       {(errorMsg || hostMissing) && (
         <div className="rounded-xl border border-rose-500/40 bg-rose-950/25 px-3.5 py-2 text-xs font-bold text-rose-200">
@@ -562,8 +742,9 @@ export function MpLeagueDashboard({
       )}
 
       {flow.kind === 'consent' && (
-        <div className="rounded-xl border border-sky-400/40 bg-sky-500/10 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="rounded-xl border border-sky-400/40 bg-gradient-to-r from-[#0a1628] via-[#0e1b30] to-[#0c1422] px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
+            <PixelTrophySvg variant="ucl" size={20} />
             <span className="text-xs font-extrabold text-sky-200">{flow.label} 시작</span>
             {live.humans.map((h) => {
               const ok = rowByPlayer(h)?.activity?.ackKeys?.includes(flow.key);
@@ -612,8 +793,8 @@ export function MpLeagueDashboard({
         />
       )}
 
-      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-12 items-start">
-        <div className="lg:col-span-8 space-y-2.5">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
+        <div className="lg:col-span-8 space-y-3">
           {/* Friends strip */}
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {live.humans.map((h) => {
@@ -629,10 +810,10 @@ export function MpLeagueDashboard({
               return (
                 <div
                   key={h.clubId}
-                  className={`rounded-xl border p-2 space-y-1 ${
+                  className={`rounded-xl border p-2.5 space-y-1.5 ${
                     isMe
-                      ? 'border-emerald-500/40 bg-[#0e1722]'
-                      : 'border-slate-800/90 bg-[#0d131c]'
+                      ? 'border-emerald-500/45 bg-[#0f1a24]'
+                      : 'border-slate-800/90 bg-[#111822]'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -652,7 +833,11 @@ export function MpLeagueDashboard({
                     <div className="min-w-0">
                       <div className="flex items-center gap-1 truncate text-[11px] font-extrabold text-white">
                         <span className="truncate">{h.nickname}</span>
-                        {isMe && <span className="text-[10px] text-emerald-300">나</span>}
+                        {isMe && (
+                          <span className="shrink-0 rounded bg-emerald-400 px-1 py-px text-[7px] font-black text-slate-950">
+                            MY
+                          </span>
+                        )}
                       </div>
                       <div className="truncate text-[10px] text-slate-400">{h.profile.name}</div>
                     </div>
@@ -666,12 +851,9 @@ export function MpLeagueDashboard({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold">
-                    <span className="inline-flex items-center gap-0.5 rounded border border-amber-400/30 bg-amber-500/10 px-1 py-0.5 text-amber-200 tabular-nums">
-                      <Swords className="w-2.5 h-2.5" />
+                    <span className="inline-flex items-center gap-0.5 rounded border border-slate-700 bg-[#0b1018] px-1.5 py-0.5 text-amber-200 tabular-nums">
+                      <Swords className="w-2.5 h-2.5 text-amber-300" />
                       {hl?.h2h.won ?? 0}승 {hl?.h2h.drawn ?? 0}무 {hl?.h2h.lost ?? 0}패
-                    </span>
-                    <span className="rounded border border-slate-700 bg-[#0b1018] px-1 py-0.5 text-slate-300">
-                      {getMoraleLabel(hl?.morale ?? 0)}
                     </span>
                     {(hideRecent ? [] : hl?.recent ?? []).slice(-3).map((m, idx) => (
                       <span
@@ -697,7 +879,8 @@ export function MpLeagueDashboard({
             })}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          {/* Unified Navigation Tabs — matches SeasonDashboard.tsx */}
+          <div className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-slate-800 bg-[#0b1018] p-1">
             {(
               [
                 { id: 'results', label: '라운드 결과' },
@@ -711,8 +894,8 @@ export function MpLeagueDashboard({
                 onClick={() => setTabChoice(t.id)}
                 className={`rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors cursor-pointer ${
                   tab === t.id
-                    ? 'border-slate-600 bg-[#172030] text-white'
-                    : 'border-slate-800 bg-[#0d131c] text-slate-400 hover:text-slate-200'
+                    ? 'bg-slate-800 text-white border-emerald-500/45 shadow-sm'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
                 }`}
               >
                 {t.label}
@@ -724,7 +907,7 @@ export function MpLeagueDashboard({
             <div className="space-y-2.5">
               {live.stage === 'ucl' && live.ucl && live.ucl.lastScores.length > 0 && (
                 <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
-                  <div className="text-[11px] font-bold text-slate-400">
+                  <div className="text-[11px] font-bold text-sky-300">
                     {live.ucl.lastScores[0].label}
                   </div>
                   <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
@@ -759,33 +942,6 @@ export function MpLeagueDashboard({
                   </div>
                 </div>
               )}
-              {view.topScorers.length > 0 && (
-                <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1">
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400">
-                    <Crown className="w-3 h-3 text-amber-400" />
-                    득점 순위
-                  </div>
-                  <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-                    {view.topScorers.slice(0, 6).map((s, idx) => (
-                      <div
-                        key={s.playerId}
-                        className="flex items-center justify-between gap-2 text-[11px]"
-                      >
-                        <span className="truncate text-slate-300">
-                          <span className="mr-1 font-mono text-slate-500">{idx + 1}</span>
-                          {s.playerName}
-                          <span className="ml-1 text-[10px] text-slate-500">
-                            {s.teamShortName}
-                          </span>
-                        </span>
-                        <span className="font-mono font-bold text-white tabular-nums">
-                          {s.goals}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -813,11 +969,23 @@ export function MpLeagueDashboard({
           )}
         </div>
 
-        <div className="lg:col-span-4">
+        {/* Right Side Column: League Table + Top Scorers & Top Assisters */}
+        <div className="lg:col-span-4 space-y-2.5">
           <SideStandings
             standings={view.standings}
             humans={live.humans}
             myClubId={myClubId}
+            uclSpots={leagueMeta.uclSpots}
+            relegationSpots={leagueMeta.relegationSpots}
+          />
+          <LeagueLeadersSideCard
+            scorers={view.topScorers}
+            assisters={view.topAssisters}
+            myClubId={myClubId}
+            friendLabelByClub={friendLabelByClub}
+            maxRows={5}
+            desktopLayout="stack"
+            onSelectPlayer={handleInspectLeader}
           />
         </div>
       </div>
@@ -842,6 +1010,10 @@ export function MpLeagueDashboard({
           clubsById={clubsById}
           squads={publicSquads}
           myClubId={myClubId}
+          cup={live.cup}
+          uclEnabled={live.uclEnabled}
+          uclHumanClubIds={live.ucl?.humanClubIds ?? []}
+          h2hByClub={h2hByClub}
           acked={summaryActive && flow.kind === 'summary' && ackKeys.includes(flow.key)}
           waitingNames={flow.kind === 'summary' ? pendingAckNames(flow.key) : []}
           canContinue={summaryActive}
@@ -852,19 +1024,24 @@ export function MpLeagueDashboard({
         />
       )}
 
-      {mine && (visibleEvent || showResolution) && myHuman && !tickerPlaying && (
-        <ManagerEventModal
-          activeEvent={visibleEvent}
-          lastResolution={showResolution ? mine.resolution : null}
-          managerAvatar={myHuman.avatar}
-          managerName={myHuman.nickname}
-          userClub={myHuman.profile}
-          onSelectChoice={onEventChoice}
-          onDismissResolution={() => {
-            if (resolutionKey) onDismissResolution(resolutionKey);
-          }}
-        />
-      )}
+      {mine &&
+        (visibleEvent || showResolution) &&
+        myHuman &&
+        !tickerPlaying &&
+        !showTransfer &&
+        !showSummary && (
+          <ManagerEventModal
+            activeEvent={visibleEvent}
+            lastResolution={showResolution ? mine.resolution : null}
+            managerAvatar={myHuman.avatar}
+            managerName={myHuman.nickname}
+            userClub={myHuman.profile}
+            onSelectChoice={onEventChoice}
+            onDismissResolution={() => {
+              if (resolutionKey) onDismissResolution(resolutionKey);
+            }}
+          />
+        )}
 
       {mine &&
         mine.alerts.length > 0 &&
@@ -872,7 +1049,9 @@ export function MpLeagueDashboard({
         chemistry &&
         ratings &&
         !mine.event &&
-        !tickerPlaying && (
+        !tickerPlaying &&
+        !showTransfer &&
+        !showSummary && (
           <InjuryAlertModal
             alerts={mine.alerts}
             formation={mySquad.formation}
@@ -891,6 +1070,7 @@ export function MpLeagueDashboard({
         <MpLeagueTransferModal
           windowIndex={live.transferWindowIndex ?? 1}
           offers={mine.offers}
+          offerClubs={mine.offerClubs}
           attemptsLeft={mine.attemptsLeft}
           tradeNote={mine.tradeNote}
           myStarters={mySquad.starters}
@@ -898,6 +1078,9 @@ export function MpLeagueDashboard({
           myFormation={mySquad.formation}
           myTactic={mySquad.tactic}
           managerTraitId={mySquad.managerTraitId}
+          myRank={myRank}
+          leagueSize={live.standings.length || 20}
+          conditionMap={mine.conditions}
           busy={actionBusy}
           done={transferDone}
           waitingNames={transferWaiting}
@@ -935,9 +1118,17 @@ export function MpLeagueDashboard({
           managerName={myHuman.nickname}
           managerAvatar={myHuman.avatar}
           clubsById={uclView.clubsById}
-          uclPlayerStats={{}}
+          uclPlayerStats={uclView.uclPlayerStats}
           isTreble={isTreble}
           onClose={() => closePopup(milestoneKey)}
+        />
+      )}
+
+      {inspected && (
+        <PlayerDetailModal
+          player={inspected.player}
+          seasonStats={inspected.stats ?? null}
+          onClose={() => setInspected(null)}
         />
       )}
     </div>

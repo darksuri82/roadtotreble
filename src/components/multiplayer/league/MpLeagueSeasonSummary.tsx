@@ -7,7 +7,9 @@ import {
   Diamond,
   Globe,
   Hourglass,
+  Sparkles,
   Star,
+  Swords,
   Trophy,
   X,
 } from 'lucide-react';
@@ -18,6 +20,7 @@ import { computeSquadPlayerAnalytics } from '../../../engine/analyticsEngine';
 import { getLeagueById } from '../../../engine/dataLoader';
 import { formatMainPositions } from '../../../engine/positionEngine';
 import { TACTICS } from '../../../engine/tacticEngine';
+import type { DomesticCupState } from '../../../types/cup';
 import type {
   BestXiEntry,
   Club,
@@ -27,11 +30,15 @@ import type {
   StandingRow,
 } from '../../../types/league';
 import type {
+  MpH2HRecord,
   MpLeagueHuman,
   MpLeagueSummary,
   MpSquadInput,
 } from '../../../types/mpLeague';
+import type { Player } from '../../../types/player';
+import { getPlayerNationalityMeta, resolvePlayerById } from '../../../utils/playerLookup';
 import { ClubTag } from '../../common/ClubTag';
+import { CountryFlagSvg } from '../../common/CountryFlagSvg';
 import { JerseySvg } from '../../common/JerseySvg';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
 import {
@@ -39,12 +46,14 @@ import {
   getLeagueTrophyVariant,
   PixelTrophySvg,
 } from '../../common/PixelTrophySvg';
+import { PlayerDetailModal } from '../../common/PlayerDetailModal';
+import { PlayerNameButton } from '../../common/PlayerNameButton';
+import { CupBracketView } from '../../league/CupBracketView';
 import { getLeagueTrophyDisplayName } from '../../league/LeagueFinaleBannerModal';
 import { StandingsTable } from '../../league/StandingsTable';
 
 interface MpLeagueSeasonSummaryProps {
   leagueLabel: string;
-  /** Trophy variant / Korean league name / UCL & relegation lines; falls back to leagueLabel */
   leagueId?: LeagueId;
   summary: MpLeagueSummary;
   standings: StandingRow[];
@@ -52,6 +61,10 @@ interface MpLeagueSeasonSummaryProps {
   clubsById: Record<string, Club>;
   squads: Record<string, MpSquadInput>;
   myClubId: string | null;
+  cup?: DomesticCupState | null;
+  uclEnabled?: boolean;
+  uclHumanClubIds?: string[];
+  h2hByClub?: Record<string, MpH2HRecord>;
   acked: boolean;
   waitingNames: string[];
   canContinue: boolean;
@@ -79,7 +92,6 @@ type MpSquadRow = Omit<SquadPlayerAnalyticsRow, 'stamina'> & {
   isStarter: boolean;
 };
 
-/** Who owns a stat line: me, another friend (with a short badge label) or an AI club. */
 interface Ownership {
   myClubId: string | null;
   friendLabelByClub: Record<string, string>;
@@ -122,16 +134,18 @@ function StatClubTag({
   );
 }
 
-function BestXiPitchCard({
+export function MpBestXiPitchCard({
   title,
   entries,
   accentLabel,
   own,
+  onSelectPlayer,
 }: {
   title: string;
   entries: BestXiEntry[];
   accentLabel?: string;
   own: Ownership;
+  onSelectPlayer?: (stats: PlayerSeasonStats) => void;
 }) {
   const slots = FORMATIONS['4-3-3'].slots;
   return (
@@ -234,9 +248,18 @@ function BestXiPitchCard({
                     </span>
                   )}
                 </div>
-                <span className="mt-0.5 max-w-[84px] truncate text-[10px] font-bold text-white">
-                  {entry.stats.playerName}
-                </span>
+                {onSelectPlayer ? (
+                  <PlayerNameButton
+                    onClick={() => onSelectPlayer(entry.stats)}
+                    className="mt-0.5 max-w-[84px] text-[10px] font-bold text-white text-center"
+                  >
+                    {entry.stats.playerName}
+                  </PlayerNameButton>
+                ) : (
+                  <span className="mt-0.5 max-w-[84px] truncate text-[10px] font-bold text-white">
+                    {entry.stats.playerName}
+                  </span>
+                )}
                 <span className="text-[9px] text-slate-400">
                   {entry.stats.position === 'GK' ||
                   entry.stats.position === 'DF'
@@ -262,6 +285,8 @@ function FriendHeroCard({
   isMe,
   leagueId,
   leagueName,
+  uclStatus,
+  h2h,
 }: {
   human: MpLeagueHuman;
   rank: number | undefined;
@@ -269,10 +294,12 @@ function FriendHeroCard({
   isMe: boolean;
   leagueId: LeagueId | undefined;
   leagueName: string;
+  uclStatus: 'qualified' | 'missed' | 'off';
+  h2h?: MpH2HRecord;
 }) {
   return (
     <div
-      className={`rounded-xl border p-3 sm:p-4 ${
+      className={`rounded-xl border p-3 sm:p-4 space-y-2 ${
         isMe
           ? 'border-emerald-500/45 bg-emerald-500/10'
           : 'border-slate-800 bg-[#090e15]'
@@ -300,7 +327,7 @@ function FriendHeroCard({
           secondaryColor={human.profile.secondaryColor}
           pattern={human.profile.pattern}
           label={human.profile.shortName}
-          size={54}
+          size={52}
           className="shrink-0"
         />
         <div className="flex h-16 w-14 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-[#111824]">
@@ -312,13 +339,23 @@ function FriendHeroCard({
           />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className="font-display text-2xl font-bold text-amber-300">
               {rank ? `#${rank}` : '-'}
             </span>
             {isMe && (
               <span className="shrink-0 rounded bg-emerald-400 px-1 py-0.5 text-[9px] font-black leading-none text-slate-950">
-                나
+                MY
+              </span>
+            )}
+            {uclStatus === 'qualified' && (
+              <span className="shrink-0 rounded border border-sky-400/40 bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-sky-200">
+                UCL 진출
+              </span>
+            )}
+            {uclStatus === 'missed' && (
+              <span className="shrink-0 rounded border border-slate-700 bg-slate-900 px-1.5 py-0.5 text-[9px] font-bold text-slate-400">
+                UCL 미진출
               </span>
             )}
           </div>
@@ -330,17 +367,24 @@ function FriendHeroCard({
           </div>
         </div>
       </div>
-      {row && (
-        <p className="mt-2.5 text-xs text-slate-300 tabular-nums">
-          <strong className="text-emerald-300">
-            {row.points}점 ({row.won}승 {row.drawn}무 {row.lost}패, 득실{' '}
+
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">
+        {row && (
+          <span className="font-bold text-emerald-300">
+            {row.points}점 ({row.won}승 {row.drawn}무 {row.lost}패 · 득실{' '}
             {row.goalDifference >= 0
               ? `+${row.goalDifference}`
               : row.goalDifference}
             )
-          </strong>
-        </p>
-      )}
+          </span>
+        )}
+        {h2h && h2h.played > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-[#111822] px-2 py-0.5 text-[10px] font-bold text-slate-200">
+            <Swords className="w-3 h-3 text-amber-300" />
+            맞대결 {h2h.won}승 {h2h.drawn}무 {h2h.lost}패
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -349,10 +393,12 @@ function LeagueRecordsTab({
   leagueName,
   summary,
   own,
+  onInspectStats,
 }: {
   leagueName: string;
   summary: MpLeagueSummary;
   own: Ownership;
+  onInspectStats: (stats: PlayerSeasonStats) => void;
 }) {
   const [rankTab, setRankTab] = useState<AwardRankTab>('goals');
   const awards = summary.awards;
@@ -388,9 +434,12 @@ function LeagueRecordsTab({
                   {leagueName} 올해의 선수 (리그 MVP)
                 </span>
                 <div className="mt-1.5">
-                  <span className="inline-block max-w-full truncate font-display text-2xl font-bold text-white">
+                  <PlayerNameButton
+                    onClick={() => onInspectStats(poty)}
+                    className="font-display text-2xl font-bold text-white"
+                  >
                     {poty.playerName}
-                  </span>
+                  </PlayerNameButton>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-300">
                   <StatClubTag stats={poty} own={own} />
@@ -456,6 +505,7 @@ function LeagueRecordsTab({
                     own.myClubId !== null && st.teamId === own.myClubId;
                   const isFriend =
                     !isMine && Boolean(own.friendLabelByClub[st.teamId]);
+                  const nat = getPlayerNationalityMeta(st.playerId);
                   return (
                     <tr
                       key={`${st.teamId}-${st.playerId}`}
@@ -472,9 +522,19 @@ function LeagueRecordsTab({
                       </td>
                       <td className="py-2 px-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="inline-block max-w-full truncate font-bold text-slate-100">
+                          {nat && (
+                            <CountryFlagSvg
+                              code={nat.nationalityCode}
+                              nationality={nat.nationality}
+                              size="xs"
+                            />
+                          )}
+                          <PlayerNameButton
+                            onClick={() => onInspectStats(st)}
+                            className="font-bold text-slate-100"
+                          >
                             {st.playerName}
-                          </span>
+                          </PlayerNameButton>
                           <StatClubTag stats={st} own={own} />
                         </div>
                       </td>
@@ -498,11 +558,12 @@ function LeagueRecordsTab({
 
       <div className="lg:col-span-6">
         <div className="mx-auto max-w-[460px]">
-          <BestXiPitchCard
+          <MpBestXiPitchCard
             title={`${leagueName} 시즌 베스트 11 (4-3-3)`}
             entries={awards.bestXi}
             accentLabel={`우리 팀 선정: ${mineInXi}명 · 친구 팀 ${friendsInXi}명`}
             own={own}
+            onSelectPlayer={onInspectStats}
           />
         </div>
       </div>
@@ -535,7 +596,6 @@ function buildSquadRows(
       });
     });
   }
-  // Stat lines whose player is not in the published squad (no Player object, so no stamina)
   for (const st of stats) {
     if (seen.has(st.playerId)) continue;
     seen.add(st.playerId);
@@ -574,18 +634,20 @@ function buildSquadRows(
   return rows;
 }
 
-function FriendSquadTab({
+export function MpFriendSquadTab({
   human,
   rank,
   row,
   stats,
   squad,
+  onSelectPlayerId,
 }: {
   human: MpLeagueHuman;
   rank: number | undefined;
   row: StandingRow | undefined;
   stats: PlayerSeasonStats[];
   squad: MpSquadInput | undefined;
+  onSelectPlayerId?: (playerId: string) => void;
 }) {
   const [sortKey, setSortKey] = useState<SquadSortKey>('lineup');
   const squadRows = buildSquadRows(stats, squad);
@@ -647,12 +709,9 @@ function FriendSquadTab({
         )}
       </div>
 
-      {/* Top KPI Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 tabular-nums">
         <div className="rounded-xl border border-slate-800 bg-[#111822] p-4">
-          <div className="text-[11px] text-slate-400">
-            정규 리그 순위 · 리그 승점
-          </div>
+          <div className="text-[11px] text-slate-400">정규 리그 순위 · 승점</div>
           <div className="mt-1 flex items-baseline gap-2">
             <span className="font-display text-2xl font-bold text-amber-300">
               {rank ? `${rank}위` : '-'}
@@ -727,7 +786,6 @@ function FriendSquadTab({
         </div>
       </div>
 
-      {/* Sortable Detailed Squad Analytics Table */}
       <div className="rounded-2xl border border-slate-800 bg-[#111822] p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="min-w-0 truncate text-sm font-extrabold text-white">
@@ -828,9 +886,18 @@ function FriendSquadTab({
                     <tr className="hover:bg-slate-800/30">
                       <td className="py-2.5 px-3">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-100">
-                            {r.playerName}
-                          </span>
+                          {onSelectPlayerId ? (
+                            <PlayerNameButton
+                              onClick={() => onSelectPlayerId(r.playerId)}
+                              className="font-bold text-slate-100"
+                            >
+                              {r.playerName}
+                            </PlayerNameButton>
+                          ) : (
+                            <span className="font-bold text-slate-100">
+                              {r.playerName}
+                            </span>
+                          )}
                           {r.isLegend && (
                             <Crown className="w-3 h-3 text-amber-400 shrink-0" />
                           )}
@@ -902,14 +969,21 @@ export function MpLeagueSeasonSummary({
   clubsById,
   squads,
   myClubId,
+  cup = null,
+  uclEnabled = false,
+  uclHumanClubIds = [],
+  h2hByClub,
   acked,
   waitingNames,
   canContinue,
   onContinue,
   onClose,
 }: MpLeagueSeasonSummaryProps) {
-  // 'league' | 'table' | `club:${clubId}`
   const [mainTab, setMainTab] = useState<string>('league');
+  const [inspected, setInspected] = useState<{
+    player: Player;
+    stats?: PlayerSeasonStats | null;
+  } | null>(null);
 
   const leagueMeta = leagueId ? getLeagueById(leagueId) : null;
   const leagueName = leagueMeta?.koreanName ?? leagueLabel;
@@ -930,7 +1004,10 @@ export function MpLeagueSeasonSummary({
     (a, b) => (rankByClub[a.clubId] ?? 999) - (rankByClub[b.clubId] ?? 999),
   );
 
-  // StandingsTable highlights the row flagged isUser; multiplayer rows never carry it
+  const uclQualifiedSet = new Set(uclHumanClubIds);
+  const qualifiedHumans = orderedHumans.filter((h) => uclQualifiedSet.has(h.clubId));
+  const headingToUcl = Boolean(uclEnabled && qualifiedHumans.length > 0);
+
   const tableStandings = standings.map((row) => ({
     ...row,
     isUser: myClubId !== null && row.teamId === myClubId,
@@ -942,9 +1019,35 @@ export function MpLeagueSeasonSummary({
   const cupHuman = cupChampionId ? humanByClub[cupChampionId] : undefined;
   const cupName = cupClub?.name ?? cupHuman?.profile.name;
 
+  const allSquadPlayers = Object.values(squads).flatMap((s) => [
+    ...s.starters,
+    ...s.bench,
+  ]);
+  const openPlayerByStats = (st: PlayerSeasonStats) => {
+    const found =
+      allSquadPlayers.find((p) => p.id === st.playerId) ??
+      resolvePlayerById({ playerId: st.playerId, fallbackStats: st });
+    if (found) setInspected({ player: found, stats: st });
+  };
+  const openPlayerById = (pid: string) => {
+    const found =
+      allSquadPlayers.find((p) => p.id === pid) ??
+      resolvePlayerById({ playerId: pid });
+    if (found) setInspected({ player: found });
+  };
+
   const tabs: [string, string, ReactNode][] = [
     ['league', '리그 기록', <Globe key="l" className="w-3.5 h-3.5 shrink-0" />],
     ['table', '순위표', <Trophy key="t" className="w-3.5 h-3.5 shrink-0" />],
+    ...(cup
+      ? [
+          [
+            'cup',
+            cup.meta.koreanName,
+            <Award key="cup" className="w-3.5 h-3.5 shrink-0" />,
+          ] as [string, string, ReactNode],
+        ]
+      : []),
     ...orderedHumans.map(
       (h): [string, string, ReactNode] => [
         `club:${h.clubId}`,
@@ -961,9 +1064,9 @@ export function MpLeagueSeasonSummary({
   return (
     <div className="fixed inset-0 z-[65] overflow-y-auto bg-slate-950/90">
       <div className="mx-auto max-w-6xl px-3 py-4 sm:px-5 sm:py-6 space-y-5">
-        {/* Main Season Result Hero */}
-        <section className="rounded-2xl border border-slate-800 bg-[#0e141d] p-3 sm:p-6 space-y-4">
-          <div className="flex flex-wrap items-start justify-between gap-2">
+        {/* Main Season Result Hero — aligned with solo SeasonSummary.tsx */}
+        <section className="rounded-2xl border border-slate-800 bg-[#0e141d] p-4 sm:p-6 space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 space-y-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-300">
@@ -999,26 +1102,28 @@ export function MpLeagueSeasonSummary({
             </div>
 
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              {acked ? (
-                <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[11px] font-bold text-slate-300">
-                  <Hourglass className="w-3.5 h-3.5 shrink-0 text-sky-300" />
-                  <span className="shrink-0">다른 감독 대기 중</span>
-                  {waitingNames.length > 0 && (
-                    <span className="truncate text-sky-300">
-                      {waitingNames.join(', ')}
-                    </span>
-                  )}
-                </span>
-              ) : (
-                canContinue && (
-                  <button
-                    type="button"
-                    onClick={onContinue}
-                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 cursor-pointer"
-                  >
-                    계속
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+              {!headingToUcl && (
+                acked ? (
+                  <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-[11px] font-bold text-slate-300">
+                    <Hourglass className="w-3.5 h-3.5 shrink-0 text-sky-300" />
+                    <span className="shrink-0">다른 감독 대기 중</span>
+                    {waitingNames.length > 0 && (
+                      <span className="truncate text-sky-300">
+                        {waitingNames.join(', ')}
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  canContinue && (
+                    <button
+                      type="button"
+                      onClick={onContinue}
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 cursor-pointer"
+                    >
+                      최종 결산으로
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )
                 )
               )}
               {onClose && (
@@ -1034,10 +1139,15 @@ export function MpLeagueSeasonSummary({
             </div>
           </div>
 
-          {/* Club + Manager Pixel Avatar + League Champion Pixel Trophy Card (one per friend) */}
+          {/* Friends Comparison Grid: Rank · Points · H2H · UCL Ticket */}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {orderedHumans.map((human) => {
               const rank = rankByClub[human.clubId];
+              const uclStatus: 'qualified' | 'missed' | 'off' = !uclEnabled
+                ? 'off'
+                : uclQualifiedSet.has(human.clubId)
+                  ? 'qualified'
+                  : 'missed';
               return (
                 <FriendHeroCard
                   key={human.clubId}
@@ -1047,11 +1157,76 @@ export function MpLeagueSeasonSummary({
                   isMe={human.clubId === myClubId}
                   leagueId={leagueId}
                   leagueName={leagueName}
+                  uclStatus={uclStatus}
+                  h2h={h2hByClub?.[human.clubId]}
                 />
               );
             })}
           </div>
         </section>
+
+        {/* Champions League Entry Gate Card — matches solo SeasonSummary.tsx CHAMPIONS LEAGUE GATE */}
+        {headingToUcl && canContinue && (
+          <section className="rounded-2xl border border-sky-500/35 bg-gradient-to-r from-[#0a1628] via-[#0e1d36] to-[#0c1422] p-4 sm:p-5">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-3.5">
+                <div className="shrink-0 rounded-2xl border border-sky-400/30 bg-sky-500/10 p-2.5">
+                  <PixelTrophySvg variant="ucl" size={48} animate />
+                </div>
+                <div className="space-y-1.5 min-w-0">
+                  <div className="inline-flex items-center gap-1.5 rounded-full bg-sky-500/20 px-2.5 py-0.5 text-[10px] font-black text-sky-300">
+                    <Sparkles className="w-3 h-3" />
+                    UEFA CHAMPIONS LEAGUE · 36팀 진입
+                  </div>
+                  <h2 className="text-base sm:text-lg font-extrabold text-white">
+                    챔피언스리그 진출 확정 ({qualifiedHumans.length}명)
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {qualifiedHumans.map((h) => (
+                      <span
+                        key={h.clubId}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-sky-400/30 bg-[#0b1322] px-2 py-1 text-[11px] font-bold text-slate-100"
+                      >
+                        <PixelManagerAvatar
+                          avatar={h.avatar}
+                          clubPrimaryColor={h.profile.primaryColor}
+                          clubSecondaryColor={h.profile.secondaryColor}
+                          size={18}
+                        />
+                        {h.nickname}
+                        <span className="font-mono text-[10px] text-sky-300">
+                          #{rankByClub[h.clubId]}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="shrink-0">
+                {acked ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-xs font-bold text-slate-300">
+                    <Hourglass className="w-3.5 h-3.5 shrink-0 text-sky-300" />
+                    <span>대기 중</span>
+                    {waitingNames.length > 0 && (
+                      <span className="text-sky-300">{waitingNames.join(', ')}</span>
+                    )}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onContinue}
+                    className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    챔피언스리그 진입
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* Records Tab Bar */}
         <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-[#0e141d] p-1 sm:grid-cols-3 lg:flex">
@@ -1070,7 +1245,7 @@ export function MpLeagueSeasonSummary({
               <span className="truncate">{label}</span>
               {id === `club:${myClubId}` && (
                 <span className="shrink-0 rounded bg-emerald-400 px-1 py-0.5 text-[8px] font-black leading-none text-slate-950">
-                  나
+                  MY
                 </span>
               )}
             </button>
@@ -1078,7 +1253,12 @@ export function MpLeagueSeasonSummary({
         </div>
 
         {mainTab === 'league' && (
-          <LeagueRecordsTab leagueName={leagueName} summary={summary} own={own} />
+          <LeagueRecordsTab
+            leagueName={leagueName}
+            summary={summary}
+            own={own}
+            onInspectStats={openPlayerByStats}
+          />
         )}
 
         {mainTab === 'table' && (
@@ -1090,17 +1270,36 @@ export function MpLeagueSeasonSummary({
           />
         )}
 
+        {mainTab === 'cup' && cup && (
+          <div className="rounded-2xl border border-slate-800 bg-[#0e141d] p-3 overflow-x-auto">
+            <CupBracketView
+              cup={cup}
+              clubs={Object.values(clubsById)}
+              leagueId={leagueId ?? 'epl'}
+            />
+          </div>
+        )}
+
         {squadHuman && (
-          <FriendSquadTab
+          <MpFriendSquadTab
             key={squadHuman.clubId}
             human={squadHuman}
             rank={squadRank}
             row={squadRank ? standings[squadRank - 1] : undefined}
             stats={summary.squadStats[squadHuman.clubId] ?? []}
             squad={squads[squadHuman.clubId]}
+            onSelectPlayerId={openPlayerById}
           />
         )}
       </div>
+
+      {inspected && (
+        <PlayerDetailModal
+          player={inspected.player}
+          seasonStats={inspected.stats ?? null}
+          onClose={() => setInspected(null)}
+        />
+      )}
     </div>
   );
 }
