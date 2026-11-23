@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v6.0)
+# Road To Treble — PROJECT HANDOFF GUIDE (v6.1)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -7,14 +7,18 @@
 ## 1. 기술 스택 및 실행 환경
 
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
-- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, emerald/amber/sky 악센트)
+- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, emerald/amber/sky 절제된 포인트 테두리 악센트)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **25개 파일 / 97개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **25개 파일 / 98개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v6.1 주요 신규 모듈·기능**:
+  - **트레이드 역제안 헤더 복귀 & 이적시장 실수 종료 방지 (`TransferMarketModal.tsx`)**: `[← 받은 제안으로]` 버튼을 우측 상단 `[이적시장 끝내기]` 바로 왼쪽에 통합 배치하고 중복 안내 바 제거, 남은 기회·대기 제안 존재 시 종료 확인 모달(`#confirm-close-transfer-window-btn`)로 실수 종료 방지.
+  - **명예의 전당 스쿼드 OVR 비중 강화 (`legacyEngine.ts`, `v60HofAndRoster.test.ts`)**: 공통 공식 `computeSeasonScore`의 `squadCraftBonus`에 선발 기본 OVR(`baseOvrPts`)·실효 OVR·벤치 뎁스 가중치를 강화하고 자국 리그 대기록 중첩 점수를 조정해 `14-15`·`10-11`·`08-09` 바르셀로나 등 최상위 OVR 스쿼드가 자연스럽게 최상위권에 배치.
+  - **전역 소형 네온 색감 절제 & 양 팀 피치 비교 카드 가독성 개선 (`PitchBoard.tsx`, `OpponentPitchView.tsx`, `MatchDayTacticsRoom.tsx`, `TransferMarketModal.tsx`, `SeasonDashboard.tsx`, `LegacyHubModal.tsx`, `UclDashboard.tsx`, `SquadManagerModal.tsx`, `LiveMatchBroadcast.tsx`, `SeasonSummary.tsx`, `LeagueSelect.tsx`, `FastSimModal.tsx`, `MatchDetailModal.tsx`, `TacticsGuideModal.tsx`, `SystemGuideModal.tsx`)**: 소형 탭·토글·필터를 다크 슬레이트 + 은은한 포인트 테두리로 통일하고, 양 팀 피치 비교 카드 크기·OVR/이름 폰트 비율 및 여백 정비.
 - **v6.0 주요 신규 모듈·기능**:
   - **트레이드 `[받은 제안 → 역제안]` 뒤로가기 동선 수정 (`TransferMarketModal.tsx`)**: 역제안 진입 후 `[← 이전으로]` 클릭 시 이적시장 이탈 없이 직전 화면(받은 제안 목록 / 트레이드 룰렛 화면)으로 정확히 복귀, PC·모바일 상·하단 고정 바 명확 배치.
   - **명예의 전당 피치 스쿼드 상세 뷰 & 감독 시너지·실효 OVR 순위 개편 (`LegacyHubModal.tsx`, `legacyEngine.ts`, `historicalTeams.ts`)**: `PitchBoard` 재사용으로 역대 24팀·유저 명전 팀 모두 선발 11명 피치·4색 케미선·실효 OVR·벤치·감독(OVR·스타일) 한눈에 시각화(구버전 자동 복원 지원), `squadCraftBonus`에 감독 시너지 비율과 실효 OVR 완성도 비중 강화(유저·역대 팀 100% 동일 공식 적용).

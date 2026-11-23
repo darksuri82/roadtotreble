@@ -232,40 +232,40 @@ export function computeSeasonScore(
   let honorsBonus = 0;
   const honorsBonusDetails: string[] = [];
   if (trophyCount === 3) {
-    honorsBonus += 1500;
-    honorsBonusDetails.push('트레블 +1,500');
+    honorsBonus += 1600;
+    honorsBonusDetails.push('트레블 +1,600');
   } else if (trophyCount === 2) {
     honorsBonus += 600;
     honorsBonusDetails.push('더블 +600');
   }
   if (wonLeague && leagueLosses === 0 && leaguePlayed >= 34) {
-    honorsBonus += 1200;
-    honorsBonusDetails.push('리그 무패 우승 +1,200');
+    honorsBonus += 900;
+    honorsBonusDetails.push('리그 무패 우승 +900');
   }
   if (wonLeague && leaguePlayed >= 34) {
     if (converted38Points >= 100) {
-      honorsBonus += 900;
-      honorsBonusDetails.push('센추리온즈(환산 100점+) +900');
+      honorsBonus += 600;
+      honorsBonusDetails.push('센추리온즈(환산 100점+) +600');
     } else if (converted38Points >= 95) {
-      honorsBonus += 450;
-      honorsBonusDetails.push('압도적 우승(환산 95점+) +450');
+      honorsBonus += 320;
+      honorsBonusDetails.push('압도적 우승(환산 95점+) +320');
     }
   }
   if (typeof leagueGoalsFor === 'number' && leaguePlayed >= 34) {
     const gf38 = (leagueGoalsFor / safePlayed) * 38;
     if (gf38 >= 100) {
-      honorsBonus += 400;
-      honorsBonusDetails.push('역사적 화력(환산 100득점+) +400');
+      honorsBonus += 280;
+      honorsBonusDetails.push('역사적 화력(환산 100득점+) +280');
     }
   }
   if (wonLeague && typeof leagueGoalsAgainst === 'number' && leaguePlayed >= 34) {
     const ga38 = (leagueGoalsAgainst / safePlayed) * 38;
     if (ga38 <= 18) {
-      honorsBonus += 800;
-      honorsBonusDetails.push('철벽 수비(환산 18실점 이하) +800');
+      honorsBonus += 600;
+      honorsBonusDetails.push('철벽 수비(환산 18실점 이하) +600');
     } else if (ga38 <= 22) {
-      honorsBonus += 350;
-      honorsBonusDetails.push('최소 실점급(환산 22실점 이하) +350');
+      honorsBonus += 250;
+      honorsBonusDetails.push('최소 실점급(환산 22실점 이하) +250');
     }
   }
   if (wonUcl) {
@@ -273,8 +273,8 @@ export function computeSeasonScore(
       honorsBonus += 850;
       honorsBonusDetails.push('UCL 전승 우승 +850');
     } else if (uclUnbeatenWin) {
-      honorsBonus += 400;
-      honorsBonusDetails.push('UCL 무패 우승 +400');
+      honorsBonus += 320;
+      honorsBonusDetails.push('UCL 무패 우승 +320');
     }
   }
 
@@ -292,7 +292,7 @@ export function computeSeasonScore(
     underdogBonus = Math.min(1750, baseUnderdog + miracleBonus);
   }
 
-  // Squad Craft & Effective OVR Synergy Bonus (Effective Starter OVR + Bench Depth + Manager Synergy Ratio + Chemistry + Manager Stature)
+  // Squad Craft & Effective OVR Synergy Bonus (Starter OVR + Effective Synergy OVR + Bench Depth + Manager Synergy Ratio + Chemistry + Manager Stature)
   let squadCraftBonus = 0;
   const squadCraftDetails: string[] = [];
   const chemOvrBonus =
@@ -306,14 +306,24 @@ export function computeSeasonScore(
       ? benchAvgOvr
       : Math.max(0, teamAvgOvr - 5);
 
-  const effOvrPts = Math.round(Math.max(0, effectiveStarterOvr - 84) * 140);
+  const baseOvrPts = Math.round(
+    Math.max(0, teamAvgOvr - 82) * 280 +
+      Math.max(0, teamAvgOvr - 88.5) * 520,
+  );
+  if (baseOvrPts > 0) {
+    squadCraftBonus += baseOvrPts;
+    squadCraftDetails.push(
+      `선발 스쿼드 OVR ${teamAvgOvr.toFixed(1)} +${baseOvrPts}`,
+    );
+  }
+  const effOvrPts = Math.round(Math.max(0, effectiveStarterOvr - 84) * 180);
   if (effOvrPts > 0) {
     squadCraftBonus += effOvrPts;
     squadCraftDetails.push(
       `선발 실효 OVR ${effectiveStarterOvr.toFixed(1)} +${effOvrPts}`,
     );
   }
-  const benchPts = Math.round(Math.max(0, effectiveBenchOvr - 78) * 35);
+  const benchPts = Math.round(Math.max(0, effectiveBenchOvr - 78) * 70);
   if (benchPts > 0) {
     squadCraftBonus += benchPts;
     squadCraftDetails.push(

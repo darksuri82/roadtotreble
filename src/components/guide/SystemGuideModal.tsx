@@ -44,10 +44,10 @@ export function SystemGuideContent() {
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`rounded-lg px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
+            className={`rounded-lg border px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
               tab === t.id
-                ? 'bg-emerald-500 text-slate-950'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-slate-800 text-white border-emerald-500/50'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             {t.label}

@@ -10,7 +10,6 @@ import {
   Info,
   LayoutGrid,
   List,
-  RefreshCw,
   ShieldAlert,
   Sparkles,
   TrendingDown,
@@ -221,6 +220,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
   // Player Detail Inspector Modal
   const [inspectedPlayer, setInspectedPlayer] = useState<Player | null>(null);
+  // Accidental close confirmation guard for ending transfer window
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
 
   // NBA Multi-player Trade Package State
   const [selectedAiPlayerIds, setSelectedAiPlayerIds] = useState<string[]>([]);
@@ -697,15 +698,36 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           </div>
         </div>
 
-        <button
-          id="close-transfer-window-btn"
-          type="button"
-          onClick={transferCloseWindow}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-extrabold text-slate-200 hover:border-emerald-400/60 hover:text-white cursor-pointer touch-manipulation"
-        >
-          <X className="h-3.5 w-3.5" />
-          {isUclSpecial ? 'UCL 시작' : '닫기'}
-        </button>
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {counterOfferClub && activeTab === 'explore' && (
+            <button
+              id="counter-offer-back-btn"
+              type="button"
+              onClick={() => handleExitCounterOffer()}
+              className="inline-flex items-center gap-1 rounded-xl border border-amber-400/45 bg-amber-500/12 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-extrabold text-amber-200 hover:bg-amber-500/22 hover:text-amber-100 transition cursor-pointer touch-manipulation whitespace-nowrap"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              {counterOfferOrigin === 'incoming'
+                ? '받은 제안으로'
+                : '트레이드 룰렛으로'}
+            </button>
+          )}
+          <button
+            id="close-transfer-window-btn"
+            type="button"
+            onClick={() => {
+              if (tm.attemptsRemaining > 0 || pendingIncomingCount > 0) {
+                setConfirmCloseOpen(true);
+              } else {
+                transferCloseWindow();
+              }
+            }}
+            className="inline-flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-900 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold text-slate-300 hover:border-rose-400/50 hover:text-rose-200 transition cursor-pointer touch-manipulation whitespace-nowrap"
+          >
+            <X className="h-3.5 w-3.5" />
+            {isUclSpecial ? 'UCL 시작' : '이적시장 끝내기'}
+          </button>
+        </div>
       </div>
 
       {/* Mode Switcher Tabs */}
@@ -713,17 +735,17 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         <button
           type="button"
           onClick={() => setActiveTab('explore')}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-extrabold transition cursor-pointer ${
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
             activeTab === 'explore'
-              ? 'bg-sky-400 text-slate-950 shadow'
-              : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white'
+              ? 'bg-slate-800 text-white border border-sky-400/45 shadow-sm'
+              : 'bg-slate-900/70 text-slate-400 border border-slate-800 hover:bg-slate-800/80 hover:text-slate-200'
           }`}
         >
-          <Handshake className="h-3.5 w-3.5" />
+          <Handshake className="h-3.5 w-3.5 text-sky-300" />
           구단 트레이드 탐색
           {counterOfferClub && (
-            <span className="rounded bg-slate-950/25 px-1.5 py-0.5 text-[10px]">
-              역제안 중
+            <span className="rounded bg-amber-500/18 border border-amber-400/35 px-1.5 py-0.2 text-[10px] font-bold text-amber-200">
+              역제안 · {counterOfferClub.club?.shortName ?? ''}
             </span>
           )}
         </button>
@@ -731,64 +753,38 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           id="incoming-trade-offers-tab"
           type="button"
           onClick={() => setActiveTab('incoming')}
-          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-extrabold transition cursor-pointer ${
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
             activeTab === 'incoming'
-              ? 'bg-amber-400 text-slate-950 shadow'
-              : 'bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white'
+              ? 'bg-slate-800 text-white border border-amber-400/45 shadow-sm'
+              : 'bg-slate-900/70 text-slate-400 border border-slate-800 hover:bg-slate-800/80 hover:text-slate-200'
           }`}
         >
-          <Inbox className="h-3.5 w-3.5" />
+          <Inbox className="h-3.5 w-3.5 text-amber-300" />
           받은 트레이드 제안
           <span
-            className={`rounded-full px-1.5 py-0.5 text-[10px] font-black tabular-nums ${
+            className={`rounded-full px-1.5 py-0.2 text-[10px] font-extrabold tabular-nums ${
               pendingIncomingCount > 0
-                ? activeTab === 'incoming'
-                  ? 'bg-slate-950 text-amber-300'
-                  : 'bg-amber-500 text-slate-950'
+                ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40'
                 : 'bg-slate-800 text-slate-400'
             }`}
           >
             {pendingIncomingCount}
           </span>
         </button>
+        {counterOfferClub && activeTab === 'explore' && counterOfferOrigin === 'incoming' && (
+          <button
+            type="button"
+            onClick={() => handleExitCounterOffer('explore')}
+            className="rounded-lg border border-slate-700/80 bg-slate-900/80 px-2.5 py-1.5 text-[11px] font-bold text-slate-300 hover:border-sky-400/50 hover:text-white transition cursor-pointer touch-manipulation"
+          >
+            {tm.hasSpunClubs ? '추첨 구단 보기' : '트레이드 룰렛'}
+          </button>
+        )}
         <div className="ml-auto hidden sm:flex items-center gap-2 text-[11px] text-slate-400">
-          <Users className="h-3.5 w-3.5 text-emerald-400" />
+          <Users className="h-3.5 w-3.5 text-slate-500" />
           <span>우리 로스터 {userSquadPlayers.length}인 (선발 11 · 벤치 5 유지)</span>
         </div>
       </div>
-
-      {/* Fixed Counter-Offer Back Navigation Bar (Always visible without scrolling on PC & mobile) */}
-      {counterOfferClub && activeTab === 'explore' && (
-        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-amber-400/35 bg-amber-950/35 px-3.5 py-2 sm:px-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              id="counter-offer-back-btn"
-              type="button"
-              onClick={() => handleExitCounterOffer()}
-              className="inline-flex items-center gap-1 rounded-lg border border-amber-400/50 bg-slate-950/90 px-2.5 py-1.5 text-xs font-extrabold text-amber-200 hover:bg-amber-400 hover:text-slate-950 transition cursor-pointer touch-manipulation shrink-0"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              {counterOfferOrigin === 'incoming'
-                ? '받은 제안으로'
-                : '트레이드 룰렛으로'}
-            </button>
-            <span className="truncate text-xs font-extrabold text-amber-100">
-              역제안 · {counterOfferClub.club?.name}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {counterOfferOrigin === 'incoming' && (
-              <button
-                type="button"
-                onClick={() => handleExitCounterOffer('explore')}
-                className="rounded-lg border border-slate-700 bg-slate-900/90 px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:border-sky-400/60 hover:text-white transition cursor-pointer touch-manipulation"
-              >
-                {tm.hasSpunClubs ? '추첨 구단' : '트레이드 룰렛'}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Scrollable Body */}
       <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4">
@@ -894,10 +890,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
                         {!isPending && (
                           <span
-                            className={`rounded-md px-2 py-0.5 text-[10px] font-black ${
+                            className={`rounded-md px-2 py-0.5 text-[10px] font-bold border ${
                               isAccepted
-                                ? 'bg-emerald-500 text-slate-950'
-                                : 'bg-slate-700 text-slate-300'
+                                ? 'bg-emerald-500/18 text-emerald-300 border-emerald-500/40'
+                                : 'bg-slate-800/80 text-slate-400 border-slate-700/70'
                             }`}
                           >
                             {isAccepted ? '성사됨' : '거절/만료'}
@@ -1223,26 +1219,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                   })}
                 </div>
 
-                {/* Counter-offer active club pill */}
-                {counterOfferClub && counterOfferClub.club && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/45 bg-amber-950/25 px-3.5 py-2">
-                    <div className="flex items-center gap-2 text-xs font-extrabold text-amber-200">
-                      <RefreshCw className="h-3.5 w-3.5 shrink-0" />
-                      <span>
-                        역제안 협상 테이블: {counterOfferClub.club.name} (
-                        {counterOfferClub.clubNeeds?.summaryText})
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleExitCounterOffer()}
-                      className="inline-flex items-center gap-1 rounded-lg border border-amber-400/45 bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-amber-200 hover:bg-amber-400 hover:text-slate-950 cursor-pointer touch-manipulation"
-                    >
-                      <ArrowLeft className="h-3 w-3" />
-                      이전으로
-                    </button>
-                  </div>
-                )}
+                {/* Counter-offer active club indicator is handled cleanly in header & negotiation table */}
 
                 {/* LEGEND FA 1:1 SPECIAL NEGOTIATION PANEL */}
                 {activeClubOffer?.isLegendSlot &&
@@ -1374,29 +1351,29 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
                           <div className="flex items-center gap-2">
                             {/* Formation / List View Toggle */}
-                            <div className="inline-flex rounded-lg border border-slate-700 bg-slate-950 p-0.5">
+                            <div className="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-0.5 gap-0.5">
                               <button
                                 type="button"
                                 onClick={() => setPickerViewMode('formation')}
-                                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-extrabold cursor-pointer ${
+                                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
                                   pickerViewMode === 'formation'
-                                    ? 'bg-emerald-500 text-slate-950'
-                                    : 'text-slate-400 hover:text-white'
+                                    ? 'bg-slate-800 text-white border border-slate-600/80'
+                                    : 'text-slate-400 border border-transparent hover:text-slate-200'
                                 }`}
                               >
-                                <LayoutGrid className="h-3 w-3" />
+                                <LayoutGrid className="h-3 w-3 text-emerald-300" />
                                 포메이션 보기
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setPickerViewMode('list')}
-                                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-extrabold cursor-pointer ${
+                                className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
                                   pickerViewMode === 'list'
-                                    ? 'bg-sky-400 text-slate-950'
-                                    : 'text-slate-400 hover:text-white'
+                                    ? 'bg-slate-800 text-white border border-slate-600/80'
+                                    : 'text-slate-400 border border-transparent hover:text-slate-200'
                                 }`}
                               >
-                                <List className="h-3 w-3" />
+                                <List className="h-3 w-3 text-sky-300" />
                                 리스트 보기
                               </button>
                             </div>
@@ -1636,12 +1613,12 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       예상 성사 확률:
                                     </span>
                                     <span
-                                      className={`rounded-md px-2 py-0.5 text-sm font-black tabular-nums ${
+                                      className={`rounded-md border px-2 py-0.5 text-sm font-black tabular-nums ${
                                         tradeEval.acceptanceChance >= 72
-                                          ? 'bg-emerald-500 text-slate-950'
+                                          ? 'bg-emerald-500/18 text-emerald-300 border-emerald-500/40'
                                           : tradeEval.acceptanceChance >= 45
-                                            ? 'bg-amber-400 text-slate-950'
-                                            : 'bg-orange-500/25 text-orange-200 border border-orange-400/40'
+                                            ? 'bg-amber-500/18 text-amber-200 border-amber-400/40'
+                                            : 'bg-orange-500/20 text-orange-200 border-orange-400/40'
                                       }`}
                                     >
                                       {tradeEval.acceptanceChance}%
@@ -1660,9 +1637,9 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   type="button"
                                   disabled={!canSubmitTrade}
                                   onClick={handleSubmitTrade}
-                                  className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 shadow-lg hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0"
+                                  className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs sm:text-sm font-black text-white shadow-lg shadow-emerald-950/40 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0 transition-colors"
                                 >
-                                  🤝 트레이드 제안 ({tradeEval.acceptanceChance}%)
+                                  트레이드 제안 ({tradeEval.acceptanceChance}%)
                                 </button>
                               </div>
                             </div>
@@ -1690,7 +1667,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   />
                                   <div className="min-w-0">
                                     <div className="truncate text-xs font-black text-white">
-                                      📥 {activeClubOffer.club.name} (
+                                      {activeClubOffer.club.name} (
                                       {partnerFormationLayout.formationId} · 주전 11 + 벤치 {partnerFormationLayout.bench.length})
                                     </div>
                                     {activeClubNeeds && (
@@ -1706,13 +1683,13 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               </div>
 
                               {/* Partner Pitch */}
-                              <div className="relative aspect-[4/3.85] sm:aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-b from-[#0f2c1f] via-[#113324] to-[#0d261b]">
+                              <div className="relative aspect-[4/3.85] sm:aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-slate-700/80 bg-gradient-to-b from-[#0e261c] via-[#102c20] to-[#0c2218]">
                                 {/* Pitch Markings */}
-                                <div className="pointer-events-none absolute inset-3 rounded border border-emerald-300/20">
-                                  <div className="absolute left-0 right-0 top-1/2 h-px bg-emerald-300/20" />
-                                  <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300/20" />
-                                  <div className="absolute left-1/2 top-0 h-10 w-28 -translate-x-1/2 border-b border-x border-emerald-300/20" />
-                                  <div className="absolute left-1/2 bottom-0 h-10 w-28 -translate-x-1/2 border-t border-x border-emerald-300/20" />
+                                <div className="pointer-events-none absolute inset-3 rounded border border-white/15">
+                                  <div className="absolute left-0 right-0 top-1/2 h-px bg-white/15" />
+                                  <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/15" />
+                                  <div className="absolute left-1/2 top-0 h-10 w-28 -translate-x-1/2 border-b border-x border-white/15" />
+                                  <div className="absolute left-1/2 bottom-0 h-10 w-28 -translate-x-1/2 border-t border-x border-white/15" />
                                 </div>
 
                                 {partnerFormationLayout.slots.map(
@@ -1757,24 +1734,24 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             ? `${p.name} · ${t.bargainReason ?? '프런트 급매 -35%'} (우클릭 상세)`
                                             : `${p.name} (주전 ${slot.label} · OVR ${p.ovr} · 가치 ${Math.round(tpVal.effectiveTp)}) (우클릭 상세)`
                                         }
-                                        className={`absolute -translate-x-1/2 -translate-y-1/2 w-[66px] sm:w-[86px] rounded-lg border px-1 py-0.5 sm:px-1.5 sm:py-1 text-center transition-colors cursor-pointer select-none touch-manipulation ${
+                                        className={`absolute -translate-x-1/2 -translate-y-1/2 w-[60px] sm:w-[74px] rounded-lg border px-1 py-0.5 sm:px-1.5 sm:py-0.5 text-center transition-colors cursor-pointer select-none touch-manipulation ${
                                           isPicked
-                                            ? 'border-emerald-300 bg-emerald-950/95 ring-2 ring-emerald-400 shadow-lg z-20'
+                                            ? 'border-emerald-300 bg-emerald-950/95 ring-1 ring-emerald-400/70 shadow-md z-20'
                                             : t.isShockBargain
-                                              ? 'border-rose-400/90 bg-rose-950/90 ring-1 ring-rose-400/60 hover:border-emerald-400 z-15'
-                                              : 'border-slate-700/90 bg-slate-950/90 hover:border-emerald-400/70 z-10'
+                                              ? 'border-rose-400/80 bg-rose-950/90 ring-1 ring-rose-400/45 hover:border-emerald-400 z-15'
+                                              : 'border-slate-700/85 bg-slate-950/90 hover:border-emerald-400/60 z-10'
                                         }`}
                                       >
                                         {t.isShockBargain && (
-                                          <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-500 px-1 py-px text-[7px] font-black text-white shadow">
-                                            🚨급매-35%
+                                          <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-600 px-1 py-px text-[7px] font-black text-white shadow">
+                                            급매-35%
                                           </span>
                                         )}
-                                        <div className="flex items-center justify-between text-[8px] sm:text-[9px] tabular-nums leading-none">
-                                          <span className="font-bold text-slate-400">
+                                        <div className="flex items-center justify-between text-[7.5px] sm:text-[8.5px] tabular-nums leading-none">
+                                          <span className="font-semibold text-slate-400">
                                             {slot.label}
                                           </span>
-                                          <span className="font-black text-amber-300">
+                                          <span className="font-bold text-amber-300">
                                             {p.ovr}
                                           </span>
                                         </div>
@@ -1784,12 +1761,12 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             nationality={p.nationality}
                                             size="xs"
                                           />
-                                          <span className="truncate text-[9px] sm:text-[10px] font-extrabold text-white">
+                                          <span className="truncate text-[8.5px] sm:text-[9.5px] font-bold text-white leading-tight">
                                             {shortPitchName(p.name)}
                                           </span>
                                         </div>
-                                        <div className="mt-0.5 flex items-center justify-center gap-1 text-[8px] sm:text-[9px] tabular-nums leading-none">
-                                          <span className="font-mono text-sky-300">
+                                        <div className="mt-0.5 flex items-center justify-center gap-1 text-[7.5px] sm:text-[8.5px] tabular-nums leading-none">
+                                          <span className="font-mono text-sky-300/90">
                                             {Math.round(tpVal.effectiveTp)}
                                           </span>
                                           {inj && cond?.injury && (
@@ -1922,12 +1899,12 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               </div>
 
                               {/* User Pitch */}
-                              <div className="relative aspect-[4/3.85] sm:aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-b from-[#0f2c1f] via-[#113324] to-[#0d261b]">
-                                <div className="pointer-events-none absolute inset-3 rounded border border-emerald-300/20">
-                                  <div className="absolute left-0 right-0 top-1/2 h-px bg-emerald-300/20" />
-                                  <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300/20" />
-                                  <div className="absolute left-1/2 top-0 h-10 w-28 -translate-x-1/2 border-b border-x border-emerald-300/20" />
-                                  <div className="absolute left-1/2 bottom-0 h-10 w-28 -translate-x-1/2 border-t border-x border-emerald-300/20" />
+                              <div className="relative aspect-[4/3.85] sm:aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-slate-700/80 bg-gradient-to-b from-[#0e241b] via-[#0f291e] to-[#0c1f17]">
+                                <div className="pointer-events-none absolute inset-3 rounded border border-emerald-300/15">
+                                  <div className="absolute left-0 right-0 top-1/2 h-px bg-emerald-300/15" />
+                                  <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300/15" />
+                                  <div className="absolute left-1/2 top-0 h-10 w-28 -translate-x-1/2 border-b border-x border-emerald-300/15" />
+                                  <div className="absolute left-1/2 bottom-0 h-10 w-28 -translate-x-1/2 border-t border-x border-emerald-300/15" />
                                 </div>
 
                                 {formationSlots.map((slot, idx) => {
@@ -1970,17 +1947,17 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         top: `${slot.y}%`,
                                       }}
                                       title={`${p.name} (OVR ${p.ovr} · 가치 ${Math.round(tpVal.effectiveTp)}) (우클릭 상세)`}
-                                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-[66px] sm:w-[86px] rounded-lg border px-1 py-0.5 sm:px-1.5 sm:py-1 text-center transition-colors cursor-pointer select-none touch-manipulation ${
+                                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-[60px] sm:w-[74px] rounded-lg border px-1 py-0.5 text-center transition-colors cursor-pointer select-none touch-manipulation ${
                                         isPicked
-                                          ? 'border-rose-400 bg-rose-950/95 ring-2 ring-rose-400 shadow-lg z-20'
-                                          : 'border-slate-700/90 bg-slate-950/90 hover:border-rose-400/70 z-10'
+                                          ? 'border-rose-400 bg-rose-950/95 ring-1 ring-rose-400/70 shadow-lg z-20'
+                                          : 'border-slate-700/80 bg-[#0d141f]/95 hover:border-rose-400/60 z-10'
                                       }`}
                                     >
-                                      <div className="flex items-center justify-between text-[8px] sm:text-[9px] tabular-nums leading-none">
-                                        <span className="font-bold text-slate-400">
+                                      <div className="flex items-center justify-between text-[8px] sm:text-[8.5px] tabular-nums leading-none">
+                                        <span className="font-semibold text-slate-400">
                                           {slot.label}
                                         </span>
-                                        <span className="font-black text-white">
+                                        <span className="font-bold text-slate-100">
                                           {p.ovr}
                                         </span>
                                       </div>
@@ -1990,12 +1967,12 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           nationality={p.nationality}
                                           size="xs"
                                         />
-                                        <span className="truncate text-[9px] sm:text-[10px] font-extrabold text-white">
+                                        <span className="truncate text-[8.5px] sm:text-[9.5px] font-semibold text-slate-100">
                                           {shortPitchName(p.name)}
                                         </span>
                                       </div>
-                                      <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[8px] sm:text-[9px] tabular-nums leading-none">
-                                        <span className="font-mono text-rose-300">
+                                      <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[7.5px] sm:text-[8.5px] tabular-nums leading-none">
+                                        <span className="font-mono text-rose-300/90">
                                           {Math.round(tpVal.effectiveTp)}
                                         </span>
                                         {tpVal.needModPct >= 30 && (
@@ -2124,10 +2101,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       key={`pf-${pf}`}
                                       type="button"
                                       onClick={() => setPosFilter(pf)}
-                                      className={`rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer touch-manipulation ${
+                                      className={`rounded-md border px-2 py-1 text-[10px] font-bold cursor-pointer touch-manipulation transition-colors ${
                                         posFilter === pf
-                                          ? 'bg-sky-400 text-slate-950'
-                                          : 'bg-slate-900 text-slate-400 hover:text-white'
+                                          ? 'bg-slate-800 text-white border-sky-400/50'
+                                          : 'bg-slate-900/70 border-slate-800 text-slate-400 hover:text-white'
                                       }`}
                                     >
                                       {pf === 'ALL' ? '전체' : pf}
@@ -2237,10 +2214,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         <Info className="h-3 w-3" />
                                       </button>
                                       <span
-                                        className={`rounded-lg px-2 py-1 text-[10px] font-black ${
+                                        className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${
                                           isPicked
-                                            ? 'bg-emerald-500 text-slate-950'
-                                            : 'bg-slate-800 text-slate-300'
+                                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/45'
+                                            : 'bg-slate-800/80 text-slate-300 border-slate-700/70'
                                         }`}
                                       >
                                         {isPicked ? '✓' : '+'}
@@ -2475,7 +2452,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                   type="button"
                   disabled={!canSubmitTrade}
                   onClick={handleSubmitTrade}
-                  className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] sm:text-xs font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-40 cursor-pointer touch-manipulation whitespace-nowrap"
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] sm:text-xs font-extrabold text-white hover:bg-emerald-500 disabled:opacity-40 cursor-pointer touch-manipulation whitespace-nowrap transition-colors"
                 >
                   {tradeEval
                     ? `제안 (${tradeEval.acceptanceChance}%)`
@@ -2485,6 +2462,56 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
             </div>
           </div>
         )}
+
+      {/* Accidental Close Guard Modal */}
+      {confirmCloseOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-700/90 bg-[#0d1420] p-5 shadow-2xl space-y-4">
+            <div className="space-y-1.5">
+              <h3 className="text-sm font-black text-white">
+                {isUclSpecial
+                  ? '특별 이적시장을 마치고 UCL을 시작할까요?'
+                  : '이적시장을 끝내시겠습니까?'}
+              </h3>
+              <p className="text-xs leading-relaxed text-slate-400">
+                이적시장을 끝내면 이번 회차의 남은 기회가 모두 종료됩니다.
+              </p>
+              <div className="flex flex-wrap gap-1.5 pt-1 text-[11px]">
+                {tm.attemptsRemaining > 0 && (
+                  <span className="rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 font-bold text-slate-200 tabular-nums">
+                    남은 트레이드 기회 {tm.attemptsRemaining}회
+                  </span>
+                )}
+                {pendingIncomingCount > 0 && (
+                  <span className="rounded-md border border-amber-400/35 bg-amber-500/12 px-2 py-0.5 font-bold text-amber-200 tabular-nums">
+                    미확인 받은 제안 {pendingIncomingCount}건
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmCloseOpen(false)}
+                className="rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-200 hover:bg-slate-700 hover:text-white cursor-pointer touch-manipulation"
+              >
+                계속 진행
+              </button>
+              <button
+                id="confirm-close-transfer-window-btn"
+                type="button"
+                onClick={() => {
+                  setConfirmCloseOpen(false);
+                  transferCloseWindow();
+                }}
+                className="rounded-xl border border-rose-500/45 bg-rose-600/90 px-3.5 py-2 text-xs font-extrabold text-white hover:bg-rose-500 cursor-pointer touch-manipulation"
+              >
+                {isUclSpecial ? 'UCL 시작' : '이적시장 끝내기'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Player Detail Card Modal (z-[60], floats cleanly above Trade Room!) */}
       {inspectedPlayer && (

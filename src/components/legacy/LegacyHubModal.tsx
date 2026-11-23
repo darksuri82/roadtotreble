@@ -197,7 +197,7 @@ export function LegacyHubModal() {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex rounded-xl border border-slate-800 bg-slate-900 p-1">
+            <div className="flex rounded-xl border border-slate-800 bg-slate-950/80 p-1 gap-1">
               <button
                 type="button"
                 onClick={() => {
@@ -207,8 +207,8 @@ export function LegacyHubModal() {
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                   tab === 'hof'
-                    ? 'bg-emerald-500 text-slate-950'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'bg-slate-800 text-white border border-emerald-500/45 shadow-sm'
+                    : 'text-slate-400 border border-transparent hover:text-white'
                 }`}
               >
                 🏛️ 명예의 전당 ({legacyState.hallOfFame.length + HISTORICAL_BENCHMARK_TEAMS.length})
@@ -222,8 +222,8 @@ export function LegacyHubModal() {
                 }}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                   tab === 'achievements'
-                    ? 'bg-amber-400 text-slate-950'
-                    : 'text-slate-300 hover:text-white'
+                    ? 'bg-slate-800 text-white border border-amber-400/45 shadow-sm'
+                    : 'text-slate-400 border border-transparent hover:text-white'
                 }`}
               >
                 🔒 히든 도전과제 ({progress.unlocked}/{progress.total})
@@ -270,8 +270,8 @@ export function LegacyHubModal() {
                       }}
                       className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                         hofFilter === fid
-                          ? 'bg-emerald-500 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-slate-800 text-white border border-slate-600/80 shadow-sm'
+                          : 'text-slate-400 border border-transparent hover:text-slate-200'
                       }`}
                     >
                       {label}
@@ -1022,10 +1022,10 @@ export function LegacyHubModal() {
                 <button
                   type="button"
                   onClick={() => setDetailSubTab('squad')}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer ${
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold cursor-pointer transition-colors ${
                     detailSubTab === 'squad'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'bg-slate-800/70 text-slate-300 hover:text-white'
+                      ? 'bg-slate-800 text-white border-emerald-500/50'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
                   }`}
                 >
                   최종 16인 스쿼드
@@ -1033,10 +1033,10 @@ export function LegacyHubModal() {
                 <button
                   type="button"
                   onClick={() => setDetailSubTab('history')}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer ${
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold cursor-pointer transition-colors ${
                     detailSubTab === 'history'
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'bg-slate-800/70 text-slate-300 hover:text-white'
+                      ? 'bg-slate-800 text-white border-emerald-500/50'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
                   }`}
                 >
                   전체 경기 히스토리 ({selectedEntry.matchHistory?.length ?? 0}경기)
@@ -1208,10 +1208,10 @@ export function LegacyHubModal() {
                           key={fid}
                           type="button"
                           onClick={() => setHistoryFilter(fid)}
-                          className={`rounded-md px-2.5 py-1 text-[11px] font-bold cursor-pointer ${
+                          className={`rounded-md border px-2.5 py-1 text-[11px] font-bold cursor-pointer transition-colors ${
                             historyFilter === fid
-                              ? 'bg-sky-400 text-slate-950'
-                              : 'bg-slate-800 text-slate-400 hover:text-white'
+                              ? 'bg-slate-800 text-white border-sky-400/50'
+                              : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
                           }`}
                         >
                           {flabel}

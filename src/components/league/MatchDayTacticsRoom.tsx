@@ -451,7 +451,7 @@ export function MatchDayTacticsRoom({
                   title={`${t.name} (현재 라인업 완성도 ${fitPct}%)`}
                   className={`relative min-w-0 rounded-lg py-1.5 px-1 text-center transition-colors cursor-pointer ${
                     active
-                      ? 'bg-emerald-500 text-slate-950 font-extrabold shadow'
+                      ? 'bg-emerald-500/18 text-emerald-100 border border-emerald-400/55 font-extrabold'
                       : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600 font-bold'
                   }`}
                 >
@@ -461,7 +461,7 @@ export function MatchDayTacticsRoom({
                   <div
                     className={`mt-0.5 truncate text-[8px] sm:text-[9px] font-bold tabular-nums ${
                       active
-                        ? 'text-slate-900'
+                        ? 'text-emerald-300'
                         : fitPct >= 84
                           ? 'text-emerald-400'
                           : fitPct >= 74
@@ -490,9 +490,9 @@ export function MatchDayTacticsRoom({
                 setSelectedSlot(null);
                 onAutoOptimize();
               }}
-              className="inline-flex items-center gap-1 rounded-md bg-emerald-500/20 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-extrabold text-emerald-300 hover:bg-emerald-500/30 cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 border border-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-200 hover:border-emerald-400/50 hover:text-emerald-200 cursor-pointer whitespace-nowrap"
             >
-              <Wand2 className="w-3 h-3" />
+              <Wand2 className="w-3 h-3 text-emerald-400" />
               빠른 최적 선발
             </button>
           </div>
@@ -508,7 +508,7 @@ export function MatchDayTacticsRoom({
                 }}
                 className={`rounded-lg py-1.5 px-1 text-[10px] sm:text-[11px] font-bold transition-colors cursor-pointer truncate ${
                   formation === f.id
-                    ? 'bg-sky-400 text-slate-950 font-extrabold'
+                    ? 'bg-sky-500/18 text-sky-100 border border-sky-400/55 font-extrabold'
                     : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
                 }`}
               >
@@ -530,17 +530,17 @@ export function MatchDayTacticsRoom({
       <div className="rounded-xl border border-slate-800/90 bg-[#0b1018] p-3 space-y-2.5">
         {/* Segmented Pitch View Switcher */}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="grid grid-cols-3 gap-1 rounded-lg bg-[#111822] p-1 text-[11px] w-full sm:w-auto">
+          <div className="grid grid-cols-3 gap-1 rounded-lg border border-slate-800 bg-[#111822] p-1 text-[11px] w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setPitchTab('split')}
               className={`inline-flex items-center justify-center gap-1 rounded-md px-2 sm:px-2.5 py-1.5 font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 pitchTab === 'split'
-                  ? 'bg-amber-400 text-slate-950'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-800 text-white border border-slate-600/80 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
               }`}
             >
-              <Columns2 className="w-3.5 h-3.5 shrink-0" />
+              <Columns2 className="w-3.5 h-3.5 shrink-0 text-amber-300" />
               양 팀 피치 비교
             </button>
             <button
@@ -548,11 +548,11 @@ export function MatchDayTacticsRoom({
               onClick={() => setPitchTab('opponent')}
               className={`inline-flex items-center justify-center gap-1 rounded-md px-2 sm:px-2.5 py-1.5 font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 pitchTab === 'opponent'
-                  ? 'bg-sky-400 text-slate-950'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-800 text-white border border-slate-600/80 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
               }`}
             >
-              <Eye className="w-3.5 h-3.5 shrink-0" />
+              <Eye className="w-3.5 h-3.5 shrink-0 text-sky-300" />
               상대 ({opponent.formation})
             </button>
             <button
@@ -560,11 +560,11 @@ export function MatchDayTacticsRoom({
               onClick={() => setPitchTab('our_squad')}
               className={`inline-flex items-center justify-center gap-1 rounded-md px-2 sm:px-2.5 py-1.5 font-bold transition-colors cursor-pointer whitespace-nowrap ${
                 pitchTab === 'our_squad'
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-800 text-white border border-slate-600/80 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200 border border-transparent'
               }`}
             >
-              <Users className="w-3.5 h-3.5 shrink-0" />
+              <Users className="w-3.5 h-3.5 shrink-0 text-emerald-300" />
               내 선발 ({shortFormationLabel(formation)})
             </button>
           </div>

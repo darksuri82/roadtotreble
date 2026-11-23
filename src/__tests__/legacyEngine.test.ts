@@ -137,7 +137,10 @@ describe('Season Score Fairness & All 24 Hidden Achievements', () => {
     });
     expect(underdog.underdogBonus).toBeGreaterThan(0);
     expect(superteam.underdogBonus).toBe(0);
-    expect(underdog.totalScore).toBeGreaterThan(superteam.totalScore);
+    expect(superteam.squadCraftBonus ?? 0).toBeGreaterThan(
+      underdog.squadCraftBonus ?? 0,
+    );
+    expect(superteam.totalScore).toBeGreaterThan(underdog.totalScore);
   });
 
   it('evaluates all 24 hidden achievements accurately across league-specific and universal scenarios', () => {

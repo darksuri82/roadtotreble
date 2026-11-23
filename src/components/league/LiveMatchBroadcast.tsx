@@ -1232,10 +1232,10 @@ export function LiveMatchBroadcast({
                       key={spd}
                       type="button"
                       onClick={() => setSpeed(spd)}
-                      className={`rounded-md px-2.5 py-1 font-bold transition-colors cursor-pointer ${
+                      className={`rounded-md border px-2.5 py-1 font-bold transition-colors cursor-pointer ${
                         speed === spd
-                          ? 'bg-emerald-500 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'border-emerald-500/50 bg-slate-800 text-white'
+                          : 'border-transparent text-slate-400 hover:text-white'
                       }`}
                     >
                       {spd}x
@@ -2001,10 +2001,10 @@ export function LiveMatchBroadcast({
                           type="button"
                           onClick={() => setSelectedTactic(t.id)}
                           title={`${t.name} (현재 라인업 완성도 ${fitPct}%)`}
-                          className={`relative min-w-0 rounded-lg py-1.5 px-1 text-center transition-colors cursor-pointer ${
+                          className={`relative min-w-0 rounded-lg border py-1.5 px-1 text-center transition-colors cursor-pointer ${
                             active
-                              ? 'bg-emerald-500 text-slate-950 font-extrabold shadow'
-                              : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600 font-bold'
+                              ? 'border-emerald-400/60 bg-emerald-500/18 text-white font-extrabold'
+                              : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200 font-bold'
                           }`}
                         >
                           <div className="truncate text-[10px] sm:text-[11px] leading-tight">
@@ -2013,7 +2013,7 @@ export function LiveMatchBroadcast({
                           <div
                             className={`mt-0.5 truncate text-[8px] sm:text-[9px] font-bold tabular-nums ${
                               active
-                                ? 'text-slate-900'
+                                ? 'text-emerald-300'
                                 : fitPct >= 84
                                   ? 'text-emerald-400'
                                   : fitPct >= 74
@@ -2024,8 +2024,8 @@ export function LiveMatchBroadcast({
                             {fitPct}%
                           </div>
                           {isRec && !active && (
-                            <span className="absolute -top-1.5 right-0.5 rounded bg-amber-400 px-1 text-[8px] font-black text-slate-950">
-                              코치
+                            <span className="absolute -top-1.5 right-0.5 rounded border border-amber-400/45 bg-amber-500/20 px-1 text-[8px] font-bold text-amber-300">
+                              추천
                             </span>
                           )}
                         </button>
@@ -2051,7 +2051,7 @@ export function LiveMatchBroadcast({
                         type="button"
                         onClick={handleHalftimeQuickBestXi}
                         title="현재 그라운드의 선발 11명(교체 아웃 선수 제외)을 선택한 포메이션에 맞춰 최적 포지션으로 자동 재배치합니다"
-                        className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2 py-0.5 text-[10px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                        className="inline-flex items-center gap-1 rounded-md border border-emerald-500/45 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer transition-colors"
                       >
                         <Wand2 className="w-3 h-3" />
                         빠른 선발
@@ -2064,10 +2064,10 @@ export function LiveMatchBroadcast({
                           type="button"
                           title={f.name}
                           onClick={() => changeFormation(f.id)}
-                          className={`rounded-lg py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate ${
+                          className={`rounded-lg border py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate transition-colors ${
                             state.formation === f.id
-                              ? 'bg-sky-400 text-slate-950'
-                              : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
+                              ? 'border-sky-400/55 bg-sky-500/18 text-white'
+                              : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
                           }`}
                         >
                           {f.id === '4-4-2-diamond'

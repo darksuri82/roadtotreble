@@ -5,6 +5,20 @@
 
 ---
 
+## v6.1 — 트레이드 역제안 헤더 복귀·실수 종료 방지 · 명전 스쿼드 OVR 가중치 강화 · 전역 네온 톤 정돈 & 양 팀 피치 비교 가독성 개선
+
+- **트레이드 역제안 헤더 복귀 버튼 통합 & 이적시장 실수 종료 방지 (`src/components/transfer/TransferMarketModal.tsx`)**:
+  - 역제안 화면에서 `[← 받은 제안으로]` 버튼을 우측 상단 종료 버튼 바로 왼쪽에 배치하고, 본문·탭 하단에 중복되던 역제안 안내 바를 제거해 깔끔하게 정돈.
+  - 우측 상단 닫기 버튼을 `[이적시장 끝내기]`(UCL 특별창은 `[UCL 시작]`)로 명확히 개칭하고, 남은 기회 또는 미처리 받은 제안이 있을 때 클릭 시 실수 종료를 방지하는 확인 모달(`#confirm-close-transfer-window-btn`) 추가.
+- **명예의 전당 공통 순위 공식 스쿼드 OVR 비중 강화 (`src/engine/legacyEngine.ts`, `src/__tests__/v60HofAndRoster.test.ts`)**:
+  - 유저·역대 강팀 100% 동일 공식 `computeSeasonScore`의 `squadCraftBonus`에 선발 기본 OVR(`baseOvrPts`)과 벤치 뎁스 가중치를 강화하고 자국 리그 대기록 중첩 점수를 완만화.
+  - 개별 팀 하드코딩 없이 공식만으로 최상위 OVR 스쿼드(`14-15`·`10-11`·`08-09` 바르셀로나 등)가 `71-72 아약스`보다 상위권에 위치하도록 균형 조정.
+- **전역 소형 네온 절제 & 양 팀 피치 비교 카드 타이포그래피 개선 (`PitchBoard.tsx`, `OpponentPitchView.tsx`, `MatchDayTacticsRoom.tsx`, `TransferMarketModal.tsx`, `SeasonDashboard.tsx`, `LegacyHubModal.tsx`, `UclDashboard.tsx`, `SquadManagerModal.tsx`, `LiveMatchBroadcast.tsx`, `SeasonSummary.tsx`, `LeagueSelect.tsx`, `FastSimModal.tsx`, `MatchDetailModal.tsx`, `TacticsGuideModal.tsx`, `SystemGuideModal.tsx`)**:
+  - 대시보드·전술실·이적시장·UCL·명전·중계·가이드 전반의 소형 탭·필터·전술/포메이션 토글에서 원색 네온 배경을 제거하고 다크 슬레이트 + 은은한 포인트 테두리로 통일(주요 실행 CTA 버튼 강조는 유지).
+  - 양 팀 피치 비교 및 이적시장 듀얼 피치의 선수 카드 폭·OVR·이름 폰트 비율을 축소·정렬하고 `OpponentPitchView` 노드 내 중복 3행 스타일 배지를 정리해 시인성 개선.
+
+---
+
 ## v6.0 — 명예의 전당 피치 뷰·감독 시너지 순위 개편 · 역대 최강 10팀 추가(총 24팀) · 트레이드 역제안 뒤로가기 수정 · 파스칼 그로스 & 5대 리그 2026-27 로스터 전수 보강
 
 - **트레이드 `[받은 제안 → 역제안]` 뒤로가기 동선 수정 (`src/components/transfer/TransferMarketModal.tsx`)**:

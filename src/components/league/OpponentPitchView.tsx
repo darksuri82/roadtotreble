@@ -326,10 +326,11 @@ export function OpponentPitchView({
             player && syn
               ? [
                   `${player.name} (기본 ${player.ovr} → 실효 ${displayOvr})`,
+                  ...(primaryStyle ? [primaryStyle] : []),
                   ...syn.reasons,
                 ].join(' · ')
               : player
-                ? `${player.name} (OVR ${player.ovr})`
+                ? `${player.name} (OVR ${player.ovr}${primaryStyle ? ` · ${primaryStyle}` : ''})`
                 : undefined;
 
           return (
@@ -340,28 +341,28 @@ export function OpponentPitchView({
             >
               <div
                 title={synTooltip}
-                className={`flex flex-col items-center rounded-xl px-1.5 py-1 min-w-[64px] max-w-[84px] text-center shadow-md ${
+                className={`flex flex-col items-center rounded-lg px-1 py-0.5 sm:px-1.5 min-w-[48px] sm:min-w-[60px] max-w-[74px] text-center shadow-md ${
                   isSuper
-                    ? 'border border-cyan-400/65 bg-[#0e1b29]/95'
+                    ? 'border border-cyan-400/55 bg-[#0e1926]/95'
                     : isThreat
-                      ? 'border border-amber-400/45 bg-[#151821]/95'
+                      ? 'border border-amber-400/40 bg-[#141821]/95'
                       : 'border border-slate-700/80 bg-[#0d141f]/95'
                 }`}
               >
-                <div className="flex items-center gap-1 leading-none">
+                <div className="flex items-center justify-center gap-0.5 leading-none tabular-nums">
                   <span
-                    className={`font-display text-xs font-black tabular-nums ${
+                    className={`font-display text-[11px] sm:text-xs font-bold ${
                       isSuper
-                        ? 'text-cyan-300'
+                        ? 'text-cyan-200'
                         : isThreat
-                          ? 'text-amber-300'
-                          : 'text-slate-200'
+                          ? 'text-amber-200'
+                          : 'text-slate-100'
                     }`}
                   >
                     {player ? displayOvr : '-'}
                   </span>
                   {totalBonus > 0 && (
-                    <span className="rounded bg-emerald-500/25 px-1 py-0.2 text-[9px] font-black text-emerald-300 tabular-nums">
+                    <span className="rounded bg-emerald-500/18 border border-emerald-500/35 px-0.5 py-px text-[7.5px] sm:text-[8px] font-extrabold text-emerald-300 leading-none">
                       +{totalBonus}
                     </span>
                   )}
@@ -375,17 +376,17 @@ export function OpponentPitchView({
                 </div>
 
                 {player ? (
-                  <div className="mt-0.5 flex items-center gap-0.5">
+                  <div className="mt-0.5 flex items-center justify-center gap-0.5 max-w-full">
                     {onClickPlayerName ? (
                       <PlayerNameButton
                         onClick={() => onClickPlayerName(player.id)}
                         title={synTooltip ?? `${player.name} 세부 스탯`}
-                        className="max-w-[74px] text-[10px] font-bold text-white text-center leading-tight"
+                        className="max-w-[54px] sm:max-w-[66px] text-[8.5px] sm:text-[9.5px] font-semibold text-slate-100 text-center leading-tight"
                       >
                         {shortLastName(player.name)}
                       </PlayerNameButton>
                     ) : (
-                      <span className="max-w-[74px] truncate text-[10px] font-bold text-white leading-tight">
+                      <span className="max-w-[54px] sm:max-w-[66px] truncate text-[8.5px] sm:text-[9.5px] font-semibold text-slate-100 leading-tight">
                         {shortLastName(player.name)}
                       </span>
                     )}
@@ -399,21 +400,21 @@ export function OpponentPitchView({
                           {injured && cond.injury && (
                             <PixelStatusIcon
                               variant="injury"
-                              size={10}
+                              size={9}
                               title={getInjuryTooltip(cond.injury)}
                             />
                           )}
                           {mTier === 'ecstatic' && (
                             <PixelStatusIcon
                               variant="morale_high"
-                              size={10}
+                              size={9}
                               title={`사기 ${getMoraleLabel(cond.morale)}`}
                             />
                           )}
                           {mTier === 'frozen' && (
                             <PixelStatusIcon
                               variant="morale_low"
-                              size={10}
+                              size={9}
                               title={`사기 ${getMoraleLabel(cond.morale)}`}
                             />
                           )}
@@ -422,20 +423,12 @@ export function OpponentPitchView({
                     })()}
                   </div>
                 ) : (
-                  <span className="mt-0.5 text-[9px] text-slate-500">미정</span>
+                  <span className="mt-0.5 text-[8.5px] text-slate-500">미정</span>
                 )}
-
-                <div className="mt-0.5 flex items-center gap-1 leading-tight">
-                  <span className="text-[8px] font-bold text-slate-400">
-                    {slot.label}
-                  </span>
-                  {primaryStyle && (
-                    <span className="max-w-[54px] truncate rounded bg-slate-900/90 px-1 text-[8px] font-semibold text-slate-300">
-                      {primaryStyle}
-                    </span>
-                  )}
-                </div>
               </div>
+              <span className="mt-0.5 rounded bg-slate-950/85 px-1 text-[8px] font-semibold text-slate-400">
+                {slot.label}
+              </span>
             </div>
           );
         })}

@@ -267,10 +267,10 @@ function FastSimModalInner({
                   <button
                     type="button"
                     onClick={() => setSpeed('fast')}
-                    className={`rounded-md px-2.5 py-1 font-bold cursor-pointer ${
+                    className={`rounded-md border px-2.5 py-1 font-bold cursor-pointer transition-colors ${
                       speed === 'fast'
-                        ? 'bg-emerald-500 text-slate-950'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-slate-800 text-white border-emerald-500/50'
+                        : 'border-transparent text-slate-400 hover:text-white'
                     }`}
                   >
                     빠르게
@@ -278,10 +278,10 @@ function FastSimModalInner({
                   <button
                     type="button"
                     onClick={() => setSpeed('ultra')}
-                    className={`rounded-md px-2.5 py-1 font-bold cursor-pointer ${
+                    className={`rounded-md border px-2.5 py-1 font-bold cursor-pointer transition-colors ${
                       speed === 'ultra'
-                        ? 'bg-emerald-500 text-slate-950'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-slate-800 text-white border-emerald-500/50'
+                        : 'border-transparent text-slate-400 hover:text-white'
                     }`}
                   >
                     매우 빠르게

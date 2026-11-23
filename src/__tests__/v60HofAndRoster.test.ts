@@ -47,6 +47,42 @@ describe('v6.0 Stage 1 & Stage 2: HoF Scoring, 24 Historical Teams & 2026-27 Ros
       lowSynergy.squadCraftBonus ?? 0,
     );
     expect(highSynergy.totalScore).toBeGreaterThan(lowSynergy.totalScore);
+
+    // Higher base starter OVR must meaningfully boost squadCraftBonus under the unified formula
+    const highOvr = computeSeasonScore({
+      ...baseInput,
+      teamAvgOvr: 90.6,
+      benchAvgOvr: 84,
+    });
+    const midOvr = computeSeasonScore({
+      ...baseInput,
+      teamAvgOvr: 88.2,
+      benchAvgOvr: 82,
+    });
+    expect(highOvr.squadCraftBonus ?? 0).toBeGreaterThan(
+      (midOvr.squadCraftBonus ?? 0) + 1200,
+    );
+    expect(highOvr.totalScore).toBeGreaterThan(midOvr.totalScore);
+  });
+
+  it('v6.1: ranks peak high-OVR Barcelona treble/double squads ahead of 1971-72 Ajax via shared OVR-weighted formula', () => {
+    const board = buildUnifiedLeaderboard({
+      userEntries: [],
+      filter: 'historical',
+      sortBy: 'score',
+    });
+
+    const rankOf = (id: string) => board.findIndex((e) => e.id === id);
+    const barca15Rank = rankOf('hist-1415-barca');
+    const barca11Rank = rankOf('hist-1011-barca');
+    const barca09Rank = rankOf('hist-0809-barca');
+    const ajax72Rank = rankOf('hist-7172-ajax');
+
+    expect(barca15Rank).toBe(0);
+    expect(barca11Rank).toBeLessThan(ajax72Rank);
+    expect(barca09Rank).toBeLessThan(ajax72Rank);
+    expect(ajax72Rank).toBeGreaterThan(0);
+    expect(ajax72Rank).toBeLessThan(6);
   });
 
   it('includes all 10 newly added iconic historical teams (24 total) with 0 starter position penalty and valid Dream Match clubs', () => {

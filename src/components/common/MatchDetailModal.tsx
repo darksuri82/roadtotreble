@@ -163,10 +163,10 @@ export function MatchDetailModal({
                     key={leg}
                     type="button"
                     onClick={() => setSelectedLeg(leg)}
-                    className={`rounded-md px-2.5 py-1 text-[11px] font-bold cursor-pointer ${
+                    className={`rounded-md border px-2.5 py-1 text-[11px] font-bold cursor-pointer transition-colors ${
                       selectedLeg === leg
-                        ? 'bg-sky-400 text-slate-950'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-slate-800 text-white border-sky-400/50'
+                        : 'border-transparent text-slate-400 hover:text-white'
                     }`}
                   >
                     {leg}차전
@@ -409,14 +409,14 @@ export function MatchDetailModal({
           )}
 
           {/* Sub-tabs: Timeline vs Player Ratings */}
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-[#090e16] p-1 text-xs">
+          <div className="grid grid-cols-2 gap-1 rounded-xl border border-slate-800 bg-[#090e16] p-1 text-xs">
             <button
               type="button"
               onClick={() => setSubTab('overview')}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 font-bold cursor-pointer ${
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg border py-2 font-bold cursor-pointer transition-colors ${
                 subTab === 'overview'
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-800 text-white border-emerald-500/50'
+                  : 'border-transparent text-slate-400 hover:text-white'
               }`}
             >
               <Clock className="h-3.5 w-3.5" />
@@ -425,10 +425,10 @@ export function MatchDetailModal({
             <button
               type="button"
               onClick={() => setSubTab('ratings')}
-              className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 font-bold cursor-pointer ${
+              className={`inline-flex items-center justify-center gap-1.5 rounded-lg border py-2 font-bold cursor-pointer transition-colors ${
                 subTab === 'ratings'
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-800 text-white border-emerald-500/50'
+                  : 'border-transparent text-slate-400 hover:text-white'
               }`}
             >
               <Award className="h-3.5 w-3.5" />

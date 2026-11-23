@@ -829,10 +829,10 @@ export function SeasonSummary() {
             id={id === 'league' ? 'season-analytics-tab-btn' : undefined}
             type="button"
             onClick={() => setMainTab(id)}
-            className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2.5 px-2 text-xs font-bold transition-colors cursor-pointer ${
+            className={`inline-flex items-center justify-center gap-1.5 rounded-lg border py-2.5 px-2 text-xs font-bold transition-colors cursor-pointer ${
               mainTab === id
-                ? 'bg-emerald-500 text-slate-950'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-slate-800 text-white border-emerald-500/50'
+                : 'border-transparent text-slate-400 hover:text-white'
             }`}
           >
             {icon}
@@ -1152,10 +1152,10 @@ export function SeasonSummary() {
                         key={id}
                         type="button"
                         onClick={() => setRankTab(id)}
-                        className={`rounded-md py-1.5 font-bold cursor-pointer ${
+                        className={`rounded-md border py-1.5 font-bold cursor-pointer transition-colors ${
                           rankTab === id
-                            ? 'bg-emerald-500 text-slate-950'
-                            : 'text-slate-400 hover:text-white'
+                            ? 'bg-slate-800 text-white border-emerald-500/50'
+                            : 'border-transparent text-slate-400 hover:text-white'
                         }`}
                       >
                         {label}
@@ -1244,10 +1244,10 @@ export function SeasonSummary() {
                       key={lg.id}
                       type="button"
                       onClick={() => setSummaryLeagueId(lg.id)}
-                      className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                      className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
                         active
-                          ? 'bg-emerald-500 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-slate-800 text-white border-emerald-500/50'
+                          : 'border-transparent text-slate-400 hover:text-white'
                       }`}
                     >
                       <span>{lg.koreanName}</span>
@@ -1255,8 +1255,8 @@ export function SeasonSummary() {
                         <span
                           className={`rounded px-1 text-[8px] font-black ${
                             active
-                              ? 'bg-slate-950 text-emerald-300'
-                              : 'bg-emerald-500/20 text-emerald-300'
+                              ? 'bg-emerald-500/20 text-emerald-300'
+                              : 'bg-slate-800 text-emerald-300/80'
                           }`}
                         >
                           MY
@@ -1765,10 +1765,10 @@ export function SeasonSummary() {
                   key={fid}
                   type="button"
                   onClick={() => setHistoryFilter(fid)}
-                  className={`rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer ${
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold cursor-pointer transition-colors ${
                     historyFilter === fid
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-slate-800 text-white border-emerald-500/50'
+                      : 'border-transparent text-slate-400 hover:text-white'
                   }`}
                 >
                   {flabel}

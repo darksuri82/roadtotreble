@@ -161,7 +161,7 @@ export function SquadManagerModal({
                 autoOptimizeLineup();
               }}
               title="16명 전체 선수 대상으로 실효 OVR과 케미스트리를 극대화하는 베스트 11을 자동 배치합니다"
-              className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1 text-[11px] font-extrabold text-slate-950 hover:bg-emerald-400 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/45 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25 transition-colors cursor-pointer"
             >
               <Wand2 className="w-3 h-3" />
               빠른 선발
@@ -177,10 +177,10 @@ export function SquadManagerModal({
                   setSelectedSlot(null);
                   changeFormation(f.id);
                 }}
-                className={`rounded-lg py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate ${
+                className={`rounded-lg border py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate transition-colors ${
                   state.formation === f.id
-                    ? 'bg-emerald-500 text-slate-950'
-                    : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
+                    ? 'border-sky-400/55 bg-sky-500/18 text-white'
+                    : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
                 }`}
               >
                 {f.id === '4-4-2-diamond'
@@ -202,10 +202,10 @@ export function SquadManagerModal({
                   key={t.id}
                   type="button"
                   onClick={() => setDefaultTactic(t.id)}
-                  className={`rounded-lg py-1.5 text-[11px] font-bold cursor-pointer ${
+                  className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer transition-colors ${
                     state.defaultTactic === t.id
-                      ? 'bg-amber-400 text-slate-950'
-                      : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
+                      ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
+                      : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
                   {t.shortName}

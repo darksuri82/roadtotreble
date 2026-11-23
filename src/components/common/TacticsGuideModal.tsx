@@ -68,38 +68,38 @@ export function TacticsGuideModal({
             <button
               type="button"
               onClick={() => setActiveTab('tactics')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-colors cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
                 activeTab === 'tactics'
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-slate-800 text-white border-emerald-500/50'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
               <Compass className="h-3.5 w-3.5" />
-              ⚔️ 통합 전술 &amp; 시너지
+              통합 전술 &amp; 시너지
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('condition')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-colors cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
                 activeTab === 'condition'
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-slate-800 text-white border-emerald-500/50'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
               <HeartPulse className="h-3.5 w-3.5" />
-              🩺 부상 &amp; 사기 가이드
+              부상 &amp; 사기 가이드
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('attributes')}
-              className={`flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-extrabold transition-colors cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition-colors cursor-pointer ${
                 activeTab === 'attributes'
-                  ? 'bg-emerald-500 text-slate-950'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-slate-800 text-white border-emerald-500/50'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
               }`}
             >
               <Radar className="h-3.5 w-3.5" />
-              📊 세부 능력치 &amp; 득점 루트
+              세부 능력치 &amp; 득점 루트
             </button>
           </div>
         </div>

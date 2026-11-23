@@ -355,14 +355,16 @@ export function SeasonDashboard() {
                   onClick={() => setActiveTab(t.id)}
                   className={`inline-flex items-center justify-center gap-1 rounded-lg px-1 py-1.5 sm:px-2 sm:py-2 text-[10px] sm:text-xs font-bold transition-colors cursor-pointer touch-manipulation ${
                     active
-                      ? 'bg-emerald-500 text-slate-950'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'bg-slate-800 text-white border border-emerald-500/45 shadow-sm'
+                      : 'text-slate-400 border border-transparent hover:text-slate-200'
                   }`}
                 >
-                  <span className="hidden sm:inline-flex">{t.icon}</span>
+                  <span className={`hidden sm:inline-flex ${active ? 'text-emerald-300' : ''}`}>
+                    {t.icon}
+                  </span>
                   <span className="truncate">{t.label}</span>
                   {t.badge && (
-                    <span className="rounded bg-amber-400 px-1 py-px text-[8px] font-black text-slate-950">
+                    <span className="rounded bg-amber-500/20 border border-amber-400/40 px-1 py-px text-[8px] font-extrabold text-amber-200">
                       {t.badge}
                     </span>
                   )}
@@ -580,10 +582,10 @@ export function SeasonDashboard() {
                     key={lg.id}
                     type="button"
                     onClick={() => setStandingsLeagueId(lg.id)}
-                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
                       active
-                        ? 'bg-emerald-500 text-slate-950'
-                        : 'text-slate-400 hover:text-white'
+                        ? 'bg-slate-800 text-white border-emerald-500/50'
+                        : 'border-transparent text-slate-400 hover:text-white hover:bg-slate-900/60'
                     }`}
                   >
                     <span>{lg.koreanName}</span>
@@ -591,8 +593,8 @@ export function SeasonDashboard() {
                       <span
                         className={`rounded px-1 text-[8px] font-black ${
                           active
-                            ? 'bg-slate-950 text-emerald-300'
-                            : 'bg-emerald-500/20 text-emerald-300'
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : 'bg-slate-800 text-emerald-300/80'
                         }`}
                       >
                         MY
@@ -678,10 +680,10 @@ export function SeasonDashboard() {
                       key={id}
                       type="button"
                       onClick={() => setRecordTab(id)}
-                      className={`rounded-md py-1.5 font-bold cursor-pointer ${
+                      className={`rounded-md border py-1.5 font-bold cursor-pointer transition-colors ${
                         recordTab === id
-                          ? 'bg-emerald-500 text-slate-950'
-                          : 'text-slate-400 hover:text-white'
+                          ? 'bg-slate-800 text-white border-emerald-500/50'
+                          : 'border-transparent text-slate-400 hover:text-white'
                       }`}
                     >
                       {label}

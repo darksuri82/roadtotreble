@@ -412,40 +412,44 @@ export function PitchBoard({
               }`}
             >
               <div
-                className={`relative flex flex-col items-center justify-center rounded-xl px-1 py-0.5 sm:px-1.5 sm:py-1 min-w-[54px] sm:min-w-[74px] text-center shadow-md transition-colors ${
+                className={`relative flex flex-col items-center justify-center text-center shadow-md transition-colors ${
+                  compact
+                    ? 'rounded-lg px-1 py-0.5 sm:px-1.5 min-w-[48px] sm:min-w-[60px] max-w-[74px]'
+                    : 'rounded-xl px-1 py-0.5 sm:px-1.5 sm:py-1 min-w-[54px] sm:min-w-[72px]'
+                } ${
                   isHighlightedInjury && player
-                    ? 'bg-rose-950/95 border-2 border-rose-500 ring-2 ring-rose-400/90 shadow-[0_0_18px_rgba(244,63,94,0.65)]'
+                    ? 'bg-rose-950/95 border-2 border-rose-500 ring-2 ring-rose-400/70'
                     : isPreview && player
-                      ? 'bg-emerald-950/95 border-2 border-emerald-300 ring-2 ring-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.55)]'
+                      ? 'bg-emerald-950/95 border border-emerald-400 ring-2 ring-emerald-400/60'
                       : player
                         ? isLegend
-                          ? 'bg-gradient-to-b from-amber-950 via-stone-900 to-amber-950 border-2 border-amber-400 shadow-[0_0_14px_rgba(251,191,36,0.5)]'
+                          ? 'bg-gradient-to-b from-amber-950/95 via-stone-900/95 to-amber-950/95 border border-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.28)]'
                           : isSuperstar
-                            ? 'bg-gradient-to-b from-cyan-950 via-slate-900 to-cyan-950 border-2 border-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.42)]'
+                            ? 'bg-gradient-to-b from-cyan-950/95 via-slate-900/95 to-cyan-950/95 border border-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.22)]'
                             : staminaPct !== null && staminaPct < 40
-                              ? 'bg-[#251018]/95 border-2 border-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.45)]'
+                              ? 'bg-[#251018]/95 border border-rose-500/85'
                               : staminaPct !== null && staminaPct < 55
-                                ? 'bg-[#22170e]/95 border border-orange-400/90'
-                                : 'bg-[#101822]/95 border border-slate-600/75'
+                                ? 'bg-[#22170e]/95 border border-orange-400/75'
+                                : 'bg-[#0e1520]/95 border border-slate-700/80'
                         : isActive
-                          ? 'bg-emerald-500/20 border-2 border-emerald-400'
+                          ? 'bg-emerald-500/15 border border-emerald-400/80'
                           : 'bg-slate-950/70 border border-dashed border-slate-600/60'
-                } ${isSelected ? 'ring-2 ring-emerald-400' : ''} ${
-                  isDragOver ? 'ring-2 ring-sky-400' : ''
+                } ${isSelected ? 'ring-2 ring-emerald-400/80' : ''} ${
+                  isDragOver ? 'ring-2 ring-sky-400/80' : ''
                 }`}
               >
                 {isHighlightedInjury && player ? (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-500 px-1.5 py-0.2 text-[8px] font-black text-white shadow">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-600 px-1.5 py-0.2 text-[8px] font-bold text-white shadow">
                     부상 발생
                   </span>
                 ) : isPreview && player ? (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-400 px-1 py-0.2 text-[8px] font-black text-slate-950 shadow">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-600 px-1.5 py-0.2 text-[8px] font-bold text-white shadow">
                     프리뷰
                   </span>
                 ) : isLegend ? (
-                  <Crown className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 text-amber-300" />
+                  <Crown className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-amber-300" />
                 ) : isSuperstar ? (
-                  <Diamond className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 text-cyan-300" />
+                  <Diamond className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-cyan-300" />
                 ) : null}
 
                 {hasPenalty && fit && (
@@ -483,29 +487,33 @@ export function PitchBoard({
                               {injured && cond?.injury && (
                                 <PixelStatusIcon
                                   variant="injury"
-                                  size={12}
+                                  size={11}
                                   title={getInjuryTooltip(cond.injury)}
                                 />
                               )}
                               {mTier === 'ecstatic' && (
                                 <PixelStatusIcon
                                   variant="morale_high"
-                                  size={12}
+                                  size={11}
                                   title={`사기 ${getMoraleLabel(cond!.morale)} (+2 OVR)`}
                                 />
                               )}
                               {mTier === 'frozen' && (
                                 <PixelStatusIcon
                                   variant="morale_low"
-                                  size={12}
+                                  size={11}
                                   title={`사기 ${getMoraleLabel(cond!.morale)} (-2 OVR)`}
                                 />
                               )}
                             </div>
                           )}
-                          <div className="flex flex-wrap items-center justify-center gap-0.5 leading-none tabular-nums">
+                          <div className="flex items-center justify-center gap-0.5 leading-none tabular-nums">
                             <span
-                              className={`font-display text-sm sm:text-base font-bold ${
+                              className={`font-display font-bold ${
+                                compact
+                                  ? 'text-[11px] sm:text-xs'
+                                  : 'text-xs sm:text-sm'
+                              } ${
                                 starterOvrBr.injuryPenalty < 0
                                   ? 'text-rose-300'
                                   : hasPenalty
@@ -526,7 +534,7 @@ export function PitchBoard({
                             {synBonus > 0 && (
                               <span
                                 title={`시너지 +${synBonus} (${slotSyn?.reasons.join(' · ')})`}
-                                className="rounded bg-emerald-500/25 border border-emerald-400/50 px-1 py-0.5 text-[8px] sm:text-[9px] font-black text-emerald-300 leading-none"
+                                className="rounded bg-emerald-500/18 border border-emerald-500/35 px-0.5 py-px text-[7.5px] sm:text-[8px] font-extrabold text-emerald-300 leading-none"
                               >
                                 +{synBonus}
                               </span>
@@ -534,10 +542,10 @@ export function PitchBoard({
                             {starterOvrBr.moraleBonus !== 0 && (
                               <span
                                 title={`사기 ${cond ? getMoraleLabel(cond.morale) : ''} (${starterOvrBr.moraleBonus > 0 ? `+${starterOvrBr.moraleBonus}` : starterOvrBr.moraleBonus} OVR)`}
-                                className={`rounded px-1 py-0.5 text-[8px] sm:text-[9px] font-black leading-none ${
+                                className={`rounded px-0.5 py-px text-[7.5px] sm:text-[8px] font-extrabold leading-none ${
                                   starterOvrBr.moraleBonus > 0
-                                    ? 'bg-amber-500/25 border border-amber-400/50 text-amber-200'
-                                    : 'bg-sky-500/25 border border-sky-400/50 text-sky-200'
+                                    ? 'bg-amber-500/20 border border-amber-400/40 text-amber-200'
+                                    : 'bg-sky-500/20 border border-sky-400/40 text-sky-200'
                                 }`}
                               >
                                 {starterOvrBr.moraleBonus > 0
@@ -552,7 +560,7 @@ export function PitchBoard({
                                     ? getInjuryTooltip(cond.injury)
                                     : `부상 페널티 ${starterOvrBr.injuryPenalty} OVR`
                                 }
-                                className="rounded bg-rose-500/30 border border-rose-400/60 px-1 py-0.5 text-[8px] sm:text-[9px] font-black text-rose-200 leading-none"
+                                className="rounded bg-rose-500/25 border border-rose-400/45 px-0.5 py-px text-[7.5px] sm:text-[8px] font-extrabold text-rose-200 leading-none"
                               >
                                 {starterOvrBr.isUnavailableInjured
                                   ? '결장'
@@ -565,19 +573,25 @@ export function PitchBoard({
                               size="xs"
                             />
                           </div>
-                          <span className="mt-0.5 max-w-[66px] sm:max-w-[82px] truncate text-[9px] sm:text-[10px] font-bold text-slate-100 leading-tight">
+                          <span
+                            className={`mt-0.5 truncate font-semibold text-slate-100 leading-tight ${
+                              compact
+                                ? 'max-w-[54px] sm:max-w-[66px] text-[8.5px] sm:text-[9.5px]'
+                                : 'max-w-[64px] sm:max-w-[78px] text-[9px] sm:text-[10px]'
+                            }`}
+                          >
                             {player.name}
                           </span>
                           {staminaPct !== null ? (
                             <div className="mt-1 w-full flex items-center gap-1 tabular-nums">
-                              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-950/90">
+                              <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-950/90">
                                 <div
                                   className={`h-full rounded-full transition-all ${getStaminaBarBg(staminaPct)}`}
                                   style={{ width: `${staminaPct}%` }}
                                 />
                               </div>
                               <span
-                                className={`text-[8px] font-black leading-none ${getStaminaNumCls(staminaPct)}`}
+                                className={`text-[7.5px] font-bold leading-none ${getStaminaNumCls(staminaPct)}`}
                               >
                                 {staminaPct}
                               </span>
@@ -589,16 +603,16 @@ export function PitchBoard({
                   </>
                 ) : (
                   <>
-                    <span className="font-display text-xs font-bold text-slate-300">
+                    <span className="font-display text-[11px] font-bold text-slate-300">
                       {slot.label}
                     </span>
-                    <span className="text-[9px] text-slate-400">
+                    <span className="text-[8.5px] text-slate-400">
                       {isActive ? '선택 중' : '빈 슬롯'}
                     </span>
                   </>
                 )}
               </div>
-              <span className="mt-0.5 rounded bg-slate-950/85 px-1.5 text-[9px] font-bold text-slate-300">
+              <span className="mt-0.5 rounded bg-slate-950/85 px-1 text-[8px] font-semibold text-slate-400">
                 {slot.label}
               </span>
             </div>

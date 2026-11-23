@@ -324,10 +324,10 @@ export function UclDashboard() {
               key={id}
               type="button"
               onClick={() => setTab(id)}
-              className={`rounded-lg px-2 py-2 text-[11px] sm:text-xs font-extrabold transition-colors cursor-pointer touch-manipulation truncate ${
+              className={`rounded-lg px-2 py-2 text-[11px] sm:text-xs font-bold transition-colors cursor-pointer touch-manipulation truncate ${
                 tab === id
-                  ? 'bg-sky-400 text-slate-950'
-                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+                  ? 'bg-slate-800 text-white border border-sky-400/50 shadow-sm'
+                  : 'text-slate-400 border border-transparent hover:bg-slate-800/60 hover:text-slate-200'
               }`}
             >
               {label}
@@ -1259,10 +1259,10 @@ export function UclDashboard() {
                     type="button"
                     title={f.name}
                     onClick={() => changeFormation(f.id)}
-                    className={`rounded-lg py-1.5 px-1 text-[11px] font-bold cursor-pointer truncate ${
+                    className={`rounded-lg border py-1.5 px-1 text-[11px] font-bold cursor-pointer truncate transition-colors ${
                       state.formation === f.id
-                        ? 'bg-sky-400 text-slate-950'
-                        : 'border border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600'
+                        ? 'border-sky-400/55 bg-sky-500/18 text-white'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                     }`}
                   >
                     {f.id === '4-4-2-diamond'
@@ -1284,10 +1284,10 @@ export function UclDashboard() {
                       key={t.id}
                       type="button"
                       onClick={() => setDefaultTactic(t.id as TacticId)}
-                      className={`rounded-lg py-1.5 text-[11px] font-bold cursor-pointer ${
+                      className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer transition-colors ${
                         season.defaultTactic === t.id
-                          ? 'bg-emerald-500 text-slate-950'
-                          : 'border border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-600'
+                          ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
+                          : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                       }`}
                     >
                       {t.shortName}

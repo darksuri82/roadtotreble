@@ -196,21 +196,25 @@ export function LeagueSelect() {
           <div className="rounded-xl border border-slate-800 bg-[#101822] p-3 space-y-2.5">
             <div>
               <div className="mb-1 text-[11px] font-bold text-slate-400">
-                포메이션 즉시 전환 (6종)
+                포메이션 즉시 전환
               </div>
-              <div className="grid grid-cols-6 gap-1">
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
                 {FORMATION_LIST.map((f) => (
                   <button
                     key={f.id}
                     type="button"
                     onClick={() => changeFormation(f.id)}
-                    className={`rounded-lg py-1 text-[11px] font-bold cursor-pointer ${
+                    className={`rounded-lg border py-1 text-[11px] font-bold cursor-pointer truncate transition-colors ${
                       state.formation === f.id
-                        ? 'bg-emerald-500 text-slate-950'
-                        : 'bg-slate-900 text-slate-300 border border-slate-700'
+                        ? 'border-sky-400/55 bg-sky-500/18 text-white'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
                     }`}
                   >
-                    {f.id}
+                    {f.id === '4-4-2-diamond'
+                      ? '4-4-2◇'
+                      : f.id === '3-5-2-dm'
+                        ? '3-5-2 DM'
+                        : f.id}
                   </button>
                 ))}
               </div>
@@ -226,10 +230,10 @@ export function LeagueSelect() {
                     key={t.id}
                     type="button"
                     onClick={() => setDefaultTactic(t.id)}
-                    className={`rounded-lg py-1 text-[11px] font-bold cursor-pointer ${
+                    className={`rounded-lg border py-1 text-[11px] font-bold cursor-pointer transition-colors ${
                       state.defaultTactic === t.id
-                        ? 'bg-amber-400 text-slate-950'
-                        : 'bg-slate-900 text-slate-300 border border-slate-700'
+                        ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
                     }`}
                   >
                     {t.shortName}
