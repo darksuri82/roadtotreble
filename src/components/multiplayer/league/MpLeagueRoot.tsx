@@ -7,6 +7,8 @@ import {
 import {
   enqueueLeagueAction,
   fetchLeagueBundle,
+  fetchLeaguePicks,
+  fetchLeagueRev,
   subscribeToLeague,
   updateLeagueActivity,
   updateLeaguePayload,
@@ -23,6 +25,7 @@ import type {
 } from '../../../types/mpLeague';
 import type { MpRoomSnapshot, MpTacticSubmission } from '../../../types/multiplayer';
 import { MpLeagueDashboard } from './MpLeagueDashboard';
+import { MpLeagueDuelResultPopup } from './MpLeagueDuelResultPopup';
 import { MpLeagueFinalBoard } from './MpLeagueFinalBoard';
 import { MpLeagueH2HView } from './MpLeagueH2HView';
 import { MpLeaguePodiumPopup } from './MpLeaguePodiumPopup';
@@ -59,7 +62,6 @@ export function MpLeagueRoot({
 
   const [live, setLive] = useState<MpLeagueLive | null>(null);
   const [picks, setPicks] = useState<MpLeaguePickRow[]>([]);
-  const [changeCounter, setChangeCounter] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [activity, setActivity] = useState<MpLeagueActivity>(
     () => myRow?.activity ?? {},
@@ -71,21 +73,57 @@ export function MpLeagueRoot({
   const [podiumSeenKey, setPodiumSeenKey] = useState<string | null>(null);
   const [podiumOpen, setPodiumOpen] = useState(false);
   const activityRef = useRef<MpLeagueActivity>(activity);
+  const changeRef = useRef(0);
+  const revRef = useRef<number | null>(null);
+  const stageRef = useRef<MpLeagueLive['stage'] | null>(null);
 
-  // Realtime: public league state + snake draft picks
+  // Realtime: public league state + snake draft picks.
+  // Every signal first asks only for the revision number; the big state is downloaded on a real change.
   useEffect(() => {
     let disposed = false;
+    let running = false;
+    let queued = false;
     const refresh = async () => {
-      const res = await fetchLeagueBundle(room.id, draftGeneration);
-      if (disposed) return;
-      if (res.data) {
-        setLive(res.data.live);
-        setPicks(res.data.picks);
-        setErrorMsg(null);
-      } else if (res.error) {
-        setErrorMsg(res.error);
+      if (running) {
+        queued = true;
+        return;
       }
-      setChangeCounter((c) => c + 1);
+      running = true;
+      try {
+        changeRef.current += 1;
+        const stage = stageRef.current;
+        const inDraft = stage === null || stage === 'setup' || stage === 'draft';
+        const rev = await fetchLeagueRev(room.id);
+        if (disposed) return;
+        if (rev === null || rev !== revRef.current || inDraft) {
+          if (rev !== null && rev === revRef.current && inDraft) {
+            // Only the picks can have changed
+            const nextPicks = await fetchLeaguePicks(room.id, draftGeneration);
+            if (!disposed && nextPicks) {
+              setPicks((prev) => (prev.length === nextPicks.length ? prev : nextPicks));
+            }
+          } else {
+            const res = await fetchLeagueBundle(room.id, draftGeneration);
+            if (disposed) return;
+            if (res.data) {
+              revRef.current = res.data.live?.rev ?? null;
+              stageRef.current = res.data.live?.stage ?? null;
+              setLive(res.data.live);
+              const nextPicks = res.data.picks;
+              setPicks((prev) => (prev.length === nextPicks.length ? prev : nextPicks));
+              setErrorMsg(null);
+            } else if (res.error) {
+              setErrorMsg(res.error);
+            }
+          }
+        }
+      } finally {
+        running = false;
+        if (queued && !disposed) {
+          queued = false;
+          void refresh();
+        }
+      }
     };
     const unsubscribe = subscribeToLeague({
       roomId: room.id,
@@ -106,7 +144,7 @@ export function MpLeagueRoot({
     onlinePlayerIds,
     live,
     picks,
-    changeCounter,
+    changeRef,
   });
 
   const writeActivity = useCallback(
@@ -277,7 +315,10 @@ export function MpLeagueRoot({
           live={live}
           picks={picks}
           onlinePlayerIds={onlinePlayerIds}
+          ackKeys={activity.ackKeys ?? []}
           onSavePayload={savePayload}
+          onSetRoll={(roll) => writeActivity({ ...activityRef.current, roll })}
+          onAck={ack}
           onLeaveRoom={onLeaveRoom}
         />
       </>
@@ -286,6 +327,7 @@ export function MpLeagueRoot({
 
   if (live.stage === 'final' && live.final) {
     const showPodium = podiumOpen && live.final.rows.length >= 3;
+    const showDuel = podiumOpen && live.final.rows.length === 2;
     return (
       <>
         <MpLeagueFinalBoard
@@ -294,7 +336,7 @@ export function MpLeagueRoot({
           myClubId={myClubId}
           leagueLabel={LEAGUE_LABEL[live.leagueId]}
           onOpenPodium={
-            live.final.rows.length >= 3 ? () => setPodiumOpen(true) : undefined
+            live.final.rows.length >= 2 ? () => setPodiumOpen(true) : undefined
           }
           onLeaveRoom={onLeaveRoom}
         />
@@ -302,6 +344,14 @@ export function MpLeagueRoot({
           <MpLeaguePodiumPopup
             rows={live.final.rows}
             humans={live.humans}
+            onClose={() => setPodiumOpen(false)}
+          />
+        )}
+        {showDuel && (
+          <MpLeagueDuelResultPopup
+            rows={live.final.rows}
+            humans={live.humans}
+            myClubId={myClubId}
             onClose={() => setPodiumOpen(false)}
           />
         )}

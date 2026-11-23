@@ -1,5 +1,6 @@
 import {
   Check,
+  ClipboardList,
   Crown,
   FastForward,
   Loader2,
@@ -12,10 +13,10 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemistryEngine';
 import { getMoraleLabel } from '../../../engine/conditionEngine';
-import type { Club, LeagueId, StandingRow } from '../../../types/league';
+import type { Club, LeagueId, PlayerSeasonStats, StandingRow } from '../../../types/league';
 import type {
   MpHumanLive,
   MpLeagueHuman,
@@ -28,18 +29,22 @@ import {
   MP_LEAGUE_LOCK_LABELS,
 } from '../../../types/mpLeague';
 import type { MpRoomPlayerRow } from '../../../types/multiplayer';
-import type { UclTournamentState } from '../../../types/ucl';
 import { InjuryAlertModal } from '../../common/InjuryAlertModal';
-import { JerseySvg } from '../../common/JerseySvg';
 import { ManagerEventModal } from '../../common/ManagerEventModal';
 import type { SlotRef } from '../../common/PitchBoard';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
 import { CupBracketView } from '../../league/CupBracketView';
 import { StandingsTable } from '../../league/StandingsTable';
 import { UclBracketTree } from '../../ucl/UclBracketTree';
+import { UclLeaguePhaseStandingsModal } from '../../ucl/UclLeaguePhaseStandingsModal';
+import { UclMilestoneModal } from '../../ucl/UclMilestoneModal';
+import { MpLeagueSeasonSummary } from './MpLeagueSeasonSummary';
 import { MpLeagueSquadEditor } from './MpLeagueSquadEditor';
 import { MpLeagueTransferModal } from './MpLeagueTransferModal';
+import { isMpTickerPlayed, MpLiveTicker } from './MpLiveTicker';
 import { MpUclMulticastBoard } from './MpUclMulticastBoard';
+import { buildUclViewForViewer, reachedUclMilestone } from './mpUclView';
+import type { MpUclMilestone } from './mpUclView';
 
 const LEAGUE_LABEL: Record<LeagueId, string> = {
   epl: 'EPL',
@@ -49,7 +54,10 @@ const LEAGUE_LABEL: Record<LeagueId, string> = {
   ligue1: '리그1',
 };
 
-type DashTab = 'league' | 'cup' | 'ucl';
+type DashTab = 'results' | 'cup' | 'ucl';
+
+/** Popups each tab has already shown (survives remounts when a friend match takes over the screen). */
+const seenPopups = new Set<string>();
 
 interface MpLeagueDashboardProps {
   roomCode: string;
@@ -82,6 +90,14 @@ interface MpLeagueDashboardProps {
   onLeaveRoom: () => void;
 }
 
+interface FrozenView {
+  standings: StandingRow[];
+  byClub: Record<string, MpHumanLive>;
+  lastRound: MpLeagueLive['lastRound'];
+  cupNews: MpLiteMatch[];
+  topScorers: PlayerSeasonStats[];
+}
+
 function resultTone(m: MpLiteMatch, clubId: string): string {
   const isHome = m.homeTeamId === clubId;
   const gf = isHome ? m.homeGoals : m.awayGoals;
@@ -93,7 +109,7 @@ function resultTone(m: MpLiteMatch, clubId: string): string {
   return 'bg-slate-700/40 text-slate-300 border-slate-600/50';
 }
 
-function ScoreLine({
+const ScoreLine = memo(function ScoreLine({
   m,
   clubsById,
   humanIds,
@@ -135,7 +151,78 @@ function ScoreLine({
       </span>
     </div>
   );
-}
+});
+
+/** Narrow side table: rank, club, played, goal difference, points. */
+const SideStandings = memo(function SideStandings({
+  standings,
+  humans,
+  myClubId,
+}: {
+  standings: StandingRow[];
+  humans: MpLeagueHuman[];
+  myClubId: string | null;
+}) {
+  const humanByClub = new Map(humans.map((h) => [h.clubId, h]));
+  return (
+    <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] overflow-hidden">
+      <div className="grid grid-cols-[20px_1fr_22px_28px_26px] items-center gap-1 border-b border-slate-800 px-2 py-1 text-[9px] font-bold text-slate-500">
+        <span>#</span>
+        <span>구단</span>
+        <span className="text-center">경기</span>
+        <span className="text-center">득실</span>
+        <span className="text-center">승점</span>
+      </div>
+      {standings.map((r, idx) => {
+        const human = humanByClub.get(r.teamId);
+        const isMine = r.teamId === myClubId;
+        return (
+          <div
+            key={r.teamId}
+            className={`grid grid-cols-[20px_1fr_22px_28px_26px] items-center gap-1 px-2 py-[3px] text-[10px] tabular-nums ${
+              isMine ? 'bg-emerald-500/12' : human ? 'bg-sky-500/8' : ''
+            }`}
+          >
+            <span
+              className={`font-mono font-bold ${
+                idx < 4
+                  ? 'text-sky-300'
+                  : idx >= standings.length - 3
+                    ? 'text-rose-300/80'
+                    : 'text-slate-500'
+              }`}
+            >
+              {idx + 1}
+            </span>
+            <span className="flex items-center gap-1 min-w-0">
+              {human ? (
+                <PixelManagerAvatar
+                  avatar={human.avatar}
+                  clubPrimaryColor={human.profile.primaryColor}
+                  clubSecondaryColor={human.profile.secondaryColor}
+                  size={14}
+                />
+              ) : (
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: r.primaryColor }}
+                />
+              )}
+              <span className={`truncate font-bold ${human ? 'text-white' : 'text-slate-300'}`}>
+                {r.teamName}
+              </span>
+            </span>
+            <span className="text-center text-slate-500">{r.played}</span>
+            <span className="text-center text-slate-400">
+              {r.goalDifference > 0 ? `+${r.goalDifference}` : r.goalDifference}
+            </span>
+            <span className="text-center font-black text-white">{r.points}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+});
 
 export function MpLeagueDashboard({
   roomCode,
@@ -168,16 +255,15 @@ export function MpLeagueDashboard({
   onLeaveRoom,
 }: MpLeagueDashboardProps) {
   const [tabChoice, setTabChoice] = useState<DashTab | null>(null);
-  const tab: DashTab = tabChoice ?? (live.stage === 'ucl' && live.ucl ? 'ucl' : 'league');
+  const [tickerDoneKey, setTickerDoneKey] = useState<string | null>(null);
+  const [frozen, setFrozen] = useState<FrozenView | null>(null);
+  const [popupTick, setPopupTick] = useState(0);
+  const [summaryReviewOpen, setSummaryReviewOpen] = useState(false);
+  const tab: DashTab = tabChoice ?? (live.stage === 'ucl' && live.ucl ? 'ucl' : 'results');
 
   const myHuman = live.humans.find((h) => h.playerId === playerId) ?? null;
   const myClubId = myHuman?.clubId ?? null;
-  const mine: MpHumanLive | null = myClubId ? live.byClub[myClubId] ?? null : null;
   const humanIds = useMemo(() => new Set(live.humans.map((h) => h.clubId)), [live.humans]);
-  const humanByClub = useMemo(
-    () => new Map(live.humans.map((h) => [h.clubId, h])),
-    [live.humans],
-  );
   const clubsById = useMemo<Record<string, Club>>(() => {
     const map: Record<string, Club> = {};
     for (const c of live.ucl?.clubs ?? []) map[c.id] = c;
@@ -186,6 +272,43 @@ export function MpLeagueDashboard({
   }, [live.clubs, live.ucl]);
   const rowByPlayer = (human: MpLeagueHuman) =>
     players.find((p) => p.player_id === human.playerId) ?? null;
+
+  // While the live scoreboard is replaying a round, keep the previous table on screen (no spoilers)
+  const tickerKey = live.ticker?.key ?? null;
+  const tickerPlaying = Boolean(
+    live.ticker && tickerDoneKey !== tickerKey && !isMpTickerPlayed(tickerKey),
+  );
+  const hideRecent = tickerPlaying && !frozen;
+  const view: FrozenView = tickerPlaying
+    ? frozen ?? {
+        standings: live.ticker?.prevStandings ?? live.standings,
+        byClub: live.byClub,
+        lastRound: null,
+        cupNews: [],
+        topScorers: [],
+      }
+    : {
+        standings: live.standings,
+        byClub: live.byClub,
+        lastRound: live.lastRound,
+        cupNews: live.cupNews,
+        topScorers: live.topScorers,
+      };
+  const handleTickerDone = useCallback(
+    (key: string) => {
+      setTickerDoneKey(key);
+      setFrozen({
+        standings: live.standings,
+        byClub: live.byClub,
+        lastRound: live.lastRound,
+        cupNews: live.cupNews,
+        topScorers: live.topScorers,
+      });
+    },
+    [live.standings, live.byClub, live.lastRound, live.cupNews, live.topScorers],
+  );
+
+  const mine: MpHumanLive | null = myClubId ? live.byClub[myClubId] ?? null : null;
 
   const chemistry = useMemo(
     () =>
@@ -213,11 +336,26 @@ export function MpLeagueDashboard({
     [mySquad, chemistry],
   );
 
-  // Who is holding the room paused right now
+  const publicSquads = useMemo(() => {
+    const map: Record<string, MpSquadInput> = {};
+    for (const h of live.humans) {
+      const p = players.find((r) => r.player_id === h.playerId)?.league_payload;
+      if (p && p.starters?.length === 11) {
+        map[h.clubId] = {
+          managerTraitId: p.managerTraitId,
+          formation: p.formation,
+          tactic: p.tactic,
+          starters: p.starters,
+          bench: p.bench,
+        };
+      }
+    }
+    return map;
+  }, [live.humans, players]);
+
   const lockNotes = players
     .filter((p) => p.activity?.lock)
     .map((p) => ({
-      playerId: p.player_id,
       text: `${p.nickname}님 ${MP_LEAGUE_LOCK_LABELS[p.activity?.lock?.reason ?? 'tactics']}`,
       offline: !onlinePlayerIds.includes(p.player_id),
     }));
@@ -263,29 +401,41 @@ export function MpLeagueDashboard({
     mine?.event && mine.event.templateId !== hiddenEventId ? mine.event : null;
   const transferDone = flow.kind === 'transfer' && ackKeys.includes(flow.key);
   const showTransfer =
-    flow.kind === 'transfer' && mine !== null && mine.offers.length > 0 && mySquad !== null;
+    flow.kind === 'transfer' &&
+    mine !== null &&
+    mine.offers.length > 0 &&
+    mySquad !== null &&
+    !tickerPlaying;
 
-  const standings: StandingRow[] = live.standings;
-  const uclPseudo: UclTournamentState | null = live.ucl
-    ? {
-        stage: live.ucl.stage,
-        teams: [],
-        clubs: live.ucl.clubs,
-        aiRosters: {},
-        leaguePhaseFixtures: [],
-        leaguePhaseRound: live.ucl.leaguePhaseRound,
-        standings: live.ucl.standings,
-        userLeaguePhaseRank: null,
-        enteredViaPlayoff: false,
-        knockoutLeg: live.ucl.knockoutLeg,
-        ties: live.ucl.ties,
-        userEliminatedAt: null,
-        championTeamId: live.ucl.championTeamId,
-        lastUserMatch: null,
-        completed: live.ucl.stage === 'completed',
-        userParticipated: false,
-      }
+  // Single-player UCL popups, re-pointed at MY club
+  const uclView = useMemo(
+    () => (live.ucl ? buildUclViewForViewer(live.ucl, myClubId) : null),
+    [live.ucl, myClubId],
+  );
+  const milestone: MpUclMilestone | null = live.ucl
+    ? reachedUclMilestone(live.ucl, myClubId)
     : null;
+  const milestoneKey = milestone ? `${live.seasonKey}:ms:${milestone}` : null;
+  const lpKey =
+    live.ucl && live.ucl.leaguePhaseRound >= 8 ? `${live.seasonKey}:lp-table` : null;
+  const popupsAllowed = !live.cast && !tickerPlaying && flow.kind !== 'cast';
+  // popupTick only forces a re-read of the module-level "seen" set after a popup closes
+  const showLpTable = Boolean(
+    popupTick >= 0 && popupsAllowed && lpKey && !seenPopups.has(lpKey) && uclView,
+  );
+  const showMilestone = Boolean(
+    popupsAllowed && !showLpTable && milestoneKey && !seenPopups.has(milestoneKey) && uclView,
+  );
+  const closePopup = (key: string | null) => {
+    if (key) seenPopups.add(key);
+    setPopupTick((n) => n + 1);
+  };
+  const isTreble = Boolean(
+    myClubId &&
+      live.ucl?.championTeamId === myClubId &&
+      live.cup?.championTeamId === myClubId &&
+      live.standings[0]?.teamId === myClubId,
+  );
 
   const stageBadge =
     live.stage === 'ucl' && live.ucl
@@ -308,10 +458,13 @@ export function MpLeagueDashboard({
     onSaveSquad({ ...mySquad, starters: nextS, bench: nextB });
   };
 
+  const summaryActive = flow.kind === 'summary' && live.summary !== null;
+  const showSummary = (summaryActive || summaryReviewOpen) && live.summary !== null;
+
   return (
-    <div className="mx-auto max-w-6xl px-2.5 py-3 sm:px-4 sm:py-5 space-y-3">
+    <div className="mx-auto max-w-6xl px-2.5 py-3 sm:px-4 sm:py-5 space-y-2.5">
       {/* Top bar */}
-      <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] px-3.5 py-2 flex flex-wrap items-center justify-between gap-2">
+      <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] px-3 py-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-md border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-extrabold text-sky-300">
             <Users className="w-3.5 h-3.5" />
@@ -348,10 +501,20 @@ export function MpLeagueDashboard({
                       : 'text-slate-500 hover:text-slate-300'
                   }`}
                 >
-                  {(ms / 1000).toFixed(1)}s
+                  {ms / 1000}s
                 </button>
               ))}
             </div>
+          )}
+          {live.summary && !summaryActive && (
+            <button
+              type="button"
+              onClick={() => setSummaryReviewOpen(true)}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#111822] px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:text-white cursor-pointer"
+            >
+              <ClipboardList className="w-3 h-3" />
+              시즌 정산
+            </button>
           )}
           <button
             id="mpl-open-squad-btn"
@@ -381,7 +544,7 @@ export function MpLeagueDashboard({
       )}
 
       {pauseText && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/35 bg-amber-500/10 px-3.5 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/35 bg-amber-500/10 px-3.5 py-1.5">
           <div className="flex items-center gap-1.5 text-xs font-bold text-amber-200">
             <Pause className="w-3.5 h-3.5" />
             {pauseText}
@@ -398,9 +561,8 @@ export function MpLeagueDashboard({
         </div>
       )}
 
-      {/* UCL knockout: every friend must agree before the stage starts */}
       {flow.kind === 'consent' && (
-        <div className="rounded-xl border border-sky-400/40 bg-sky-500/10 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="rounded-xl border border-sky-400/40 bg-sky-500/10 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-extrabold text-sky-200">{flow.label} 시작</span>
             {live.humans.map((h) => {
@@ -414,11 +576,7 @@ export function MpLeagueDashboard({
                       : 'border-slate-700 bg-[#0b1018] text-slate-400'
                   }`}
                 >
-                  {ok ? (
-                    <Check className="w-3 h-3" />
-                  ) : (
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                  )}
+                  {ok ? <Check className="w-3 h-3" /> : <Loader2 className="w-3 h-3 animate-spin" />}
                   {h.nickname}
                 </span>
               );
@@ -442,91 +600,107 @@ export function MpLeagueDashboard({
         </div>
       )}
 
-      {/* Friends strip */}
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {live.humans.map((h) => {
-          const hl = live.byClub[h.clubId];
-          const rankIdx = standings.findIndex((r) => r.teamId === h.clubId);
-          const row = rankIdx === -1 ? null : standings[rankIdx];
-          const online = onlinePlayerIds.includes(h.playerId);
-          const isMe = h.playerId === playerId;
-          const nextOpp = hl?.nextOpponentId ? clubsById[hl.nextOpponentId] : null;
-          const nextIsFriend = Boolean(hl?.nextOpponentId && humanIds.has(hl.nextOpponentId));
-          return (
-            <div
-              key={h.clubId}
-              className={`rounded-xl border p-2.5 space-y-1.5 ${
-                isMe ? 'border-emerald-500/40 bg-[#0e1722]' : 'border-slate-800/90 bg-[#0d131c]'
-              }`}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="relative shrink-0">
-                  <PixelManagerAvatar
-                    avatar={h.avatar}
-                    clubPrimaryColor={h.profile.primaryColor}
-                    clubSecondaryColor={h.profile.secondaryColor}
-                    size={34}
-                  />
-                  <span
-                    className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ${
-                      online ? 'bg-emerald-400' : 'bg-slate-600'
-                    }`}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1 truncate text-xs font-extrabold text-white">
-                    <span className="truncate">{h.nickname}</span>
-                    {isMe && <span className="text-[10px] text-emerald-300">나</span>}
-                  </div>
-                  <div className="truncate text-[10px] text-slate-400">{h.profile.name}</div>
-                </div>
-                <div className="ml-auto text-right shrink-0">
-                  <div className="font-mono text-sm font-black text-white tabular-nums">
-                    {rankIdx === -1 ? '-' : `${rankIdx + 1}위`}
-                  </div>
-                  <div className="text-[10px] font-bold text-slate-400 tabular-nums">
-                    {row?.points ?? 0}점
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold">
-                <span className="inline-flex items-center gap-0.5 rounded border border-amber-400/30 bg-amber-500/10 px-1 py-0.5 text-amber-200 tabular-nums">
-                  <Swords className="w-2.5 h-2.5" />
-                  {hl?.h2h.won ?? 0}승 {hl?.h2h.drawn ?? 0}무 {hl?.h2h.lost ?? 0}패
-                </span>
-                <span className="rounded border border-slate-700 bg-[#0b1018] px-1 py-0.5 text-slate-300">
-                  {getMoraleLabel(hl?.morale ?? 0)}
-                </span>
-                {(hl?.recent ?? []).slice(-4).map((m, idx) => (
-                  <span
-                    key={`${m.label}-${idx}`}
-                    title={m.label}
-                    className={`rounded border px-1 py-0.5 tabular-nums ${resultTone(m, h.clubId)}`}
-                  >
-                    {m.homeGoals}:{m.awayGoals}
-                  </span>
-                ))}
-              </div>
-              {nextOpp && live.stage === 'league' && (
+      {/* Live scoreboard: the friends' matches of the round that was just simulated */}
+      {live.ticker && live.ticker.matches.length > 0 && (
+        <MpLiveTicker
+          ticker={live.ticker}
+          clubsById={clubsById}
+          humans={live.humans}
+          myClubId={myClubId}
+          durationMs={Math.max(3000, Math.min(6000, live.autoMs - 900))}
+          onDone={handleTickerDone}
+        />
+      )}
+
+      <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-12 items-start">
+        <div className="lg:col-span-8 space-y-2.5">
+          {/* Friends strip */}
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {live.humans.map((h) => {
+              const hl = view.byClub[h.clubId];
+              const rankIdx = view.standings.findIndex((r) => r.teamId === h.clubId);
+              const row = rankIdx === -1 ? null : view.standings[rankIdx];
+              const online = onlinePlayerIds.includes(h.playerId);
+              const isMe = h.playerId === playerId;
+              const nextOpp = hl?.nextOpponentId ? clubsById[hl.nextOpponentId] : null;
+              const nextIsFriend = Boolean(
+                hl?.nextOpponentId && humanIds.has(hl.nextOpponentId),
+              );
+              return (
                 <div
-                  className={`truncate text-[10px] font-bold ${
-                    nextIsFriend ? 'text-amber-300' : 'text-slate-500'
+                  key={h.clubId}
+                  className={`rounded-xl border p-2 space-y-1 ${
+                    isMe
+                      ? 'border-emerald-500/40 bg-[#0e1722]'
+                      : 'border-slate-800/90 bg-[#0d131c]'
                   }`}
                 >
-                  다음 {nextOpp.name}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="relative shrink-0">
+                      <PixelManagerAvatar
+                        avatar={h.avatar}
+                        clubPrimaryColor={h.profile.primaryColor}
+                        clubSecondaryColor={h.profile.secondaryColor}
+                        size={28}
+                      />
+                      <span
+                        className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ${
+                          online ? 'bg-emerald-400' : 'bg-slate-600'
+                        }`}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1 truncate text-[11px] font-extrabold text-white">
+                        <span className="truncate">{h.nickname}</span>
+                        {isMe && <span className="text-[10px] text-emerald-300">나</span>}
+                      </div>
+                      <div className="truncate text-[10px] text-slate-400">{h.profile.name}</div>
+                    </div>
+                    <div className="ml-auto text-right shrink-0">
+                      <div className="font-mono text-xs font-black text-white tabular-nums">
+                        {rankIdx === -1 ? '-' : `${rankIdx + 1}위`}
+                      </div>
+                      <div className="text-[10px] font-bold text-slate-400 tabular-nums">
+                        {row?.points ?? 0}점
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold">
+                    <span className="inline-flex items-center gap-0.5 rounded border border-amber-400/30 bg-amber-500/10 px-1 py-0.5 text-amber-200 tabular-nums">
+                      <Swords className="w-2.5 h-2.5" />
+                      {hl?.h2h.won ?? 0}승 {hl?.h2h.drawn ?? 0}무 {hl?.h2h.lost ?? 0}패
+                    </span>
+                    <span className="rounded border border-slate-700 bg-[#0b1018] px-1 py-0.5 text-slate-300">
+                      {getMoraleLabel(hl?.morale ?? 0)}
+                    </span>
+                    {(hideRecent ? [] : hl?.recent ?? []).slice(-3).map((m, idx) => (
+                      <span
+                        key={`${m.label}-${idx}`}
+                        title={m.label}
+                        className={`rounded border px-1 py-0.5 tabular-nums ${resultTone(m, h.clubId)}`}
+                      >
+                        {m.homeGoals}:{m.awayGoals}
+                      </span>
+                    ))}
+                  </div>
+                  {nextOpp && live.stage === 'league' && (
+                    <div
+                      className={`truncate text-[10px] font-bold ${
+                        nextIsFriend ? 'text-amber-300' : 'text-slate-500'
+                      }`}
+                    >
+                      다음 {nextOpp.name}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
-        <div className="lg:col-span-8 space-y-2">
           <div className="flex items-center gap-1.5">
             {(
               [
-                { id: 'league', label: '리그 순위' },
+                { id: 'results', label: '라운드 결과' },
                 { id: 'cup', label: live.cup?.meta.koreanName ?? '컵' },
                 ...(live.ucl ? [{ id: 'ucl', label: '챔피언스리그' }] : []),
               ] as { id: DashTab; label: string }[]
@@ -546,80 +720,72 @@ export function MpLeagueDashboard({
             ))}
           </div>
 
-          {tab === 'league' && (
-            <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] overflow-hidden">
-              <div className="grid grid-cols-[28px_1fr_26px_26px_26px_26px_34px_34px] items-center gap-1 border-b border-slate-800 px-2.5 py-1.5 text-[10px] font-bold text-slate-500">
-                <span>#</span>
-                <span>구단</span>
-                <span className="text-center">경기</span>
-                <span className="text-center">승</span>
-                <span className="text-center">무</span>
-                <span className="text-center">패</span>
-                <span className="text-center">득실</span>
-                <span className="text-center">승점</span>
-              </div>
-              {standings.map((r, idx) => {
-                const human = humanByClub.get(r.teamId);
-                const isMine = r.teamId === myClubId;
-                return (
-                  <div
-                    key={r.teamId}
-                    className={`grid grid-cols-[28px_1fr_26px_26px_26px_26px_34px_34px] items-center gap-1 px-2.5 py-1 text-[11px] tabular-nums border-b border-slate-800/50 last:border-b-0 ${
-                      isMine
-                        ? 'bg-emerald-500/10'
-                        : human
-                          ? 'bg-sky-500/8'
-                          : ''
-                    }`}
-                  >
-                    <span
-                      className={`font-mono font-bold ${
-                        idx < 4 ? 'text-sky-300' : idx >= standings.length - 3 ? 'text-rose-300/80' : 'text-slate-500'
-                      }`}
-                    >
-                      {idx + 1}
-                    </span>
-                    <span className="flex items-center gap-1.5 min-w-0">
-                      {human ? (
-                        <PixelManagerAvatar
-                          avatar={human.avatar}
-                          clubPrimaryColor={human.profile.primaryColor}
-                          clubSecondaryColor={human.profile.secondaryColor}
-                          size={18}
-                        />
-                      ) : (
-                        <JerseySvg
-                          primaryColor={r.primaryColor}
-                          secondaryColor={r.secondaryColor}
-                          pattern={clubsById[r.teamId]?.pattern}
-                          label=""
-                          size={16}
-                        />
-                      )}
-                      <span
-                        className={`truncate font-bold ${
-                          human ? 'text-white' : 'text-slate-300'
-                        }`}
-                      >
-                        {r.teamName}
-                      </span>
-                      {human && (
-                        <span className="hidden shrink-0 truncate text-[10px] text-slate-400 sm:inline">
-                          {human.nickname}
-                        </span>
-                      )}
-                    </span>
-                    <span className="text-center text-slate-400">{r.played}</span>
-                    <span className="text-center text-slate-300">{r.won}</span>
-                    <span className="text-center text-slate-300">{r.drawn}</span>
-                    <span className="text-center text-slate-300">{r.lost}</span>
-                    <span className="text-center text-slate-300">
-                      {r.goalDifference > 0 ? `+${r.goalDifference}` : r.goalDifference}
-                    </span>
-                    <span className="text-center font-black text-white">{r.points}</span>
+          {tab === 'results' && (
+            <div className="space-y-2.5">
+              {live.stage === 'ucl' && live.ucl && live.ucl.lastScores.length > 0 && (
+                <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
+                  <div className="text-[11px] font-bold text-slate-400">
+                    {live.ucl.lastScores[0].label}
                   </div>
-                );
-              })}
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    {live.ucl.lastScores.map((m, idx) => (
+                      <ScoreLine key={idx} m={m} clubsById={clubsById} humanIds={humanIds} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {view.cupNews.length > 0 && (
+                <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
+                  <div className="flex items-center gap-1 text-[11px] font-bold text-amber-200">
+                    <Trophy className="w-3 h-3" />
+                    {view.cupNews[0].label}
+                  </div>
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    {view.cupNews.map((m, idx) => (
+                      <ScoreLine key={idx} m={m} clubsById={clubsById} humanIds={humanIds} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {view.lastRound && (
+                <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
+                  <div className="text-[11px] font-bold text-slate-400">
+                    {view.lastRound.round}R 결과
+                  </div>
+                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                    {view.lastRound.scores.map((m, idx) => (
+                      <ScoreLine key={idx} m={m} clubsById={clubsById} humanIds={humanIds} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {view.topScorers.length > 0 && (
+                <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1">
+                  <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400">
+                    <Crown className="w-3 h-3 text-amber-400" />
+                    득점 순위
+                  </div>
+                  <div className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+                    {view.topScorers.slice(0, 6).map((s, idx) => (
+                      <div
+                        key={s.playerId}
+                        className="flex items-center justify-between gap-2 text-[11px]"
+                      >
+                        <span className="truncate text-slate-300">
+                          <span className="mr-1 font-mono text-slate-500">{idx + 1}</span>
+                          {s.playerName}
+                          <span className="ml-1 text-[10px] text-slate-500">
+                            {s.teamShortName}
+                          </span>
+                        </span>
+                        <span className="font-mono font-bold text-white tabular-nums">
+                          {s.goals}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -629,7 +795,7 @@ export function MpLeagueDashboard({
             </div>
           )}
 
-          {tab === 'ucl' && live.ucl && uclPseudo && (
+          {tab === 'ucl' && live.ucl && uclView && (
             <div className="space-y-2">
               {live.ucl.stage === 'league_phase' ? (
                 <StandingsTable
@@ -640,71 +806,19 @@ export function MpLeagueDashboard({
                 />
               ) : (
                 <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2 overflow-x-auto">
-                  <UclBracketTree ucl={uclPseudo} clubsById={clubsById} />
+                  <UclBracketTree ucl={uclView.ucl} clubsById={uclView.clubsById} />
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="lg:col-span-4 space-y-3">
-          {live.stage === 'ucl' && live.ucl && live.ucl.lastScores.length > 0 && (
-            <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
-              <div className="text-[11px] font-bold text-slate-400">
-                {live.ucl.lastScores[0].label}
-              </div>
-              {live.ucl.lastScores.map((m, idx) => (
-                <ScoreLine key={idx} m={m} clubsById={clubsById} humanIds={humanIds} />
-              ))}
-            </div>
-          )}
-
-          {live.cupNews.length > 0 && (
-            <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
-              <div className="flex items-center gap-1 text-[11px] font-bold text-amber-200">
-                <Trophy className="w-3 h-3" />
-                {live.cupNews[0].label}
-              </div>
-              {live.cupNews.map((m, idx) => (
-                <ScoreLine key={idx} m={m} clubsById={clubsById} humanIds={humanIds} />
-              ))}
-            </div>
-          )}
-
-          {live.lastRound && (
-            <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
-              <div className="text-[11px] font-bold text-slate-400">
-                {live.lastRound.round}R 결과
-              </div>
-              <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-1">
-                {live.lastRound.scores.map((m, idx) => (
-                  <ScoreLine key={idx} m={m} clubsById={clubsById} humanIds={humanIds} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {live.topScorers.length > 0 && (
-            <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1">
-              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-400">
-                <Crown className="w-3 h-3 text-amber-400" />
-                득점 순위
-              </div>
-              {live.topScorers.slice(0, 5).map((s, idx) => (
-                <div
-                  key={s.playerId}
-                  className="flex items-center justify-between gap-2 text-[11px]"
-                >
-                  <span className="truncate text-slate-300">
-                    <span className="mr-1 font-mono text-slate-500">{idx + 1}</span>
-                    {s.playerName}
-                    <span className="ml-1 text-[10px] text-slate-500">{s.teamShortName}</span>
-                  </span>
-                  <span className="font-mono font-bold text-white tabular-nums">{s.goals}</span>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="lg:col-span-4">
+          <SideStandings
+            standings={view.standings}
+            humans={live.humans}
+            myClubId={myClubId}
+          />
         </div>
       </div>
 
@@ -718,7 +832,27 @@ export function MpLeagueDashboard({
         />
       )}
 
-      {mine && (visibleEvent || showResolution) && myHuman && (
+      {showSummary && live.summary && (
+        <MpLeagueSeasonSummary
+          leagueLabel={LEAGUE_LABEL[live.leagueId]}
+          leagueId={live.leagueId}
+          summary={live.summary}
+          standings={live.standings}
+          humans={live.humans}
+          clubsById={clubsById}
+          squads={publicSquads}
+          myClubId={myClubId}
+          acked={summaryActive && flow.kind === 'summary' && ackKeys.includes(flow.key)}
+          waitingNames={flow.kind === 'summary' ? pendingAckNames(flow.key) : []}
+          canContinue={summaryActive}
+          onContinue={() => {
+            if (flow.kind === 'summary') onAck(flow.key);
+          }}
+          onClose={summaryActive ? undefined : () => setSummaryReviewOpen(false)}
+        />
+      )}
+
+      {mine && (visibleEvent || showResolution) && myHuman && !tickerPlaying && (
         <ManagerEventModal
           activeEvent={visibleEvent}
           lastResolution={showResolution ? mine.resolution : null}
@@ -732,20 +866,26 @@ export function MpLeagueDashboard({
         />
       )}
 
-      {mine && mine.alerts.length > 0 && mySquad && chemistry && ratings && !mine.event && (
-        <InjuryAlertModal
-          alerts={mine.alerts}
-          formation={mySquad.formation}
-          starters={mySquad.starters}
-          bench={mySquad.bench}
-          chemistry={chemistry}
-          ratings={ratings}
-          managerTraitId={mySquad.managerTraitId}
-          conditionMap={mine.conditions}
-          onSwapSlots={handleInjurySwap}
-          onConfirmClose={onInjuryAck}
-        />
-      )}
+      {mine &&
+        mine.alerts.length > 0 &&
+        mySquad &&
+        chemistry &&
+        ratings &&
+        !mine.event &&
+        !tickerPlaying && (
+          <InjuryAlertModal
+            alerts={mine.alerts}
+            formation={mySquad.formation}
+            starters={mySquad.starters}
+            bench={mySquad.bench}
+            chemistry={chemistry}
+            ratings={ratings}
+            managerTraitId={mySquad.managerTraitId}
+            conditionMap={mine.conditions}
+            onSwapSlots={handleInjurySwap}
+            onConfirmClose={onInjuryAck}
+          />
+        )}
 
       {showTransfer && mine && mySquad && flow.kind === 'transfer' && (
         <MpLeagueTransferModal
@@ -755,6 +895,9 @@ export function MpLeagueDashboard({
           tradeNote={mine.tradeNote}
           myStarters={mySquad.starters}
           myBench={mySquad.bench}
+          myFormation={mySquad.formation}
+          myTactic={mySquad.tactic}
+          managerTraitId={mySquad.managerTraitId}
           busy={actionBusy}
           done={transferDone}
           waitingNames={transferWaiting}
@@ -771,6 +914,30 @@ export function MpLeagueDashboard({
           clubsById={clubsById}
           humans={live.humans}
           myClubId={myClubId}
+        />
+      )}
+
+      {showLpTable && uclView && (
+        <UclLeaguePhaseStandingsModal
+          ucl={uclView.ucl}
+          clubsById={uclView.clubsById}
+          teamEntryById={uclView.teamEntryById}
+          onClose={() => closePopup(lpKey)}
+        />
+      )}
+
+      {showMilestone && uclView && milestone && myHuman && (
+        <UclMilestoneModal
+          milestone={milestone}
+          ucl={uclView.ucl}
+          leagueId={live.leagueId}
+          userClub={myHuman.profile}
+          managerName={myHuman.nickname}
+          managerAvatar={myHuman.avatar}
+          clubsById={uclView.clubsById}
+          uclPlayerStats={{}}
+          isTreble={isTreble}
+          onClose={() => closePopup(milestoneKey)}
         />
       )}
     </div>

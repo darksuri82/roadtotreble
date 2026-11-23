@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v8.0)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.1)
 
 > Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
@@ -18,6 +18,13 @@
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), v8.0 작업 기준점은 `v7.2` `b3bd618`(브랜치 `claude/v7.2-handoff`가 이 커밋에서 분기)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.1 멀티 리그 몰입도 개편**:
+  - **드래프트**: 라운드당 룰렛 1개를 전원이 공유(첫 순번이 돌림, `mp_room_players.activity.roll`), 순서만 스네이크로 뒤집힘. `MpLeagueDraftBoard.tsx`가 드래프트 화면, `MpLeagueSnakeDraft.tsx`는 감독 선택 화면만 담당. 전원 동의 자동 드래프트 키는 `draft-auto:{generation}`(activity.ackKeys).
+  - **라이브 스코어보드**: 엔진이 라운드마다 `MpLeagueLive.ticker`(친구 경기의 골 분·중계 feed·스탯·직전 순위표)를 발행하고 `MpLiveTicker.tsx`가 재생. 재생 완료 전에는 대시보드가 이전 순위·결과를 유지.
+  - **진행 흐름 추가**: `summary`(리그 정산, 전원 `[계속]` 필요). 진행 단계에 `league_summary` 추가.
+  - **맞대결 스킵**: 양 당사자의 `h2h-skip:{matchId}` 확인 키가 모두 있으면 방장이 남은 구간을 즉시 계산.
+  - **챔스 팝업 재사용**: `mpUclView.ts`가 한 감독의 구단을 싱글용 고정 id로 바꿔 끼운 뷰를 만들어 싱글 팝업을 그대로 사용(싱글 컴포넌트 수정 없음).
+  - **동기화 비용**: 클라이언트는 `live->rev`만 먼저 조회 후 변경 시에만 전체 상태를 받음. 자동진행 간격 4~7초.
 - **v8.0 멀티 리그 & 챔피언스리그 (친구 2~4명 공유 시즌)**:
   - **구조 — 방장 권위형**: 방장 브라우저가 시즌 전체(`MpLeagueHostState`)를 계산해 공개 스냅샷(`MpLeagueLive`)만 `mp_league_state.live`에 발행하고, 나머지는 받아서 그립니다. 방장 전용 전체 상태는 방장 브라우저 IndexedDB(`rtt_mp_league_host_v1`)에 라운드마다 저장되어 새로고침 시 이어집니다(다른 기기에서는 이어받기 불가, 방장 자동 승계 없음).
   - **분리 원칙**: 싱글 플레이(`GameContext.tsx`, 유저 구단 1개 전제)와 1대1(`MultiplayerArena.tsx`)은 건드리지 않았습니다. 멀티 리그는 `src/engine/mpLeagueEngine.ts`(시즌 진행 상태 머신 `runMpLeague`), `mpLeagueDraft.ts`(스네이크 순번·자동픽), `mpLeagueH2H.ts`(친구 맞대결 단계 시뮬), `mpLeagueScore.ts`(결산 2종 점수), `src/services/mpLeagueService.ts`(Supabase 동기화), `src/components/multiplayer/league/*`(화면)로 분리되어 있습니다.

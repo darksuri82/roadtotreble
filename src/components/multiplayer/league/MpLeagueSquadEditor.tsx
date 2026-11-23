@@ -177,6 +177,7 @@ export function MpLeagueSquadEditor({
           </div>
         </div>
 
+        <div className="mx-auto w-full max-w-[520px]">
         <PitchBoard
           formation={formation}
           starters={starters}
@@ -191,8 +192,9 @@ export function MpLeagueSquadEditor({
             setInspected({ player, slotSubPosition })
           }
           showBench
-          showChemBreakdown
+          compact
         />
+        </div>
       </div>
 
       {inspected && (

@@ -83,6 +83,41 @@ export async function fetchLeagueBundle(
   }
 }
 
+/** Cheap change probe: only the revision number of the public state (no big JSON download). */
+export async function fetchLeagueRev(roomId: string): Promise<number | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client
+      .from('mp_league_state')
+      .select('rev:live->rev')
+      .eq('room_id', roomId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const row = data as { rev?: unknown; live?: { rev?: unknown } };
+    const rev = Number(row.rev ?? row.live?.rev);
+    return Number.isFinite(rev) ? rev : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchLeaguePicks(
+  roomId: string,
+  draftGeneration: number,
+): Promise<MpLeaguePickRow[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  const { data, error } = await client
+    .from('mp_league_picks')
+    .select('*')
+    .eq('room_id', roomId)
+    .eq('draft_generation', draftGeneration)
+    .order('pick_no', { ascending: true });
+  if (error || !data) return null;
+  return data as MpLeaguePickRow[];
+}
+
 export async function publishLeagueLive(
   roomId: string,
   live: MpLeagueLive,

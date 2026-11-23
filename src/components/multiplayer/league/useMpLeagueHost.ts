@@ -3,14 +3,20 @@ import {
   buildAutoPick,
   collectTakenIds,
   createPreSeasonLive,
+  draftRoundOf,
+  findNextOpenDraftSlot,
   rebuildSquadFromPicks,
+  rollCandidates,
+  roundSpinnerId,
   shuffleDraftOrder,
   snakePickerId,
+  spinSharedRoll,
   totalSnakePicks,
 } from '../../../engine/mpLeagueDraft';
 import {
   acknowledgeMpLeagueInjuries,
   buildMpLeagueLive,
+  closeMpLeagueSummary,
   closeMpLeagueTransferWindow,
   completeMpLeagueH2H,
   createMpLeagueSeason,
@@ -41,6 +47,7 @@ import {
   loadHostLeagueState,
   publishLeagueLive,
   saveHostLeagueState,
+  updateLeagueActivity,
   updateLeaguePayload,
   updateRoomLeagueSettings,
 } from '../../../services/mpLeagueService';
@@ -75,7 +82,8 @@ interface HostInputs {
   onlinePlayerIds: string[];
   live: MpLeagueLive | null;
   picks: MpLeaguePickRow[];
-  changeCounter: number;
+  /** Bumped (without re-rendering) whenever a league table changed */
+  changeRef: { current: number };
 }
 
 export interface MpLeagueHostApi {
@@ -235,17 +243,51 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
           return;
         }
         const waited = Date.now() - turnSeenRef.current.at;
-        if (waited < draft.turnSec * 1000 + DRAFT_HOST_GRACE_MS) return;
+        const autoKey = `draft-auto:${draft.generation}`;
+        const allAuto = p.players.every((r) => r.activity?.ackKeys?.includes(autoKey));
+        const grace = allAuto ? 6000 : draft.turnSec * 1000 + DRAFT_HOST_GRACE_MS;
+        if (waited < grace) return;
         const pickerId = snakePickerId(pickNo, draft.order);
         if (!pickerId) return;
+        const takenIds = collectTakenIds(p.picks);
+        const round = draftRoundOf(pickNo, draft.order.length);
+        const spinnerId = roundSpinnerId(round, draft.order);
+        const spinnerRow = p.players.find((r) => r.player_id === spinnerId);
+        let roll = spinnerRow?.activity?.roll ?? null;
+        if (!roll || roll.generation !== draft.generation || roll.round !== round) {
+          // The round's first picker never spun: the host spins the shared roulette for them
+          if (!spinnerRow || !spinnerId) return;
+          const sBoard = rebuildSquadFromPicks(p.picks, spinnerId);
+          const sFormation = spinnerRow.league_payload?.formation ?? '4-3-3';
+          const slot = findNextOpenDraftSlot(sFormation, sBoard.starters, sBoard.bench);
+          roll = {
+            generation: draft.generation,
+            round,
+            subPosition: slot?.subPosition ?? 'CM',
+            label: slot?.label ?? '',
+            reels: spinSharedRoll({
+              formation: sFormation,
+              starters: sBoard.starters,
+              bench: sBoard.bench,
+              takenIds,
+              allowedLeagueIds: pool,
+              playerCount: draft.order.length,
+            }),
+          };
+          await updateLeagueActivity(p.room.id, spinnerId, {
+            ...spinnerRow.activity,
+            roll,
+          });
+        }
         const row = p.players.find((r) => r.player_id === pickerId);
         const board = rebuildSquadFromPicks(p.picks, pickerId);
         const pick = buildAutoPick({
           formation: row?.league_payload?.formation ?? '4-3-3',
           starters: board.starters,
           bench: board.bench,
-          takenIds: collectTakenIds(p.picks),
+          takenIds,
           allowedLeagueIds: pool,
+          shownCandidates: rollCandidates(roll.reels, takenIds),
         });
         if (!pick) return;
         await insertLeaguePick({
@@ -412,6 +454,38 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         return;
       }
 
+      // Both managers agreed to skip: resolve every remaining phase right now with the current line-ups
+      const skipKey = `h2h-skip:${match.matchId}`;
+      const bothSkip = [spec.homeClubId, spec.awayClubId].every((clubId) => {
+        const human = st.humans.find((h) => h.clubId === clubId);
+        const row = p.players.find((r) => r.player_id === human?.playerId);
+        return Boolean(row?.activity?.ackKeys?.includes(skipKey));
+      });
+      if (bothSkip) {
+        const home = fallbackSide(st, squads, spec.homeClubId, match);
+        const away = fallbackSide(st, squads, spec.awayClubId, match);
+        if (!home || !away) return;
+        const base = { spec, home, away, conditions: st.conditions };
+        let m = match;
+        if (m.phase === 'first_half') m = secondHalfMpH2H({ ...base, match: m });
+        if (m.phase === 'second_half' && mpH2HNeedsExtraTime(spec, m)) {
+          m = extraTimeFirstHalfMpH2H({ ...base, match: m });
+        }
+        if (m.phase === 'extra_time') m = extraTimeSecondHalfMpH2H({ ...base, match: m });
+        if (!m.finalResult) return;
+        let next = completeMpLeagueH2H(
+          { ...st, h2hLive: { ...live, match: m } },
+          m.finalResult,
+        );
+        if (next.flow.kind === 'auto') next = runMpLeague(next, { squads });
+        nextAutoAtRef.current = Date.now() + st.settings.autoMs;
+        if (next.flow.kind === 'cast') {
+          castUntilRef.current = Date.now() + getMpCastDurationMs(next);
+        }
+        await commit(next, squads, p.room.id);
+        return;
+      }
+
       const timedOut = waited > BARRIER_TIMEOUT_MS;
       const sides = (barrierKey: string) => {
         const home = sideFromBarrier(
@@ -477,8 +551,8 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       squads: Record<string, MpSquadInput>,
       p: HostInputs,
     ): Promise<boolean> => {
-      if (lastActionCounterRef.current === p.changeCounter) return false;
-      lastActionCounterRef.current = p.changeCounter;
+      if (lastActionCounterRef.current === p.changeRef.current) return false;
+      lastActionCounterRef.current = p.changeRef.current;
       const rows = await fetchPendingLeagueActions(p.room.id);
       let current = st;
       let nextSquads = squads;
@@ -646,6 +720,16 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         if (!allDone) return;
         nextAutoAtRef.current = Date.now() + st.settings.autoMs;
         await commit(closeMpLeagueTransferWindow(st), squads, p.room.id);
+        return;
+      }
+
+      if (flow.kind === 'summary') {
+        const all = st.humans.every((h) =>
+          ackedOrGone(h.clubId, flow.key, TRANSFER_OFFLINE_MS),
+        );
+        if (!all) return;
+        nextAutoAtRef.current = Date.now() + 1200;
+        await commit(closeMpLeagueSummary(st), squads, p.room.id);
         return;
       }
 

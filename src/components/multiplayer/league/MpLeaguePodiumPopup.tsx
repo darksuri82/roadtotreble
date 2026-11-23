@@ -22,6 +22,127 @@ const PODIUM_KEYFRAMES = `
 }
 `;
 
+type PodiumRank = 1 | 2 | 3 | 4;
+
+interface PodiumLineCtx {
+  /** Nickname of the friend ranked directly above */
+  up: string;
+  /** Nickname of the friend ranked directly below */
+  down: string;
+}
+
+type PodiumLine = (ctx: PodiumLineCtx) => string;
+
+const PODIUM_LINES: Record<3 | 4, Partial<Record<PodiumRank, PodiumLine[]>>> = {
+  3: {
+    1: [
+      () => '트로피는 내 겁니다!',
+      () => '이게 바로 클래스죠',
+      ({ down }) => `${down}, 잘 보고 배워요`,
+      () => '1위 자리 공기 좋네요',
+      () => '다들 수고, 우승은 나',
+    ],
+    2: [
+      () => '한 끗 차이였는데...',
+      ({ up }) => `${up}, 다음엔 내 차례`,
+      () => '아깝다, 딱 한 걸음',
+      () => '은메달도 메달이죠..',
+      ({ up }) => `${up} 운이 좋았네요`,
+    ],
+    3: [
+      () => '으아앙 꼴찌라니!',
+      () => '내 시즌 돌려줘요..',
+      () => '한 판만 더 해요 제발',
+      ({ up }) => `${up}한테도 지다니..`,
+      () => '흑흑 단상 끝자리..',
+    ],
+  },
+  4: {
+    1: [
+      () => '넷 중에 내가 최고!',
+      () => '왕좌는 역시 내 자리',
+      ({ down }) => `${down}, 아쉽겠네요~`,
+      () => '우승컵 무겁네요 하하',
+      () => '셋 다 한 수 배웠죠?',
+    ],
+    2: [
+      () => '거의 다 잡았는데...',
+      ({ up }) => `${up}, 딱 기다려요`,
+      () => '2위라니, 분하다..',
+      () => '우승이 눈앞이었는데',
+      ({ up }) => `${up}만 없었어도..`,
+    ],
+    3: [
+      () => '휴, 꼴찌는 면했다..',
+      ({ down }) => `${down}보단 낫잖아요`,
+      () => '단상이라 다행인데..',
+      () => '웃어야 할지 울지..',
+      () => '3위도 눈물은 나네요',
+    ],
+    4: [
+      () => '바닥이 참 차갑네요..',
+      () => '단상이 저리 높았나..',
+      ({ up }) => `${up}, 자리 바꿔요..`,
+      () => '다 끝났어, 다 끝..',
+      () => '꼴찌라니, 꿈이죠?',
+    ],
+  },
+};
+
+function shortNick(human: MpLeagueHuman | undefined): string {
+  const nick = (human?.nickname ?? '').trim() || '감독';
+  return nick.length > 6 ? nick.slice(0, 6) : nick;
+}
+
+/** Same seed on every client: char codes of clubId + total score. */
+function lineSeed(row: MpFriendRankRow): number {
+  let sum = 0;
+  for (let i = 0; i < row.clubId.length; i += 1) {
+    sum += row.clubId.charCodeAt(i);
+  }
+  const total = Number.isFinite(row.total) ? Math.abs(Math.round(row.total)) : 0;
+  return sum + total;
+}
+
+function pickPodiumLine(
+  rows: MpFriendRankRow[],
+  humans: MpLeagueHuman[],
+  index: number,
+): string {
+  const count: 3 | 4 = rows.length >= 4 ? 4 : 3;
+  const row = rows[index];
+  const pool = PODIUM_LINES[count][(index + 1) as PodiumRank];
+  if (!row || !pool || pool.length === 0) return '';
+  const upRow = rows[index - 1];
+  const downRow = index + 1 < count ? rows[index + 1] : undefined;
+  return pool[lineSeed(row) % pool.length]({
+    up: shortNick(upRow ? findHuman(humans, upRow) : undefined),
+    down: shortNick(downRow ? findHuman(humans, downRow) : undefined),
+  });
+}
+
+const BUBBLE_TONE: Record<PodiumRank, string> = {
+  1: 'border-amber-400/40 text-amber-100',
+  2: 'border-slate-600 text-slate-200',
+  3: 'border-sky-400/35 text-sky-100',
+  4: 'border-sky-400/35 text-sky-100',
+};
+
+function SpeechBubble({ text, rank }: { text: string; rank: PodiumRank }) {
+  if (!text) return null;
+  return (
+    <div
+      className={`relative mb-2 max-w-full rounded-lg border bg-[#111822] px-1.5 py-1 text-center text-[10px] font-bold leading-tight break-keep ${BUBBLE_TONE[rank]}`}
+    >
+      {text}
+      <span
+        className="absolute left-1/2 top-full -mt-[4px] h-1.5 w-1.5 -translate-x-1/2 rotate-45 border-b border-r border-inherit bg-[#111822]"
+        aria-hidden="true"
+      />
+    </div>
+  );
+}
+
 function findHuman(
   humans: MpLeagueHuman[],
   row: MpFriendRankRow,
@@ -115,15 +236,18 @@ function PodiumColumn({
   place,
   row,
   human,
+  line,
 }: {
   place: 1 | 2 | 3;
   row: MpFriendRankRow;
   human: MpLeagueHuman | undefined;
+  line: string;
 }) {
   const size = place === 1 ? 64 : 56;
   const step = STEP_STYLE[place];
   return (
     <div className="flex w-24 min-w-0 flex-col items-center sm:w-28">
+      <SpeechBubble text={line} rank={place} />
       {place === 1 && (
         <div
           className="mb-1"
@@ -159,15 +283,18 @@ function PodiumColumn({
 function FloorCharacter({
   row,
   human,
+  line,
 }: {
   row: MpFriendRankRow;
   human: MpLeagueHuman | undefined;
+  line: string;
 }) {
   const size = 54;
   const fullH = Math.round((size * 34) / 28);
   const visibleH = Math.round(fullH * 0.8);
   return (
     <div className="flex w-24 min-w-0 flex-col items-center">
+      <SpeechBubble text={line} rank={4} />
       {/* Floor line clips the lower body so the character reads as sitting on the ground */}
       <div
         className="relative w-full overflow-hidden border-b-2 border-slate-700"
@@ -243,12 +370,31 @@ export function MpLeaguePodiumPopup({
 
         <div className="mt-5 flex flex-col items-center gap-5 sm:flex-row sm:items-end sm:justify-center sm:gap-4">
           <div className="flex items-end justify-center">
-            <PodiumColumn place={2} row={second} human={findHuman(humans, second)} />
-            <PodiumColumn place={1} row={first} human={findHuman(humans, first)} />
-            <PodiumColumn place={3} row={third} human={findHuman(humans, third)} />
+            <PodiumColumn
+              place={2}
+              row={second}
+              human={findHuman(humans, second)}
+              line={pickPodiumLine(rows, humans, 1)}
+            />
+            <PodiumColumn
+              place={1}
+              row={first}
+              human={findHuman(humans, first)}
+              line={pickPodiumLine(rows, humans, 0)}
+            />
+            <PodiumColumn
+              place={3}
+              row={third}
+              human={findHuman(humans, third)}
+              line={pickPodiumLine(rows, humans, 2)}
+            />
           </div>
           {fourth && (
-            <FloorCharacter row={fourth} human={findHuman(humans, fourth)} />
+            <FloorCharacter
+              row={fourth}
+              human={findHuman(humans, fourth)}
+              line={pickPodiumLine(rows, humans, 3)}
+            />
           )}
         </div>
       </div>

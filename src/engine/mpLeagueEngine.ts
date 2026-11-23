@@ -13,6 +13,7 @@ import type {
 } from '../types/league';
 import type {
   MpCastMatch,
+  MpFeedItem,
   MpH2HSpec,
   MpHumanLive,
   MpHumanSeasonState,
@@ -389,6 +390,8 @@ export function createMpLeagueSeason(params: {
     uclLastScores: [],
     uclConsentedStage: null,
     cast: null,
+    ticker: null,
+    summary: null,
     awards: null,
     globalAwards: null,
     final: null,
@@ -938,6 +941,16 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
       ),
     },
     cupNews: [],
+    ticker: {
+      key: `league-${state.seasonKey}-r${nextRound}`,
+      title: `리그 ${nextRound}R`,
+      prevStandings: state.standings,
+      matches: buildTickerMatches(
+        humanOutcomes,
+        `리그 ${nextRound}R`,
+        new Set(state.humans.map((h) => h.clubId)),
+      ),
+    },
     todo: followUps,
   };
 }
@@ -1091,6 +1104,19 @@ function stepCupStage(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
     cupPlayerStats: res.cupPlayerStats,
     h2hResults: nextH2HResults,
     cupNews: news,
+    ticker: {
+      key: `${state.ticker?.key ?? `cup-${state.seasonKey}`}-${stage}`,
+      title: state.ticker?.title ?? label,
+      prevStandings: state.ticker?.prevStandings,
+      matches: [
+        ...(state.ticker?.matches ?? []),
+        ...buildTickerMatches(
+          humanOutcomes,
+          label,
+          new Set(state.humans.map((h) => h.clubId)),
+        ),
+      ],
+    },
     todo: state.todo.slice(1),
   };
 }
@@ -1636,12 +1662,26 @@ function stepFinishLeague(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueH
     rng,
   });
 
+  const squadStats: Record<string, PlayerSeasonStats[]> = {};
+  for (const h of state.humans) {
+    const squad = env.squads[h.clubId];
+    squadStats[h.clubId] = squad
+      ? [...squad.starters, ...squad.bench]
+          .map((p) => state.allPlayerStats[p.id])
+          .filter((x): x is PlayerSeasonStats => Boolean(x))
+      : [];
+  }
   const base: MpLeagueHostState = {
     ...state,
     clubs,
     otherLeagues,
     awards,
     uclHumanClubIds,
+    summary: {
+      awards,
+      squadStats,
+      cupChampionId: state.cup?.championTeamId ?? null,
+    },
   };
 
   if (uclHumanClubIds.length === 0) {
@@ -1654,7 +1694,7 @@ function stepFinishLeague(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueH
       ...base,
       ucl: stripUclResults(bg.ucl),
       uclPlayerStats: bg.uclPlayerStats,
-      todo: [{ t: 'finalize' }],
+      todo: [{ t: 'league_summary' }, { t: 'finalize' }],
     };
   }
 
@@ -1665,7 +1705,24 @@ function stepFinishLeague(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueH
     uclPlayerStats: created.uclPlayerStats,
     uclLastScores: [],
     uclConsentedStage: null,
-    todo: [{ t: 'ucl_lp_round' }],
+    todo: [{ t: 'league_summary' }, { t: 'ucl_lp_round' }],
+  };
+}
+
+/** Everyone reviews the league season (awards, best XI, squads) before Europe / the final board. */
+function stepLeagueSummary(state: MpLeagueHostState): MpLeagueHostState {
+  return {
+    ...state,
+    flow: { kind: 'summary', key: `league-summary-${state.seasonKey}` },
+  };
+}
+
+export function closeMpLeagueSummary(state: MpLeagueHostState): MpLeagueHostState {
+  if (state.flow.kind !== 'summary') return state;
+  return {
+    ...state,
+    flow: { kind: 'auto' },
+    todo: state.todo[0]?.t === 'league_summary' ? state.todo.slice(1) : state.todo,
   };
 }
 
@@ -1807,6 +1864,15 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
     uclLastScores: humanOutcomes
       .filter((o, idx, arr) => arr.findIndex((x) => x.result === o.result) === idx)
       .map((o) => toLiteMatch(o.result, 'ucl', label, o.isH2H)),
+    ticker: {
+      key: `ucl-${state.seasonKey}-lp${target}`,
+      title: label,
+      matches: buildTickerMatches(
+        humanOutcomes,
+        label,
+        new Set(state.humans.map((h) => h.clubId)),
+      ),
+    },
     todo: [sim.ucl.leaguePhaseRound >= 8 ? { t: 'ucl_ko_leg' } : { t: 'ucl_lp_round' }],
   };
 }
@@ -1888,7 +1954,30 @@ function toCastMatch(
   humanClubIds: string[],
   agg: { aggHomeBefore?: number; aggAwayBefore?: number },
   winnerId: string | null,
+  options: { instant?: boolean } = {},
 ): MpCastMatch {
+  const feed: MpFeedItem[] = [...result.events, ...(result.extraTime?.etEvents ?? [])]
+    .filter(
+      (e) =>
+        e.type === 'goal' ||
+        e.type === 'save' ||
+        e.type === 'chance' ||
+        e.type === 'var_offside',
+    )
+    .map((e) => ({
+      minute: e.minute,
+      teamId: e.teamId,
+      kind:
+        e.type === 'goal'
+          ? ('goal' as const)
+          : e.type === 'save'
+            ? ('save' as const)
+            : e.type === 'chance'
+              ? ('chance' as const)
+              : ('var' as const),
+      text: e.description,
+    }))
+    .sort((a, b) => a.minute - b.minute);
   const goalEvents = [...result.events, ...(result.extraTime?.etEvents ?? [])]
     .filter((e) => e.type === 'goal')
     .map((e) => ({
@@ -1917,7 +2006,42 @@ function toCastMatch(
       : null,
     winnerId,
     humanClubIds,
+    feed,
+    stats: {
+      homePossession: result.homePossession,
+      homeShots: result.homeShots,
+      awayShots: result.awayShots,
+      homeXg: result.homeXg,
+      awayXg: result.awayXg,
+    },
+    instant: options.instant,
   };
+}
+
+/** Scoreboard cards for every friend-involved match of a just-simulated league / cup / UCL league round. */
+function buildTickerMatches(
+  outcomes: { result: MatchResult; isH2H: boolean }[],
+  label: string,
+  humanIds: Set<string>,
+): MpCastMatch[] {
+  const seen = new Set<MatchResult>();
+  const out: MpCastMatch[] = [];
+  for (const o of outcomes) {
+    if (seen.has(o.result)) continue;
+    seen.add(o.result);
+    out.push(
+      toCastMatch(
+        o.result,
+        `${label}:${o.result.homeTeamId}:${o.result.awayTeamId}`,
+        label,
+        [o.result.homeTeamId, o.result.awayTeamId].filter((id) => humanIds.has(id)),
+        {},
+        o.result.extraTime?.winnerTeamId ?? null,
+        { instant: o.isH2H },
+      ),
+    );
+  }
+  return out;
 }
 
 function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostState {
@@ -2223,6 +2347,7 @@ export function runMpLeague(
     else if (step.t === 'events') current = stepEvents(current, env);
     else if (step.t === 'transfer') current = stepTransfer(current, env);
     else if (step.t === 'finish_league') current = stepFinishLeague(current, env);
+    else if (step.t === 'league_summary') current = stepLeagueSummary(current);
     else if (step.t === 'finalize') {
       current = finalizeMpLeagueSeason(current, env.squads);
       break;
@@ -2351,6 +2476,8 @@ export function buildMpLeagueLive(
     h2h: state.h2hLive,
     ucl: buildUclLive(state),
     cast: state.cast,
+    ticker: state.ticker,
+    summary: state.summary,
     final: state.final,
     transferWindowIndex: state.transferWindowIndex,
     updatedAt: new Date().toISOString(),
