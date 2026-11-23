@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildPostMatchDialoguePool,
+  MP_POST_MATCH_SCENES,
   pickPostMatchDialogue,
 } from '../components/multiplayer/MpPostMatchManagerPopup';
 import { FORMATION_LIST, FORMATIONS } from '../data/formations';
@@ -292,6 +293,13 @@ describe('v7.2 Bugfixes & Multiplayer Customization / Reveal / Post-Match Popups
 
     expect(winPool.length).toBeGreaterThanOrEqual(5);
     expect(lossPool.length).toBeGreaterThanOrEqual(6);
+    expect(MP_POST_MATCH_SCENES).toHaveLength(4);
+    expect(MP_POST_MATCH_SCENES.map((s) => s.loserMotion)).toEqual([
+      'turf_pound',
+      'kneel_wail',
+      'flat_soul_out',
+      'otl_faceplant',
+    ]);
 
     const quote0 = pickPostMatchDialogue(lossPool, 'match-101', 0);
     const quote1 = pickPostMatchDialogue(lossPool, 'match-101', 1);

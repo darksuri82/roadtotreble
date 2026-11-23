@@ -17,8 +17,9 @@
   - 드림 매치·리그·컵·UCL·멀티플레이 전 모드에서 하프타임·후반 실시간·연장전 교체 아웃 확정 선수를 `confirmedSubRecords` 및 `subbedOutIdSet`에 영구 기록해 `교체됨` 잠금과 교체 시점 잔여 체력을 경기 종료까지 유지.
 - **멀티플레이 감독·유니폼·구단명 커스텀 & 프리셋 연동 (`src/components/multiplayer/MpProfileCustomizerModal.tsx`, `src/components/multiplayer/MultiplayerLobby.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/services/multiplayerService.ts`)**:
   - 멀티플레이 로비에서 감독 픽셀 아바타(성별·피부톤·헤어스타일·머리색·의상·안경), 유니폼 디자인(5종 패턴·메인/보조 컬러), 구단명·약칭을 커스텀하거나 기존 프리셋을 불러와 Supabase `mp_room_players`에 실시간 동기화.
-- **킥오프 직전 포메이션 피치 뷰 공개 & 종료 후 승/패 감독 연출 팝업 (`src/components/multiplayer/PreKickoffRevealModal.tsx`, `src/components/multiplayer/MpPostMatchManagerPopup.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/__tests__/v72BugfixAndMpCustom.test.ts`)**:
-  - `PreKickoffRevealModal`을 양 팀 포메이션 피치 뷰(4색 시너지선·티어 카드·포지션 페널티·선수 상세 연동)로 개편하고, 1대1 경기 종료 시 승자 축하 팝업 및 패자 화면 상대 커스텀 감독 도발 팝업(랜덤/전환 대사 바리에이션) 추가.
+- **킥오프 직전 포메이션 피치 뷰 공개 & 종료 후 승장 축하 / 패장 좌절 도트 모션 팝업 (`src/components/multiplayer/PreKickoffRevealModal.tsx`, `src/components/multiplayer/MpPostMatchManagerPopup.tsx`, `src/components/common/PixelManagerAvatar.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/__tests__/v72BugfixAndMpCustom.test.ts`)**:
+  - `PreKickoffRevealModal`을 양 팀 포메이션 피치 뷰(4색 시너지선·티어 카드·포지션 페널티·선수 상세 연동)로 개편.
+  - 1대1 경기 종료 팝업에 승장·패장 양측 커스텀 감독이 나란히 등장하며, 승장의 축하 포즈/표정 4종과 패장의 좌절 도트 모션 4종(엎드려 땅 치며 오열 · 무릎 꿇고 전술판 파손 · 대자로 뻗어 영혼 가출 · 땅에 얼굴 파묻고 좌절 OTL) 및 승리/도발 멘트가 매 경기 랜덤으로 연출되도록 구현.
 
 ---
 
