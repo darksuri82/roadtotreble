@@ -49,6 +49,8 @@ interface PitchBoardProps {
   showBench?: boolean;
   showChemBreakdown?: boolean;
   compact?: boolean;
+  headerLabel?: string;
+  headerRight?: React.ReactNode;
 }
 
 function getStaminaBarBg(pct: number): string {
@@ -91,6 +93,8 @@ export function PitchBoard({
   showBench = true,
   showChemBreakdown = true,
   compact = false,
+  headerLabel,
+  headerRight,
 }: PitchBoardProps) {
   const { state: gameState } = useGame();
   const conditionByPlayerId =
@@ -160,8 +164,34 @@ export function PitchBoard({
       ? config.slots[selectedSlot.index]?.subPosition
       : undefined;
 
+  const formationShort =
+    formation === '4-4-2-diamond'
+      ? '4-4-2◇'
+      : formation === '3-5-2-dm'
+        ? '3-5-2 DM'
+        : formation;
+
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
+      {/* Dedicated Top Info Header (outside pitch so ST card & crown NEVER overlap formation/chemistry badges) */}
+      <div className="flex items-center justify-between gap-2 px-1 text-[11px] min-h-[22px]">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {headerLabel && (
+            <span className="truncate font-bold text-slate-200">
+              {headerLabel}
+            </span>
+          )}
+          <span className="rounded border border-slate-700/80 bg-slate-900/90 px-1.5 py-0.5 font-display text-[10px] font-bold text-slate-100 shrink-0">
+            {formationShort}
+          </span>
+          <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300 tabular-nums shrink-0">
+            케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
+            {chemistry.chemistryOvrBonus.toFixed(1)})
+          </span>
+        </div>
+        {headerRight && <div className="shrink-0">{headerRight}</div>}
+      </div>
+
       {/* Tap-safe Mobile Inspect Bar: appears only when a player is selected so tapping pitch cards NEVER opens detail modal by mistake */}
       {selectedPlayer && onInspectPlayer && (
         <div className="sm:hidden flex items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/30 px-2.5 py-1.5 text-[11px]">
@@ -191,7 +221,7 @@ export function PitchBoard({
       <div
         className={`pitch-surface relative w-full overflow-hidden rounded-2xl border border-slate-800 ${
           compact
-            ? 'aspect-[4/3.85] sm:aspect-[4/4.5]'
+            ? 'aspect-[4/3.9] sm:aspect-[4/4.4]'
             : 'aspect-[4/4.05] sm:aspect-[4/4.3]'
         }`}
       >
@@ -304,21 +334,6 @@ export function PitchBoard({
             });
           })}
         </svg>
-
-        {/* Minimal Top Overlay */}
-        <div className="pointer-events-none absolute left-3 top-2.5 z-10 flex items-center gap-2">
-          <span className="rounded bg-slate-950/85 px-2 py-0.5 font-display text-xs font-bold text-slate-100">
-            {formation === '4-4-2-diamond'
-              ? '4-4-2◇'
-              : formation === '3-5-2-dm'
-                ? '3-5-2 DM'
-                : formation}
-          </span>
-          <span className="rounded bg-slate-950/85 px-2 py-0.5 text-[11px] font-semibold text-emerald-300 tabular-nums">
-            케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
-            {chemistry.chemistryOvrBonus.toFixed(1)})
-          </span>
-        </div>
 
         {/* 11 Starter Nodes */}
         {config.slots.map((slot) => {

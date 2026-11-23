@@ -160,23 +160,51 @@ export function RoadToTrebleHeroSvg({
       <rect x="13" y="58" width="8" height="5" fill="#10b981" />
       <rect x="15" y="59" width="3" height="2" fill="#a7f3d0" />
 
-      {/* Cute Chibi Pixel Manager */}
-      <rect x="24" y="79" width="9" height="2" fill="#8b7355" opacity="0.65" />
-      <rect x="25" y="76" width="3" height="3" fill="#0f172a" />
-      <rect x="29" y="76" width="3" height="3" fill="#0f172a" />
-      <rect x="25" y="72" width="3" height="4" fill="#1e293b" />
-      <rect x="29" y="72" width="3" height="4" fill="#1e293b" />
-      <rect x="24" y="66" width="9" height="6" fill="#0f172a" />
-      <rect x="25" y="66" width="7" height="6" fill="#1e293b" />
-      <rect x="28" y="66" width="1" height="5" fill="#f8fafc" />
-      <rect x="28" y="68" width="1" height="3" fill="#10b981" />
-      <rect x="33" y="68" width="4" height="4" fill="#b45309" />
-      <rect x="34" y="69" width="2" height="2" fill="#fef3c7" />
-      <rect x="24" y="58" width="9" height="8" fill="#0f172a" />
-      <rect x="25" y="59" width="7" height="6" fill="#fcd5b5" />
-      <rect x="24" y="58" width="9" height="3" fill="#334155" />
-      <rect x="26" y="62" width="1" height="1" fill="#0f172a" />
-      <rect x="30" y="62" width="1" height="1" fill="#0f172a" />
+      {/* Cute SD Chibi Pixel Manager */}
+      {/* Ground Shadow */}
+      <rect x="23" y="80" width="11" height="2" fill="#8b7355" opacity="0.55" />
+      {/* Tiny Shoes */}
+      <rect x="25" y="78" width="3" height="2" fill="#0f172a" />
+      <rect x="29" y="78" width="3" height="2" fill="#0f172a" />
+      {/* Trousers */}
+      <rect x="25" y="75" width="3" height="3" fill="#1e293b" />
+      <rect x="29" y="75" width="3" height="3" fill="#1e293b" />
+      {/* Suit Torso & Arms */}
+      <rect x="24" y="69" width="9" height="6" fill="#1e293b" />
+      <rect x="25" y="68" width="7" height="1" fill="#334155" />
+      <rect x="23" y="70" width="1" height="4" fill="#1e293b" />
+      <rect x="23" y="74" width="1" height="1" fill="#fde0c5" />
+      <rect x="33" y="70" width="1" height="3" fill="#1e293b" />
+      <rect x="33" y="73" width="1" height="1" fill="#fde0c5" />
+      {/* Crisp White Collar & Emerald Tie */}
+      <rect x="27" y="69" width="3" height="2" fill="#f8fafc" />
+      <rect x="28" y="70" width="1" height="4" fill="#10b981" />
+      {/* Mini Tactical Clipboard */}
+      <rect x="34" y="69" width="4" height="5" fill="#92400e" />
+      <rect x="35" y="70" width="2" height="3" fill="#fef3c7" />
+      <rect x="35" y="69" width="2" height="1" fill="#cbd5e1" />
+      {/* Rounded Chibi SD Head Outline & Soft Hair */}
+      <rect x="25" y="56" width="7" height="1" fill="#1e293b" />
+      <rect x="24" y="57" width="9" height="2" fill="#273549" />
+      <rect x="26" y="57" width="3" height="1" fill="#475569" />
+      <rect x="28" y="55" width="2" height="1" fill="#273549" />
+      <rect x="23" y="59" width="11" height="7" fill="#273549" />
+      {/* Warm Chibi Face */}
+      <rect x="24" y="60" width="9" height="7" fill="#fde0c5" />
+      <rect x="25" y="67" width="7" height="1" fill="#f5c6a0" />
+      {/* Cute Side Bangs */}
+      <rect x="24" y="59" width="2" height="2" fill="#273549" />
+      <rect x="31" y="59" width="2" height="2" fill="#273549" />
+      <rect x="26" y="59" width="3" height="1" fill="#334155" />
+      {/* Sparkling Eyes (2x2 with 1px white catchlight) */}
+      <rect x="25" y="62" width="2" height="2" fill="#0f172a" />
+      <rect x="25" y="62" width="1" height="1" fill="#ffffff" />
+      <rect x="30" y="62" width="2" height="2" fill="#0f172a" />
+      <rect x="30" y="62" width="1" height="1" fill="#ffffff" />
+      {/* Rosy Blush Cheeks & Gentle Smile */}
+      <rect x="24" y="64" width="1" height="1" fill="#fb7185" opacity="0.65" />
+      <rect x="32" y="64" width="1" height="1" fill="#fb7185" opacity="0.65" />
+      <rect x="28" y="65" width="2" height="1" fill="#c27c63" />
 
       {/* Pixel Soccer Ball */}
       <rect x="42" y="74" width="6" height="6" fill="#0f172a" />
@@ -211,7 +239,7 @@ export function RoadToTrebleHeroSvg({
         variantKey="fa_cup"
       />
 
-      {/* 7. Summit Milestone 4: Hero Authentic 24x28 UCL Big Ears Trophy (1.28x) */}
+      {/* 7. Summit Milestone 4: Hero Authentic 24x28 UCL Big Ears Trophy (1.25x) */}
       {/* Golden-Sky Summit Aura */}
       <rect x="179" y="10" width="42" height="40" fill="#f59e0b" opacity="0.08" />
       <rect x="184" y="14" width="32" height="32" fill="#38bdf8" opacity="0.09" />
@@ -231,6 +259,37 @@ export function RoadToTrebleHeroSvg({
         scale={1.25}
         variantKey="ucl"
       />
+
+      {/* Summit Companion Pixel Easter Egg (no text) */}
+      <g>
+        {/* Soft grass shadow */}
+        <rect x="223" y="48" width="11" height="2" fill="#0d3627" opacity="0.6" />
+        {/* Dainty legs & dark hooves */}
+        <rect x="224" y="45" width="2" height="3" fill="#e2e8f0" />
+        <rect x="224" y="48" width="2" height="1" fill="#334155" />
+        <rect x="231" y="45" width="2" height="3" fill="#e2e8f0" />
+        <rect x="231" y="48" width="2" height="1" fill="#334155" />
+        {/* Fluffy white goat body */}
+        <rect x="223" y="40" width="11" height="5" fill="#f8fafc" />
+        <rect x="224" y="39" width="9" height="1" fill="#ffffff" />
+        <rect x="224" y="44" width="9" height="1" fill="#cbd5e1" />
+        {/* Cute upturned tail */}
+        <rect x="234" y="39" width="2" height="2" fill="#f8fafc" />
+        <rect x="235" y="38" width="1" height="1" fill="#ffffff" />
+        {/* Curved little horns */}
+        <rect x="223" y="33" width="1" height="2" fill="#d6b27c" />
+        <rect x="224" y="32" width="1" height="1" fill="#b88c52" />
+        <rect x="225" y="34" width="1" height="1" fill="#d6b27c" />
+        {/* Head & floppy ear */}
+        <rect x="220" y="35" width="6" height="5" fill="#ffffff" />
+        <rect x="219" y="37" width="2" height="2" fill="#f8fafc" />
+        <rect x="225" y="36" width="2" height="2" fill="#e2e8f0" />
+        {/* Bright dark eye, cute pink nose & tiny beard */}
+        <rect x="221" y="36" width="1" height="1" fill="#0f172a" />
+        <rect x="219" y="38" width="1" height="1" fill="#fda4af" />
+        <rect x="220" y="40" width="2" height="1" fill="#e2e8f0" />
+        <rect x="221" y="41" width="1" height="1" fill="#cbd5e1" />
+      </g>
 
       {/* Golden Crown Sparkles Around Big Ears */}
       <rect x="183" y="16" width="2" height="2" fill="#fef08a" />

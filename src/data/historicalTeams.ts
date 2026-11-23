@@ -1,6 +1,7 @@
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
 import { computeSeasonScore } from '../engine/legacyEngine';
 import { USER_CLUB_ID } from '../engine/matchEngine';
+import { evaluateTeamTacticalProfile } from '../engine/unifiedTacticsEngine';
 import type { CupStageId, DomesticCupState } from '../types/cup';
 import type {
   FormationId,
@@ -235,6 +236,17 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
         ) / 10
       : undefined;
 
+  const tacticalFit =
+    starters.length > 0
+      ? evaluateTeamTacticalProfile({
+          starters,
+          formation: spec.formation,
+          tactic: spec.defaultTactic,
+          managerTraitId: spec.managerTraitId,
+          managerOvr: spec.managerRating,
+        }).tacticalFit
+      : undefined;
+
   // Evaluate with the EXACT same function used for user seasons
   const seasonScore = computeSeasonScore({
     leaguePoints: spec.leaguePoints,
@@ -254,6 +266,7 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
     avgSynergyOvrBonus,
     managerSynergyCount,
     managerRating: spec.managerRating,
+    tacticalFit,
     awards: syntheticAwards,
     globalAwards: syntheticGlobalAwards,
     userClubId: USER_CLUB_ID,

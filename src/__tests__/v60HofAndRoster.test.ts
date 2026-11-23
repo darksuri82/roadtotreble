@@ -48,41 +48,44 @@ describe('v6.0 Stage 1 & Stage 2: HoF Scoring, 24 Historical Teams & 2026-27 Ros
     );
     expect(highSynergy.totalScore).toBeGreaterThan(lowSynergy.totalScore);
 
-    // Higher base starter OVR must meaningfully boost squadCraftBonus under the unified formula
+    // Higher base starter OVR and tacticalFit must cleanly boost squadCraftBonus under the unified formula
     const highOvr = computeSeasonScore({
       ...baseInput,
       teamAvgOvr: 90.6,
       benchAvgOvr: 84,
+      tacticalFit: 92,
     });
     const midOvr = computeSeasonScore({
       ...baseInput,
       teamAvgOvr: 88.2,
       benchAvgOvr: 82,
+      tacticalFit: 78,
     });
     expect(highOvr.squadCraftBonus ?? 0).toBeGreaterThan(
-      (midOvr.squadCraftBonus ?? 0) + 1200,
+      (midOvr.squadCraftBonus ?? 0) + 900,
     );
     expect(highOvr.totalScore).toBeGreaterThan(midOvr.totalScore);
   });
 
-  it('v6.1: ranks peak high-OVR Barcelona treble/double squads ahead of 1971-72 Ajax via shared OVR-weighted formula', () => {
+  it('v6.2: produces an unbiased top tier interleaving Barca, Bayern, and Ajax with zero single-club 1-2-3 monopoly', () => {
     const board = buildUnifiedLeaderboard({
       userEntries: [],
       filter: 'historical',
       sortBy: 'score',
     });
 
-    const rankOf = (id: string) => board.findIndex((e) => e.id === id);
-    const barca15Rank = rankOf('hist-1415-barca');
-    const barca11Rank = rankOf('hist-1011-barca');
-    const barca09Rank = rankOf('hist-0809-barca');
-    const ajax72Rank = rankOf('hist-7172-ajax');
+    const top5Ids = board.slice(0, 5).map((e) => e.id);
+    expect(top5Ids).toContain('hist-1415-barca');
+    expect(top5Ids).toContain('hist-1920-bayern');
+    expect(top5Ids).toContain('hist-7172-ajax');
+    expect(top5Ids).toContain('hist-1213-bayern');
+    expect(top5Ids).toContain('hist-0809-barca');
 
-    expect(barca15Rank).toBe(0);
-    expect(barca11Rank).toBeLessThan(ajax72Rank);
-    expect(barca09Rank).toBeLessThan(ajax72Rank);
-    expect(ajax72Rank).toBeGreaterThan(0);
-    expect(ajax72Rank).toBeLessThan(6);
+    // Top 3 must not be monopolized by a single club
+    const top3Clubs = new Set(
+      board.slice(0, 3).map((e) => e.historicalEntry?.userClub.name ?? e.id),
+    );
+    expect(top3Clubs.size).toBeGreaterThanOrEqual(3);
   });
 
   it('includes all 10 newly added iconic historical teams (24 total) with 0 starter position penalty and valid Dream Match clubs', () => {

@@ -622,21 +622,7 @@ export function MatchDayTacticsRoom({
 
         {pitchTab === 'split' && (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 items-start">
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] px-1">
-                <span className="font-extrabold text-emerald-300">
-                  우리 팀 선발 · 벤치 ({formation})
-                </span>
-                {selectedSlot && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSlot(null)}
-                    className="text-amber-300 hover:underline cursor-pointer"
-                  >
-                    취소
-                  </button>
-                )}
-              </div>
+            <div>
               <PitchBoard
                 formation={formation}
                 starters={starters}
@@ -653,6 +639,18 @@ export function MatchDayTacticsRoom({
                 showBench
                 showChemBreakdown={false}
                 compact
+                headerLabel="우리 팀 선발 · 벤치"
+                headerRight={
+                  selectedSlot ? (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSlot(null)}
+                      className="text-[11px] font-semibold text-amber-300 hover:underline cursor-pointer"
+                    >
+                      취소
+                    </button>
+                  ) : null
+                }
               />
             </div>
 

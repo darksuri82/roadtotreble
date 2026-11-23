@@ -91,10 +91,10 @@ export function saveLegacyState(state: LegacyStorageState): void {
 }
 
 export const AWARD_SCORE_WEIGHTS = {
-  ballonDor: 600,
-  worldBestXiPerPlayer: 120,
-  leagueMvp: 350,
-  leagueBestXiPerPlayer: 60,
+  ballonDor: 350,
+  worldBestXiPerPlayer: 90,
+  leagueMvp: 150,
+  leagueBestXiPerPlayer: 45,
 } as const;
 
 export interface SeasonScoreInput {
@@ -115,6 +115,7 @@ export interface SeasonScoreInput {
   avgSynergyOvrBonus?: number;
   managerSynergyCount?: number;
   managerRating?: number;
+  tacticalFit?: number;
   awards?: SeasonAwards | null;
   globalAwards?: GlobalSeasonAwards | null;
   userClubId?: string;
@@ -154,9 +155,9 @@ export function computeUserSeasonManagerRating(params: {
 
 /**
  * Computes a fair cross-league Season Score normalizing 34-round (Bundesliga / Ligue 1)
- * and 38-round (EPL / La Liga / Serie A) leagues via PPG * 38, plus historic milestone bonuses,
- * squad OVR/chemistry/manager synergy craft bonuses, and individual awards bonuses!
- * Identical formula is applied to BOTH User Teams and Historical Benchmark Teams.
+ * and 38-round (EPL / La Liga / Serie A) leagues via PPG * 38, plus capped historic milestone bonuses,
+ * squad OVR/chemistry/manager synergy/tactical-fit craft bonuses, and capped individual awards bonuses.
+ * Identical formula is applied to BOTH User Teams and Historical Benchmark Teams with zero team-specific overrides.
  */
 export function computeSeasonScore(
   input: SeasonScoreInput,
@@ -179,6 +180,7 @@ export function computeSeasonScore(
     avgSynergyOvrBonus,
     managerSynergyCount,
     managerRating,
+    tacticalFit,
     awards = null,
     globalAwards = null,
     userClubId = USER_CLUB_ID,
@@ -188,9 +190,13 @@ export function computeSeasonScore(
   const ppg = leaguePoints / safePlayed;
   const converted38Points = ppg * 38;
   const gdNormalized = (leagueGoalDifference / safePlayed) * 38;
+  // Gentle diminishing returns above 95 converted pts so 34R extrapolation stays balanced with 38R
+  const ptsBase =
+    Math.min(95, converted38Points) * 24 +
+    Math.max(0, converted38Points - 95) * 12;
   const leagueConvertedScore = Math.max(
     0,
-    Math.round(converted38Points * 26 + Math.max(-150, gdNormalized * 4.5)),
+    Math.round(ptsBase + Math.max(-150, Math.min(360, gdNormalized * 3.6))),
   );
 
   // League Rank Bonus
@@ -214,8 +220,8 @@ export function computeSeasonScore(
   // 36-Team UEFA Champions League Bonus (only when user actually participated)
   let uclBonus = 0;
   if (ucl && ucl.userParticipated !== false) {
-    if (ucl.championTeamId === userClubId) uclBonus = 2200;
-    else if (ucl.userEliminatedAt === 'final') uclBonus = 1400;
+    if (ucl.championTeamId === userClubId) uclBonus = 2500;
+    else if (ucl.userEliminatedAt === 'final') uclBonus = 1500;
     else if (ucl.userEliminatedAt === 'sf') uclBonus = 950;
     else if (ucl.userEliminatedAt === 'qf') uclBonus = 620;
     else if (ucl.userEliminatedAt === 'r16') uclBonus = 360;
@@ -223,7 +229,7 @@ export function computeSeasonScore(
     else if (ucl.userEliminatedAt === 'league_phase') uclBonus = 60;
   }
 
-  // Honors & Historic Milestones Bonus (38R-normalized for 34R/38R fairness)
+  // Honors & Historic Milestones Bonus (38R-normalized, capped at 2,750)
   const wonLeague = finalLeagueRank === 1;
   const wonCup = didUserWinCup(cup, userClubId);
   const wonUcl = didUserWinUcl(ucl, userClubId);
@@ -239,44 +245,45 @@ export function computeSeasonScore(
     honorsBonusDetails.push('더블 +600');
   }
   if (wonLeague && leagueLosses === 0 && leaguePlayed >= 34) {
-    honorsBonus += 900;
-    honorsBonusDetails.push('리그 무패 우승 +900');
+    honorsBonus += 800;
+    honorsBonusDetails.push('리그 무패 우승 +800');
   }
   if (wonLeague && leaguePlayed >= 34) {
     if (converted38Points >= 100) {
-      honorsBonus += 600;
-      honorsBonusDetails.push('센추리온즈(환산 100점+) +600');
+      honorsBonus += 360;
+      honorsBonusDetails.push('센추리온즈(환산 100점+) +360');
     } else if (converted38Points >= 95) {
-      honorsBonus += 320;
-      honorsBonusDetails.push('압도적 우승(환산 95점+) +320');
+      honorsBonus += 180;
+      honorsBonusDetails.push('압도적 우승(환산 95점+) +180');
     }
   }
   if (typeof leagueGoalsFor === 'number' && leaguePlayed >= 34) {
     const gf38 = (leagueGoalsFor / safePlayed) * 38;
     if (gf38 >= 100) {
-      honorsBonus += 280;
-      honorsBonusDetails.push('역사적 화력(환산 100득점+) +280');
+      honorsBonus += 180;
+      honorsBonusDetails.push('역사적 화력(환산 100득점+) +180');
     }
   }
   if (wonLeague && typeof leagueGoalsAgainst === 'number' && leaguePlayed >= 34) {
     const ga38 = (leagueGoalsAgainst / safePlayed) * 38;
     if (ga38 <= 18) {
-      honorsBonus += 600;
-      honorsBonusDetails.push('철벽 수비(환산 18실점 이하) +600');
+      honorsBonus += 400;
+      honorsBonusDetails.push('철벽 수비(환산 18실점 이하) +400');
     } else if (ga38 <= 22) {
-      honorsBonus += 250;
-      honorsBonusDetails.push('최소 실점급(환산 22실점 이하) +250');
+      honorsBonus += 160;
+      honorsBonusDetails.push('최소 실점급(환산 22실점 이하) +160');
     }
   }
   if (wonUcl) {
     if (uclPerfectWin) {
-      honorsBonus += 850;
-      honorsBonusDetails.push('UCL 전승 우승 +850');
+      honorsBonus += 900;
+      honorsBonusDetails.push('UCL 전승 우승 +900');
     } else if (uclUnbeatenWin) {
       honorsBonus += 320;
       honorsBonusDetails.push('UCL 무패 우승 +320');
     }
   }
+  honorsBonus = Math.min(2750, honorsBonus);
 
   // Underdog Bonus (lower avg OVR achieving Top 4 / Title / UCL deep run)
   let underdogBonus = 0;
@@ -292,7 +299,7 @@ export function computeSeasonScore(
     underdogBonus = Math.min(1750, baseUnderdog + miracleBonus);
   }
 
-  // Squad Craft & Effective OVR Synergy Bonus (Starter OVR + Effective Synergy OVR + Bench Depth + Manager Synergy Ratio + Chemistry + Manager Stature)
+  // Squad Craft, Synergy & Tactical Fit Bonus (pure linear with clean caps, max 5,940)
   let squadCraftBonus = 0;
   const squadCraftDetails: string[] = [];
   const chemOvrBonus =
@@ -306,61 +313,74 @@ export function computeSeasonScore(
       ? benchAvgOvr
       : Math.max(0, teamAvgOvr - 5);
 
-  const baseOvrPts = Math.round(
-    Math.max(0, teamAvgOvr - 82) * 280 +
-      Math.max(0, teamAvgOvr - 88.5) * 520,
+  const ovrPts = Math.max(
+    0,
+    Math.min(
+      3400,
+      Math.round(
+        Math.max(0, teamAvgOvr - 80) * 165 +
+          Math.max(0, effectiveStarterOvr - 82) * 105,
+      ),
+    ),
   );
-  if (baseOvrPts > 0) {
-    squadCraftBonus += baseOvrPts;
+  if (ovrPts > 0) {
+    squadCraftBonus += ovrPts;
     squadCraftDetails.push(
-      `선발 스쿼드 OVR ${teamAvgOvr.toFixed(1)} +${baseOvrPts}`,
+      `선발 전력 OVR ${teamAvgOvr.toFixed(1)} → 실효 ${effectiveStarterOvr.toFixed(1)} +${ovrPts}`,
     );
   }
-  const effOvrPts = Math.round(Math.max(0, effectiveStarterOvr - 84) * 180);
-  if (effOvrPts > 0) {
-    squadCraftBonus += effOvrPts;
-    squadCraftDetails.push(
-      `선발 실효 OVR ${effectiveStarterOvr.toFixed(1)} +${effOvrPts}`,
-    );
-  }
-  const benchPts = Math.round(Math.max(0, effectiveBenchOvr - 78) * 70);
+  const benchPts = Math.max(
+    0,
+    Math.min(500, Math.round(Math.max(0, effectiveBenchOvr - 76) * 50)),
+  );
   if (benchPts > 0) {
     squadCraftBonus += benchPts;
     squadCraftDetails.push(
       `스쿼드 뎁스(벤치 ${effectiveBenchOvr.toFixed(1)}) +${benchPts}`,
     );
   }
-  if (
-    typeof avgSynergyOvrBonus === 'number' ||
-    typeof managerSynergyCount === 'number'
-  ) {
-    const clampedMgrCount = Math.min(11, Math.max(0, managerSynergyCount ?? 0));
-    const mgrRatioPts = Math.round((clampedMgrCount / 11) * 440);
-    const synBoostPts = Math.round(Math.max(0, avgSynergyOvrBonus ?? 0) * 140);
-    const synPts = mgrRatioPts + synBoostPts;
-    if (synPts > 0) {
-      squadCraftBonus += synPts;
+  if (typeof managerRating === 'number' && managerRating > 82) {
+    const mgrPts = Math.max(
+      0,
+      Math.min(420, Math.round((managerRating - 82) * 24)),
+    );
+    if (mgrPts > 0) {
+      squadCraftBonus += mgrPts;
+      squadCraftDetails.push(`감독 역량 ${Math.round(managerRating)} +${mgrPts}`);
+    }
+  }
+  if (typeof managerSynergyCount === 'number') {
+    const clampedMgrCount = Math.min(11, Math.max(0, managerSynergyCount));
+    const mgrSynPts = Math.round((clampedMgrCount / 11) * 520);
+    if (mgrSynPts > 0) {
+      squadCraftBonus += mgrSynPts;
       squadCraftDetails.push(
-        `감독·선수 시너지(${clampedMgrCount}/11명 · +${(avgSynergyOvrBonus ?? 0).toFixed(1)} OVR) +${synPts}`,
+        `감독-선수 시너지 ${clampedMgrCount}/11명 +${mgrSynPts}`,
       );
     }
   }
-  if (typeof chemistry === 'number' && chemistry >= 65) {
-    const chemPts = Math.round((chemistry - 65) * 9);
+  if (typeof chemistry === 'number' && chemistry > 55) {
+    const chemPts = Math.max(
+      0,
+      Math.min(440, Math.round((chemistry - 55) * 9.8)),
+    );
     if (chemPts > 0) {
       squadCraftBonus += chemPts;
       squadCraftDetails.push(`팀 케미 ${Math.round(chemistry)} +${chemPts}`);
     }
   }
-  if (typeof managerRating === 'number' && managerRating >= 85) {
-    const mgrPts = Math.round((managerRating - 85) * 30);
-    if (mgrPts > 0) {
-      squadCraftBonus += mgrPts;
-      squadCraftDetails.push(`명장 지휘력 ${Math.round(managerRating)} +${mgrPts}`);
+  if (typeof tacticalFit === 'number' && tacticalFit > 65) {
+    const tacPts = Math.max(
+      0,
+      Math.min(680, Math.round((tacticalFit - 65) * 22.5)),
+    );
+    if (tacPts > 0) {
+      squadCraftBonus += tacPts;
+      squadCraftDetails.push(`전술 이행도 ${Math.round(tacticalFit)}% +${tacPts}`);
     }
   }
 
-  // Individual Awards Bonus (Ballon d'Or, World Best XI, League MVP, League Best XI)
+  // Individual Awards Bonus (capped at 1,100 so single-player awards support rather than dominate team honors)
   let awardsBonus = 0;
   const awardsBonusDetails: string[] = [];
 
@@ -396,6 +416,7 @@ export function computeSeasonScore(
       awardsBonusDetails.push(`리그 베스트 11 ${leagueXiUserCount}명 +${pts}`);
     }
   }
+  awardsBonus = Math.min(1100, awardsBonus);
 
   const totalScore =
     leagueConvertedScore +

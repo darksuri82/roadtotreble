@@ -100,6 +100,7 @@ import {
   getUserRank,
   normalizeLegacyPlayerStatsMap,
 } from '../engine/standingsEngine';
+import { evaluateTeamTacticalProfile } from '../engine/unifiedTacticsEngine';
 import {
   analyzeClubPositionNeeds,
   buildTransferClubSquad,
@@ -1180,6 +1181,17 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
         ) / 10
       : undefined;
 
+  const tacticalFit =
+    filledStarters.length > 0
+      ? evaluateTeamTacticalProfile({
+          starters: state.starters,
+          formation: state.formation,
+          tactic: state.season.defaultTactic,
+          managerTraitId: state.manager.traitId,
+          managerOvr: managerRating,
+        }).tacticalFit
+      : undefined;
+
   return computeSeasonScore({
     leaguePoints: userRow?.points ?? 0,
     leaguePlayed: played,
@@ -1198,6 +1210,7 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
     avgSynergyOvrBonus,
     managerSynergyCount,
     managerRating,
+    tacticalFit,
     awards: state.season.awards,
     globalAwards: state.season.globalAwards ?? null,
   });

@@ -8,7 +8,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import {
   computeFullPlayerOvrBreakdown,
@@ -17,6 +17,7 @@ import {
   getMoraleTier,
   isPlayerActivelyInjured,
 } from '../../engine/conditionEngine';
+import { didUserWinCup } from '../../engine/cupEngine';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { formatMainPositions } from '../../engine/positionEngine';
 import { getUserRank } from '../../engine/standingsEngine';
@@ -36,7 +37,7 @@ import type {
   TacticId,
 } from '../../types/league';
 import type { Player, SubPosition } from '../../types/player';
-import type { UclKnockoutTie } from '../../types/ucl';
+import type { UclKnockoutTie, UclTournamentState } from '../../types/ucl';
 import {
   buildPlayerCompetitionBreakdown,
   getPlayerNationalityMeta,
@@ -58,6 +59,10 @@ import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
 import { UclBracketTree } from './UclBracketTree';
+import {
+  UclMilestoneModal,
+  type UclMilestoneStage,
+} from './UclMilestoneModal';
 
 type UclTab = 'match' | 'standings' | 'bracket' | 'stats' | 'squad';
 
@@ -83,6 +88,8 @@ export function UclDashboard() {
   const [tab, setTab] = useState<UclTab>('match');
   const [showLpSummary, setShowLpSummary] = useState(false);
   const [skipResultModalOpen, setSkipResultModalOpen] = useState(false);
+  const [pendingMilestone, setPendingMilestone] =
+    useState<UclMilestoneStage | null>(null);
   const [swapPick, setSwapPick] = useState<SlotRef | null>(null);
   const [inspected, setInspected] = useState<{
     player: Player;
@@ -95,6 +102,30 @@ export function UclDashboard() {
 
   const season = state.season;
   const ucl = season?.ucl ?? null;
+
+  const prevStageRef = useRef<UclTournamentState['stage'] | null>(
+    ucl?.stage ?? null,
+  );
+  useEffect(() => {
+    if (!ucl) return;
+    const prev = prevStageRef.current;
+    const curr = ucl.stage;
+    if (prev !== curr) {
+      prevStageRef.current = curr;
+      if (!ucl.userEliminatedAt) {
+        if (
+          curr === 'r16' ||
+          curr === 'qf' ||
+          curr === 'sf' ||
+          curr === 'final'
+        ) {
+          setPendingMilestone(curr);
+        } else if (curr === 'completed' && ucl.championTeamId === USER_CLUB_ID) {
+          setPendingMilestone('champion');
+        }
+      }
+    }
+  }, [ucl]);
 
   const openPlayerById = (
     playerId: string,
@@ -145,6 +176,9 @@ export function UclDashboard() {
 
   const userUclRank = getUserRank(ucl.standings, USER_CLUB_ID);
   const userWonUcl = didUserWinUcl(ucl, USER_CLUB_ID);
+  const userWonLeague = getUserRank(season.standings, USER_CLUB_ID) === 1;
+  const userWonCup = didUserWinCup(season.cup, USER_CLUB_ID);
+  const isUserTreble = userWonLeague && userWonCup && userWonUcl;
   const championClub = ucl.championTeamId ? clubsById[ucl.championTeamId] : null;
   const userEliminated = Boolean(ucl.userEliminatedAt);
 
@@ -192,6 +226,28 @@ export function UclDashboard() {
 
       {/* Live Match Broadcast Modal (reuses full 2D pitch + Slow-Mo + Stamina + ET/PK!) */}
       {season.liveHalftime && <LiveMatchBroadcast clubsById={clubsById} />}
+
+      {/* UCL Knockout Round Advancement & Grand Champion Celebration Modal */}
+      {pendingMilestone &&
+        !skipResultModalOpen &&
+        !season.liveHalftime &&
+        !season.transferMarket.isOpen && (
+          <UclMilestoneModal
+            milestone={pendingMilestone}
+            ucl={ucl}
+            leagueId={season.leagueId}
+            userClub={state.userClub}
+            managerName={state.manager.name}
+            managerAvatar={state.manager.avatar}
+            clubsById={clubsById}
+            uclPlayerStats={season.uclPlayerStats}
+            isTreble={isUserTreble}
+            onClose={() => setPendingMilestone(null)}
+            onGoToSummary={
+              pendingMilestone === 'champion' ? finishUclToSummary : undefined
+            }
+          />
+        )}
 
       {/* Club Squad Modal */}
       <ClubSquadModal

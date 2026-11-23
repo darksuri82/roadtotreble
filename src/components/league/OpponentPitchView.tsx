@@ -155,35 +155,40 @@ export function OpponentPitchView({
   }, [lineup, oppChemistry.slotSynergies]);
 
   return (
-    <div className="space-y-2">
-      {/* Pitch Header Strip */}
-      <div className="flex items-center justify-between gap-2 px-1 text-[11px]">
+    <div className="space-y-1.5">
+      {/* Pitch Header Strip (includes formation + chemistry so nothing ever overlaps ST node) */}
+      <div className="flex items-center justify-between gap-1.5 px-1 text-[11px] min-h-[22px]">
         <div className="flex items-center gap-1.5 min-w-0">
           <span
             className="h-2.5 w-2.5 rounded-full shrink-0 border border-white/25"
             style={{ backgroundColor: opponent.primaryColor }}
           />
-          <span className="truncate font-extrabold text-white">
-            {opponent.name} 예상 선발
+          <span className="truncate font-bold text-slate-200">
+            {opponent.name}
           </span>
-          <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-sky-300 shrink-0">
+          <span className="rounded border border-slate-700/80 bg-slate-900/90 px-1.5 py-0.5 font-display text-[10px] font-bold text-slate-100 shrink-0">
             {shortFormationLabel(opponent.formation)}
           </span>
-          <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 shrink-0">
+          <span className="rounded border border-slate-700/70 bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300 shrink-0">
             {TACTICS[opponent.defaultTactic].shortName}
+          </span>
+          <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300 tabular-nums shrink-0">
+            케미 {oppChemistry.total} (
+            {oppChemistry.chemistryOvrBonus >= 0 ? '+' : ''}
+            {oppChemistry.chemistryOvrBonus.toFixed(1)})
           </span>
         </div>
         <span
-          className="text-[10px] font-bold text-slate-400 shrink-0 tabular-nums"
+          className="hidden sm:inline text-[10px] font-semibold text-slate-400 shrink-0 tabular-nums"
           title={`${oppManager.name} (OVR ${oppManager.ovr} · ${MANAGER_TRAITS[oppManager.traitId]?.name ?? ''})`}
         >
           {oppManager.name}{' '}
-          <span className="text-amber-300">{oppManager.ovr}</span>
+          <span className="text-amber-300/90">{oppManager.ovr}</span>
         </span>
       </div>
 
       {/* Opponent Formation Pitch with 4-Pillar Synergy Lines & Boosted OVRs */}
-      <div className="relative aspect-[4/3.85] sm:aspect-[4/4.3] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0f1b26] via-[#0c1a1c] to-[#0d1919]">
+      <div className="relative aspect-[4/3.9] sm:aspect-[4/4.4] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0f1b26] via-[#0c1a1c] to-[#0d1919]">
         {/* Crisp Minimal Pitch SVG Lines + 4-Color Parallel Chemistry Links */}
         <svg
           viewBox="0 0 100 100"
@@ -296,18 +301,6 @@ export function OpponentPitchView({
             });
           })}
         </svg>
-
-        {/* Top-Left Chemistry Overlay (Mirrors Our PitchBoard) */}
-        <div className="pointer-events-none absolute left-3 top-2.5 z-10 flex items-center gap-1.5">
-          <span className="rounded bg-slate-950/85 px-2 py-0.5 font-display text-xs font-bold text-slate-100">
-            {shortFormationLabel(opponent.formation)}
-          </span>
-          <span className="rounded bg-slate-950/85 px-2 py-0.5 text-[11px] font-semibold text-emerald-300 tabular-nums">
-            케미 {oppChemistry.total} (
-            {oppChemistry.chemistryOvrBonus >= 0 ? '+' : ''}
-            {oppChemistry.chemistryOvrBonus.toFixed(1)})
-          </span>
-        </div>
 
         {/* Opponent 11 Player Nodes */}
         {config.slots.map((slot, idx) => {

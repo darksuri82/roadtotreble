@@ -72,7 +72,7 @@ describe('v4.1 Features: Historical 17-Player Full Squads, Fair Synergy Score, D
     )!;
     expect(bayern1920.seasonScore.totalScore).toBeGreaterThan(11000);
     expect(bayern1920.seasonScore.honorsBonusDetails).toContain(
-      'UCL 전승 우승 +850',
+      'UCL 전승 우승 +900',
     );
   });
 
