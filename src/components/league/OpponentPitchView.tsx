@@ -29,10 +29,10 @@ interface OpponentPitchViewProps {
 }
 
 const LINE_COLORS: Record<ChemistryLineType, string> = {
-  club: '#3aa87d', // Soft Sage Emerald
-  nation: '#58a0c7', // Soft Slate Sky
-  style: '#c99446', // Soft Warm Gold
-  elite: '#9a82c4', // Soft Muted Lavender
+  club: '#10b981', // Vivid Emerald
+  nation: '#38bdf8', // Vivid Sky Blue
+  style: '#f59e0b', // Vivid Gold
+  elite: '#c084fc', // Vivid Violet
 };
 
 function shortFormationLabel(id: FormationId): string {
@@ -200,7 +200,7 @@ export function OpponentPitchView({
         </span>
       </div>
 
-      {/* Opponent Formation Pitch with Subtle Hover-Highlighted Synergy Lines */}
+      {/* Opponent Formation Pitch with Vivid Hover-Highlighted Synergy Lines */}
       <div className="relative aspect-[4/3.9] sm:aspect-[4/4.4] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0e1923] via-[#0c171b] to-[#0b1517]">
         {/* Crisp Minimal Pitch SVG Lines + 4-Color Parallel Chemistry Links */}
         <svg
@@ -216,7 +216,7 @@ export function OpponentPitchView({
             height="92"
             rx="1.5"
             fill="none"
-            stroke="rgba(148,163,184,0.10)"
+            stroke="rgba(148,163,184,0.12)"
             strokeWidth="0.5"
           />
           <line
@@ -224,16 +224,16 @@ export function OpponentPitchView({
             y1="50"
             x2="96"
             y2="50"
-            stroke="rgba(148,163,184,0.09)"
-            strokeWidth="0.4"
+            stroke="rgba(148,163,184,0.11)"
+            strokeWidth="0.42"
           />
           <circle
             cx="50"
             cy="50"
             r="10.5"
             fill="none"
-            stroke="rgba(148,163,184,0.09)"
-            strokeWidth="0.4"
+            stroke="rgba(148,163,184,0.11)"
+            strokeWidth="0.42"
           />
           <rect
             x="24"
@@ -241,8 +241,8 @@ export function OpponentPitchView({
             width="52"
             height="14"
             fill="none"
-            stroke="rgba(148,163,184,0.09)"
-            strokeWidth="0.4"
+            stroke="rgba(148,163,184,0.10)"
+            strokeWidth="0.42"
           />
           <rect
             x="24"
@@ -250,8 +250,8 @@ export function OpponentPitchView({
             width="52"
             height="14"
             fill="none"
-            stroke="rgba(148,163,184,0.09)"
-            strokeWidth="0.4"
+            stroke="rgba(148,163,184,0.10)"
+            strokeWidth="0.42"
           />
 
           {/* 4-Pillar Player Synergy Parallel Lines */}
@@ -274,9 +274,9 @@ export function OpponentPitchView({
                   y1={fromSlot.y}
                   x2={toSlot.x}
                   y2={toSlot.y}
-                  stroke="rgba(148, 163, 184, 0.12)"
-                  strokeOpacity={hasHover ? (isLinkFocused ? 0.32 : 0.05) : 0.12}
-                  strokeWidth="0.4"
+                  stroke="rgba(148, 163, 184, 0.16)"
+                  strokeOpacity={hasHover ? (isLinkFocused ? 0.35 : 0.08) : 0.16}
+                  strokeWidth="0.45"
                   strokeDasharray="2 3"
                   strokeLinecap="round"
                 />
@@ -290,26 +290,26 @@ export function OpponentPitchView({
             const ny = dx / len;
             const spacing =
               activeLines.length >= 4
-                ? 0.68
+                ? 0.8
                 : activeLines.length === 3
-                  ? 0.82
-                  : 0.92;
+                  ? 1.0
+                  : 1.12;
             const centerOffset = ((activeLines.length - 1) * spacing) / 2;
             const baseWidth =
               activeLines.length >= 4
-                ? 0.4
+                ? 0.6
                 : activeLines.length === 3
-                  ? 0.45
-                  : 0.5;
+                  ? 0.7
+                  : 0.82;
             const strokeOpacity = hasHover
               ? isLinkFocused
-                ? 0.9
-                : 0.1
-              : 0.28;
+                ? 1
+                : 0.38
+              : 0.86;
             const strokeWidth = hasHover
               ? isLinkFocused
-                ? baseWidth + 0.24
-                : 0.35
+                ? baseWidth + 0.16
+                : baseWidth * 0.85
               : baseWidth;
 
             return activeLines.map((lineType, lineIdx) => {
@@ -342,8 +342,9 @@ export function OpponentPitchView({
           const primaryStyle = player?.playstyles[0]
             ? PLAYSTYLES[player.playstyles[0]]?.shortName
             : null;
-          const isSuper = displayOvr >= 90 || (player?.ovr ?? 0) >= 88;
-          const isThreat = displayOvr >= 86 || (player?.ovr ?? 0) >= 85;
+          const isLegendCard = Boolean(player?.isLegend);
+          const isSuper = !isLegendCard && ((player?.ovr ?? 0) >= 91 || displayOvr >= 92);
+          const isWorld = !isLegendCard && !isSuper && ((player?.ovr ?? 0) >= 87 || displayOvr >= 88);
           const synTooltip =
             player && syn
               ? [
@@ -367,22 +368,26 @@ export function OpponentPitchView({
             >
               <div
                 title={synTooltip}
-                className={`flex flex-col items-center rounded-lg px-1.5 py-0.5 min-w-[54px] sm:min-w-[66px] max-w-[84px] sm:max-w-[94px] text-center shadow-sm transition-colors ${
-                  isSuper
-                    ? 'border border-sky-400/40 bg-[#101924]/95 hover:border-sky-300/65'
-                    : isThreat
-                      ? 'border border-amber-400/35 bg-[#161820]/95 hover:border-amber-300/60'
-                      : 'border border-slate-700/70 bg-[#0f1621]/95 hover:border-slate-500/80'
+                className={`flex flex-col items-center rounded-lg px-1.5 py-0.5 min-w-[54px] sm:min-w-[66px] max-w-[84px] sm:max-w-[94px] text-center shadow-md transition-colors ${
+                  isLegendCard
+                    ? 'bg-gradient-to-b from-amber-950/95 via-stone-900/95 to-amber-950/95 border border-amber-400/90 shadow-[0_0_10px_rgba(251,191,36,0.34)]'
+                    : isSuper
+                      ? 'bg-gradient-to-b from-cyan-950/95 via-slate-900/95 to-cyan-950/95 border border-cyan-400/85 shadow-[0_0_10px_rgba(34,211,238,0.28)]'
+                      : isWorld
+                        ? 'bg-gradient-to-b from-sky-950/90 via-[#0e1726]/95 to-sky-950/90 border border-sky-400/65 shadow-[0_0_8px_rgba(56,189,248,0.20)]'
+                        : 'border border-slate-700/75 bg-[#0f1621]/95 hover:border-slate-500/80'
                 }`}
               >
                 <div className="flex items-center justify-center gap-0.5 leading-none tabular-nums">
                   <span
                     className={`font-display text-[11px] sm:text-xs font-bold ${
-                      isSuper
-                        ? 'text-sky-200'
-                        : isThreat
-                          ? 'text-amber-200'
-                          : 'text-slate-100'
+                      isLegendCard
+                        ? 'text-amber-300'
+                        : isSuper
+                          ? 'text-cyan-200'
+                          : isWorld
+                            ? 'text-sky-200'
+                            : 'text-slate-100'
                     }`}
                   >
                     {player ? displayOvr : '-'}

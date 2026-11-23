@@ -5,6 +5,14 @@
 
 ---
 
+## v6.2.1 — 피치 시너지 연결선 & 월클/슈퍼스타/레전드 카드 웅장한 테두리·글로우 복원
+
+- **피치 시너지 연결선 & 최상급 티어 카드 비주얼 복원 (`src/index.css`, `src/components/common/PlayerCard.tsx`, `src/components/common/PitchBoard.tsx`, `src/components/league/OpponentPitchView.tsx`)**:
+  - 차분한 다크 슬레이트 UI 크롬(탭·필터·배경)·피치 상단 헤더 분리·긴 이름 스마트 축약은 유지하면서, 피치 위 4색 시너지 연결선의 선명한 채도·두께(`opacity 0.88`, 호버 시 `1.0` 강조)를 복원.
+  - 레전드(골드 홀로그램 글로우)·슈퍼스타(사이언 다이아몬드 글로우)·월드클래스(스카이 블루 글로우 테두리)의 웅장한 카드 테두리와 배지를 `PlayerCard` 및 양 팀 피치 카드 전반에 복원.
+
+---
+
 ## v6.2 — 명예의 전당 공정 계산식 전면 재설계 · UCL 라운드 진출/우승·트레블 축하 연출 · 첫 페이지 SD 감독 리뉴얼 & 염소 도트 · 피치 겹침 수정 & 전역 눈 편한 색감 개편
 
 - **명예의 전당 공정 계산식 전면 재설계 (`src/engine/legacyEngine.ts`, `src/data/historicalTeams.ts`, `src/store/GameContext.tsx`, `src/__tests__/v60HofAndRoster.test.ts`)**:

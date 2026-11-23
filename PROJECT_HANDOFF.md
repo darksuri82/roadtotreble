@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v6.2)
+# Road To Treble — PROJECT HANDOFF GUIDE (v6.2.1)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -7,14 +7,16 @@
 ## 1. 기술 스택 및 실행 환경
 
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
-- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, 눈 편한 저채도 에메랄드/골드/코랄 포인트)
+- **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, 차분한 슬레이트 UI 크롬 + 웅장한 레전드/슈퍼스타/월클 카드 글로우 & 선명한 4색 피치 시너지선)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
 - **Testing & Lint**: Vitest (`npm run test` — **25개 파일 / 98개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd` — 색감·비주얼 패치만 단독 롤백 가능)
+- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v6.2.1 주요 조정**:
+  - **피치 시너지 연결선 & 월클/슈퍼스타/레전드 카드 웅장함 복원 (`index.css`, `PlayerCard.tsx`, `PitchBoard.tsx`, `OpponentPitchView.tsx`)**: 차분한 다크 슬레이트 UI 크롬·상단 헤더 분리·이름 잘림 개선은 유지하면서, 4색 시너지 연결선의 선명한 채도·두께(`0.88`, 호버 강조 `1.0`)와 레전드(골드)·슈퍼스타(사이언)·월드클래스(스카이) 카드의 웅장한 테두리·글로우 복원.
 - **v6.2 주요 신규 모듈·기능**:
   - **명예의 전당 공정 계산식 전면 재설계 (`legacyEngine.ts`, `historicalTeams.ts`, `GameContext.tsx`, `v60HofAndRoster.test.ts`)**: 편향·급등 절벽 제거, 시즌 성과 + 전력·시너지·전술 이행도(`evaluateTeamTacticalProfile`) 상한선 기반 공정 단일 공식 적용(유저·역대 24팀 100% 동일).
   - **UCL 토너먼트 진출 팝업 & 우승/트레블 대형 축하 모달 (`UclMilestoneModal.tsx`, `UclDashboard.tsx`, `index.css`)**: 16강·8강·4강·결승 진출 팝업 및 대형 빅이어(`120px`)·컨페티·MVP·트레블 3관왕 축하 연출 구현(스킵 모달 순차 표시).

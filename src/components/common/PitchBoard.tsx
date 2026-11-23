@@ -68,10 +68,10 @@ function getStaminaNumCls(pct: number): string {
 }
 
 const LINE_COLORS: Record<ChemistryLineType, string> = {
-  club: '#3aa87d', // Soft Sage Emerald: Same Club / Former Clubs
-  nation: '#58a0c7', // Soft Slate Sky: Same Nationality
-  style: '#c99446', // Soft Warm Gold: Complementary Playstyle Synergy
-  elite: '#9a82c4', // Soft Muted Lavender: Elite Pair (88+ ↔ 88+)
+  club: '#10b981', // Vivid Emerald: Same Club / Former Clubs
+  nation: '#38bdf8', // Vivid Sky Blue: Same Nationality
+  style: '#f59e0b', // Vivid Gold: Complementary Playstyle Synergy
+  elite: '#c084fc', // Vivid Violet: Elite Pair (88+ ↔ 88+)
 };
 
 const NAME_SUFFIX_KEEP_FIRST = new Set([
@@ -257,7 +257,7 @@ export function PitchBoard({
             : 'aspect-[4/4.05] sm:aspect-[4/4.3]'
         }`}
       >
-        {/* SVG Pitch Markings + Subtle Parallel Chemistry Links (highlighted on hover/select) */}
+        {/* SVG Pitch Markings + Vivid Multi-Line Parallel Chemistry Links */}
         <svg
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
@@ -271,7 +271,7 @@ export function PitchBoard({
             height="92"
             rx="1.5"
             fill="none"
-            stroke="rgba(255,255,255,0.09)"
+            stroke="rgba(255,255,255,0.11)"
             strokeWidth="0.5"
           />
           <line
@@ -279,16 +279,16 @@ export function PitchBoard({
             y1="50"
             x2="96"
             y2="50"
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth="0.4"
+            stroke="rgba(255,255,255,0.10)"
+            strokeWidth="0.42"
           />
           <circle
             cx="50"
             cy="50"
             r="11"
             fill="none"
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth="0.4"
+            stroke="rgba(255,255,255,0.10)"
+            strokeWidth="0.42"
           />
           <rect
             x="24"
@@ -296,8 +296,8 @@ export function PitchBoard({
             width="52"
             height="15"
             fill="none"
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth="0.4"
+            stroke="rgba(255,255,255,0.09)"
+            strokeWidth="0.42"
           />
           <rect
             x="24"
@@ -305,8 +305,8 @@ export function PitchBoard({
             width="52"
             height="15"
             fill="none"
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth="0.4"
+            stroke="rgba(255,255,255,0.09)"
+            strokeWidth="0.42"
           />
 
           {chemistry.links.map((link) => {
@@ -330,9 +330,9 @@ export function PitchBoard({
                   y1={fromSlot.y}
                   x2={toSlot.x}
                   y2={toSlot.y}
-                  stroke="rgba(148, 163, 184, 0.12)"
-                  strokeOpacity={hasAnyFocus ? (isLinkFocused ? 0.35 : 0.05) : 0.14}
-                  strokeWidth="0.4"
+                  stroke="rgba(148, 163, 184, 0.16)"
+                  strokeOpacity={hasAnyFocus ? (isLinkFocused ? 0.35 : 0.08) : 0.16}
+                  strokeWidth="0.45"
                   strokeDasharray="2 3"
                   strokeLinecap="round"
                 />
@@ -347,26 +347,26 @@ export function PitchBoard({
             const ny = dx / len;
             const spacing =
               activeLines.length >= 4
-                ? 0.68
+                ? 0.8
                 : activeLines.length === 3
-                  ? 0.82
-                  : 0.92;
+                  ? 1.0
+                  : 1.12;
             const centerOffset = ((activeLines.length - 1) * spacing) / 2;
             const baseWidth =
               activeLines.length >= 4
-                ? 0.4
+                ? 0.6
                 : activeLines.length === 3
-                  ? 0.45
-                  : 0.5;
+                  ? 0.7
+                  : 0.82;
             const strokeOpacity = hasAnyFocus
               ? isLinkFocused
-                ? 0.9
-                : 0.1
-              : 0.28;
+                ? 1
+                : 0.38
+              : 0.88;
             const strokeWidth = hasAnyFocus
               ? isLinkFocused
-                ? baseWidth + 0.24
-                : 0.35
+                ? baseWidth + 0.16
+                : baseWidth * 0.85
               : baseWidth;
 
             return activeLines.map((lineType, lineIdx) => {
@@ -408,6 +408,7 @@ export function PitchBoard({
           const tier = player ? getCardTier(player) : null;
           const isLegend = tier === 'legend';
           const isSuperstar = tier === 'superstar';
+          const isWorldclass = tier === 'worldclass';
 
           const fit = player
             ? evaluatePositionFit(
@@ -486,30 +487,32 @@ export function PitchBoard({
               }`}
             >
               <div
-                className={`relative flex flex-col items-center justify-center text-center shadow-sm transition-colors ${
+                className={`relative flex flex-col items-center justify-center text-center shadow-md transition-colors ${
                   compact
                     ? 'rounded-lg px-1.5 py-0.5 min-w-[54px] sm:min-w-[66px] max-w-[84px] sm:max-w-[94px]'
                     : 'rounded-xl px-1.5 py-1 min-w-[60px] sm:min-w-[78px] max-w-[92px] sm:max-w-[104px]'
                 } ${
                   isHighlightedInjury && player
-                    ? 'bg-[#261117]/95 border border-rose-500/80 ring-2 ring-rose-400/50'
+                    ? 'bg-[#261117]/95 border-2 border-rose-500 ring-2 ring-rose-400/60'
                     : isPreview && player
-                      ? 'bg-[#0e221b]/95 border border-emerald-400/70 ring-1 ring-emerald-400/45'
+                      ? 'bg-[#0e221b]/95 border border-emerald-400 ring-2 ring-emerald-400/55'
                       : player
                         ? isLegend
-                          ? 'bg-[#1a1610]/95 border border-amber-400/45 hover:border-amber-300/70'
+                          ? 'bg-gradient-to-b from-amber-950/95 via-stone-900/95 to-amber-950/95 border border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.38)]'
                           : isSuperstar
-                            ? 'bg-[#101924]/95 border border-sky-400/40 hover:border-sky-300/65'
-                            : staminaPct !== null && staminaPct < 40
-                              ? 'bg-[#221218]/95 border border-rose-500/60'
-                              : staminaPct !== null && staminaPct < 55
-                                ? 'bg-[#1f1710]/95 border border-amber-500/50'
-                                : 'bg-[#0f1621]/95 border border-slate-700/70 hover:border-slate-500/80'
+                            ? 'bg-gradient-to-b from-cyan-950/95 via-slate-900/95 to-cyan-950/95 border border-cyan-400/85 shadow-[0_0_12px_rgba(34,211,238,0.32)]'
+                            : isWorldclass
+                              ? 'bg-gradient-to-b from-sky-950/90 via-[#0e1726]/95 to-sky-950/90 border border-sky-400/65 shadow-[0_0_8px_rgba(56,189,248,0.22)]'
+                              : staminaPct !== null && staminaPct < 40
+                                ? 'bg-[#221218]/95 border border-rose-500/70'
+                                : staminaPct !== null && staminaPct < 55
+                                  ? 'bg-[#1f1710]/95 border border-amber-500/60'
+                                  : 'bg-[#0f1621]/95 border border-slate-700/75 hover:border-slate-500/80'
                         : isActive
-                          ? 'bg-emerald-500/12 border border-emerald-400/60'
+                          ? 'bg-emerald-500/12 border border-emerald-400/65'
                           : 'bg-slate-950/70 border border-dashed border-slate-600/55'
-                } ${isSelected ? 'ring-2 ring-emerald-400/75' : ''} ${
-                  isDragOver ? 'ring-2 ring-sky-400/75' : ''
+                } ${isSelected ? 'ring-2 ring-emerald-400/80' : ''} ${
+                  isDragOver ? 'ring-2 ring-sky-400/80' : ''
                 }`}
               >
                 {isHighlightedInjury && player ? (
@@ -521,9 +524,9 @@ export function PitchBoard({
                     프리뷰
                   </span>
                 ) : isLegend ? (
-                  <Crown className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 text-amber-300/85" />
+                  <Crown className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-amber-300 drop-shadow" />
                 ) : isSuperstar ? (
-                  <Diamond className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 text-sky-300/80" />
+                  <Diamond className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-cyan-300 drop-shadow" />
                 ) : null}
 
                 {hasPenalty && fit && (
@@ -595,10 +598,12 @@ export function PitchBoard({
                                       ? 'text-amber-300/90'
                                       : 'text-rose-300'
                                     : isLegend
-                                      ? 'text-amber-200'
+                                      ? 'text-amber-300'
                                       : isSuperstar
-                                        ? 'text-sky-200'
-                                        : 'text-slate-100'
+                                        ? 'text-cyan-200'
+                                        : isWorldclass
+                                          ? 'text-sky-200'
+                                          : 'text-slate-100'
                               }`}
                             >
                               {fit.effectiveOvr}
