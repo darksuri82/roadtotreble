@@ -7,6 +7,7 @@ import {
 import { Fragment } from 'react';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { getUserRank } from '../../engine/standingsEngine';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { Club } from '../../types/league';
 import type { UclTeamEntry, UclTournamentState } from '../../types/ucl';
 import { JerseySvg } from '../common/JerseySvg';
@@ -28,6 +29,7 @@ export function UclLeaguePhaseStandingsModal({
   onGoToBracket,
   onClose,
 }: UclLeaguePhaseStandingsModalProps) {
+  useBodyScrollLock(true);
   const userRank =
     ucl.userLeaguePhaseRank ?? getUserRank(ucl.standings, USER_CLUB_ID);
   const userRow = ucl.standings.find((r) => r.teamId === USER_CLUB_ID);
@@ -58,10 +60,10 @@ export function UclLeaguePhaseStandingsModal({
           };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-2.5 sm:p-4 backdrop-blur-sm">
-      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0d1422] shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-2.5 sm:p-4">
+      <div className="modal-panel flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0d1422] shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-[#090e18] px-4 py-3.5 sm:px-5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-[#090e18] px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sky-400/35 bg-sky-500/15 text-sky-300">
               <Trophy className="h-4 w-4" />
@@ -141,7 +143,7 @@ export function UclLeaguePhaseStandingsModal({
         )}
 
         {/* Scrollable 36-Team Table */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 sm:px-5">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto px-4 py-3 sm:px-5">
           <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#090e18]">
             <table className="w-full text-left text-[11px] sm:text-xs">
               <thead className="sticky top-0 z-10 border-b border-slate-800 bg-[#0b121e] text-[10px] sm:text-[11px] text-slate-400">

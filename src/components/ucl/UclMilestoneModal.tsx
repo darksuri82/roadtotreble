@@ -1,6 +1,7 @@
 import { Award, Crown, Sparkles, Star, Trophy, X } from 'lucide-react';
 import { useMemo } from 'react';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { ManagerAvatarConfig, UserClubProfile } from '../../types/game';
 import type { Club, LeagueId, PlayerSeasonStats } from '../../types/league';
 import type { UclKnockoutTie, UclTournamentState } from '../../types/ucl';
@@ -153,6 +154,7 @@ export function UclMilestoneModal({
   onClose,
   onGoToSummary,
 }: UclMilestoneModalProps) {
+  useBodyScrollLock(true);
   const mvpPlayer = useMemo(() => {
     const mine = Object.values(uclPlayerStats).filter(
       (s) => s.isUserTeam && s.appearances > 0,
@@ -176,10 +178,10 @@ export function UclMilestoneModal({
     return (
       <div
         id="ucl-champion-celebration-modal"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/88 p-3 sm:p-4 backdrop-blur-md"
+        className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/88 p-3 sm:p-4"
       >
         <div
-          className={`relative w-full max-w-xl max-h-[92dvh] overflow-y-auto overflow-x-hidden rounded-3xl border p-5 sm:p-8 text-center shadow-2xl ${
+          className={`modal-panel modal-scroll relative w-full max-w-xl overflow-y-auto overflow-x-hidden rounded-3xl border p-5 sm:p-8 text-center shadow-2xl ${
             isTreble
               ? 'border-amber-400/60 bg-gradient-to-b from-[#1e1a10] via-[#121622] to-[#0a0f18]'
               : 'border-sky-400/45 bg-gradient-to-b from-[#111c30] via-[#0e1523] to-[#090e17]'
@@ -388,9 +390,9 @@ export function UclMilestoneModal({
   return (
     <div
       id={`ucl-advance-modal-${milestone}`}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm"
+      className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4"
     >
-      <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-sky-400/40 bg-gradient-to-b from-[#111c2f] via-[#0e1522] to-[#0b1019] p-6 text-center shadow-2xl">
+      <div className="modal-panel modal-scroll relative w-full max-w-md overflow-y-auto overflow-x-hidden rounded-2xl border border-sky-400/40 bg-gradient-to-b from-[#111c2f] via-[#0e1522] to-[#0b1019] p-6 text-center shadow-2xl">
         <div
           className="pointer-events-none absolute -top-16 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full opacity-20 blur-3xl"
           style={{ backgroundColor: milestone === 'final' ? '#f59e0b' : '#38bdf8' }}

@@ -578,8 +578,8 @@ export function buildTransferClubSquad(params: {
   const starterTargets = squad16.starters.map((p, idx) =>
     buildEntry(p, true, squad16.starterSlotLabels[idx] ?? p.position),
   );
-  const benchTargets = squad16.bench.map((p, idx) =>
-    buildEntry(p, false, squad16.benchSlotLabels[idx] ?? `벤치 ${p.position}`),
+  const benchTargets = squad16.bench.map((p) =>
+    buildEntry(p, false, `벤치 ${p.mainPositions[0] ?? p.position}`),
   );
 
   return [...starterTargets, ...benchTargets];

@@ -2,6 +2,7 @@ import { Activity, Award, Clock, Shield, Star, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { TACTICS } from '../../engine/tacticEngine';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { Club, MatchResult } from '../../types/league';
 import type { UclKnockoutTie } from '../../types/ucl';
 import { ClubTag } from './ClubTag';
@@ -71,6 +72,8 @@ export function MatchDetailModal({
       : tie.leg1 ?? tie.leg2 ?? null
     : match;
 
+  useBodyScrollLock(Boolean(activeMatch));
+
   useEffect(() => {
     if (!activeMatch) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -112,11 +115,11 @@ export function MatchDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-[58] flex items-center justify-center bg-slate-950/82 p-3 sm:p-4 backdrop-blur-sm"
+      className="modal-backdrop fixed inset-0 z-[58] flex items-center justify-center bg-slate-950/82 p-3 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-700 bg-[#0e1520] shadow-2xl"
+        className="modal-panel flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0e1520] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -178,7 +181,7 @@ export function MatchDetailModal({
         )}
 
         {/* Body */}
-        <div className="max-h-[78vh] overflow-y-auto p-4 sm:p-5 space-y-4">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* Scoreboard */}
           <div className="grid grid-cols-3 items-center gap-2 rounded-2xl border border-slate-800 bg-[#090e16] px-4 py-4">
             <div className="flex flex-col items-center text-center">

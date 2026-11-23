@@ -169,17 +169,29 @@ export function MpLeagueRoot({
   const myClubId = myHuman?.clubId ?? null;
   const mine = myClubId && live ? live.byClub[myClubId] ?? null : null;
 
+  const [optimisticSquad, setOptimisticSquad] = useState<{
+    rev: number;
+    squad: MpSquadInput;
+  } | null>(null);
+
+  const remotePayload = myRow?.league_payload ?? null;
+  const remoteRev = remotePayload?.rev ?? 0;
+
   const mySquad = useMemo<MpSquadInput | null>(() => {
-    const p = myRow?.league_payload;
-    if (!p || p.starters?.length !== 11 || p.bench?.length !== 5) return null;
+    if (optimisticSquad && optimisticSquad.rev > remoteRev) {
+      return optimisticSquad.squad;
+    }
+    if (!remotePayload || remotePayload.starters?.length !== 11 || remotePayload.bench?.length !== 5) {
+      return null;
+    }
     return {
-      managerTraitId: p.managerTraitId,
-      formation: p.formation,
-      tactic: p.tactic,
-      starters: p.starters,
-      bench: p.bench,
+      managerTraitId: remotePayload.managerTraitId,
+      formation: remotePayload.formation,
+      tactic: remotePayload.tactic,
+      starters: remotePayload.starters,
+      bench: remotePayload.bench,
     };
-  }, [myRow?.league_payload]);
+  }, [optimisticSquad, remotePayload, remoteRev]);
 
   const savePayload = useCallback(
     async (payload: MpLeagueSquadPayload) => {
@@ -191,14 +203,16 @@ export function MpLeagueRoot({
 
   const saveSquad = useCallback(
     (next: MpSquadInput) => {
+      const nextRev = Math.max(remoteRev, optimisticSquad?.rev ?? 0) + 1;
+      setOptimisticSquad({ rev: nextRev, squad: next });
       void savePayload({
         ...next,
         setupReady: true,
-        rev: (myRow?.league_payload?.rev ?? 0) + 1,
+        rev: nextRev,
         by: 'player',
       });
     },
-    [savePayload, myRow?.league_payload?.rev],
+    [savePayload, remoteRev, optimisticSquad?.rev],
   );
 
   // Global pause lock: any of these screens on my side stops the auto-advance for everyone

@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import { MANAGER_TRAIT_LIST } from '../../data/managerTraits';
 import { TACTIC_LIST } from '../../engine/tacticEngine';
+import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import { AttributeRoutesGuideContent } from './AttributeRoutesGuideContent';
 import { InjuryMoraleGuideContent } from './InjuryMoraleGuideContent';
 
@@ -292,9 +293,10 @@ export function SystemGuideContent() {
 
 export function SystemGuideModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-6 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#111822] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-3.5">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-6">
+      <ModalBodyLock />
+      <div className="modal-panel flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#111822] shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-5 py-3.5">
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-emerald-400" />
             <h2 className="text-sm font-extrabold text-white">
@@ -310,7 +312,7 @@ export function SystemGuideModal({ onClose }: { onClose: () => void }) {
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="overflow-y-auto p-4 sm:p-5">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
           <SystemGuideContent />
         </div>
       </div>

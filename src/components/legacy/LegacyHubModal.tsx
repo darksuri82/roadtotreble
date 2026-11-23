@@ -22,6 +22,7 @@ import {
   reconstructHallOfFameSquad,
 } from '../../engine/legacyEngine';
 import { TACTICS } from '../../engine/tacticEngine';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useGame } from '../../store/GameContext';
 import type {
   HallOfFameEntry,
@@ -59,6 +60,7 @@ export function LegacyHubModal() {
     removeHallOfFameEntry,
     openDreamMatch,
   } = useGame();
+  useBodyScrollLock(legacyModalOpen);
 
   const [tab, setTab] = useState<LegacyTab>('hof');
   const [hofFilter, setHofFilter] = useState<HofFilterTab>('all');
@@ -163,8 +165,8 @@ export function LegacyHubModal() {
   const isViewingDetail = Boolean(selectedEntry || selectedHistorical);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-5">
-      <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0e141d] shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-5">
+      <div className="modal-panel flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0e141d] shadow-2xl">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#0a0f17] px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-3">
@@ -242,7 +244,7 @@ export function LegacyHubModal() {
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-5">
           {tab === 'hof' && !isViewingDetail && (
             <div className="space-y-4">
               {/* Filter Tabs: All (User + Historical) | User Only | Historical Benchmark */}

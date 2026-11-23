@@ -18,6 +18,7 @@ import {
 } from '../../engine/positionEngine';
 import { TACTICS } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { PlayerConditionState } from '../../types/condition';
 import type { ManagerTraitId, PlayerSlotSynergy } from '../../types/game';
 import type { PlayerSeasonStats } from '../../types/league';
@@ -54,6 +55,7 @@ export function PlayerDetailModal({
   onClose,
 }: PlayerDetailModalProps) {
   const { state } = useGame();
+  useBodyScrollLock(Boolean(player));
   const condition =
     conditionProp ??
     (player ? (state.season?.playerConditions?.[player.id] ?? null) : null);
@@ -125,11 +127,11 @@ export function PlayerDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 p-4"
+      className="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-lg overflow-hidden rounded-2xl border bg-[#0f1621] shadow-2xl ${
+        className={`modal-panel flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border bg-[#0f1621] shadow-2xl ${
           isLegend
             ? 'border-amber-400/70 shadow-[0_0_28px_rgba(251,191,36,0.22)]'
             : isSuperstar
@@ -140,7 +142,7 @@ export function PlayerDetailModal({
       >
         {/* Header */}
         <div
-          className={`flex items-start justify-between gap-3 border-b px-5 py-4 ${
+          className={`flex shrink-0 items-start justify-between gap-3 border-b px-5 py-4 ${
             isLegend
               ? 'border-amber-500/30 bg-gradient-to-r from-amber-950/60 via-[#151b26] to-[#0f1621]'
               : isSuperstar
@@ -342,7 +344,7 @@ export function PlayerDetailModal({
         </div>
 
         {/* Body */}
-        <div className="space-y-4 p-5 max-h-[75vh] overflow-y-auto">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto space-y-4 p-5">
           {/* Unified OVR Calculation Breakdown Strip (기본 OVR / 시너지 / 사기 / 부상 -> 최종 실효 OVR) */}
           <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2 tabular-nums">
             <div className="flex items-center justify-between text-[11px] font-extrabold text-slate-200">

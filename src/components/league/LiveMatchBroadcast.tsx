@@ -40,6 +40,7 @@ import {
   evaluateTeamTacticalProfile,
   evaluateUnifiedTacticalMatchup,
 } from '../../engine/unifiedTacticsEngine';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useGame } from '../../store/GameContext';
 import type {
   ChemistryResult,
@@ -215,6 +216,7 @@ export function LiveMatchBroadcast({
     : gameCtx.commitLiveMatch;
 
   const halftime = state.season?.liveHalftime ?? null;
+  useBodyScrollLock(Boolean(halftime));
 
   const lockedSpeed = override?.lockSpeed;
   const [speed, setSpeed] = useState<BroadcastSpeed>(lockedSpeed ?? 2);
@@ -1256,10 +1258,10 @@ export function LiveMatchBroadcast({
   const latestPenKick = revealedKicks[revealedKicks.length - 1] ?? null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/92 p-2 sm:p-4 backdrop-blur-sm">
-      <div className="flex max-h-[95vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0f1621] shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/92 p-2 sm:p-4">
+      <div className="modal-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0f1621] shadow-2xl">
         {/* Top Broadcast Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-[#0a0f17] px-3.5 sm:px-5 py-2.5">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-[#0a0f17] px-3.5 sm:px-5 py-2.5">
           <div className="flex items-center gap-2.5">
             <span
               className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-black tracking-wide ${
@@ -1413,7 +1415,7 @@ export function LiveMatchBroadcast({
         </div>
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto p-3 sm:p-4 space-y-3">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3">
           {/* Compact Live Scoreboard & Stats Strip */}
           <div className="rounded-xl border border-slate-800 bg-[#0b1018] px-3.5 py-2.5 space-y-2">
             {/* 1-Line AI Manager Halftime Counter Notification */}
@@ -2326,8 +2328,8 @@ export function LiveMatchBroadcast({
 
       {/* Locker Room Bench Substitution Safety Confirmation Modal (HT & ET) */}
       {pendingHtSubConfirm && (
-        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-amber-500/45 bg-[#101824] p-5 shadow-2xl space-y-4">
+        <div className="modal-backdrop fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/85 p-4">
+          <div className="modal-panel modal-scroll w-full max-w-md overflow-y-auto rounded-2xl border border-amber-500/45 bg-[#101824] p-5 shadow-2xl space-y-4">
             <div className="flex items-start gap-3">
               <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30">
                 <AlertTriangle className="w-5 h-5" />
@@ -2402,9 +2404,9 @@ export function LiveMatchBroadcast({
 
       {/* Live 2nd-Half Substitution Pause Overlay (Full Formation PitchBoard + Live Stamina Bars!) */}
       {liveSubOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/88 p-3 sm:p-5 backdrop-blur-sm">
-          <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-sky-500/45 bg-[#0f1621] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a0f17] px-5 py-3.5">
+        <div className="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/88 p-3 sm:p-5">
+          <div className="modal-panel flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-sky-500/45 bg-[#0f1621] shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-[#0a0f17] px-5 py-3.5">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded bg-sky-400 px-2 py-0.5 text-[10px] font-black text-slate-950">
@@ -2431,7 +2433,7 @@ export function LiveMatchBroadcast({
               </button>
             </div>
 
-            <div className="overflow-y-auto p-4 sm:p-5 space-y-3">
+            <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3">
               {/* Stamina Legend + Auto-restore notice */}
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-[#0b1018] px-3 py-2 text-[10px] text-slate-400">
                 <div className="flex items-center gap-2">

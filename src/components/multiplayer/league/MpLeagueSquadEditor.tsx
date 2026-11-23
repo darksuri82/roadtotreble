@@ -7,6 +7,7 @@ import {
   remapStartersForFormation,
 } from '../../../engine/lineupOptimizer';
 import { TACTIC_LIST } from '../../../engine/tacticEngine';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 import type { PlayerConditionMap } from '../../../types/condition';
 import type { FormationId, ManagerTraitId } from '../../../types/game';
 import type { TacticId } from '../../../types/league';
@@ -32,6 +33,7 @@ export function MpLeagueSquadEditor({
   onSave,
   onClose,
 }: MpLeagueSquadEditorProps) {
+  useBodyScrollLock(true);
   const [formation, setFormation] = useState<FormationId>(squad.formation);
   const [tactic, setTactic] = useState<TacticId>(squad.tactic);
   const [starters, setStarters] = useState<(Player | null)[]>(() => [...squad.starters]);
@@ -93,10 +95,10 @@ export function MpLeagueSquadEditor({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-slate-950/85 px-2 py-3 sm:py-6">
-      <div className="w-full max-w-3xl rounded-2xl border border-slate-800 bg-[#0e141d] p-3 sm:p-4 space-y-3 shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 p-2 sm:p-4">
+      <div className="modal-panel flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0e141d] shadow-2xl">
         {/* Top Header — matches single-player SquadManagerModal with real-time A / M / D on top right */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 px-3 py-2.5 sm:px-4">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-sm font-extrabold text-white">스쿼드 · 전술</span>
             <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-bold text-emerald-300 tabular-nums">
@@ -134,7 +136,8 @@ export function MpLeagueSquadEditor({
           </div>
         </div>
 
-        <ManagerTraitBadgeCard traitId={managerTraitId} compact />
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3">
+          <ManagerTraitBadgeCard traitId={managerTraitId} compact />
 
         {/* Formation & Tactic Controls — identical to single-player SquadManagerModal */}
         <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2.5">
@@ -227,6 +230,7 @@ export function MpLeagueSquadEditor({
             showChemBreakdown
             compact
           />
+        </div>
         </div>
       </div>
 

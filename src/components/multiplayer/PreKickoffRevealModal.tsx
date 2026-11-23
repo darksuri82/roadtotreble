@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
+import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
 import {
   calculateChemistry,
@@ -499,10 +500,11 @@ export function PreKickoffRevealModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-2 sm:p-4 backdrop-blur-sm">
-      <div className="flex max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0d131c] shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-2 sm:p-4">
+      <ModalBodyLock />
+      <div className="modal-panel flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0d131c] shadow-2xl">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-[#0a0f17] px-4 py-3">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-[#0a0f17] px-4 py-3">
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-0.5 text-xs font-extrabold text-emerald-300">
               <Swords className="w-3.5 h-3.5" />
@@ -516,7 +518,7 @@ export function PreKickoffRevealModal({
         </div>
 
         {/* Scrollable Comparison Body */}
-        <div className="overflow-y-auto p-3 sm:p-4 space-y-3">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3">
           {errorMsg && (
             <div className="rounded-xl border border-rose-500/40 bg-rose-950/25 px-3.5 py-2 text-xs font-bold text-rose-200">
               {errorMsg}

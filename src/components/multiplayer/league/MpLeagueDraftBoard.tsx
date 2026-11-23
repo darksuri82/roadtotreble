@@ -3,10 +3,9 @@ import {
   FastForward,
   Loader2,
   LogOut,
-  Maximize2,
   Timer,
   Users,
-  X,
+  Zap,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MANAGER_TRAITS } from '../../../data/managerTraits';
@@ -40,7 +39,6 @@ import { PitchBoard } from '../../common/PitchBoard';
 import type { SlotRef } from '../../common/PitchBoard';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
 import { PlayerDetailModal } from '../../common/PlayerDetailModal';
-import { ScaledPitchFrame } from '../../common/ScaledPitchFrame';
 import { RouletteReelsView } from '../../draft/RouletteReelsView';
 
 interface MpLeagueDraftBoardProps {
@@ -134,9 +132,9 @@ const TurnTimer = memo(function TurnTimer({
     remaining <= 5 ? 'text-rose-300' : remaining <= 10 ? 'text-amber-300' : 'text-white';
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0a0f17] px-2.5 py-1 font-mono text-sm font-black tabular-nums ${tone}`}
+      className={`inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0a0f17] px-2 py-0.5 font-mono text-xs font-black tabular-nums ${tone}`}
     >
-      <Timer className="w-3.5 h-3.5" />
+      <Timer className="w-3 h-3" />
       {remaining}s
     </span>
   );
@@ -167,13 +165,14 @@ export function MpLeagueDraftBoard({
   const [previewCandidate, setPreviewCandidate] = useState<Player | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<SlotRef | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
+  const [activeTabPlayerId, setActiveTabPlayerId] = useState<string>(playerId);
   const [inspected, setInspected] = useState<{
     player: Player;
     slotSubPosition?: SubPosition;
   } | null>(null);
   const finalSavedRef = useRef<string | null>(null);
   const autoActedRef = useRef<string | null>(null);
+  const prevIsMyTurnRef = useRef(false);
 
   const draft = live.draft;
   const order = useMemo(() => draft?.order ?? [], [draft?.order]);
@@ -186,6 +185,15 @@ export function MpLeagueDraftBoard({
   const spinnerId = draft && !draftFinished ? roundSpinnerId(round, order) : null;
   const isMyTurn = currentPickerId === playerId;
   const iAmSpinner = spinnerId === playerId;
+  const rouletteClubCount = order.length >= 3 ? 4 : 3;
+
+  // Automatically focus "내 팀" tab when my turn starts
+  useEffect(() => {
+    if (isMyTurn && !prevIsMyTurnRef.current) {
+      setActiveTabPlayerId(playerId);
+    }
+    prevIsMyTurnRef.current = isMyTurn;
+  }, [isMyTurn, playerId]);
 
   const formation: FormationId = myPayload?.formation ?? '4-3-3';
   const tactic: TacticId = myPayload?.tactic ?? 'possession';
@@ -236,6 +244,16 @@ export function MpLeagueDraftBoard({
         ? chooseSlotForPlayer(formation, board.starters, board.bench, activePreview)
         : null,
     [activePreview, formation, board],
+  );
+
+  const handleSelectPreview = useCallback(
+    (candidate: Player | null) => {
+      setPreviewCandidate(candidate);
+      if (candidate) {
+        setActiveTabPlayerId(playerId);
+      }
+    },
+    [playerId],
   );
 
   const doSpin = useCallback((): MpDraftRoll | null => {
@@ -413,12 +431,16 @@ export function MpLeagueDraftBoard({
     setSelectedSlot(null);
   };
 
+  // Order tabs with "내 팀" first, followed by other participants in draft order
   const orderedPlayers = useMemo(() => {
     const byId = new Map(players.map((p) => [p.player_id, p]));
-    return order
+    const inOrder = order
       .map((id) => byId.get(id))
       .filter((p): p is MpRoomPlayerRow => Boolean(p));
-  }, [order, players]);
+    const mine = inOrder.find((p) => p.player_id === playerId);
+    const others = inOrder.filter((p) => p.player_id !== playerId);
+    return mine ? [mine, ...others] : inOrder;
+  }, [order, players, playerId]);
 
   const participantViews = useMemo(() => {
     return orderedPlayers.map((p) => {
@@ -455,6 +477,11 @@ export function MpLeagueDraftBoard({
     });
   }, [orderedPlayers, playerId, previewStarters, previewBench, picks, displayChemistry]);
 
+  const activeView =
+    participantViews.find((v) => v.row.player_id === activeTabPlayerId) ??
+    participantViews[0] ??
+    null;
+
   const currentPicker = players.find((p) => p.player_id === currentPickerId) ?? null;
   const waitingLabel = draftFinished
     ? '드래프트 완료'
@@ -462,28 +489,16 @@ export function MpLeagueDraftBoard({
       ? `${spinnerRow?.nickname ?? '첫 순번'} 룰렛 대기 중`
       : `${currentPicker?.nickname ?? '상대'} 지명 중`;
 
-  const playerCount = participantViews.length;
-  const gridContainerCls =
-    playerCount === 2
-      ? 'mx-auto grid max-w-4xl grid-cols-2 gap-2 sm:gap-3'
-      : playerCount === 3
-        ? 'grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3'
-        : 'grid grid-cols-2 gap-2 xl:grid-cols-4 sm:gap-2.5';
-
-  const expandedView = expandedPlayerId
-    ? participantViews.find((v) => v.row.player_id === expandedPlayerId) ?? null
-    : null;
-
   return (
-    <div className="mx-auto max-w-7xl px-2.5 py-3 sm:px-4 sm:py-4 space-y-3">
-      {/* Top Bar */}
-      <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="mx-auto max-w-6xl px-2.5 py-2 sm:px-4 sm:py-3 space-y-2.5">
+      {/* Compact Top Bar */}
+      <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
           <span className="inline-flex items-center gap-1 rounded-md border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-extrabold text-sky-300">
             <Users className="w-3 h-3" />
-            공개 스네이크 드래프트
+            스네이크 드래프트
           </span>
-          <span className="font-mono text-xs font-bold text-slate-400">#{room.code}</span>
+          <span className="font-mono text-[11px] font-bold text-slate-400">#{room.code}</span>
           <span className="text-xs font-bold text-white tabular-nums">
             {Math.min(round + 1, 16)}/16R · {Math.min(pickNo, totalPicks)}/{totalPicks}
           </span>
@@ -496,7 +511,7 @@ export function MpLeagueDraftBoard({
           {!draftFinished && draft && (
             <div className="flex items-center gap-1.5">
               <span
-                className={`rounded-md border px-2 py-1 text-[11px] font-extrabold ${
+                className={`rounded-md border px-2 py-0.5 text-[11px] font-extrabold ${
                   isMyTurn
                     ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-300'
                     : 'border-slate-700 bg-[#111822] text-slate-300'
@@ -512,7 +527,7 @@ export function MpLeagueDraftBoard({
             </div>
           )}
           {draftFinished && (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-300">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               시즌 준비 중
             </span>
@@ -523,14 +538,14 @@ export function MpLeagueDraftBoard({
               type="button"
               disabled={iAgreedAuto}
               onClick={() => onAck(autoKey)}
-              className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-bold ${
+              className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10.5px] font-bold ${
                 iAgreedAuto
                   ? 'border-emerald-500/40 bg-emerald-500/12 text-emerald-300'
                   : 'border-slate-700 bg-[#111822] text-slate-300 hover:border-emerald-400/50 cursor-pointer'
               }`}
             >
               <FastForward className="w-3 h-3" />
-              자동 드래프트{' '}
+              자동{' '}
               {players.filter((p) => p.activity?.ackKeys?.includes(autoKey)).length}/
               {players.length}
             </button>
@@ -538,7 +553,7 @@ export function MpLeagueDraftBoard({
           <button
             type="button"
             onClick={onLeaveRoom}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#111822] px-2.5 py-1 text-[11px] font-bold text-slate-400 hover:text-rose-300 cursor-pointer"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#111822] px-2 py-1 text-[10.5px] font-bold text-slate-400 hover:text-rose-300 cursor-pointer"
           >
             <LogOut className="w-3 h-3" />
             나가기
@@ -546,294 +561,261 @@ export function MpLeagueDraftBoard({
         </div>
       </div>
 
-      {/* Uniform Original Formation Pitch Grid for ALL Participants (2 / 3 / 4 equal-size cards) */}
-      <div className="space-y-2">
-        <div className={gridContainerCls}>
-          {participantViews.map((pv, idx) => {
-            const onClock = pv.row.player_id === currentPickerId;
-            const online = onlinePlayerIds.includes(pv.row.player_id);
-            const isThirdOnMobile = playerCount === 3 && idx === 2;
+      {/* Main 2-Column Layout: [Left: Player Tabs + Single Original Pitch] | [Right: Compact Candidate Pool] */}
+      <div className="grid grid-cols-1 gap-2.5 sm:gap-3.5 lg:grid-cols-12 items-start">
+        {/* Right/Top on mobile: Compact Shared Roulette & Candidate Pool (7 cols) */}
+        <div className="lg:col-span-7 order-1 lg:order-2">
+          <div
+            className={`rounded-xl sm:rounded-2xl border bg-[#0d131c] p-2 sm:p-2.5 space-y-2 ${
+              isMyTurn ? 'border-emerald-500/40' : 'border-slate-800/90'
+            }`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs px-0.5">
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`rounded-md px-2 py-0.5 text-[11px] font-extrabold ${
+                    isMyTurn
+                      ? 'bg-emerald-500/15 text-emerald-300'
+                      : 'bg-slate-800 text-slate-300'
+                  }`}
+                >
+                  {Math.min(round + 1, 16)}라운드
+                </span>
+                {roll?.label && (
+                  <span className="text-[11px] font-bold text-slate-300">
+                    {roll.label} 룰렛
+                  </span>
+                )}
+                {allAuto && !draftFinished && (
+                  <span className="text-[10.5px] font-bold text-emerald-300">
+                    · 자동 진행 중
+                  </span>
+                )}
+              </div>
+              {!isMyTurn && !draftFinished && (
+                <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/35 bg-amber-500/10 px-2 py-0.5 text-[10.5px] font-bold text-amber-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  {waitingLabel}
+                </span>
+              )}
+              {draftFinished && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-300">
+                  <Check className="w-3 h-3" />
+                  16인 구성 완료
+                </span>
+              )}
+            </div>
 
-            const card = (
-              <div
-                className={`rounded-xl border p-2 space-y-1.5 transition-colors ${
-                  onClock && pv.isMe
-                    ? 'border-emerald-400/75 bg-[#0e1a1b] ring-1 ring-emerald-400/40'
-                    : onClock
-                      ? 'border-amber-400/70 bg-[#17140d] ring-1 ring-amber-400/35'
-                      : pv.isMe
-                        ? 'border-emerald-500/45 bg-[#0e1620]'
-                        : 'border-slate-800/90 bg-[#0d131c]'
-                }`}
-              >
-                {/* Participant Header */}
-                <div className="flex items-center justify-between gap-1.5 min-w-0">
-                  <div className="flex items-center gap-1.5 min-w-0">
+            <RouletteReelsView
+              key={`${generation}:${round}`}
+              hasSpun={Boolean(roll)}
+              reels={roll?.reels ?? []}
+              reelCount={rouletteClubCount}
+              legendRatePercent={Number((DEFAULT_ROULETTE_LEGEND_RATE * 100).toFixed(1))}
+              targetSubPosition={previewSlot?.subPosition ?? roll?.subPosition ?? 'CM'}
+              managerTraitId={managerTraitId}
+              allowedLeagueIds={draftPool}
+              previewCandidate={activePreview}
+              onSelectPreviewCandidate={handleSelectPreview}
+              previewSlotSynergy={previewSlotSynergy}
+              previewChemDelta={previewChemDelta}
+              canPick={isMyTurn && !draftFinished && !submitting}
+              canSpin={isMyTurn && iAmSpinner && !draftFinished}
+              waitingStatusLabel={waitingLabel}
+              takenByPlayerId={takenByPlayerId}
+              onSpin={() => {
+                doSpin();
+              }}
+              onPickPlayer={(player) => void submitPick(player, false)}
+              pickActionLabel={previewSlot?.label ?? '영입'}
+            />
+          </div>
+        </div>
+
+        {/* Left/Bottom on mobile: Top Participant Switch Tabs + Single Original PitchBoard (5 cols) */}
+        <div className="lg:col-span-5 order-2 lg:order-1 space-y-2">
+          {/* Top Participant Switch Tabs */}
+          <div
+            role="tablist"
+            aria-label="참가자 포메이션 전환"
+            className="grid gap-1.5"
+            style={{
+              gridTemplateColumns: `repeat(${Math.min(Math.max(participantViews.length, 2), 4)}, minmax(0, 1fr))`,
+            }}
+          >
+            {participantViews.map((pv) => {
+              const isSelected = activeView?.row.player_id === pv.row.player_id;
+              const onClock = pv.row.player_id === currentPickerId;
+              const online = onlinePlayerIds.includes(pv.row.player_id);
+
+              return (
+                <button
+                  key={pv.row.player_id}
+                  role="tab"
+                  aria-selected={isSelected}
+                  type="button"
+                  onClick={() => setActiveTabPlayerId(pv.row.player_id)}
+                  className={`flex flex-col gap-0.5 rounded-xl border px-2 py-1.5 text-left transition-colors cursor-pointer min-w-0 touch-manipulation ${
+                    isSelected
+                      ? pv.isMe
+                        ? 'border-emerald-400/75 bg-emerald-950/30 ring-1 ring-emerald-400/35'
+                        : 'border-sky-400/65 bg-sky-950/25 ring-1 ring-sky-400/30'
+                      : onClock
+                        ? 'border-amber-400/55 bg-[#17140d] hover:border-amber-400/80'
+                        : 'border-slate-800/90 bg-[#0d131c] hover:border-slate-600'
+                  }`}
+                >
+                  <div className="flex items-center gap-1 min-w-0">
                     <PixelManagerAvatar
                       avatar={pv.row.avatar_json}
                       clubPrimaryColor={pv.row.club_profile.primaryColor}
                       clubSecondaryColor={pv.row.club_profile.secondaryColor}
-                      size={22}
+                      size={16}
                     />
-                    <span className="truncate text-[11px] font-extrabold text-slate-100">
-                      {pv.row.nickname}
+                    <span
+                      className={`truncate text-[11px] font-extrabold leading-tight ${
+                        isSelected ? 'text-white' : 'text-slate-300'
+                      }`}
+                    >
+                      {pv.isMe ? '내 팀' : pv.row.nickname}
                     </span>
                     {pv.isMe && (
-                      <span className="shrink-0 rounded bg-emerald-400 px-1 py-0.5 text-[8px] font-black leading-none text-slate-950">
+                      <span className="shrink-0 rounded bg-emerald-400 px-1 py-px text-[7.5px] font-black leading-none text-slate-950">
                         MY
                       </span>
                     )}
                     {onClock && (
                       <span
-                        className={`h-2 w-2 shrink-0 rounded-full animate-pulse ${
+                        className={`ml-auto h-1.5 w-1.5 shrink-0 rounded-full animate-pulse ${
                           pv.isMe ? 'bg-emerald-400' : 'bg-amber-400'
                         }`}
                       />
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0 tabular-nums">
-                    <span className="text-[10px] font-bold text-slate-400">
+                  <div className="flex items-center justify-between gap-1 text-[9.5px] font-bold text-slate-400 tabular-nums">
+                    <span>
                       {pv.pickCount}/16
                       {!online && ' · 오프'}
                     </span>
-                    {pv.isMe && selectedSlot && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedSlot(null)}
-                        className="rounded border border-amber-400/40 bg-amber-500/15 px-1 py-0.5 text-[9px] font-bold text-amber-200 cursor-pointer"
-                      >
-                        취소
-                      </button>
-                    )}
+                    <span className={pv.isMe ? 'text-emerald-300/90' : 'text-sky-300/85'}>
+                      케미 {pv.chemistry.total}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Single Original Formation PitchBoard */}
+          {activeView && (
+            <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2 space-y-1.5">
+              <div className="flex items-center justify-between gap-2 px-0.5 text-[11px]">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="truncate font-extrabold text-white">
+                    {activeView.row.nickname}
+                  </span>
+                  <span className="text-[10px] text-slate-400 truncate">
+                    {MANAGER_TRAITS[activeView.traitId]?.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 tabular-nums">
+                  {activeView.isMe && selectedSlot && (
                     <button
                       type="button"
-                      onClick={() => setExpandedPlayerId(pv.row.player_id)}
-                      aria-label={`${pv.row.nickname} 피치 크게 보기`}
-                      title="크게 보기"
-                      className="rounded border border-slate-800 bg-[#111822] p-0.5 text-slate-400 hover:border-slate-600 hover:text-white cursor-pointer"
+                      onClick={() => setSelectedSlot(null)}
+                      className="rounded border border-amber-400/40 bg-amber-500/15 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-200 cursor-pointer"
                     >
-                      <Maximize2 className="w-3 h-3" />
+                      스왑 취소
                     </button>
-                  </div>
+                  )}
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-slate-300">
+                    <Zap className="w-3 h-3 text-emerald-400" />
+                    A {activeView.ratings.effectiveAtt} / M {activeView.ratings.effectiveMid} / D{' '}
+                    {activeView.ratings.effectiveDef}
+                  </span>
                 </div>
-
-                {/* Original PitchBoard scaled proportionally to exact cell width (zero zoom, zero distortion) */}
-                <ScaledPitchFrame baseWidth={376}>
-                  <PitchBoard
-                    formation={pv.formation}
-                    starters={pv.starters}
-                    bench={pv.bench}
-                    chemistry={pv.chemistry}
-                    managerTraitId={pv.traitId}
-                    conditionByPlayerId={{}}
-                    activeSlot={
-                      pv.isMe && previewSlot
-                        ? { area: previewSlot.area, index: previewSlot.index }
-                        : null
-                    }
-                    previewSlot={
-                      pv.isMe && previewSlot
-                        ? { area: previewSlot.area, index: previewSlot.index }
-                        : null
-                    }
-                    selectedSlot={pv.isMe ? selectedSlot : null}
-                    onSlotClick={
-                      pv.isMe
-                        ? handleSlotClick
-                        : (area, slotIdx) => {
-                            const target =
-                              area === 'starter'
-                                ? pv.starters[slotIdx]
-                                : pv.bench[slotIdx];
-                            if (target) setInspected({ player: target });
-                          }
-                    }
-                    onSlotSwap={pv.isMe ? handleSwap : undefined}
-                    onInspectPlayer={(player, slotSubPosition) =>
-                      setInspected({ player, slotSubPosition })
-                    }
-                    headerRight={
-                      <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
-                        OVR {Math.round(pv.ratings.ovr || 0)}
-                      </span>
-                    }
-                    showBench
-                    showChemBreakdown={false}
-                    showChemLegend={false}
-                    compact
-                  />
-                </ScaledPitchFrame>
               </div>
-            );
 
-            if (isThirdOnMobile) {
-              return (
-                <div
-                  key={pv.row.player_id}
-                  className="col-span-2 flex justify-center sm:col-span-1 sm:block"
-                >
-                  <div className="w-[calc(50%-0.25rem)] sm:w-full">{card}</div>
-                </div>
-              );
-            }
-            return <div key={pv.row.player_id}>{card}</div>;
-          })}
-        </div>
-
-        {/* Single Shared 4-Color Synergy Legend */}
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#0d131c] px-3 py-1.5 text-[10px] text-slate-400">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-0.5 w-3.5 rounded-full bg-emerald-500" />
-              구단·전소속
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-0.5 w-3.5 rounded-full bg-sky-400" />
-              국적
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-0.5 w-3.5 rounded-full bg-amber-500" />
-              스타일
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-0.5 w-3.5 rounded-full bg-purple-400" />
-              엘리트 88+
-            </span>
-          </div>
-          {allAuto && !draftFinished ? (
-            <span className="font-bold text-emerald-300">자동 드래프트 진행 중</span>
-          ) : draftFinished ? (
-            <span className="inline-flex items-center gap-1 font-bold text-emerald-300">
-              <Check className="w-3 h-3" />
-              16인 구성 완료
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Full-Size Draft Candidate Pool — ALWAYS kept at original size & layout on every turn */}
-      <div
-        className={`rounded-2xl border bg-[#0d131c] p-3 space-y-2.5 ${
-          isMyTurn ? 'border-emerald-500/40' : 'border-slate-800/90'
-        }`}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <span
-              className={`rounded-md px-2 py-0.5 font-extrabold ${
-                isMyTurn
-                  ? 'bg-emerald-500/15 text-emerald-300'
-                  : 'bg-slate-800 text-slate-300'
-              }`}
-            >
-              {Math.min(round + 1, 16)}라운드
-            </span>
-            {roll?.label && (
-              <span className="font-bold text-slate-300">{roll.label} 룰렛</span>
-            )}
-          </div>
-          {!isMyTurn && !draftFinished && (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/35 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-              {waitingLabel}
-            </span>
+              <PitchBoard
+                formation={activeView.formation}
+                starters={activeView.starters}
+                bench={activeView.bench}
+                chemistry={activeView.chemistry}
+                managerTraitId={activeView.traitId}
+                conditionByPlayerId={{}}
+                activeSlot={
+                  activeView.isMe && previewSlot
+                    ? { area: previewSlot.area, index: previewSlot.index }
+                    : null
+                }
+                previewSlot={
+                  activeView.isMe && previewSlot
+                    ? { area: previewSlot.area, index: previewSlot.index }
+                    : null
+                }
+                selectedSlot={activeView.isMe ? selectedSlot : null}
+                onSlotClick={
+                  activeView.isMe
+                    ? handleSlotClick
+                    : (area, slotIdx) => {
+                        const target =
+                          area === 'starter'
+                            ? activeView.starters[slotIdx]
+                            : activeView.bench[slotIdx];
+                        if (target) setInspected({ player: target });
+                      }
+                }
+                onSlotSwap={activeView.isMe ? handleSwap : undefined}
+                onInspectPlayer={(player, slotSubPosition) =>
+                  setInspected({ player, slotSubPosition })
+                }
+                showBench
+                draftBenchHints={!draftFinished}
+                showChemBreakdown={false}
+                showChemLegend
+                compact
+              />
+            </div>
           )}
         </div>
-
-        <RouletteReelsView
-          key={`${generation}:${round}`}
-          hasSpun={Boolean(roll)}
-          reels={roll?.reels ?? []}
-          legendRatePercent={Number((DEFAULT_ROULETTE_LEGEND_RATE * 100).toFixed(1))}
-          targetSubPosition={previewSlot?.subPosition ?? roll?.subPosition ?? 'CM'}
-          managerTraitId={managerTraitId}
-          allowedLeagueIds={draftPool}
-          previewCandidate={activePreview}
-          onSelectPreviewCandidate={setPreviewCandidate}
-          previewSlotSynergy={previewSlotSynergy}
-          previewChemDelta={previewChemDelta}
-          canPick={isMyTurn && !draftFinished && !submitting}
-          canSpin={isMyTurn && iAmSpinner && !draftFinished}
-          waitingStatusLabel={waitingLabel}
-          takenByPlayerId={takenByPlayerId}
-          onSpin={() => {
-            doSpin();
-          }}
-          onPickPlayer={(player) => void submitPick(player, false)}
-          pickActionLabel={previewSlot?.label ?? ''}
-        />
       </div>
 
-      {/* Optional Full-Size Pitch Expand Modal (useful on small mobile screens) */}
-      {expandedView && (
-        <div
-          className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/85 p-3 sm:p-5"
-          onClick={() => setExpandedPlayerId(null)}
-        >
-          <div
-            className="w-full max-w-lg max-h-[92dvh] overflow-y-auto rounded-2xl border border-slate-800 bg-[#0d131c] p-3.5 sm:p-4 space-y-2.5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <PixelManagerAvatar
-                  avatar={expandedView.row.avatar_json}
-                  clubPrimaryColor={expandedView.row.club_profile.primaryColor}
-                  clubSecondaryColor={expandedView.row.club_profile.secondaryColor}
-                  size={28}
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 text-sm font-extrabold text-white">
-                    <span className="truncate">{expandedView.row.nickname}</span>
-                    {expandedView.isMe && (
-                      <span className="rounded bg-emerald-400 px-1 py-0.5 text-[8px] font-black text-slate-950">
-                        MY
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[10px] font-bold text-slate-400 tabular-nums">
-                    A {expandedView.ratings.effectiveAtt} / M{' '}
-                    {expandedView.ratings.effectiveMid} / D{' '}
-                    {expandedView.ratings.effectiveDef} · {expandedView.pickCount}/16
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setExpandedPlayerId(null)}
-                aria-label="닫기"
-                className="rounded-lg border border-slate-800 bg-[#111822] p-1.5 text-slate-400 hover:text-white cursor-pointer"
+      {/* Mobile Sticky Confirm Bar when previewing on my turn */}
+      {activePreview && isMyTurn && !draftFinished && (
+        <div className="lg:hidden sticky bottom-2 z-30 flex items-center justify-between gap-2 rounded-xl border border-emerald-400/60 bg-[#0b1518] px-3 py-2 shadow-2xl">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate text-xs font-extrabold text-white">
+              {activePreview.name}
+            </span>
+            <span className="font-mono text-[11px] font-bold text-amber-300 shrink-0">
+              {activePreview.ovr}
+            </span>
+            {previewChemDelta !== 0 && (
+              <span
+                className={`font-mono text-[10px] font-bold shrink-0 ${
+                  previewChemDelta > 0 ? 'text-emerald-300' : 'text-rose-300'
+                }`}
               >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <PitchBoard
-              formation={expandedView.formation}
-              starters={expandedView.starters}
-              bench={expandedView.bench}
-              chemistry={expandedView.chemistry}
-              managerTraitId={expandedView.traitId}
-              conditionByPlayerId={{}}
-              selectedSlot={expandedView.isMe ? selectedSlot : null}
-              onSlotClick={
-                expandedView.isMe
-                  ? handleSlotClick
-                  : (area, slotIdx) => {
-                      const target =
-                        area === 'starter'
-                          ? expandedView.starters[slotIdx]
-                          : expandedView.bench[slotIdx];
-                      if (target) setInspected({ player: target });
-                    }
-              }
-              onSlotSwap={expandedView.isMe ? handleSwap : undefined}
-              onInspectPlayer={(player, slotSubPosition) =>
-                setInspected({ player, slotSubPosition })
-              }
-              showBench
-              showChemBreakdown
-              compact
-            />
+                케미 {previewChemDelta > 0 ? `+${previewChemDelta}` : previewChemDelta}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSelectPreview(null)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-[11px] font-bold text-slate-300 cursor-pointer touch-manipulation"
+            >
+              취소
+            </button>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => void submitPick(activePreview, false)}
+              className="rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 cursor-pointer touch-manipulation"
+            >
+              {previewSlot?.label ?? '영입'} 확정
+            </button>
           </div>
         </div>
       )}

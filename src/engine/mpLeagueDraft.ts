@@ -141,12 +141,12 @@ export function chooseSlotForPlayer(
   const benchSlot = (i: number): OpenSlot => ({
     area: 'bench',
     index: i,
-    subPosition: BENCH_SLOTS[i].subPosition,
-    position: BENCH_SLOTS[i].position,
-    label: BENCH_SLOTS[i].label,
+    subPosition: player.mainPositions[0] ?? (player.position === 'GK' ? 'GK' : 'CM'),
+    position: player.position,
+    label: '벤치',
   });
   const openStarters = cfg.slots.map((_, i) => i).filter((i) => i < 11 && !starters[i]);
-  const openBench = BENCH_SLOTS.map((_, i) => i).filter((i) => !bench[i]);
+  const openBench = Array.from({ length: 5 }, (_, i) => i).filter((i) => !bench[i]);
 
   const exact = openStarters.find((i) => mains.has(cfg.slots[i].subPosition));
   if (exact !== undefined) return starterSlot(exact);
@@ -156,25 +156,19 @@ export function chooseSlotForPlayer(
   if (alt !== undefined) return starterSlot(alt);
   const sameLine = openStarters.find((i) => cfg.slots[i].position === player.position);
   if (sameLine !== undefined) return starterSlot(sameLine);
-  const benchLine = openBench.find((i) => BENCH_SLOTS[i].position === player.position);
-  if (benchLine !== undefined) return benchSlot(benchLine);
-  // Never put an outfield player in goal (or a keeper outfield) unless nothing else is left
-  const safeBench = openBench.find(
-    (i) => (BENCH_SLOTS[i].position === 'GK') === (player.position === 'GK'),
-  );
-  if (safeBench !== undefined) return benchSlot(safeBench);
+  if (openBench.length > 0) return benchSlot(openBench[0]);
   const safeStarter = openStarters.find(
     (i) => (cfg.slots[i].position === 'GK') === (player.position === 'GK'),
   );
   if (safeStarter !== undefined) return starterSlot(safeStarter);
   if (openStarters.length > 0) return starterSlot(openStarters[0]);
-  if (openBench.length > 0) return benchSlot(openBench[0]);
   return null;
 }
 
 /**
  * One shared roulette per round: spun for the first picker's next open slot,
  * guaranteed to hold at least one free candidate per manager.
+ * Uses 4 clubs when 3+ managers participate (keeps 3 clubs for 2 or fewer).
  */
 export function spinSharedRoll(params: {
   formation: FormationId;
@@ -188,10 +182,12 @@ export function spinSharedRoll(params: {
   const slot = findNextOpenDraftSlot(params.formation, params.starters, params.bench);
   const sub: SubPosition = slot?.subPosition ?? 'CM';
   const pos: Position = slot?.position ?? 'MF';
+  const reelCount = params.playerCount >= 3 ? 4 : 3;
   let best: RouletteReelResult[] = [];
   let bestCount = -1;
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const reels = spinClubRoulette(sub, pos, params.takenIds, {
+      reelCount,
       legendRate: DEFAULT_ROULETTE_LEGEND_RATE,
       allowedLeagueIds: params.allowedLeagueIds,
       rng: params.rng,

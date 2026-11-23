@@ -31,6 +31,7 @@ import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { getUserRank } from '../../engine/standingsEngine';
 import { TACTICS } from '../../engine/tacticEngine';
 import { getNextTransferWindowRound } from '../../engine/transferEngine';
+import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import { useGame } from '../../store/GameContext';
 import type {
   Club,
@@ -926,9 +927,10 @@ export function SeasonDashboard() {
         const goalEvents = m.events.filter((e) => e.type === 'goal');
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/88 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-700 bg-[#0f1621] shadow-2xl">
-              <div className="flex items-center justify-between border-b border-slate-800 bg-[#0a0f17] px-5 py-3.5">
+          <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/88 p-4">
+            <ModalBodyLock />
+            <div className="modal-panel flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0f1621] shadow-2xl">
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-800 bg-[#0a0f17] px-5 py-3.5">
                 <div className="flex items-center gap-2">
                   <span className={`rounded px-2 py-0.5 text-[11px] font-black ${outcomeCls}`}>
                     {outcome}
@@ -946,7 +948,7 @@ export function SeasonDashboard() {
                 </button>
               </div>
 
-              <div className="p-5 space-y-4">
+              <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
                 {/* Scoreboard */}
                 <div className="grid grid-cols-3 items-center text-center gap-2 rounded-xl border border-slate-800 bg-[#0b1018] p-4">
                   <div className="flex flex-col items-center">
@@ -1113,8 +1115,9 @@ export function SeasonDashboard() {
 
       {/* Confirm Skip Season Modal */}
       {confirmSkipModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-700 bg-[#111822] p-5 shadow-2xl">
+        <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4">
+          <ModalBodyLock />
+          <div className="modal-panel w-full max-w-md rounded-2xl border border-slate-700 bg-[#111822] p-5 shadow-2xl">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-400">
                 <AlertTriangle className="w-5 h-5" />

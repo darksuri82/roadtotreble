@@ -20,6 +20,7 @@ import {
   SEVERITY_LABELS,
 } from '../../engine/conditionEngine';
 import { formatMainPositions } from '../../engine/positionEngine';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type {
   InjuryAlertItem,
   InjuryAutoReturnEntry,
@@ -74,6 +75,7 @@ export function InjuryAlertModal({
   onSwapSlots,
   onConfirmClose,
 }: InjuryAlertModalProps) {
+  useBodyScrollLock(alerts.length > 0);
   const alertBatchKey = alerts.map((a) => `${a.playerId}:${a.injury.id}`).join('|');
 
   const defaultSelectedStarterSlot = useMemo<SlotRef | null>(() => {
@@ -106,12 +108,12 @@ export function InjuryAlertModal({
 
   const formCfg = FORMATIONS[formation] ?? FORMATIONS['4-3-3'];
 
-  // Determine the target starter slot for evaluating bench position compatibility
-  const activeTargetSlotIndex = useMemo(() => {
+  // Determine the target starter slot for evaluating bench position compatibility.
+  // Never fall back to slot 0 (GK) when no starter slot is selected or injured.
+  const activeTargetSlotIndex = useMemo<number | null>(() => {
     if (selectedSlot?.area === 'starter') {
       return selectedSlot.index;
     }
-    // Otherwise locate the first alert player still on the pitch, or fall back to first alert's original slot
     for (const a of alerts) {
       const curIdx = starters.findIndex((p) => p?.id === a.playerId);
       if (curIdx !== -1) return curIdx;
@@ -119,25 +121,25 @@ export function InjuryAlertModal({
     const firstStarterAlert = alerts.find(
       (a) => a.isStarter && a.starterSlotIndex !== null,
     );
-    return firstStarterAlert?.starterSlotIndex ?? 0;
+    return firstStarterAlert?.starterSlotIndex ?? null;
   }, [selectedSlot, alerts, starters]);
 
-  const targetSlotDef = formCfg.slots[activeTargetSlotIndex] ?? formCfg.slots[0];
-  const targetSubPosition: SubPosition = targetSlotDef?.subPosition ?? 'CM';
-  const targetPosition = targetSlotDef?.position ?? 'MF';
+  const targetSlotDef =
+    activeTargetSlotIndex !== null ? formCfg.slots[activeTargetSlotIndex] ?? null : null;
+  const targetSubPosition: SubPosition | null = targetSlotDef?.subPosition ?? null;
+  const targetPosition = targetSlotDef?.position ?? null;
 
-  const benchRecommendations = useMemo(
-    () =>
-      recommendBenchReplacements({
-        injuredSlotPosition: targetPosition,
-        injuredSlotSubPosition: targetSubPosition,
-        bench,
-        conditionMap,
-        managerTraitId,
-        includeUnavailable: true,
-      }),
-    [targetPosition, targetSubPosition, bench, conditionMap, managerTraitId],
-  );
+  const benchRecommendations = useMemo(() => {
+    if (!targetSubPosition || !targetPosition) return [];
+    return recommendBenchReplacements({
+      injuredSlotPosition: targetPosition,
+      injuredSlotSubPosition: targetSubPosition,
+      bench,
+      conditionMap,
+      managerTraitId,
+      includeUnavailable: true,
+    });
+  }, [targetPosition, targetSubPosition, bench, conditionMap, managerTraitId]);
 
   if (alerts.length === 0) return null;
 
@@ -202,10 +204,12 @@ export function InjuryAlertModal({
   };
 
   const handleBenchQuickSwap = (benchIndex: number) => {
-    const target: SlotRef =
+    const targetIdx =
       selectedSlot?.area === 'starter'
-        ? selectedSlot
-        : { area: 'starter', index: activeTargetSlotIndex };
+        ? selectedSlot.index
+        : activeTargetSlotIndex;
+    if (targetIdx === null) return;
+    const target: SlotRef = { area: 'starter', index: targetIdx };
     performSwap(target, { area: 'bench', index: benchIndex });
     // Advance selection to next unresolved injured starter if multiple injuries exist
     const nextUnresolved = alerts.find((a) => {
@@ -257,8 +261,8 @@ export function InjuryAlertModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[72] flex items-center justify-center bg-slate-950/85 p-2 sm:p-4">
-      <div className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-rose-500/45 bg-[#0e141f] shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-[72] flex items-center justify-center bg-slate-950/85 p-2 sm:p-4">
+      <div className="modal-panel flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-rose-500/45 bg-[#0e141f] shadow-2xl">
         {/* Header */}
         <div
           className={`flex items-center justify-between gap-2.5 border-b px-3 py-2.5 sm:px-5 sm:py-3.5 shrink-0 ${
@@ -302,7 +306,7 @@ export function InjuryAlertModal({
         </div>
 
         {/* Main 2-column body (Mobile: Pitch top, Diagnosis & Bench below) */}
-        <div className="flex-1 overflow-y-auto p-2.5 sm:p-5">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-2.5 sm:p-5">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-start">
             {/* Left: Interactive Formation PitchBoard */}
             <div className="lg:col-span-6 space-y-1.5 sm:space-y-2">
@@ -464,125 +468,186 @@ export function InjuryAlertModal({
                     <ShieldAlert className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                     <span>후보 벤치 교체 목록</span>
                   </div>
-                  <span className="rounded border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                    대상 슬롯: {targetSubPosition} (
-                    {starters[activeTargetSlotIndex]?.name ?? '빈 슬롯'})
-                  </span>
+                  {activeTargetSlotIndex !== null && targetSubPosition ? (
+                    <span className="rounded border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                      대상 슬롯: {targetSubPosition} (
+                      {starters[activeTargetSlotIndex]?.name ?? '빈 슬롯'})
+                    </span>
+                  ) : (
+                    <span className="rounded border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] font-bold text-slate-400">
+                      피치 선발 슬롯 선택 시 적합도 표시
+                    </span>
+                  )}
                 </div>
 
-                {benchRecommendations.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {benchRecommendations.map((rec, idx) => {
-                      const cond = conditionMap?.[rec.player.id];
-                      const injured = isPlayerActivelyInjured(cond);
-                      const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
-                      const isTopRecommend = idx === 0 && !rec.isUnavailable;
-                      const isNewlyInjuredOnBench = highlightedPlayerIds.has(
-                        rec.player.id,
-                      );
+                {activeTargetSlotIndex !== null && targetSubPosition ? (
+                  benchRecommendations.length > 0 ? (
+                    <div className="space-y-1.5">
+                      {benchRecommendations.map((rec, idx) => {
+                        const cond = conditionMap?.[rec.player.id];
+                        const injured = isPlayerActivelyInjured(cond);
+                        const mTier = cond ? getMoraleTier(cond.morale) : 'normal';
+                        const isTopRecommend = idx === 0 && !rec.isUnavailable;
+                        const isNewlyInjuredOnBench = highlightedPlayerIds.has(
+                          rec.player.id,
+                        );
 
-                      return (
-                        <div
-                          key={rec.player.id}
-                          className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors ${
-                            isNewlyInjuredOnBench
-                              ? 'border-rose-500/35 bg-rose-950/20'
-                              : isTopRecommend
-                                ? 'border-emerald-500/45 bg-emerald-950/20'
-                                : 'border-slate-800 bg-[#0e1522]'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <CountryFlagSvg
-                              code={rec.player.nationalityCode}
-                              nationality={rec.player.nationality}
-                              size="sm"
-                            />
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="text-xs font-extrabold text-white truncate">
-                                  {rec.player.name}
-                                </span>
-                                {isTopRecommend && (
-                                  <span className="rounded bg-emerald-400 px-1.5 py-0.2 text-[9px] font-black text-slate-950">
-                                    추천
+                        return (
+                          <div
+                            key={rec.player.id}
+                            className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 transition-colors ${
+                              isNewlyInjuredOnBench
+                                ? 'border-rose-500/35 bg-rose-950/20'
+                                : isTopRecommend
+                                  ? 'border-emerald-500/45 bg-emerald-950/20'
+                                  : 'border-slate-800 bg-[#0e1522]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CountryFlagSvg
+                                code={rec.player.nationalityCode}
+                                nationality={rec.player.nationality}
+                                size="sm"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="text-xs font-extrabold text-white truncate">
+                                    {rec.player.name}
                                   </span>
-                                )}
-                                <span
-                                  className={`rounded border px-1.5 py-0.2 text-[9px] font-bold ${FIT_BADGE_CLS[rec.fit]}`}
-                                >
-                                  {rec.fitLabel}
-                                </span>
-                                {injured && cond?.injury && (
-                                  <PixelStatusIcon
-                                    variant="injury"
-                                    size={11}
-                                    title={getInjuryTooltip(cond.injury)}
-                                  />
-                                )}
-                                {mTier === 'ecstatic' && (
-                                  <PixelStatusIcon
-                                    variant="morale_high"
-                                    size={11}
-                                    title={`사기 ${getMoraleLabel(cond!.morale)}`}
-                                  />
-                                )}
-                                {mTier === 'frozen' && (
-                                  <PixelStatusIcon
-                                    variant="morale_low"
-                                    size={11}
-                                    title={`사기 ${getMoraleLabel(cond!.morale)}`}
-                                  />
-                                )}
-                              </div>
-                              <div className="mt-0.5 text-[10px] text-slate-400 tabular-nums">
-                                포지션 {formatMainPositions(rec.player)} · 기본 OVR{' '}
-                                <span className="font-bold text-slate-200">
-                                  {rec.player.ovr}
-                                </span>
-                                {!rec.isUnavailable && (
-                                  <>
-                                    {' '}
-                                    → {targetSubPosition} 실효{' '}
-                                    <strong
-                                      className={
-                                        rec.positionPenalty === 0
-                                          ? 'text-emerald-300'
-                                          : rec.positionPenalty >= -3
-                                            ? 'text-amber-300'
-                                            : 'text-orange-300'
-                                      }
-                                    >
-                                      {rec.effectiveScore}
-                                    </strong>
-                                  </>
-                                )}
+                                  {isTopRecommend && (
+                                    <span className="rounded bg-emerald-400 px-1.5 py-0.2 text-[9px] font-black text-slate-950">
+                                      추천
+                                    </span>
+                                  )}
+                                  <span
+                                    className={`rounded border px-1.5 py-0.2 text-[9px] font-bold ${FIT_BADGE_CLS[rec.fit]}`}
+                                  >
+                                    {rec.fitLabel}
+                                  </span>
+                                  {injured && cond?.injury && (
+                                    <PixelStatusIcon
+                                      variant="injury"
+                                      size={11}
+                                      title={getInjuryTooltip(cond.injury)}
+                                    />
+                                  )}
+                                  {mTier === 'ecstatic' && (
+                                    <PixelStatusIcon
+                                      variant="morale_high"
+                                      size={11}
+                                      title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                                    />
+                                  )}
+                                  {mTier === 'frozen' && (
+                                    <PixelStatusIcon
+                                      variant="morale_low"
+                                      size={11}
+                                      title={`사기 ${getMoraleLabel(cond!.morale)}`}
+                                    />
+                                  )}
+                                </div>
+                                <div className="mt-0.5 text-[10px] text-slate-400 tabular-nums">
+                                  포지션 {formatMainPositions(rec.player) || rec.player.position} · 기본 OVR{' '}
+                                  <span className="font-bold text-slate-200">
+                                    {rec.player.ovr}
+                                  </span>
+                                  {!rec.isUnavailable && (
+                                    <>
+                                      {' '}
+                                      → {targetSubPosition} 실효{' '}
+                                      <strong
+                                        className={
+                                          rec.positionPenalty === 0
+                                            ? 'text-emerald-300'
+                                            : rec.positionPenalty >= -3
+                                              ? 'text-amber-300'
+                                              : 'text-orange-300'
+                                        }
+                                      >
+                                        {rec.effectiveScore}
+                                      </strong>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {rec.isUnavailable ? (
-                            <span className="shrink-0 rounded border border-rose-500/35 bg-rose-950/40 px-2 py-1 text-[10px] font-bold text-rose-300">
-                              결장 {cond?.injury?.matchesRemaining ?? 0}G
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleBenchQuickSwap(rec.benchIndex)}
-                              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-emerald-400/50 bg-emerald-500/20 px-2.5 py-1.5 text-[11px] font-extrabold text-emerald-200 hover:bg-emerald-500/30 cursor-pointer"
-                            >
-                              <ArrowLeftRight className="h-3 w-3" />
-                              {targetSubPosition} 투입
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                            {rec.isUnavailable ? (
+                              <span className="shrink-0 rounded border border-rose-500/35 bg-rose-950/40 px-2 py-1 text-[10px] font-bold text-rose-300">
+                                결장 {cond?.injury?.matchesRemaining ?? 0}G
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleBenchQuickSwap(rec.benchIndex)}
+                                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-emerald-400/50 bg-emerald-500/20 px-2.5 py-1.5 text-[11px] font-extrabold text-emerald-200 hover:bg-emerald-500/30 cursor-pointer"
+                              >
+                                <ArrowLeftRight className="h-3 w-3" />
+                                {targetSubPosition} 투입
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-500">
+                      벤치에 등록된 후보 선수가 없습니다.
+                    </p>
+                  )
                 ) : (
-                  <p className="text-[11px] text-slate-500">
-                    벤치에 등록된 후보 선수가 없습니다.
-                  </p>
+                  <div className="space-y-1.5">
+                    {bench
+                      .filter((p): p is Player => p !== null)
+                      .map((bp) => {
+                        const cond = conditionMap?.[bp.id];
+                        const injured = isPlayerActivelyInjured(cond);
+                        const unavailable = isPlayerUnavailable(cond);
+                        return (
+                          <div
+                            key={bp.id}
+                            className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 ${
+                              highlightedPlayerIds.has(bp.id)
+                                ? 'border-rose-500/35 bg-rose-950/20'
+                                : 'border-slate-800 bg-[#0e1522]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <CountryFlagSvg
+                                code={bp.nationalityCode}
+                                nationality={bp.nationality}
+                                size="sm"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-extrabold text-white truncate">
+                                    {bp.name}
+                                  </span>
+                                  <span className="rounded bg-slate-800 px-1.5 py-px text-[9px] font-bold text-slate-300">
+                                    {formatMainPositions(bp) || bp.position}
+                                  </span>
+                                  {injured && cond?.injury && (
+                                    <PixelStatusIcon
+                                      variant="injury"
+                                      size={11}
+                                      title={getInjuryTooltip(cond.injury)}
+                                    />
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-slate-400 tabular-nums">
+                                  OVR <span className="font-bold text-slate-200">{bp.ovr}</span>
+                                </div>
+                              </div>
+                            </div>
+                            {unavailable && (
+                              <span className="shrink-0 rounded border border-rose-500/35 bg-rose-950/40 px-2 py-1 text-[10px] font-bold text-rose-300">
+                                결장 {cond?.injury?.matchesRemaining ?? 0}G
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
                 )}
               </div>
             </div>

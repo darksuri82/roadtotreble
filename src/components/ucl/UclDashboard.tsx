@@ -7,9 +7,11 @@ import {
   Trophy,
   Users,
   X,
+  Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
+import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import {
   computeFullPlayerOvrBreakdown,
   getInjuryTooltip,
@@ -557,13 +559,14 @@ export function UclDashboard() {
           return (
             <div
               id="ucl-skip-result-modal"
-              className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
+              className="modal-backdrop fixed inset-0 z-40 flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
             >
+              <ModalBodyLock />
               <div
-                className={`w-full max-w-xl max-h-[90dvh] overflow-y-auto rounded-2xl border bg-[#0f1724] shadow-2xl ${outcome.ringCls}`}
+                className={`modal-panel flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border bg-[#0f1724] shadow-2xl ${outcome.ringCls}`}
               >
                 {/* Modal Header */}
-                <div className="flex items-center justify-between gap-2 border-b border-slate-800 bg-[#0a101a] px-4 py-3">
+                <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-[#0a101a] px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
                       className={`rounded-md px-2 py-0.5 text-xs font-black ${outcome.badgeCls}`}
@@ -584,7 +587,7 @@ export function UclDashboard() {
                   </button>
                 </div>
 
-                <div className="p-4 sm:p-5 space-y-4">
+                <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4">
                   {/* Single-Match Scoreboard */}
                   <div className="grid grid-cols-3 items-center gap-2 rounded-xl border border-slate-800 bg-[#0b111b] px-3 py-4 text-center">
                     <div className="flex flex-col items-center gap-1.5 min-w-0">
@@ -1325,10 +1328,10 @@ export function UclDashboard() {
 
       {/* TAB 5: SQUAD & TACTICS (Normalized Pitch Proportions matching Regular League SquadManagerModal) */}
       {tab === 'squad' && (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          {/* Left: Compact Formation Pitch (5 cols, max-w-[460px]) */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+          {/* Left: Compact Formation Pitch (5 cols, max-w-[440px]) */}
           <div className="lg:col-span-5">
-            <div className="mx-auto max-w-[460px]">
+            <div className="mx-auto max-w-[440px]">
               <PitchBoard
                 formation={state.formation}
                 starters={state.starters}
@@ -1341,6 +1344,14 @@ export function UclDashboard() {
                 onSlotSwap={swapSquadPositions}
                 onInspectPlayer={(player, slotSubPosition) =>
                   setInspected({ player, slotSubPosition })
+                }
+                headerRight={
+                  <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-slate-300 tabular-nums">
+                    <Zap className="h-3 w-3 text-emerald-400" />
+                    A <strong className="text-white">{ratings.effectiveAtt}</strong> / M{' '}
+                    <strong className="text-white">{ratings.effectiveMid}</strong> / D{' '}
+                    <strong className="text-white">{ratings.effectiveDef}</strong>
+                  </span>
                 }
                 showBench
                 showChemBreakdown
@@ -1357,13 +1368,24 @@ export function UclDashboard() {
                   <Users className="h-4 w-4 text-sky-400" />
                   포메이션 &amp; 기본 전술
                 </span>
-                <button
-                  type="button"
-                  onClick={autoOptimizeLineup}
-                  className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/30 cursor-pointer"
-                >
-                  자동 최적 배치
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    id="ucl-squad-line-ovr"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2.5 py-1 text-xs font-bold text-slate-300 tabular-nums"
+                  >
+                    <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                    A <strong className="text-white">{ratings.effectiveAtt}</strong> / M{' '}
+                    <strong className="text-white">{ratings.effectiveMid}</strong> / D{' '}
+                    <strong className="text-white">{ratings.effectiveDef}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={autoOptimizeLineup}
+                    className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/30 cursor-pointer"
+                  >
+                    자동 최적 배치
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
                 {FORMATION_LIST.map((f) => (

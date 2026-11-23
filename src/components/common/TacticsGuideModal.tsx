@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
 import { PLAYSTYLES } from '../../data/playstyles';
 import { COMPLEMENTARY_STYLE_PAIRS, ELITE_PAIR_MIN_OVR } from '../../engine/chemistryEngine';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { AttributeRoutesGuideContent } from '../guide/AttributeRoutesGuideContent';
 import { InjuryMoraleGuideContent } from '../guide/InjuryMoraleGuideContent';
 
@@ -18,6 +19,7 @@ export function TacticsGuideModal({
   initialTab = 'tactics',
 }: TacticsGuideModalProps) {
   const [activeTab, setActiveTab] = useState<'tactics' | 'condition' | 'attributes'>(initialTab);
+  useBodyScrollLock(open);
 
   useEffect(() => {
     if (!open) return;
@@ -32,15 +34,15 @@ export function TacticsGuideModal({
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4 backdrop-blur-sm"
+      className="modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-700 bg-[#0d141f] shadow-2xl"
+        className="modal-panel flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0d141f] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-[#090e16] px-5 py-3.5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-[#090e16] px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <BookOpen className="h-4 w-4 text-emerald-400" />
             <div>
@@ -63,7 +65,7 @@ export function TacticsGuideModal({
         </div>
 
         {/* Top Tab Switcher */}
-        <div className="border-b border-slate-800 bg-[#0a1018] px-4 sm:px-5 py-2.5">
+        <div className="shrink-0 border-b border-slate-800 bg-[#0a1018] px-4 sm:px-5 py-2.5">
           <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3 rounded-xl border border-slate-800 bg-slate-950/80 p-1">
             <button
               type="button"
@@ -104,7 +106,7 @@ export function TacticsGuideModal({
           </div>
         </div>
 
-        <div className="max-h-[76vh] overflow-y-auto p-4 sm:p-5 space-y-5">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-5">
           {activeTab === 'condition' ? (
             <InjuryMoraleGuideContent />
           ) : activeTab === 'attributes' ? (

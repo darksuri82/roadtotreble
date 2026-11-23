@@ -6,6 +6,7 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import type { ManagerAvatarConfig } from '../../types/game';
 import { DEFAULT_MANAGER_AVATAR } from '../../types/game';
 import type { MatchResult } from '../../types/league';
@@ -530,9 +531,10 @@ export function MpPostMatchManagerPopup({
   const speakerRow = outcome === 'LOSS' ? oppRow : myRow;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/88 p-3 sm:p-4 backdrop-blur-sm">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/88 p-3 sm:p-4">
+      <ModalBodyLock />
       <div
-        className={`relative w-full max-w-xl overflow-hidden rounded-2xl border shadow-2xl ${
+        className={`modal-panel modal-scroll relative w-full max-w-xl overflow-y-auto overflow-x-hidden rounded-2xl border shadow-2xl ${
           outcome === 'WIN'
             ? 'border-amber-400/55 bg-gradient-to-b from-[#17160d] via-[#0e1520] to-[#0b1018] shadow-[0_0_32px_rgba(251,191,36,0.22)]'
             : outcome === 'LOSS'

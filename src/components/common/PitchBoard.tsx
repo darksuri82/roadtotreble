@@ -47,6 +47,8 @@ interface PitchBoardProps {
   onSlotSwap?: (from: SlotRef, to: SlotRef) => void;
   onInspectPlayer?: (player: Player, slotSubPosition?: SubPosition) => void;
   showBench?: boolean;
+  /** Only true during draft pick phase to show target position hints on empty bench slots */
+  draftBenchHints?: boolean;
   showChemBreakdown?: boolean;
   showChemLegend?: boolean;
   compact?: boolean;
@@ -117,6 +119,7 @@ export function PitchBoard({
   onSlotSwap,
   onInspectPlayer,
   showBench = true,
+  draftBenchHints = false,
   showChemBreakdown = true,
   showChemLegend = true,
   compact = false,
@@ -288,8 +291,8 @@ export function PitchBoard({
         }}
         className={`pitch-surface relative w-full overflow-hidden rounded-2xl border border-slate-800/90 ${
           compact
-            ? 'aspect-[4/3.9] sm:aspect-[4/4.4]'
-            : 'aspect-[4/4.05] sm:aspect-[4/4.3]'
+            ? 'aspect-[4/3.15] sm:aspect-[4/3.3]'
+            : 'aspect-[4/3.35] sm:aspect-[4/3.45]'
         }`}
       >
         {/* SVG Pitch Markings + Vivid Multi-Line Parallel Chemistry Links */}
@@ -537,8 +540,8 @@ export function PitchBoard({
               <div
                 className={`relative flex flex-col items-center justify-center text-center shadow-md transition-colors ${
                   compact
-                    ? 'rounded-lg px-1.5 py-0.5 min-w-[54px] sm:min-w-[66px] max-w-[84px] sm:max-w-[94px]'
-                    : 'rounded-xl px-1.5 py-1 min-w-[60px] sm:min-w-[78px] max-w-[92px] sm:max-w-[104px]'
+                    ? 'rounded-lg px-1 py-0.5 min-w-[50px] sm:min-w-[62px] max-w-[80px] sm:max-w-[90px]'
+                    : 'rounded-lg px-1.5 py-0.5 min-w-[56px] sm:min-w-[70px] max-w-[86px] sm:max-w-[96px]'
                 } ${
                   isHighlightedInjury && player
                     ? 'bg-[#261117]/95 border-2 border-rose-500 ring-2 ring-rose-400/60'
@@ -747,38 +750,38 @@ export function PitchBoard({
 
       {/* Multi-Line Chemistry Legend (4 official synergy line colors) */}
       {showChemLegend && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#0e141e] px-3 py-1.5 text-[10px] text-slate-400">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-1.5 rounded-xl border border-slate-800/80 bg-[#0e141e] px-2.5 py-1 text-[10px] text-slate-400">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="inline-flex items-center gap-1">
               <span
-                className="h-0.5 w-3.5 rounded-full"
+                className="h-0.5 w-3 rounded-full"
                 style={{ backgroundColor: LINE_COLORS.club }}
               />
               구단·전소속
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1">
               <span
-                className="h-0.5 w-3.5 rounded-full"
+                className="h-0.5 w-3 rounded-full"
                 style={{ backgroundColor: LINE_COLORS.nation }}
               />
               국적
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1">
               <span
-                className="h-0.5 w-3.5 rounded-full"
+                className="h-0.5 w-3 rounded-full"
                 style={{ backgroundColor: LINE_COLORS.style }}
               />
               스타일
             </span>
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1">
               <span
-                className="h-0.5 w-3.5 rounded-full"
+                className="h-0.5 w-3 rounded-full"
                 style={{ backgroundColor: LINE_COLORS.elite }}
               />
               엘리트 88+
             </span>
           </div>
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[9.5px] text-slate-500">
             {onInspectPlayer ? '호버 선 강조 · ⓘ 상세' : '호버 시 선 강조'}
           </span>
         </div>
@@ -786,62 +789,65 @@ export function PitchBoard({
 
       {/* 4-Pillar Player Synergy Breakdown */}
       {showChemBreakdown && (
-        <div className="grid grid-cols-4 gap-1.5 rounded-xl border border-slate-800/80 bg-[#111822] p-2 text-center text-[10px]">
-          <div className="rounded-lg bg-slate-950/60 py-1.5 px-1">
+        <div className="grid grid-cols-4 gap-1 rounded-xl border border-slate-800/80 bg-[#111822] p-1.5 text-center text-[9.5px]">
+          <div className="rounded-lg bg-slate-950/60 py-1 px-1">
             <div className="text-emerald-400/90">구단·전소속</div>
-            <div className="font-display text-xs font-bold text-white">
+            <div className="font-display text-[11px] font-bold text-white">
               {chemistry.breakdown.club} / 35
             </div>
           </div>
-          <div className="rounded-lg bg-slate-950/60 py-1.5 px-1">
+          <div className="rounded-lg bg-slate-950/60 py-1 px-1">
             <div className="text-sky-400/90">동일 국적</div>
-            <div className="font-display text-xs font-bold text-white">
+            <div className="font-display text-[11px] font-bold text-white">
               {chemistry.breakdown.nation} / 20
             </div>
           </div>
-          <div className="rounded-lg bg-slate-950/60 py-1.5 px-1">
+          <div className="rounded-lg bg-slate-950/60 py-1 px-1">
             <div className="text-amber-400/90">스타일 궁합</div>
-            <div className="font-display text-xs font-bold text-white">
+            <div className="font-display text-[11px] font-bold text-white">
               {chemistry.breakdown.tacticStyle} / 30
             </div>
           </div>
-          <div className="rounded-lg bg-slate-950/60 py-1.5 px-1">
+          <div className="rounded-lg bg-slate-950/60 py-1 px-1">
             <div className="text-purple-400/90">엘리트 88+</div>
-            <div className="font-display text-xs font-bold text-white">
+            <div className="font-display text-[11px] font-bold text-white">
               {chemistry.breakdown.roleBalance} / 15
             </div>
           </div>
         </div>
       )}
 
-      {/* Bench Row (5 slots) */}
+      {/* Free Bench Row (position-independent after draft) */}
       {showBench && (
-        <div className="rounded-xl border border-slate-800/80 bg-[#111822] p-2.5">
-          <div className="mb-2 flex items-center justify-between text-[11px]">
+        <div className="rounded-xl border border-slate-800/80 bg-[#111822] p-2">
+          <div className="mb-1.5 flex items-center justify-between text-[10.5px]">
             <span className="font-bold text-slate-300">벤치 스쿼드</span>
             <span className="text-slate-500 tabular-nums">
-              {bench.filter(Boolean).length} / 5
+              {bench.filter(Boolean).length} / {Math.max(5, bench.length)}
             </span>
           </div>
 
-          <div className="grid grid-cols-5 gap-1.5">
-            {BENCH_SLOTS.map((bSlot) => {
-              const player = bench[bSlot.index];
+          <div className="grid grid-cols-5 gap-1">
+            {Array.from({ length: Math.max(5, bench.length) }, (_, benchIdx) => {
+              const player = bench[benchIdx] ?? null;
+              const emptySlotLabel = draftBenchHints
+                ? (BENCH_SLOTS[benchIdx]?.label ?? `벤치 ${benchIdx + 1}`)
+                : `벤치 ${benchIdx + 1}`;
               const isDisabledBench = Boolean(
                 player && disabledBenchIds?.has(player.id),
               );
               const isActive =
                 activeSlot?.area === 'bench' &&
-                activeSlot.index === bSlot.index;
+                activeSlot.index === benchIdx;
               const isSelected =
                 selectedSlot?.area === 'bench' &&
-                selectedSlot.index === bSlot.index;
+                selectedSlot.index === benchIdx;
               const isPreview =
                 previewSlot?.area === 'bench' &&
-                previewSlot.index === bSlot.index;
+                previewSlot.index === benchIdx;
               const isDragOver =
                 dragOverSlot?.area === 'bench' &&
-                dragOverSlot.index === bSlot.index;
+                dragOverSlot.index === benchIdx;
               const tier = player ? getCardTier(player) : null;
               const isLegend = tier === 'legend';
               const isSuperstar = tier === 'superstar';
@@ -852,32 +858,32 @@ export function PitchBoard({
 
               return (
                 <div
-                  key={bSlot.index}
+                  key={benchIdx}
                   role="button"
                   tabIndex={onSlotClick && !isDisabledBench ? 0 : -1}
                   draggable={Boolean(canDrag && player && !isDisabledBench)}
                   onDragStart={(e) => {
                     if (isDisabledBench) return;
-                    handleDragStart(e, 'bench', bSlot.index);
+                    handleDragStart(e, 'bench', benchIdx);
                   }}
                   onDragOver={(e) => {
                     if (isDisabledBench) return;
-                    handleDragOver(e, 'bench', bSlot.index);
+                    handleDragOver(e, 'bench', benchIdx);
                   }}
                   onDrop={(e) => {
                     if (isDisabledBench) return;
-                    handleDrop(e, 'bench', bSlot.index);
+                    handleDrop(e, 'bench', benchIdx);
                   }}
                   onDragEnd={handleDragEnd}
                   onClick={() => {
                     if (isDisabledBench) return;
-                    handleSlotActivate('bench', bSlot.index);
+                    handleSlotActivate('bench', benchIdx);
                   }}
                   onKeyDown={(e) => {
                     if (isDisabledBench) return;
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
-                      handleSlotActivate('bench', bSlot.index);
+                      handleSlotActivate('bench', benchIdx);
                     }
                   }}
                   onContextMenu={(e) => {
@@ -886,7 +892,7 @@ export function PitchBoard({
                       onInspectPlayer(player);
                     }
                   }}
-                  className={`relative flex flex-col items-center justify-center rounded-xl p-1 sm:p-1.5 text-center select-none touch-manipulation transition-colors ${
+                  className={`relative flex flex-col items-center justify-center rounded-lg p-1 text-center select-none touch-manipulation transition-colors ${
                     isDisabledBench
                       ? 'bg-slate-950/70 border border-slate-800 opacity-45 cursor-not-allowed'
                       : isPreview && player
@@ -935,8 +941,10 @@ export function PitchBoard({
                     </span>
                   )}
 
-                  <span className="truncate max-w-full text-[9px] font-bold text-slate-400">
-                    {player ? formatMainPositions(player) : bSlot.label}
+                  <span className="truncate max-w-full text-[8.5px] font-bold text-slate-400">
+                    {player
+                      ? formatMainPositions(player) || player.position
+                      : emptySlotLabel}
                   </span>
                   {player ? (
                     (() => {

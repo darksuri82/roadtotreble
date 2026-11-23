@@ -21,6 +21,7 @@ import {
   formatMainPositions,
 } from '../../engine/positionEngine';
 import { TACTIC_LIST } from '../../engine/tacticEngine';
+import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import { useGame } from '../../store/GameContext';
 import { getCardTier } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
@@ -520,9 +521,10 @@ export function SquadManagerModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-6 backdrop-blur-sm">
-      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0d141d] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-6">
+      <ModalBodyLock />
+      <div className="modal-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0d141d] shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-5 py-4">
           <h2 className="text-base font-extrabold text-white">
             스쿼드 &amp; 전술 관리
           </h2>
@@ -536,7 +538,7 @@ export function SquadManagerModal({
             </button>
           )}
         </div>
-        <div className="overflow-y-auto p-5">{content}</div>
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-5">{content}</div>
       </div>
     </div>
   );

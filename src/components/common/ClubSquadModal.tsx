@@ -13,6 +13,7 @@ import { optimizeCurrentStartersForFormation } from '../../engine/lineupOptimize
 import { formatMainPositions } from '../../engine/positionEngine';
 import { getPlayerStatById } from '../../engine/standingsEngine';
 import { TACTICS } from '../../engine/tacticEngine';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { PlayerConditionMap } from '../../types/condition';
 import type { PlayerSlotSynergy } from '../../types/game';
 import type { Club, PlayerSeasonStats } from '../../types/league';
@@ -46,6 +47,7 @@ export function ClubSquadModal({
   onSelectPlayer,
   onClose,
 }: ClubSquadModalProps) {
+  useBodyScrollLock(Boolean(club));
   useEffect(() => {
     if (!club) return;
     const handleKey = (e: KeyboardEvent) => {
@@ -97,15 +99,15 @@ export function ClubSquadModal({
 
   return (
     <div
-      className="fixed inset-0 z-[56] flex items-center justify-center bg-slate-950/82 p-3 sm:p-4"
+      className="modal-backdrop fixed inset-0 z-[56] flex items-center justify-center bg-slate-950/82 p-3 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-700 bg-[#0e1520] shadow-2xl"
+        className="modal-panel flex w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0e1520] shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-[#0a1019] px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-[#0a1019] px-5 py-4">
           <div className="flex items-center gap-3 min-w-0">
             <JerseySvg
               primaryColor={club.primaryColor}
@@ -158,7 +160,7 @@ export function ClubSquadModal({
         </div>
 
         {/* Roster List */}
-        <div className="max-h-[72vh] overflow-y-auto p-4 space-y-2">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 space-y-2">
           <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
             <span className="inline-flex items-center gap-1.5 font-bold text-slate-300">
               <Users className="h-3.5 w-3.5 text-emerald-400" />

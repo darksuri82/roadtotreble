@@ -1636,6 +1636,7 @@ export function DreamMatchArena() {
                 onInspectPlayer={(p, sub) =>
                   setInspected({ player: p, slotSubPosition: sub })
                 }
+                draftBenchHints
                 compact
               />
             </div>

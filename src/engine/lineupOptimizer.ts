@@ -1,4 +1,4 @@
-import { BENCH_SLOTS, FORMATIONS } from '../data/formations';
+import { FORMATIONS } from '../data/formations';
 import type { FormationId, ManagerTraitId } from '../types/game';
 import type { TacticId } from '../types/league';
 import type { Player } from '../types/player';
@@ -191,26 +191,22 @@ function evaluateFullLineupObjective(
   return effectiveOvrSum + chem.chemistryOvrBonus * 11 + chem.total * 0.08 + fitShapeBonus;
 }
 
+const BENCH_LINE_ORDER: Record<Player['position'], number> = {
+  GK: 0,
+  DF: 1,
+  MF: 2,
+  FW: 3,
+};
+
 function organizeBenchSlots(benchPlayers: Player[]): (Player | null)[] {
-  const nextBench: (Player | null)[] = Array.from({ length: 5 }, () => null);
-  if (benchPlayers.length === 0) return nextBench;
-
-  const trimmed = benchPlayers.slice(0, 5);
-  const weights = trimmed.map((player) =>
-    BENCH_SLOTS.map((bSlot) => {
-      const fit = evaluatePositionFit(player, bSlot.subPosition, null);
-      const exactLine = player.position === bSlot.position ? 80 : 0;
-      return fit.effectiveOvr * 5 + exactLine + (fit.fit === 'main' ? 40 : 0);
-    }),
-  );
-
-  const assignment = solveMaxWeightAssignment(weights);
-  for (let i = 0; i < trimmed.length; i += 1) {
-    const idx = assignment[i];
-    if (idx >= 0 && idx < 5) {
-      nextBench[idx] = trimmed[i];
-    }
-  }
+  const sorted = [...benchPlayers]
+    .sort(
+      (a, b) =>
+        (BENCH_LINE_ORDER[a.position] ?? 9) - (BENCH_LINE_ORDER[b.position] ?? 9) ||
+        b.ovr - a.ovr,
+    )
+    .slice(0, 5);
+  const nextBench: (Player | null)[] = Array.from({ length: 5 }, (_, i) => sorted[i] ?? null);
   return nextBench;
 }
 

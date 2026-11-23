@@ -7,6 +7,7 @@ import {
   Mic,
   Zap,
 } from 'lucide-react';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type {
   ActiveManagerEvent,
   ManagerEventMatchContext,
@@ -172,6 +173,7 @@ export function ManagerEventModal({
   onSelectChoice,
   onDismissResolution,
 }: ManagerEventModalProps) {
+  useBodyScrollLock(Boolean(activeEvent || lastResolution));
   if (!activeEvent && !lastResolution) return null;
 
   // Phase 2: Resolution Report Modal
@@ -180,18 +182,20 @@ export function ManagerEventModal({
     const sceneId: ManagerEventSceneId =
       lastResolution.sceneId ?? (isPress ? 'press_official' : 'locker_home');
     return (
-      <div className="fixed inset-0 z-[71] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
-        <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-emerald-500/40 bg-[#0e1520] shadow-2xl">
-          <PixelEventSceneBanner
-            sceneId={sceneId}
-            managerAvatar={managerAvatar}
-            managerName={managerName}
-            userClub={userClub}
-            compact
-          />
+      <div className="modal-backdrop fixed inset-0 z-[71] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
+        <div className="modal-panel flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-emerald-500/40 bg-[#0e1520] shadow-2xl">
+          <div className="shrink-0">
+            <PixelEventSceneBanner
+              sceneId={sceneId}
+              managerAvatar={managerAvatar}
+              managerName={managerName}
+              userClub={userClub}
+              compact
+            />
+          </div>
 
           <div
-            className={`flex items-center gap-2.5 border-b px-5 py-3.5 ${
+            className={`flex shrink-0 items-center gap-2.5 border-b px-5 py-3.5 ${
               isPress
                 ? 'border-sky-500/30 bg-gradient-to-r from-sky-950/60 via-[#121a28] to-[#0e1520]'
                 : 'border-emerald-500/30 bg-gradient-to-r from-emerald-950/60 via-[#121a28] to-[#0e1520]'
@@ -208,7 +212,7 @@ export function ManagerEventModal({
             </div>
           </div>
 
-          <div className="max-h-[60vh] overflow-y-auto p-5 space-y-4">
+          <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
             {/* Chosen Quote */}
             <div className="rounded-xl border border-slate-800 bg-[#090e16] p-3.5 space-y-1.5">
               <div className="flex flex-wrap items-center gap-1.5">
@@ -292,31 +296,33 @@ export function ManagerEventModal({
     activeEvent.sceneId ?? (isPress ? 'press_official' : 'locker_home');
 
   return (
-    <div className="fixed inset-0 z-[71] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
-      <div className="flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0e1520] shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-[71] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
+      <div className="modal-panel flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-[#0e1520] shadow-2xl">
         {/* Situational Pixel-Art Backdrop Scene + Custom Manager Sprite + Target Player Card */}
-        <PixelEventSceneBanner
-          sceneId={sceneId}
-          managerAvatar={managerAvatar}
-          managerName={managerName}
-          userClub={userClub}
-          targetScope={activeEvent.targetScope}
-          positionGroup={activeEvent.positionGroup}
-          targetPlayer={
-            activeEvent.targetScope === 'player' && activeEvent.targetPlayerName
-              ? {
-                  name: activeEvent.targetPlayerName,
-                  nationality: activeEvent.targetPlayerNationality,
-                  nationalityCode: activeEvent.targetPlayerNationalityCode,
-                  ovr: activeEvent.targetPlayerOvr,
-                  position: activeEvent.targetPlayerPosition,
-                  mainPosition: activeEvent.targetPlayerMainPosition,
-                  morale: activeEvent.targetPlayerMorale,
-                  injured: activeEvent.targetPlayerInjured,
-                }
-              : null
-          }
-        />
+        <div className="shrink-0">
+          <PixelEventSceneBanner
+            sceneId={sceneId}
+            managerAvatar={managerAvatar}
+            managerName={managerName}
+            userClub={userClub}
+            targetScope={activeEvent.targetScope}
+            positionGroup={activeEvent.positionGroup}
+            targetPlayer={
+              activeEvent.targetScope === 'player' && activeEvent.targetPlayerName
+                ? {
+                    name: activeEvent.targetPlayerName,
+                    nationality: activeEvent.targetPlayerNationality,
+                    nationalityCode: activeEvent.targetPlayerNationalityCode,
+                    ovr: activeEvent.targetPlayerOvr,
+                    position: activeEvent.targetPlayerPosition,
+                    mainPosition: activeEvent.targetPlayerMainPosition,
+                    morale: activeEvent.targetPlayerMorale,
+                    injured: activeEvent.targetPlayerInjured,
+                  }
+                : null
+            }
+          />
+        </div>
 
         {/* Compact Title Strip */}
         <div
@@ -361,7 +367,7 @@ export function ManagerEventModal({
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-3.5">
           {/* Last Match Score & Individual Player Stat Summary Card */}
           {activeEvent.matchContext && (
             <MatchContextStatCard ctx={activeEvent.matchContext} />

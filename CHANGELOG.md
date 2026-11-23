@@ -5,6 +5,27 @@
 
 ---
 
+## v8.3 — 벤치 포지션 종속 해제 · 챔스 A/M/D OVR · 모바일 모달 안정화 · 컴팩트 피치/후보 · 멀티 단일 피치+탭 · 3인+ 4팀 룰렛
+
+- **벤치 슬롯 포지션 종속 해제 & 포지션 오표시·부상 교체 근본 수정 (`src/engine/lineupOptimizer.ts`, `src/engine/mpLeagueDraft.ts`, `src/engine/mpLeagueEngine.ts`, `src/engine/transferEngine.ts`, `src/components/common/PitchBoard.tsx`, `src/components/common/InjuryAlertModal.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`, `src/components/multiplayer/league/MpLeagueRoot.tsx`)**:
+  - 드래프트 픽 단계에서만 `BENCH_SLOTS` 포지션 가이드를 유지하고(`draftBenchHints`), 드래프트 이후 벤치는 고정 포지션 제약·라벨이 없는 자유 벤치 배열로 전환.
+  - `PitchBoard`·`TransferMarketModal`·`MpLeagueTransferModal`·`InjuryAlertModal`·`lineupOptimizer`·`mpLeagueDraft` 전 영역에서 벤치 선수가 항상 본인의 실제 포지션(`player.position` / `mainPositions`)으로 표시·판정되도록 수정(ST가 `bench[0]`에 들어가도 `GK`로 오표시되지 않음).
+  - `InjuryAlertModal`에서 벤치 전용 부상 시 `targetSlotIndex`가 `0`(GK)으로 폴백되던 버그를 제거하고, `mpLeagueEngine.resolveAvailableLineup`이 포메이션 슬롯 포지션(`evaluatePositionFit`) 기준으로 부상 대체 선수를 고르도록 수정. `MpLeagueRoot`에 낙관적 스쿼드 반영(`optimisticSquad`)을 추가해 교체 즉시 UI 갱신.
+  - 보너스 수정: `mpLeagueEngine.toCastMatch`가 이미 `result.events`에 합쳐진 연장전 이벤트를 중복 합산해 라이브 스코어보드 득점 수가 부풀려지던 버그 수정.
+- **챔피언스리그(Phase 2) 스쿼드 우상단 `A / M / D` 실시간 OVR (`src/components/ucl/UclDashboard.tsx`)**:
+  - UCL 스쿼드/전술 화면 우상단 및 피치 헤더 우측에 `calculateTeamRatings` 기반 `⚡ A / M / D` 실효 라인 OVR을 추가해 포메이션·선발·전술 변경 시 즉시 갱신.
+- **모바일 팝업/모달 스크롤 배경 밀림·하단 출렁임 전역 수정 (`src/hooks/useBodyScrollLock.ts`, `src/index.css`, 전체 29개 모달 컴포넌트)**:
+  - 참조 카운트 기반 모바일 안전 바디 스크롤 잠금(`useBodyScrollLock` / `ModalBodyLock`)과 공통 `.modal-backdrop` · `.modal-panel` · `.modal-scroll`(`100dvh`, `overscroll-behavior: contain`, 내부 독립 스크롤) 클래스를 전체 모달에 일관 적용.
+- **전역 포메이션 피치 & 드래프트 후보 창 컴팩트화 (`src/components/common/PitchBoard.tsx`, `src/components/league/OpponentPitchView.tsx`, `src/components/common/PlayerCard.tsx`, `src/components/draft/RouletteReelsView.tsx`, `src/components/draft/DraftScreen.tsx`, `src/components/multiplayer/MultiplayerBlindDraft.tsx`)**:
+  - CSS `zoom` 없이 피치 비율(`aspect-[4/3.35]` / `compact` `aspect-[4/3.15]`)과 카드 여백을 다듬어 PC·모바일 한눈에 보기 최적화.
+  - `PlayerCard`에 `dense` 모드를 신설하고 `RouletteReelsView` 룰렛 머신·후보 카드 높이를 대폭 축소해 피치와 후보 창을 한 화면 안에서 최대한 동시에 확인 가능.
+- **멀티 리그 드래프트 `[단일 원본 피치 + 상단 참가자 전환 탭]` & 3인 이상 4팀 룰렛 (`src/components/multiplayer/league/MpLeagueDraftBoard.tsx`, `src/engine/mpLeagueDraft.ts`, `src/components/draft/RouletteReelsView.tsx`, 미사용 `ScaledPitchFrame.tsx` 삭제)**:
+  - 소형 다중 피치 그리드를 폐지하고 원본 `PitchBoard` 1개 + 피치 상단 참가자 전환 탭(`내 팀` · 친구별 픽 수 · 케미 요약 · 현재 턴 표시)으로 개편.
+  - 멀티 리그 참가자가 3명 이상(3인·4인)일 때 `spinSharedRoll`이 4개 구단(`reelCount = 4`)으로 룰렛을 돌리고, `RouletteReelsView`가 4릴 그리드(`grid-cols-2 sm:grid-cols-4`)와 순차 잠금 애니메이션을 지원하도록 확장(2인 이하는 기존 3구단 유지).
+- **테스트 (`src/__tests__/v83UiBenchAndRoulette.test.ts`)**: 자유 벤치 정렬·`chooseSlotForPlayer` 포지션 유지·`resolveAvailableLineup` 슬롯 기반 부상 대체·2인(3팀) vs 3~4인(4팀) 공유 룰렛·실시간 `A/M/D` 재계산 검증 5건 추가.
+
+---
+
 ## v8.2 — 멀티플레이 UX·디자인 통일 & 리그 도움 순위 (원본 피치 균등 그리드 · 대기 턴 후보 유지/잠금 · 우상단 A/M/D OVR · 역제안/시즌 정산 원본 통합 · 사이드 득점·도움 순위)
 
 - **멀티 드래프트 원본 피치 그리드 & 대기 턴 UX (`src/components/common/ScaledPitchFrame.tsx`, `PitchBoard.tsx`, `PlayerCard.tsx`, `src/components/draft/RouletteReelsView.tsx`, `src/components/multiplayer/league/MpLeagueDraftBoard.tsx`)**:

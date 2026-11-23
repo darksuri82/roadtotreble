@@ -621,9 +621,9 @@ export function MultiplayerBlindDraft({
       {/* SUB-STEP B & C: 16-Pick Blind Draft OR Waiting for Opponent       */}
       {/* ================================================================= */}
       {(step === 'draft' || isCompleted) && (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
-          {/* Left: Roulette or Waiting Card */}
-          <div className="lg:col-span-6 space-y-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:gap-3.5 lg:grid-cols-12 items-start">
+          {/* Candidates (7 cols) */}
+          <div className="lg:col-span-7 space-y-2 order-1 lg:order-2">
             {isCompleted ? (
               <div className="rounded-2xl border border-emerald-500/35 bg-[#0e1722] p-6 text-center space-y-4">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-500/40 bg-emerald-500/15 text-emerald-300">
@@ -658,9 +658,9 @@ export function MultiplayerBlindDraft({
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-slate-800/90 bg-[#0d131c] p-3.5 space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-xs">
+              <div className="rounded-xl sm:rounded-2xl border border-slate-800/90 bg-[#0d131c] p-2 sm:p-2.5 space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5 text-xs">
                     <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 font-extrabold text-emerald-300">
                       {draft.currentSlotType === 'starter'
                         ? `선발 ${draft.currentSlotIndex + 1}/11`
@@ -677,7 +677,7 @@ export function MultiplayerBlindDraft({
                   <button
                     type="button"
                     onClick={handleAutoComplete}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#111822] px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:border-emerald-400/50 hover:text-emerald-200 cursor-pointer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#111822] px-2 py-1 text-[11px] font-bold text-slate-300 hover:border-emerald-400/50 hover:text-emerald-200 cursor-pointer"
                   >
                     <FastForward className="w-3 h-3" />
                     자동 완성
@@ -697,15 +697,15 @@ export function MultiplayerBlindDraft({
                   previewChemDelta={previewChemDelta}
                   onSpin={handleSpin}
                   onPickPlayer={handlePickPlayer}
-                  pickActionLabel={`${currentSlot?.label ?? ''} 확정`}
+                  pickActionLabel={currentSlot?.label ?? '영입'}
                 />
               </div>
             )}
           </div>
 
-          {/* Right: Live PitchBoard with Temp Placement & Synergy Preview */}
-          <div className="lg:col-span-6 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#0d131c] px-3 py-2 text-xs">
+          {/* Pitch (5 cols) */}
+          <div className="lg:col-span-5 space-y-1.5 order-2 lg:order-1">
+            <div className="flex flex-wrap items-center justify-between gap-1.5 rounded-xl border border-slate-800/80 bg-[#0d131c] px-2.5 py-1.5 text-xs">
               <div className="flex items-center gap-2">
                 <span className="font-mono font-bold text-white">{formation}</span>
                 <span className="text-slate-600">·</span>
@@ -749,7 +749,9 @@ export function MultiplayerBlindDraft({
                 setInspected({ player, slotSubPosition })
               }
               showBench
+              draftBenchHints={!isCompleted}
               showChemBreakdown
+              compact
             />
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { ScrollText, Sparkles, X } from 'lucide-react';
 import { CURRENT_APP_VERSION, PATCH_NOTES } from '../../data/patchNotes';
 import type { PatchNoteEntry } from '../../data/patchNotes';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 
 interface PatchNotesModalProps {
   onClose: () => void;
@@ -21,11 +22,12 @@ function getTagStyle(tag: PatchNoteEntry['tag']): string {
 }
 
 export function PatchNotesModal({ onClose }: PatchNotesModalProps) {
+  useBodyScrollLock(true);
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-5">
-      <div className="flex max-h-[88dvh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-700/80 bg-[#0f1621] shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-5">
+      <div className="modal-panel flex w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-slate-700/80 bg-[#0f1621] shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-[#0a0f17] px-5 py-4">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-[#0a0f17] px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/35 text-emerald-300">
               <ScrollText className="h-5 w-5" />
@@ -56,7 +58,7 @@ export function PatchNotesModal({ onClose }: PatchNotesModalProps) {
         </div>
 
         {/* Timeline Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
           {PATCH_NOTES.map((entry, idx) => {
             const isLatest = idx === 0;
             return (

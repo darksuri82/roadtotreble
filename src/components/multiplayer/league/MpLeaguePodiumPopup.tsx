@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
 import type { MpFriendRankRow, MpLeagueHuman } from '../../../types/mpLeague';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../../common/PixelTrophySvg';
@@ -349,13 +350,14 @@ export function MpLeaguePodiumPopup({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/88 p-3 backdrop-blur-sm sm:p-4"
+      className="modal-backdrop fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/88 p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="최종 시상식"
     >
+      <ModalBodyLock />
       <style>{PODIUM_KEYFRAMES}</style>
-      <div className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-800 bg-[#0d131c] p-4 shadow-2xl">
+      <div className="modal-panel modal-scroll w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-800 bg-[#0d131c] p-4 shadow-2xl">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-extrabold text-white">최종 시상식</h3>
           <button

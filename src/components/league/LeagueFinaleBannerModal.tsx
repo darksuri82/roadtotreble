@@ -7,6 +7,7 @@ import {
   Star,
   Trophy,
 } from 'lucide-react';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { UserClubProfile } from '../../types/game';
 import type { Club, LeagueId, StandingRow } from '../../types/league';
 import { JerseySvg } from '../common/JerseySvg';
@@ -59,6 +60,7 @@ export function LeagueFinaleBannerModal({
   onEnterUcl,
   onClose,
 }: LeagueFinaleBannerModalProps) {
+  useBodyScrollLock(true);
   const isChampion = finalRank === 1;
   const isUclSpot = finalRank >= 2 && finalRank <= uclSpots;
   const relegationStartRank = totalTeams - relegationSpots + 1;
@@ -78,11 +80,11 @@ export function LeagueFinaleBannerModal({
 
   return (
     <div
-      className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/88 p-3 sm:p-5 backdrop-blur-sm"
+      className="modal-backdrop fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/88 p-3 sm:p-5"
       onClick={onClose}
     >
       <div
-        className={`relative w-full max-w-lg overflow-hidden rounded-3xl border-2 p-5 sm:p-6 text-center transition-all ${containerThemeCls}`}
+        className={`modal-panel modal-scroll relative w-full max-w-lg overflow-y-auto overflow-x-hidden rounded-3xl border-2 p-5 sm:p-6 text-center transition-all ${containerThemeCls}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Tag Pill */}

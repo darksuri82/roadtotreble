@@ -339,10 +339,10 @@ export function DraftScreen() {
       </div>
 
       {/* Main 2-Column Layout */}
-      <div className="grid grid-cols-1 gap-3 sm:gap-5 lg:grid-cols-12">
+      <div className="grid grid-cols-1 gap-2.5 sm:gap-3.5 lg:grid-cols-12 items-start">
         {/* Right/Top: Roulette & Candidates (7 cols) */}
-        <div className="lg:col-span-7 flex flex-col gap-2.5 sm:gap-4 order-1 lg:order-2">
-          <div className="rounded-xl sm:rounded-2xl border border-slate-800 bg-[#111822] p-2.5 sm:p-4">
+        <div className="lg:col-span-7 flex flex-col gap-2 order-1 lg:order-2">
+          <div className="rounded-xl sm:rounded-2xl border border-slate-800 bg-[#111822] p-2 sm:p-2.5">
             <RouletteReelsView
               key={`${draft.currentSlotType}-${draft.currentSlotIndex}`}
               hasSpun={draft.hasSpun}
@@ -376,16 +376,16 @@ export function DraftScreen() {
           </div>
 
           {/* Live Team Ratings Strip (reflects previewCandidate in real time) */}
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 tabular-nums">
-            <div className="rounded-xl border border-slate-800 bg-[#111822] p-1.5 sm:p-3 text-center">
-              <div className="text-[10px] sm:text-[11px] text-slate-400">ATT</div>
-              <div className="font-display text-base sm:text-xl font-bold text-white">
+          <div className="grid grid-cols-4 gap-1.5 tabular-nums">
+            <div className="rounded-xl border border-slate-800 bg-[#111822] p-1.5 sm:py-2 text-center">
+              <div className="text-[10px] text-slate-400">ATT</div>
+              <div className="font-display text-sm sm:text-base font-bold text-white">
                 {displayedRatings.att || '-'}
                 {previewCandidate &&
                   displayedRatings.att !== ratings.att &&
                   ratings.att > 0 && (
                     <span
-                      className={`ml-0.5 text-[10px] sm:text-xs ${
+                      className={`ml-0.5 text-[10px] ${
                         displayedRatings.att > ratings.att
                           ? 'text-emerald-300'
                           : 'text-amber-300'
@@ -397,15 +397,15 @@ export function DraftScreen() {
                   )}
               </div>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-[#111822] p-1.5 sm:p-3 text-center">
-              <div className="text-[10px] sm:text-[11px] text-slate-400">MID</div>
-              <div className="font-display text-base sm:text-xl font-bold text-white">
+            <div className="rounded-xl border border-slate-800 bg-[#111822] p-1.5 sm:py-2 text-center">
+              <div className="text-[10px] text-slate-400">MID</div>
+              <div className="font-display text-sm sm:text-base font-bold text-white">
                 {displayedRatings.mid || '-'}
                 {previewCandidate &&
                   displayedRatings.mid !== ratings.mid &&
                   ratings.mid > 0 && (
                     <span
-                      className={`ml-0.5 text-[10px] sm:text-xs ${
+                      className={`ml-0.5 text-[10px] ${
                         displayedRatings.mid > ratings.mid
                           ? 'text-emerald-300'
                           : 'text-amber-300'
@@ -417,15 +417,15 @@ export function DraftScreen() {
                   )}
               </div>
             </div>
-            <div className="rounded-xl border border-slate-800 bg-[#111822] p-1.5 sm:p-3 text-center">
-              <div className="text-[10px] sm:text-[11px] text-slate-400">DEF</div>
-              <div className="font-display text-base sm:text-xl font-bold text-white">
+            <div className="rounded-xl border border-slate-800 bg-[#111822] p-1.5 sm:py-2 text-center">
+              <div className="text-[10px] text-slate-400">DEF</div>
+              <div className="font-display text-sm sm:text-base font-bold text-white">
                 {displayedRatings.def || '-'}
                 {previewCandidate &&
                   displayedRatings.def !== ratings.def &&
                   ratings.def > 0 && (
                     <span
-                      className={`ml-0.5 text-[10px] sm:text-xs ${
+                      className={`ml-0.5 text-[10px] ${
                         displayedRatings.def > ratings.def
                           ? 'text-emerald-300'
                           : 'text-amber-300'
@@ -438,22 +438,22 @@ export function DraftScreen() {
               </div>
             </div>
             <div
-              className={`rounded-xl border p-1.5 sm:p-3 text-center ${
+              className={`rounded-xl border p-1.5 sm:py-2 text-center ${
                 previewCandidate
                   ? 'border-emerald-400/50 bg-emerald-950/20'
                   : 'border-emerald-500/25 bg-[#111822]'
               }`}
             >
-              <div className="flex items-center justify-center gap-0.5 text-[10px] sm:text-[11px] text-emerald-300">
-                <Zap className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+              <div className="flex items-center justify-center gap-0.5 text-[10px] text-emerald-300">
+                <Zap className="w-2.5 h-2.5" />
                 케미 ({displayedChemistry.chemistryOvrBonus >= 0 ? '+' : ''}
                 {displayedChemistry.chemistryOvrBonus.toFixed(1)})
               </div>
-              <div className="font-display text-base sm:text-xl font-bold text-emerald-300">
+              <div className="font-display text-sm sm:text-base font-bold text-emerald-300">
                 {displayedChemistry.total}
                 {previewCandidate && previewChemDelta !== 0 && (
                   <span
-                    className={`ml-0.5 text-[10px] sm:text-xs ${
+                    className={`ml-0.5 text-[10px] ${
                       previewChemDelta > 0 ? 'text-emerald-200' : 'text-rose-300'
                     }`}
                   >
@@ -467,17 +467,17 @@ export function DraftScreen() {
         </div>
 
         {/* Left: Interactive Live Pitch with Free Swapping & Quick Lineup (5 cols) */}
-        <div className="lg:col-span-5 order-2 lg:order-1 space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
-            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300 truncate">
-              <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+        <div className="lg:col-span-5 order-2 lg:order-1 space-y-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-1.5 px-1 text-[11px]">
+            <span className="inline-flex items-center gap-1 font-semibold text-slate-300 truncate">
+              <ArrowLeftRight className="w-3 h-3 text-emerald-400 shrink-0" />
               {selectedSlot
                 ? '이동/교환할 슬롯 클릭'
                 : previewCandidate
-                  ? `프리뷰(${previewCandidate.name}): 클릭-클릭으로 자리 이동 가능`
+                  ? `프리뷰(${previewCandidate.name}): 클릭으로 자리 이동`
                   : '클릭·드래그 교환 / 우클릭·ⓘ 상세'}
             </span>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               {previewCandidate && previewSwaps.length > 0 && (
                 <button
                   type="button"
@@ -509,7 +509,7 @@ export function DraftScreen() {
                     autoOptimizeLineup();
                   }}
                   title="현재 보유 선수들의 실효 OVR과 케미를 자동 최적화합니다"
-                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
+                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10.5px] font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
                 >
                   <Wand2 className="w-3 h-3" />
                   빠른 선발
@@ -536,7 +536,9 @@ export function DraftScreen() {
               setInspected({ player, slotSubPosition })
             }
             showBench
+            draftBenchHints
             showChemBreakdown
+            compact
           />
         </div>
       </div>

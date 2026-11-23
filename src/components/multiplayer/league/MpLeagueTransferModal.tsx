@@ -14,7 +14,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { BENCH_SLOTS, FORMATIONS } from '../../../data/formations';
+import { FORMATIONS } from '../../../data/formations';
+import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 import {
   evaluatePositionFit,
   formatMainPositions,
@@ -183,6 +184,7 @@ export function MpLeagueTransferModal({
   onFinish,
   myFormation = '4-3-3',
 }: MpLeagueTransferModalProps) {
+  useBodyScrollLock(true);
   const [counterOfferId, setCounterOfferId] = useState<string | null>(null);
   const [pickerViewMode, setPickerViewMode] =
     useState<PickerViewMode>('formation');
@@ -226,7 +228,7 @@ export function MpLeagueTransferModal({
           ref,
           key: slotKey(ref),
           player: p,
-          slotLabel: BENCH_SLOTS[idx]?.label ?? `벤치 ${idx + 1}`,
+          slotLabel: p.mainPositions[0] ?? p.position,
           isStarter: false,
         });
       }
@@ -490,9 +492,9 @@ export function MpLeagueTransferModal({
   return (
     <div
       id="mp-league-transfer-modal"
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/85 p-2.5 sm:p-4"
+      className="modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/85 p-2.5 sm:p-4"
     >
-      <div className="flex flex-col w-full max-w-6xl max-h-[94dvh] overflow-hidden rounded-2xl border border-slate-800 bg-[#0e1522] shadow-2xl">
+      <div className="modal-panel flex flex-col w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-800 bg-[#0e1522] shadow-2xl">
         {/* Top Header — matches original TransferMarketModal.tsx */}
         <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-800 bg-[#090f19] px-4 py-3">
           <div className="flex flex-wrap items-center gap-2 min-w-0">
@@ -560,7 +562,7 @@ export function MpLeagueTransferModal({
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 space-y-4">
           {/* Last Negotiation Result Banner */}
           {tradeNote && (
             <div
@@ -1493,8 +1495,8 @@ export function MpLeagueTransferModal({
 
       {/* Accidental Close Confirmation Guard — identical to original TransferMarketModal */}
       {confirmCloseOpen && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/85 p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-800 bg-[#0e1522] p-5 space-y-4 shadow-2xl">
+        <div className="modal-backdrop fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/85 p-4">
+          <div className="modal-panel w-full max-w-sm rounded-2xl border border-slate-800 bg-[#0e1522] p-5 space-y-4 shadow-2xl">
             <div className="space-y-1">
               <h3 className="text-sm font-black text-white">이적시장을 끝내시겠습니까?</h3>
               <p className="text-xs text-slate-400">

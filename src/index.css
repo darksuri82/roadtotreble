@@ -19,6 +19,7 @@ html {
   overflow-x: clip;
   width: 100%;
   max-width: 100%;
+  overscroll-behavior-y: none;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -30,6 +31,7 @@ body {
   width: 100%;
   max-width: 100%;
   overflow-x: clip;
+  overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -37,6 +39,30 @@ body {
   min-height: 100dvh;
   width: 100%;
   max-width: 100%;
+}
+
+.modal-backdrop {
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+.modal-panel {
+  max-height: calc(100dvh - 1rem);
+  touch-action: auto;
+}
+
+@media (min-width: 640px) {
+  .modal-panel {
+    max-height: calc(100dvh - 2.5rem);
+  }
+}
+
+.modal-scroll {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 button,

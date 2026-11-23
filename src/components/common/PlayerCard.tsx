@@ -29,6 +29,8 @@ interface PlayerCardProps {
   selected?: boolean;
   disabled?: boolean;
   compact?: boolean;
+  /** Ultra-compact vertical card used in draft candidate pools so pitch + candidates fit in one viewport */
+  dense?: boolean;
   actionLabel?: string;
   /** When set, locks the card in place with a picked badge (e.g. picker nickname in snake draft) */
   lockedBadgeLabel?: string | null;
@@ -91,6 +93,7 @@ export function PlayerCard({
   selected = false,
   disabled = false,
   compact = false,
+  dense = false,
   actionLabel,
   lockedBadgeLabel = null,
   disableConfirmAction = false,
@@ -238,6 +241,167 @@ export function PlayerCard({
           </div>
         </div>
       </button>
+    );
+  }
+
+  if (dense) {
+    return (
+      <div
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        title={ovrBr.summaryLine}
+        onClick={() => {
+          if (!disabled) onClick?.();
+        }}
+        onKeyDown={(e) => {
+          if (!disabled && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            onClick?.();
+          }
+        }}
+        className={`group relative flex flex-col justify-between gap-1.5 overflow-hidden rounded-lg p-2 text-left transition-colors duration-150 ${style.wrapper} ${
+          selected ? 'ring-2 ring-emerald-400' : ''
+        } ${
+          onClick && !disabled ? 'cursor-pointer' : 'cursor-default'
+        } ${lockedBadgeLabel ? 'opacity-45 grayscale-[35%]' : disabled ? 'opacity-50' : ''}`}
+      >
+        {(isLegend || isSuperstar) && !lockedBadgeLabel && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div
+              className={`legend-shimmer-bar absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent ${
+                isLegend ? 'via-amber-200/20' : 'via-cyan-200/18'
+              } to-transparent`}
+            />
+          </div>
+        )}
+
+        {/* Row 1: OVR + Penalty + Position + Tier */}
+        <div className="relative z-10 flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1 min-w-0 tabular-nums">
+            <span className={`font-display text-lg font-bold leading-none ${style.ovrText}`}>
+              {player.ovr}
+            </span>
+            {hasPenalty && fit && (
+              <span className={`rounded px-1 py-px text-[9px] font-bold leading-none ${penaltyBadgeColor}`}>
+                {fit.penalty}
+              </span>
+            )}
+            <span
+              className={`truncate rounded px-1 py-px text-[9px] font-bold leading-none ${style.posBadge}`}
+            >
+              {mainPosText}
+            </span>
+          </div>
+          {isLegend || isSuperstar ? (
+            <span
+              className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[8.5px] shrink-0 ${style.badge}`}
+            >
+              {isLegend ? (
+                <>
+                  <Crown className="w-2.5 h-2.5" />
+                  LEGEND
+                </>
+              ) : (
+                <>
+                  <Diamond className="w-2.5 h-2.5" />
+                  슈퍼스타
+                </>
+              )}
+            </span>
+          ) : (
+            <span className={`rounded px-1 py-px text-[8.5px] font-semibold shrink-0 ${style.badge}`}>
+              {TIER_LABELS[tier]}
+            </span>
+          )}
+        </div>
+
+        {/* Row 2: Flag + Name + Compact Playstyles/Manager Synergy */}
+        <div className="relative z-10 space-y-1 min-w-0">
+          <div className="flex items-center gap-1 min-w-0">
+            <CountryFlagSvg
+              code={player.nationalityCode}
+              nationality={player.nationality}
+              size="xs"
+            />
+            <h3 className="truncate text-xs font-bold text-slate-100 group-hover:text-white leading-tight">
+              {player.name}
+            </h3>
+            {mgrSynergy.isMatch && (
+              <span
+                title={mgrSynergy.reason}
+                className="inline-flex shrink-0 items-center gap-0.5 rounded border border-amber-400/45 bg-amber-400/15 px-1 py-px text-[8.5px] font-extrabold text-amber-200 leading-none"
+              >
+                <Star className="w-2 h-2 fill-amber-300 text-amber-300" />
+                +1
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1 overflow-hidden">
+            {player.playstyles.slice(0, 2).map((ps) => {
+              const isMatchedStyle = mgrSynergy.matchedPlaystyles.includes(ps);
+              return (
+                <span
+                  key={ps}
+                  className={`truncate rounded px-1 py-px text-[8.5px] font-semibold leading-tight ${
+                    isMatchedStyle
+                      ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/35'
+                      : 'bg-slate-900/90 text-emerald-300/85'
+                  }`}
+                >
+                  {PLAYSTYLES[ps]?.shortName ?? PLAYSTYLES[ps]?.name ?? ps}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Row 3: Inline A/M/D + Compact Action/Lock */}
+        <div className="relative z-10 flex items-center justify-between gap-1.5 border-t border-slate-800/75 pt-1 tabular-nums">
+          <div className="flex items-center gap-1.5 text-[9.5px] font-bold text-slate-400">
+            <span>
+              A<strong className="ml-0.5 font-display text-[11px] text-slate-200">{player.att}</strong>
+            </span>
+            <span>
+              M<strong className="ml-0.5 font-display text-[11px] text-slate-200">{player.mid}</strong>
+            </span>
+            <span>
+              D<strong className="ml-0.5 font-display text-[11px] text-slate-200">{player.def}</strong>
+            </span>
+          </div>
+
+          {lockedBadgeLabel ? (
+            <span className="inline-flex max-w-[92px] items-center gap-0.5 rounded border border-slate-700/80 bg-slate-950/90 px-1.5 py-0.5 text-[9px] font-extrabold text-slate-400">
+              <Lock className="w-2.5 h-2.5 shrink-0" />
+              <span className="truncate">{lockedBadgeLabel}</span>
+            </span>
+          ) : onConfirmAction && selected ? (
+            disableConfirmAction ? (
+              <span className="rounded border border-slate-700 bg-slate-900/90 px-1.5 py-0.5 text-[9px] font-bold text-slate-400">
+                대기
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConfirmAction();
+                }}
+                className={`rounded px-2 py-0.5 text-[10px] font-extrabold transition-colors cursor-pointer shrink-0 ${
+                  isLegend
+                    ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                    : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
+                }`}
+              >
+                확정 ✓
+              </button>
+            )
+          ) : (
+            <span className="text-[9px] font-semibold text-slate-500 group-hover:text-emerald-300 shrink-0">
+              {selected ? '선택됨' : '프리뷰'}
+            </span>
+          )}
+        </div>
+      </div>
     );
   }
 

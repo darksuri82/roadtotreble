@@ -54,6 +54,7 @@ import {
   advanceOtherLeaguesToProgress,
   createOtherLeaguesState,
 } from './otherLeaguesEngine';
+import { evaluatePositionFit } from './positionEngine';
 import { generateDoubleRoundRobin } from './scheduleEngine';
 import {
   applyRoundResults,
@@ -122,17 +123,23 @@ export function resolveAvailableLineup(
 ): { starters: Player[]; bench: Player[] } {
   const starters = [...squad.starters];
   const bench = [...squad.bench];
+  const formCfg = FORMATIONS[squad.formation] ?? FORMATIONS['4-3-3'];
   for (let i = 0; i < starters.length; i += 1) {
     const starter = starters[i];
     if (!starter || !isPlayerUnavailable(conditions[starter.id])) continue;
+    const slotDef = formCfg.slots[i];
+    const targetSub = slotDef?.subPosition ?? (starter.position === 'GK' ? 'GK' : 'CM');
+    const targetIsGk = targetSub === 'GK';
     let bestIdx = -1;
-    let bestScore = -1;
+    let bestScore = -Infinity;
     bench.forEach((b, bIdx) => {
       if (!b || isPlayerUnavailable(conditions[b.id])) return;
-      const samePos = b.position === starter.position;
-      if (starter.position === 'GK' && !samePos) return;
-      if (starter.position !== 'GK' && b.position === 'GK') return;
-      const score = b.ovr + (samePos ? 100 : 0);
+      const candidateIsGk = b.position === 'GK';
+      if (targetIsGk !== candidateIsGk) return;
+      const fit = evaluatePositionFit(b, targetSub, squad.managerTraitId);
+      const score =
+        fit.effectiveOvr * 10 +
+        (fit.fit === 'main' ? 80 : fit.fit === 'secondary' ? 40 : fit.fit === 'out_of_pos' ? 10 : -100);
       if (score > bestScore) {
         bestScore = score;
         bestIdx = bIdx;
@@ -478,9 +485,11 @@ function applyPostHumanMatch(params: {
   const starterSlotIndexByPlayerId: Record<string, number> = {};
   const subPositionByPlayerId: Record<string, SubPosition> = {};
   const minutesByPlayerId: Record<string, number> = {};
+  squad.starters.forEach((p, idx) => {
+    if (p) starterSlotIndexByPlayerId[p.id] = idx;
+  });
   setup.rawStarters.forEach((p, idx) => {
     starterIds.add(p.id);
-    starterSlotIndexByPlayerId[p.id] = idx;
     const slotSub = formCfg.slots[idx]?.subPosition;
     if (slotSub) subPositionByPlayerId[p.id] = slotSub;
     minutesByPlayerId[p.id] = totalMins;
@@ -2092,7 +2101,11 @@ function toCastMatch(
   winnerId: string | null,
   options: { instant?: boolean } = {},
 ): MpCastMatch {
-  const feed: MpFeedItem[] = [...result.events, ...(result.extraTime?.etEvents ?? [])]
+  const hasEtInEvents = result.events.some((e) => e.minute > 90);
+  const allEvents = hasEtInEvents
+    ? result.events
+    : [...result.events, ...(result.extraTime?.etEvents ?? [])];
+  const feed: MpFeedItem[] = allEvents
     .filter(
       (e) =>
         e.type === 'goal' ||
@@ -2114,7 +2127,7 @@ function toCastMatch(
       text: e.description,
     }))
     .sort((a, b) => a.minute - b.minute);
-  const goalEvents = [...result.events, ...(result.extraTime?.etEvents ?? [])]
+  const goalEvents = allEvents
     .filter((e) => e.type === 'goal')
     .map((e) => ({
       minute: e.minute,

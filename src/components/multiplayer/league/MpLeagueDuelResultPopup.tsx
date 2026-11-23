@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
 import type { MpFriendRankRow, MpLeagueHuman } from '../../../types/mpLeague';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../../common/PixelTrophySvg';
@@ -115,14 +116,15 @@ export function MpLeagueDuelResultPopup({
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/88 p-3 backdrop-blur-sm sm:p-4"
+      className="modal-backdrop fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/88 p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="최종 결과"
     >
+      <ModalBodyLock />
       <style>{DUEL_KEYFRAMES}</style>
       <div
-        className={`max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-2xl border bg-[#0d131c] p-4 shadow-2xl ${cardBorder}`}
+        className={`modal-panel modal-scroll w-full max-w-lg overflow-y-auto rounded-2xl border bg-[#0d131c] p-4 shadow-2xl ${cardBorder}`}
       >
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">

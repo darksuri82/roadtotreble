@@ -20,6 +20,7 @@ import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { getUserRank } from '../../engine/standingsEngine';
 import { getNextTransferWindowRound } from '../../engine/transferEngine';
 import { useGame } from '../../store/GameContext';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { Club } from '../../types/league';
 import {
   getDomesticCupTrophyVariant,
@@ -63,6 +64,7 @@ function FastSimModalInner({
   clubsById: Record<string, Club>;
   onClose: () => void;
 }) {
+  useBodyScrollLock(true);
   const {
     state,
     startLiveMatch,
@@ -216,7 +218,7 @@ function FastSimModalInner({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-3 sm:p-5 backdrop-blur-sm">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-3 sm:p-5">
       {uncelebratedCupWin && season.cup && (
         <CupChampionModal
           cup={season.cup}
@@ -229,9 +231,9 @@ function FastSimModalInner({
         />
       )}
 
-      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0f1621] shadow-2xl">
+      <div className="modal-panel flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0f1621] shadow-2xl">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#0a0f17] px-5 py-3.5">
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#0a0f17] px-5 py-3.5">
           <div className="flex items-center gap-2.5">
             <span
               className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-black ${
@@ -382,7 +384,7 @@ function FastSimModalInner({
         )}
 
         {/* Body */}
-        <div className="overflow-y-auto p-5 space-y-4">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
           {/* Progress Bar + Live Rank Strip */}
           <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">

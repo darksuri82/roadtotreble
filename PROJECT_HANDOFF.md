@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v8.2)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.3)
 
 > Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
@@ -12,12 +12,16 @@
 - **Realtime Backend**: Supabase (`@supabase/supabase-js` — Postgres `mp_rooms` / `mp_room_players` + Realtime Postgres Changes + Presence, `supabase/schema.sql`)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, 차분한 슬레이트 UI 크롬 + 웅장한 레전드/슈퍼스타/월클 카드 글로우 & 선명한 4색 피치 시너지선)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **29개 파일 / 117개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **30개 파일 / 122개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환, `.github/workflows/deploy.yml`에서 `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY` Secret 주입)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`)
+- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.3 UI·레이아웃 컴팩트화 & 벤치 포지션 종속 해제**:
+  - **자유 벤치 전환 & 부상 교체 수정 (`lineupOptimizer.ts`, `mpLeagueDraft.ts`, `mpLeagueEngine.ts`, `transferEngine.ts`, `PitchBoard.tsx`, `InjuryAlertModal.tsx`, `TransferMarketModal.tsx`, `MpLeagueTransferModal.tsx`, `MpLeagueRoot.tsx`)**: 드래프트 픽 단계에서만 `BENCH_SLOTS` 가이드를 유지(`draftBenchHints`)하고 드래프트 이후 벤치는 포지션 제약 없는 자유 배열로 전환(항상 선수 실제 `player.position` 표시·판정). `InjuryAlertModal` 벤치 부상 시 0번(GK) 슬롯 오폴백 수정, `resolveAvailableLineup` 포메이션 슬롯 기반 대체, `MpLeagueRoot` 낙관적 스쿼드 반영, `toCastMatch` 연장전 이벤트 중복 집계 버그 수정.
+  - **UCL 우상단 실시간 `A / M / D` & 모바일 팝업 스크롤 안정화 (`UclDashboard.tsx`, `src/hooks/useBodyScrollLock.ts`, `src/index.css`, 전체 29개 모달)**: Phase 2 스쿼드 우상단 `A/M/D` OVR 추가, 전역 ref-counted 바디 스크롤 잠금 + `.modal-backdrop`/`.modal-panel`/`.modal-scroll`(`100dvh`, `overscroll-behavior: contain`) 일괄 적용.
+  - **컴팩트 피치·후보 창, 멀티 단일 피치+탭 & 3인+ 4팀 룰렛 (`PitchBoard.tsx`, `OpponentPitchView.tsx`, `PlayerCard.tsx` `dense`, `RouletteReelsView.tsx`, `DraftScreen.tsx`, `MultiplayerBlindDraft.tsx`, `MpLeagueDraftBoard.tsx`, `mpLeagueDraft.ts`)**: CSS `zoom` 없이 피치·후보 카드 높이 대폭 축소, `ScaledPitchFrame.tsx` 삭제 후 멀티 드래프트를 `[단일 원본 피치 + 상단 참가자 전환 탭]`으로 개편, 3인 이상 참가 시 공유 룰렛 4구단 확장(`v83UiBenchAndRoulette.test.ts`).
 - **v8.2 멀티플레이 UX·디자인 정합성 개편 & 리그 도움 순위**:
   - **드래프트 균등 원본 피치 & 대기 턴 UX (`ScaledPitchFrame.tsx`, `PitchBoard.tsx`, `PlayerCard.tsx`, `RouletteReelsView.tsx`, `MpLeagueDraftBoard.tsx`)**: 간략 피치(`MpMiniPitch.tsx` 삭제)와 대형 내 피치 분리를 제거하고, `ResizeObserver` + `transform: scale()`(`baseWidth=376`, CSS `zoom` 미사용)으로 원본 `PitchBoard`를 2/3/4인 전원 동일 크기 그리드로 렌더링(내 팀 에메랄드+`MY`, 상대 지명 턴 앰버). 대기 턴에도 `RouletteReelsView`를 원본 크기로 유지하며 선택된 선수만 제자리 `선택됨 · [닉네임]` 잠금 처리.
   - **실시간 우상단 `A / M / D` OVR (`MpLeagueSquadEditor.tsx`, `MatchDayTacticsRoom.tsx`)**: 싱글과 동일한 `calculateTeamRatings` 기반 `A / M / D` 지표를 멀티 스쿼드 에디터 및 전술실 우상단에 실시간 표시.

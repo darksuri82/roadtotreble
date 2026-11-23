@@ -208,7 +208,7 @@ export function OpponentPitchView({
             setHoveredIdx(null);
           }
         }}
-        className="relative aspect-[4/3.9] sm:aspect-[4/4.4] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0e1923] via-[#0c171b] to-[#0b1517]"
+        className="relative aspect-[4/3.15] sm:aspect-[4/3.3] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0e1923] via-[#0c171b] to-[#0b1517]"
       >
         {/* Crisp Minimal Pitch SVG Lines + 4-Color Parallel Chemistry Links */}
         <svg

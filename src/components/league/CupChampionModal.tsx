@@ -1,4 +1,5 @@
 import { Sparkles, Trophy, X } from 'lucide-react';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type { DomesticCupState } from '../../types/cup';
 import type { ManagerAvatarConfig, UserClubProfile } from '../../types/game';
 import type { Club, LeagueId } from '../../types/league';
@@ -29,6 +30,7 @@ export function CupChampionModal({
   clubsById,
   onClose,
 }: CupChampionModalProps) {
+  useBodyScrollLock(true);
   const finalNode = cup.rounds.final[0];
   const finalResult = finalNode?.result;
   const oppId =
@@ -57,8 +59,8 @@ export function CupChampionModal({
   const trophyVariant = getDomesticCupTrophyVariant(leagueId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-md">
-      <div className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-amber-400/35 bg-gradient-to-b from-[#161e2b] via-[#111722] to-[#0c1119] p-6 text-center shadow-2xl sm:p-8">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4">
+      <div className="modal-panel modal-scroll relative w-full max-w-lg overflow-y-auto overflow-x-hidden rounded-3xl border border-amber-400/35 bg-gradient-to-b from-[#161e2b] via-[#111722] to-[#0c1119] p-6 text-center shadow-2xl sm:p-8">
         <button
           type="button"
           onClick={onClose}

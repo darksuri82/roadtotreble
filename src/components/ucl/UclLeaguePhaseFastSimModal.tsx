@@ -13,6 +13,7 @@ import {
 import { useEffect, useState } from 'react';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { getUserRank } from '../../engine/standingsEngine';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useGame } from '../../store/GameContext';
 import type { Club, MatchResult } from '../../types/league';
 
@@ -60,6 +61,7 @@ function UclLeaguePhaseFastSimModalInner({
   onFinishAndOpenStandings: () => void;
   onClose: () => void;
 }) {
+  useBodyScrollLock(true);
   const { state, simulateSingleMatchInstant, simulateUclLeaguePhaseToEnd } =
     useGame();
 
@@ -158,8 +160,8 @@ function UclLeaguePhaseFastSimModalInner({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-3 sm:p-5 backdrop-blur-sm">
-      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0f1621] shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-3 sm:p-5">
+      <div className="modal-panel flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0f1621] shadow-2xl">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#0a0f17] px-5 py-3.5">
           <div className="flex items-center gap-2.5">
@@ -257,7 +259,7 @@ function UclLeaguePhaseFastSimModalInner({
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto p-5 space-y-4">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
           {/* Progress Bar + Live Rank Strip */}
           <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">

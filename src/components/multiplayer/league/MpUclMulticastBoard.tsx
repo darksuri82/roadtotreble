@@ -1,5 +1,6 @@
 import { Radio, Star } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
 import type { Club } from '../../../types/league';
 import type {
   MpCastLive,
@@ -377,10 +378,11 @@ function MpUclMulticastBoardInner({
   return (
     <div
       id="mp-ucl-multicast-board"
-      className="fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/88 p-3 backdrop-blur-sm sm:p-4"
+      className="modal-backdrop fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/88 p-3 sm:p-4"
     >
+      <ModalBodyLock />
       <style>{CAST_KEYFRAMES}</style>
-      <div className="w-full max-w-3xl max-h-[92dvh] overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-800 bg-[#0d131c] shadow-2xl">
+      <div className="modal-panel modal-scroll w-full max-w-3xl overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-800 bg-[#0d131c] shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">

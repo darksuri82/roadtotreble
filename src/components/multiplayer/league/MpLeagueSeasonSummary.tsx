@@ -13,6 +13,7 @@ import {
   Trophy,
   X,
 } from 'lucide-react';
+import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
 import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { FORMATIONS } from '../../../data/formations';
@@ -1062,7 +1063,9 @@ export function MpLeagueSeasonSummary({
   const squadRank = squadHuman ? rankByClub[squadHuman.clubId] : undefined;
 
   return (
-    <div className="fixed inset-0 z-[65] overflow-y-auto bg-slate-950/90">
+    <div className="modal-backdrop fixed inset-0 z-[65] bg-slate-950/90">
+      <ModalBodyLock />
+      <div className="modal-scroll h-full w-full overflow-y-auto">
       <div className="mx-auto max-w-6xl px-3 py-4 sm:px-5 sm:py-6 space-y-5">
         {/* Main Season Result Hero — aligned with solo SeasonSummary.tsx */}
         <section className="rounded-2xl border border-slate-800 bg-[#0e141d] p-4 sm:p-6 space-y-4">
@@ -1291,6 +1294,7 @@ export function MpLeagueSeasonSummary({
             onSelectPlayerId={openPlayerById}
           />
         )}
+      </div>
       </div>
 
       {inspected && (

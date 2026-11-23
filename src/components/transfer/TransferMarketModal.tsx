@@ -19,7 +19,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { BENCH_SLOTS, FORMATIONS } from '../../data/formations';
+import { FORMATIONS } from '../../data/formations';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import {
   getInjuryTooltip,
   getMoraleLabel,
@@ -186,6 +187,7 @@ export function TransferMarketModal({
 }
 
 function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
+  useBodyScrollLock(!embedded);
   const {
     state,
     chemistry,
@@ -275,7 +277,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         ref: { area: 'bench', index: idx },
         key: `bench:${idx}`,
         player: p,
-        slotLabel: BENCH_SLOTS[idx]?.label ?? `벤치${idx + 1}`,
+        slotLabel: p.mainPositions[0] ?? p.position,
         isStarter: false,
       });
     });
@@ -662,7 +664,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       className={`flex flex-col overflow-hidden bg-[#0e1522] border border-slate-800 shadow-2xl ${
         embedded
           ? 'w-full rounded-2xl'
-          : 'w-full max-w-6xl max-h-[94dvh] rounded-2xl'
+          : 'modal-panel w-full max-w-6xl rounded-2xl'
       }`}
     >
       {/* Top Header */}
@@ -787,7 +789,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       </div>
 
       {/* Scrollable Body */}
-      <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4">
+      <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 space-y-4">
         {/* Last Negotiation Result Banner */}
         {tm.lastOfferResult && (
           <div
@@ -2052,7 +2054,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       >
                                         <div className="flex items-center justify-between text-[9px] tabular-nums">
                                           <span className="rounded bg-slate-800 px-1 py-px font-bold text-slate-300">
-                                            벤치 {BENCH_SLOTS[idx]?.label ?? p.position}
+                                            벤치 {p.mainPositions[0] ?? p.position}
                                           </span>
                                           <span className="font-black text-white">
                                             {p.ovr} ·{' '}
@@ -2465,8 +2467,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
       {/* Accidental Close Guard Modal */}
       {confirmCloseOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-700/90 bg-[#0d1420] p-5 shadow-2xl space-y-4">
+        <div className="modal-backdrop fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 p-4">
+          <div className="modal-panel w-full max-w-sm rounded-2xl border border-slate-700/90 bg-[#0d1420] p-5 shadow-2xl space-y-4">
             <div className="space-y-1.5">
               <h3 className="text-sm font-black text-white">
                 {isUclSpecial
@@ -2545,7 +2547,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
   if (embedded) return shellContent;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-2 sm:p-4">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-2 sm:p-4">
       {shellContent}
     </div>
   );

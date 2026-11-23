@@ -8,6 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import type {
   ManagerAvatarConfig,
   ManagerGenderId,
@@ -165,10 +166,11 @@ export function MpProfileCustomizerModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-2.5 sm:p-4 backdrop-blur-sm">
-      <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0d131c] shadow-2xl">
+    <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 p-2.5 sm:p-4">
+      <ModalBodyLock />
+      <div className="modal-panel flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0d131c] shadow-2xl">
         {/* Top Bar */}
-        <div className="flex items-center justify-between gap-2 border-b border-slate-800 bg-[#0a0f17] px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-[#0a0f17] px-4 py-3">
           <div className="flex items-center gap-2">
             <Palette className="h-4 w-4 text-emerald-400" />
             <h2 className="text-sm font-extrabold text-white">
@@ -185,7 +187,7 @@ export function MpProfileCustomizerModal({
         </div>
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto p-3.5 sm:p-5 space-y-4">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 space-y-4">
           {/* Saved Presets Strip */}
           <div className="rounded-xl border border-slate-800/90 bg-[#0b1018] p-3.5 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
