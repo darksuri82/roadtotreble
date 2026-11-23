@@ -1170,6 +1170,16 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
     managerSynergyCount,
   });
 
+  const filledBench = state.bench.filter((p): p is Player => p !== null);
+  const benchAvgOvr =
+    filledBench.length > 0
+      ? Math.round(
+          (filledBench.reduce((sum, p) => sum + p.ovr, 0) /
+            filledBench.length) *
+            10,
+        ) / 10
+      : undefined;
+
   return computeSeasonScore({
     leaguePoints: userRow?.points ?? 0,
     leaguePlayed: played,
@@ -1183,6 +1193,7 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
     uclPerfectWin,
     uclUnbeatenWin,
     teamAvgOvr: ratings.rawOvr,
+    benchAvgOvr,
     chemistry: chem.total,
     avgSynergyOvrBonus,
     managerSynergyCount,

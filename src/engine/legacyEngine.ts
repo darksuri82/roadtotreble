@@ -110,6 +110,7 @@ export interface SeasonScoreInput {
   uclPerfectWin?: boolean;
   uclUnbeatenWin?: boolean;
   teamAvgOvr: number;
+  benchAvgOvr?: number;
   chemistry?: number;
   avgSynergyOvrBonus?: number;
   managerSynergyCount?: number;
@@ -173,6 +174,7 @@ export function computeSeasonScore(
     uclPerfectWin = false,
     uclUnbeatenWin = false,
     teamAvgOvr,
+    benchAvgOvr,
     chemistry,
     avgSynergyOvrBonus,
     managerSynergyCount,
@@ -290,39 +292,58 @@ export function computeSeasonScore(
     underdogBonus = Math.min(1750, baseUnderdog + miracleBonus);
   }
 
-  // Squad Craft & Manager Synergy Bonus (OVR + Team Chemistry + Manager Synergy + Manager Stature)
+  // Squad Craft & Effective OVR Synergy Bonus (Effective Starter OVR + Bench Depth + Manager Synergy Ratio + Chemistry + Manager Stature)
   let squadCraftBonus = 0;
   const squadCraftDetails: string[] = [];
-  if (teamAvgOvr >= 85) {
-    const ovrPts = Math.round((teamAvgOvr - 84) * 55);
-    if (ovrPts > 0) {
-      squadCraftBonus += ovrPts;
-      squadCraftDetails.push(`스쿼드 OVR ${teamAvgOvr.toFixed(1)} +${ovrPts}`);
-    }
+  const chemOvrBonus =
+    typeof chemistry === 'number'
+      ? Math.max(-1.5, Math.min(2.5, (chemistry - 50) * 0.05))
+      : 0;
+  const effectiveStarterOvr =
+    teamAvgOvr + (avgSynergyOvrBonus ?? 0) + chemOvrBonus;
+  const effectiveBenchOvr =
+    typeof benchAvgOvr === 'number'
+      ? benchAvgOvr
+      : Math.max(0, teamAvgOvr - 5);
+
+  const effOvrPts = Math.round(Math.max(0, effectiveStarterOvr - 84) * 140);
+  if (effOvrPts > 0) {
+    squadCraftBonus += effOvrPts;
+    squadCraftDetails.push(
+      `선발 실효 OVR ${effectiveStarterOvr.toFixed(1)} +${effOvrPts}`,
+    );
   }
-  if (typeof chemistry === 'number' && chemistry >= 70) {
-    const chemPts = Math.round((chemistry - 65) * 7);
-    if (chemPts > 0) {
-      squadCraftBonus += chemPts;
-      squadCraftDetails.push(`팀 케미 ${Math.round(chemistry)} +${chemPts}`);
-    }
+  const benchPts = Math.round(Math.max(0, effectiveBenchOvr - 78) * 35);
+  if (benchPts > 0) {
+    squadCraftBonus += benchPts;
+    squadCraftDetails.push(
+      `스쿼드 뎁스(벤치 ${effectiveBenchOvr.toFixed(1)}) +${benchPts}`,
+    );
   }
   if (
     typeof avgSynergyOvrBonus === 'number' ||
     typeof managerSynergyCount === 'number'
   ) {
-    const synPts =
-      Math.round((avgSynergyOvrBonus ?? 0) * 120) +
-      (managerSynergyCount ?? 0) * 18;
+    const clampedMgrCount = Math.min(11, Math.max(0, managerSynergyCount ?? 0));
+    const mgrRatioPts = Math.round((clampedMgrCount / 11) * 440);
+    const synBoostPts = Math.round(Math.max(0, avgSynergyOvrBonus ?? 0) * 140);
+    const synPts = mgrRatioPts + synBoostPts;
     if (synPts > 0) {
       squadCraftBonus += synPts;
       squadCraftDetails.push(
-        `감독·전술 시너지(${managerSynergyCount ?? 0}명 · +${(avgSynergyOvrBonus ?? 0).toFixed(1)} OVR) +${synPts}`,
+        `감독·선수 시너지(${clampedMgrCount}/11명 · +${(avgSynergyOvrBonus ?? 0).toFixed(1)} OVR) +${synPts}`,
       );
     }
   }
-  if (typeof managerRating === 'number' && managerRating >= 88) {
-    const mgrPts = Math.round((managerRating - 87) * 25);
+  if (typeof chemistry === 'number' && chemistry >= 65) {
+    const chemPts = Math.round((chemistry - 65) * 9);
+    if (chemPts > 0) {
+      squadCraftBonus += chemPts;
+      squadCraftDetails.push(`팀 케미 ${Math.round(chemistry)} +${chemPts}`);
+    }
+  }
+  if (typeof managerRating === 'number' && managerRating >= 85) {
+    const mgrPts = Math.round((managerRating - 85) * 30);
     if (mgrPts > 0) {
       squadCraftBonus += mgrPts;
       squadCraftDetails.push(`명장 지휘력 ${Math.round(managerRating)} +${mgrPts}`);

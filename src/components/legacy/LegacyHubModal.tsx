@@ -16,7 +16,11 @@ import {
   HISTORICAL_BENCHMARK_TEAMS,
 } from '../../data/historicalTeams';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
-import { getAchievementProgress } from '../../engine/legacyEngine';
+import { calculateChemistry } from '../../engine/chemistryEngine';
+import {
+  getAchievementProgress,
+  reconstructHallOfFameSquad,
+} from '../../engine/legacyEngine';
 import { TACTICS } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
 import type {
@@ -27,6 +31,7 @@ import type { Player } from '../../types/player';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
+import { PitchBoard } from '../common/PitchBoard';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
@@ -93,6 +98,65 @@ export function LegacyHubModal() {
       return true;
     });
   }, [legacyState.unlockedAchievements, achFilter]);
+
+  const historicalPitchData = useMemo(() => {
+    if (!selectedHistorical || selectedHistorical.starters.length === 0) {
+      return null;
+    }
+    const chem = calculateChemistry(
+      selectedHistorical.formation,
+      selectedHistorical.starters,
+      selectedHistorical.defaultTactic,
+      selectedHistorical.managerTraitId,
+      selectedHistorical.managerRating,
+    );
+    const effectiveStarterOvr =
+      selectedHistorical.teamAvgOvr +
+      selectedHistorical.avgSynergyOvrBonus +
+      chem.chemistryOvrBonus;
+    return {
+      chem,
+      effectiveStarterOvr: Math.round(effectiveStarterOvr * 10) / 10,
+    };
+  }, [selectedHistorical]);
+
+  const userEntryPitchData = useMemo(() => {
+    if (!selectedEntry) return null;
+    const hasSquadData =
+      (selectedEntry.fullStarters && selectedEntry.fullStarters.length > 0) ||
+      (selectedEntry.starters && selectedEntry.starters.length > 0);
+    if (!hasSquadData) return null;
+
+    const reconstructed = reconstructHallOfFameSquad(selectedEntry);
+    if (reconstructed.starters.length === 0) return null;
+
+    const mgrRating = selectedEntry.managerRating ?? 88;
+    const chem = calculateChemistry(
+      selectedEntry.formation,
+      reconstructed.starters,
+      selectedEntry.defaultTactic,
+      selectedEntry.managerTraitId,
+      mgrRating,
+    );
+    const slotSyns = Object.values(chem.slotSynergies);
+    const avgSynBonus =
+      slotSyns.length > 0
+        ? slotSyns.reduce((sum, s) => sum + s.totalBonus, 0) / slotSyns.length
+        : 0;
+    const effectiveStarterOvr =
+      selectedEntry.teamAvgOvr + avgSynBonus + chem.chemistryOvrBonus;
+    const statsById = new Map(
+      [...selectedEntry.starters, ...selectedEntry.bench].map((m) => [m.id, m]),
+    );
+    return {
+      starters: reconstructed.starters,
+      bench: reconstructed.bench.filter((p): p is Player => p !== null),
+      chem,
+      avgSynBonus: Math.round(avgSynBonus * 10) / 10,
+      effectiveStarterOvr: Math.round(effectiveStarterOvr * 10) / 10,
+      statsById,
+    };
+  }, [selectedEntry]);
 
   if (!legacyModalOpen) return null;
 
@@ -669,99 +733,131 @@ export function LegacyHubModal() {
                   )}
               </div>
 
-              {/* Full Prime Squad: 11 Starters + 6 Bench (Click any player for 7+5 sub-attributes radar!) */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-4">
+              {/* Full Prime Squad: Formation PitchBoard + Manager / Effective OVR / Bench */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5 sm:p-4 space-y-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h4 className="text-xs font-extrabold text-white">
-                    풀스쿼드 — 선발 {selectedHistorical.starters.length}명 + 핵심 벤치{' '}
-                    {selectedHistorical.bench.length}명 ({selectedHistorical.formation} ·{' '}
-                    {TACTICS[selectedHistorical.defaultTactic].name})
-                  </h4>
-                  <span className="text-[11px] text-amber-300">
-                    선수 클릭 시 7대 세부 능력치 &amp; 레이더 차트 확인
-                  </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-xs font-extrabold text-white">
+                      {selectedHistorical.formation} ·{' '}
+                      {TACTICS[selectedHistorical.defaultTactic].name}
+                    </h4>
+                    {historicalPitchData && (
+                      <span className="rounded-md border border-emerald-400/35 bg-emerald-500/12 px-2 py-0.5 font-mono text-[11px] font-black text-emerald-300 tabular-nums">
+                        실효 OVR {historicalPitchData.effectiveStarterOvr.toFixed(1)}
+                      </span>
+                    )}
+                    <span className="rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-300 tabular-nums">
+                      기본 {selectedHistorical.teamAvgOvr.toFixed(1)} · 시너지 +
+                      {selectedHistorical.avgSynergyOvrBonus.toFixed(1)}
+                    </span>
+                  </div>
                 </div>
 
-                <div>
-                  <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-amber-300">
-                    선발 베스트 11 (STARTING XI)
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start">
+                  {/* Left: Formation Pitch */}
+                  <div className="lg:col-span-7 mx-auto w-full max-w-[490px]">
+                    {historicalPitchData && (
+                      <PitchBoard
+                        formation={selectedHistorical.formation}
+                        starters={selectedHistorical.starters}
+                        bench={selectedHistorical.bench}
+                        chemistry={historicalPitchData.chem}
+                        managerTraitId={selectedHistorical.managerTraitId}
+                        conditionByPlayerId={{}}
+                        showBench={false}
+                        showChemBreakdown={true}
+                        compact={true}
+                        onSlotClick={(area, idx) => {
+                          const p =
+                            area === 'starter'
+                              ? selectedHistorical.starters[idx]
+                              : selectedHistorical.bench[idx];
+                          if (p) setInspectedPlayer(p);
+                        }}
+                        onInspectPlayer={(p) => setInspectedPlayer(p)}
+                      />
+                    )}
                   </div>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {selectedHistorical.starters.map((p, idx) => {
-                      const slotLabel =
-                        selectedHistorical.bestXi[idx]?.position ??
-                        p.mainPositions[0];
-                      const note = selectedHistorical.bestXi[idx]?.note;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setInspectedPlayer(p)}
-                          className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/75 px-3 py-2 text-left text-xs transition hover:border-amber-400/55 hover:bg-slate-800/80 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-9 shrink-0 rounded bg-slate-800 py-0.5 text-center font-mono text-[10px] font-bold text-amber-300">
-                              {slotLabel}
+
+                  {/* Right: Manager Profile + Bench Squad */}
+                  <div className="lg:col-span-5 space-y-3">
+                    {/* Manager Card */}
+                    <div className="rounded-xl border border-amber-400/30 bg-slate-900/75 p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-12 w-11 shrink-0 items-center justify-center rounded-lg border border-amber-400/35 bg-slate-950">
+                          <PixelManagerAvatar
+                            avatar={selectedHistorical.managerAvatar}
+                            clubPrimaryColor={
+                              selectedHistorical.userClub.primaryColor
+                            }
+                            clubSecondaryColor={
+                              selectedHistorical.userClub.secondaryColor
+                            }
+                            size={34}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-xs font-black text-white">
+                              {selectedHistorical.managerName}
                             </span>
-                            <CountryFlagSvg
-                              code={p.nationalityCode}
-                              nationality={p.nationality}
-                              size="sm"
-                            />
-                            <span className="truncate font-bold text-white">
-                              {p.name}
+                            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[11px] font-black text-amber-300 tabular-nums shrink-0">
+                              OVR {selectedHistorical.managerRating}
                             </span>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {note && (
-                              <span className="hidden xl:inline rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
-                                {note}
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                            <span className="rounded bg-slate-800 px-1.5 py-0.5 font-bold text-emerald-300">
+                              {MANAGER_TRAITS[selectedHistorical.managerTraitId]
+                                ?.name}
+                            </span>
+                            <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono font-bold text-sky-300 tabular-nums">
+                              궁합 {selectedHistorical.managerSynergyCount}/11
+                            </span>
+                            <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono font-bold text-slate-300 tabular-nums">
+                              케미 {selectedHistorical.chemistry}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bench Squad */}
+                    {selectedHistorical.bench.length > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          벤치 스쿼드 ({selectedHistorical.bench.length})
+                        </div>
+                        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
+                          {selectedHistorical.bench.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => setInspectedPlayer(p)}
+                              className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-slate-900/60 px-2.5 py-1.5 text-left text-xs transition hover:border-amber-400/50 hover:bg-slate-800/75 cursor-pointer touch-manipulation"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="w-8 shrink-0 rounded bg-slate-800 py-0.5 text-center font-mono text-[10px] font-bold text-slate-400">
+                                  {p.mainPositions[0]}
+                                </span>
+                                <CountryFlagSvg
+                                  code={p.nationalityCode}
+                                  nationality={p.nationality}
+                                  size="sm"
+                                />
+                                <span className="truncate font-bold text-slate-200">
+                                  {p.name}
+                                </span>
+                              </div>
+                              <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-black text-amber-300 tabular-nums shrink-0">
+                                {p.ovr}
                               </span>
-                            )}
-                            <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[10px] font-black text-amber-300">
-                              {p.ovr}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {selectedHistorical.bench.length > 0 && (
-                  <div>
-                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      핵심 벤치 ({selectedHistorical.bench.length}명)
-                    </div>
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {selectedHistorical.bench.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setInspectedPlayer(p)}
-                          className="flex items-center justify-between rounded-xl border border-slate-800/70 bg-slate-900/45 px-3 py-2 text-left text-xs transition hover:border-amber-400/50 hover:bg-slate-800/70 cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="w-9 shrink-0 rounded bg-slate-800/80 py-0.5 text-center font-mono text-[10px] font-bold text-slate-400">
-                              {p.mainPositions[0]}
-                            </span>
-                            <CountryFlagSvg
-                              code={p.nationalityCode}
-                              nationality={p.nationality}
-                              size="sm"
-                            />
-                            <span className="truncate font-bold text-slate-200">
-                              {p.name}
-                            </span>
-                          </div>
-                          <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-black text-slate-300">
-                            {p.ovr}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -945,52 +1041,151 @@ export function LegacyHubModal() {
               </div>
 
               {detailSubTab === 'squad' ? (
-                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
-                  <h4 className="mb-3 text-xs font-extrabold text-slate-300">
-                    최종 등록 스쿼드 (선발 11명 + 벤치 5명 · 시즌 통합 스탯)
-                  </h4>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {[...selectedEntry.starters, ...selectedEntry.bench].map(
-                      (m, idx) => (
-                        <div
-                          key={m.id}
-                          className={`flex items-center justify-between rounded-xl border px-3 py-2 text-xs ${
-                            m.isLegend
-                              ? 'border-amber-500/40 bg-amber-950/25'
-                              : idx < 11
-                                ? 'border-slate-800 bg-slate-900/70'
-                                : 'border-slate-800/60 bg-slate-900/35'
-                          }`}
-                        >
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-bold text-slate-500">
-                                {idx < 11 ? 'XI' : 'SUB'}
-                              </span>
-                              <span className="truncate font-bold text-white">
-                                {m.name}
-                              </span>
-                              <span className="rounded bg-slate-800 px-1 text-[10px] font-bold text-amber-300">
-                                {m.ovr}
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              {m.mainPositions.join('/')}
-                            </div>
-                          </div>
-                          <div className="text-right font-mono text-[11px] text-slate-300">
-                            <div>
-                              {m.goals}G {m.assists}A
-                            </div>
-                            <div className="text-[10px] text-emerald-400">
-                              평점 {m.avgRating > 0 ? m.avgRating.toFixed(2) : '-'}
+                userEntryPitchData ? (
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5 sm:p-4 space-y-3.5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="text-xs font-extrabold text-white">
+                          {selectedEntry.formation} ·{' '}
+                          {TACTICS[selectedEntry.defaultTactic].name}
+                        </h4>
+                        <span className="rounded-md border border-emerald-400/35 bg-emerald-500/12 px-2 py-0.5 font-mono text-[11px] font-black text-emerald-300 tabular-nums">
+                          실효 OVR{' '}
+                          {userEntryPitchData.effectiveStarterOvr.toFixed(1)}
+                        </span>
+                        <span className="rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-300 tabular-nums">
+                          기본 {selectedEntry.teamAvgOvr.toFixed(1)} · 시너지 +
+                          {userEntryPitchData.avgSynBonus.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start">
+                      {/* Left: Formation Pitch */}
+                      <div className="lg:col-span-7 mx-auto w-full max-w-[490px]">
+                        <PitchBoard
+                          formation={selectedEntry.formation}
+                          starters={userEntryPitchData.starters}
+                          bench={userEntryPitchData.bench}
+                          chemistry={userEntryPitchData.chem}
+                          managerTraitId={selectedEntry.managerTraitId}
+                          conditionByPlayerId={{}}
+                          showBench={false}
+                          showChemBreakdown={true}
+                          compact={true}
+                          onSlotClick={(area, idx) => {
+                            const p =
+                              area === 'starter'
+                                ? userEntryPitchData.starters[idx]
+                                : userEntryPitchData.bench[idx];
+                            if (p) setInspectedPlayer(p);
+                          }}
+                          onInspectPlayer={(p) => setInspectedPlayer(p)}
+                        />
+                      </div>
+
+                      {/* Right: Manager Profile + Bench Squad */}
+                      <div className="lg:col-span-5 space-y-3">
+                        <div className="rounded-xl border border-emerald-400/25 bg-slate-900/75 p-3">
+                          <div className="flex items-center gap-3">
+                            {selectedEntry.managerAvatar && (
+                              <div className="flex h-12 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-950">
+                                <PixelManagerAvatar
+                                  avatar={selectedEntry.managerAvatar}
+                                  clubPrimaryColor={
+                                    selectedEntry.userClub.primaryColor
+                                  }
+                                  clubSecondaryColor={
+                                    selectedEntry.userClub.secondaryColor
+                                  }
+                                  size={34}
+                                />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="truncate text-xs font-black text-white">
+                                  {selectedEntry.managerName ?? '감독'}
+                                </span>
+                                {typeof selectedEntry.managerRating ===
+                                  'number' && (
+                                  <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[11px] font-black text-amber-300 tabular-nums shrink-0">
+                                    OVR {selectedEntry.managerRating}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                                {selectedEntry.managerTraitId && (
+                                  <span className="rounded bg-slate-800 px-1.5 py-0.5 font-bold text-emerald-300">
+                                    {
+                                      MANAGER_TRAITS[
+                                        selectedEntry.managerTraitId
+                                      ]?.name
+                                    }
+                                  </span>
+                                )}
+                                <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono font-bold text-slate-300 tabular-nums">
+                                  케미 {userEntryPitchData.chem.total}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      ),
-                    )}
+
+                        {userEntryPitchData.bench.length > 0 && (
+                          <div className="space-y-1.5">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              벤치 스쿼드 ({userEntryPitchData.bench.length})
+                            </div>
+                            <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
+                              {userEntryPitchData.bench.map((p) => {
+                                const st = userEntryPitchData.statsById.get(
+                                  p.id,
+                                );
+                                return (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => setInspectedPlayer(p)}
+                                    className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-slate-900/60 px-2.5 py-1.5 text-left text-xs transition hover:border-emerald-400/50 hover:bg-slate-800/75 cursor-pointer touch-manipulation"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="w-8 shrink-0 rounded bg-slate-800 py-0.5 text-center font-mono text-[10px] font-bold text-slate-400">
+                                        {p.mainPositions[0]}
+                                      </span>
+                                      <CountryFlagSvg
+                                        code={p.nationalityCode}
+                                        nationality={p.nationality}
+                                        size="sm"
+                                      />
+                                      <span className="truncate font-bold text-slate-200">
+                                        {p.name}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      {st && (st.goals > 0 || st.assists > 0) && (
+                                        <span className="font-mono text-[10px] text-slate-400 tabular-nums">
+                                          {st.goals}G {st.assists}A
+                                        </span>
+                                      )}
+                                      <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-black text-amber-300 tabular-nums">
+                                        {p.ovr}
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-6 text-center text-xs text-slate-400">
+                    구버전 명예의 전당 기록으로 스쿼드 포메이션 정보가 없습니다.
+                  </div>
+                )
               ) : (
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1213,7 +1408,18 @@ export function LegacyHubModal() {
       {inspectedPlayer && (
         <PlayerDetailModal
           player={inspectedPlayer}
-          managerTraitId={selectedHistorical?.managerTraitId ?? null}
+          slotSynergy={
+            Object.values(
+              historicalPitchData?.chem.slotSynergies ??
+                userEntryPitchData?.chem.slotSynergies ??
+                {},
+            ).find((s) => s.playerId === inspectedPlayer.id) ?? null
+          }
+          managerTraitId={
+            selectedHistorical?.managerTraitId ??
+            selectedEntry?.managerTraitId ??
+            null
+          }
           onClose={() => setInspectedPlayer(null)}
         />
       )}

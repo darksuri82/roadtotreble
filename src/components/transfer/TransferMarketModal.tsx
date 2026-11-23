@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowLeftRight,
   CheckCircle2,
   Crown,
@@ -214,6 +215,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
   const [activeReelIdx, setActiveReelIdx] = useState<number>(0);
   const [counterOfferClub, setCounterOfferClub] =
     useState<TransferClubOffer | null>(null);
+  const [counterOfferOrigin, setCounterOfferOrigin] =
+    useState<MarketTab>('incoming');
   const [posFilter, setPosFilter] = useState<PosFilter>('ALL');
 
   // Player Detail Inspector Modal
@@ -587,6 +590,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       championBonusActive: isChampBonus,
     });
 
+    setCounterOfferOrigin(activeTab);
     setCounterOfferClub(clubOffer);
     setSelectedAiPlayerIds(offer.aiOffersPlayers.map((p) => p.id));
 
@@ -599,6 +603,16 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     setCustomFillerIds(null);
     setPosFilter('ALL');
     setActiveTab('explore');
+  };
+
+  const handleExitCounterOffer = (targetTab?: MarketTab) => {
+    const dest = targetTab ?? counterOfferOrigin;
+    setCounterOfferClub(null);
+    setSelectedAiPlayerIds([]);
+    setSelectedUserSlots([]);
+    setCustomFillerIds(null);
+    setPosFilter('ALL');
+    setActiveTab(dest);
   };
 
   const handleSubmitTrade = () => {
@@ -742,6 +756,39 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           <span>우리 로스터 {userSquadPlayers.length}인 (선발 11 · 벤치 5 유지)</span>
         </div>
       </div>
+
+      {/* Fixed Counter-Offer Back Navigation Bar (Always visible without scrolling on PC & mobile) */}
+      {counterOfferClub && activeTab === 'explore' && (
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-amber-400/35 bg-amber-950/35 px-3.5 py-2 sm:px-4">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              id="counter-offer-back-btn"
+              type="button"
+              onClick={() => handleExitCounterOffer()}
+              className="inline-flex items-center gap-1 rounded-lg border border-amber-400/50 bg-slate-950/90 px-2.5 py-1.5 text-xs font-extrabold text-amber-200 hover:bg-amber-400 hover:text-slate-950 transition cursor-pointer touch-manipulation shrink-0"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              {counterOfferOrigin === 'incoming'
+                ? '받은 제안으로'
+                : '트레이드 룰렛으로'}
+            </button>
+            <span className="truncate text-xs font-extrabold text-amber-100">
+              역제안 · {counterOfferClub.club?.name}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {counterOfferOrigin === 'incoming' && (
+              <button
+                type="button"
+                onClick={() => handleExitCounterOffer('explore')}
+                className="rounded-lg border border-slate-700 bg-slate-900/90 px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:border-sky-400/60 hover:text-white transition cursor-pointer touch-manipulation"
+              >
+                {tm.hasSpunClubs ? '추첨 구단' : '트레이드 룰렛'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Scrollable Body */}
       <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-4">
@@ -1180,21 +1227,20 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                 {counterOfferClub && counterOfferClub.club && (
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-400/45 bg-amber-950/25 px-3.5 py-2">
                     <div className="flex items-center gap-2 text-xs font-extrabold text-amber-200">
-                      <RefreshCw className="h-3.5 w-3.5" />
+                      <RefreshCw className="h-3.5 w-3.5 shrink-0" />
                       <span>
                         역제안 협상 테이블: {counterOfferClub.club.name} (
                         {counterOfferClub.clubNeeds?.summaryText})
                       </span>
                     </div>
-                    {tm.hasSpunClubs && (
-                      <button
-                        type="button"
-                        onClick={() => handleSelectClubReel(0)}
-                        className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:text-white cursor-pointer"
-                      >
-                        추첨 구단으로 돌아가기
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleExitCounterOffer()}
+                      className="inline-flex items-center gap-1 rounded-lg border border-amber-400/45 bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-amber-200 hover:bg-amber-400 hover:text-slate-950 cursor-pointer touch-manipulation"
+                    >
+                      <ArrowLeft className="h-3 w-3" />
+                      이전으로
+                    </button>
                   </div>
                 )}
 
@@ -2408,6 +2454,16 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                 ))}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
+                {counterOfferClub && (
+                  <button
+                    type="button"
+                    onClick={() => handleExitCounterOffer()}
+                    className="inline-flex items-center gap-1 rounded-lg border border-amber-400/45 bg-amber-500/12 px-2 py-1.5 text-[10px] sm:text-[11px] font-extrabold text-amber-200 hover:bg-amber-400 hover:text-slate-950 cursor-pointer touch-manipulation whitespace-nowrap"
+                  >
+                    <ArrowLeft className="h-3 w-3" />
+                    이전
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={resetTradeBuilder}

@@ -228,6 +228,12 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
   };
 
   const leagueGoalDifference = spec.goalsFor - spec.goalsAgainst;
+  const benchAvgOvr =
+    bench.length > 0
+      ? Math.round(
+          (bench.reduce((sum, p) => sum + p.ovr, 0) / bench.length) * 10,
+        ) / 10
+      : undefined;
 
   // Evaluate with the EXACT same function used for user seasons
   const seasonScore = computeSeasonScore({
@@ -243,6 +249,7 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
     uclPerfectWin: spec.uclPerfectWin,
     uclUnbeatenWin: spec.uclUnbeatenWin,
     teamAvgOvr,
+    benchAvgOvr,
     chemistry: chemResult.total,
     avgSynergyOvrBonus,
     managerSynergyCount,
