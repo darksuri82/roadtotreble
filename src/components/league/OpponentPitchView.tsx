@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { getClubManager } from '../../data/aiManagers';
 import { FORMATIONS } from '../../data/formations';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
@@ -29,10 +29,10 @@ interface OpponentPitchViewProps {
 }
 
 const LINE_COLORS: Record<ChemistryLineType, string> = {
-  club: '#10b981', // Emerald: Same Club / Former Clubs
-  nation: '#38bdf8', // Sky Blue: Same Nationality
-  style: '#f59e0b', // Gold: Complementary Playstyle Synergy
-  elite: '#c084fc', // Violet: Elite Pair (88+ ↔ 88+)
+  club: '#3aa87d', // Soft Sage Emerald
+  nation: '#58a0c7', // Soft Slate Sky
+  style: '#c99446', // Soft Warm Gold
+  elite: '#9a82c4', // Soft Muted Lavender
 };
 
 function shortFormationLabel(id: FormationId): string {
@@ -68,12 +68,24 @@ function assignRosterToFormation(
   );
 }
 
+const OPP_SUFFIX_KEEP_FIRST = new Set([
+  '주니오르',
+  '주니어',
+  '필류',
+  '네투',
+  '시니어',
+]);
+
 function shortLastName(name: string): string {
   const trimmed = name.trim();
   if (trimmed.length <= 7) return trimmed;
-  const parts = trimmed.split(' ');
-  const last = parts[parts.length - 1] ?? trimmed;
-  return last.length <= 8 ? last : trimmed.slice(0, 7);
+  const parts = trimmed.split(/\s+/);
+  if (parts.length >= 2) {
+    const last = parts[parts.length - 1];
+    if (OPP_SUFFIX_KEEP_FIRST.has(last)) return parts[0];
+    if (last.length >= 2 && last.length <= 8) return last;
+  }
+  return trimmed;
 }
 
 export function OpponentPitchView({
@@ -82,6 +94,7 @@ export function OpponentPitchView({
   onClickPlayerName,
 }: OpponentPitchViewProps) {
   const { state } = useGame();
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const conditionMap = state.season?.playerConditions;
   const config = FORMATIONS[opponent.formation] ?? FORMATIONS['4-3-3'];
   const oppManager = useMemo(() => getClubManager(opponent), [opponent]);
@@ -166,13 +179,13 @@ export function OpponentPitchView({
           <span className="truncate font-bold text-slate-200">
             {opponent.name}
           </span>
-          <span className="rounded border border-slate-700/80 bg-slate-900/90 px-1.5 py-0.5 font-display text-[10px] font-bold text-slate-100 shrink-0">
+          <span className="rounded border border-slate-700/80 bg-slate-900/90 px-1.5 py-0.5 font-display text-[10px] font-bold text-slate-200 shrink-0">
             {shortFormationLabel(opponent.formation)}
           </span>
           <span className="rounded border border-slate-700/70 bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300 shrink-0">
             {TACTICS[opponent.defaultTactic].shortName}
           </span>
-          <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300 tabular-nums shrink-0">
+          <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300/90 tabular-nums shrink-0">
             케미 {oppChemistry.total} (
             {oppChemistry.chemistryOvrBonus >= 0 ? '+' : ''}
             {oppChemistry.chemistryOvrBonus.toFixed(1)})
@@ -183,12 +196,12 @@ export function OpponentPitchView({
           title={`${oppManager.name} (OVR ${oppManager.ovr} · ${MANAGER_TRAITS[oppManager.traitId]?.name ?? ''})`}
         >
           {oppManager.name}{' '}
-          <span className="text-amber-300/90">{oppManager.ovr}</span>
+          <span className="text-amber-300/85">{oppManager.ovr}</span>
         </span>
       </div>
 
-      {/* Opponent Formation Pitch with 4-Pillar Synergy Lines & Boosted OVRs */}
-      <div className="relative aspect-[4/3.9] sm:aspect-[4/4.4] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0f1b26] via-[#0c1a1c] to-[#0d1919]">
+      {/* Opponent Formation Pitch with Subtle Hover-Highlighted Synergy Lines */}
+      <div className="relative aspect-[4/3.9] sm:aspect-[4/4.4] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0e1923] via-[#0c171b] to-[#0b1517]">
         {/* Crisp Minimal Pitch SVG Lines + 4-Color Parallel Chemistry Links */}
         <svg
           viewBox="0 0 100 100"
@@ -203,7 +216,7 @@ export function OpponentPitchView({
             height="92"
             rx="1.5"
             fill="none"
-            stroke="rgba(148,163,184,0.16)"
+            stroke="rgba(148,163,184,0.10)"
             strokeWidth="0.5"
           />
           <line
@@ -211,16 +224,16 @@ export function OpponentPitchView({
             y1="50"
             x2="96"
             y2="50"
-            stroke="rgba(148,163,184,0.14)"
-            strokeWidth="0.45"
+            stroke="rgba(148,163,184,0.09)"
+            strokeWidth="0.4"
           />
           <circle
             cx="50"
             cy="50"
             r="10.5"
             fill="none"
-            stroke="rgba(148,163,184,0.14)"
-            strokeWidth="0.45"
+            stroke="rgba(148,163,184,0.09)"
+            strokeWidth="0.4"
           />
           <rect
             x="24"
@@ -228,8 +241,8 @@ export function OpponentPitchView({
             width="52"
             height="14"
             fill="none"
-            stroke="rgba(148,163,184,0.13)"
-            strokeWidth="0.45"
+            stroke="rgba(148,163,184,0.09)"
+            strokeWidth="0.4"
           />
           <rect
             x="24"
@@ -237,8 +250,8 @@ export function OpponentPitchView({
             width="52"
             height="14"
             fill="none"
-            stroke="rgba(148,163,184,0.13)"
-            strokeWidth="0.45"
+            stroke="rgba(148,163,184,0.09)"
+            strokeWidth="0.4"
           />
 
           {/* 4-Pillar Player Synergy Parallel Lines */}
@@ -246,6 +259,11 @@ export function OpponentPitchView({
             const fromSlot = config.slots[link.fromIndex];
             const toSlot = config.slots[link.toIndex];
             if (!fromSlot || !toSlot) return null;
+
+            const hasHover = hoveredIdx !== null;
+            const isLinkFocused =
+              hasHover &&
+              (link.fromIndex === hoveredIdx || link.toIndex === hoveredIdx);
 
             const activeLines = link.activeLines;
             if (activeLines.length === 0) {
@@ -256,8 +274,9 @@ export function OpponentPitchView({
                   y1={fromSlot.y}
                   x2={toSlot.x}
                   y2={toSlot.y}
-                  stroke="rgba(148, 163, 184, 0.16)"
-                  strokeWidth="0.45"
+                  stroke="rgba(148, 163, 184, 0.12)"
+                  strokeOpacity={hasHover ? (isLinkFocused ? 0.32 : 0.05) : 0.12}
+                  strokeWidth="0.4"
                   strokeDasharray="2 3"
                   strokeLinecap="round"
                 />
@@ -271,11 +290,27 @@ export function OpponentPitchView({
             const ny = dx / len;
             const spacing =
               activeLines.length >= 4
-                ? 0.82
+                ? 0.68
                 : activeLines.length === 3
-                  ? 1.05
-                  : 1.15;
+                  ? 0.82
+                  : 0.92;
             const centerOffset = ((activeLines.length - 1) * spacing) / 2;
+            const baseWidth =
+              activeLines.length >= 4
+                ? 0.4
+                : activeLines.length === 3
+                  ? 0.45
+                  : 0.5;
+            const strokeOpacity = hasHover
+              ? isLinkFocused
+                ? 0.9
+                : 0.1
+              : 0.28;
+            const strokeWidth = hasHover
+              ? isLinkFocused
+                ? baseWidth + 0.24
+                : 0.35
+              : baseWidth;
 
             return activeLines.map((lineType, lineIdx) => {
               const offset = lineIdx * spacing - centerOffset;
@@ -287,14 +322,8 @@ export function OpponentPitchView({
                   x2={toSlot.x + nx * offset}
                   y2={toSlot.y + ny * offset}
                   stroke={LINE_COLORS[lineType]}
-                  strokeOpacity={0.88}
-                  strokeWidth={
-                    activeLines.length >= 4
-                      ? '0.6'
-                      : activeLines.length === 3
-                        ? '0.7'
-                        : '0.82'
-                  }
+                  strokeOpacity={strokeOpacity}
+                  strokeWidth={strokeWidth}
                   strokeLinecap="round"
                 />
               );
@@ -329,24 +358,28 @@ export function OpponentPitchView({
           return (
             <div
               key={`opp-slot-${slot.index}`}
+              onMouseEnter={() => setHoveredIdx(idx)}
+              onMouseLeave={() =>
+                setHoveredIdx((prev) => (prev === idx ? null : prev))
+              }
               style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
               className="absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center"
             >
               <div
                 title={synTooltip}
-                className={`flex flex-col items-center rounded-lg px-1 py-0.5 sm:px-1.5 min-w-[48px] sm:min-w-[60px] max-w-[74px] text-center shadow-md ${
+                className={`flex flex-col items-center rounded-lg px-1.5 py-0.5 min-w-[54px] sm:min-w-[66px] max-w-[84px] sm:max-w-[94px] text-center shadow-sm transition-colors ${
                   isSuper
-                    ? 'border border-cyan-400/55 bg-[#0e1926]/95'
+                    ? 'border border-sky-400/40 bg-[#101924]/95 hover:border-sky-300/65'
                     : isThreat
-                      ? 'border border-amber-400/40 bg-[#141821]/95'
-                      : 'border border-slate-700/80 bg-[#0d141f]/95'
+                      ? 'border border-amber-400/35 bg-[#161820]/95 hover:border-amber-300/60'
+                      : 'border border-slate-700/70 bg-[#0f1621]/95 hover:border-slate-500/80'
                 }`}
               >
                 <div className="flex items-center justify-center gap-0.5 leading-none tabular-nums">
                   <span
                     className={`font-display text-[11px] sm:text-xs font-bold ${
                       isSuper
-                        ? 'text-cyan-200'
+                        ? 'text-sky-200'
                         : isThreat
                           ? 'text-amber-200'
                           : 'text-slate-100'
@@ -355,7 +388,7 @@ export function OpponentPitchView({
                     {player ? displayOvr : '-'}
                   </span>
                   {totalBonus > 0 && (
-                    <span className="rounded bg-emerald-500/18 border border-emerald-500/35 px-0.5 py-px text-[7.5px] sm:text-[8px] font-extrabold text-emerald-300 leading-none">
+                    <span className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-emerald-300/90 leading-none">
                       +{totalBonus}
                     </span>
                   )}
@@ -374,12 +407,12 @@ export function OpponentPitchView({
                       <PlayerNameButton
                         onClick={() => onClickPlayerName(player.id)}
                         title={synTooltip ?? `${player.name} 세부 스탯`}
-                        className="max-w-[54px] sm:max-w-[66px] text-[8.5px] sm:text-[9.5px] font-semibold text-slate-100 text-center leading-tight"
+                        className="max-w-[70px] sm:max-w-[84px] text-[8.5px] sm:text-[9.5px] font-semibold text-slate-200 text-center leading-tight"
                       >
                         {shortLastName(player.name)}
                       </PlayerNameButton>
                     ) : (
-                      <span className="max-w-[54px] sm:max-w-[66px] truncate text-[8.5px] sm:text-[9.5px] font-semibold text-slate-100 leading-tight">
+                      <span className="max-w-[70px] sm:max-w-[84px] truncate text-[8.5px] sm:text-[9.5px] font-semibold text-slate-200 leading-tight">
                         {shortLastName(player.name)}
                       </span>
                     )}
@@ -419,7 +452,7 @@ export function OpponentPitchView({
                   <span className="mt-0.5 text-[8.5px] text-slate-500">미정</span>
                 )}
               </div>
-              <span className="mt-0.5 rounded bg-slate-950/85 px-1 text-[8px] font-semibold text-slate-400">
+              <span className="mt-0.5 rounded bg-slate-950/80 px-1 text-[8px] font-medium text-slate-400">
                 {slot.label}
               </span>
             </div>
@@ -430,11 +463,11 @@ export function OpponentPitchView({
       {/* Compact Key Threats Strip */}
       {keyThreats.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 px-1 text-[10px]">
-          <span className="font-bold text-rose-300 shrink-0">핵심 경계:</span>
+          <span className="font-semibold text-slate-400 shrink-0">핵심 경계</span>
           {keyThreats.map(({ player: p, displayOvr, totalBonus }) => (
             <span
               key={`threat-${p.id}`}
-              className="inline-flex items-center gap-1 rounded-md bg-[#0b1018] border border-slate-800 px-1.5 py-0.5 text-slate-200"
+              className="inline-flex items-center gap-1 rounded-md bg-[#0d131d] border border-slate-800 px-1.5 py-0.5 text-slate-200"
             >
               <CountryFlagSvg
                 code={p.nationalityCode}
@@ -444,18 +477,18 @@ export function OpponentPitchView({
               {onClickPlayerName ? (
                 <PlayerNameButton
                   onClick={() => onClickPlayerName(p.id)}
-                  className="font-bold text-slate-100"
+                  className="font-semibold text-slate-200"
                 >
                   {p.name}
                 </PlayerNameButton>
               ) : (
-                <span className="font-bold">{p.name}</span>
+                <span className="font-semibold">{p.name}</span>
               )}
-              <span className="font-mono text-amber-300 font-bold tabular-nums">
+              <span className="font-mono text-amber-200/90 font-bold tabular-nums">
                 {displayOvr}
               </span>
               {totalBonus > 0 && (
-                <span className="text-[9px] font-black text-emerald-400 tabular-nums">
+                <span className="text-[9px] font-bold text-emerald-300/85 tabular-nums">
                   +{totalBonus}
                 </span>
               )}

@@ -383,10 +383,10 @@ export function RouletteReelsView({
               <button
                 type="button"
                 onClick={() => setActiveClubTab('all')}
-                className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
                   activeClubTab === 'all'
-                    ? 'bg-emerald-500 text-slate-950'
-                    : 'bg-[#111822] text-slate-400 border border-slate-800 hover:text-white'
+                    ? 'bg-slate-800 text-white border-emerald-500/50'
+                    : 'bg-[#111822] text-slate-400 border-slate-800 hover:text-white'
                 }`}
               >
                 전체 구단 ({reels.reduce((sum, r) => sum + r.candidates.length, 0)})
@@ -398,14 +398,14 @@ export function RouletteReelsView({
                     key={reel.reelIndex}
                     type="button"
                     onClick={() => setActiveClubTab(reel.reelIndex)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition-colors cursor-pointer ${
                       active
                         ? reel.isLegendSlot
-                          ? 'bg-amber-400 text-slate-950'
-                          : 'bg-slate-200 text-slate-950'
+                          ? 'bg-amber-500/18 text-amber-200 border-amber-400/55'
+                          : 'bg-slate-800 text-white border-slate-500/70'
                         : reel.isLegendSlot
-                          ? 'bg-amber-500/15 text-amber-300 border border-amber-400/40'
-                          : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600'
+                          ? 'bg-amber-950/35 text-amber-300/85 border-amber-400/30 hover:border-amber-400/50'
+                          : 'bg-[#111822] text-slate-300 border-slate-800 hover:border-slate-600'
                     }`}
                   >
                     {reel.isLegendSlot ? (

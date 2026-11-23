@@ -68,11 +68,36 @@ function getStaminaNumCls(pct: number): string {
 }
 
 const LINE_COLORS: Record<ChemistryLineType, string> = {
-  club: '#10b981', // Emerald: Same Club / Former Clubs
-  nation: '#38bdf8', // Sky Blue: Same Nationality
-  style: '#f59e0b', // Gold: Complementary Playstyle Synergy
-  elite: '#c084fc', // Violet: Elite Pair (88+ ↔ 88+)
+  club: '#3aa87d', // Soft Sage Emerald: Same Club / Former Clubs
+  nation: '#58a0c7', // Soft Slate Sky: Same Nationality
+  style: '#c99446', // Soft Warm Gold: Complementary Playstyle Synergy
+  elite: '#9a82c4', // Soft Muted Lavender: Elite Pair (88+ ↔ 88+)
 };
+
+const NAME_SUFFIX_KEEP_FIRST = new Set([
+  '주니오르',
+  '주니어',
+  '필류',
+  '네투',
+  '시니어',
+]);
+
+function formatPitchDisplayName(name: string, compact: boolean): string {
+  const trimmed = name.trim();
+  const limit = compact ? 7 : 8;
+  if (trimmed.length <= limit) return trimmed;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length >= 2) {
+    const last = parts[parts.length - 1];
+    if (NAME_SUFFIX_KEEP_FIRST.has(last)) {
+      return parts[0];
+    }
+    if (last.length >= 2 && last.length <= limit + 1) {
+      return last;
+    }
+  }
+  return trimmed;
+}
 
 export function PitchBoard({
   formation,
@@ -102,6 +127,13 @@ export function PitchBoard({
   const config = FORMATIONS[formation];
   const [draggingFrom, setDraggingFrom] = useState<SlotRef | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<SlotRef | null>(null);
+  const [hoveredStarterIdx, setHoveredStarterIdx] = useState<number | null>(
+    null,
+  );
+
+  const focusedStarterIdx =
+    hoveredStarterIdx ??
+    (selectedSlot?.area === 'starter' ? selectedSlot.index : null);
 
   const canDrag = Boolean(onSlotSwap);
 
@@ -181,10 +213,10 @@ export function PitchBoard({
               {headerLabel}
             </span>
           )}
-          <span className="rounded border border-slate-700/80 bg-slate-900/90 px-1.5 py-0.5 font-display text-[10px] font-bold text-slate-100 shrink-0">
+          <span className="rounded border border-slate-700/80 bg-slate-900/90 px-1.5 py-0.5 font-display text-[10px] font-bold text-slate-200 shrink-0">
             {formationShort}
           </span>
-          <span className="rounded border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300 tabular-nums shrink-0">
+          <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300/90 tabular-nums shrink-0">
             케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
             {chemistry.chemistryOvrBonus.toFixed(1)})
           </span>
@@ -194,22 +226,22 @@ export function PitchBoard({
 
       {/* Tap-safe Mobile Inspect Bar: appears only when a player is selected so tapping pitch cards NEVER opens detail modal by mistake */}
       {selectedPlayer && onInspectPlayer && (
-        <div className="sm:hidden flex items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-emerald-950/30 px-2.5 py-1.5 text-[11px]">
+        <div className="sm:hidden flex items-center justify-between gap-2 rounded-xl border border-slate-700/80 bg-slate-900/90 px-2.5 py-1.5 text-[11px]">
           <div className="flex items-center gap-1.5 min-w-0">
-            <span className="rounded bg-emerald-400 px-1.5 py-px text-[9px] font-black text-slate-950 shrink-0">
+            <span className="rounded border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-px text-[9px] font-bold text-emerald-300 shrink-0">
               선택
             </span>
-            <span className="truncate font-extrabold text-white">
+            <span className="truncate font-bold text-slate-100">
               {selectedPlayer.name}
             </span>
-            <span className="font-mono text-[10px] font-bold text-amber-300 shrink-0">
+            <span className="font-mono text-[10px] font-bold text-amber-300/90 shrink-0">
               {selectedPlayer.ovr}
             </span>
           </div>
           <button
             type="button"
             onClick={() => onInspectPlayer(selectedPlayer, selectedSubPos)}
-            className="inline-flex items-center gap-1 rounded-lg border border-sky-400/45 bg-sky-500/15 px-2 py-1 text-[10px] font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer shrink-0 touch-manipulation"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200 hover:border-sky-400/50 cursor-pointer shrink-0 touch-manipulation"
           >
             <Info className="w-3 h-3" />
             선수 상세
@@ -219,13 +251,13 @@ export function PitchBoard({
 
       {/* Main Pitch Container */}
       <div
-        className={`pitch-surface relative w-full overflow-hidden rounded-2xl border border-slate-800 ${
+        className={`pitch-surface relative w-full overflow-hidden rounded-2xl border border-slate-800/90 ${
           compact
             ? 'aspect-[4/3.9] sm:aspect-[4/4.4]'
             : 'aspect-[4/4.05] sm:aspect-[4/4.3]'
         }`}
       >
-        {/* SVG Pitch Markings + Multi-Line Parallel Chemistry Links */}
+        {/* SVG Pitch Markings + Subtle Parallel Chemistry Links (highlighted on hover/select) */}
         <svg
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
@@ -239,24 +271,24 @@ export function PitchBoard({
             height="92"
             rx="1.5"
             fill="none"
-            stroke="rgba(255,255,255,0.13)"
-            strokeWidth="0.55"
+            stroke="rgba(255,255,255,0.09)"
+            strokeWidth="0.5"
           />
           <line
             x1="4"
             y1="50"
             x2="96"
             y2="50"
-            stroke="rgba(255,255,255,0.12)"
-            strokeWidth="0.45"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="0.4"
           />
           <circle
             cx="50"
             cy="50"
             r="11"
             fill="none"
-            stroke="rgba(255,255,255,0.12)"
-            strokeWidth="0.45"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="0.4"
           />
           <rect
             x="24"
@@ -264,8 +296,8 @@ export function PitchBoard({
             width="52"
             height="15"
             fill="none"
-            stroke="rgba(255,255,255,0.11)"
-            strokeWidth="0.45"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="0.4"
           />
           <rect
             x="24"
@@ -273,14 +305,20 @@ export function PitchBoard({
             width="52"
             height="15"
             fill="none"
-            stroke="rgba(255,255,255,0.11)"
-            strokeWidth="0.45"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="0.4"
           />
 
           {chemistry.links.map((link) => {
             const fromSlot = config.slots[link.fromIndex];
             const toSlot = config.slots[link.toIndex];
             if (!fromSlot || !toSlot) return null;
+
+            const isLinkFocused =
+              focusedStarterIdx !== null &&
+              (link.fromIndex === focusedStarterIdx ||
+                link.toIndex === focusedStarterIdx);
+            const hasAnyFocus = focusedStarterIdx !== null;
 
             const activeLines = link.activeLines;
 
@@ -292,8 +330,9 @@ export function PitchBoard({
                   y1={fromSlot.y}
                   x2={toSlot.x}
                   y2={toSlot.y}
-                  stroke="rgba(148, 163, 184, 0.18)"
-                  strokeWidth="0.5"
+                  stroke="rgba(148, 163, 184, 0.12)"
+                  strokeOpacity={hasAnyFocus ? (isLinkFocused ? 0.35 : 0.05) : 0.14}
+                  strokeWidth="0.4"
                   strokeDasharray="2 3"
                   strokeLinecap="round"
                 />
@@ -307,8 +346,28 @@ export function PitchBoard({
             const nx = -dy / len;
             const ny = dx / len;
             const spacing =
-              activeLines.length >= 4 ? 0.82 : activeLines.length === 3 ? 1.05 : 1.15;
+              activeLines.length >= 4
+                ? 0.68
+                : activeLines.length === 3
+                  ? 0.82
+                  : 0.92;
             const centerOffset = ((activeLines.length - 1) * spacing) / 2;
+            const baseWidth =
+              activeLines.length >= 4
+                ? 0.4
+                : activeLines.length === 3
+                  ? 0.45
+                  : 0.5;
+            const strokeOpacity = hasAnyFocus
+              ? isLinkFocused
+                ? 0.9
+                : 0.1
+              : 0.28;
+            const strokeWidth = hasAnyFocus
+              ? isLinkFocused
+                ? baseWidth + 0.24
+                : 0.35
+              : baseWidth;
 
             return activeLines.map((lineType, lineIdx) => {
               const offset = lineIdx * spacing - centerOffset;
@@ -320,14 +379,8 @@ export function PitchBoard({
                   x2={toSlot.x + nx * offset}
                   y2={toSlot.y + ny * offset}
                   stroke={LINE_COLORS[lineType]}
-                  strokeOpacity={0.92}
-                  strokeWidth={
-                    activeLines.length >= 4
-                      ? '0.62'
-                      : activeLines.length === 3
-                        ? '0.72'
-                        : '0.85'
-                  }
+                  strokeOpacity={strokeOpacity}
+                  strokeWidth={strokeWidth}
                   strokeLinecap="round"
                 />
               );
@@ -374,10 +427,10 @@ export function PitchBoard({
 
           const penaltyTagCls =
             fit?.fit === 'secondary'
-              ? 'bg-amber-400 text-slate-950'
+              ? 'border border-amber-400/45 bg-[#231a0d]/95 text-amber-200'
               : fit?.fit === 'out_of_pos'
-                ? 'bg-orange-500 text-white'
-                : 'bg-rose-600 text-white';
+                ? 'border border-rose-400/50 bg-[#271318]/95 text-rose-200'
+                : 'border border-rose-500/60 bg-[#2b1117]/95 text-rose-200';
 
           const synTooltipText =
             slotSyn && slotSyn.reasons.length > 0
@@ -399,6 +452,12 @@ export function PitchBoard({
               role="button"
               tabIndex={onSlotClick ? 0 : -1}
               draggable={Boolean(canDrag && player)}
+              onMouseEnter={() => setHoveredStarterIdx(slot.index)}
+              onMouseLeave={() =>
+                setHoveredStarterIdx((prev) =>
+                  prev === slot.index ? null : prev,
+                )
+              }
               onDragStart={(e) => handleDragStart(e, 'starter', slot.index)}
               onDragOver={(e) => handleDragOver(e, 'starter', slot.index)}
               onDrop={(e) => handleDrop(e, 'starter', slot.index)}
@@ -427,49 +486,49 @@ export function PitchBoard({
               }`}
             >
               <div
-                className={`relative flex flex-col items-center justify-center text-center shadow-md transition-colors ${
+                className={`relative flex flex-col items-center justify-center text-center shadow-sm transition-colors ${
                   compact
-                    ? 'rounded-lg px-1 py-0.5 sm:px-1.5 min-w-[48px] sm:min-w-[60px] max-w-[74px]'
-                    : 'rounded-xl px-1 py-0.5 sm:px-1.5 sm:py-1 min-w-[54px] sm:min-w-[72px]'
+                    ? 'rounded-lg px-1.5 py-0.5 min-w-[54px] sm:min-w-[66px] max-w-[84px] sm:max-w-[94px]'
+                    : 'rounded-xl px-1.5 py-1 min-w-[60px] sm:min-w-[78px] max-w-[92px] sm:max-w-[104px]'
                 } ${
                   isHighlightedInjury && player
-                    ? 'bg-rose-950/95 border-2 border-rose-500 ring-2 ring-rose-400/70'
+                    ? 'bg-[#261117]/95 border border-rose-500/80 ring-2 ring-rose-400/50'
                     : isPreview && player
-                      ? 'bg-emerald-950/95 border border-emerald-400 ring-2 ring-emerald-400/60'
+                      ? 'bg-[#0e221b]/95 border border-emerald-400/70 ring-1 ring-emerald-400/45'
                       : player
                         ? isLegend
-                          ? 'bg-gradient-to-b from-amber-950/95 via-stone-900/95 to-amber-950/95 border border-amber-400/80 shadow-[0_0_8px_rgba(251,191,36,0.28)]'
+                          ? 'bg-[#1a1610]/95 border border-amber-400/45 hover:border-amber-300/70'
                           : isSuperstar
-                            ? 'bg-gradient-to-b from-cyan-950/95 via-slate-900/95 to-cyan-950/95 border border-cyan-400/70 shadow-[0_0_8px_rgba(34,211,238,0.22)]'
+                            ? 'bg-[#101924]/95 border border-sky-400/40 hover:border-sky-300/65'
                             : staminaPct !== null && staminaPct < 40
-                              ? 'bg-[#251018]/95 border border-rose-500/85'
+                              ? 'bg-[#221218]/95 border border-rose-500/60'
                               : staminaPct !== null && staminaPct < 55
-                                ? 'bg-[#22170e]/95 border border-orange-400/75'
-                                : 'bg-[#0e1520]/95 border border-slate-700/80'
+                                ? 'bg-[#1f1710]/95 border border-amber-500/50'
+                                : 'bg-[#0f1621]/95 border border-slate-700/70 hover:border-slate-500/80'
                         : isActive
-                          ? 'bg-emerald-500/15 border border-emerald-400/80'
-                          : 'bg-slate-950/70 border border-dashed border-slate-600/60'
-                } ${isSelected ? 'ring-2 ring-emerald-400/80' : ''} ${
-                  isDragOver ? 'ring-2 ring-sky-400/80' : ''
+                          ? 'bg-emerald-500/12 border border-emerald-400/60'
+                          : 'bg-slate-950/70 border border-dashed border-slate-600/55'
+                } ${isSelected ? 'ring-2 ring-emerald-400/75' : ''} ${
+                  isDragOver ? 'ring-2 ring-sky-400/75' : ''
                 }`}
               >
                 {isHighlightedInjury && player ? (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-600 px-1.5 py-0.2 text-[8px] font-bold text-white shadow">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-600/90 px-1.5 py-0.2 text-[8px] font-bold text-white shadow">
                     부상 발생
                   </span>
                 ) : isPreview && player ? (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-600 px-1.5 py-0.2 text-[8px] font-bold text-white shadow">
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-600/90 px-1.5 py-0.2 text-[8px] font-bold text-white shadow">
                     프리뷰
                   </span>
                 ) : isLegend ? (
-                  <Crown className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-amber-300" />
+                  <Crown className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 text-amber-300/85" />
                 ) : isSuperstar ? (
-                  <Diamond className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-cyan-300" />
+                  <Diamond className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-2.5 h-2.5 text-sky-300/80" />
                 ) : null}
 
                 {hasPenalty && fit && (
                   <span
-                    className={`absolute -top-2 -left-1.5 rounded px-1 text-[8px] font-black leading-tight ${penaltyTagCls}`}
+                    className={`absolute -top-2 -left-1.5 rounded px-1 text-[8px] font-bold leading-tight ${penaltyTagCls}`}
                   >
                     {fit.penalty}
                   </span>
@@ -483,7 +542,7 @@ export function PitchBoard({
                       e.stopPropagation();
                       onInspectPlayer(player, slot.subPosition);
                     }}
-                    className="hidden sm:flex absolute -top-2 -right-2 h-4 w-4 items-center justify-center rounded-full border border-slate-600 bg-slate-900/95 text-slate-300 hover:border-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer z-30"
+                    className="hidden sm:flex absolute -top-1.5 -right-1.5 h-3.5 w-3.5 items-center justify-center rounded-full border border-slate-700 bg-slate-900/95 text-slate-400 opacity-30 group-hover:opacity-100 hover:border-slate-400 hover:text-white transition-opacity cursor-pointer z-30"
                   >
                     <Info className="w-2.5 h-2.5" />
                   </button>
@@ -533,15 +592,13 @@ export function PitchBoard({
                                   ? 'text-rose-300'
                                   : hasPenalty
                                     ? fit.fit === 'secondary'
-                                      ? 'text-amber-300'
-                                      : fit.fit === 'out_of_pos'
-                                        ? 'text-orange-400'
-                                        : 'text-rose-400'
+                                      ? 'text-amber-300/90'
+                                      : 'text-rose-300'
                                     : isLegend
-                                      ? 'text-amber-300'
+                                      ? 'text-amber-200'
                                       : isSuperstar
-                                        ? 'text-cyan-200'
-                                        : 'text-white'
+                                        ? 'text-sky-200'
+                                        : 'text-slate-100'
                               }`}
                             >
                               {fit.effectiveOvr}
@@ -549,7 +606,7 @@ export function PitchBoard({
                             {synBonus > 0 && (
                               <span
                                 title={`시너지 +${synBonus} (${slotSyn?.reasons.join(' · ')})`}
-                                className="rounded bg-emerald-500/18 border border-emerald-500/35 px-0.5 py-px text-[7.5px] sm:text-[8px] font-extrabold text-emerald-300 leading-none"
+                                className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-emerald-300/90 leading-none"
                               >
                                 +{synBonus}
                               </span>
@@ -557,10 +614,10 @@ export function PitchBoard({
                             {starterOvrBr.moraleBonus !== 0 && (
                               <span
                                 title={`사기 ${cond ? getMoraleLabel(cond.morale) : ''} (${starterOvrBr.moraleBonus > 0 ? `+${starterOvrBr.moraleBonus}` : starterOvrBr.moraleBonus} OVR)`}
-                                className={`rounded px-0.5 py-px text-[7.5px] sm:text-[8px] font-extrabold leading-none ${
+                                className={`rounded px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold leading-none ${
                                   starterOvrBr.moraleBonus > 0
-                                    ? 'bg-amber-500/20 border border-amber-400/40 text-amber-200'
-                                    : 'bg-sky-500/20 border border-sky-400/40 text-sky-200'
+                                    ? 'bg-amber-950/80 border border-amber-400/35 text-amber-200'
+                                    : 'bg-sky-950/80 border border-sky-400/35 text-sky-200'
                                 }`}
                               >
                                 {starterOvrBr.moraleBonus > 0
@@ -575,7 +632,7 @@ export function PitchBoard({
                                     ? getInjuryTooltip(cond.injury)
                                     : `부상 페널티 ${starterOvrBr.injuryPenalty} OVR`
                                 }
-                                className="rounded bg-rose-500/25 border border-rose-400/45 px-0.5 py-px text-[7.5px] sm:text-[8px] font-extrabold text-rose-200 leading-none"
+                                className="rounded bg-rose-950/85 border border-rose-400/40 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-rose-200 leading-none"
                               >
                                 {starterOvrBr.isUnavailableInjured
                                   ? '결장'
@@ -589,13 +646,13 @@ export function PitchBoard({
                             />
                           </div>
                           <span
-                            className={`mt-0.5 truncate font-semibold text-slate-100 leading-tight ${
+                            className={`mt-0.5 truncate font-semibold text-slate-200 leading-tight ${
                               compact
-                                ? 'max-w-[54px] sm:max-w-[66px] text-[8.5px] sm:text-[9.5px]'
-                                : 'max-w-[64px] sm:max-w-[78px] text-[9px] sm:text-[10px]'
+                                ? 'max-w-[70px] sm:max-w-[84px] text-[8.5px] sm:text-[9.5px]'
+                                : 'max-w-[78px] sm:max-w-[94px] text-[9px] sm:text-[10px]'
                             }`}
                           >
-                            {player.name}
+                            {formatPitchDisplayName(player.name, compact)}
                           </span>
                           {staminaPct !== null ? (
                             <div className="mt-1 w-full flex items-center gap-1 tabular-nums">
@@ -627,7 +684,7 @@ export function PitchBoard({
                   </>
                 )}
               </div>
-              <span className="mt-0.5 rounded bg-slate-950/85 px-1 text-[8px] font-semibold text-slate-400">
+              <span className="mt-0.5 rounded bg-slate-950/80 px-1 text-[8px] font-medium text-slate-400">
                 {slot.label}
               </span>
             </div>
@@ -636,27 +693,39 @@ export function PitchBoard({
       </div>
 
       {/* Multi-Line Chemistry Legend (4 official synergy line colors) */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#111822] px-3 py-2 text-[11px] text-slate-300">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/80 bg-[#0e141e] px-3 py-1.5 text-[10px] text-slate-400">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded-full bg-emerald-400" />
+            <span
+              className="h-0.5 w-3.5 rounded-full"
+              style={{ backgroundColor: LINE_COLORS.club }}
+            />
             구단·전소속
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded-full bg-sky-400" />
+            <span
+              className="h-0.5 w-3.5 rounded-full"
+              style={{ backgroundColor: LINE_COLORS.nation }}
+            />
             국적
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded-full bg-amber-400" />
+            <span
+              className="h-0.5 w-3.5 rounded-full"
+              style={{ backgroundColor: LINE_COLORS.style }}
+            />
             스타일
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="h-0.5 w-4 rounded-full bg-purple-400" />
+            <span
+              className="h-0.5 w-3.5 rounded-full"
+              style={{ backgroundColor: LINE_COLORS.elite }}
+            />
             엘리트 88+
           </span>
         </div>
         <span className="text-[10px] text-slate-500">
-          {onInspectPlayer ? '우클릭 · ⓘ 상세' : '다중 병렬선'}
+          {onInspectPlayer ? '호버 선 강조 · ⓘ 상세' : '호버 시 선 강조'}
         </span>
       </div>
 

@@ -114,7 +114,7 @@ export function StandingsTable({
                         {row.teamName}
                       </span>
                       {row.isUser && (
-                        <span className="rounded bg-emerald-500 px-1 py-px text-[8px] sm:text-[9px] font-extrabold text-slate-950 shrink-0">
+                        <span className="rounded border border-emerald-500/40 bg-emerald-500/18 px-1 py-px text-[8px] sm:text-[9px] font-bold text-emerald-300 shrink-0">
                           MY
                         </span>
                       )}

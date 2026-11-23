@@ -62,16 +62,16 @@ const TIER_STYLES: Record<
   superstar: {
     wrapper: 'card-superstar-glow',
     badge:
-      'bg-gradient-to-r from-cyan-400 via-sky-200 to-cyan-400 text-slate-950 font-extrabold',
-    ovrText: 'text-cyan-200',
-    posBadge: 'bg-cyan-500/20 text-cyan-200 border border-cyan-300/40',
+      'bg-sky-500/20 border border-sky-400/45 text-sky-200 font-bold',
+    ovrText: 'text-sky-200',
+    posBadge: 'bg-sky-950/75 text-sky-200 border border-sky-400/30',
   },
   legend: {
     wrapper: 'card-legend-glow',
     badge:
-      'bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-500 text-slate-950 font-extrabold',
-    ovrText: 'text-amber-300',
-    posBadge: 'bg-amber-500/20 text-amber-200 border border-amber-400/40',
+      'bg-amber-500/20 border border-amber-400/45 text-amber-200 font-bold',
+    ovrText: 'text-amber-200',
+    posBadge: 'bg-amber-950/75 text-amber-200 border border-amber-400/30',
   },
 };
 

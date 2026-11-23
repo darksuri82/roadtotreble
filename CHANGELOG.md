@@ -5,6 +5,22 @@
 
 ---
 
+## v6.2 — 명예의 전당 공정 계산식 전면 재설계 · UCL 라운드 진출/우승·트레블 축하 연출 · 첫 페이지 SD 감독 리뉴얼 & 염소 도트 · 피치 겹침 수정 & 전역 눈 편한 색감 개편
+
+- **명예의 전당 공정 계산식 전면 재설계 (`src/engine/legacyEngine.ts`, `src/data/historicalTeams.ts`, `src/store/GameContext.tsx`, `src/__tests__/v60HofAndRoster.test.ts`)**:
+  - 특정 팀 편향 및 OVR 급등 절벽을 제거하고, 시즌 성과(38R 환산 리그 95점+ 체감 · 자국 컵 · UCL 우승 `+2,500` · 대기록 상한 `+2,750` · 개인상 상한 `+1,100`)와 전력·완성도(선발·실효 OVR 상한 `+3,400` · 벤치 뎁스 `+500` · 감독 역량 `+420` · 감독-선수 시너지 `+520` · 케미 `+440` · **`evaluateTeamTacticalProfile` 전술 이행도 `+680`**)를 유저·역대 24팀에 100% 동일 적용.
+  - 상위권이 `14-15 바르셀로나` · `19-20 바이에른 뮌헨` · `71-72 아약스` · `12-13 바이에른 뮌헨` · `08-09 바르셀로나` · `22-23 맨시티` · `24-25 PSG`로 자연스럽게 분산 경쟁.
+- **챔피언스리그 토너먼트 단계별 진출 팝업 & 우승/트레블 대형 축하 연출 (`src/components/ucl/UclMilestoneModal.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/index.css`)**:
+  - `16강 · 8강 · 4강 · 결승 진출` 시 직전 라운드 합산 스코어(AGG)/리그 페이즈 순위와 간결한 기대 문구 팝업 표시(스킵 결과 모달과 순차 전환).
+  - UCL 우승 시 대형 도트 빅이어(`120px`) · 별빛 컨페티 파티클 · 결승 스코어 · 대회 MVP 요약 제공, 트레블 달성 시 전용 골드 프레임 + 3관왕 트로피 동시 전시.
+- **첫 페이지 도트 일러스트 SD 감독 리뉴얼 & 정상 염소 이스터에그 (`src/components/setup/RoadToTrebleHeroSvg.tsx`)**:
+  - 기존 각진 감독 도트를 둥근 SD 2등신 비율·반짝이는 눈·볼터치·미니 전술판으로 리뉴얼하고, 빅이어 정상 우측 언덕에 텍스트 없는 흰색 염소 픽셀 이스터에그 배치.
+- **양 팀 피치 비교 겹침 버그 수정 & 전역 눈 피로도 완화 (`PitchBoard.tsx`, `OpponentPitchView.tsx`, `MatchDayTacticsRoom.tsx`, `PlayerCard.tsx`, `RouletteReelsView.tsx`, `StandingsTable.tsx`, `index.css`)**:
+  - `PitchBoard`와 `OpponentPitchView`의 포메이션·케미 배지를 피치 바깥 상단 전용 헤더 바로 분리해 모든 포메이션에서 ST 카드·왕관과 겹침 원천 차단, 스플릿 피치 높이 통일.
+  - 피치 케미선을 차분한 저채도·얇은 선(`opacity 0.28`)으로 완화하고 호버/선택 선수 연결선만 또렷하게 강조(`0.90`), 한국어 긴 이름 스마트 축약(`디마르코`, `마르티네스` 등) 및 카드 폭 확장으로 잘림 개선, 전역 글로우·네온 배지 절제(색감 개편 직전 롤백 태그 `stable-before-v6-color-polish` 별도 분리 보관).
+
+---
+
 ## v6.1 — 트레이드 역제안 헤더 복귀·실수 종료 방지 · 명전 스쿼드 OVR 가중치 강화 · 전역 네온 톤 정돈 & 양 팀 피치 비교 가독성 개선
 
 - **트레이드 역제안 헤더 복귀 버튼 통합 & 이적시장 실수 종료 방지 (`src/components/transfer/TransferMarketModal.tsx`)**:
