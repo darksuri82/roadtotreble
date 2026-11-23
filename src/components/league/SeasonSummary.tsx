@@ -1903,9 +1903,17 @@ export function SeasonSummary() {
           season,
           inspectedPlayer.fallbackStats,
         );
+        const starterIdx = resolved
+          ? state.starters.findIndex((p) => p?.id === resolved.id)
+          : -1;
+        const matchedSlotSubPos =
+          starterIdx >= 0
+            ? FORMATIONS[state.formation]?.slots[starterIdx]?.subPosition
+            : undefined;
         return (
           <PlayerDetailModal
             player={resolved}
+            slotSubPosition={matchedSlotSubPos}
             managerTraitId={state.manager.traitId}
             seasonStats={breakdown.total}
             competitionStats={breakdown}

@@ -249,6 +249,76 @@ function collectClubSeasonHonors(
   return honors;
 }
 
+function clampLeagueStatsToMaxRounds(
+  st: PlayerSeasonStats | null,
+  maxRounds = 38,
+): PlayerSeasonStats | null {
+  if (!st || st.appearances <= maxRounds) return st;
+  const ratio = maxRounds / Math.max(1, st.appearances);
+  const clampedStarts = Math.min(maxRounds, Math.round(st.starts * ratio));
+  const clampedSubs = Math.max(0, maxRounds - clampedStarts);
+  const clampedRatingSum = Math.round(st.avgRating * maxRounds * 100) / 100;
+  return {
+    ...st,
+    appearances: maxRounds,
+    starts: clampedStarts,
+    subAppearances: clampedSubs,
+    minutesPlayed: Math.min(
+      maxRounds * 90,
+      Math.round((st.minutesPlayed ?? maxRounds * 82) * ratio),
+    ),
+    goals: Math.round(st.goals * ratio),
+    assists: Math.round(st.assists * ratio),
+    xgSum: Math.round(st.xgSum * ratio * 100) / 100,
+    cleanSheets: Math.min(maxRounds, Math.round(st.cleanSheets * ratio)),
+    momCount: Math.min(maxRounds, Math.round(st.momCount * ratio)),
+    ratingSum: clampedRatingSum,
+    avgRating: st.avgRating,
+  };
+}
+
+/**
+ * Merges a background league stat entry with the user league stat entry while preventing
+ * cross-league trade duplication (where pre-trade stats were already seeded into the destination map).
+ */
+export function mergeCrossLeaguePlayerStats(
+  bgLeague: PlayerSeasonStats | null | undefined,
+  userLeague: PlayerSeasonStats | null | undefined,
+  maxRounds = 38,
+): PlayerSeasonStats | null {
+  if (!bgLeague || bgLeague.appearances <= 0) {
+    return clampLeagueStatsToMaxRounds(userLeague ?? null, maxRounds);
+  }
+  if (!userLeague || userLeague.appearances <= 0) {
+    return clampLeagueStatsToMaxRounds(bgLeague, maxRounds);
+  }
+
+  const userHasTrade = Boolean(
+    userLeague.transferHistory?.some((r) => r.type === 'trade'),
+  );
+  const bgHasTrade = Boolean(
+    bgLeague.transferHistory?.some((r) => r.type === 'trade'),
+  );
+  const exceedsSingleSeason =
+    userLeague.appearances + bgLeague.appearances > maxRounds;
+
+  if (userHasTrade || bgHasTrade || exceedsSingleSeason) {
+    // In trade transfers, pre-trade stats were seeded directly into the destination league map.
+    // Pick the authoritative post-trade map instead of summing both maps a second time.
+    const primary = userLeague.isUserTeam
+      ? userLeague
+      : bgLeague.appearances >= userLeague.appearances
+        ? bgLeague
+        : userLeague;
+    return clampLeagueStatsToMaxRounds(primary, maxRounds);
+  }
+
+  return clampLeagueStatsToMaxRounds(
+    mergeTwoStats(bgLeague, userLeague),
+    maxRounds,
+  );
+}
+
 /**
  * Builds the 4-row competition breakdown (League / Domestic Cup / UCL / Season Total),
  * club season honors, and deduplicated mid-season transfer history for ANY player across all 5 leagues.
@@ -258,7 +328,11 @@ export function buildPlayerCompetitionBreakdown(
   season: SeasonState | null | undefined,
   fallbackStats?: PlayerSeasonStats | null,
 ): PlayerCompetitionStatsBreakdown {
-  let leagueRaw = getPlayerStatById(season?.allPlayerStats, playerId) ?? null;
+  const maxLeagueRounds = season?.totalRounds ?? 38;
+  let leagueRaw = clampLeagueStatsToMaxRounds(
+    getPlayerStatById(season?.allPlayerStats, playerId) ?? null,
+    maxLeagueRounds,
+  );
   let cupRaw = getPlayerStatById(season?.cupPlayerStats, playerId) ?? null;
   const uclRaw = getPlayerStatById(season?.uclPlayerStats, playerId) ?? null;
 
@@ -266,9 +340,14 @@ export function buildPlayerCompetitionBreakdown(
   if (season?.otherLeagues) {
     for (const bg of Object.values(season.otherLeagues)) {
       if (!bg) continue;
+      const bgMaxRounds = Math.max(maxLeagueRounds, bg.totalRounds ?? 38);
       const bgLeague = getPlayerStatById(bg.playerStats, playerId);
       if (bgLeague && bgLeague.appearances > 0) {
-        leagueRaw = mergeTwoStats(bgLeague, leagueRaw);
+        leagueRaw = mergeCrossLeaguePlayerStats(
+          bgLeague,
+          leagueRaw,
+          bgMaxRounds,
+        );
       }
       const bgCup = getPlayerStatById(bg.cupPlayerStats, playerId);
       if (bgCup && bgCup.appearances > 0) {

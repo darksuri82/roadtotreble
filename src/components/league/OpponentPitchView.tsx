@@ -201,7 +201,15 @@ export function OpponentPitchView({
       </div>
 
       {/* Opponent Formation Pitch with Vivid Hover-Highlighted Synergy Lines */}
-      <div className="relative aspect-[4/3.9] sm:aspect-[4/4.4] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0e1923] via-[#0c171b] to-[#0b1517]">
+      <div
+        onPointerLeave={() => setHoveredIdx(null)}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setHoveredIdx(null);
+          }
+        }}
+        className="relative aspect-[4/3.9] sm:aspect-[4/4.4] w-full overflow-hidden rounded-2xl border border-slate-800/90 bg-gradient-to-b from-[#0e1923] via-[#0c171b] to-[#0b1517]"
+      >
         {/* Crisp Minimal Pitch SVG Lines + 4-Color Parallel Chemistry Links */}
         <svg
           viewBox="0 0 100 100"
@@ -359,12 +367,20 @@ export function OpponentPitchView({
           return (
             <div
               key={`opp-slot-${slot.index}`}
-              onMouseEnter={() => setHoveredIdx(idx)}
-              onMouseLeave={() =>
+              onPointerEnter={(e) => {
+                if (e.pointerType === 'mouse') {
+                  setHoveredIdx(idx);
+                }
+              }}
+              onPointerLeave={() =>
                 setHoveredIdx((prev) => (prev === idx ? null : prev))
               }
+              onClick={(e) => {
+                e.stopPropagation();
+                setHoveredIdx((prev) => (prev === idx ? null : idx));
+              }}
               style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
-              className="absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center"
+              className="absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center cursor-pointer"
             >
               <div
                 title={synTooltip}

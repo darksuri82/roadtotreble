@@ -502,6 +502,33 @@ export async function updatePlayerReady(
   return { data: true, error: null };
 }
 
+export async function updatePlayerProfile(params: {
+  roomId: string;
+  playerId: string;
+  nickname: string;
+  avatar: ManagerAvatarConfig;
+  clubProfile: UserClubProfile;
+}): Promise<MpServiceResult<boolean>> {
+  const client = getSupabaseClient();
+  if (!client) return { data: null, error: 'Supabase 미연결' };
+  const { error } = await client
+    .from('mp_room_players')
+    .update({
+      nickname: params.nickname.trim() || '감독',
+      avatar_json: params.avatar,
+      club_profile: params.clubProfile,
+    })
+    .eq('room_id', params.roomId)
+    .eq('player_id', params.playerId);
+  if (error) {
+    return {
+      data: null,
+      error: normalizeError(error, '감독·구단 프로필 동기화 실패'),
+    };
+  }
+  return { data: true, error: null };
+}
+
 export async function startBlindDraft(
   roomId: string,
   currentSettings: MpRoomSettings,

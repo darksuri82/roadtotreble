@@ -1709,26 +1709,30 @@ function buildPlayerRatings(params: {
     const cleanSheet = ga === 0;
     const formationSlots = FORMATIONS[formationId]?.slots ?? [];
 
+    const presentIds = new Set<string>();
     const allParticipants: {
       player: Player;
       subPosition: SubPosition;
       isSub: boolean;
       minutesPlayed: number;
-    }[] = roster.map((p, idx) => {
+    }[] = [];
+    roster.forEach((p, idx) => {
+      if (!p || presentIds.has(p.id)) return;
+      presentIds.add(p.id);
       const isUser = teamId === userClubId;
       const isSub = isUser && subIdSet.has(p.id);
       const enterMin = isSub ? (subInMinute.get(p.id) ?? 45) : 0;
-      const leaveMin = isUser && subOutMinute.has(p.id) ? subOutMinute.get(p.id)! : 90;
-      return {
+      const leaveMin =
+        isUser && subOutMinute.has(p.id) ? subOutMinute.get(p.id)! : 90;
+      allParticipants.push({
         player: p,
         subPosition: formationSlots[idx]?.subPosition ?? getPrimaryPosition(p),
         isSub,
         minutesPlayed: Math.max(1, leaveMin - enterMin),
-      };
+      });
     });
 
     if (teamId === userClubId) {
-      const presentIds = new Set(allParticipants.map((a) => a.player.id));
       const allKnownPool = new Map<string, Player>();
       for (const p of [...firstHalfUserStarters, ...roster, ...userBench]) {
         allKnownPool.set(p.id, p);

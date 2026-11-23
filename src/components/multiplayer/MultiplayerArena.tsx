@@ -4,6 +4,7 @@ import {
   Dices,
   Loader2,
   LogOut,
+  MessageSquareQuote,
   Play,
   RotateCcw,
   Swords,
@@ -44,6 +45,7 @@ import {
   submitTacticBarrier,
   subscribeToRoom,
   updateDraftProgress,
+  updatePlayerProfile,
   updatePlayerReady,
   updateRoomSettings,
   updateRoomStatus,
@@ -51,6 +53,7 @@ import {
 import { useGame } from '../../store/GameContext';
 import type {
   FormationId,
+  ManagerAvatarConfig,
   ManagerRouletteState,
   ManagerTraitId,
   UserClubProfile,
@@ -85,6 +88,7 @@ import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
 import type { LiveMatchBroadcastOverride } from '../league/LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { MatchReportPanel } from '../league/MatchReportPanel';
+import { MpPostMatchManagerPopup } from './MpPostMatchManagerPopup';
 import { MultiplayerBlindDraft } from './MultiplayerBlindDraft';
 import { MultiplayerLobby } from './MultiplayerLobby';
 import { PreKickoffRevealModal } from './PreKickoffRevealModal';
@@ -198,6 +202,7 @@ function diffSubstitutions(
 export function MultiplayerArena() {
   const {
     state,
+    updateClubProfile,
     updateManagerProfile,
     multiplayerInitialRoomCode,
     closeMultiplayer,
@@ -233,6 +238,9 @@ export function MultiplayerArena() {
   const [localCommittedMatchId, setLocalCommittedMatchId] = useState<string | null>(
     null,
   );
+  const [dismissedPostMatchPopupId, setDismissedPostMatchPopupId] = useState<
+    string | null
+  >(null);
   const [submittingBarrier, setSubmittingBarrier] = useState<string | null>(null);
   const [detailMatch, setDetailMatch] = useState<MatchResult | null>(null);
   const [inspected, setInspected] = useState<{
@@ -990,6 +998,34 @@ export function MultiplayerArena() {
     await updateRoomSettings(room.id, settings);
   };
 
+  const handleUpdateCustomProfile = async (payload: {
+    nickname: string;
+    avatar: ManagerAvatarConfig;
+    clubProfile: UserClubProfile;
+  }) => {
+    setNickname(payload.nickname);
+    updateManagerProfile({
+      name: payload.nickname,
+      avatar: payload.avatar,
+    });
+    updateClubProfile(payload.clubProfile);
+    if (room) {
+      const res = await updatePlayerProfile({
+        roomId: room.id,
+        playerId,
+        nickname: payload.nickname,
+        avatar: payload.avatar,
+        clubProfile: payload.clubProfile,
+      });
+      if (res.error) {
+        setErrorMsg(res.error);
+      } else {
+        const snap = await fetchRoomSnapshot(room.id);
+        if (snap.data) setSnapshot(snap.data);
+      }
+    }
+  };
+
   const handleToggleReady = async (nextReady: boolean) => {
     if (!room) return;
     setBusy(true);
@@ -1498,6 +1534,7 @@ export function MultiplayerArena() {
         onCreateRoom={handleCreateRoom}
         onJoinRoom={handleJoinRoom}
         onUpdateSettings={handleUpdateSettings}
+        onUpdateCustomProfile={(payload) => void handleUpdateCustomProfile(payload)}
         onToggleReady={handleToggleReady}
         onStartDraft={handleStartDraft}
         onLeaveRoom={handleLeaveRoom}
@@ -1695,6 +1732,9 @@ export function MultiplayerArena() {
               errorMsg={errorMsg}
               onToggleReady={(nextReady) => void handleToggleReady(nextReady)}
               onHostKickoff={() => void handleHostKickoffMatch()}
+              onInspectPlayer={(player, slotSubPosition) =>
+                setInspected({ player, slotSubPosition })
+              }
             />
           )}
 
@@ -1726,7 +1766,7 @@ export function MultiplayerArena() {
 
   // 5) Post-Match Report & Rematch Hub
   const finalResult = matchState?.finalResult ?? null;
-  if (finalResult && hostRow && guestRow) {
+  if (finalResult && hostRow && guestRow && myRow && oppRow) {
     const myGoals = isHost ? finalResult.homeGoals : finalResult.awayGoals;
     const oppGoals = isHost ? finalResult.awayGoals : finalResult.homeGoals;
     const outcome = finalResult.extraTime?.penalties
@@ -1739,8 +1779,28 @@ export function MultiplayerArena() {
           ? 'LOSS'
           : 'DRAW';
 
+    const currentMatchId = matchState?.matchId ?? 'mp-match-1';
+    const showPostMatchPopup = dismissedPostMatchPopupId !== currentMatchId;
+    const seriesSummaryText = `상대 전적 · ${hostRow.nickname} ${seriesWins.host}승 ${
+      seriesWins.draws > 0 ? `${seriesWins.draws}무 ` : ''
+    }${seriesWins.guest}승 ${guestRow.nickname}`;
+
     return (
       <div className="mx-auto max-w-5xl px-3 py-4 sm:px-5 sm:py-6 space-y-4">
+        {showPostMatchPopup && (
+          <MpPostMatchManagerPopup
+            matchId={currentMatchId}
+            outcome={outcome}
+            myRow={myRow}
+            oppRow={oppRow}
+            myGoals={myGoals}
+            oppGoals={oppGoals}
+            finalResult={finalResult}
+            seriesSummaryText={seriesSummaryText}
+            onClose={() => setDismissedPostMatchPopupId(currentMatchId)}
+          />
+        )}
+
         {/* Result Banner + Series Scoreboard */}
         <div
           className={`rounded-2xl border p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 ${
@@ -1772,15 +1832,25 @@ export function MultiplayerArena() {
                     : '무승부'}
               </div>
               <div className="text-xs font-bold text-slate-400 tabular-nums">
-                상대 전적 · {hostRow.nickname} {seriesWins.host}승{' '}
-                {seriesWins.draws > 0 ? `${seriesWins.draws}무 ` : ''}
-                {seriesWins.guest}승 {guestRow.nickname}
+                {seriesSummaryText}
               </div>
             </div>
           </div>
 
           {/* Rematch Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDismissedPostMatchPopupId(null)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-[#111822] px-3 py-2.5 text-xs font-bold text-slate-200 hover:border-slate-500 cursor-pointer"
+            >
+              <MessageSquareQuote className="w-3.5 h-3.5 text-amber-300" />
+              {outcome === 'WIN'
+                ? '승장 연출 보기'
+                : outcome === 'LOSS'
+                  ? '상대 도발 보기'
+                  : '감독 연출 보기'}
+            </button>
             {isHost ? (
               <>
                 <button

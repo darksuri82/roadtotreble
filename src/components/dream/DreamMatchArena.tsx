@@ -272,6 +272,49 @@ export function DreamMatchArena() {
       else nextBench[to.index] = pA;
       setStarters(nextStarters);
       setBench(nextBench);
+
+      const isBenchSub = from.area !== to.area;
+      if (isBenchSub) {
+        const starterIdx = from.area === 'starter' ? from.index : to.index;
+        const benchIdx = from.area === 'bench' ? from.index : to.index;
+        const outP = starters[starterIdx];
+        const inP = bench[benchIdx];
+        if (outP && inP) {
+          setLiveHalftime((prev) => {
+            if (!prev) return prev;
+            const livePhase = prev.phase;
+            if (
+              livePhase !== 'halftime' &&
+              livePhase !== 'extra_time_break' &&
+              livePhase !== 'extra_time_ht'
+            ) {
+              return prev;
+            }
+            const subMinute =
+              livePhase === 'halftime'
+                ? 45
+                : livePhase === 'extra_time_break'
+                  ? 90
+                  : 105;
+            const prevSubs = prev.liveSubs ?? [];
+            return {
+              ...prev,
+              halftimeSubsMade: prev.halftimeSubsMade + 1,
+              liveSubs: [
+                ...prevSubs,
+                {
+                  minute: subMinute,
+                  outPlayerId: outP.id,
+                  outPlayerName: outP.name,
+                  inPlayerId: inP.id,
+                  inPlayerName: inP.name,
+                  slotIndex: starterIdx,
+                },
+              ],
+            };
+          });
+        }
+      }
     },
     [starters, bench],
   );
@@ -659,10 +702,14 @@ export function DreamMatchArena() {
         const htAdjusted =
           secondHalfTactic !== liveHalftime.userTacticAtKickoff ||
           subPlayerIds.length > 0;
+        const totalHtSubs = Math.max(
+          liveHalftime.halftimeSubsMade,
+          subPlayerIds.length,
+        );
         const fullResult = simulateSecondHalf({
           halftime: {
             ...liveHalftime,
-            halftimeSubsMade: subPlayerIds.length,
+            halftimeSubsMade: totalHtSubs,
           },
           homeClub: userMatchClub,
           awayClub: oppMatchBundle.club,
@@ -671,9 +718,10 @@ export function DreamMatchArena() {
           userContext: buildUserContext({
             tactic: secondHalfTactic,
             halftimeAdjusted: htAdjusted,
-            halftimeSubsMade: subPlayerIds.length,
+            halftimeSubsMade: totalHtSubs,
             halftimeSubIds: subPlayerIds,
             firstHalfStarters,
+            liveSubs: liveHalftime.liveSubs,
             allowAutoSubs: false,
           }),
         });
@@ -682,7 +730,10 @@ export function DreamMatchArena() {
             ? {
                 ...prev,
                 phase: 'second_half',
-                halftimeSubsMade: subPlayerIds.length,
+                halftimeSubsMade: Math.max(
+                  prev.halftimeSubsMade,
+                  subPlayerIds.length,
+                ),
                 homeTactic: fullResult.homeTactic,
                 awayTactic: fullResult.awayTactic,
                 homeFormation: fullResult.homeFormation,
@@ -770,7 +821,7 @@ export function DreamMatchArena() {
             slotSynergies: curChem.slotSynergies,
             managerTraitId: manager.traitId,
             halftimeAdjusted: true,
-            halftimeSubsMade: liveHalftime.halftimeSubsMade,
+            halftimeSubsMade: liveHalftime.halftimeSubsMade + newRecords.length,
             halftimeSubIds,
             firstHalfStarters,
             liveSubs: allSubsSoFar,
@@ -782,6 +833,7 @@ export function DreamMatchArena() {
           prev
             ? {
                 ...prev,
+                halftimeSubsMade: prev.halftimeSubsMade + newRecords.length,
                 liveSubs: allSubsSoFar,
                 fullMatchResult: {
                   ...resim,

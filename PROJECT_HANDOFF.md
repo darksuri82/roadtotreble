@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v7.1)
+# Road To Treble — PROJECT HANDOFF GUIDE (v7.2)
 
 이 문서는 GitHub 저장소(`darksuri82/roadtotreble`)가 연결된 **Antigravity 프로젝트 대화창**에서 다음 에이전트가 별도의 탐색 없이 즉시 개발·배포를 이어갈 수 있도록 프로젝트의 전체 아키텍처, 구현 명세, 핵심 밸런스 수식, 데이터 구조, 그리고 Phase 3 예정 작업을 정리한 인수인계 문서입니다.
 
@@ -10,12 +10,15 @@
 - **Realtime Backend**: Supabase (`@supabase/supabase-js` — Postgres `mp_rooms` / `mp_room_players` + Realtime Postgres Changes + Presence, `supabase/schema.sql`)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, 차분한 슬레이트 UI 크롬 + 웅장한 레전드/슈퍼스타/월클 카드 글로우 & 선명한 4색 피치 시너지선)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **26개 파일 / 103개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **27개 파일 / 107개 테스트 PASS**), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환, `.github/workflows/deploy.yml`에서 `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY` Secret 주입)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`)
+- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v7.2 주요 버그 수정 & 멀티플레이 커스텀/연출**:
+  - **4대 버그 수정 (`formations.ts`, `positionEngine.ts`, `PitchBoard.tsx`, `OpponentPitchView.tsx`, `GameContext.tsx`, `playerLookup.ts`, `awardsEngine.ts`, `standingsEngine.ts`, `matchEngine.ts`, `LiveMatchBroadcast.tsx`, `DreamMatchArena.tsx`)**: ① 9개 전 포메이션 피치·상세 카드 포지션 부적합 OVR 페널티 단일화(`3-3-3-1` `RAM` 등), ② 피치 선수 재클릭/빈 공간 클릭 시 케미선 호버·선택 강조 즉시 해제, ③ 타 리그 트레이드 선수 스탯 이중 합산(66경기 버그) 차단 및 단일 리그 최대 라운드(38R/34R) 상한 보장, ④ 전 모드 교체 아웃 확정 선수 영구 잠금(`교체됨`) 및 잔여 체력 유지(체력 100 초기화 방지).
+  - **멀티플레이 감독·유니폼·구단명 커스텀 & 피치 공개/승패 감독 팝업 (`MpProfileCustomizerModal.tsx`, `PreKickoffRevealModal.tsx`, `MpPostMatchManagerPopup.tsx`, `MultiplayerLobby.tsx`, `MultiplayerArena.tsx`, `multiplayerService.ts`, `v72BugfixAndMpCustom.test.ts`)**: 로비 감독 외형·유니폼 패턴/컬러·구단명 커스텀 및 프리셋 불러오기(`updatePlayerProfile` 실시간 동기화), 킥오프 직전 양 팀 포메이션 피치 뷰 공개 모달, 1대1 종료 후 승자 축하 / 패자 상대 커스텀 감독 도발 팝업 구현.
 - **v7.1 주요 개선**:
   - **1대1 전술실 블라인드 상태 · 최종 전술 공개/비교 팝업 · 1배속 동기화 (`MatchDayTacticsRoom.tsx`, `PreKickoffRevealModal.tsx`, `LiveMatchBroadcast.tsx`, `MultiplayerArena.tsx`)**: 전술실 상대 상태 `[전술·포메이션 수정 중...]`/`[전술 확정 (공개 대기)]` 표시, 양측 확정 후 최종 전술 비교 팝업(양측 준비 완료 → 방장 킥오프), 멀티 2D 중계 `lockSpeed: 1` 고정.
 - **v7.0.2 핫픽스**:

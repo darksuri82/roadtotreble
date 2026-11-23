@@ -2032,11 +2032,12 @@ function executeBidirectionalTrade(params: {
   const incomingIds = new Set(allIncomingRaw.map((p) => p.id));
   const sentIds = new Set(userSentPlayers.map((p) => p.id));
 
-  // 2) Update departedPlayerIds (remove sent players so they stay live on partner club; add incoming so they don't re-spawn on old club)
+  // 2) Update departedPlayerIds (keep both incoming & sent players so neither ever re-spawns via depth pool on their original club)
   const nextDepartedPlayerIds = Array.from(
     new Set([
-      ...(season.departedPlayerIds ?? []).filter((id) => !sentIds.has(id)),
+      ...(season.departedPlayerIds ?? []),
       ...allIncomingRaw.map((p) => p.id),
+      ...userSentPlayers.map((p) => p.id),
     ]),
   );
 
@@ -2179,7 +2180,31 @@ function executeBidirectionalTrade(params: {
       counterpartyClub: partnerClub.name,
       windowLabel,
     };
-    const otherLeaguePrior = updatedPartnerOtherStats?.[incomingPlayer.id] ?? null;
+    const otherLeaguePrior =
+      updatedPartnerOtherStats?.[incomingPlayer.id] ??
+      updatedPartnerOtherStats?.[`user::${incomingPlayer.id}`] ??
+      null;
+    if (updatedPartnerOtherStats) {
+      delete updatedPartnerOtherStats[incomingPlayer.id];
+      delete updatedPartnerOtherStats[`user::${incomingPlayer.id}`];
+    }
+    // Scrub from any other background league stats maps as well so cross-league stats are never double-merged
+    for (const lid of Object.keys(nextOtherLeagues) as LeagueId[]) {
+      const ol = nextOtherLeagues[lid];
+      if (!ol?.playerStats) continue;
+      if (
+        ol.playerStats[incomingPlayer.id] ||
+        ol.playerStats[`user::${incomingPlayer.id}`]
+      ) {
+        const cleanedOlStats = { ...ol.playerStats };
+        delete cleanedOlStats[incomingPlayer.id];
+        delete cleanedOlStats[`user::${incomingPlayer.id}`];
+        nextOtherLeagues[lid] = {
+          ...ol,
+          playerStats: cleanedOlStats,
+        };
+      }
+    }
     nextStats = applyRecordToStats(
       nextStats,
       incomingPlayer,
@@ -2220,21 +2245,7 @@ function executeBidirectionalTrade(params: {
     };
     const userPriorStats =
       nextStats[sentPlayer.id] ?? nextStats[`user::${sentPlayer.id}`] ?? null;
-    nextStats = applyRecordToStats(
-      nextStats,
-      sentPlayer,
-      partnerClubMeta,
-      false,
-      rec,
-    );
-    nextCupStats = applyRecordToStats(
-      nextCupStats,
-      sentPlayer,
-      partnerClubMeta,
-      false,
-      rec,
-    );
-    if (updatedPartnerOtherStats) {
+    if (updatedPartnerOtherStats && partnerLeagueId !== season.leagueId) {
       updatedPartnerOtherStats = applyRecordToStats(
         updatedPartnerOtherStats,
         sentPlayer,
@@ -2243,7 +2254,25 @@ function executeBidirectionalTrade(params: {
         rec,
         userPriorStats,
       );
+      // Remove from user league stats map since prior stats were migrated to partner's league map
+      delete nextStats[sentPlayer.id];
+      delete nextStats[`user::${sentPlayer.id}`];
+    } else {
+      nextStats = applyRecordToStats(
+        nextStats,
+        sentPlayer,
+        partnerClubMeta,
+        false,
+        rec,
+      );
     }
+    nextCupStats = applyRecordToStats(
+      nextCupStats,
+      sentPlayer,
+      partnerClubMeta,
+      false,
+      rec,
+    );
     if (season.ucl) {
       nextUclStats = applyRecordToStats(
         nextUclStats,

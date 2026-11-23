@@ -78,27 +78,28 @@ describe('v5.0 — 9 Formations, Unified Tactical Engine, 4-Pillar Synergy & AI 
       }
     }
 
-    // 3-3-3-1 LWB(LM) and LAM(CAM/LW) alternateSubPositions fit with 0 penalty
+    // 3-3-3-1 LWB(LWB) and RAM(CAM) evaluate unified position fit identically on pitch & detail modal
     const slotLwb = FORMATIONS['3-3-3-1'].slots[4];
-    const slotLam = FORMATIONS['3-3-3-1'].slots[7];
-    const lmPlayer: Player = {
+    const slotRam = FORMATIONS['3-3-3-1'].slots[9];
+    const lwbPlayer: Player = {
       ...ACTIVE_PLAYERS[0],
-      mainPositions: ['LM'],
+      mainPositions: ['LWB'],
       secondaryPositions: [],
       ovr: 85,
     };
-    const lwPlayer: Player = {
+    const rwOnlyPlayer: Player = {
       ...ACTIVE_PLAYERS[0],
-      mainPositions: ['LW'],
-      secondaryPositions: [],
+      mainPositions: ['RW'],
+      secondaryPositions: ['RM'],
       ovr: 88,
     };
     expect(
-      evaluatePositionFit(lmPlayer, slotLwb.subPosition, null, slotLwb.alternateSubPositions).penalty,
+      evaluatePositionFit(lwbPlayer, slotLwb.subPosition, null).penalty,
     ).toBe(0);
-    expect(
-      evaluatePositionFit(lwPlayer, slotLam.subPosition, null, slotLam.alternateSubPositions).penalty,
-    ).toBe(0);
+    // Out-of-position RW in 3-3-3-1 RAM (CAM) receives minus penalty (-15) on both pitch and detail card
+    const ramFit = evaluatePositionFit(rwOnlyPlayer, slotRam.subPosition, null);
+    expect(ramFit.penalty).toBe(-15);
+    expect(ramFit.effectiveOvr).toBe(73);
   });
 
   it('2) strictly validates canonical club names in VERIFIED_CAREER_CLUBS_BY_NAME and triggers real former-club synergies', () => {

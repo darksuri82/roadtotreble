@@ -51,6 +51,7 @@ import type {
 import type {
   Club,
   LiveHalftimeState,
+  LiveSubRecord,
   PlayerSeasonStats,
   TacticId,
 } from '../../types/league';
@@ -226,6 +227,9 @@ export function LiveMatchBroadcast({
   );
   const [swapPick, setSwapPick] = useState<SlotRef | null>(null);
   const [subbedInIds, setSubbedInIds] = useState<string[]>([]);
+  const [confirmedSubRecords, setConfirmedSubRecords] = useState<
+    LiveSubRecord[]
+  >([]);
   const [pendingHtSubConfirm, setPendingHtSubConfirm] = useState<{
     from: SlotRef;
     to: SlotRef;
@@ -251,6 +255,7 @@ export function LiveMatchBroadcast({
       outPlayerName: string;
       inPlayerId: string;
       inPlayerName: string;
+      slotIndex: number;
     }[]
   >([]);
 
@@ -274,6 +279,7 @@ export function LiveMatchBroadcast({
       firstHalfStartersRef.current = state.starters.filter(
         (p): p is Player => p !== null,
       );
+      setConfirmedSubRecords([]);
     }
   }, [halftime, state.starters]);
 
@@ -284,6 +290,7 @@ export function LiveMatchBroadcast({
     if (phase === 'first_half') {
       setMinute(0);
       setSubbedInIds([]);
+      setConfirmedSubRecords([]);
       setSwapPick(null);
       setPendingHtSubConfirm(null);
       setHtNotice(null);
@@ -767,15 +774,35 @@ export function LiveMatchBroadcast({
 
   const formationSlots = (FORMATIONS[state.formation] ?? FORMATIONS['4-3-3']).slots;
 
+  // Merge engine-recorded liveSubs + component-confirmed substitutions across Halftime / 2nd Half / Extra Time
+  const allMatchSubRecords: LiveSubRecord[] = [];
+  const seenSubOutIds = new Set<string>();
+  for (const rec of [...(halftime.liveSubs ?? []), ...confirmedSubRecords]) {
+    if (!rec.outPlayerId || seenSubOutIds.has(rec.outPlayerId)) continue;
+    seenSubOutIds.add(rec.outPlayerId);
+    allMatchSubRecords.push(rec);
+  }
+
   // Compute live stamina % for each of the 11 user starters at current clock minute
   const enteredAtMap = new Map<string, number>();
   for (const id of subbedInIds) enteredAtMap.set(id, 45);
-  for (const rec of halftime.liveSubs ?? []) {
+  for (const rec of allMatchSubRecords) {
     enteredAtMap.set(rec.inPlayerId, rec.minute);
   }
-  const subbedOutIdSet = new Set(
-    (halftime.liveSubs ?? []).map((r) => r.outPlayerId),
+
+  const firstHalfStarterIdSet = new Set(
+    firstHalfStartersRef.current.map((p) => p.id),
   );
+  const subbedOutIdSet = new Set<string>(
+    allMatchSubRecords.map((r) => r.outPlayerId),
+  );
+  // Any 1st-half starter or previously subbed-in player now sitting on state.bench is also permanently subbed out
+  for (const bp of state.bench) {
+    if (!bp) continue;
+    if (firstHalfStarterIdSet.has(bp.id) || enteredAtMap.has(bp.id)) {
+      subbedOutIdSet.add(bp.id);
+    }
+  }
 
   const starterStaminaRows = state.starters.map((player, idx) => {
     const slot = formationSlots[idx];
@@ -813,16 +840,24 @@ export function LiveMatchBroadcast({
   for (const row of starterStaminaRows) {
     if (row.player) staminaByPlayerId[row.player.id] = row.staminaPct;
   }
-  for (const bp of state.bench) {
+  const allBenchCandidates = [
+    ...state.bench,
+    ...(liveSubOpen ? draftBench : []),
+  ];
+  for (const bp of allBenchCandidates) {
     if (!bp) continue;
+    // Never overwrite live stamina of an active starter temporarily moved to draftBench during liveSubOpen
+    if (staminaByPlayerId[bp.id] !== undefined) continue;
     if (subbedOutIdSet.has(bp.id)) {
-      const rec = (halftime.liveSubs ?? []).find((r) => r.outPlayerId === bp.id);
-      const subMin = rec?.minute ?? 45;
+      const rec = allMatchSubRecords.find((r) => r.outPlayerId === bp.id);
+      const enterMin = enteredAtMap.get(bp.id) ?? 0;
+      const exitMin = rec?.minute ?? 45;
+      const minsPlayed = Math.max(1, exitMin - enterMin);
       staminaByPlayerId[bp.id] = computePlayerStaminaPct({
         staminaStat: getPlayerStaminaStat(bp),
         subPosition: formationSlots[rec?.slotIndex ?? 5]?.subPosition ?? 'CM',
         tactic: userActiveTactic,
-        minutesPlayed: subMin,
+        minutesPlayed: minsPlayed,
       });
     } else {
       staminaByPlayerId[bp.id] = 100;
@@ -836,7 +871,11 @@ export function LiveMatchBroadcast({
     phase === 'extra_time_2'
       ? MAX_MATCH_SUBS + 1
       : MAX_MATCH_SUBS;
-  const subsUsed = halftime.halftimeSubsMade;
+  const subsUsed = Math.max(
+    halftime.halftimeSubsMade,
+    allMatchSubRecords.length,
+    subbedOutIdSet.size,
+  );
   const subsRemaining = Math.max(0, maxSubsAllowed - subsUsed);
 
   const liveAggHomeForBrief = (halftime.aggHomeBeforeMatch ?? 0) + liveHomeGoals;
@@ -917,10 +956,28 @@ export function LiveMatchBroadcast({
   const confirmPendingHalftimeSub = () => {
     if (!pendingHtSubConfirm) return;
     const { from, to, outPlayer, inPlayer } = pendingHtSubConfirm;
-    if (subsUsed >= maxSubsAllowed) {
+    if (subsUsed >= maxSubsAllowed || subbedOutIdSet.has(inPlayer.id)) {
       setPendingHtSubConfirm(null);
       return;
     }
+    const starterIdx = from.area === 'starter' ? from.index : to.index;
+    const subMinute =
+      phase === 'extra_time_ht'
+        ? 105
+        : phase === 'extra_time_break'
+          ? 90
+          : 45;
+    setConfirmedSubRecords((prev) => [
+      ...prev,
+      {
+        minute: subMinute,
+        outPlayerId: outPlayer.id,
+        outPlayerName: outPlayer.name,
+        inPlayerId: inPlayer.id,
+        inPlayerName: inPlayer.name,
+        slotIndex: starterIdx,
+      },
+    ]);
     if (!subbedInIds.includes(inPlayer.id)) {
       setSubbedInIds((prev) => [...prev, inPlayer.id]);
     }
@@ -1057,6 +1114,7 @@ export function LiveMatchBroadcast({
         outPlayerName: outP.name,
         inPlayerId: inP.id,
         inPlayerName: inP.name,
+        slotIndex: starterIdx,
       },
     ]);
   };
@@ -1111,6 +1169,17 @@ export function LiveMatchBroadcast({
     const newInIds = pendingLiveSubs.map((s) => s.inPlayerId);
     if (newInIds.length > 0) {
       setSubbedInIds((prev) => Array.from(new Set([...prev, ...newInIds])));
+      setConfirmedSubRecords((prev) => [
+        ...prev,
+        ...pendingLiveSubs.map((s) => ({
+          minute,
+          outPlayerId: s.outPlayerId,
+          outPlayerName: s.outPlayerName,
+          inPlayerId: s.inPlayerId,
+          inPlayerName: s.inPlayerName,
+          slotIndex: s.slotIndex,
+        })),
+      ]);
     }
 
     applySecondHalfLiveSub({
@@ -1118,6 +1187,7 @@ export function LiveMatchBroadcast({
       subs: pendingLiveSubs.map((s) => ({
         outPlayerId: s.outPlayerId,
         inPlayerId: s.inPlayerId,
+        starterIndex: s.slotIndex,
       })),
       nextStarters: draftStarters,
       nextBench: draftBench,

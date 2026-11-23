@@ -8,6 +8,7 @@ import {
   Loader2,
   Lock,
   LogOut,
+  Palette,
   Play,
   Plus,
   RefreshCw,
@@ -34,6 +35,7 @@ import type {
 } from '../../types/multiplayer';
 import { JerseySvg } from '../common/JerseySvg';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
+import { MpProfileCustomizerModal } from './MpProfileCustomizerModal';
 
 const LEAGUE_OPTIONS: { id: LeagueId; shortLabel: string; count: number }[] =
   LEAGUES.map((l) => ({
@@ -67,6 +69,11 @@ interface MultiplayerLobbyProps {
   onCreateRoom: (mode: MpRoomMode, settings: MpRoomSettings) => void;
   onJoinRoom: (code: string) => void;
   onUpdateSettings: (settings: MpRoomSettings) => void;
+  onUpdateCustomProfile?: (payload: {
+    nickname: string;
+    avatar: ManagerAvatarConfig;
+    clubProfile: UserClubProfile;
+  }) => void;
   onToggleReady: (nextReady: boolean) => void;
   onStartDraft: () => void;
   onLeaveRoom: () => void;
@@ -89,6 +96,7 @@ export function MultiplayerLobby({
   onCreateRoom,
   onJoinRoom,
   onUpdateSettings,
+  onUpdateCustomProfile,
   onToggleReady,
   onStartDraft,
   onLeaveRoom,
@@ -99,6 +107,7 @@ export function MultiplayerLobby({
   const [createPool, setCreatePool] = useState<LeagueId[]>([...DEFAULT_MP_LEAGUE_POOL]);
   const [createKnockout, setCreateKnockout] = useState<boolean>(true);
   const [copiedType, setCopiedType] = useState<'code' | 'link' | null>(null);
+  const [customizerOpen, setCustomizerOpen] = useState<boolean>(false);
 
   const toggleCreateLeague = (id: LeagueId) => {
     setCreatePool((prev) => {
@@ -294,7 +303,7 @@ export function MultiplayerLobby({
                 htmlFor="mp-nickname-input"
                 className="block text-[10px] font-bold text-slate-400 mb-1"
               >
-                감독 닉네임 ({clubProfile.name})
+                감독 닉네임 · {clubProfile.name} ({clubProfile.shortName})
               </label>
               <input
                 id="mp-nickname-input"
@@ -306,8 +315,31 @@ export function MultiplayerLobby({
                 className="w-full rounded-lg border border-slate-700 bg-[#111822] px-3 py-1.5 text-xs font-bold text-white outline-none focus:border-emerald-500/60"
               />
             </div>
+
+            <button
+              id="mp-open-customizer-btn"
+              type="button"
+              onClick={() => setCustomizerOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/12 px-3 py-2 text-xs font-extrabold text-emerald-300 hover:bg-emerald-500/20 cursor-pointer shrink-0"
+            >
+              <Palette className="h-3.5 w-3.5" />
+              감독 · 구단 커스텀
+            </button>
           </div>
         </div>
+
+        {customizerOpen && (
+          <MpProfileCustomizerModal
+            initialNickname={nickname}
+            initialAvatar={avatar}
+            initialClubProfile={clubProfile}
+            onApply={(payload) => {
+              onChangeNickname(payload.nickname);
+              onUpdateCustomProfile?.(payload);
+            }}
+            onClose={() => setCustomizerOpen(false)}
+          />
+        )}
 
         {errorMsg && (
           <div className="rounded-xl border border-rose-500/40 bg-rose-950/25 px-3.5 py-2.5 text-xs font-bold text-rose-200">
@@ -509,15 +541,38 @@ export function MultiplayerLobby({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={onLeaveRoom}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-[#111822] px-3 py-1.5 text-xs font-bold text-slate-300 hover:border-rose-500/40 hover:text-rose-200 cursor-pointer"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          방 나가기
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCustomizerOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/12 px-3 py-1.5 text-xs font-extrabold text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
+          >
+            <Palette className="w-3.5 h-3.5" />
+            감독 · 구단 커스텀
+          </button>
+          <button
+            type="button"
+            onClick={onLeaveRoom}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-[#111822] px-3 py-1.5 text-xs font-bold text-slate-300 hover:border-rose-500/40 hover:text-rose-200 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            방 나가기
+          </button>
+        </div>
       </div>
+
+      {customizerOpen && (
+        <MpProfileCustomizerModal
+          initialNickname={myPlayer?.nickname ?? nickname}
+          initialAvatar={myPlayer?.avatar_json ?? avatar}
+          initialClubProfile={myPlayer?.club_profile ?? clubProfile}
+          onApply={(payload) => {
+            onChangeNickname(payload.nickname);
+            onUpdateCustomProfile?.(payload);
+          }}
+          onClose={() => setCustomizerOpen(false)}
+        />
+      )}
 
       {/* Invite Code & 1-Click Share Bar */}
       <div className="rounded-2xl border border-slate-800/90 bg-[#0d131c] p-4 flex flex-wrap items-center justify-between gap-3">

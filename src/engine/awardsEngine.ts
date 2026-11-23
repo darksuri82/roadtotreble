@@ -368,11 +368,42 @@ export function computeGlobalSeasonAwards(params: {
   }
 
   // 2) Merge REAL simulated stats across ALL 5 leagues + ALL 5 domestic cups + UCL by unique playerId
-  // Order ensures later/user-club records hold the player's final club at season end
+  // First deduplicate across the 5 league maps so cross-league traded players are never counted twice
+  const deduplicatedLeagueMap: Record<string, PlayerSeasonStats> = {};
+  for (const lMap of [...otherLeagueStatsMaps, allLeaguePlayerStats]) {
+    for (const st of Object.values(lMap)) {
+      if (st.appearances <= 0) continue;
+      const existing = deduplicatedLeagueMap[st.playerId];
+      if (!existing) {
+        deduplicatedLeagueMap[st.playerId] = { ...st };
+      } else {
+        const hasTrade =
+          Boolean(st.transferHistory?.some((r) => r.type === 'trade')) ||
+          Boolean(existing.transferHistory?.some((r) => r.type === 'trade'));
+        if (hasTrade || existing.appearances + st.appearances > 38) {
+          deduplicatedLeagueMap[st.playerId] = st.isUserTeam
+            ? { ...st }
+            : existing.isUserTeam
+              ? existing
+              : st.appearances >= existing.appearances
+                ? { ...st }
+                : existing;
+        } else {
+          const singleMerged = mergeStatsMaps([
+            { [existing.playerId]: existing },
+            { [st.playerId]: st },
+          ]).get(st.playerId);
+          if (singleMerged) {
+            deduplicatedLeagueMap[st.playerId] = singleMerged;
+          }
+        }
+      }
+    }
+  }
+
   const merged = mergeStatsMaps([
-    ...otherLeagueStatsMaps,
+    deduplicatedLeagueMap,
     ...otherCupStatsMaps,
-    allLeaguePlayerStats,
     cupPlayerStats,
     uclPlayerStats,
   ]);

@@ -252,8 +252,11 @@ export function applyRoundResults(
       (r) => r.playerId === res.momPlayerId,
     )?.teamId;
 
-    // Accumulate full-league individual stats under single worldwide playerId key
+    // Accumulate full-league individual stats under single worldwide playerId key (at most 1 appearance per player per match)
+    const seenInMatch = new Set<string>();
     for (const pr of res.playerRatings) {
+      if (!pr.playerId || seenInMatch.has(pr.playerId)) continue;
+      seenInMatch.add(pr.playerId);
       const club = clubsById[pr.teamId];
       const isUser = pr.teamId === userClubId;
       const statKey = pr.playerId;
@@ -359,7 +362,10 @@ export function accumulateCompetitionPlayerStats(
       (r) => r.playerId === res.momPlayerId,
     )?.teamId;
 
+    const seenInMatch = new Set<string>();
     for (const pr of res.playerRatings) {
+      if (!pr.playerId || seenInMatch.has(pr.playerId)) continue;
+      seenInMatch.add(pr.playerId);
       const club = clubsById[pr.teamId];
       const isUser = pr.teamId === userClubId;
       const statKey = pr.playerId;

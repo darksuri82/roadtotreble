@@ -14,6 +14,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { FORMATIONS } from '../../data/formations';
 import {
   getMoraleLabel,
   getMoraleTier,
@@ -1178,13 +1179,21 @@ export function SeasonDashboard() {
           : -1;
         const matchedSlotSynergy =
           starterIdx >= 0 ? chemistry.slotSynergies?.[starterIdx] ?? null : null;
+        const matchedSlotSubPos =
+          starterIdx >= 0
+            ? FORMATIONS[state.formation]?.slots[starterIdx]?.subPosition
+            : undefined;
         return (
           <PlayerDetailModal
             player={resolved}
+            slotSubPosition={matchedSlotSubPos}
             managerTraitId={state.manager.traitId}
             slotSynergy={matchedSlotSynergy}
             seasonStats={breakdown.total}
             competitionStats={breakdown}
+            condition={
+              resolved ? season.playerConditions?.[resolved.id] ?? null : null
+            }
             onClose={() => setInspectedPlayer(null)}
           />
         );

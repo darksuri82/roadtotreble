@@ -5,6 +5,23 @@
 
 ---
 
+## v7.2 — 4대 핵심 버그 수정(포지션 페널티·케미선 해제·트레이드 스탯 중복·교체 아웃 잠금) & 멀티플레이 커스텀·피치 공개·승패 감독 팝업
+
+- **포지션 부적합 OVR 감소 피치·상세 카드 단일화 (`src/data/formations.ts`, `src/engine/positionEngine.ts`, `src/components/league/SeasonDashboard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/league/SeasonSummary.tsx`)**:
+  - `3-3-3-1`(`RAM`, `LAM`, `LWB`, `RWB` 등) 및 `3-5-2-dm` 슬롯의 `alternateSubPositions` 0-페널티 예외를 제거하고 9개 전 포메이션 피치(`PitchBoard`)와 선수 상세 모달(`PlayerDetailModal`)이 단일 `evaluatePositionFit` 함수를 공유하도록 통일.
+- **포메이션 피치 선수 재클릭 시 케미선 강조 해제 (`src/components/common/PitchBoard.tsx`, `src/components/league/OpponentPitchView.tsx`)**:
+  - 선택된 선수를 다시 클릭해 선택 해제하거나 피치 빈 공간을 클릭할 때 PC 마우스 잔류 호버 및 모바일 터치 합성 호버 상태를 즉시 초기화하도록 수정.
+- **트레이드/교체 선수 출전 수·골·도움 중복 합산 차단 (`src/store/GameContext.tsx`, `src/utils/playerLookup.ts`, `src/engine/awardsEngine.ts`, `src/engine/standingsEngine.ts`, `src/engine/matchEngine.ts`)**:
+  - 타 리그 ↔ 우리 리그 트레이드 시 이전 리그 `playerStats` 맵에서 이관 완료된 스탯 엔트리를 즉시 삭제하고, `mergeCrossLeaguePlayerStats` 중복 병합 방지 및 단일 리그 최대 라운드(38R/34R) 상한 보장, 경기당 동일 `playerId` 중복 집계 가드 추가.
+- **교체 확정 후 아웃 선수 재교체 차단 & 잔여 체력 유지 (`src/components/league/LiveMatchBroadcast.tsx`, `src/components/dream/DreamMatchArena.tsx`)**:
+  - 드림 매치·리그·컵·UCL·멀티플레이 전 모드에서 하프타임·후반 실시간·연장전 교체 아웃 확정 선수를 `confirmedSubRecords` 및 `subbedOutIdSet`에 영구 기록해 `교체됨` 잠금과 교체 시점 잔여 체력을 경기 종료까지 유지.
+- **멀티플레이 감독·유니폼·구단명 커스텀 & 프리셋 연동 (`src/components/multiplayer/MpProfileCustomizerModal.tsx`, `src/components/multiplayer/MultiplayerLobby.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/services/multiplayerService.ts`)**:
+  - 멀티플레이 로비에서 감독 픽셀 아바타(성별·피부톤·헤어스타일·머리색·의상·안경), 유니폼 디자인(5종 패턴·메인/보조 컬러), 구단명·약칭을 커스텀하거나 기존 프리셋을 불러와 Supabase `mp_room_players`에 실시간 동기화.
+- **킥오프 직전 포메이션 피치 뷰 공개 & 종료 후 승/패 감독 연출 팝업 (`src/components/multiplayer/PreKickoffRevealModal.tsx`, `src/components/multiplayer/MpPostMatchManagerPopup.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/__tests__/v72BugfixAndMpCustom.test.ts`)**:
+  - `PreKickoffRevealModal`을 양 팀 포메이션 피치 뷰(4색 시너지선·티어 카드·포지션 페널티·선수 상세 연동)로 개편하고, 1대1 경기 종료 시 승자 축하 팝업 및 패자 화면 상대 커스텀 감독 도발 팝업(랜덤/전환 대사 바리에이션) 추가.
+
+---
+
 ## v7.1 — 1대1 전술실 상대 수정 상태 표시 · 최종 전술 공개/비교 팝업(양측 준비 → 방장 시작) · 멀티 1배속 동기화 고정
 
 - **1대1 매치 데이 전술실 블라인드 상태 표시 (`src/components/league/MatchDayTacticsRoom.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`)**:

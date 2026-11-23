@@ -2514,21 +2514,31 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       )}
 
       {/* Player Detail Card Modal (z-[60], floats cleanly above Trade Room!) */}
-      {inspectedPlayer && (
-        <PlayerDetailModal
-          player={inspectedPlayer}
-          slotSynergy={
-            Object.values(chemistry.slotSynergies).find(
-              (s) => s.playerId === inspectedPlayer.id,
-            ) ?? null
-          }
-          managerTraitId={state.manager.traitId}
-          seasonStats={inspectedBreakdown?.total ?? null}
-          competitionStats={inspectedBreakdown}
-          condition={season.playerConditions?.[inspectedPlayer.id] ?? null}
-          onClose={() => setInspectedPlayer(null)}
-        />
-      )}
+      {inspectedPlayer && (() => {
+        const starterIdx = state.starters.findIndex(
+          (p) => p?.id === inspectedPlayer.id,
+        );
+        const matchedSlotSubPos =
+          starterIdx >= 0
+            ? FORMATIONS[state.formation]?.slots[starterIdx]?.subPosition
+            : undefined;
+        return (
+          <PlayerDetailModal
+            player={inspectedPlayer}
+            slotSubPosition={matchedSlotSubPos}
+            slotSynergy={
+              Object.values(chemistry.slotSynergies).find(
+                (s) => s.playerId === inspectedPlayer.id,
+              ) ?? null
+            }
+            managerTraitId={state.manager.traitId}
+            seasonStats={inspectedBreakdown?.total ?? null}
+            competitionStats={inspectedBreakdown}
+            condition={season.playerConditions?.[inspectedPlayer.id] ?? null}
+            onClose={() => setInspectedPlayer(null)}
+          />
+        );
+      })()}
     </div>
   );
 

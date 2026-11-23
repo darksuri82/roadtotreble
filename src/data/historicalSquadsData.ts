@@ -2756,7 +2756,7 @@ export const HISTORICAL_SQUADS: Record<string, HistoricalTeamSquadBundle> = {
         f: [82, 88, 84, 89, 78, 83, 91],
       },
       {
-        slug: 'overmars', name: '마르크 오베르마르스', pos: 'FW', main: ['LW', 'LM'], sec: ['CAM'], ovr: 89,
+        slug: 'overmars', name: '마르크 오베르마르스', pos: 'FW', main: ['LW', 'LM', 'CAM'], ovr: 89,
         nat: '네덜란드', code: 'NL', sta: 91, styles: ['classic_winger', 'line_breaker'],
         note: '유럽 최정상급 가속력과 양발 돌파로 밀란 수비를 흔든 번개 윙어',
         f: [85, 84, 90, 93, 62, 54, 95],
@@ -2768,7 +2768,7 @@ export const HISTORICAL_SQUADS: Record<string, HistoricalTeamSquadBundle> = {
         f: [91, 93, 86, 92, 78, 58, 82],
       },
       {
-        slug: 'finidi', name: '피니디 조지', pos: 'FW', main: ['RW', 'RM'], sec: ['CAM'], ovr: 86,
+        slug: 'finidi', name: '피니디 조지', pos: 'FW', main: ['RW', 'RM', 'CAM'], ovr: 86,
         nat: '나이지리아', code: 'NG', sta: 91, styles: ['classic_winger', 'line_breaker'],
         note: '4강 바이에른전 환상적 중거리골 · 우측 터치라인의 정교한 크로서',
         f: [83, 84, 90, 88, 76, 62, 88],

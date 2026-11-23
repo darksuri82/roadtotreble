@@ -130,14 +130,34 @@ export function PitchBoard({
   const [hoveredStarterIdx, setHoveredStarterIdx] = useState<number | null>(
     null,
   );
+  const [suppressedHoverIdx, setSuppressedHoverIdx] = useState<number | null>(
+    null,
+  );
+
+  const activeHoveredStarterIdx =
+    hoveredStarterIdx !== null && hoveredStarterIdx !== suppressedHoverIdx
+      ? hoveredStarterIdx
+      : null;
 
   const focusedStarterIdx =
-    hoveredStarterIdx ??
+    activeHoveredStarterIdx ??
     (selectedSlot?.area === 'starter' ? selectedSlot.index : null);
 
   const canDrag = Boolean(onSlotSwap);
 
   const handleSlotActivate = (area: 'starter' | 'bench', index: number) => {
+    const isDeselectingSameStarter =
+      area === 'starter' &&
+      selectedSlot?.area === 'starter' &&
+      selectedSlot.index === index;
+    const isCompletingSwap = selectedSlot !== null;
+
+    if (isDeselectingSameStarter || isCompletingSwap) {
+      setHoveredStarterIdx(null);
+      if (area === 'starter') {
+        setSuppressedHoverIdx(index);
+      }
+    }
     onSlotClick?.(area, index);
   };
 
@@ -251,6 +271,19 @@ export function PitchBoard({
 
       {/* Main Pitch Container */}
       <div
+        onPointerLeave={() => {
+          setHoveredStarterIdx(null);
+          setSuppressedHoverIdx(null);
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setHoveredStarterIdx(null);
+            setSuppressedHoverIdx(null);
+            if (selectedSlot && onSlotClick) {
+              onSlotClick(selectedSlot.area, selectedSlot.index);
+            }
+          }
+        }}
         className={`pitch-surface relative w-full overflow-hidden rounded-2xl border border-slate-800/90 ${
           compact
             ? 'aspect-[4/3.9] sm:aspect-[4/4.4]'
@@ -453,17 +486,30 @@ export function PitchBoard({
               role="button"
               tabIndex={onSlotClick ? 0 : -1}
               draggable={Boolean(canDrag && player)}
-              onMouseEnter={() => setHoveredStarterIdx(slot.index)}
-              onMouseLeave={() =>
+              onPointerEnter={(e) => {
+                if (
+                  e.pointerType === 'mouse' &&
+                  suppressedHoverIdx !== slot.index
+                ) {
+                  setHoveredStarterIdx(slot.index);
+                }
+              }}
+              onPointerLeave={() => {
                 setHoveredStarterIdx((prev) =>
                   prev === slot.index ? null : prev,
-                )
-              }
+                );
+                setSuppressedHoverIdx((prev) =>
+                  prev === slot.index ? null : prev,
+                );
+              }}
               onDragStart={(e) => handleDragStart(e, 'starter', slot.index)}
               onDragOver={(e) => handleDragOver(e, 'starter', slot.index)}
               onDrop={(e) => handleDrop(e, 'starter', slot.index)}
               onDragEnd={handleDragEnd}
-              onClick={() => handleSlotActivate('starter', slot.index)}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSlotActivate('starter', slot.index);
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
