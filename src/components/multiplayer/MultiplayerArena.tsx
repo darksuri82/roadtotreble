@@ -87,6 +87,7 @@ import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { MatchReportPanel } from '../league/MatchReportPanel';
 import { MultiplayerBlindDraft } from './MultiplayerBlindDraft';
 import { MultiplayerLobby } from './MultiplayerLobby';
+import { PreKickoffRevealModal } from './PreKickoffRevealModal';
 
 function buildClubFromLineup(params: {
   id: string;
@@ -425,10 +426,11 @@ export function MultiplayerArena() {
     }
   }, [isHost, room, hostRow, guestRow]);
 
-  // 2) Both confirmed pre-match tactics -> Host computes 1st half & publishes live_match!
-  useEffect(() => {
+  // 2) Host starts kickoff explicitly from PreKickoffRevealModal once BOTH players confirmed tactics & clicked Ready
+  const handleHostKickoffMatch = useCallback(async () => {
     if (!isHost || !room || !isMpTacticsStatus(room.status) || isMatchLiveNow) return;
     if (!hostRow?.lineup_payload || !guestRow?.lineup_payload) return;
+    if (!hostRow.is_ready || !guestRow.is_ready) return;
 
     const matchNumber = room.settings.matchNumber ?? 1;
     const preMatchKey = `pre_match:${room.settings.draftGeneration ?? 1}:${matchNumber}`;
@@ -436,127 +438,131 @@ export function MultiplayerArena() {
     const gSub = guestRow.tactic_submission;
 
     if (
-      hSub?.phase === 'pre_match' &&
-      hSub.barrierKey === preMatchKey &&
-      gSub?.phase === 'pre_match' &&
-      gSub.barrierKey === preMatchKey
+      hSub?.phase !== 'pre_match' ||
+      hSub.barrierKey !== preMatchKey ||
+      gSub?.phase !== 'pre_match' ||
+      gSub.barrierKey !== preMatchKey
     ) {
-      const guardKey = `kickoff:${room.id}:${preMatchKey}`;
-      if (transitionGuardRef.current.has(guardKey)) return;
-      transitionGuardRef.current.add(guardKey);
+      return;
+    }
 
-      void (async () => {
-        try {
-          const hostTrait = hostRow.lineup_payload!.managerTraitId;
-          const guestTrait = guestRow.lineup_payload!.managerTraitId;
+    const guardKey = `kickoff:${room.id}:${preMatchKey}`;
+    if (transitionGuardRef.current.has(guardKey)) return;
+    transitionGuardRef.current.add(guardKey);
+    setBusy(true);
+    setErrorMsg(null);
 
-          const hostClub = buildClubFromLineup({
-            id: MP_HOST_TEAM_ID,
-            profile: hostRow.club_profile,
-            formation: hSub.formation,
-            tactic: hSub.tactic,
-            starters: hSub.starters,
-            managerTraitId: hostTrait,
-            isUser: true,
-          });
-          const guestClub = buildClubFromLineup({
-            id: MP_GUEST_TEAM_ID,
-            profile: guestRow.club_profile,
-            formation: gSub.formation,
-            tactic: gSub.tactic,
-            starters: gSub.starters,
-            managerTraitId: guestTrait,
-            isUser: false,
-          });
+    try {
+      const hostTrait = hostRow.lineup_payload.managerTraitId;
+      const guestTrait = guestRow.lineup_payload.managerTraitId;
 
-          const hostCtx = buildHumanMatchContext({
-            clubId: MP_HOST_TEAM_ID,
-            formation: hSub.formation,
-            tactic: hSub.tactic,
-            starters: hSub.starters,
-            bench: hSub.bench,
-            managerTraitId: hostTrait,
-          });
-          const guestCtx = buildHumanMatchContext({
-            clubId: MP_GUEST_TEAM_ID,
-            formation: gSub.formation,
-            tactic: gSub.tactic,
-            starters: gSub.starters,
-            bench: gSub.bench,
-            managerTraitId: guestTrait,
-          });
+      const hostClub = buildClubFromLineup({
+        id: MP_HOST_TEAM_ID,
+        profile: hostRow.club_profile,
+        formation: hSub.formation,
+        tactic: hSub.tactic,
+        starters: hSub.starters,
+        managerTraitId: hostTrait,
+        isUser: true,
+      });
+      const guestClub = buildClubFromLineup({
+        id: MP_GUEST_TEAM_ID,
+        profile: guestRow.club_profile,
+        formation: gSub.formation,
+        tactic: gSub.tactic,
+        starters: gSub.starters,
+        managerTraitId: guestTrait,
+        isUser: false,
+      });
 
-          const matchId = `mp-${room.code}-m${matchNumber}-${Date.now()}`;
-          const fixture: Fixture = {
-            id: matchId,
-            round: matchNumber,
-            homeTeamId: MP_HOST_TEAM_ID,
-            awayTeamId: MP_GUEST_TEAM_ID,
-            played: false,
-          };
+      const hostCtx = buildHumanMatchContext({
+        clubId: MP_HOST_TEAM_ID,
+        formation: hSub.formation,
+        tactic: hSub.tactic,
+        starters: hSub.starters,
+        bench: hSub.bench,
+        managerTraitId: hostTrait,
+      });
+      const guestCtx = buildHumanMatchContext({
+        clubId: MP_GUEST_TEAM_ID,
+        formation: gSub.formation,
+        tactic: gSub.tactic,
+        starters: gSub.starters,
+        bench: gSub.bench,
+        managerTraitId: guestTrait,
+      });
 
-          const ht = simulateFirstHalf({
-            fixture,
-            homeClub: hostClub,
-            awayClub: guestClub,
-            homeRoster: hSub.starters,
-            awayRoster: gSub.starters,
-            userContext: hostCtx,
-            opponentUserContext: guestCtx,
-          });
+      const matchId = `mp-${room.code}-m${matchNumber}-${Date.now()}`;
+      const fixture: Fixture = {
+        id: matchId,
+        round: matchNumber,
+        homeTeamId: MP_HOST_TEAM_ID,
+        awayTeamId: MP_GUEST_TEAM_ID,
+        played: false,
+      };
 
-          const liveHalftime: LiveHalftimeState = {
-            ...ht,
-            competition: 'ucl',
-            competitionLabel: `1대1 블라인드 대전 · #${matchNumber}`,
-            isKnockoutDecider: room.settings.knockoutRules,
-            phase: 'first_half',
-          };
+      const ht = simulateFirstHalf({
+        fixture,
+        homeClub: hostClub,
+        awayClub: guestClub,
+        homeRoster: hSub.starters,
+        awayRoster: gSub.starters,
+        userContext: hostCtx,
+        opponentUserContext: guestCtx,
+      });
 
-          const nextMatchState: MpMatchState = {
-            matchId,
-            matchNumber,
-            phase: 'first_half',
-            hostTeamId: MP_HOST_TEAM_ID,
-            guestTeamId: MP_GUEST_TEAM_ID,
-            hostFormation: hSub.formation,
-            guestFormation: gSub.formation,
-            hostTactic: hSub.tactic,
-            guestTactic: gSub.tactic,
-            hostManagerTraitId: hostTrait,
-            guestManagerTraitId: guestTrait,
-            hostStarters: hSub.starters,
-            hostBench: hSub.bench,
-            guestStarters: gSub.starters,
-            guestBench: gSub.bench,
-            hostFirstHalfStarters: hSub.starters,
-            guestFirstHalfStarters: gSub.starters,
-            hostHalftimeSubIds: [],
-            guestHalftimeSubIds: [],
-            hostEtSubIds: [],
-            guestEtSubIds: [],
-            liveHalftime,
-            finalResult: null,
-            seriesWins,
-            updatedAt: new Date().toISOString(),
-          };
+      const liveHalftime: LiveHalftimeState = {
+        ...ht,
+        competition: 'ucl',
+        competitionLabel: `1대1 블라인드 대전 · #${matchNumber}`,
+        isKnockoutDecider: room.settings.knockoutRules,
+        phase: 'first_half',
+      };
 
-          const res = await publishMatchState(room.id, 'live_match', nextMatchState);
-          if (res.error) {
-            transitionGuardRef.current.delete(guardKey);
-            setErrorMsg(res.error);
-            return;
-          }
-          setErrorMsg(null);
-          const snap = await fetchRoomSnapshot(room.id);
-          if (snap.data) setSnapshot(snap.data);
-        } catch (err) {
-          transitionGuardRef.current.delete(guardKey);
-          setErrorMsg(
-            err instanceof Error ? err.message : '경기 시작 처리 중 오류가 발생했습니다.',
-          );
-        }
-      })();
+      const nextMatchState: MpMatchState = {
+        matchId,
+        matchNumber,
+        phase: 'first_half',
+        hostTeamId: MP_HOST_TEAM_ID,
+        guestTeamId: MP_GUEST_TEAM_ID,
+        hostFormation: hSub.formation,
+        guestFormation: gSub.formation,
+        hostTactic: hSub.tactic,
+        guestTactic: gSub.tactic,
+        hostManagerTraitId: hostTrait,
+        guestManagerTraitId: guestTrait,
+        hostStarters: hSub.starters,
+        hostBench: hSub.bench,
+        guestStarters: gSub.starters,
+        guestBench: gSub.bench,
+        hostFirstHalfStarters: hSub.starters,
+        guestFirstHalfStarters: gSub.starters,
+        hostHalftimeSubIds: [],
+        guestHalftimeSubIds: [],
+        hostEtSubIds: [],
+        guestEtSubIds: [],
+        liveHalftime,
+        finalResult: null,
+        seriesWins,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const res = await publishMatchState(room.id, 'live_match', nextMatchState);
+      if (res.error) {
+        transitionGuardRef.current.delete(guardKey);
+        setErrorMsg(res.error);
+        return;
+      }
+      setErrorMsg(null);
+      const snap = await fetchRoomSnapshot(room.id);
+      if (snap.data) setSnapshot(snap.data);
+    } catch (err) {
+      transitionGuardRef.current.delete(guardKey);
+      setErrorMsg(
+        err instanceof Error ? err.message : '경기 시작 처리 중 오류가 발생했습니다.',
+      );
+    } finally {
+      setBusy(false);
     }
   }, [isHost, room, hostRow, guestRow, seriesWins, isMatchLiveNow]);
 
@@ -987,7 +993,13 @@ export function MultiplayerArena() {
   const handleToggleReady = async (nextReady: boolean) => {
     if (!room) return;
     setBusy(true);
-    await updatePlayerReady(room.id, playerId, nextReady);
+    const res = await updatePlayerReady(room.id, playerId, nextReady);
+    if (res.error) {
+      setErrorMsg(res.error);
+    } else {
+      const snap = await fetchRoomSnapshot(room.id);
+      if (snap.data) setSnapshot(snap.data);
+    }
     setBusy(false);
   };
 
@@ -1386,6 +1398,7 @@ export function MultiplayerArena() {
       },
       disableInstantFinish: true,
       disableLiveSub: true,
+      lockSpeed: 1,
       waitingForOpponentLabel,
       commitButtonLabel: '경기 리포트 보기 →',
       chemistry: myChemistry,
@@ -1598,6 +1611,7 @@ export function MultiplayerArena() {
             chemistry={myChemistry}
             managerTraitId={myManagerTraitId}
             locked={myLocked}
+            blindOpponentStatus={bothLocked ? null : oppLocked ? 'locked' : 'editing'}
             onSelectTactic={setMyTactic}
             onChangeFormation={handleChangeMyFormation}
             onSwapSquad={handleSwapMySquad}
@@ -1625,7 +1639,7 @@ export function MultiplayerArena() {
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
                   )}
                   {oppRow.nickname}:{' '}
-                  {oppLocked ? '전술 확정 (킥오프 시 공개)' : '전술 구상 중'}
+                  {oppLocked ? '전술 확정 (공개 대기)' : '전술·포메이션 수정 중...'}
                 </span>
               </div>
 
@@ -1642,7 +1656,7 @@ export function MultiplayerArena() {
                   )}
                   <div className="inline-flex items-center gap-2 rounded-xl border border-sky-400/45 bg-sky-500/15 px-5 py-2.5 text-sm font-extrabold text-sky-200">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    {bothLocked ? '경기 킥오프 준비 중...' : '상대 전술 확정 대기 중...'}
+                    {bothLocked ? '최종 전술 공개 중...' : '상대 전술 확정 대기 중...'}
                   </div>
                 </div>
               ) : (
@@ -1655,12 +1669,34 @@ export function MultiplayerArena() {
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-2.5 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-current" />
-                  전술 확정 · 킥오프 준비
+                  전술 확정
                 </button>
               )}
             </div>
           </MatchDayTacticsRoom>
         )}
+
+        {bothLocked &&
+          hostRow?.tactic_submission?.barrierKey === preMatchKey &&
+          guestRow?.tactic_submission?.barrierKey === preMatchKey &&
+          hostRow.lineup_payload &&
+          guestRow.lineup_payload && (
+            <PreKickoffRevealModal
+              roomCode={room.code}
+              matchNumber={matchNumber}
+              isHost={isHost}
+              hostRow={hostRow}
+              guestRow={guestRow}
+              hostSub={hostRow.tactic_submission}
+              guestSub={guestRow.tactic_submission}
+              hostTraitId={hostRow.lineup_payload.managerTraitId}
+              guestTraitId={guestRow.lineup_payload.managerTraitId}
+              busy={busy}
+              errorMsg={errorMsg}
+              onToggleReady={(nextReady) => void handleToggleReady(nextReady)}
+              onHostKickoff={() => void handleHostKickoffMatch()}
+            />
+          )}
 
         {inspected && (
           <PlayerDetailModal

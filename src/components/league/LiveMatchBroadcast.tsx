@@ -92,6 +92,7 @@ export interface LiveMatchBroadcastOverride {
   };
   disableInstantFinish?: boolean;
   disableLiveSub?: boolean;
+  lockSpeed?: 1 | 2 | 4;
   waitingForOpponentLabel?: string | null;
   commitButtonLabel?: string;
   chemistry: ChemistryResult;
@@ -214,7 +215,11 @@ export function LiveMatchBroadcast({
 
   const halftime = state.season?.liveHalftime ?? null;
 
-  const [speed, setSpeed] = useState<BroadcastSpeed>(2);
+  const lockedSpeed = override?.lockSpeed;
+  const [speed, setSpeed] = useState<BroadcastSpeed>(lockedSpeed ?? 2);
+  useEffect(() => {
+    if (lockedSpeed !== undefined) setSpeed(lockedSpeed);
+  }, [lockedSpeed]);
   const [minute, setMinute] = useState<number>(0);
   const [selectedTactic, setSelectedTactic] = useState<TacticId>(
     halftime?.userTacticAtKickoff ?? state.defaultTactic,
@@ -1237,7 +1242,12 @@ export function LiveMatchBroadcast({
               phase === 'second_half' ||
               phase === 'extra_time' ||
               phase === 'extra_time_2') &&
-              !isSecondHalfDone && (
+              !isSecondHalfDone &&
+              (lockedSpeed !== undefined ? (
+                <span className="inline-flex items-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/12 px-2.5 py-1 text-[11px] font-extrabold text-sky-200">
+                  {lockedSpeed}x 동기화
+                </span>
+              ) : (
                 <div className="flex items-center rounded-lg border border-slate-800 bg-[#111822] p-0.5 text-[11px]">
                   {([1, 2, 4] as BroadcastSpeed[]).map((spd) => (
                     <button
@@ -1254,7 +1264,7 @@ export function LiveMatchBroadcast({
                     </button>
                   ))}
                 </div>
-              )}
+              ))}
 
             {phase === 'second_half' && !isSecondHalfDone && !override?.disableLiveSub && (
               <button
@@ -1269,7 +1279,7 @@ export function LiveMatchBroadcast({
               </button>
             )}
 
-            {phase === 'first_half' && (
+            {phase === 'first_half' && lockedSpeed === undefined && (
               <button
                 type="button"
                 onClick={() => {
@@ -1283,7 +1293,7 @@ export function LiveMatchBroadcast({
               </button>
             )}
 
-            {phase === 'extra_time' && (
+            {phase === 'extra_time' && lockedSpeed === undefined && (
               <button
                 type="button"
                 onClick={() => {
@@ -1297,7 +1307,7 @@ export function LiveMatchBroadcast({
               </button>
             )}
 
-            {phase === 'penalties' && !isPenaltiesDone && penaltiesData && (
+            {phase === 'penalties' && !isPenaltiesDone && penaltiesData && lockedSpeed === undefined && (
               <button
                 type="button"
                 onClick={() => setRevealedPenKicks(penaltiesData.kicks.length)}

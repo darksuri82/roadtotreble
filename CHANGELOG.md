@@ -5,6 +5,18 @@
 
 ---
 
+## v7.1 — 1대1 전술실 상대 수정 상태 표시 · 최종 전술 공개/비교 팝업(양측 준비 → 방장 시작) · 멀티 1배속 동기화 고정
+
+- **1대1 매치 데이 전술실 블라인드 상태 표시 (`src/components/league/MatchDayTacticsRoom.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`)**:
+  - 드래프트 당시의 초기 포메이션·전술 및 이에 기반한 5구역 상성 화살표가 상대 최종 전술처럼 오인되지 않도록, `blindOpponentStatus` 모드를 도입해 `[전술·포메이션 수정 중...]` / `[전술 확정 (공개 대기)]` 실시간 상태와 내 팀 전술 완성도만 깔끔하게 표시.
+- **최종 전술 공개 & 비교 팝업 (`src/components/multiplayer/PreKickoffRevealModal.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/services/multiplayerService.ts`)**:
+  - 양측 전술 확정 시 양 팀의 최종 포메이션·전술·ATT/MID/DEF·완성도·선발 XI 및 실제 5구역 상성 비교를 보여주는 공개 팝업 자동 표시.
+  - 양측 모두 `[경기 준비 완료]` 토글 후 방장이 `[경기 시작 · 킥오프]`를 눌러 동시 시작하도록 흐름 개편.
+- **멀티 1대1 2D 중계 1배속 고정 (`src/components/league/LiveMatchBroadcast.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`)**:
+  - `lockSpeed: 1` 옵션을 적용해 1대1 멀티플레이에서는 양쪽 화면 속도 이탈·스킵 꼬임을 방지하고 `[1x 동기화]`로 고정 진행.
+
+---
+
 ## v7.0.2 — 1대1 전술 확정 후 킥오프 멈춤 수정 & 전술 잠금·수정 토글
 
 - **양측 전술 확정 후 킥오프 멈춤 근본 수정 (`src/services/multiplayerService.ts`, `src/types/multiplayer.ts`, `src/components/multiplayer/MultiplayerArena.tsx`)**:

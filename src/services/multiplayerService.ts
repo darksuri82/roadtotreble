@@ -727,7 +727,7 @@ export async function resetRoomForSameTeamRematch(
 
   await client
     .from('mp_room_players')
-    .update({ tactic_submission: null })
+    .update({ tactic_submission: null, is_ready: false })
     .eq('room_id', roomId);
 
   const candidates = getStatusCandidates('tactics');

@@ -64,6 +64,7 @@ interface MatchDayTacticsRoomProps {
   onInspectPlayer?: (player: Player, slotSubPosition?: SubPosition) => void;
   onClickOpponentPlayerName?: (playerId: string) => void;
   locked?: boolean;
+  blindOpponentStatus?: 'editing' | 'locked' | null;
   firstLegBanner?: {
     stageLabel: string;
     homeName: string;
@@ -137,6 +138,7 @@ export function MatchDayTacticsRoom({
   onInspectPlayer,
   onClickOpponentPlayerName,
   locked = false,
+  blindOpponentStatus = null,
   firstLegBanner = null,
   children,
 }: MatchDayTacticsRoomProps) {
@@ -377,13 +379,36 @@ export function MatchDayTacticsRoom({
                 )}
               </div>
               <div className="flex flex-wrap items-center justify-end gap-1.5 text-[11px]">
-                <span className="font-mono font-bold text-sky-300">
-                  {shortFormationLabel(opponent.formation)}
-                </span>
-                <span className="text-slate-600">·</span>
-                <span className="font-bold text-amber-300">
-                  {TACTICS[opponent.defaultTactic].shortName}
-                </span>
+                {blindOpponentStatus ? (
+                  <span
+                    className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                      blindOpponentStatus === 'locked'
+                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/35'
+                        : 'bg-amber-500/15 text-amber-300 border border-amber-400/35'
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        blindOpponentStatus === 'locked'
+                          ? 'bg-emerald-400'
+                          : 'bg-amber-400 animate-pulse'
+                      }`}
+                    />
+                    {blindOpponentStatus === 'locked'
+                      ? '전술 확정 (공개 대기)'
+                      : '전술·포메이션 수정 중...'}
+                  </span>
+                ) : (
+                  <>
+                    <span className="font-mono font-bold text-sky-300">
+                      {shortFormationLabel(opponent.formation)}
+                    </span>
+                    <span className="text-slate-600">·</span>
+                    <span className="font-bold text-amber-300">
+                      {TACTICS[opponent.defaultTactic].shortName}
+                    </span>
+                  </>
+                )}
                 <span className="text-slate-600">·</span>
                 <span
                   className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-300"
@@ -434,7 +459,19 @@ export function MatchDayTacticsRoom({
         </div>
 
         {/* Minimal 1-Line Unified Tactical Zone Summary Strip + Interactive ? Help */}
-        <UnifiedTacticsStrip matchup={unifiedMatchup} />
+        {blindOpponentStatus ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-[#090e15] px-3 py-1.5 text-[11px]">
+            <span className="inline-flex items-center gap-1.5 font-bold text-sky-200 tabular-nums">
+              내 전술 완성도{' '}
+              <strong className="text-emerald-300">{tacticFits[activeTactic]}%</strong>
+            </span>
+            <span className="text-[10px] font-semibold text-slate-400">
+              양측 확정 후 최종 전술·상성 비교 공개
+            </span>
+          </div>
+        ) : (
+          <UnifiedTacticsStrip matchup={unifiedMatchup} />
+        )}
       </div>
 
       {/* 3) Always-Visible Compact Tactic & Formation Bar */}
@@ -581,7 +618,9 @@ export function MatchDayTacticsRoom({
               }`}
             >
               <Eye className="w-3.5 h-3.5 shrink-0 text-sky-300" />
-              상대 ({opponent.formation})
+              {blindOpponentStatus
+                ? '상대 스쿼드'
+                : `상대 (${opponent.formation})`}
             </button>
             <button
               type="button"
