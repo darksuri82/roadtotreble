@@ -5,6 +5,37 @@
 
 ---
 
+## v8.0 — 멀티 리그 & 챔피언스리그 (친구 2~4명 · 공개 스네이크 드래프트 · 느린 자동진행 + 전역 일시정지 · 맞대결 2D 중계/관전 · 단계별 동의 UCL · 2종 결산 보드)
+
+- **멀티 리그 방 & 로비 (`src/components/multiplayer/MultiplayerLobby.tsx`, `src/components/multiplayer/league/MpLeagueLobbyRoom.tsx`, `src/services/multiplayerService.ts`, `src/types/multiplayer.ts`, `src/types/mpLeague.ts`)**:
+  - 로비 모드에 `[멀티 리그]`를 활성화(2~4명). 방장이 진행 리그(5대 리그 택1) · 드래프트 풀 · 챔피언스리그 ON/OFF · 드래프트 턴(15/20/30초)을 설정하고, v7.2 감독 도트·유니폼·구단명 커스텀이 로비·순위표·경기·결산 화면에 그대로 연동.
+  - 기존 1대1 블라인드 대전 흐름은 변경 없음(`MultiplayerArena.tsx`는 멀티 리그 방일 때 `MpLeagueRoot`로 분기만 추가).
+- **감독 선선택 → 실시간 공개 스네이크 드래프트 (`src/engine/mpLeagueDraft.ts`, `src/components/multiplayer/league/MpLeagueSnakeDraft.tsx`, `supabase/schema.sql`)**:
+  - 전원 감독 능력·포메이션 선택 후 무작위 순번으로 `1→2→3→3→2→1` 스네이크 진행(16라운드). 기존과 동일한 3구단 룰렛·임시 배치·시너지 프리뷰 UX, 전체 픽 현황 실시간 공개.
+  - 턴 타이머(최대 30초) 만료 시 화면 후보 중 OVR 최고 선수를 자동픽, 접속이 끊긴 감독은 방장이 5초 뒤 대신 자동픽.
+  - 전 세계 유일 선수: 후보 생성 시 방 전체 픽 제외 + DB 유일 키(`mp_league_picks`)가 같은 선수·같은 순번을 거부 + 시즌 시작 시 5대 리그 96구단·UCL 외곽 구단 로스터에서 드래프트 선수 전원 제외.
+- **방장 권위형 공유 시즌 엔진 (`src/engine/mpLeagueEngine.ts`, `src/engine/mpLeagueH2H.ts`, `src/engine/cupEngine.ts`, `src/engine/uclEngine.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `src/services/mpLeagueService.ts`)**:
+  - 참가자 구단이 해당 리그 최약체 N팀을 대체해 같은 리그·자국 컵·UCL을 함께 진행. 기존 경기 엔진·컵·UCL·부상/사기·트레이드 엔진을 그대로 재사용하고, 컵·UCL 엔진에는 사람 경기 결과를 주입하는 선택 파라미터(`precomputedResults`)만 추가(기존 싱글 동작 불변).
+  - **느린 자동진행**: 라운드당 2.5~4초(방장 조절). **전역 일시정지**: 누구든 스쿼드·전술 수정 / 인터뷰 답변 / 부상 교체 중이면 방 전체 정지, 상단에 `OO님 전술 수정 중` 표시 후 자동 재개. 이적시장 기간은 전원이 끝낼 때까지 정지. 정지를 건 감독이 오프라인이면 방장 `[강제 재개]`.
+  - **기자회견·라커룸은 전원 같은 라운드**에 발생(5라운드 간격), 부상은 개별 발생.
+  - **이적시장**: 타 구단이 보낸 제안 수락/거절 + 역제안만 진행(창당 협상 3회). 같은 AI 구단이 두 감독에게 동시에 제안하지 않으며, 트레이드는 방장이 순차 처리해 중복 선수 0건.
+- **친구 간 맞대결 동기화 2D 중계 & 무조건 관전 (`src/components/multiplayer/league/MpLeagueH2HView.tsx`)**:
+  - 리그·자국 컵·UCL 어디서든 친구끼리 만나면 자동진행을 멈추고 전술실 → 2D 중계 → 하프타임/연장 양측 수싸움으로 직접 대결. 리그·컵·UCL 리그 페이즈는 **4배속 고정**, UCL 토너먼트는 **2배속 고정**(배속·스킵 버튼 없음).
+  - 비당사자는 `관전 중` 배지와 함께 같은 중계에 자동 진입(조작 불가). 전술 미확정(90초)·미응답 시 현재 라인업으로 자동 확정해 무한 대기 방지.
+- **챔피언스리그 (`src/components/multiplayer/league/MpUclMulticastBoard.tsx`, `MpLeagueDashboard.tsx`)**:
+  - 리그 4위 이내 감독만 출전, 리그 페이즈는 리그와 동일한 느린 자동진행. 토너먼트는 플레이오프·16강·8강·4강·결승 각 단계마다 **전원 `[진행 동의]`** 후 시작.
+  - 유저 vs AI 토너먼트 경기는 **UCL 라이브 멀티캐스트 전광판**으로 `0'→90'`(연장·승부차기 포함) 약 7초간 중계: 득점 시 스코어 카드 점멸, 하단 속보, 2차전 합산 스코어(AGG) 실시간 표시.
+- **최종 시즌 결산 2종 보드 & 시상대 (`src/engine/mpLeagueScore.ts`, `MpLeagueFinalBoard.tsx`, `MpLeaguePodiumPopup.tsx`)**:
+  - **친구 최종 순위**: 기존 공정 시즌 스코어(`computeSeasonScore`) + 맞대결 점수(승3·무1 승점 ÷ 최대 승점 × 1,500)로 1~4등 결정, 항목별 내역 표시, 커스텀 감독 이미지 노출.
+  - **역대 강팀 비교**: 맞대결 점수를 제외한 기존 공식 그대로 역대 24팀 사이 위치 표시. 멀티 시즌은 개인 명예의 전당에 등재하지 않음.
+  - 3~4명일 때 시즌·챔스 종료 후 시상대 팝업: 3명이면 3등이 시상대에서 울고, 4명이면 4등은 바닥에 주저앉아 우는 연출(감독 도트 원본 유지, 눈물 오버레이).
+- **인프라·문서 (`supabase/schema.sql`, `.gitignore`, `CLAUDE.md`, `src/__tests__/v80MultiLeague.test.ts`)**:
+  - Supabase: `mp_rooms`/`mp_room_players` CHECK 제약 제거, `league_payload`·`activity` 컬럼, `mp_league_picks`·`mp_league_state`·`mp_league_actions` 테이블 + RLS + Realtime 추가(SQL Editor에서 1회 실행 필요).
+  - `.gitignore`에 `.env` 추가, Claude Code 세션 규칙 `CLAUDE.md` 신설.
+  - 스네이크 순번·중복 차단·자동픽, 맞대결 점수, 3인 풀시즌(리그 38R + 컵 + UCL + 인터뷰 동일 라운드 + 트레이드 중복 0건 + 단계 동의 + 2종 결산) 통합 테스트 추가.
+
+---
+
 ## v7.2 — 4대 핵심 버그 수정(포지션 페널티·케미선 해제·트레이드 스탯 중복·교체 아웃 잠금) & 멀티플레이 커스텀·피치 공개·승패 감독 팝업
 
 - **포지션 부적합 OVR 감소 피치·상세 카드 단일화 (`src/data/formations.ts`, `src/engine/positionEngine.ts`, `src/components/league/SeasonDashboard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/league/SeasonSummary.tsx`)**:

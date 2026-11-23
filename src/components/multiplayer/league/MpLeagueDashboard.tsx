@@ -64,6 +64,7 @@ interface MpLeagueDashboardProps {
   actionBusy: boolean;
   editorOpen: boolean;
   dismissedResolutionKey: string | null;
+  hiddenEventId: string | null;
   hostMissing: boolean;
   errorMsg: string | null;
   onOpenEditor: () => void;
@@ -149,6 +150,7 @@ export function MpLeagueDashboard({
   actionBusy,
   editorOpen,
   dismissedResolutionKey,
+  hiddenEventId,
   hostMissing,
   errorMsg,
   onOpenEditor,
@@ -257,6 +259,8 @@ export function MpLeagueDashboard({
     ? `${mine.resolution.eventTitle}:${mine.resolution.chosenLabel}`
     : null;
   const showResolution = Boolean(resolutionKey && resolutionKey !== dismissedResolutionKey);
+  const visibleEvent =
+    mine?.event && mine.event.templateId !== hiddenEventId ? mine.event : null;
   const transferDone = flow.kind === 'transfer' && ackKeys.includes(flow.key);
   const showTransfer =
     flow.kind === 'transfer' && mine !== null && mine.offers.length > 0 && mySquad !== null;
@@ -600,7 +604,7 @@ export function MpLeagueDashboard({
                         {r.teamName}
                       </span>
                       {human && (
-                        <span className="shrink-0 truncate text-[10px] text-slate-400">
+                        <span className="hidden shrink-0 truncate text-[10px] text-slate-400 sm:inline">
                           {human.nickname}
                         </span>
                       )}
@@ -714,9 +718,9 @@ export function MpLeagueDashboard({
         />
       )}
 
-      {mine && (mine.event || showResolution) && myHuman && (
+      {mine && (visibleEvent || showResolution) && myHuman && (
         <ManagerEventModal
-          activeEvent={mine.event}
+          activeEvent={visibleEvent}
           lastResolution={showResolution ? mine.resolution : null}
           managerAvatar={myHuman.avatar}
           managerName={myHuman.nickname}

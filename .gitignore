@@ -34,3 +34,6 @@ dist-ssr
 .local
 .oxlintrc.json
 .gitconfig
+
+# Local environment files (never commit Supabase keys)
+.env

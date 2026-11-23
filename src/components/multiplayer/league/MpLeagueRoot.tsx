@@ -67,6 +67,7 @@ export function MpLeagueRoot({
   const [editorOpen, setEditorOpen] = useState(false);
   const [dismissedResolutionKey, setDismissedResolutionKey] = useState<string | null>(null);
   const [busyRev, setBusyRev] = useState<number | null>(null);
+  const [answeredEventId, setAnsweredEventId] = useState<string | null>(null);
   const [podiumSeenKey, setPodiumSeenKey] = useState<string | null>(null);
   const [podiumOpen, setPodiumOpen] = useState(false);
   const activityRef = useRef<MpLeagueActivity>(activity);
@@ -206,6 +207,18 @@ export function MpLeagueRoot({
     },
     [room.id, playerId, live?.rev],
   );
+
+  // Leaving the screen must never keep the whole room paused
+  useEffect(() => {
+    return () => {
+      if (activityRef.current.lock) {
+        void updateLeagueActivity(room.id, playerId, {
+          ...activityRef.current,
+          lock: null,
+        });
+      }
+    };
+  }, [room.id, playerId]);
 
   // Safety: never leave the trade buttons disabled if the host answer got lost
   useEffect(() => {
@@ -349,7 +362,12 @@ export function MpLeagueRoot({
         setEditorOpen(false);
       }}
       onAck={ack}
-      onEventChoice={(choiceId) => void sendAction('event_choice', { choiceId })}
+      hiddenEventId={answeredEventId}
+      onEventChoice={(choiceId) => {
+        // Hide the question right away so one answer is sent exactly once
+        setAnsweredEventId(mine?.event?.templateId ?? null);
+        void sendAction('event_choice', { choiceId });
+      }}
       onDismissResolution={setDismissedResolutionKey}
       onInjuryAck={() => void sendAction('injury_ack', {})}
       onTradeAccept={(offerId) => void sendAction('trade_accept', { offerId })}

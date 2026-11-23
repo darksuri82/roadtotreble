@@ -617,6 +617,25 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         return;
       }
 
+      if (flow.kind === 'event') {
+        // A friend who dropped out must not freeze the interview round: answer with the first option
+        let next = st;
+        for (const h of st.humans) {
+          const ev = next.perHuman[h.clubId]?.events.activeEvent;
+          if (!ev) continue;
+          const row = humanRow(h.clubId);
+          const offline = !row || !p.onlinePlayerIds.includes(row.player_id);
+          if (offline && waited > TRANSFER_OFFLINE_MS && ev.choices[0]) {
+            next = resolveMpLeagueEvent(next, { squads }, h.clubId, ev.choices[0].id);
+          }
+        }
+        if (next !== st) {
+          nextAutoAtRef.current = Date.now() + st.settings.autoMs;
+          await commit(next, squads, p.room.id);
+        }
+        return;
+      }
+
       if (flow.kind === 'transfer') {
         const allDone = st.humans.every((h) => {
           const hs = st?.perHuman[h.clubId];
