@@ -32,6 +32,25 @@ import { evaluatePositionFit } from './positionEngine';
  */
 export const ELITE_PAIR_MIN_OVR = 88;
 
+/**
+ * Team Chemistry (0..100) line weights & OVR bonus constants.
+ * Individual player synergy counts all 4 line types equally (1 line = 1 pt),
+ * whereas Team Chemistry weights club cohesion highest and 88+ Elite pairs lowest
+ * so mismatched superstar rosters cannot freeload 95+ team chemistry.
+ */
+export const TEAM_CHEMISTRY_LINE_WEIGHTS = {
+  club: 1.25,
+  nation: 1.0,
+  style: 1.0,
+  elite: 0.45,
+} as const;
+
+export const TEAM_CHEMISTRY_NEUTRAL_SCORE = 50;
+export const TEAM_CHEMISTRY_MIN_BONUS = -1.5;
+export const TEAM_CHEMISTRY_MAX_RAW_BONUS = 2.5;
+export const TEAM_CHEMISTRY_ORG_BONUS_CAP = 0.8;
+export const TEAM_CHEMISTRY_SYNERGY_DEDUCT_RATIO = 0.75;
+
 export const COMPLEMENTARY_STYLE_PAIRS: [PlaystyleId, PlaystyleId][] = [
   ['playmaker_10', 'line_breaker'],
   ['playmaker_10', 'poacher'],
@@ -253,7 +272,10 @@ export function calculateChemistry(
   // while club/nation/style cohesion outweighs raw 88+ Elite star power so
   // mismatched superstar rosters cannot freeload 95+ team chemistry.
   const weightedLines =
-    clubLines * 1.25 + nationLines * 1.0 + styleLines * 1.0 + eliteLines * 0.45;
+    clubLines * TEAM_CHEMISTRY_LINE_WEIGHTS.club +
+    nationLines * TEAM_CHEMISTRY_LINE_WEIGHTS.nation +
+    styleLines * TEAM_CHEMISTRY_LINE_WEIGHTS.style +
+    eliteLines * TEAM_CHEMISTRY_LINE_WEIGHTS.elite;
   const total =
     totalActiveLines === 0
       ? 0
@@ -506,8 +528,14 @@ export function calculateTeamRatings(
     ? fullChemBonus < 0
       ? fullChemBonus
       : Math.round(
-          Math.min(0.8, Math.max(0, fullChemBonus - avgSynergyBonus * 0.75)) *
-            100,
+          Math.min(
+            TEAM_CHEMISTRY_ORG_BONUS_CAP,
+            Math.max(
+              0,
+              fullChemBonus -
+                avgSynergyBonus * TEAM_CHEMISTRY_SYNERGY_DEDUCT_RATIO,
+            ),
+          ) * 100,
         ) / 100
     : fullChemBonus;
 
@@ -551,8 +579,12 @@ export function calculateTeamRatings(
 export function computeChemistryOvrBonus(chemistryTotal: number): number {
   const clamped = Math.min(100, Math.max(0, chemistryTotal));
   const raw =
-    clamped <= 50
-      ? -1.5 + (clamped / 50) * 1.5
-      : ((clamped - 50) / 50) * 2.5;
+    clamped <= TEAM_CHEMISTRY_NEUTRAL_SCORE
+      ? TEAM_CHEMISTRY_MIN_BONUS +
+        (clamped / TEAM_CHEMISTRY_NEUTRAL_SCORE) *
+          Math.abs(TEAM_CHEMISTRY_MIN_BONUS)
+      : ((clamped - TEAM_CHEMISTRY_NEUTRAL_SCORE) /
+          (100 - TEAM_CHEMISTRY_NEUTRAL_SCORE)) *
+        TEAM_CHEMISTRY_MAX_RAW_BONUS;
   return Math.round(raw * 100) / 100;
 }

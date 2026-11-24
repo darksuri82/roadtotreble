@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v8.10)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.10.1)
 
 > Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
@@ -18,6 +18,7 @@
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`), `stable-before-v8.4-live-skip` (`v8.3` `600c7da`), `stable-before-mp-sync-ucl` (`v8.4.2` `9f6e976`), `stable-before-mp-draft-bugfix` (`v8.5.4` `559bef7`), `stable-before-ucl-ready-transfer` (`v8.6` `82e0362`), `stable-before-guide-tutorial-ux` (`v8.9` `79344e7`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.10.1 가이드북 팀 케미(0~100) 구조 & 실전 가이드라인 신설 (`chemistryEngine.ts`, `SystemGuideModal.tsx`, `v810GuideTutorialAndUx.test.ts`)**: `TEAM_CHEMISTRY_*` 상수를 엔진에서 공식 export해 가이드북 2번 탭에 4색 선별 팀 케미 가중치 차이(`1.25 / 1.0 / 1.0 / 0.45`), 50점 기준선·중복 차감(`평균 시너지×0.75`)·최대 `+0.8` 조직력 보너스·명예의 전당 가산, 실전 육성 3원칙 전용 카드를 추가.
 - **v8.10 가이드북 100% 엔진 동기화 · 가독성 개편 · 싱글 5단계 비주얼 튜토리얼 · 인게임 `?` 컨텍스트 도움말 & 편의 UX**:
   - **가이드북 전수 동기화 & 가독성 (`SystemGuideModal.tsx`, `InjuryMoraleGuideContent.tsx`, `AttributeRoutesGuideContent.tsx`, `TacticsGuideModal.tsx`, `DraftScreen.tsx`)**: 구버전 수치 12건(시너지 `+0~+3`→최대 `+4`, 경상 강행 페널티, 토탈 풋볼 `0/-2/-8`, 9종 포메이션·통합 전술, 14종 감독 직접 선택, 체력/교체 5명, NBA 패키지 트레이드, UCL 36팀·명전 24팀·멀티 리그 등)을 엔진 상수 직접 참조로 100% 동기화하고, `break-keep`·`whitespace-nowrap`·하단 여유 패딩·중첩 스크롤 제거로 PC·모바일 가독성 완비.
   - **싱글 5단계 비주얼 튜토리얼 (`SoloVisualTutorialModal.tsx`, `guideNavigation.ts`, `TitleScreen.tsx`, `HeaderNav.tsx`)**: `[새 시즌 시작]` 최초 진입 시 커스텀 SVG/미니 UI 5단계 모달 노출(`X`·`[바로 시작]`·`[다음부터 보지 않기]` `rtt_solo_tutorial_dismissed_v1`·스와이프/키보드·타이틀/가이드북 `[입문 튜토리얼]` 재실행).

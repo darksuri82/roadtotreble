@@ -21,6 +21,12 @@ import { MANAGER_TRAIT_LIST } from '../../data/managerTraits';
 import {
   COMPLEMENTARY_STYLE_PAIRS,
   ELITE_PAIR_MIN_OVR,
+  TEAM_CHEMISTRY_LINE_WEIGHTS,
+  TEAM_CHEMISTRY_MAX_RAW_BONUS,
+  TEAM_CHEMISTRY_MIN_BONUS,
+  TEAM_CHEMISTRY_NEUTRAL_SCORE,
+  TEAM_CHEMISTRY_ORG_BONUS_CAP,
+  TEAM_CHEMISTRY_SYNERGY_DEDUCT_RATIO,
 } from '../../engine/chemistryEngine';
 import { ALL_CLUBS_WITH_LEAGUE } from '../../engine/dataLoader';
 import {
@@ -271,11 +277,20 @@ export function SystemGuideContent({
               <div className="rounded-lg border border-sky-400/30 bg-slate-950/75 p-2.5">
                 <div className="flex items-center justify-between gap-1 font-extrabold text-sky-300">
                   <span>③ 팀 케미 (0~100)</span>
-                  <span className="font-mono whitespace-nowrap">-1.5~+2.5</span>
+                  <span className="font-mono whitespace-nowrap">
+                    {TEAM_CHEMISTRY_MIN_BONUS} ~ +{TEAM_CHEMISTRY_ORG_BONUS_CAP}
+                  </span>
                 </div>
                 <p className="mt-1 text-[10.5px] text-slate-400">
-                  전체 연결선 가중 합산(단조 증가). 개별 시너지와 중복 차단 후 팀 조직력{' '}
-                  <strong className="text-slate-200">최대 +0.8</strong> 추가.
+                  전체 연결선 가중 합산.{' '}
+                  <strong className="text-rose-300">
+                    {TEAM_CHEMISTRY_NEUTRAL_SCORE} 미만 페널티
+                  </strong>
+                  ·이상 시 중복 차단 후 팀 조직력{' '}
+                  <strong className="text-slate-200">
+                    최대 +{TEAM_CHEMISTRY_ORG_BONUS_CAP}
+                  </strong>
+                  .
                 </p>
               </div>
               <div className="rounded-lg border border-slate-700 bg-slate-950/75 p-2.5">
@@ -299,13 +314,13 @@ export function SystemGuideContent({
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="rounded-lg bg-[#111822] p-2.5 border border-slate-800">
-                <div className="flex items-center justify-between font-bold">
+                <div className="flex items-center justify-between font-bold gap-2">
                   <span className="inline-flex items-center gap-1.5 text-emerald-300">
                     <span className="h-1 w-3.5 rounded-full bg-emerald-400" />
                     1) 같은 팀 · 전 소속팀
                   </span>
                   <span className="text-emerald-200 text-[10.5px] whitespace-nowrap">
-                    1선 · 팀케미 가중 1.25
+                    개별 1선 · 팀케미 ×{TEAM_CHEMISTRY_LINE_WEIGHTS.club}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
@@ -313,13 +328,13 @@ export function SystemGuideContent({
                 </p>
               </div>
               <div className="rounded-lg bg-[#111822] p-2.5 border border-slate-800">
-                <div className="flex items-center justify-between font-bold">
+                <div className="flex items-center justify-between font-bold gap-2">
                   <span className="inline-flex items-center gap-1.5 text-sky-300">
                     <span className="h-1 w-3.5 rounded-full bg-sky-400" />
                     2) 같은 국적
                   </span>
                   <span className="text-sky-200 text-[10.5px] whitespace-nowrap">
-                    1선 · 팀케미 가중 1.0
+                    개별 1선 · 팀케미 ×{TEAM_CHEMISTRY_LINE_WEIGHTS.nation.toFixed(1)}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
@@ -327,13 +342,13 @@ export function SystemGuideContent({
                 </p>
               </div>
               <div className="rounded-lg bg-[#111822] p-2.5 border border-amber-500/35">
-                <div className="flex items-center justify-between font-bold">
+                <div className="flex items-center justify-between font-bold gap-2">
                   <span className="inline-flex items-center gap-1.5 text-amber-300">
                     <span className="h-1 w-3.5 rounded-full bg-amber-400" />
                     3) 스타일 궁합 ({COMPLEMENTARY_STYLE_PAIRS.length}쌍)
                   </span>
                   <span className="text-amber-200 text-[10.5px] whitespace-nowrap">
-                    1선 · 팀케미 가중 1.0
+                    개별 1선 · 팀케미 ×{TEAM_CHEMISTRY_LINE_WEIGHTS.style.toFixed(1)}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-300 mt-1">
@@ -341,13 +356,13 @@ export function SystemGuideContent({
                 </p>
               </div>
               <div className="rounded-lg bg-[#111822] p-2.5 border border-purple-500/35">
-                <div className="flex items-center justify-between font-bold">
+                <div className="flex items-center justify-between font-bold gap-2">
                   <span className="inline-flex items-center gap-1.5 text-purple-300">
                     <span className="h-1 w-3.5 rounded-full bg-purple-400" />
                     4) 엘리트 페어 (OVR {ELITE_PAIR_MIN_OVR}+)
                   </span>
                   <span className="text-purple-200 text-[10.5px] whitespace-nowrap">
-                    1선 · 팀케미 가중 0.45
+                    개별 1선 · 팀케미 ×{TEAM_CHEMISTRY_LINE_WEIGHTS.elite}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
@@ -360,6 +375,135 @@ export function SystemGuideContent({
               <strong className="text-emerald-300">+N</strong> 배지와 감독 궁합{' '}
               <strong className="text-amber-300">★</strong> 아이콘으로 표시됩니다.
             </p>
+          </div>
+
+          {/* Dedicated Team Chemistry (0~100) Structure & Guidelines */}
+          <div className="rounded-xl border border-sky-500/35 bg-[#0b1018] p-3.5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 font-bold text-white">
+                <Users className="w-4 h-4 text-sky-400 shrink-0" />
+                팀 케미 (0~100) 구조 &amp; 실전 가이드라인
+              </div>
+              <span className="rounded bg-sky-500/15 border border-sky-400/30 px-2 py-0.5 text-[10px] font-bold text-sky-300 whitespace-nowrap">
+                기준선 {TEAM_CHEMISTRY_NEUTRAL_SCORE}점 · 페널티 방지 + 조직력 보너스
+              </span>
+            </div>
+
+            {/* 1) How score is computed */}
+            <div className="rounded-lg border border-slate-800 bg-[#111822] p-3 space-y-1.5">
+              <div className="text-[11.5px] font-bold text-sky-200">
+                1. 점수 계산 방식 — 왜 4색 선의 가중치가 다른가요?
+              </div>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                팀 케미는 포메이션의 모든 인접 링크에서 켜진 4색 선을{' '}
+                <strong className="text-white">
+                  구단 ×{TEAM_CHEMISTRY_LINE_WEIGHTS.club} · 국적 ×
+                  {TEAM_CHEMISTRY_LINE_WEIGHTS.nation.toFixed(1)} · 스타일 ×
+                  {TEAM_CHEMISTRY_LINE_WEIGHTS.style.toFixed(1)} · 엘리트 ×
+                  {TEAM_CHEMISTRY_LINE_WEIGHTS.elite}
+                </strong>
+                로 가중 합산한 뒤 포메이션 링크 수로 정규화해{' '}
+                <strong className="text-white">0~100점</strong>으로 산출합니다(활성 선이 늘수록
+                단조 증가).
+              </p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                개별 선수 시너지(+0~+3)에서는 4종 모두 1선=1점으로 동등하지만, 팀 케미에서는{' '}
+                <strong className="text-slate-200">
+                  구단·국적·스타일 조합 없이 88+ 스타만 모아 케미 95~100을 공짜로 얻는 현상을 막고
+                </strong>{' '}
+                같은 구단·국적·전술 스타일 조직력을 우대하도록 설계되었습니다.
+              </p>
+            </div>
+
+            {/* 2) Tier breakdown */}
+            <div className="space-y-1.5">
+              <div className="text-[11.5px] font-bold text-sky-200">
+                2. 점수 구간별 실제 경기력 반영 (이중 계산 방지 구조)
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 text-[11px]">
+                <div className="rounded-lg border border-rose-500/35 bg-rose-950/15 p-2.5 space-y-1">
+                  <div className="flex items-center justify-between gap-1 font-bold text-rose-300">
+                    <span>0 ~ {TEAM_CHEMISTRY_NEUTRAL_SCORE - 1}점</span>
+                    <span className="font-mono text-[10px] whitespace-nowrap">
+                      최대 {TEAM_CHEMISTRY_MIN_BONUS}
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] font-semibold text-rose-200">
+                    페널티 구간 (주의)
+                  </div>
+                  <p className="text-[10.5px] text-slate-300 leading-snug">
+                    조직력 부족으로 팀 공격·중원·수비에{' '}
+                    <strong className="text-rose-200">페널티가 그대로 적용</strong>됩니다. 최소{' '}
+                    <strong>{TEAM_CHEMISTRY_NEUTRAL_SCORE}점</strong> 이상 확보가 1순위입니다.
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-amber-500/30 bg-amber-950/10 p-2.5 space-y-1">
+                  <div className="flex items-center justify-between gap-1 font-bold text-amber-300">
+                    <span>{TEAM_CHEMISTRY_NEUTRAL_SCORE} ~ 79점</span>
+                    <span className="font-mono text-[10px] whitespace-nowrap">
+                      기본 0 ~ +1.45
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] font-semibold text-amber-200">
+                    안정 · 성장 구간
+                  </div>
+                  <p className="text-[10.5px] text-slate-300 leading-snug">
+                    페널티가 사라집니다. 이미 반영된 선발 개별 시너지와 겹치지 않도록{' '}
+                    <strong className="text-slate-100">
+                      기본 보너스 − 평균 시너지×{TEAM_CHEMISTRY_SYNERGY_DEDUCT_RATIO}
+                    </strong>
+                    의 잔여분만 팀 A/M/D에 더해집니다.
+                  </p>
+                </div>
+
+                <div className="rounded-lg border border-emerald-500/35 bg-emerald-950/15 p-2.5 space-y-1">
+                  <div className="flex items-center justify-between gap-1 font-bold text-emerald-300">
+                    <span>80 ~ 100점</span>
+                    <span className="font-mono text-[10px] whitespace-nowrap">
+                      조직력 최대 +{TEAM_CHEMISTRY_ORG_BONUS_CAP}
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] font-semibold text-emerald-200">
+                    최상 조직력 구간
+                  </div>
+                  <p className="text-[10.5px] text-slate-300 leading-snug">
+                    기본 보너스 최대 +{TEAM_CHEMISTRY_MAX_RAW_BONUS} 중 중복분을 제외하고 팀
+                    A/M/D에{' '}
+                    <strong className="text-emerald-200">
+                      최대 +{TEAM_CHEMISTRY_ORG_BONUS_CAP}
+                    </strong>
+                    이 추가됩니다. 56점 이상부터{' '}
+                    <strong className="text-white">명예의 전당 점수(최대 +440)</strong>에도
+                    가산됩니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 3) Practical build guidelines */}
+            <div className="rounded-lg border border-emerald-500/25 bg-emerald-950/10 p-3 space-y-1.5">
+              <div className="text-[11.5px] font-bold text-emerald-300">
+                3. 실전 팀 케미 올리기 가이드라인
+              </div>
+              <ul className="space-y-1 text-[11px] text-slate-300">
+                <li>
+                  • <strong className="text-white">1차 목표는 {TEAM_CHEMISTRY_NEUTRAL_SCORE}점 돌파:</strong>{' '}
+                  {TEAM_CHEMISTRY_NEUTRAL_SCORE}점 미만은 팀 전체 스탯이 깎이므로 드래프트 중반까지
+                  최소 {TEAM_CHEMISTRY_NEUTRAL_SCORE}점을 넘기는 것이 가장 효율적입니다.
+                </li>
+                <li>
+                  • <strong className="text-white">중앙 축에 구단(×{TEAM_CHEMISTRY_LINE_WEIGHTS.club}) · 국적/스타일(×1.0) 집중:</strong>{' '}
+                  연결 간선이 많은 CM/CDM/CB·ST 축에 같은 구단(또는 전 소속팀)·같은 국적·보완
+                  스타일을 배치하면 개별 시너지(+2~+3)와 팀 케미가 동시에 빠르게 오릅니다.
+                </li>
+                <li>
+                  • <strong className="text-white">엘리트 88+(×{TEAM_CHEMISTRY_LINE_WEIGHTS.elite})는 보조 수단으로 활용:</strong>{' '}
+                  개별 시너지 확보엔 똑같이 유효하지만 팀 케미 비중은 낮으므로, 슈퍼스타 영입 시에도
+                  스타일 궁합이나 국적·구단 연결을 1개 이상 겹쳐 배치하는 것이 좋습니다.
+                </li>
+              </ul>
+            </div>
           </div>
 
           {/* 14 Manager Traits (Direct Selection — No nested scroll!) */}

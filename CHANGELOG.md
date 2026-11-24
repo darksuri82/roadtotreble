@@ -5,6 +5,14 @@
 
 ---
 
+## v8.10.1 — 가이드북 팀 케미(0~100) 구조 & 실전 가이드라인 신설
+
+- **팀 케미 전용 가이드라인 & 엔진 상수 단일화 (`src/engine/chemistryEngine.ts`, `src/components/guide/SystemGuideModal.tsx`, `src/__tests__/v810GuideTutorialAndUx.test.ts`)**:
+  - `chemistryEngine.ts`에서 팀 케미 가중치·기준선·보정 상수(`TEAM_CHEMISTRY_LINE_WEIGHTS`, `TEAM_CHEMISTRY_NEUTRAL_SCORE`, `TEAM_CHEMISTRY_MIN_BONUS`, `TEAM_CHEMISTRY_MAX_RAW_BONUS`, `TEAM_CHEMISTRY_ORG_BONUS_CAP`, `TEAM_CHEMISTRY_SYNERGY_DEDUCT_RATIO`)를 공식 export해 엔진 계산과 가이드북이 동일한 상수를 참조하도록 단일화.
+  - 가이드북 2번 탭(`케미·시너지·감독`)에 **팀 케미 (0~100) 구조 & 실전 가이드라인** 카드를 신설해 ① 4색 선별 팀 케미 가중치 차이(`구단 ×1.25 · 국적 ×1.0 · 스타일 ×1.0 · 엘리트 88+ ×0.45`)와 설계 의도, ② 0~49점 페널티 구간 / 50~79점 중복 차감(`평균 시너지×0.75`) 구간 / 80~100점 팀 조직력 최대 `+0.8` 및 명예의 전당 가산점(56점 이상 최대 `+440`), ③ 실전 팀 케미 육성 3원칙을 한눈에 정리.
+
+---
+
 ## v8.10 — 가이드북 100% 엔진 동기화 · 가독성 개편 · 싱글 5단계 비주얼 튜토리얼 · 인게임 `?` 컨텍스트 도움말 & 논-클러터 편의 UX
 
 - **가이드북 · 전술 도감 · `?` 팝오버 100% 엔진 동기화 (`src/components/guide/SystemGuideModal.tsx`, `src/components/guide/InjuryMoraleGuideContent.tsx`, `src/components/guide/AttributeRoutesGuideContent.tsx`, `src/components/common/TacticsGuideModal.tsx`, `src/components/draft/DraftScreen.tsx`)**:

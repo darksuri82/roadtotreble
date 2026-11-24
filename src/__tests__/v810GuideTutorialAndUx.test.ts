@@ -21,6 +21,12 @@ import { MANAGER_TRAIT_LIST } from '../data/managerTraits';
 import {
   COMPLEMENTARY_STYLE_PAIRS,
   ELITE_PAIR_MIN_OVR,
+  TEAM_CHEMISTRY_LINE_WEIGHTS,
+  TEAM_CHEMISTRY_MAX_RAW_BONUS,
+  TEAM_CHEMISTRY_MIN_BONUS,
+  TEAM_CHEMISTRY_NEUTRAL_SCORE,
+  TEAM_CHEMISTRY_ORG_BONUS_CAP,
+  TEAM_CHEMISTRY_SYNERGY_DEDUCT_RATIO,
 } from '../engine/chemistryEngine';
 import {
   computeFullPlayerOvrBreakdown,
@@ -90,6 +96,19 @@ describe('v8.10 Guidebook 100% Engine Sync, Visual Tutorial & Contextual UX', ()
     expect(HISTORICAL_BENCHMARK_TEAMS.length).toBe(24);
     expect(COMPLEMENTARY_STYLE_PAIRS.length).toBe(21);
     expect(ELITE_PAIR_MIN_OVR).toBe(88);
+    expect(TEAM_CHEMISTRY_LINE_WEIGHTS).toEqual({
+      club: 1.25,
+      nation: 1.0,
+      style: 1.0,
+      elite: 0.45,
+    });
+    expect(TEAM_CHEMISTRY_NEUTRAL_SCORE).toBe(50);
+    expect(TEAM_CHEMISTRY_MIN_BONUS).toBe(-1.5);
+    expect(TEAM_CHEMISTRY_MAX_RAW_BONUS).toBe(2.5);
+    expect(TEAM_CHEMISTRY_ORG_BONUS_CAP).toBe(0.8);
+    expect(TEAM_CHEMISTRY_SYNERGY_DEDUCT_RATIO).toBe(0.75);
+    expect(systemGuideSrc.includes('팀 케미 (0~100) 구조')).toBe(true);
+    expect(systemGuideSrc.includes('TEAM_CHEMISTRY_LINE_WEIGHTS')).toBe(true);
     expect(DEFAULT_ROULETTE_LEGEND_RATE).toBe(0.025);
     expect(TOP4_TRANSFER_LEGEND_RATE).toBe(0.04);
     expect(UCL_CHAMPION_LEGEND_RATE).toBe(0.055);
