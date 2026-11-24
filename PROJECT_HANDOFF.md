@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v8.4)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.4.1)
 
 > Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
@@ -18,6 +18,7 @@
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`), `stable-before-v8.4-live-skip` (`v8.3` `600c7da`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.4.1 핫픽스 (`SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 솔로 `[라이브 자동진행]` 중 경기 후 인터뷰·부상·이적 이벤트가 스코어보드 재생(`0'→90'`) 도중 `paused=true`를 걸어 `soloTickerPlaying` 해제가 막히고 팝업이 뜨지 않던 교착 버그 수정(`liveTickerPlaying` 동안 `liveAutoPauseReason` 유예 + 1.5초 워치독 추가).
 - **v8.4 라이브 스코어보드 자동진행 · 솔로 스킵 단일화 · 멀티 H2H 프리뷰 스킵/결과 확인 · 인터뷰 빈도/조기 배지 수정**:
   - **솔로 라이브 자동진행(5·7·9초) & 스코어보드 rAF 최적화 (`SoloLiveScoreboard.tsx`, `MpLiveTicker.tsx`, `index.css`, `GameContext.tsx` `soloTickerPlaying`, `App.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 60fps DOM ref 진행률 바 보간 + 정수 분 커밋 + 스코어 플립/골 속보 연출을 솔로·멀티 공용화하고, 솔로 리그·UCL 리그 페이즈에 5/7/9초 라이브 자동진행 도입(인터뷰·부상·자국 컵·이적시장 시 자동 일시정지 → 처리 후 자동 재개).
   - **솔로 경기 스킵 단일화 (`FastSimModal.tsx`, `SeasonDashboard.tsx`)**: 단일 `[경기 스킵]`(`mode='unified'`)으로 통합, 이적시장 자동 중지 후 이적시장 마감 시 `[계속 스킵 / 일시중지]` 재질문 팝업 표시.

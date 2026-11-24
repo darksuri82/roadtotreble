@@ -85,6 +85,7 @@ export function SeasonDashboard() {
     activeTactic,
     chemistry,
     ratings,
+    soloTickerPlaying,
     setSoloTickerPlaying,
     changeFormation,
     autoOptimizeLineup,
@@ -291,9 +292,20 @@ export function SeasonDashboard() {
     launchNextLiveAutoMatch,
   ]);
 
+  // Watchdog: never leave global soloTickerPlaying stuck true if no match arrived
+  useEffect(() => {
+    if (!soloTickerPlaying || liveAutoMatch !== null) return;
+    const t = window.setTimeout(() => {
+      liveAutoWaitingRef.current = null;
+      setLiveAutoFrozen(null);
+      setSoloTickerPlaying(false);
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, [soloTickerPlaying, liveAutoMatch, setSoloTickerPlaying]);
+
   if (!season) return null;
 
-  const liveTickerPlaying = liveAutoMatch !== null;
+  const liveTickerPlaying = soloTickerPlaying || liveAutoMatch !== null;
   const displayStandings =
     liveTickerPlaying && liveAutoFrozen ? liveAutoFrozen.standings : season.standings;
   const displayRound =
@@ -419,19 +431,20 @@ export function SeasonDashboard() {
     (displayRound / season.totalRounds) * 100,
   );
 
-  const liveAutoPauseReason = !liveAutoActive
-    ? null
-    : liveAutoCupPromptOpen
-      ? '컵대회 일시정지'
-      : isTransferOpen
-        ? '이적시장 일시정지'
-        : hasPendingEvent
-          ? '인터뷰 일시정지'
-          : hasPendingInjury
-            ? '부상 알림 일시정지'
-            : uncelebratedCupWin
-              ? '컵 우승 축하'
-              : null;
+  const liveAutoPauseReason =
+    !liveAutoActive || liveTickerPlaying
+      ? null
+      : liveAutoCupPromptOpen
+        ? '컵대회 일시정지'
+        : isTransferOpen
+          ? '이적시장 일시정지'
+          : hasPendingEvent
+            ? '인터뷰 일시정지'
+            : hasPendingInjury
+              ? '부상 알림 일시정지'
+              : uncelebratedCupWin
+                ? '컵 우승 축하'
+                : null;
 
   const controlsBlocked =
     season.transferMarket.isOpen ||

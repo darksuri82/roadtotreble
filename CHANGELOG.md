@@ -5,6 +5,14 @@
 
 ---
 
+## v8.4.1 — 솔로 라이브 자동진행 경기 후 인터뷰·부상·이적 팝업 미노출(교착) 핫픽스
+
+- **솔로 라이브 자동진행 교착 수정 (`src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - 라운드 시뮬레이션 직후 발생한 `activeEvent`(감독 인터뷰)·`pendingInjuryAlerts`(부상)·`transferMarket.isOpen`(이적시장)·`uncelebratedCupWin`(컵 우승) 상태가 아직 `0' → 90'` 재생 중인 `SoloLiveScoreboard`의 `paused` 프롭을 즉시 `true`로 만들어 스코어보드가 멈추고 `soloTickerPlaying`이 해제되지 않아 팝업이 뜨지 않던 교착 버그를 수정.
+  - `liveTickerPlaying = soloTickerPlaying || liveAutoMatch !== null` 동안 `liveAutoPauseReason`을 `null`로 유예해 경기가 `FT`까지 완전히 재생된 직후 인터뷰/부상/이적 팝업이 즉시 열리고, 처리 완료 후 자동진행이 이어지도록 수정(1.5초 워치독 안전장치 포함).
+
+---
+
 ## v8.4 — 솔로 라이브 스코어보드 자동진행(5·7·9초) · 스킵 단일화 · 멀티 H2H 프리뷰 스킵/결과 확인 · 인터뷰 빈도 축소 & 조기 배지 수정
 
 - **솔로 플레이 [라이브 스코어보드 자동진행] 도입 & 전역 스코어보드 최적화 (`src/components/common/SoloLiveScoreboard.tsx`, `src/components/multiplayer/league/MpLiveTicker.tsx`, `src/index.css`, `src/store/GameContext.tsx`, `src/App.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:

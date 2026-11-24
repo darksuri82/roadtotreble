@@ -83,6 +83,7 @@ export function UclDashboard() {
     activeTactic,
     chemistry,
     ratings,
+    soloTickerPlaying,
     setSoloTickerPlaying,
     changeFormation,
     autoOptimizeLineup,
@@ -225,16 +226,27 @@ export function UclDashboard() {
     launchNextUclLiveMatch,
   ]);
 
-  const liveTickerPlaying = liveAutoMatch !== null;
-  const liveAutoPauseReason = !liveAutoActive
-    ? null
-    : season?.transferMarket.isOpen
-      ? '이적시장 일시정지'
-      : hasPendingEvent
-        ? '인터뷰 일시정지'
-        : hasPendingInjury
-          ? '부상 알림 일시정지'
-          : null;
+  // Watchdog: never leave global soloTickerPlaying stuck true if no match arrived
+  useEffect(() => {
+    if (!soloTickerPlaying || liveAutoMatch !== null) return;
+    const t = window.setTimeout(() => {
+      liveAutoWaitingRef.current = null;
+      setSoloTickerPlaying(false);
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, [soloTickerPlaying, liveAutoMatch, setSoloTickerPlaying]);
+
+  const liveTickerPlaying = soloTickerPlaying || liveAutoMatch !== null;
+  const liveAutoPauseReason =
+    !liveAutoActive || liveTickerPlaying
+      ? null
+      : season?.transferMarket.isOpen
+        ? '이적시장 일시정지'
+        : hasPendingEvent
+          ? '인터뷰 일시정지'
+          : hasPendingInjury
+            ? '부상 알림 일시정지'
+            : null;
 
   const prevLpRoundRef = useRef<number>(ucl?.leaguePhaseRound ?? 0);
   useEffect(() => {
