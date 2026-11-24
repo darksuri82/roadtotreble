@@ -46,7 +46,11 @@ import { PlayerDetailModal } from '../../common/PlayerDetailModal';
 import { CupBracketView } from '../../league/CupBracketView';
 import { LeagueLeadersSideCard } from '../../league/LeagueLeadersSideCard';
 import { StandingsTable } from '../../league/StandingsTable';
-import { UclBracketTree } from '../../ucl/UclBracketTree';
+import {
+  UclBracketTree,
+  type LiveTieOverlay,
+  type UclBracketParticipant,
+} from '../../ucl/UclBracketTree';
 import { UclLeaguePhaseStandingsModal } from '../../ucl/UclLeaguePhaseStandingsModal';
 import { UclMilestoneModal } from '../../ucl/UclMilestoneModal';
 import { MpLeagueSeasonSummary } from './MpLeagueSeasonSummary';
@@ -84,7 +88,7 @@ const UCL_KO_STEPS: { id: UclKnockoutStage; label: string }[] = [
   { id: 'final', label: '결승' },
 ];
 
-type DashTab = 'results' | 'cup' | 'ucl' | 'domestic';
+type DashTab = 'results' | 'cup' | 'ucl' | 'lp_table' | 'domestic';
 type MobileSection = 'main' | 'table' | 'leaders';
 
 const SEEN_POPUPS_STORAGE_KEY = 'rtt_mp_seen_popups_v1';
@@ -130,6 +134,7 @@ interface MpLeagueDashboardProps {
   connectionStatus: 'connecting' | 'connected' | 'reconnecting';
   mySquad: MpSquadInput | null;
   ackKeys: string[];
+  optimisticAcks?: Record<string, string[]>;
   actionBusy: boolean;
   editorOpen: boolean;
   dismissedResolutionKey: string | null;
@@ -346,6 +351,7 @@ export function MpLeagueDashboard({
   connectionStatus,
   mySquad,
   ackKeys,
+  optimisticAcks,
   actionBusy,
   editorOpen,
   dismissedResolutionKey,
@@ -376,6 +382,11 @@ export function MpLeagueDashboard({
   const [openLpPopupKey, setOpenLpPopupKey] = useState<string | null>(null);
   const [openMilestoneKey, setOpenMilestoneKey] = useState<string | null>(null);
   const [summaryReviewOpen, setSummaryReviewOpen] = useState(false);
+  const [castLive, setCastLive] = useState<{
+    castKey: string;
+    overlays: Record<string, LiveTieOverlay>;
+    settled: boolean;
+  } | null>(null);
   const [inspected, setInspected] = useState<{
     player: Player;
     stats?: PlayerSeasonStats | null;
@@ -384,7 +395,12 @@ export function MpLeagueDashboard({
   const isUclStage = live.stage === 'ucl' && Boolean(live.ucl);
   const tab: DashTab = useMemo(() => {
     if (isUclStage) {
-      if (tabChoice === 'results' || tabChoice === 'domestic' || tabChoice === 'ucl') {
+      if (
+        tabChoice === 'results' ||
+        tabChoice === 'domestic' ||
+        tabChoice === 'ucl' ||
+        tabChoice === 'lp_table'
+      ) {
         return tabChoice;
       }
       return 'ucl';
@@ -597,14 +613,89 @@ export function MpLeagueDashboard({
       text: `${p.nickname}님 ${MP_LEAGUE_LOCK_LABELS[p.activity?.lock?.reason ?? 'tactics']}`,
       offline: !onlinePlayerIds.includes(p.player_id),
     }));
+  const hasPlayerAck = useCallback(
+    (h: MpLeagueHuman, key: string): boolean => {
+      if (h.playerId === playerId && ackKeys.includes(key)) return true;
+      if (optimisticAcks?.[h.playerId]?.includes(key)) return true;
+      return Boolean(rowByPlayer(h)?.activity?.ackKeys?.includes(key));
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [playerId, ackKeys, optimisticAcks, players],
+  );
+
+  const activeCastKey = live.cast?.key ?? null;
+  const castSettled = Boolean(
+    activeCastKey && castLive?.castKey === activeCastKey && castLive.settled,
+  );
+  const activeCastOverlays = useMemo<Record<string, LiveTieOverlay> | undefined>(() => {
+    if (!activeCastKey || castLive?.castKey !== activeCastKey) return undefined;
+    return castLive.overlays;
+  }, [activeCastKey, castLive]);
+
+  const handleCastLiveOverlays = useCallback(
+    (overlays: Record<string, LiveTieOverlay>, settled: boolean) => {
+      if (!activeCastKey) return;
+      setCastLive({ castKey: activeCastKey, overlays, settled });
+    },
+    [activeCastKey],
+  );
+
+  const effectiveUclStage =
+    tickerPlaying && live.ticker?.prevUclStage
+      ? live.ticker.prevUclStage
+      : live.cast && !castSettled && live.cast.prevUclStage
+        ? live.cast.prevUclStage
+        : live.ucl?.stage ?? null;
+
+  const effectiveUclLeg: 1 | 2 =
+    tickerPlaying && live.ticker?.prevUclKnockoutLeg
+      ? live.ticker.prevUclKnockoutLeg
+      : live.cast && !castSettled && live.cast.prevUclKnockoutLeg
+        ? live.cast.prevUclKnockoutLeg
+        : live.ucl?.knockoutLeg ?? 1;
+
+  const isUclKnockout = Boolean(
+    isUclStage &&
+      effectiveUclStage &&
+      effectiveUclStage !== 'league_phase' &&
+      effectiveUclStage !== 'special_transfer',
+  );
+
+  const bracketUcl = useMemo(() => {
+    if (!live.ucl) return null;
+    if (live.cast && !castSettled && live.cast.prevUclTies) {
+      return {
+        ...live.ucl,
+        stage: live.cast.prevUclStage ?? live.ucl.stage,
+        knockoutLeg: live.cast.prevUclKnockoutLeg ?? live.ucl.knockoutLeg,
+        ties: live.cast.prevUclTies,
+        championTeamId: live.cast.prevUclChampionTeamId ?? null,
+      };
+    }
+    return live.ucl;
+  }, [live.ucl, live.cast, castSettled]);
+
+  const bracketParticipants = useMemo<UclBracketParticipant[]>(
+    () =>
+      live.humans.map((h) => ({
+        clubId: h.clubId,
+        nickname: h.nickname,
+        isMe: h.clubId === myClubId,
+      })),
+    [live.humans, myClubId],
+  );
+
   const flow = live.flow;
   const eventNames =
     !tickerPlaying && flow.kind === 'event'
       ? live.humans.filter((h) => live.byClub[h.clubId]?.event).map((h) => h.nickname)
       : [];
-  const pendingAckNames = (key: string) =>
+  const pendingAckNames = (key: string, clubIds?: string[]) =>
     live.humans
-      .filter((h) => !rowByPlayer(h)?.activity?.ackKeys?.includes(key))
+      .filter((h) => {
+        if (clubIds && !clubIds.includes(h.clubId)) return false;
+        return !hasPlayerAck(h, key);
+      })
       .map((h) => h.nickname);
   const transferWaiting =
     !tickerPlaying && flow.kind === 'transfer'
@@ -612,7 +703,7 @@ export function MpLeagueDashboard({
           .filter((h) => {
             const hl = live.byClub[h.clubId];
             if (!hl || hl.offers.length === 0) return false;
-            return !rowByPlayer(h)?.activity?.ackKeys?.includes(flow.key);
+            return !hasPlayerAck(h, flow.key);
           })
           .map((h) => h.nickname)
       : [];
@@ -796,8 +887,8 @@ export function MpLeagueDashboard({
   );
 
   const uclKoStageIdx =
-    isUclStage && live.ucl
-      ? UCL_KO_STEPS.findIndex((s) => s.id === live.ucl?.stage)
+    isUclStage && effectiveUclStage
+      ? UCL_KO_STEPS.findIndex((s) => s.id === effectiveUclStage)
       : -1;
 
   return (
@@ -812,20 +903,20 @@ export function MpLeagueDashboard({
       >
         <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
-            {isUclStage && live.ucl ? (
+            {isUclStage && live.ucl && effectiveUclStage ? (
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                 <span className="inline-flex items-center gap-1 rounded border border-sky-400/40 bg-sky-500/20 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-black tracking-wide text-sky-200">
                   <Trophy className="w-3 h-3 text-sky-300" />
                   UEFA CHAMPIONS LEAGUE
                 </span>
                 <span className="font-display text-[11px] sm:text-xs font-bold text-white tabular-nums">
-                  {live.ucl.stage === 'league_phase'
+                  {effectiveUclStage === 'league_phase'
                     ? `리그 페이즈 ${displayUclLpRound}/8R`
-                    : live.ucl.stage === 'final'
+                    : effectiveUclStage === 'final'
                       ? '결승전'
-                      : live.ucl.stage === 'completed'
+                      : effectiveUclStage === 'completed'
                         ? '토너먼트 완료'
-                        : `${UCL_STAGE_LABELS[live.ucl.stage]} · ${live.ucl.knockoutLeg}차전`}
+                        : `${UCL_STAGE_LABELS[effectiveUclStage]} · ${effectiveUclLeg}차전`}
                 </span>
                 {myClubId && myUclQualified ? (
                   live.ucl.stage === 'league_phase' && myUclRank !== null && myUclRow ? (
@@ -1082,55 +1173,134 @@ export function MpLeagueDashboard({
         </div>
       )}
 
-      {flow.kind === 'consent' && (
-        <div className="rounded-xl border border-sky-400/40 bg-gradient-to-r from-[#0a1628] via-[#0e1b30] to-[#0c1422] px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <PixelTrophySvg variant="ucl" size={20} />
-            <span className="text-xs font-extrabold text-sky-200">{flow.label} · 전술 정비</span>
-            {live.humans.map((h) => {
-              const ok = rowByPlayer(h)?.activity?.ackKeys?.includes(flow.key);
-              return (
-                <span
-                  key={h.clubId}
-                  className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-bold ${
-                    ok
-                      ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
-                      : 'border-slate-700 bg-[#0b1018] text-slate-400'
-                  }`}
-                >
-                  {ok ? <Check className="w-3 h-3" /> : <Loader2 className="w-3 h-3 animate-spin" />}
-                  {h.nickname}
+      {flow.kind === 'consent' && !tickerPlaying && !live.cast && (() => {
+        const allEliminated = Boolean(flow.allEliminated);
+        const requiredClubIds =
+          flow.requiredClubIds && flow.requiredClubIds.length > 0
+            ? flow.requiredClubIds
+            : live.humans.map((h) => h.clubId);
+        const survivorHumans = allEliminated
+          ? []
+          : live.humans.filter((h) => requiredClubIds.includes(h.clubId));
+        const readyCount = survivorHumans.filter((h) => hasPlayerAck(h, flow.key)).length;
+        const iAmRequired = allEliminated
+          ? isHost
+          : Boolean(myClubId && requiredClubIds.includes(myClubId));
+        const iAcked = ackKeys.includes(flow.key);
+        const waitingSurvivors = pendingAckNames(flow.key, requiredClubIds);
+
+        return (
+          <div className="rounded-xl border border-sky-400/45 bg-gradient-to-r from-[#0a1628] via-[#0e1b30] to-[#0c1422] px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <PixelTrophySvg variant="ucl" size={20} />
+              <span className="text-xs font-extrabold text-sky-200">
+                {allEliminated ? flow.label : `${flow.label} · 전술 정비`}
+              </span>
+              {allEliminated ? (
+                <span className="rounded-md border border-rose-500/35 bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-bold text-rose-200">
+                  생존자 0명
                 </span>
-              );
-            })}
-          </div>
-          {ackKeys.includes(flow.key) ? (
-            <span className="text-[11px] font-bold text-slate-400">
-              {pendingAckNames(flow.key).join(', ')} 대기 중
-            </span>
-          ) : (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                disabled={!mySquad}
-                onClick={onOpenEditor}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 disabled:opacity-40 cursor-pointer"
-              >
-                <Shield className="w-3.5 h-3.5" />
-                전술 수정
-              </button>
-              <button
-                id="mpl-consent-btn"
-                type="button"
-                onClick={() => onAck(flow.key)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
-              >
-                <Check className="w-3.5 h-3.5" />
-                준비 완료
-              </button>
+              ) : (
+                <>
+                  <span className="rounded-md border border-sky-400/35 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-black tabular-nums text-sky-200">
+                    생존자 준비 {readyCount}/{survivorHumans.length}
+                  </span>
+                  {survivorHumans.map((h) => {
+                    const ok = hasPlayerAck(h, flow.key);
+                    return (
+                      <span
+                        key={h.clubId}
+                        className={`inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[11px] font-bold ${
+                          ok
+                            ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300'
+                            : 'border-slate-700 bg-[#0b1018] text-slate-400'
+                        }`}
+                      >
+                        {ok ? (
+                          <Check className="w-3 h-3" />
+                        ) : (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        )}
+                        {h.nickname}
+                      </span>
+                    );
+                  })}
+                </>
+              )}
             </div>
-          )}
-        </div>
+
+            {allEliminated ? (
+              isHost ? (
+                <button
+                  id="mpl-consent-btn"
+                  type="button"
+                  disabled={iAcked}
+                  onClick={() => onAck(flow.key)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-amber-300 disabled:opacity-60 cursor-pointer"
+                >
+                  <FastForward className="w-3.5 h-3.5" />
+                  {iAcked ? '진행 중...' : '남은 토너먼트 진행'}
+                </button>
+              ) : (
+                <span className="text-[11px] font-bold text-slate-400">
+                  방장 진행 대기 중
+                </span>
+              )
+            ) : !iAmRequired ? (
+              <span className="rounded-lg border border-slate-700 bg-[#0b1018] px-2.5 py-1 text-[11px] font-bold text-slate-400">
+                관전 중 · {waitingSurvivors.length > 0 ? `${waitingSurvivors.join(', ')} 준비 대기` : '곧 시작'}
+              </span>
+            ) : iAcked ? (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-emerald-500/12 px-2.5 py-1.5 text-[11px] font-bold text-emerald-300">
+                <Check className="w-3.5 h-3.5" />
+                준비 완료됨
+                {waitingSurvivors.length > 0 && (
+                  <span className="text-slate-400 font-semibold">
+                    · {waitingSurvivors.join(', ')} 대기 중
+                  </span>
+                )}
+              </span>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={!mySquad}
+                  onClick={onOpenEditor}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 disabled:opacity-40 cursor-pointer"
+                >
+                  <Shield className="w-3.5 h-3.5" />
+                  전술 수정
+                </button>
+                <button
+                  id="mpl-consent-btn"
+                  type="button"
+                  onClick={() => onAck(flow.key)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  준비 완료
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Inline UCL Knockout Live Multicast Board — streams right above the live shared bracket */}
+      {live.cast && (
+        <MpUclMulticastBoard
+          cast={live.cast}
+          clubsById={clubsById}
+          humans={live.humans}
+          myClubId={myClubId}
+          inline
+          bracketTies={
+            bracketUcl
+              ? Object.values(bracketUcl.ties).flat()
+              : undefined
+          }
+          onLiveOverlays={handleCastLiveOverlays}
+        />
       )}
 
       {/* Live scoreboard: the friends' matches of the round that was just simulated */}
@@ -1157,14 +1327,14 @@ export function MpLeagueDashboard({
           [
             {
               id: 'main' as const,
-              label: isUclStage ? '챔스 진행' : '진행 · 결과',
+              label: isUclKnockout ? '토너먼트 대진표' : isUclStage ? '챔스 진행' : '진행 · 결과',
             },
             {
               id: 'table' as const,
               label: isUclStage
-                ? live.ucl?.stage === 'league_phase'
-                  ? '리그페이즈 순위'
-                  : '토너먼트'
+                ? isUclKnockout
+                  ? '라운드 요약'
+                  : '리그페이즈 순위'
                 : '리그 순위표',
             },
             {
@@ -1354,11 +1524,13 @@ export function MpLeagueDashboard({
               ? ([
                   {
                     id: 'ucl',
-                    label:
-                      live.ucl?.stage === 'league_phase'
-                        ? 'UCL 리그페이즈 순위'
-                        : 'UCL 토너먼트 대진표',
+                    label: isUclKnockout
+                      ? 'UCL 토너먼트 대진표'
+                      : 'UCL 리그페이즈 순위',
                   },
+                  ...(isUclKnockout
+                    ? [{ id: 'lp_table' as const, label: '리그페이즈 순위' }]
+                    : []),
                   { id: 'results', label: '최근 경기 결과' },
                   { id: 'domestic', label: '국내 리그 · 컵' },
                 ] as { id: DashTab; label: string }[])
@@ -1454,9 +1626,24 @@ export function MpLeagueDashboard({
             </div>
           )}
 
-          {tab === 'ucl' && live.ucl && uclView && (
+          {tab === 'lp_table' && live.ucl && (
+            <StandingsTable
+              standings={view.uclStandings}
+              clubsById={clubsById}
+              uclSpots={8}
+              midZoneSpots={24}
+              relegationSpots={12}
+              title="UCL 리그페이즈 최종 순위 (8/8R)"
+              topZoneLabel="1~8위 16강 직행"
+              midZoneLabel="9~24위 플레이오프"
+              bottomZoneLabel="25~36위 탈락"
+              accent="ucl"
+            />
+          )}
+
+          {tab === 'ucl' && live.ucl && bracketUcl && (
             <div className="space-y-2">
-              {live.ucl.stage === 'league_phase' ? (
+              {!isUclKnockout ? (
                 <StandingsTable
                   standings={view.uclStandings}
                   clubsById={clubsById}
@@ -1470,9 +1657,14 @@ export function MpLeagueDashboard({
                   accent="ucl"
                 />
               ) : (
-                <div className="rounded-xl border border-sky-500/25 bg-[#0b1324] p-2 overflow-x-auto">
-                  <UclBracketTree ucl={uclView.ucl} clubsById={uclView.clubsById} />
-                </div>
+                <UclBracketTree
+                  ucl={bracketUcl}
+                  clubsById={clubsById}
+                  myClubId={myClubId}
+                  participants={bracketParticipants}
+                  liveTieOverlays={activeCastOverlays}
+                  hideChampion={Boolean(live.cast && !castSettled)}
+                />
               )}
             </div>
           )}
@@ -1485,8 +1677,8 @@ export function MpLeagueDashboard({
           }`}
         >
           <div className={mobileSection === 'table' ? 'block' : 'hidden lg:block'}>
-            {isUclStage && live.ucl ? (
-              live.ucl.stage === 'league_phase' ? (
+            {isUclStage && bracketUcl ? (
+              !isUclKnockout ? (
                 <SideUclStandings
                   standings={view.uclStandings}
                   humans={live.humans}
@@ -1495,7 +1687,7 @@ export function MpLeagueDashboard({
                 />
               ) : (
                 <SideUclKnockoutCard
-                  ucl={live.ucl}
+                  ucl={bracketUcl}
                   clubsById={clubsById}
                   humans={live.humans}
                   myClubId={myClubId}
@@ -1645,15 +1837,6 @@ export function MpLeagueDashboard({
           onReject={onTradeReject}
           onCounter={onTradeCounter}
           onFinish={() => onAck(flow.key)}
-        />
-      )}
-
-      {live.cast && (
-        <MpUclMulticastBoard
-          cast={live.cast}
-          clubsById={clubsById}
-          humans={live.humans}
-          myClubId={myClubId}
         />
       )}
 

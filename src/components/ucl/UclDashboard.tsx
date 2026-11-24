@@ -1030,7 +1030,7 @@ export function UclDashboard() {
                       onClick={() => setSkipResultModalOpen(false)}
                       className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-black text-slate-950 hover:bg-emerald-400 cursor-pointer"
                     >
-                      확인 · 계속하기
+                      {isLeg1OfTwoLeg ? '전술 정비 · 2차전 준비' : '확인 · 계속하기'}
                     </button>
                   </div>
                 </div>
@@ -1093,9 +1093,21 @@ export function UclDashboard() {
         )}
 
       {/* TAB 1: MATCH & PROGRESSION */}
-      {tab === 'match' && (
+      {tab === 'match' && (() => {
+        const isKnockoutStage =
+          ucl.stage !== 'league_phase' && ucl.stage !== 'special_transfer';
+        const isLeg2Prep = Boolean(
+          nextKnockoutInfo &&
+            nextKnockoutInfo.tie.stage !== 'final' &&
+            nextKnockoutInfo.isDecider,
+        );
+        return (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          <div className={`${liveAutoActive ? 'lg:col-span-12' : 'lg:col-span-8'} space-y-4`}>
+          <div
+            className={`${
+              liveAutoActive || isKnockoutStage ? 'lg:col-span-12' : 'lg:col-span-8'
+            } space-y-4`}
+          >
             {showLpSummary && ucl.leaguePhaseRound >= 8 && !liveTickerPlaying && (() => {
               const finalRank = ucl.userLeaguePhaseRank ?? userUclRank;
               const uRow = ucl.standings.find((r) => r.teamId === USER_CLUB_ID);
@@ -1250,7 +1262,7 @@ export function UclDashboard() {
                         className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 disabled:opacity-50 cursor-pointer"
                       >
                         <Play className="h-4 w-4 fill-current" />
-                        2D 실시간 중계 시작
+                        {isLeg2Prep ? '2차전 시작 (2D 중계)' : '2D 실시간 중계 시작'}
                       </button>
                       <button
                         id="ucl-skip-single-match-btn"
@@ -1264,7 +1276,7 @@ export function UclDashboard() {
                         className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white disabled:opacity-50 cursor-pointer"
                       >
                         <FastForward className="h-4 w-4" />
-                        1경기 스킵
+                        {isLeg2Prep ? '2차전 스킵' : '1경기 스킵'}
                       </button>
                       {ucl.stage === 'league_phase' && ucl.leaguePhaseRound < 8 && (
                         <>
@@ -1414,10 +1426,24 @@ export function UclDashboard() {
                 </div>
               </button>
             )}
+
+            {/* Shared Live Knockout Bracket automatically replaces League Phase standings once knockout starts */}
+            {isKnockoutStage && (
+              <UclBracketTree
+                ucl={ucl}
+                clubsById={clubsById}
+                myClubId={USER_CLUB_ID}
+                hideChampion={Boolean(season.liveHalftime && ucl.stage === 'final')}
+                onSelectTie={(tie) => {
+                  setInspectedMatch(null);
+                  setInspectedTie(tie);
+                }}
+              />
+            )}
           </div>
 
-          {/* Right Compact Real-Time Standings (hidden while already shown beside SoloLiveScoreboard above) */}
-          {!liveAutoActive && (
+          {/* Right Compact Real-Time Standings (League Phase only; knockout transitions to live bracket above) */}
+          {!liveAutoActive && !isKnockoutStage && (
             <div className="lg:col-span-4">
               <CompactLiveStandings
                 title="UCL 리그페이즈 순위"
@@ -1434,7 +1460,8 @@ export function UclDashboard() {
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* TAB 2: FULL 36-TEAM SWISS TABLE */}
       {tab === 'standings' && (

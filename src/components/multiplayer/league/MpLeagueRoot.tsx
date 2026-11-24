@@ -76,11 +76,30 @@ export function MpLeagueRoot({
   const [answeredEventKey, setAnsweredEventKey] = useState<string | null>(null);
   const [podiumSeenKey, setPodiumSeenKey] = useState<string | null>(null);
   const [podiumOpen, setPodiumOpen] = useState(false);
+  const [optimisticAcks, setOptimisticAcks] = useState<Record<string, string[]>>({});
+  const optimisticAckByPlayerRef = useRef<Record<string, string[]>>({});
+  const optimisticLockByPlayerRef = useRef<Record<string, MpLeagueActivity['lock'] | undefined>>({});
   const activityRef = useRef<MpLeagueActivity>(activity);
   const changeRef = useRef(0);
   const revRef = useRef<number | null>(null);
+  const lastLiveAppliedAtRef = useRef(0);
   const stageRef = useRef<MpLeagueLive['stage'] | null>(null);
   const hostWakeRef = useRef<(() => void) | null>(null);
+
+  const recordOptimisticAck = useCallback((pid: string, key: string) => {
+    const prev = optimisticAckByPlayerRef.current[pid] ?? [];
+    if (prev.includes(key)) return;
+    const nextList = [...prev, key].slice(-12);
+    optimisticAckByPlayerRef.current = {
+      ...optimisticAckByPlayerRef.current,
+      [pid]: nextList,
+    };
+    setOptimisticAcks((map) => {
+      const cur = map[pid] ?? [];
+      if (cur.includes(key)) return map;
+      return { ...map, [pid]: [...cur, key].slice(-12) };
+    });
+  }, []);
 
   const wakeHostLocally = useCallback(() => {
     if (!hostWakeRef.current) return;
@@ -93,6 +112,7 @@ export function MpLeagueRoot({
     if (revRef.current !== null && nextLive.rev < revRef.current) return;
     if (revRef.current === nextLive.rev) return;
     revRef.current = nextLive.rev;
+    lastLiveAppliedAtRef.current = Date.now();
     stageRef.current = nextLive.stage;
     setLive(nextLive);
     setErrorMsg(null);
@@ -111,11 +131,15 @@ export function MpLeagueRoot({
         if (forceLiveFetch) queuedForce = true;
         return;
       }
+      const stage = stageRef.current;
+      const inDraft = stage === null || stage === 'setup' || stage === 'draft';
+      // Skip redundant postgres_changes probe right after Broadcast already applied a fresh rev
+      if (!forceLiveFetch && !inDraft && Date.now() - lastLiveAppliedAtRef.current < 350) {
+        return;
+      }
       running = true;
       try {
         changeRef.current += 1;
-        const stage = stageRef.current;
-        const inDraft = stage === null || stage === 'setup' || stage === 'draft';
 
         // Fast path: Broadcast notified us of a newer rev during active season → skip rev probe & picks table!
         if (forceLiveFetch && !inDraft) {
@@ -178,6 +202,15 @@ export function MpLeagueRoot({
         return;
       }
       if (ev.type === 'player_signal') {
+        if (ev.ackKey) {
+          recordOptimisticAck(ev.playerId, ev.ackKey);
+        }
+        if ('lock' in ev) {
+          optimisticLockByPlayerRef.current = {
+            ...optimisticLockByPlayerRef.current,
+            [ev.playerId]: ev.lock ?? null,
+          };
+        }
         changeRef.current += 1;
         hostWakeRef.current?.();
         if (ev.reason === 'pick') {
@@ -197,7 +230,7 @@ export function MpLeagueRoot({
       disposed = true;
       unsubscribe();
     };
-  }, [room.id, draftGeneration, applyLive]);
+  }, [room.id, draftGeneration, applyLive, recordOptimisticAck]);
 
   const host = useMpLeagueHost({
     enabled: isHost,
@@ -207,6 +240,8 @@ export function MpLeagueRoot({
     live,
     picks,
     changeRef,
+    optimisticAckByPlayerRef,
+    optimisticLockByPlayerRef,
     onHostLiveCommitted: applyLive,
   });
 
@@ -218,26 +253,51 @@ export function MpLeagueRoot({
   }, [isHost, host.wakeNow]);
 
   const writeActivity = useCallback(
-    (next: MpLeagueActivity) => {
+    (next: MpLeagueActivity, meta?: { ackKey?: string; lockChanged?: boolean }) => {
       activityRef.current = next;
       setActivity(next);
-      void updateLeagueActivity(room.id, playerId, next).then(() => {
+      if (meta?.ackKey) {
+        recordOptimisticAck(playerId, meta.ackKey);
+      }
+      if (meta?.lockChanged) {
+        optimisticLockByPlayerRef.current = {
+          ...optimisticLockByPlayerRef.current,
+          [playerId]: next.lock ?? null,
+        };
+      }
+      // Broadcast IMMEDIATELY (0ms) so host & peers see Ready/Unlock before Postgres round-trip finishes
+      if (meta?.ackKey || meta?.lockChanged) {
         broadcastLeagueEvent(room.id, {
           type: 'player_signal',
           playerId,
           reason: 'activity',
+          ackKey: meta.ackKey,
+          ...(meta.lockChanged ? { lock: next.lock ?? null } : {}),
         });
         wakeHostLocally();
+      }
+      void updateLeagueActivity(room.id, playerId, next).then(() => {
+        if (!meta?.ackKey && !meta?.lockChanged) {
+          broadcastLeagueEvent(room.id, {
+            type: 'player_signal',
+            playerId,
+            reason: 'activity',
+          });
+          wakeHostLocally();
+        }
       });
     },
-    [room.id, playerId, wakeHostLocally],
+    [room.id, playerId, wakeHostLocally, recordOptimisticAck],
   );
 
   const ack = useCallback(
     (key: string) => {
       const prev = activityRef.current;
       if (prev.ackKeys?.includes(key)) return;
-      writeActivity({ ...prev, ackKeys: [...(prev.ackKeys ?? []), key].slice(-10) });
+      writeActivity(
+        { ...prev, ackKeys: [...(prev.ackKeys ?? []), key].slice(-10) },
+        { ackKey: key },
+      );
     },
     [writeActivity],
   );
@@ -385,12 +445,15 @@ export function MpLeagueRoot({
     const currentReason = activityRef.current.lock?.reason ?? null;
     if (currentReason === desiredLock) return;
     const t = window.setTimeout(() => {
-      writeActivity({
-        ...activityRef.current,
-        lock: desiredLock
-          ? { reason: desiredLock, since: new Date().toISOString() }
-          : null,
-      });
+      writeActivity(
+        {
+          ...activityRef.current,
+          lock: desiredLock
+            ? { reason: desiredLock, since: new Date().toISOString() }
+            : null,
+        },
+        { lockChanged: true },
+      );
     }, 0);
     return () => window.clearTimeout(t);
   }, [desiredLock, writeActivity]);
@@ -616,6 +679,7 @@ export function MpLeagueRoot({
       connectionStatus={connectionStatus}
       mySquad={mySquad}
       ackKeys={activity.ackKeys ?? []}
+      optimisticAcks={optimisticAcks}
       actionBusy={actionBusy}
       editorOpen={editorOpen}
       dismissedResolutionKey={dismissedResolutionKey}

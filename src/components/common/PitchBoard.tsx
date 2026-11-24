@@ -38,6 +38,16 @@ interface PitchBoardProps {
   managerTraitId?: ManagerTraitId | null;
   activeSlot?: SlotRef | null;
   selectedSlot?: SlotRef | null;
+  /** Optional multi-select slot keys ("starter:0", "bench:2") used in Transfer Market package picker */
+  selectedSlotKeys?: Set<string>;
+  /** Highlight accent for selected slots (defaults to 'emerald'; 'rose' for outgoing trade picks) */
+  selectedTone?: 'emerald' | 'rose';
+  /** Optional compact metadata rendered under each player's name (e.g. trade value & partner need icon) */
+  slotExtraMeta?: (
+    area: 'starter' | 'bench',
+    index: number,
+    player: Player,
+  ) => React.ReactNode;
   previewSlot?: SlotRef | null;
   staminaByPlayerId?: Record<string, number>;
   conditionByPlayerId?: PlayerConditionMap;
@@ -110,6 +120,9 @@ export function PitchBoard({
   managerTraitId = null,
   activeSlot = null,
   selectedSlot = null,
+  selectedSlotKeys,
+  selectedTone = 'emerald',
+  slotExtraMeta,
   previewSlot = null,
   staminaByPlayerId,
   conditionByPlayerId: conditionProp,
@@ -153,8 +166,8 @@ export function PitchBoard({
   const handleSlotActivate = (area: 'starter' | 'bench', index: number) => {
     const isDeselectingSameStarter =
       area === 'starter' &&
-      selectedSlot?.area === 'starter' &&
-      selectedSlot.index === index;
+      ((selectedSlot?.area === 'starter' && selectedSlot.index === index) ||
+        Boolean(selectedSlotKeys?.has(`starter:${index}`)));
     const isCompletingSwap = selectedSlot !== null;
 
     if (isDeselectingSameStarter || isCompletingSwap) {
@@ -432,8 +445,9 @@ export function PitchBoard({
           const isActive =
             activeSlot?.area === 'starter' && activeSlot.index === slot.index;
           const isSelected =
-            selectedSlot?.area === 'starter' &&
-            selectedSlot.index === slot.index;
+            (selectedSlot?.area === 'starter' &&
+              selectedSlot.index === slot.index) ||
+            Boolean(selectedSlotKeys?.has(`starter:${slot.index}`));
           const isPreview =
             previewSlot?.area === 'starter' &&
             previewSlot.index === slot.index;
@@ -562,7 +576,13 @@ export function PitchBoard({
                         : isActive
                           ? 'bg-emerald-500/12 border border-emerald-400/65'
                           : 'bg-slate-950/70 border border-dashed border-slate-600/55'
-                } ${isSelected ? 'ring-2 ring-emerald-400/80' : ''} ${
+                } ${
+                  isSelected
+                    ? selectedTone === 'rose'
+                      ? 'ring-2 ring-rose-400 border-rose-400/90 shadow-lg'
+                      : 'ring-2 ring-emerald-400/80'
+                    : ''
+                } ${
                   isDragOver ? 'ring-2 ring-sky-400/80' : ''
                 }`}
               >
@@ -710,6 +730,7 @@ export function PitchBoard({
                           >
                             {formatPitchDisplayName(player.name, compact)}
                           </span>
+                          {slotExtraMeta?.('starter', slot.index, player)}
                           {staminaPct !== null ? (
                             <div className="mt-1 w-full flex items-center gap-1 tabular-nums">
                               <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-950/90">
@@ -840,8 +861,9 @@ export function PitchBoard({
                 activeSlot?.area === 'bench' &&
                 activeSlot.index === benchIdx;
               const isSelected =
-                selectedSlot?.area === 'bench' &&
-                selectedSlot.index === benchIdx;
+                (selectedSlot?.area === 'bench' &&
+                  selectedSlot.index === benchIdx) ||
+                Boolean(selectedSlotKeys?.has(`bench:${benchIdx}`));
               const isPreview =
                 previewSlot?.area === 'bench' &&
                 previewSlot.index === benchIdx;
@@ -912,7 +934,13 @@ export function PitchBoard({
                       : isDisabledBench
                         ? 'cursor-not-allowed'
                         : 'cursor-default'
-                  } ${isSelected ? 'ring-2 ring-emerald-400' : ''} ${
+                  } ${
+                    isSelected
+                      ? selectedTone === 'rose'
+                        ? 'ring-2 ring-rose-400 border-rose-400/90'
+                        : 'ring-2 ring-emerald-400'
+                      : ''
+                  } ${
                     isDragOver ? 'ring-2 ring-sky-400' : ''
                   }`}
                 >
@@ -1024,6 +1052,7 @@ export function PitchBoard({
                           <span className="w-full truncate text-[10px] font-semibold text-slate-200">
                             {player.name}
                           </span>
+                          {slotExtraMeta?.('bench', benchIdx, player)}
                           {benchStaminaPct !== null && (
                             <div className="mt-1 w-full flex items-center gap-1 tabular-nums">
                               <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-950">

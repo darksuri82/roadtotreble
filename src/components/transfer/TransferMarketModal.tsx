@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { calculateTeamRatings } from '../../engine/chemistryEngine';
 import {
   getInjuryTooltip,
   getMoraleLabel,
@@ -58,6 +59,7 @@ import { buildPlayerCompetitionBreakdown } from '../../utils/playerLookup';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
+import { PitchBoard } from '../common/PitchBoard';
 import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
@@ -252,6 +254,23 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
   }, [animating]);
 
   const formationSlots = FORMATIONS[state.formation].slots;
+
+  const teamRatings = useMemo(
+    () =>
+      calculateTeamRatings(
+        state.formation,
+        state.starters,
+        chemistry.total,
+        state.manager.traitId,
+        chemistry.slotSynergies,
+      ),
+    [state.formation, state.starters, chemistry.total, chemistry.slotSynergies, state.manager.traitId],
+  );
+
+  const selectedUserSlotKeys = useMemo(
+    () => new Set(selectedUserSlots.map((s) => slotKey(s))),
+    [selectedUserSlots],
+  );
 
   const userRosterEntries = useMemo(() => {
     const entries: {
@@ -1286,43 +1305,41 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                           <div className="text-xs font-bold text-slate-300">
                             방출(교체)할 우리 팀 선수 1명을 선택하세요:
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                            {userRosterEntries.map((entry) => {
-                              const selected =
-                                legendOutSlot &&
-                                slotKey(legendOutSlot) === entry.key;
-                              return (
-                                <div
-                                  key={`leg-out-${entry.key}`}
-                                  onClick={() => setLegendOutSlot(entry.ref)}
-                                  className={`rounded-lg border px-2.5 py-2 text-left transition cursor-pointer ${
-                                    selected
-                                      ? 'border-amber-400 bg-amber-500/20'
-                                      : 'border-slate-800 bg-slate-950/70 hover:border-slate-600'
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between text-[10px]">
-                                    <span className="font-bold text-slate-400">
-                                      {entry.slotLabel}
-                                    </span>
-                                    <span className="font-black text-white">
-                                      OVR {entry.player.ovr}
-                                    </span>
-                                  </div>
-                                  <div className="mt-0.5 truncate">
-                                    <PlayerNameButton
-                                      onClick={() =>
-                                        setInspectedPlayer(entry.player)
-                                      }
-                                      className="text-xs font-bold text-slate-100"
-                                    >
-                                      {entry.player.name}
-                                    </PlayerNameButton>
-                                  </div>
-                                </div>
+                          <PitchBoard
+                            formation={state.formation}
+                            starters={state.starters}
+                            bench={state.bench}
+                            chemistry={chemistry}
+                            managerTraitId={state.manager.traitId}
+                            conditionByPlayerId={season.playerConditions}
+                            selectedSlot={legendOutSlot}
+                            selectedTone="rose"
+                            onSlotClick={(area, index) => {
+                              const p =
+                                area === 'starter'
+                                  ? state.starters[index]
+                                  : state.bench[index];
+                              if (!p) return;
+                              setLegendOutSlot((prev) =>
+                                prev && prev.area === area && prev.index === index
+                                  ? null
+                                  : { area, index },
                               );
-                            })}
-                          </div>
+                            }}
+                            onInspectPlayer={(p) => setInspectedPlayer(p)}
+                            compact
+                            showBench
+                            showChemBreakdown={false}
+                            showChemLegend
+                            headerLabel={state.userClub.name}
+                            headerRight={
+                              <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
+                                A <strong className="text-white">{teamRatings.effectiveAtt}</strong> · M{' '}
+                                <strong className="text-white">{teamRatings.effectiveMid}</strong> · D{' '}
+                                <strong className="text-white">{teamRatings.effectiveDef}</strong>
+                              </span>
+                            }
+                          />
                         </div>
                       </div>
                     );
@@ -1900,25 +1917,26 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                 </span>
                               </div>
 
-                              {/* User Pitch */}
-                              <div className="relative aspect-[4/3.85] sm:aspect-[4/4.5] w-full overflow-hidden rounded-xl border border-slate-700/80 bg-gradient-to-b from-[#0e241b] via-[#0f291e] to-[#0c1f17]">
-                                <div className="pointer-events-none absolute inset-3 rounded border border-emerald-300/15">
-                                  <div className="absolute left-0 right-0 top-1/2 h-px bg-emerald-300/15" />
-                                  <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-300/15" />
-                                  <div className="absolute left-1/2 top-0 h-10 w-28 -translate-x-1/2 border-b border-x border-emerald-300/15" />
-                                  <div className="absolute left-1/2 bottom-0 h-10 w-28 -translate-x-1/2 border-t border-x border-emerald-300/15" />
-                                </div>
-
-                                {formationSlots.map((slot, idx) => {
-                                  const p = state.starters[idx];
-                                  if (!p) return null;
-                                  const ref: SlotRef = {
-                                    area: 'starter',
-                                    index: idx,
-                                  };
-                                  const isPicked = selectedUserSlots.some(
-                                    (s) => slotKey(s) === slotKey(ref),
-                                  );
+                              {/* Unified Original Squad Pitch + Free Bench (100% identical chemistry, +/- OVR, A/M/D) */}
+                              <PitchBoard
+                                formation={state.formation}
+                                starters={state.starters}
+                                bench={state.bench}
+                                chemistry={chemistry}
+                                managerTraitId={state.manager.traitId}
+                                conditionByPlayerId={season.playerConditions}
+                                selectedSlotKeys={selectedUserSlotKeys}
+                                selectedTone="rose"
+                                onSlotClick={(area, index) => {
+                                  const p =
+                                    area === 'starter'
+                                      ? state.starters[index]
+                                      : state.bench[index];
+                                  if (!p) return;
+                                  handleToggleUserSlot({ area, index });
+                                }}
+                                onInspectPlayer={(p) => setInspectedPlayer(p)}
+                                slotExtraMeta={(_area, _index, p) => {
                                   const tpVal = computePlayerTradePoints({
                                     player: p,
                                     receivingClubNeeds: activeClubNeeds,
@@ -1928,161 +1946,37 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       null,
                                     conditionMap: season.playerConditions,
                                   });
-                                  const cond = season.playerConditions?.[p.id];
-                                  const inj = cond
-                                    ? isPlayerActivelyInjured(cond)
-                                    : false;
-                                  const mt = cond
-                                    ? getMoraleTier(cond.morale)
-                                    : 'normal';
-
                                   return (
-                                    <div
-                                      key={`u-pitch-${idx}-${p.id}`}
-                                      onClick={() => handleToggleUserSlot(ref)}
-                                      onContextMenu={(e) => {
-                                        e.preventDefault();
-                                        setInspectedPlayer(p);
-                                      }}
-                                      style={{
-                                        left: `${slot.x}%`,
-                                        top: `${slot.y}%`,
-                                      }}
-                                      title={`${p.name} (OVR ${p.ovr} · 가치 ${Math.round(tpVal.effectiveTp)}) (우클릭 상세)`}
-                                      className={`absolute -translate-x-1/2 -translate-y-1/2 w-[60px] sm:w-[74px] rounded-lg border px-1 py-0.5 text-center transition-colors cursor-pointer select-none touch-manipulation ${
-                                        isPicked
-                                          ? 'border-rose-400 bg-rose-950/95 ring-1 ring-rose-400/70 shadow-lg z-20'
-                                          : 'border-slate-700/80 bg-[#0d141f]/95 hover:border-rose-400/60 z-10'
-                                      }`}
-                                    >
-                                      <div className="flex items-center justify-between text-[8px] sm:text-[8.5px] tabular-nums leading-none">
-                                        <span className="font-semibold text-slate-400">
-                                          {slot.label}
+                                    <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[7.5px] sm:text-[8px] tabular-nums leading-none">
+                                      <span className="font-mono font-bold text-rose-300/95">
+                                        {Math.round(tpVal.effectiveTp)}
+                                      </span>
+                                      {tpVal.needModPct >= 30 && (
+                                        <span className="text-[8px] font-black text-amber-300">
+                                          🔥
                                         </span>
-                                        <span className="font-bold text-slate-100">
-                                          {p.ovr}
+                                      )}
+                                      {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
+                                        <span className="text-[8px] font-black text-sky-300">
+                                          ✨
                                         </span>
-                                      </div>
-                                      <div className="mt-0.5 flex items-center justify-center gap-0.5">
-                                        <CountryFlagSvg
-                                          code={p.nationalityCode}
-                                          nationality={p.nationality}
-                                          size="xs"
-                                        />
-                                        <span className="truncate text-[8.5px] sm:text-[9.5px] font-semibold text-slate-100">
-                                          {shortPitchName(p.name)}
-                                        </span>
-                                      </div>
-                                      <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[7.5px] sm:text-[8.5px] tabular-nums leading-none">
-                                        <span className="font-mono text-rose-300/90">
-                                          {Math.round(tpVal.effectiveTp)}
-                                        </span>
-                                        {tpVal.needModPct >= 30 && (
-                                          <span className="text-[8px] font-black text-amber-300">
-                                            🔥
-                                          </span>
-                                        )}
-                                        {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
-                                          <span className="text-[8px] font-black text-sky-300">
-                                            ✨
-                                          </span>
-                                        )}
-                                        {inj && cond?.injury && (
-                                          <PixelStatusIcon
-                                            variant="injury"
-                                            size={9}
-                                            title={getInjuryTooltip(cond.injury)}
-                                          />
-                                        )}
-                                        {mt === 'ecstatic' && (
-                                          <PixelStatusIcon
-                                            variant="morale_high"
-                                            size={9}
-                                            title={`사기 ${getMoraleLabel(cond!.morale)}`}
-                                          />
-                                        )}
-                                        {mt === 'frozen' && (
-                                          <PixelStatusIcon
-                                            variant="morale_low"
-                                            size={9}
-                                            title={`사기 ${getMoraleLabel(cond!.morale)}`}
-                                          />
-                                        )}
-                                      </div>
+                                      )}
                                     </div>
                                   );
-                                })}
-                              </div>
-
-                              {/* User Bench Below Pitch */}
-                              <div className="space-y-1.5">
-                                <div className="text-[10px] font-extrabold text-slate-300">
-                                  우리 팀 벤치 (5명)
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                                  {state.bench.map((p, idx) => {
-                                    if (!p) return null;
-                                    const ref: SlotRef = {
-                                      area: 'bench',
-                                      index: idx,
-                                    };
-                                    const isPicked = selectedUserSlots.some(
-                                      (s) => slotKey(s) === slotKey(ref),
-                                    );
-                                    const tpVal = computePlayerTradePoints({
-                                      player: p,
-                                      receivingClubNeeds: activeClubNeeds,
-                                      stats:
-                                        season.allPlayerStats[p.id] ??
-                                        season.allPlayerStats[`user::${p.id}`] ??
-                                        null,
-                                      conditionMap: season.playerConditions,
-                                    });
-                                    return (
-                                      <div
-                                        key={`u-bench-${idx}-${p.id}`}
-                                        onClick={() => handleToggleUserSlot(ref)}
-                                        onContextMenu={(e) => {
-                                          e.preventDefault();
-                                          setInspectedPlayer(p);
-                                        }}
-                                        className={`rounded-lg border px-2 py-1.5 transition-colors cursor-pointer select-none touch-manipulation ${
-                                          isPicked
-                                            ? 'border-rose-400 bg-rose-950/45 ring-1 ring-rose-400/50'
-                                            : 'border-slate-800 bg-[#101826] hover:border-slate-600'
-                                        }`}
-                                      >
-                                        <div className="flex items-center justify-between text-[9px] tabular-nums">
-                                          <span className="rounded bg-slate-800 px-1 py-px font-bold text-slate-300">
-                                            벤치 {p.mainPositions[0] ?? p.position}
-                                          </span>
-                                          <span className="font-black text-white">
-                                            {p.ovr} ·{' '}
-                                            <span className="text-rose-300">
-                                              {Math.round(tpVal.effectiveTp)}
-                                            </span>
-                                            {tpVal.needModPct > 0
-                                              ? tpVal.needModPct >= 30
-                                                ? ' 🔥'
-                                                : ' ✨'
-                                              : ''}
-                                          </span>
-                                        </div>
-                                        <div className="mt-0.5 flex items-center gap-1 min-w-0">
-                                          <CountryFlagSvg
-                                            code={p.nationalityCode}
-                                            nationality={p.nationality}
-                                            size="xs"
-                                          />
-                                          <span className="truncate text-[11px] font-bold text-white">
-                                            {p.name}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
+                                }}
+                                compact
+                                showBench
+                                showChemBreakdown={false}
+                                showChemLegend
+                                headerLabel={state.userClub.name}
+                                headerRight={
+                                  <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
+                                    A <strong className="text-white">{teamRatings.effectiveAtt}</strong> · M{' '}
+                                    <strong className="text-white">{teamRatings.effectiveMid}</strong> · D{' '}
+                                    <strong className="text-white">{teamRatings.effectiveDef}</strong>
+                                  </span>
+                                }
+                              />
                             </div>
                           </div>
                         )}

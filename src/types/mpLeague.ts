@@ -191,7 +191,15 @@ export type MpLeagueFlow =
   | { kind: 'h2h' }
   | { kind: 'event'; key: string }
   | { kind: 'transfer'; key: string }
-  | { kind: 'consent'; key: string; label: string }
+  | {
+      kind: 'consent';
+      key: string;
+      label: string;
+      /** Surviving UCL human club IDs required to press Ready (empty when allEliminated is true). */
+      requiredClubIds?: string[];
+      /** True when 0 human clubs remain alive in UCL knockout so the host can fast-finish without softlocking. */
+      allEliminated?: boolean;
+    }
   | { kind: 'summary'; key: string }
   | { kind: 'cast'; key: string }
   | { kind: 'done' };
@@ -275,6 +283,8 @@ export interface MpCastMatch {
   stats?: MpMatchStatLine;
   /** Already watched live (friend match): show the final state without replay */
   instant?: boolean;
+  /** Knockout tie ID when this cast match corresponds to a UCL bracket tie */
+  tieId?: string;
 }
 
 export interface MpFeedItem {
@@ -309,6 +319,11 @@ export interface MpCastLive {
   prevCup?: DomesticCupState | null;
   /** UCL standings before this round (prevents UCL table spoiler while match is streaming) */
   prevUclStandings?: StandingRow[];
+  /** UCL knockout bracket snapshot before this leg (prevents bracket advancement spoiler before FT/PK) */
+  prevUclTies?: Record<UclKnockoutStage, UclKnockoutTie[]>;
+  prevUclStage?: UclPhaseStage;
+  prevUclKnockoutLeg?: 1 | 2;
+  prevUclChampionTeamId?: string | null;
   /** League leaders before this round (prevents scorer/assister spoiler while match is streaming) */
   prevTopScorers?: PlayerSeasonStats[];
   prevTopAssisters?: PlayerSeasonStats[];
@@ -375,6 +390,10 @@ export type MpLeagueBroadcastEvent =
       type: 'player_signal';
       playerId: string;
       reason: 'action' | 'activity' | 'squad' | 'pick';
+      /** Instant optimistic ack key so host & peers react in 0ms before Postgres round-trip */
+      ackKey?: string;
+      /** Instant lock status hint so host unlocks without waiting for Postgres poll */
+      lock?: MpLeagueActivity['lock'];
     };
 
 export interface MpHumanLive {

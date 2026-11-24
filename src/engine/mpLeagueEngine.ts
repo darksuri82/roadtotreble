@@ -22,13 +22,14 @@ import type {
   MpLeagueLive,
   MpLeagueSettings,
   MpLeagueStep,
+  MpLeagueFlow,
   MpLiteMatch,
   MpSquadInput,
   MpTradeResultNote,
   MpUclLive,
 } from '../types/mpLeague';
 import type { Player, SubPosition } from '../types/player';
-import type { UclKnockoutStage, UclKnockoutTie } from '../types/ucl';
+import type { UclKnockoutStage, UclKnockoutTie, UclPhaseStage } from '../types/ucl';
 import { computeSeasonAwards } from './awardsEngine';
 import { calculateChemistry, calculateTeamRatings } from './chemistryEngine';
 import {
@@ -2018,22 +2019,13 @@ function stepLeagueSummary(state: MpLeagueHostState): MpLeagueHostState {
 export function closeMpLeagueSummary(state: MpLeagueHostState): MpLeagueHostState {
   if (state.flow.kind !== 'summary') return state;
   const nextTodo = state.todo[0]?.t === 'league_summary' ? state.todo.slice(1) : state.todo;
-  const enteringUclLp =
-    state.stage === 'ucl' &&
-    state.ucl?.stage === 'league_phase' &&
-    state.ucl.leaguePhaseRound === 0 &&
-    state.uclConsentedStage !== 'league_phase';
-  return {
+  const nextBase: MpLeagueHostState = {
     ...state,
-    flow: enteringUclLp
-      ? {
-          kind: 'consent',
-          key: 'ucl-consent-league_phase',
-          label: 'UCL 리그페이즈',
-        }
-      : { kind: 'auto' },
+    flow: { kind: 'auto' },
     todo: nextTodo,
   };
+  const consent = buildUclConsentFlow(nextBase);
+  return consent ? { ...nextBase, flow: consent } : nextBase;
 }
 
 function stripUclResults(
@@ -2058,16 +2050,10 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
   if (target > 8 || ucl.stage !== 'league_phase') {
     return { ...state, todo: [{ t: 'ucl_ko_leg' }] };
   }
-  // Pause once when UCL Phase 2 opens so every manager can review matchups & tweak tactics before 1R
-  if (ucl.leaguePhaseRound === 0 && state.uclConsentedStage !== 'league_phase') {
-    return {
-      ...state,
-      flow: {
-        kind: 'consent',
-        key: 'ucl-consent-league_phase',
-        label: 'UCL 리그페이즈',
-      },
-    };
+  // Pause once when UCL Phase 2 opens so surviving managers can tweak tactics before 1R
+  const prepConsent = buildUclConsentFlow(state);
+  if (prepConsent) {
+    return { ...state, flow: prepConsent };
   }
   const label = `UCL 리그 페이즈 ${target}R`;
   const fixtures = ucl.leaguePhaseFixtures.filter(
@@ -2176,7 +2162,7 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
   const nextH2HResults = { ...state.h2hResults };
   for (const k of usedKeys) delete nextH2HResults[k];
 
-  return {
+  const nextLpState: MpLeagueHostState = {
     ...working,
     conditions,
     ucl: stripUclResults(sim.ucl),
@@ -2189,6 +2175,8 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
       key: `ucl-${state.seasonKey}-lp${target}`,
       title: label,
       prevUclStandings: ucl.standings,
+      prevUclStage: ucl.stage,
+      prevUclKnockoutLeg: ucl.knockoutLeg,
       prevUclTopScorers: topBy(state.uclPlayerStats, 'goals'),
       prevUclTopAssisters: topBy(state.uclPlayerStats, 'assists'),
       matches: buildTickerMatches(
@@ -2199,11 +2187,25 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
     },
     todo: [sim.ucl.leaguePhaseRound >= 8 ? { t: 'ucl_ko_leg' } : { t: 'ucl_lp_round' }],
   };
+
+  if (sim.ucl.leaguePhaseRound >= 8) {
+    const koConsent = buildUclConsentFlow(nextLpState);
+    if (koConsent) {
+      return { ...nextLpState, flow: koConsent };
+    }
+  }
+  return nextLpState;
 }
 
-// ── Step: UCL knockout leg (all-friends consent per stage + live multicast) ──
+// ── Step: UCL knockout leg (survivor-only consent per stage & leg + live multicast) ──
 
-function humansAliveInUcl(state: MpLeagueHostState): string[] {
+function uclConsentToken(stage: UclPhaseStage, leg: 1 | 2): string {
+  if (stage === 'league_phase') return 'league_phase';
+  if (stage === 'final') return 'final:leg1';
+  return `${stage}:leg${leg}`;
+}
+
+export function humansAliveInUcl(state: MpLeagueHostState): string[] {
   const ucl = state.ucl;
   if (!ucl || ucl.completed) return [];
   if (ucl.stage === 'league_phase' || ucl.stage === 'special_transfer') {
@@ -2222,6 +2224,59 @@ function humansAliveInUcl(state: MpLeagueHostState): string[] {
     );
   }
   return alive;
+}
+
+/**
+ * Builds the next UCL tactics-prep consent flow if needed (0ms direct transition, no extra auto-tick).
+ * Requires ONLY currently alive UCL human clubs (or marks allEliminated so host can fast-finish).
+ */
+export function buildUclConsentFlow(
+  state: MpLeagueHostState,
+): Extract<MpLeagueFlow, { kind: 'consent' }> | null {
+  const ucl = state.ucl;
+  if (!ucl || ucl.completed || ucl.stage === 'completed' || state.stage !== 'ucl') {
+    return null;
+  }
+  if (ucl.stage === 'league_phase') {
+    if (ucl.leaguePhaseRound === 0 && state.uclConsentedStage !== 'league_phase') {
+      return {
+        kind: 'consent',
+        key: 'ucl-consent-league_phase',
+        label: 'UCL 리그페이즈',
+        requiredClubIds: [...state.uclHumanClubIds],
+        allEliminated: state.uclHumanClubIds.length === 0,
+      };
+    }
+    return null;
+  }
+  if (ucl.stage === 'special_transfer') return null;
+
+  const stage: UclKnockoutStage = ucl.stage;
+  const isFinal = stage === 'final';
+  const leg: 1 | 2 = isFinal ? 1 : ucl.knockoutLeg;
+  const alive = humansAliveInUcl(state);
+  if (alive.length === 0) {
+    return {
+      kind: 'consent',
+      key: `ucl-consent-finish-${stage}-leg${leg}`,
+      label: 'UCL 전원 탈락 · 남은 토너먼트',
+      requiredClubIds: [],
+      allEliminated: true,
+    };
+  }
+  const token = uclConsentToken(stage, leg);
+  if (state.uclConsentedStage !== token) {
+    const stageLabel = UCL_STAGE_LABELS[stage];
+    const label = isFinal ? `UCL ${stageLabel}` : `UCL ${stageLabel} ${leg}차전`;
+    return {
+      kind: 'consent',
+      key: `ucl-consent-${stage}-leg${leg}`,
+      label,
+      requiredClubIds: alive,
+      allEliminated: false,
+    };
+  }
+  return null;
 }
 
 function tieFixture(
@@ -2278,7 +2333,7 @@ function toCastMatch(
   humanClubIds: string[],
   agg: { aggHomeBefore?: number; aggAwayBefore?: number },
   winnerId: string | null,
-  options: { instant?: boolean } = {},
+  options: { instant?: boolean; tieId?: string } = {},
 ): MpCastMatch {
   const hasEtInEvents = result.events.some((e) => e.minute > 90);
   const allEvents = hasEtInEvents
@@ -2344,6 +2399,7 @@ function toCastMatch(
       awayXg: result.awayXg,
     },
     instant: options.instant,
+    tieId: options.tieId,
   };
 }
 
@@ -2388,25 +2444,11 @@ function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
   const stageLabel = UCL_STAGE_LABELS[stage];
   const label = isFinal ? `UCL ${stageLabel}` : `UCL ${stageLabel} ${leg}차전`;
 
-  if (humansAliveInUcl(state).length === 0) {
-    const done = simulateUclToCompletion({
-      ucl,
-      uclPlayerStats: state.uclPlayerStats,
-    });
-    return {
-      ...state,
-      ucl: stripUclResults(done.ucl),
-      uclPlayerStats: done.uclPlayerStats,
-      todo: [{ t: 'finalize' }],
-    };
-  }
-
-  // Every friend must agree before each knockout stage starts
-  if (state.uclConsentedStage !== stage) {
-    return {
-      ...state,
-      flow: { kind: 'consent', key: `ucl-consent-${stage}`, label: `UCL ${stageLabel}` },
-    };
+  // Pause before every knockout stage & leg (1st leg, 2nd leg, final) for surviving managers only
+  // (or emit allEliminated fallback so host can cleanly fast-finish if 0 survivors remain)
+  const consent = buildUclConsentFlow(state);
+  if (consent) {
+    return { ...state, flow: consent };
   }
 
   const ties = ucl.ties[stage].filter((t) => t.winnerId === null);
@@ -2541,6 +2583,7 @@ function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
       seed.humans,
       seed.agg,
       tieAfter?.winnerId ?? null,
+      { tieId: seed.tieId },
     );
   });
 
@@ -2557,11 +2600,22 @@ function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
     todo: [completed ? { t: 'finalize' } : { t: 'ucl_ko_leg' }],
   };
 
-  if (castMatches.length === 0) return nextState;
+  if (castMatches.length === 0) {
+    const immediateConsent = buildUclConsentFlow(nextState);
+    return immediateConsent ? { ...nextState, flow: immediateConsent } : nextState;
+  }
   const castKey = `cast-${stage}-${leg}`;
   return {
     ...nextState,
-    cast: { key: castKey, title: label, matches: castMatches },
+    cast: {
+      key: castKey,
+      title: label,
+      matches: castMatches,
+      prevUclTies: slimTiesRecord(ucl.ties),
+      prevUclStage: ucl.stage,
+      prevUclKnockoutLeg: ucl.knockoutLeg,
+      prevUclChampionTeamId: ucl.championTeamId,
+    },
     flow: { kind: 'cast', key: castKey },
   };
 }
@@ -2584,19 +2638,35 @@ export function getMpCastDurationMs(state: MpLeagueHostState): number {
   if (!state.cast) return 0;
   const hasEt = state.cast.matches.some((m) => m.extraTime);
   const extraPkMs = getMpTickerExtraPkMs(state.cast.matches);
-  return 7000 + (hasEt ? 2500 : 0) + extraPkMs + 2500;
+  return 7000 + (hasEt ? 2500 : 0) + extraPkMs + 900;
 }
 
 export function endMpLeagueCast(state: MpLeagueHostState): MpLeagueHostState {
   if (state.flow.kind !== 'cast') return state;
-  return { ...state, cast: null, flow: { kind: 'auto' } };
+  const cleared: MpLeagueHostState = { ...state, cast: null, flow: { kind: 'auto' } };
+  const nextConsent = buildUclConsentFlow(cleared);
+  return nextConsent ? { ...cleared, flow: nextConsent } : cleared;
 }
 
 export function grantMpLeagueConsent(state: MpLeagueHostState): MpLeagueHostState {
   if (state.flow.kind !== 'consent' || !state.ucl) return state;
+  if (state.flow.allEliminated) {
+    const done = simulateUclToCompletion({
+      ucl: state.ucl,
+      uclPlayerStats: state.uclPlayerStats,
+    });
+    return {
+      ...state,
+      ucl: stripUclResults(done.ucl),
+      uclPlayerStats: done.uclPlayerStats,
+      todo: [{ t: 'finalize' }],
+      flow: { kind: 'auto' },
+    };
+  }
+  const leg: 1 | 2 = state.ucl.stage === 'final' ? 1 : state.ucl.knockoutLeg;
   return {
     ...state,
-    uclConsentedStage: state.ucl.stage,
+    uclConsentedStage: uclConsentToken(state.ucl.stage, leg),
     flow: { kind: 'auto' },
   };
 }
@@ -2741,6 +2811,18 @@ function slimTies(ties: UclKnockoutTie[]): UclKnockoutTie[] {
   return ties.map((t) => ({ ...t, leg1: slim(t.leg1), leg2: slim(t.leg2) }));
 }
 
+function slimTiesRecord(
+  ties: Record<UclKnockoutStage, UclKnockoutTie[]>,
+): Record<UclKnockoutStage, UclKnockoutTie[]> {
+  return {
+    playoff: slimTies(ties.playoff),
+    r16: slimTies(ties.r16),
+    qf: slimTies(ties.qf),
+    sf: slimTies(ties.sf),
+    final: slimTies(ties.final),
+  };
+}
+
 function buildUclLive(state: MpLeagueHostState): MpUclLive | null {
   const ucl = state.ucl;
   if (!ucl || state.stage === 'league') return null;
@@ -2762,13 +2844,7 @@ function buildUclLive(state: MpLeagueHostState): MpUclLive | null {
     leaguePhaseRound: ucl.leaguePhaseRound,
     clubs: ucl.clubs,
     standings: ucl.standings,
-    ties: {
-      playoff: slimTies(ucl.ties.playoff),
-      r16: slimTies(ucl.ties.r16),
-      qf: slimTies(ucl.ties.qf),
-      sf: slimTies(ucl.ties.sf),
-      final: slimTies(ucl.ties.final),
-    },
+    ties: slimTiesRecord(ucl.ties),
     championTeamId: ucl.championTeamId,
     humanClubIds: state.uclHumanClubIds,
     lastScores: state.uclLastScores,

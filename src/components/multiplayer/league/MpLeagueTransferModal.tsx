@@ -17,6 +17,10 @@ import { useMemo, useState } from 'react';
 import { FORMATIONS } from '../../../data/formations';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 import {
+  calculateChemistry,
+  calculateTeamRatings,
+} from '../../../engine/chemistryEngine';
+import {
   evaluatePositionFit,
   formatMainPositions,
 } from '../../../engine/positionEngine';
@@ -45,6 +49,7 @@ import {
 } from '../../../types/player';
 import { CountryFlagSvg } from '../../common/CountryFlagSvg';
 import { JerseySvg } from '../../common/JerseySvg';
+import { PitchBoard } from '../../common/PitchBoard';
 import { PlayerDetailModal } from '../../common/PlayerDetailModal';
 import { PlayerNameButton } from '../../common/PlayerNameButton';
 
@@ -183,6 +188,8 @@ export function MpLeagueTransferModal({
   onCounter,
   onFinish,
   myFormation = '4-3-3',
+  myTactic = 'balanced',
+  managerTraitId = null,
 }: MpLeagueTransferModalProps) {
   useBodyScrollLock(true);
   const [counterOfferId, setCounterOfferId] = useState<string | null>(null);
@@ -200,6 +207,26 @@ export function MpLeagueTransferModal({
   const pendingCount = offers.filter((o) => o.status === 'pending').length;
 
   const formationSlots = (FORMATIONS[myFormation] ?? FORMATIONS['4-3-3']).slots;
+
+  const myChemistry = useMemo(
+    () => calculateChemistry(myFormation, myStarters, myTactic, managerTraitId),
+    [myFormation, myStarters, myTactic, managerTraitId],
+  );
+  const myRatings = useMemo(
+    () =>
+      calculateTeamRatings(
+        myFormation,
+        myStarters,
+        myChemistry.total,
+        managerTraitId,
+        myChemistry.slotSynergies,
+      ),
+    [myFormation, myStarters, myChemistry.total, myChemistry.slotSynergies, managerTraitId],
+  );
+  const selectedUserSlotKeys = useMemo(
+    () => new Set(selectedUserSlots.map((s) => slotKey(s))),
+    [selectedUserSlots],
+  );
 
   const userRosterEntries = useMemo(() => {
     const entries: {
@@ -1214,120 +1241,68 @@ export function MpLeagueTransferModal({
                     </div>
                   </div>
 
-                  {/* RIGHT: Our Team Formation Pitch + 5 Bench */}
+                  {/* RIGHT: Unified Original Squad Pitch + Free Bench (100% identical chemistry, +/- OVR, A/M/D) */}
                   <div className="rounded-2xl border border-rose-500/25 bg-[#0c1320] p-3 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-extrabold text-rose-300">
-                        우리 팀 ({myFormation})
+                        📤 우리 팀 ({myFormation} · 보내는 선수 {selectedUserSlots.length}/3)
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        클릭하여 보낼 선수 선택
+                        클릭 선택 · 우클릭 상세
                       </span>
                     </div>
 
-                    <div className="pitch-surface relative aspect-[4/4.2] w-full overflow-hidden rounded-xl border border-slate-800">
-                      <svg
-                        viewBox="0 0 100 100"
-                        preserveAspectRatio="none"
-                        className="pointer-events-none absolute inset-0 h-full w-full"
-                        aria-hidden="true"
-                      >
-                        <rect
-                          x="4"
-                          y="4"
-                          width="92"
-                          height="92"
-                          rx="1.5"
-                          fill="none"
-                          stroke="rgba(255,255,255,0.11)"
-                          strokeWidth="0.5"
-                        />
-                        <line
-                          x1="4"
-                          y1="50"
-                          x2="96"
-                          y2="50"
-                          stroke="rgba(255,255,255,0.10)"
-                          strokeWidth="0.4"
-                        />
-                        <circle
-                          cx="50"
-                          cy="50"
-                          r="11"
-                          fill="none"
-                          stroke="rgba(255,255,255,0.10)"
-                          strokeWidth="0.4"
-                        />
-                      </svg>
-                      {formationSlots.map((slot, idx) => {
-                        const p = myStarters[idx];
-                        if (!p) return null;
-                        const ref: SlotRef = { area: 'starter', index: idx };
-                        const selected = selectedUserSlots.some(
-                          (s) => slotKey(s) === slotKey(ref),
-                        );
-                        const tier = getCardTier(p);
+                    <PitchBoard
+                      formation={myFormation}
+                      starters={myStarters}
+                      bench={myBench}
+                      chemistry={myChemistry}
+                      managerTraitId={managerTraitId}
+                      conditionByPlayerId={conditionMap}
+                      selectedSlotKeys={selectedUserSlotKeys}
+                      selectedTone="rose"
+                      onSlotClick={(area, index) => {
+                        const p = area === 'starter' ? myStarters[index] : myBench[index];
+                        if (!p) return;
+                        handleToggleUserSlot({ area, index });
+                      }}
+                      onInspectPlayer={(p) => setInspectedPlayer(p)}
+                      slotExtraMeta={(_area, _index, p) => {
+                        const tpVal = computePlayerTradePoints({
+                          player: p,
+                          receivingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                          conditionMap,
+                        });
                         return (
-                          <button
-                            key={`u-st-${slot.index}`}
-                            type="button"
-                            onClick={() => handleToggleUserSlot(ref)}
-                            style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
-                            className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center rounded-lg px-1.5 py-1 min-w-[54px] sm:min-w-[64px] max-w-[78px] text-center transition-colors cursor-pointer touch-manipulation ${
-                              selected
-                                ? 'bg-rose-950/95 border-2 border-rose-400 ring-2 ring-rose-400/50'
-                                : tier === 'legend'
-                                  ? 'bg-amber-950/90 border border-amber-400/80'
-                                  : tier === 'superstar'
-                                    ? 'bg-cyan-950/90 border border-cyan-400/80'
-                                    : 'bg-[#0f1621]/95 border border-slate-700/80 hover:border-rose-400/60'
-                            }`}
-                          >
-                            <span className="font-display text-[11px] font-bold text-white leading-none tabular-nums">
-                              {p.ovr}
+                          <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[7.5px] sm:text-[8px] tabular-nums leading-none">
+                            <span className="font-mono font-bold text-rose-300/95">
+                              {Math.round(tpVal.effectiveTp)}
                             </span>
-                            <span className="mt-0.5 max-w-[68px] truncate text-[8.5px] font-semibold text-slate-200 leading-tight">
-                              {shortPitchName(p.name)}
-                            </span>
-                            <span className="text-[7.5px] text-slate-400">
-                              {slot.label}
-                            </span>
-                          </button>
+                            {tpVal.needModPct >= 30 && (
+                              <span className="text-[8px] font-black text-amber-300">
+                                🔥
+                              </span>
+                            )}
+                            {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
+                              <span className="text-[8px] font-black text-sky-300">
+                                ✨
+                              </span>
+                            )}
+                          </div>
                         );
-                      })}
-                    </div>
-
-                    {/* Our Bench */}
-                    <div className="grid grid-cols-5 gap-1">
-                      {myBench.slice(0, 5).map((p, idx) => {
-                        const ref: SlotRef = { area: 'bench', index: idx };
-                        const selected = selectedUserSlots.some(
-                          (s) => slotKey(s) === slotKey(ref),
-                        );
-                        return (
-                          <button
-                            key={`u-bn-${p.id}`}
-                            type="button"
-                            onClick={() => handleToggleUserSlot(ref)}
-                            className={`rounded-lg border p-1.5 text-center transition-colors cursor-pointer touch-manipulation ${
-                              selected
-                                ? 'border-rose-400 bg-rose-500/20'
-                                : 'border-slate-800 bg-[#0a0f18] hover:border-slate-600'
-                            }`}
-                          >
-                            <div className="text-[8px] font-bold text-slate-400">
-                              {p.position}
-                            </div>
-                            <div className="font-display text-xs font-bold text-white tabular-nums">
-                              {p.ovr}
-                            </div>
-                            <div className="truncate text-[9px] text-slate-300">
-                              {shortPitchName(p.name)}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                      }}
+                      compact
+                      showBench
+                      showChemBreakdown={false}
+                      showChemLegend
+                      headerRight={
+                        <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
+                          A <strong className="text-white">{myRatings.effectiveAtt}</strong> · M{' '}
+                          <strong className="text-white">{myRatings.effectiveMid}</strong> · D{' '}
+                          <strong className="text-white">{myRatings.effectiveDef}</strong>
+                        </span>
+                      }
+                    />
                   </div>
                 </div>
               ) : (

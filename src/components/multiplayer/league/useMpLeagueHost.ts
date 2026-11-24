@@ -57,6 +57,7 @@ import {
   updateRoomLeagueSettings,
 } from '../../../services/mpLeagueService';
 import type {
+  MpLeagueActivity,
   MpLeagueHostState,
   MpLeagueHuman,
   MpLeagueLive,
@@ -89,6 +90,10 @@ interface HostInputs {
   picks: MpLeaguePickRow[];
   /** Bumped (without re-rendering) whenever a league table changed */
   changeRef: { current: number };
+  /** Broadcast-delivered ack keys per playerId (allows 0ms transition before Postgres Changes arrives) */
+  optimisticAckByPlayerRef?: { current: Record<string, string[]> };
+  /** Broadcast-delivered lock hints per playerId */
+  optimisticLockByPlayerRef?: { current: Record<string, MpLeagueActivity['lock'] | undefined> };
   /** Called immediately after the host publishes a new live state so host UI updates in lockstep with Broadcast. */
   onHostLiveCommitted?: (live: MpLeagueLive) => void;
 }
@@ -472,13 +477,19 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         await commit({ ...st, h2hLive: { ...live, match: nextMatch } }, squads, p.room.id);
       };
 
+      const hasAck = (playerId: string | undefined, key: string): boolean => {
+        if (!playerId) return false;
+        const row = p.players.find((r) => r.player_id === playerId);
+        if (row?.activity?.ackKeys?.includes(key)) return true;
+        return Boolean(p.optimisticAckByPlayerRef?.current[playerId]?.includes(key));
+      };
+
       if (!match) {
         const key = mpH2HPreMatchKey(spec, st.seasonKey);
         const preSkipKey = mpH2HPreSkipKey(spec, st.seasonKey);
         const bothPreSkip = [spec.homeClubId, spec.awayClubId].every((clubId) => {
           const human = st.humans.find((h) => h.clubId === clubId);
-          const row = p.players.find((r) => r.player_id === human?.playerId);
-          return Boolean(row?.activity?.ackKeys?.includes(preSkipKey));
+          return hasAck(human?.playerId, preSkipKey);
         });
         if (bothPreSkip) {
           const home =
@@ -520,8 +531,7 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         const skipKey = mpH2HSkipKey(match.matchId);
         const bothSkip = [spec.homeClubId, spec.awayClubId].every((clubId) => {
           const human = st.humans.find((h) => h.clubId === clubId);
-          const row = p.players.find((r) => r.player_id === human?.playerId);
-          return Boolean(row?.activity?.ackKeys?.includes(skipKey));
+          return hasAck(human?.playerId, skipKey);
         });
         if (bothSkip) {
           const home = fallbackSide(st, squads, spec.homeClubId, match);
@@ -557,7 +567,7 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         const acked = st.humans.every((human) => {
           const row = p.players.find((r) => r.player_id === human.playerId);
           if (!row) return true;
-          if (row.activity?.ackKeys?.includes(doneKey)) return true;
+          if (hasAck(human.playerId, doneKey)) return true;
           return (
             !p.onlinePlayerIds.includes(human.playerId) && waited > OFFLINE_TIMEOUT_MS
           );
@@ -567,7 +577,9 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         let next = completeMpLeagueH2H(st, match.finalResult);
         if (next.flow.kind === 'auto') next = runMpLeague(next, { squads });
         nextAutoAtRef.current =
-          Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
+          next.flow.kind === 'consent'
+            ? 0
+            : Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
         if (next.flow.kind === 'cast') {
           castUntilRef.current = Date.now() + getMpCastDurationMs(next);
         }
@@ -754,10 +766,15 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         const human = st?.humans.find((h) => h.clubId === clubId);
         return p.players.find((r) => r.player_id === human?.playerId);
       };
+      const ackedByPlayerId = (pid: string, key: string) => {
+        const row = p.players.find((r) => r.player_id === pid);
+        if (row?.activity?.ackKeys?.includes(key)) return true;
+        return Boolean(p.optimisticAckByPlayerRef?.current[pid]?.includes(key));
+      };
       const ackedOrGone = (clubId: string, key: string, offlineMs: number) => {
         const row = humanRow(clubId);
         if (!row) return true;
-        if (row.activity?.ackKeys?.includes(key)) return true;
+        if (ackedByPlayerId(row.player_id, key)) return true;
         return !p.onlinePlayerIds.includes(row.player_id) && waited > offlineMs;
       };
 
@@ -768,17 +785,23 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
 
       if (flow.kind === 'auto') {
         const locked = p.players.some((row) => {
-          const key = lockKey(row);
-          return key !== null && !ignoredLocksRef.current.has(key);
+          const optMap = p.optimisticLockByPlayerRef?.current;
+          const hasOpt = Boolean(optMap && row.player_id in optMap);
+          const effectiveLock = hasOpt ? optMap?.[row.player_id] : row.activity?.lock;
+          if (!effectiveLock) return false;
+          const key = `${row.player_id}:${effectiveLock.reason}:${effectiveLock.since}`;
+          return !ignoredLocksRef.current.has(key);
         });
         if (locked) {
-          nextAutoAtRef.current = Math.max(nextAutoAtRef.current, Date.now() + 1000);
+          nextAutoAtRef.current = Math.max(nextAutoAtRef.current, Date.now() + 300);
           return;
         }
         if (Date.now() < nextAutoAtRef.current) return;
         const next = runMpLeague(st, { squads });
         nextAutoAtRef.current =
-          Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
+          next.flow.kind === 'consent'
+            ? 0
+            : Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
         if (next === st) return;
         if (next.flow.kind === 'cast') {
           castUntilRef.current = Date.now() + getMpCastDurationMs(next);
@@ -824,19 +847,32 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
           ackedOrGone(h.clubId, flow.key, TRANSFER_OFFLINE_MS),
         );
         if (!all) return;
-        nextAutoAtRef.current = Date.now() + 1200;
-        await commit(closeMpLeagueSummary(st), squads, p.room.id);
+        const afterSummary = closeMpLeagueSummary(st);
+        nextAutoAtRef.current = afterSummary.flow.kind === 'consent' ? 0 : Date.now() + 400;
+        await commit(afterSummary, squads, p.room.id);
         return;
       }
 
       if (flow.kind === 'consent') {
-        const all = st.humans.every((h) =>
-          ackedOrGone(h.clubId, flow.key, TRANSFER_OFFLINE_MS),
-        );
-        if (!all) return;
+        let ready = false;
+        if (flow.allEliminated) {
+          // Softlock guard: when 0 survivors remain, host clicks [남은 토너먼트 진행] to finalize
+          ready = ackedByPlayerId(p.room.host_player_id, flow.key);
+        } else {
+          const requiredIds =
+            flow.requiredClubIds && flow.requiredClubIds.length > 0
+              ? flow.requiredClubIds
+              : st.humans.map((h) => h.clubId);
+          ready = requiredIds.every((clubId) =>
+            ackedOrGone(clubId, flow.key, TRANSFER_OFFLINE_MS),
+          );
+        }
+        if (!ready) return;
         const next = runMpLeague(grantMpLeagueConsent(st), { squads });
         nextAutoAtRef.current =
-          Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
+          next.flow.kind === 'consent'
+            ? 0
+            : Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
         if (next.flow.kind === 'cast') {
           castUntilRef.current = Date.now() + getMpCastDurationMs(next);
         }
@@ -846,8 +882,9 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
 
       if (flow.kind === 'cast') {
         if (Date.now() < castUntilRef.current) return;
-        nextAutoAtRef.current = Date.now() + st.settings.autoMs;
-        await commit(endMpLeagueCast(st), squads, p.room.id);
+        const ended = endMpLeagueCast(st);
+        nextAutoAtRef.current = ended.flow.kind === 'consent' ? 0 : Date.now() + 600;
+        await commit(ended, squads, p.room.id);
       }
     };
 

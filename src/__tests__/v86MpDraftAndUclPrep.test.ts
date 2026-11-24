@@ -172,6 +172,8 @@ describe('v8.6 MP equalized draft order, 1-time popup latch, and UCL prep pause'
       kind: 'consent',
       key: 'ucl-consent-league_phase',
       label: 'UCL 리그페이즈',
+      requiredClubIds: [humans[0].clubId],
+      allEliminated: false,
     });
     expect(afterSummary.ucl?.leaguePhaseRound).toBe(0);
 
@@ -184,6 +186,8 @@ describe('v8.6 MP equalized draft order, 1-time popup latch, and UCL prep pause'
       kind: 'consent',
       key: 'ucl-consent-league_phase',
       label: 'UCL 리그페이즈',
+      requiredClubIds: [humans[0].clubId],
+      allEliminated: false,
     });
 
     // After everyone clicks Ready (grantMpLeagueConsent), uclConsentedStage is recorded and flow resumes

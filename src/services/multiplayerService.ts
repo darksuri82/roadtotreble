@@ -894,16 +894,24 @@ export function subscribeToRoom(params: {
       }
     });
 
-  // Periodic safety poll (every 2s) in case a mobile tab was backgrounded & missed a realtime packet
+  const handleVisibility = () => {
+    if (!disposed && document.visibilityState === 'visible') {
+      scheduleRefresh();
+    }
+  };
+  document.addEventListener('visibilitychange', handleVisibility);
+
+  // Periodic safety poll (every 6s; realtime postgres_changes & Broadcast handle instant sync)
   const pollInterval = window.setInterval(() => {
     if (!disposed && document.visibilityState === 'visible') {
       scheduleRefresh();
     }
-  }, 2000);
+  }, 6000);
 
   return () => {
     disposed = true;
     if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+    document.removeEventListener('visibilitychange', handleVisibility);
     window.clearInterval(pollInterval);
     void client.removeChannel(channel);
   };

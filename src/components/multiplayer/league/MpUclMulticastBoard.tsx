@@ -1,5 +1,5 @@
 import { Radio, Star } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
 import type { Club } from '../../../types/league';
 import type {
@@ -7,21 +7,29 @@ import type {
   MpCastMatch,
   MpLeagueHuman,
 } from '../../../types/mpLeague';
+import type { UclKnockoutTie } from '../../../types/ucl';
 import { JerseySvg } from '../../common/JerseySvg';
+import type { LiveTieOverlay } from '../../ucl/UclBracketTree';
 
 export interface MpUclMulticastBoardProps {
   cast: MpCastLive;
   clubsById: Record<string, Club>;
   humans: MpLeagueHuman[];
   myClubId: string | null;
+  /** Render inline inside the dashboard (above the live bracket) instead of a blocking full-screen modal */
+  inline?: boolean;
+  /** Pre-match ties used to map home/away goals to Team A / Team B for live bracket overlays */
+  bracketTies?: UclKnockoutTie[];
+  /** Emits live bracket tie overlays as the wall-clock match stream progresses */
+  onLiveOverlays?: (overlays: Record<string, LiveTieOverlay>, settled: boolean) => void;
 }
 
 type CastPhase = 'regular' | 'etBreak' | 'extra' | 'ended' | 'final';
 
-const REGULAR_TICK_MS = 78; // 90' ≈ 7.0s
-const EXTRA_TICK_MS = 83; // 30' ≈ 2.5s
-const ET_BREAK_MS = 900;
-const PENALTY_REVEAL_MS = 800;
+const REGULAR_DURATION_MS = 6800; // 0' -> 90'
+const ET_BREAK_MS = 700;
+const EXTRA_DURATION_MS = 2300; // 90' -> 120'
+const PENALTY_REVEAL_MS = 750;
 
 const CAST_KEYFRAMES = `
 @keyframes mplCastCardFlash {
@@ -72,6 +80,22 @@ function revealMinute(
   return minute;
 }
 
+function computeLiveScore(
+  match: MpCastMatch,
+  minute: number,
+  phase: CastPhase,
+): { home: number; away: number } {
+  const upTo = revealMinute(match, minute, phase);
+  let home = 0;
+  let away = 0;
+  for (const goal of match.goals) {
+    if (goal.minute > upTo) continue;
+    if (goal.teamId === match.homeTeamId) home += 1;
+    else if (goal.teamId === match.awayTeamId) away += 1;
+  }
+  return { home, away };
+}
+
 function CastSide({
   club,
   align,
@@ -102,11 +126,11 @@ function CastSide({
           primaryColor={club.primaryColor}
           secondaryColor={club.secondaryColor}
           pattern={club.pattern}
-          size={34}
+          size={30}
         />
         <div className="min-w-0">
           <div
-            className={`font-display text-sm font-bold leading-tight tracking-wide ${
+            className={`font-display text-xs sm:text-sm font-bold leading-tight tracking-wide ${
               winner ? 'text-amber-200' : 'text-white'
             }`}
           >
@@ -146,14 +170,7 @@ function CastMatchCard({
   nicknameByClubId: Record<string, string>;
   myClubId: string | null;
 }) {
-  const upTo = revealMinute(match, minute, phase);
-  let liveHome = 0;
-  let liveAway = 0;
-  for (const goal of match.goals) {
-    if (goal.minute > upTo) continue;
-    if (goal.teamId === match.homeTeamId) liveHome += 1;
-    else if (goal.teamId === match.awayTeamId) liveAway += 1;
-  }
+  const { home: liveHome, away: liveAway } = computeLiveScore(match, minute, phase);
 
   const home = clubsById[match.homeTeamId] ?? fallbackClub(match.homeTeamId);
   const away = clubsById[match.awayTeamId] ?? fallbackClub(match.awayTeamId);
@@ -161,7 +178,6 @@ function CastMatchCard({
   const clockOver = phase === 'ended' || phase === 'final';
   const matchOver = clockOver || (!match.extraTime && minute >= 90);
   const hasPens = Boolean(match.penalties);
-  // Shootout matches hold their final state until the shootout is revealed.
   const settled = hasPens ? phase === 'final' : matchOver;
   const winnerId = settled
     ? (match.winnerId ?? match.penalties?.winnerId ?? null)
@@ -187,7 +203,7 @@ function CastMatchCard({
   return (
     <div
       title={match.label}
-      className="relative overflow-hidden rounded-xl border border-slate-800 bg-[#111822] px-3 py-3"
+      className="relative overflow-hidden rounded-xl border border-slate-800 bg-[#111822] px-3 py-2.5"
     >
       {liveHome + liveAway > 0 && (
         <span
@@ -223,7 +239,7 @@ function CastMatchCard({
         </div>
       </div>
 
-      <div className="relative mt-2.5 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+      <div className="relative mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
         <CastSide
           club={home}
           align="left"
@@ -234,7 +250,7 @@ function CastMatchCard({
         />
 
         <div className="flex flex-col items-center">
-          <div className="flex items-center gap-1.5 font-display text-3xl font-bold leading-none tabular-nums text-white">
+          <div className="flex items-center gap-1.5 font-display text-2xl sm:text-3xl font-bold leading-none tabular-nums text-white">
             <span
               key={`h-${liveHome}`}
               className="inline-block min-w-[1ch] text-center"
@@ -246,7 +262,7 @@ function CastMatchCard({
             >
               {liveHome}
             </span>
-            <span className="text-xl text-slate-600">:</span>
+            <span className="text-lg sm:text-xl text-slate-600">:</span>
             <span
               key={`a-${liveAway}`}
               className="inline-block min-w-[1ch] text-center"
@@ -260,7 +276,7 @@ function CastMatchCard({
             </span>
           </div>
           {hasAgg && (
-            <div className="mt-1.5 whitespace-nowrap text-[10px] font-bold tabular-nums text-slate-400">
+            <div className="mt-1 whitespace-nowrap text-[10px] font-bold tabular-nums text-slate-400">
               합산 {(match.aggHomeBefore ?? 0) + liveHome} –{' '}
               {(match.aggAwayBefore ?? 0) + liveAway}
             </div>
@@ -285,57 +301,138 @@ function MpUclMulticastBoardInner({
   clubsById,
   humans,
   myClubId,
+  inline = false,
+  bracketTies,
+  onLiveOverlays,
 }: MpUclMulticastBoardProps) {
-  const [minute, setMinute] = useState(0);
-  const [phase, setPhase] = useState<CastPhase>('regular');
+  const [clock, setClock] = useState<{ minute: number; phase: CastPhase }>({
+    minute: 0,
+    phase: 'regular',
+  });
+  const onLiveOverlaysRef = useRef(onLiveOverlays);
+  useEffect(() => {
+    onLiveOverlaysRef.current = onLiveOverlays;
+  });
 
   const hasExtraTime = cast.matches.some((m) => m.extraTime);
   const hasPenalties = cast.matches.some((m) => Boolean(m.penalties));
 
+  // Wall-clock + rAF timeline (smooth, background-tab resilient, zero 78ms timer chains)
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let current = 0;
+    const startAt = performance.now();
+    let rafId = 0;
+    let lastMin = -1;
+    let lastPhase: CastPhase = 'regular';
 
-    const finish = () => {
-      if (hasPenalties) {
-        setPhase('ended');
-        timer = setTimeout(() => setPhase('final'), PENALTY_REVEAL_MS);
-      } else {
-        setPhase('final');
-      }
-    };
+    const evaluate = () => {
+      const elapsed = performance.now() - startAt;
+      let nextMin = 0;
+      let nextPhase: CastPhase = 'regular';
 
-    const tickExtra = () => {
-      current += 1;
-      setMinute(current);
-      if (current < 120) {
-        timer = setTimeout(tickExtra, EXTRA_TICK_MS);
-      } else {
-        finish();
-      }
-    };
-
-    const tickRegular = () => {
-      current += 1;
-      setMinute(current);
-      if (current < 90) {
-        timer = setTimeout(tickRegular, REGULAR_TICK_MS);
+      if (elapsed < REGULAR_DURATION_MS) {
+        nextMin = Math.min(90, Math.floor((elapsed / REGULAR_DURATION_MS) * 90));
+        nextPhase = 'regular';
       } else if (hasExtraTime) {
-        setPhase('etBreak');
-        timer = setTimeout(() => {
-          setPhase('extra');
-          timer = setTimeout(tickExtra, EXTRA_TICK_MS);
-        }, ET_BREAK_MS);
+        const afterReg = elapsed - REGULAR_DURATION_MS;
+        if (afterReg < ET_BREAK_MS) {
+          nextMin = 90;
+          nextPhase = 'etBreak';
+        } else if (afterReg < ET_BREAK_MS + EXTRA_DURATION_MS) {
+          const etFrac = (afterReg - ET_BREAK_MS) / EXTRA_DURATION_MS;
+          nextMin = Math.min(120, 90 + Math.floor(etFrac * 30));
+          nextPhase = 'extra';
+        } else {
+          nextMin = 120;
+          const afterEt = afterReg - ET_BREAK_MS - EXTRA_DURATION_MS;
+          nextPhase = hasPenalties && afterEt < PENALTY_REVEAL_MS ? 'ended' : 'final';
+        }
       } else {
-        finish();
+        nextMin = 90;
+        const afterReg = elapsed - REGULAR_DURATION_MS;
+        nextPhase = hasPenalties && afterReg < PENALTY_REVEAL_MS ? 'ended' : 'final';
       }
+
+      if (nextMin !== lastMin || nextPhase !== lastPhase) {
+        lastMin = nextMin;
+        lastPhase = nextPhase;
+        setClock({ minute: nextMin, phase: nextPhase });
+      }
+      return nextPhase === 'final';
     };
 
-    timer = setTimeout(tickRegular, REGULAR_TICK_MS);
+    const step = () => {
+      const done = evaluate();
+      if (!done) {
+        rafId = window.requestAnimationFrame(step);
+      }
+    };
+    rafId = window.requestAnimationFrame(step);
+
+    // Watchdog for backgrounded tabs where rAF pauses
+    const watchdog = window.setInterval(() => {
+      if (evaluate()) window.clearInterval(watchdog);
+    }, 350);
+
     return () => {
-      if (timer !== undefined) clearTimeout(timer);
+      window.cancelAnimationFrame(rafId);
+      window.clearInterval(watchdog);
     };
   }, [hasExtraTime, hasPenalties]);
+
+  // Publish live overlays to the shared UclBracketTree (spoiler-free until phase === 'final')
+  useEffect(() => {
+    if (!onLiveOverlaysRef.current) return;
+    const tieById = new Map<string, UclKnockoutTie>();
+    for (const t of bracketTies ?? []) tieById.set(t.id, t);
+
+    const overlays: Record<string, LiveTieOverlay> = {};
+    for (const m of cast.matches) {
+      const tie =
+        (m.tieId ? tieById.get(m.tieId) : undefined) ??
+        (bracketTies ?? []).find(
+          (t) =>
+            (t.teamAId === m.homeTeamId && t.teamBId === m.awayTeamId) ||
+            (t.teamAId === m.awayTeamId && t.teamBId === m.homeTeamId),
+        );
+      if (!tie) continue;
+      const { home, away } = computeLiveScore(m, clock.minute, clock.phase);
+      const aIsHome = tie.teamAId === m.homeTeamId;
+      const liveGoalsA = aIsHome ? home : away;
+      const liveGoalsB = aIsHome ? away : home;
+      const matchOver =
+        clock.phase === 'ended' ||
+        clock.phase === 'final' ||
+        (!m.extraTime && clock.minute >= 90);
+      const settled = m.penalties ? clock.phase === 'final' : matchOver;
+      const clockLabel = settled
+        ? m.extraTime
+          ? 'AET'
+          : 'FT'
+        : clock.phase === 'etBreak'
+          ? '연장전'
+          : `${clock.minute}'`;
+
+      overlays[tie.id] = {
+        liveGoalsA,
+        liveGoalsB,
+        clockLabel,
+        isLive: !settled,
+        penaltyScoreA:
+          settled && m.penalties
+            ? aIsHome
+              ? m.penalties.home
+              : m.penalties.away
+            : undefined,
+        penaltyScoreB:
+          settled && m.penalties
+            ? aIsHome
+              ? m.penalties.away
+              : m.penalties.home
+            : undefined,
+      };
+    }
+    onLiveOverlaysRef.current(overlays, clock.phase === 'final');
+  }, [cast.matches, bracketTies, clock.minute, clock.phase]);
 
   const nicknameByClubId = useMemo(() => {
     const map: Record<string, string> = {};
@@ -343,7 +440,8 @@ function MpUclMulticastBoardInner({
     return map;
   }, [humans]);
 
-  // Most recent revealed goal across every match (later matches win ties).
+  const { minute, phase } = clock;
+
   let latest: {
     id: string;
     minute: number;
@@ -375,102 +473,112 @@ function MpUclMulticastBoardInner({
   const clockLabel =
     phase === 'etBreak' ? '연장전' : running ? `${minute}'` : '종료';
 
-  return (
+  const boardContent = (
     <div
       id="mp-ucl-multicast-board"
-      className="modal-backdrop fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/88 p-3 sm:p-4"
+      className={`overflow-hidden rounded-2xl border shadow-2xl ${
+        inline
+          ? 'border-sky-400/45 bg-[#0b1426]'
+          : 'modal-panel modal-scroll w-full max-w-3xl overflow-y-auto overflow-x-hidden border-slate-800 bg-[#0d131c]'
+      }`}
     >
-      <ModalBodyLock />
       <style>{CAST_KEYFRAMES}</style>
-      <div className="modal-panel modal-scroll w-full max-w-3xl overflow-y-auto overflow-x-hidden rounded-2xl border border-slate-800 bg-[#0d131c] shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <Star className="h-4 w-4 shrink-0 fill-current text-sky-300" />
-            <h2 className="truncate font-display text-base font-bold tracking-wide text-white sm:text-lg">
-              {cast.title}
-            </h2>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-3.5 py-2.5 sm:px-4 sm:py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Star className="h-4 w-4 shrink-0 fill-current text-sky-300" />
+          <h2 className="truncate font-display text-sm sm:text-base font-bold tracking-wide text-white">
+            {cast.title}
+          </h2>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-black tracking-widest ${
+              running
+                ? 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+                : 'border-slate-700 bg-slate-900/80 text-slate-500'
+            }`}
+          >
             <span
-              className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-black tracking-widest ${
+              className={`h-1.5 w-1.5 rounded-full ${
+                running ? 'bg-rose-400' : 'bg-slate-600'
+              }`}
+              style={
                 running
-                  ? 'border-rose-500/40 bg-rose-500/10 text-rose-300'
-                  : 'border-slate-700 bg-slate-900/80 text-slate-500'
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  running ? 'bg-rose-400' : 'bg-slate-600'
-                }`}
-                style={
-                  running
-                    ? { animation: 'mplCastLiveDot 1s ease-in-out infinite' }
-                    : undefined
-                }
-              />
-              LIVE
-            </span>
-            <span
-              className={`min-w-[3.25rem] rounded-md border px-2 py-1 text-center font-display text-sm font-bold tabular-nums ${
-                phase === 'etBreak' || phase === 'extra'
-                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
-                  : 'border-slate-700 bg-[#0b1018] text-slate-100'
-              }`}
-            >
-              {clockLabel}
-            </span>
-          </div>
-        </div>
-
-        {/* Score cards */}
-        <div
-          className={`grid grid-cols-1 gap-2.5 p-3 sm:p-4 ${
-            cast.matches.length > 1 ? 'sm:grid-cols-2' : ''
-          }`}
-        >
-          {cast.matches.map((match) => (
-            <CastMatchCard
-              key={match.key}
-              match={match}
-              minute={minute}
-              phase={phase}
-              clubsById={clubsById}
-              nicknameByClubId={nicknameByClubId}
-              myClubId={myClubId}
+                  ? { animation: 'mplCastLiveDot 1s ease-in-out infinite' }
+                  : undefined
+              }
             />
-          ))}
-        </div>
-
-        {/* Ticker */}
-        <div className="flex items-center gap-2.5 border-t border-slate-800 bg-[#0b1018] px-4 py-2.5">
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-black text-amber-300">
-            <Radio className="h-3 w-3" />
-            속보
+            LIVE
           </span>
-          <div className="min-w-0 flex-1 overflow-hidden">
-            {latestGoal !== null ? (
-              <div
-                key={latestGoal.id}
-                className="truncate text-xs font-bold text-slate-100"
-                style={{ animation: 'mplCastTickerIn 0.3s ease-out 1' }}
-              >
-                <span className="tabular-nums text-amber-300">
-                  {latestGoal.minute}&apos;
-                </span>{' '}
-                골 — {latestGoal.scorer} (
-                {clubsById[latestGoal.teamId]?.shortName ??
-                  fallbackClub(latestGoal.teamId).shortName}
-                )
-              </div>
-            ) : (
-              <div className="truncate text-xs font-semibold text-slate-400">
-                {cast.title}
-              </div>
-            )}
-          </div>
+          <span
+            className={`min-w-[3.25rem] rounded-md border px-2 py-0.5 text-center font-display text-xs sm:text-sm font-bold tabular-nums ${
+              phase === 'etBreak' || phase === 'extra'
+                ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                : 'border-slate-700 bg-[#0b1018] text-slate-100'
+            }`}
+          >
+            {clockLabel}
+          </span>
         </div>
       </div>
+
+      {/* Score cards */}
+      <div
+        className={`grid grid-cols-1 gap-2 p-3 ${
+          cast.matches.length > 1 ? 'sm:grid-cols-2' : ''
+        }`}
+      >
+        {cast.matches.map((match) => (
+          <CastMatchCard
+            key={match.key}
+            match={match}
+            minute={minute}
+            phase={phase}
+            clubsById={clubsById}
+            nicknameByClubId={nicknameByClubId}
+            myClubId={myClubId}
+          />
+        ))}
+      </div>
+
+      {/* Ticker */}
+      <div className="flex items-center gap-2.5 border-t border-slate-800 bg-[#0b1018] px-3.5 py-2">
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-500/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-black text-amber-300">
+          <Radio className="h-3 w-3" />
+          속보
+        </span>
+        <div className="min-w-0 flex-1 overflow-hidden">
+          {latestGoal !== null ? (
+            <div
+              key={latestGoal.id}
+              className="truncate text-xs font-bold text-slate-100"
+              style={{ animation: 'mplCastTickerIn 0.3s ease-out 1' }}
+            >
+              <span className="tabular-nums text-amber-300">
+                {latestGoal.minute}&apos;
+              </span>{' '}
+              골 — {latestGoal.scorer} (
+              {clubsById[latestGoal.teamId]?.shortName ??
+                fallbackClub(latestGoal.teamId).shortName}
+              )
+            </div>
+          ) : (
+            <div className="truncate text-xs font-semibold text-slate-400">
+              {cast.title}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  if (inline) return boardContent;
+
+  return (
+    <div className="modal-backdrop fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/88 p-3 sm:p-4">
+      <ModalBodyLock />
+      {boardContent}
     </div>
   );
 }

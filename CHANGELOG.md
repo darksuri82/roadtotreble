@@ -5,6 +5,23 @@
 
 ---
 
+## v8.7 — 챔스 1·2차전 전술 정비·생존자 한정 준비완료 · 0ms 즉시 반응 최적화 · 공용 실시간 대진표 · 이적시장 원본 피치 통일
+
+- **챔스 1차전↔2차전 전술 준비 & 멀티 생존자 한정 준비 완료 (`src/types/mpLeague.ts`, `src/engine/mpLeagueEngine.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - `uclConsentedStage`를 스테이지+차전 단위(`${stage}:leg${leg}`)로 세분화하고 `buildUclConsentFlow` / `humansAliveInUcl`을 도입해 1차전 종료 후 2차전 진입 전에도 전술 정비 및 준비 완료 대기를 거치도록 개편(싱글 `UclDashboard`도 1차전 종료 모달 `전술 정비 · 2차전 준비` 및 `2차전 시작 (2D 중계)` / `2차전 스킵` CTA 명확화).
+  - 멀티리그 토너먼트 단계·차전 전환 시 탈락자를 제외하고 `requiredClubIds`(현재 챔스 생존자) 전원만 `[준비 완료]`를 누르면 즉시 진행(`생존자 준비 X/Y` 배지, 탈락자는 관전 표시). 생존자 0명(전원 탈락) 시 `allEliminated: true`로 방장에게 `[남은 토너먼트 진행]` 버튼을 제공해 소프트락 방지.
+- **준비 완료 0ms 반응 & 멀티플레이 전역 병목 최적화 (`src/components/multiplayer/league/MpLeagueRoot.tsx`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `src/services/multiplayerService.ts`, `src/components/multiplayer/league/MpUclMulticastBoard.tsx`)**:
+  - `endMpLeagueCast`·리그페이즈 8R 종료·`closeMpLeagueSummary`·H2H 종료 직후 다음 `consent`로 즉시 직행(인공 5~9초 `autoMs` 대기 제거, `getMpCastDurationMs` 잔여 대기 단축).
+  - `MpLeagueBroadcastEvent` `player_signal`에 `ackKey`·`lock`을 실어 DB 응답 대기 전 0ms 낙관적 UI 반영 + Broadcast 즉시 전파(`optimisticAckByPlayerRef`·`optimisticLockByPlayerRef`를 `consent`·`summary`·`transfer`·`h2h` 전 구간 공통 적용).
+  - `subscribeToRoom` 전체 방 폴링을 2초→6초(+`visibilitychange` 즉시 갱신)로 완화, Broadcast `live_updated` 직후 중복 `fetchLeagueRev` 억제, `MpUclMulticastBoard` 78ms 타이머 체인을 월클럭 `requestAnimationFrame` + 백그라운드 워치독으로 전환.
+- **싱글·멀티 공용 실시간 토너먼트 대진표 & 스포일러 원천 차단 (`src/components/ucl/UclBracketTree.tsx`, `src/components/multiplayer/league/MpUclMulticastBoard.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - `UclBracketTree`를 싱글·멀티 공용 실시간 대진표로 개편(`LiveTieOverlay` LIVE 배지·실시간 득점/합산, 현재 라운드 강조, 멀티 참가자 커스텀 팀명·유니폼·닉네임/H2H 배지, 모바일 라운드별 빠른 탭 + `[전체 트리]` 가로 스크롤 전환).
+  - `MpCastLive`에 `prevUclTies`·`prevUclStage`·`prevUclKnockoutLeg`·`prevUclChampionTeamId` 스냅샷과 `tieId`를 포함하고 `MpUclMulticastBoard`를 대진표 바로 위 인라인 전광판으로 통합해, `FT`(연장·PK 포함) 전 승자 확정·탈락 톤다운·다음 라운드 선노출을 원천 차단. 싱글·멀티 모두 토너먼트 진입 시 대진표로 자연 전환(리그페이즈 최종 순위표는 작은 탭으로 유지).
+- **이적시장 원본 포메이션 피치 통일 (`src/components/common/PitchBoard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:
+  - `PitchBoard`에 다중 선택용 `selectedSlotKeys`·`selectedTone` 및 컴팩트 `slotExtraMeta`(트레이드 가치 TP·상대 니즈 아이콘)만 최소 확장하고, 싱글(일반 트레이드·레전드 FA)·멀티 이적시장 우측 내 스쿼드 피치를 평소 스쿼드와 100% 동일한 `PitchBoard(compact)` + `calculateChemistry`/`calculateTeamRatings`로 전면 교체(4색 케미선·총 케미·`+N`/`-N`·실효 OVR·우상단 `A/M/D`·자유 벤치·케미선 클릭 해제·트레이드 즉시 재계산 반영, `v87UclReadyBracketTransfer.test.ts` 테스트 추가).
+
+---
+
 ## v8.6 — 멀티 드래프트 균등 순환 순서·내 턴 알림 · 관전자 하프타임 차단 · 컵 우승 팝업 1회 고정 · UCL 리그페이즈 명칭/전술 정비 개편
 
 - **멀티 드래프트 룰렛·첫 턴 균등 순환 배분 (`src/engine/mpLeagueDraft.ts`, `src/components/multiplayer/league/MpLeagueDraftBoard.tsx`)**:
