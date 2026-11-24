@@ -175,7 +175,8 @@ export interface MpH2HSpec {
   knockout: boolean;
   aggHomeBefore?: number;
   aggAwayBefore?: number;
-  speed: 2 | 4;
+  speed: 1 | 2 | 4;
+  isFinal?: boolean;
 }
 
 export interface MpH2HLive {

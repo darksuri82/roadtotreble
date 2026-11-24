@@ -734,6 +734,10 @@ function MpLeagueH2HInner({
       season: { liveHalftime: adaptedHalftime, allPlayerStats: {} },
     },
     myTeamId: viewHuman.clubId,
+    simSeed: match.matchId,
+    isFinalMatch: Boolean(spec.isFinal),
+    homeStartersOverride: match.hostStarters,
+    awayStartersOverride: match.guestStarters,
     opponentRoster: viewIsHome ? match.guestStarters : match.hostStarters,
     opponentManagerOverride: {
       name: oppHuman.nickname,

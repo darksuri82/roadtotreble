@@ -1489,6 +1489,9 @@ export function MultiplayerArena() {
         },
       },
       myTeamId,
+      simSeed: matchState.matchId,
+      homeStartersOverride: matchState.hostStarters,
+      awayStartersOverride: matchState.guestStarters,
       opponentRoster: isHost ? matchState.guestStarters : matchState.hostStarters,
       opponentManagerOverride: {
         name: oppRow.nickname,

@@ -16,7 +16,7 @@ import {
   Wand2,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getClubManager } from '../../data/aiManagers';
 import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
@@ -24,6 +24,7 @@ import { PLAYSTYLES } from '../../data/playstyles';
 import { calculateChemistry } from '../../engine/chemistryEngine';
 import { buildAiClubRoster } from '../../engine/dataLoader';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
+import { resolvePitchFinalTheme } from '../../engine/pitchSimEngine';
 import {
   computePlayerStaminaPct,
   getPlayerStaminaStat,
@@ -66,12 +67,7 @@ import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { TacticsGuideModal } from '../common/TacticsGuideModal';
 import { UnifiedTacticsStrip } from '../common/UnifiedTacticsStrip';
-import {
-  DRAMATIC_REVEAL_MS,
-  DRAMATIC_TOTAL_MS,
-  PitchMatch2D,
-} from './PitchMatch2D';
-import type { DramaticHighlightPayload } from './PitchMatch2D';
+import { PitchMatch2D } from './PitchMatch2D';
 
 export interface LiveMatchBroadcastOverride {
   state: {
@@ -87,6 +83,11 @@ export interface LiveMatchBroadcastOverride {
     };
   };
   myTeamId?: string;
+  simSeed?: string;
+  isFinalMatch?: boolean;
+  myManagerOvr?: number;
+  homeStartersOverride?: (Player | null)[];
+  awayStartersOverride?: (Player | null)[];
   opponentRoster?: Player[];
   opponentManagerOverride?: {
     name: string;
@@ -151,12 +152,6 @@ interface LiveMatchBroadcastProps {
 }
 
 type BroadcastSpeed = 1 | 2 | 4;
-
-const SPEED_MS: Record<BroadcastSpeed, number> = {
-  1: 165,
-  2: 85,
-  4: 38,
-};
 
 function makeEventKey(
   ev: { minute: number; half: 1 | 2; type: string; teamId: string; description: string },
@@ -236,7 +231,7 @@ export function LiveMatchBroadcast({
   useBodyScrollLock(Boolean(halftime));
 
   const lockedSpeed = override?.lockSpeed;
-  const [speed, setSpeed] = useState<BroadcastSpeed>(lockedSpeed ?? 2);
+  const [speed, setSpeed] = useState<BroadcastSpeed>(lockedSpeed ?? 1);
   useEffect(() => {
     if (lockedSpeed !== undefined) setSpeed(lockedSpeed);
   }, [lockedSpeed]);
@@ -281,12 +276,10 @@ export function LiveMatchBroadcast({
   // Penalty Shootout sequential reveal
   const [revealedPenKicks, setRevealedPenKicks] = useState<number>(0);
 
-  // Spoiler-free dramatic slow-motion state for goals, saves, and decisive chances
-  const [dramaticEvent, setDramaticEvent] =
-    useState<DramaticHighlightPayload | null>(null);
-  const [handledHighlightKeys, setHandledHighlightKeys] = useState<string[]>(
-    [],
-  );
+  // Spoiler-free highlight reveal tracking driven directly by PitchMatch2D Fixed-Timestep engine
+  const [highlightActive, setHighlightActive] = useState<boolean>(false);
+  const [revealedHighlightKeys, setRevealedHighlightKeys] = useState<string[]>([]);
+  const [halfCompleted, setHalfCompleted] = useState<boolean>(false);
 
   // Snapshot 1st-half starters once per fixture so starts vs subAppearances are exact
   const firstHalfStartersRef = useRef<Player[]>([]);
@@ -304,15 +297,18 @@ export function LiveMatchBroadcast({
 
   const phase = halftime?.phase ?? null;
 
-  // Reset clock & dramatic state when phase changes across match stages
+  // Reset clock & reveal state when phase changes across match stages
   useEffect(() => {
     if (!halftime) return;
     const resumeMin = halftime.resumeFromMinute;
-    const preHandledKeys = (targetMin: number, eventsSource: MatchEvent[]) =>
+    const keysUpTo = (targetMin: number, eventsSource: MatchEvent[]) =>
       eventsSource
         .map((ev, idx) => ({ ev, key: makeEventKey(ev, idx) }))
         .filter(({ ev }) => ev.minute <= targetMin)
         .map(({ key }) => key);
+
+    setHighlightActive(false);
+    setHalfCompleted(false);
 
     if (phase === 'first_half') {
       const startM =
@@ -327,9 +323,8 @@ export function LiveMatchBroadcast({
       setLiveSubPick(null);
       setPendingLiveSubs([]);
       setRevealedPenKicks(0);
-      setDramaticEvent(null);
-      setHandledHighlightKeys(
-        startM > 0 ? preHandledKeys(startM, halftime.firstHalfEvents) : [],
+      setRevealedHighlightKeys(
+        startM > 0 ? keysUpTo(startM, halftime.firstHalfEvents) : [],
       );
       setSelectedTactic(halftime.userTacticAtKickoff);
     } else if (phase === 'halftime') {
@@ -338,7 +333,7 @@ export function LiveMatchBroadcast({
       setPendingHtSubConfirm(null);
       setHtNotice(null);
       setLiveSubOpen(false);
-      setDramaticEvent(null);
+      setRevealedHighlightKeys(keysUpTo(45, halftime.firstHalfEvents));
     } else if (phase === 'second_half') {
       const startM =
         resumeMin !== undefined && resumeMin >= 45 && resumeMin < 90
@@ -348,39 +343,27 @@ export function LiveMatchBroadcast({
       setLiveSubOpen(false);
       setLiveSubPick(null);
       setPendingLiveSubs([]);
-      setDramaticEvent(null);
-      if (startM > 46 && halftime.fullMatchResult) {
-        setHandledHighlightKeys((prev) =>
-          Array.from(
-            new Set([
-              ...prev,
-              ...preHandledKeys(startM, halftime.fullMatchResult!.events),
-            ]),
-          ),
-        );
-      }
+      const source = halftime.fullMatchResult?.events ?? halftime.firstHalfEvents;
+      const preRevealCutoff = startM > 46 ? startM : 45;
+      setRevealedHighlightKeys(keysUpTo(preRevealCutoff, source));
     } else if (phase === 'extra_time_break') {
       setMinute(90);
       setSwapPick(null);
       setPendingHtSubConfirm(null);
       setHtNotice(null);
       setLiveSubOpen(false);
-      setDramaticEvent(null);
+      if (halftime.fullMatchResult) {
+        setRevealedHighlightKeys(keysUpTo(90, halftime.fullMatchResult.events));
+      }
     } else if (phase === 'extra_time') {
       const startM =
         resumeMin !== undefined && resumeMin >= 90 && resumeMin < 105
           ? Math.max(91, resumeMin)
           : 91;
       setMinute(startM);
-      setDramaticEvent(null);
-      if (startM > 91 && halftime.fullMatchResult) {
-        setHandledHighlightKeys((prev) =>
-          Array.from(
-            new Set([
-              ...prev,
-              ...preHandledKeys(startM, halftime.fullMatchResult!.events),
-            ]),
-          ),
+      if (halftime.fullMatchResult) {
+        setRevealedHighlightKeys(
+          keysUpTo(startM > 91 ? startM : 90, halftime.fullMatchResult.events),
         );
       }
     } else if (phase === 'extra_time_ht') {
@@ -389,28 +372,26 @@ export function LiveMatchBroadcast({
       setPendingHtSubConfirm(null);
       setHtNotice(null);
       setLiveSubOpen(false);
-      setDramaticEvent(null);
+      if (halftime.fullMatchResult) {
+        setRevealedHighlightKeys(keysUpTo(105, halftime.fullMatchResult.events));
+      }
     } else if (phase === 'extra_time_2') {
       const startM =
         resumeMin !== undefined && resumeMin >= 105
           ? Math.max(106, Math.min(119, resumeMin))
           : 106;
       setMinute(startM);
-      setDramaticEvent(null);
-      if (startM > 106 && halftime.fullMatchResult) {
-        setHandledHighlightKeys((prev) =>
-          Array.from(
-            new Set([
-              ...prev,
-              ...preHandledKeys(startM, halftime.fullMatchResult!.events),
-            ]),
-          ),
+      if (halftime.fullMatchResult) {
+        setRevealedHighlightKeys(
+          keysUpTo(startM > 106 ? startM : 105, halftime.fullMatchResult.events),
         );
       }
     } else if (phase === 'penalties') {
       setMinute(120);
-      setDramaticEvent(null);
       setRevealedPenKicks(0);
+      if (halftime.fullMatchResult) {
+        setRevealedHighlightKeys(keysUpTo(120, halftime.fullMatchResult.events));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, halftime?.fixtureId, halftime?.resumeFromMinute]);
@@ -440,158 +421,133 @@ export function LiveMatchBroadcast({
     [allMatchEvents],
   );
 
-  // Manage timed reveal + smooth return to normal speed during dramatic slow-motion
-  useEffect(() => {
-    if (!dramaticEvent) return;
-    const currentKey = dramaticEvent.key;
+  const scheduledEventsForPitch = useMemo(
+    () =>
+      indexedEvents
+        .filter(({ ev }) => !(phase === 'first_half' && ev.half === 2))
+        .map(({ ev, key }) => ({ key, event: ev })),
+    [indexedEvents, phase],
+  );
 
-    const revealTimer = window.setTimeout(() => {
-      setDramaticEvent((prev) =>
-        prev && prev.key === currentKey ? { ...prev, revealed: true } : prev,
-      );
-    }, DRAMATIC_REVEAL_MS);
-
-    const endTimer = window.setTimeout(() => {
-      setDramaticEvent((prev) =>
-        prev && prev.key === currentKey ? null : prev,
-      );
-    }, DRAMATIC_TOTAL_MS);
-
-    return () => {
-      window.clearTimeout(revealTimer);
-      window.clearTimeout(endTimer);
-    };
-    // Trigger once per distinct dramatic highlight key
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dramaticEvent?.key]);
-
-  // Progressive match clock ticker (1st 0'->45', 2nd 46'->90', ET1 91'->105', ET2 106'->120')
-  useEffect(() => {
-    if (!halftime) return;
-    if (
-      phase !== 'first_half' &&
-      phase !== 'second_half' &&
-      phase !== 'extra_time' &&
-      phase !== 'extra_time_2'
-    ) {
-      return;
+  const phaseClockBounds = useMemo(() => {
+    const resumeMin = halftime?.resumeFromMinute;
+    if (phase === 'first_half') {
+      const startM =
+        resumeMin !== undefined && resumeMin < 45 ? Math.max(0, resumeMin) : 0;
+      return { startMinute: startM, endMinute: 45, half: 1 as const, preCutoff: startM > 0 ? startM : -1 };
     }
-    if (dramaticEvent || liveSubOpen) return;
+    if (phase === 'second_half') {
+      const startM =
+        resumeMin !== undefined && resumeMin >= 45 && resumeMin < 90
+          ? Math.max(46, resumeMin)
+          : 46;
+      return { startMinute: startM, endMinute: 90, half: 2 as const, preCutoff: startM > 46 ? startM : 45 };
+    }
+    if (phase === 'extra_time') {
+      const startM =
+        resumeMin !== undefined && resumeMin >= 90 && resumeMin < 105
+          ? Math.max(91, resumeMin)
+          : 91;
+      return { startMinute: startM, endMinute: 105, half: 2 as const, preCutoff: startM > 91 ? startM : 90 };
+    }
+    if (phase === 'extra_time_2') {
+      const startM =
+        resumeMin !== undefined && resumeMin >= 105
+          ? Math.max(106, Math.min(119, resumeMin))
+          : 106;
+      return { startMinute: startM, endMinute: 120, half: 2 as const, preCutoff: startM > 106 ? startM : 105 };
+    }
+    return { startMinute: 45, endMinute: 45, half: 1 as const, preCutoff: 45 };
+  }, [phase, halftime?.resumeFromMinute]);
 
-    const targetEnd =
-      phase === 'first_half'
-        ? 45
-        : phase === 'second_half'
-          ? 90
-          : phase === 'extra_time'
-            ? 105
-            : 120;
+  const preHandledKeysForPhase = useMemo(
+    () =>
+      indexedEvents
+        .filter(({ ev }) => ev.minute <= phaseClockBounds.preCutoff)
+        .map(({ key }) => key),
+    [indexedEvents, phaseClockBounds.preCutoff],
+  );
 
-    // Check if there is an unhandled highlight event at the current minute first
-    const unhandledNow = indexedEvents.find(
-      ({ ev, key }) =>
-        ev.minute === minute &&
-        !(phase === 'first_half' && ev.half === 2) &&
-        (ev.type === 'goal' ||
-          ev.type === 'save' ||
-          ev.type === 'chance' ||
-          ev.type === 'var_offside') &&
-        !handledHighlightKeys.includes(key),
+  const simSessionKey = `${halftime?.fixtureId ?? 'none'}:${phase ?? 'none'}:${phaseClockBounds.startMinute}`;
+
+  // Callbacks driven by PitchMatch2D's Fixed-Timestep Accumulator (exact 1x/2x/4x parity)
+  const handleSimMinuteChange = useCallback((nextMin: number) => {
+    setMinute((prev) => (nextMin > prev ? nextMin : prev));
+  }, []);
+
+  const handleSimEventReveal = useCallback((eventKey: string) => {
+    setRevealedHighlightKeys((prev) =>
+      prev.includes(eventKey) ? prev : [...prev, eventKey],
     );
-    if (unhandledNow) {
-      const triggerTimer = window.setTimeout(() => {
-        setHandledHighlightKeys((prev) => [...prev, unhandledNow.key]);
-        setDramaticEvent({
-          key: unhandledNow.key,
-          event: unhandledNow.ev,
-          revealed: false,
-        });
-      }, 40);
-      return () => window.clearTimeout(triggerTimer);
+  }, []);
+
+  const handleSimHighlightActiveChange = useCallback((active: boolean) => {
+    setHighlightActive(active);
+  }, []);
+
+  const halfCompleteTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (halfCompleteTimerRef.current !== null) {
+        window.clearTimeout(halfCompleteTimerRef.current);
+      }
+    };
+  }, [phase, halftime?.fixtureId]);
+
+  const handleSimHalfComplete = useCallback(() => {
+    if (!halftime) return;
+    if (halfCompleteTimerRef.current !== null) {
+      window.clearTimeout(halfCompleteTimerRef.current);
     }
 
-    if (minute >= targetEnd) {
-      if (phase === 'first_half') {
-        const pauseTimer = window.setTimeout(() => {
-          enterHalftimeLocker();
-        }, 420);
-        return () => window.clearTimeout(pauseTimer);
-      }
-      if (
-        phase === 'second_half' &&
-        halftime.isKnockoutDecider &&
-        halftime.fullMatchResult
-      ) {
-        const h90 =
-          halftime.fullMatchResult.homeGoals90 ??
-          halftime.fullMatchResult.homeGoals;
-        const a90 =
-          halftime.fullMatchResult.awayGoals90 ??
-          halftime.fullMatchResult.awayGoals;
-        const aggH = (halftime.aggHomeBeforeMatch ?? 0) + h90;
-        const aggA = (halftime.aggAwayBeforeMatch ?? 0) + a90;
-        if (aggH === aggA) {
-          const etTimer = window.setTimeout(() => {
-            enterExtraTimeBreak();
-          }, 520);
-          return () => window.clearTimeout(etTimer);
-        }
-      }
-      if (phase === 'extra_time') {
-        const etHtTimer = window.setTimeout(() => {
-          enterEtHalftimeLocker();
-        }, 480);
-        return () => window.clearTimeout(etHtTimer);
-      }
-      if (
-        phase === 'extra_time_2' &&
-        halftime.fullMatchResult?.extraTime?.penalties
-      ) {
-        const pkTimer = window.setTimeout(() => {
-          enterPenaltyShootout();
-        }, 560);
-        return () => window.clearTimeout(pkTimer);
-      }
+    if (phase === 'first_half') {
+      setMinute(45);
+      halfCompleteTimerRef.current = window.setTimeout(() => {
+        enterHalftimeLocker();
+      }, 360);
       return;
     }
 
-    const tickDelay =
-      phase === 'extra_time' || phase === 'extra_time_2'
-        ? Math.max(55, SPEED_MS[speed] * 0.9)
-        : SPEED_MS[speed];
-    const timer = window.setTimeout(() => {
-      const nextMin = Math.min(targetEnd, minute + 1);
-      const nextHighlight = indexedEvents.find(
-        ({ ev, key }) =>
-          ev.minute === nextMin &&
-          !(phase === 'first_half' && ev.half === 2) &&
-          (ev.type === 'goal' ||
-            ev.type === 'save' ||
-            ev.type === 'chance' ||
-            ev.type === 'var_offside') &&
-          !handledHighlightKeys.includes(key),
+    if (phase === 'second_half') {
+      setMinute(90);
+      const fr = halftime.fullMatchResult;
+      const isTiedKo = Boolean(
+        halftime.isKnockoutDecider &&
+          fr &&
+          (halftime.aggHomeBeforeMatch ?? 0) + (fr.homeGoals90 ?? fr.homeGoals) ===
+            (halftime.aggAwayBeforeMatch ?? 0) + (fr.awayGoals90 ?? fr.awayGoals),
       );
-      setMinute(nextMin);
-      if (nextHighlight) {
-        setHandledHighlightKeys((prev) => [...prev, nextHighlight.key]);
-        setDramaticEvent({
-          key: nextHighlight.key,
-          event: nextHighlight.ev,
-          revealed: false,
-        });
+      if (isTiedKo) {
+        halfCompleteTimerRef.current = window.setTimeout(() => {
+          enterExtraTimeBreak();
+        }, 420);
+        return;
       }
-    }, tickDelay);
+      setHalfCompleted(true);
+      return;
+    }
 
-    return () => window.clearTimeout(timer);
+    if (phase === 'extra_time') {
+      setMinute(105);
+      halfCompleteTimerRef.current = window.setTimeout(() => {
+        enterEtHalftimeLocker();
+      }, 380);
+      return;
+    }
+
+    if (phase === 'extra_time_2') {
+      setMinute(120);
+      if (halftime.fullMatchResult?.extraTime?.penalties) {
+        halfCompleteTimerRef.current = window.setTimeout(() => {
+          enterPenaltyShootout();
+        }, 440);
+        return;
+      }
+      setHalfCompleted(true);
+    }
   }, [
     halftime,
     phase,
-    minute,
-    speed,
-    dramaticEvent,
-    liveSubOpen,
-    indexedEvents,
-    handledHighlightKeys,
     enterHalftimeLocker,
     enterExtraTimeBreak,
     enterEtHalftimeLocker,
@@ -610,31 +566,34 @@ export function LiveMatchBroadcast({
     return () => window.clearTimeout(timer);
   }, [phase, revealedPenKicks, totalPenKicks]);
 
-  // Visible events exclude any currently unrevealed slow-motion highlight (zero spoilers!)
+  // Visible events exclude any unrevealed highlight (zero spoilers before ball hits target!)
   const visibleEvents = useMemo(
     () =>
       indexedEvents
         .filter(({ ev, key }) => {
           if (phase === 'first_half' && ev.half === 2) return false;
-          if (ev.minute > minute) return false;
-          if (
-            ev.minute === minute &&
-            (ev.type === 'goal' ||
-              ev.type === 'save' ||
-              ev.type === 'chance' ||
-              ev.type === 'var_offside')
-          ) {
-            if (dramaticEvent && dramaticEvent.key === key && !dramaticEvent.revealed) {
-              return false;
+          const isHighlight =
+            ev.type === 'goal' ||
+            ev.type === 'save' ||
+            ev.type === 'chance' ||
+            ev.type === 'var_offside';
+          if (isHighlight) {
+            if (revealedHighlightKeys.includes(key)) return true;
+            if (
+              halfCompleted ||
+              phase === 'halftime' ||
+              phase === 'extra_time_break' ||
+              phase === 'extra_time_ht' ||
+              phase === 'penalties'
+            ) {
+              return ev.minute <= minute;
             }
-            if (!handledHighlightKeys.includes(key)) {
-              return false;
-            }
+            return false;
           }
-          return true;
+          return ev.minute <= minute;
         })
         .map(({ ev }) => ev),
-    [indexedEvents, phase, minute, dramaticEvent, handledHighlightKeys],
+    [indexedEvents, phase, minute, revealedHighlightKeys, halfCompleted],
   );
 
   if (!halftime) return null;
@@ -659,13 +618,13 @@ export function LiveMatchBroadcast({
     revealedPenKicks >= penaltiesData.kicks.length;
   const isExtraTimeDone =
     phase === 'extra_time_2' &&
-    minute >= 120 &&
-    !dramaticEvent &&
+    (halfCompleted || minute >= 120) &&
+    !highlightActive &&
     !penaltiesData;
   const isSecondHalfDone =
     (phase === 'second_half' &&
-      minute >= 90 &&
-      !dramaticEvent &&
+      (halfCompleted || minute >= 90) &&
+      !highlightActive &&
       !needsExtraTimeAt90) ||
     isExtraTimeDone ||
     isPenaltiesDone;
@@ -1111,7 +1070,7 @@ export function LiveMatchBroadcast({
   };
 
   const handleInstantFinish = () => {
-    setDramaticEvent(null);
+    setHighlightActive(false);
     setLiveSubOpen(false);
     setPendingHtSubConfirm(null);
     if (phase === 'second_half') {
@@ -1134,7 +1093,7 @@ export function LiveMatchBroadcast({
 
   const handleOpenLiveSub = () => {
     if (phase !== 'second_half' || isSecondHalfDone) return;
-    setDramaticEvent(null);
+    setHighlightActive(false);
     setPendingLiveSubs([]);
     setLiveSubPick(null);
     setDraftStarters([...state.starters]);
@@ -1324,6 +1283,101 @@ export function LiveMatchBroadcast({
         ? 'halftime'
         : 'second_half';
 
+  const finalTheme = resolvePitchFinalTheme({
+    competition: halftime.competition,
+    competitionLabel: halftime.competitionLabel,
+    explicitFinal: override?.isFinalMatch,
+  });
+  const isFinalShowcase = finalTheme !== 'none';
+
+  // Full 5-layer inputs for deterministic 2D tactical pitch simulation
+  const myManagerOvr = override?.myManagerOvr ?? 86;
+  const homeTacticLive = fullResult?.homeTactic ?? halftime.homeTactic;
+  const awayTacticLive = fullResult?.awayTactic ?? halftime.awayTactic;
+  const aiAdjForPitch =
+    phase !== 'first_half'
+      ? (fullResult?.aiHalftimeAdjustment ?? halftime.aiHalftimeAdjustment ?? null)
+      : null;
+  const oppActiveStarters =
+    aiAdjForPitch?.updatedStarters && aiAdjForPitch.updatedStarters.length >= 11
+      ? aiAdjForPitch.updatedStarters.slice(0, 11)
+      : oppRoster.slice(0, 11);
+
+  const homeStartersForPitch: (Player | null)[] =
+    override?.homeStartersOverride ??
+    (halftime.isUserHome ? state.starters : oppActiveStarters);
+  const awayStartersForPitch: (Player | null)[] =
+    override?.awayStartersOverride ??
+    (halftime.isUserHome ? oppActiveStarters : state.starters);
+
+  const homeManagerTraitForPitch = halftime.isUserHome
+    ? state.manager.traitId
+    : oppManager.traitId;
+  const awayManagerTraitForPitch = halftime.isUserHome
+    ? oppManager.traitId
+    : state.manager.traitId;
+  const homeManagerOvrForPitch = halftime.isUserHome
+    ? myManagerOvr
+    : oppManager.ovr;
+  const awayManagerOvrForPitch = halftime.isUserHome
+    ? oppManager.ovr
+    : myManagerOvr;
+
+  const homeChemistryForPitch =
+    halftime.isUserHome && !override?.homeStartersOverride
+      ? chemistry
+      : calculateChemistry(
+          liveHomeFormation,
+          homeStartersForPitch,
+          homeTacticLive,
+          homeManagerTraitForPitch,
+        );
+  const awayChemistryForPitch =
+    !halftime.isUserHome && !override?.awayStartersOverride
+      ? chemistry
+      : calculateChemistry(
+          liveAwayFormation,
+          awayStartersForPitch,
+          awayTacticLive,
+          awayManagerTraitForPitch,
+        );
+
+  const userEnteredAtRecord: Record<string, number> = {};
+  enteredAtMap.forEach((enterMin, pid) => {
+    userEnteredAtRecord[pid] = enterMin;
+  });
+  const oppEnteredAtRecord: Record<string, number> = {};
+  if (aiAdjForPitch?.subsMade && aiAdjForPitch.updatedStarters) {
+    const subInNames = new Set(aiAdjForPitch.subsMade.map((s) => s.inPlayerName));
+    for (const p of aiAdjForPitch.updatedStarters) {
+      if (p && subInNames.has(p.name)) {
+        oppEnteredAtRecord[p.id] = 45;
+      }
+    }
+  }
+  const homeEnteredAtForPitch = halftime.isUserHome
+    ? userEnteredAtRecord
+    : oppEnteredAtRecord;
+  const awayEnteredAtForPitch = halftime.isUserHome
+    ? oppEnteredAtRecord
+    : userEnteredAtRecord;
+
+  const userHalftimeAdjusted =
+    phase !== 'first_half' &&
+    Boolean(
+      fullResult?.halftimeAdjusted ||
+        selectedTactic !== halftime.userTacticAtKickoff,
+    );
+  const aiHalftimeAdjusted =
+    phase !== 'first_half' &&
+    Boolean(aiAdjForPitch?.changedTactic || aiAdjForPitch?.changedFormation);
+  const homeHalftimeAdjustedForPitch = halftime.isUserHome
+    ? userHalftimeAdjusted
+    : aiHalftimeAdjusted;
+  const awayHalftimeAdjustedForPitch = halftime.isUserHome
+    ? aiHalftimeAdjusted
+    : userHalftimeAdjusted;
+
   const revealedKicks = penaltiesData
     ? penaltiesData.kicks.slice(0, revealedPenKicks)
     : [];
@@ -1335,12 +1389,29 @@ export function LiveMatchBroadcast({
     revealedKicks[revealedKicks.length - 1]?.awayScoreAfter ?? 0;
   const latestPenKick = revealedKicks[revealedKicks.length - 1] ?? null;
 
+  const modalFrameClass =
+    finalTheme === 'ucl_final'
+      ? 'border-amber-400/55 ring-1 ring-amber-300/20 shadow-[0_0_48px_rgba(245,158,11,0.14)]'
+      : finalTheme === 'cup_final'
+        ? 'border-amber-500/50 ring-1 ring-amber-400/15 shadow-[0_0_38px_rgba(245,158,11,0.11)]'
+        : 'border-slate-800 shadow-2xl';
+  const topBarClass =
+    finalTheme === 'ucl_final'
+      ? 'border-amber-400/35 bg-gradient-to-r from-[#0a101d] via-[#141a2b] to-[#0a101d]'
+      : finalTheme === 'cup_final'
+        ? 'border-amber-500/30 bg-gradient-to-r from-[#0b1019] via-[#171620] to-[#0b1019]'
+        : 'border-slate-800 bg-[#0a0f17]';
+
   return (
     <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/92 p-2 sm:p-4">
-      <div className="modal-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0f1621] shadow-2xl">
+      <div
+        className={`modal-panel flex w-full max-w-6xl flex-col overflow-hidden rounded-2xl border bg-[#0f1621] ${modalFrameClass}`}
+      >
         {/* Top Broadcast Bar */}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-800 bg-[#0a0f17] px-3.5 sm:px-5 py-2.5">
-          <div className="flex items-center gap-2.5">
+        <div
+          className={`flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3.5 sm:px-5 py-2.5 ${topBarClass}`}
+        >
+          <div className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-black tracking-wide ${
                 isLockerPhase
@@ -1376,12 +1447,17 @@ export function LiveMatchBroadcast({
                 </>
               )}
             </span>
+            {isFinalShowcase && (
+              <span className="rounded-md border border-amber-400/55 bg-amber-400/15 px-2 py-0.5 text-[10px] font-black tracking-wider text-amber-200">
+                {finalTheme === 'ucl_final' ? 'UCL FINAL' : 'CUP FINAL'}
+              </span>
+            )}
             <span className="font-display text-sm font-bold text-white tabular-nums">
               {competitionTitle} · {minute}&apos;
             </span>
-            {dramaticEvent && !dramaticEvent.revealed && (
-              <span className="rounded bg-amber-400/20 border border-amber-400/50 px-2 py-0.5 text-[10px] font-black text-amber-300 animate-pulse">
-                SLOW-MO · 결정적 찬스
+            {highlightActive && (
+              <span className="rounded border border-amber-400/45 bg-amber-400/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-200">
+                결정적 찬스
               </span>
             )}
           </div>
@@ -1394,7 +1470,13 @@ export function LiveMatchBroadcast({
               phase === 'extra_time_2') &&
               !isSecondHalfDone &&
               (lockedSpeed !== undefined ? (
-                <span className="inline-flex items-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/12 px-2.5 py-1 text-[11px] font-extrabold text-sky-200">
+                <span
+                  className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-extrabold ${
+                    isFinalShowcase
+                      ? 'border-amber-400/50 bg-amber-500/12 text-amber-200'
+                      : 'border-sky-500/40 bg-sky-500/12 text-sky-200'
+                  }`}
+                >
                   {lockedSpeed}x 동기화
                 </span>
               ) : (
@@ -1433,7 +1515,7 @@ export function LiveMatchBroadcast({
               <button
                 type="button"
                 onClick={() => {
-                  setDramaticEvent(null);
+                  setHighlightActive(false);
                   setMinute(45);
                   enterHalftimeLocker();
                 }}
@@ -1447,7 +1529,7 @@ export function LiveMatchBroadcast({
               <button
                 type="button"
                 onClick={() => {
-                  setDramaticEvent(null);
+                  setHighlightActive(false);
                   setMinute(105);
                   enterEtHalftimeLocker();
                 }}
@@ -1824,28 +1906,48 @@ export function LiveMatchBroadcast({
               {/* 1) 2D Pitch */}
               <div className="lg:col-span-8">
                 <PitchMatch2D
+                  simSessionKey={simSessionKey}
+                  simSeed={override?.simSeed ?? halftime.fixtureId}
                   homeClub={home}
                   awayClub={away}
                   homeFormation={liveHomeFormation}
                   awayFormation={liveAwayFormation}
-                  minute={minute}
+                  homeTactic={homeTacticLive}
+                  awayTactic={awayTacticLive}
+                  homeStarters={homeStartersForPitch}
+                  awayStarters={awayStartersForPitch}
+                  homeChemistry={homeChemistryForPitch}
+                  awayChemistry={awayChemistryForPitch}
+                  homeManagerTraitId={homeManagerTraitForPitch}
+                  awayManagerTraitId={awayManagerTraitForPitch}
+                  homeManagerOvr={homeManagerOvrForPitch}
+                  awayManagerOvr={awayManagerOvrForPitch}
+                  homeEnteredAtMinute={homeEnteredAtForPitch}
+                  awayEnteredAtMinute={awayEnteredAtForPitch}
+                  homeHalftimeAdjusted={homeHalftimeAdjustedForPitch}
+                  awayHalftimeAdjusted={awayHalftimeAdjustedForPitch}
+                  startMinute={phaseClockBounds.startMinute}
+                  endMinute={phaseClockBounds.endMinute}
+                  half={phaseClockBounds.half}
                   phase={pitchPhase}
                   isFullTime={isSecondHalfDone}
+                  paused={liveSubOpen}
                   speed={speed}
                   homePossession={liveHomePoss}
                   homeShots={liveHomeShots}
                   awayShots={liveAwayShots}
                   homeXg={liveHomeXg}
                   awayXg={liveAwayXg}
-                  homeTactic={fullResult?.homeTactic ?? halftime.homeTactic}
-                  awayTactic={fullResult?.awayTactic ?? halftime.awayTactic}
-                  homeManagerTraitId={
-                    halftime.isUserHome ? state.manager.traitId : oppManager.traitId
-                  }
-                  awayManagerTraitId={
-                    halftime.isUserHome ? oppManager.traitId : state.manager.traitId
-                  }
-                  dramaticEvent={dramaticEvent}
+                  homeGoalsSoFar={liveHomeGoals}
+                  awayGoalsSoFar={liveAwayGoals}
+                  isBigMatch={Boolean(halftime.isKnockoutDecider || isFinalShowcase)}
+                  finalTheme={finalTheme}
+                  scheduledEvents={scheduledEventsForPitch}
+                  preHandledKeys={preHandledKeysForPhase}
+                  onMinuteChange={handleSimMinuteChange}
+                  onEventReveal={handleSimEventReveal}
+                  onHighlightActiveChange={handleSimHighlightActiveChange}
+                  onHalfComplete={handleSimHalfComplete}
                 />
               </div>
 

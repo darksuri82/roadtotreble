@@ -802,7 +802,7 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
         awayClubId: f.awayTeamId,
         round: nextRound,
         knockout: false,
-        speed: 4,
+        speed: 2,
       })),
     );
   }
@@ -847,7 +847,7 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
             awayClubId: awayHuman.clubId,
             round: nextRound,
             knockout: false,
-            speed: 4,
+            speed: 2,
           },
           seasonKey: state.seasonKey,
           home: {
@@ -1129,6 +1129,7 @@ function stepCupStage(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
       !state.h2hResults[n.id],
   );
   if (missingH2H.length > 0) {
+    const isCupFinal = stage === 'final';
     return openH2H(
       state,
       missingH2H.map((n) => ({
@@ -1139,7 +1140,8 @@ function stepCupStage(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
         awayClubId: n.awayTeamId,
         round: stageNum,
         knockout: true,
-        speed: 4,
+        speed: isCupFinal ? 1 : 2,
+        isFinal: isCupFinal,
       })),
     );
   }
@@ -2077,7 +2079,7 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
         awayClubId: f.awayTeamId,
         round: target,
         knockout: false,
-        speed: 4,
+        speed: 2,
       })),
     );
   }
@@ -2468,7 +2470,8 @@ function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
       knockout: isFinal || leg === 2,
       aggHomeBefore: tf.aggHomeBefore,
       aggAwayBefore: tf.aggAwayBefore,
-      speed: 2,
+      speed: isFinal ? 1 : 2,
+      isFinal,
     });
   }
   if (h2hSpecs.length > 0) return openH2H(state, h2hSpecs);

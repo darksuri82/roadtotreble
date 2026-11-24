@@ -5,6 +5,27 @@
 
 ---
 
+## v8.11 — 리얼리스틱 2D 매치 시뮬레이션 전면 개편 (5대 전술·스탯 완전 통합 · Steering/삼자패스 AI · Fixed-Timestep 정밀 배속 · 결승전 특별 프레임)
+
+- **5대 전술·능력 요소 100% 피치 직결 (`src/engine/pitchSimTypes.ts`, `src/engine/pitchTacticalParams.ts`, `src/engine/pitchSimEngine.ts`)**:
+  - **1계층 포메이션 9종 (`FORMATIONS`)**: 공격 빌드업 / 전진 전개 / 수비 블록 / 공격 전환 / 수비 전환 5모드 동적 앵커로 포백·스리백·원톱·투톱·원볼란치·투볼란치·다이아몬드 삼각 구조를 피치 위에서 실시간 구현.
+  - **2계층 팀 전술 5종 + 5구역 통합 상성 (`TACTICS`, `evaluateUnifiedTacticalMatchup`)**: `possession` / `gegenpressing` / `counter` / `wingplay` / `balanced`별 `buildUpPatience`·`tempo`·`passLengthBias`·`defensiveLineOffset`·`pressTriggerRadius`·`attackWidthScale`·`thirdManFreq`·`counterSprintUrgency` 직접 제어.
+  - **3계층 감독 특성 14종 & 지휘력 OVR (`MANAGER_TRAITS`, `aiManagers.ts`)**: 유저·AI·역대 강팀 감독의 14종 특성 전수 매핑(`tiki_taka` ~ `super_sub`) 및 지휘력 OVR 기반 침착성·라인 규율·후반/빅매치 보정 직결.
+  - **4계층 플레이스타일 14종 (`PLAYSTYLES`)**: `line_breaker` ~ `shot_stopper` 전 스타일의 오프더볼 동선(뒷공간 침투·하프스페이스 컷인·터치라인 유지·오버랩·박스 침투·2선 드롭·스위퍼 키퍼) 및 온더볼 판단 가중치 분기.
+  - **5계층 세부 능력치(필드 7 + GK 5) · 4색 케미/시너지 행렬 · 실시간 체력 (`attributeEngine.ts`, `chemistryEngine.ts`, `staminaEngine.ts`)**: 11×11 인접 시너지 행렬 기반 연계·삼자패스 보너스, 능력치별 최고 속도/가속도/롱패스 시야/드리블/인터셉트 반경, 실시간 체력 저하에 따른 스피드·복귀력 감소 및 후반 교체 선수 속도 우위 시각화.
+- **진짜 축구 AI 아키텍처 & Director 하이라이트 연동 (`src/engine/pitchSimEngine.ts`, `src/components/league/PitchMatch2D.tsx`)**:
+  - Craig Reynolds Steering(`Arrive`, `Pursuit`, `Separation`) + 회전 관성으로 급발진·칼각 꺾기·동료 뭉침 완전 해소 및 3D 궤적 볼 물리(`ground_pass`, `through_ball`, `long_switch`, `cross`, `shot`, `carry`, `loose`) 구현.
+  - Buckland/Spearman 공간 인식(7후보 Support Spot + 패스 레인 인터셉트 안전도) 기반 인내심 있는 볼 재순환(Recycling) 및 명시적 `A → B → C` 삼자패스(Third-Man Run) 상태 머신 도입.
+  - `matchEngine.ts` 기존 밸런스·통계·테스트를 100% 보존하면서 10종 하이라이트 패턴·14종 공격 루트·6종 결과를 텔레포트·스포일러 없이 자연스럽게 전개.
+  - Mulberry32 결정론적 시드 PRNG로 멀티플레이 참가자·관전자 전원의 2D 프레임 완벽 일치 보장.
+- **Fixed-Timestep Accumulator 정밀 배속 · 4대 화면 호환 · 결승전 특별 프레임 (`src/components/league/PitchMatch2D.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/types/mpLeague.ts`, `src/engine/mpLeagueEngine.ts`, `src/components/multiplayer/league/MpLeagueH2HView.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/components/dream/DreamMatchArena.tsx`)**:
+  - Glenn Fiedler Fixed-Timestep Accumulator(`FIXED_DT = 1/60s`, `MAX_FRAME_DELTA = 0.05s`, `SIM_SECONDS_PER_MATCH_MINUTE = 1.2s`) 적용으로 `1x / 2x / 4x` 배속 시 물리 스킵 0건 및 정확한 `1 : 2 : 4` 재생 시간(1배속 90분 약 2분 05초) 구현.
+  - 배속 정책 적용: 싱글·드림매치 `1x/2x/4x` 자유 전환(기본 `1x`), 1대1 멀티 `1x` 고정, 멀티리그 맞대결은 자국 컵 결승·UCL 결승 `1x` 고정 / 그 외 맞대결 `2x` 고정.
+  - 싱글·멀티 자국 컵 결승(`cup_final`) 및 UCL 결승(`ucl_final`) 전용 골드 헤어라인 테두리·코너 브래킷·상단 `CUP FINAL`/`UCL FINAL` 배지 추가.
+- **테스트 (`src/__tests__/v811Realistic2DSim.test.ts`, `src/__tests__/v80MultiLeague.test.ts`)**: 결정론적 리플레이, Fixed-Timestep 1:2:4 패리티, 9포메이션·5전술·14감독·14플레이스타일·세부능력치/체력, 패스 레인 안전도, 45분 Director 하이라이트·라이브 교체 핫싱크, 결승 테마 및 오픈플레이 재순환/삼자패스 통계 검증 10건 추가.
+
+---
+
 ## v8.10.1 — 가이드북 팀 케미(0~100) 구조 & 실전 가이드라인 신설
 
 - **팀 케미 전용 가이드라인 & 엔진 상수 단일화 (`src/engine/chemistryEngine.ts`, `src/components/guide/SystemGuideModal.tsx`, `src/__tests__/v810GuideTutorialAndUx.test.ts`)**:

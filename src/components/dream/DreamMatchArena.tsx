@@ -687,7 +687,13 @@ export function DreamMatchArena() {
           allPlayerStats: {},
         },
       },
+      simSeed: liveHalftime.fixtureId,
       opponentRoster: oppMatchBundle?.starters ?? [],
+      opponentManagerOverride: {
+        name: selectedOpponent.managerName,
+        ovr: selectedOpponent.managerRating,
+        traitId: selectedOpponent.managerTraitId,
+      },
       chemistry,
       changeFormation: handleChangeFormation,
       optimizeHalftimeStarters: handleOptimizeHalftimeStarters,

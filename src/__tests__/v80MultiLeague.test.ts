@@ -360,11 +360,11 @@ describe('v8.0 multi league — full shared season', () => {
           const played = playH2H(state, squads, rng);
           if (played.spec.ctx === 'league') {
             seen.leagueH2H += 1;
-            expect(played.spec.speed).toBe(4);
+            expect(played.spec.speed).toBe(2);
             expect(played.spec.knockout).toBe(false);
           } else {
             seen.otherH2H += 1;
-            expect(played.spec.speed).toBe(played.spec.ctx === 'ucl_ko' ? 2 : 4);
+            expect(played.spec.speed).toBe(played.spec.isFinal ? 1 : 2);
           }
           state = completeMpLeagueH2H(state, played.result);
           if (state.flow.kind === 'auto') state = runMpLeague(state, env);
