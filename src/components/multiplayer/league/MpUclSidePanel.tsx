@@ -138,12 +138,15 @@ export const SideUclStandings = memo(function SideUclStandings({
         </div>
       </div>
 
-      <div className="grid grid-cols-[22px_1fr_22px_28px_26px] items-center gap-1 border-b border-slate-800/80 px-2 py-1 text-[9px] font-bold text-slate-500">
+      <div className="grid grid-cols-[18px_minmax(0,1fr)_20px_18px_18px_18px_24px_24px] items-center gap-0.5 sm:gap-1 border-b border-slate-800/80 px-2 py-1 text-[9px] font-bold text-slate-500">
         <span>#</span>
         <span>구단</span>
-        <span className="text-center">경기</span>
+        <span className="text-center">경</span>
+        <span className="text-center text-emerald-400/80">승</span>
+        <span className="text-center">무</span>
+        <span className="text-center text-rose-400/80">패</span>
         <span className="text-center">득실</span>
-        <span className="text-center">승점</span>
+        <span className="text-center text-slate-300">승점</span>
       </div>
 
       {visibleIndices.map((idx, pos) => {
@@ -164,7 +167,7 @@ export const SideUclStandings = memo(function SideUclStandings({
               </div>
             )}
             <div
-              className={`grid grid-cols-[22px_1fr_22px_28px_26px] items-center gap-1 px-2 py-[4px] text-[10px] tabular-nums ${
+              className={`grid grid-cols-[18px_minmax(0,1fr)_20px_18px_18px_18px_24px_24px] items-center gap-0.5 sm:gap-1 px-2 py-[4px] text-[10px] tabular-nums ${
                 isMine
                   ? 'bg-emerald-500/16'
                   : human
@@ -203,6 +206,9 @@ export const SideUclStandings = memo(function SideUclStandings({
                 )}
               </span>
               <span className="text-center text-slate-500">{r.played}</span>
+              <span className="text-center font-semibold text-emerald-300/90">{r.won}</span>
+              <span className="text-center text-slate-400">{r.drawn}</span>
+              <span className="text-center text-rose-300/80">{r.lost}</span>
               <span className="text-center text-slate-400">
                 {r.goalDifference > 0 ? `+${r.goalDifference}` : r.goalDifference}
               </span>

@@ -92,6 +92,8 @@ interface SoloLiveScoreboardProps {
   onChangeDurationMs: (ms: SoloLiveDurationMs) => void;
   paused: boolean;
   pauseReasonLabel?: string | null;
+  /** Optional status notice (e.g. tactic changed → applies from next match). */
+  noticeLabel?: string | null;
   onTogglePause: () => void;
   onStop: () => void;
   onMatchDone: (matchKey: string) => void;
@@ -108,6 +110,7 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
     onChangeDurationMs,
     paused,
     pauseReasonLabel,
+    noticeLabel,
     onTogglePause,
     onStop,
     onMatchDone,
@@ -221,6 +224,12 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
           </button>
         </div>
       </div>
+
+      {noticeLabel && (
+        <div className="rounded-lg border border-sky-400/35 bg-sky-500/10 px-2.5 py-1 text-[11px] font-bold text-sky-200">
+          {noticeLabel}
+        </div>
+      )}
 
       {/* Smooth 60fps Live Scoreboard Match Card (+ Extra PK Shootout Phase) */}
       {match ? (

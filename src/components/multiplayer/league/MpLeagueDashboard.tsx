@@ -109,6 +109,7 @@ interface MpLeagueDashboardProps {
   activeEventKey: string | null;
   hostMissing: boolean;
   errorMsg: string | null;
+  tacticSavedNotice?: boolean;
   onOpenEditor: () => void;
   onCloseEditor: () => void;
   onSaveSquad: (next: MpSquadInput) => void;
@@ -224,12 +225,15 @@ const SideStandings = memo(function SideStandings({
           </span>
         </div>
       </div>
-      <div className="grid grid-cols-[20px_1fr_22px_28px_26px] items-center gap-1 border-b border-slate-800/80 px-2 py-1 text-[9px] font-bold text-slate-500">
+      <div className="grid grid-cols-[18px_minmax(0,1fr)_20px_18px_18px_18px_24px_24px] items-center gap-0.5 sm:gap-1 border-b border-slate-800/80 px-2 py-1 text-[9px] font-bold text-slate-500">
         <span>#</span>
         <span>구단</span>
-        <span className="text-center">경기</span>
+        <span className="text-center">경</span>
+        <span className="text-center text-emerald-400/80">승</span>
+        <span className="text-center">무</span>
+        <span className="text-center text-rose-400/80">패</span>
         <span className="text-center">득실</span>
-        <span className="text-center">승점</span>
+        <span className="text-center text-slate-300">승점</span>
       </div>
       {standings.map((r, idx) => {
         const human = humanByClub.get(r.teamId);
@@ -239,7 +243,7 @@ const SideStandings = memo(function SideStandings({
         return (
           <div
             key={r.teamId}
-            className={`grid grid-cols-[20px_1fr_22px_28px_26px] items-center gap-1 px-2 py-[3.5px] text-[10px] tabular-nums ${
+            className={`grid grid-cols-[18px_minmax(0,1fr)_20px_18px_18px_18px_24px_24px] items-center gap-0.5 sm:gap-1 px-2 py-[3.5px] text-[10px] tabular-nums ${
               isMine
                 ? 'bg-emerald-500/14'
                 : human
@@ -288,6 +292,9 @@ const SideStandings = memo(function SideStandings({
               )}
             </span>
             <span className="text-center text-slate-500">{r.played}</span>
+            <span className="text-center font-semibold text-emerald-300/90">{r.won}</span>
+            <span className="text-center text-slate-400">{r.drawn}</span>
+            <span className="text-center text-rose-300/80">{r.lost}</span>
             <span className="text-center text-slate-400">
               {r.goalDifference > 0 ? `+${r.goalDifference}` : r.goalDifference}
             </span>
@@ -318,6 +325,7 @@ export function MpLeagueDashboard({
   activeEventKey,
   hostMissing,
   errorMsg,
+  tacticSavedNotice = false,
   onOpenEditor,
   onCloseEditor,
   onSaveSquad,
@@ -1000,6 +1008,13 @@ export function MpLeagueDashboard({
               강제 재개
             </button>
           )}
+        </div>
+      )}
+
+      {tacticSavedNotice && (
+        <div className="flex items-center gap-1.5 rounded-xl border border-sky-400/35 bg-sky-500/10 px-3.5 py-1.5 text-xs font-bold text-sky-200">
+          <Check className="w-3.5 h-3.5 shrink-0 text-sky-300" />
+          <span>전술 수정 완료 · 변경된 전술은 다음 경기부터 적용됩니다</span>
         </div>
       )}
 

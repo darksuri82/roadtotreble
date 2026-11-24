@@ -105,6 +105,9 @@ export function MpLeagueSquadEditor({
               케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
               {chemistry.chemistryOvrBonus.toFixed(1)})
             </span>
+            <span className="rounded border border-sky-400/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-200">
+              다음 경기부터 적용
+            </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span

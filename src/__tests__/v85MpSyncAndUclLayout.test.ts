@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { computeFocusedStandingIndices } from '../components/common/CompactLiveStandings';
 import { hasPlayableTickerMatches } from '../components/multiplayer/league/MpLiveTicker';
 import { uclZoneOf } from '../components/multiplayer/league/MpUclSidePanel';
 import { ACTIVE_PLAYERS } from '../engine/dataLoader';
+import { TACTIC_EDIT_PAUSE_MS, TACTIC_NEXT_MATCH_NOTICE } from '../hooks/useSoloTacticEditPause';
 import {
   buildMpLeagueLive,
   closeMpLeagueSummary,
@@ -435,4 +437,42 @@ describe('v8.5 MP Fast Sync, Spoiler-Free Cup/Standings Snapshots & UCL Phase 2 
     expect(transferWindowsChecked).toBe(3);
     expect(interviewRoundsChecked).toBeGreaterThanOrEqual(1);
   }, 25_000);
+
+  it('v8.5.3: computeFocusedStandingIndices includes top cutline, user club & neighbors cleanly for 20-team league and 36-team UCL', () => {
+    const makeRows = (count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        teamId: `c${i + 1}`,
+        teamName: `Club ${i + 1}`,
+        shortName: `C${i + 1}`,
+        primaryColor: '#10b981',
+        secondaryColor: '#ffffff',
+        isUser: false,
+        played: 10,
+        won: 5,
+        drawn: 3,
+        lost: 2,
+        goalsFor: 15,
+        goalsAgainst: 10,
+        goalDifference: 5,
+        points: 18,
+        form: [],
+      }));
+
+    // 20-team League with user at 12th (index 11)
+    const league20 = makeRows(20);
+    const leagueFocus = computeFocusedStandingIndices(league20, 'c12', 'league', 4);
+    expect(leagueFocus).toEqual([0, 1, 2, 3, 10, 11, 12]);
+
+    // 36-team UCL with user at 15th (index 14) → top 5 + 8th/9th cutline + 14/15/16th + 24th/25th PO cutline
+    const ucl36 = makeRows(36);
+    const uclFocus = computeFocusedStandingIndices(ucl36, 'c15', 'ucl');
+    expect(uclFocus).toEqual([0, 1, 2, 3, 4, 7, 8, 13, 14, 15, 23, 24]);
+
+    // 36-team UCL with user at 3rd (index 2) → stays ultra-compact (top 8 + 9th cutline)
+    const uclTopFocus = computeFocusedStandingIndices(ucl36, 'c3', 'ucl');
+    expect(uclTopFocus).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+
+    expect(TACTIC_EDIT_PAUSE_MS).toBeGreaterThanOrEqual(2000);
+    expect(TACTIC_NEXT_MATCH_NOTICE).toContain('다음 경기');
+  });
 });

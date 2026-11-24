@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v8.5.2)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.5.3)
 
 > Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
@@ -12,12 +12,15 @@
 - **Realtime Backend**: Supabase (`@supabase/supabase-js` — Postgres `mp_rooms` / `mp_room_players` + Realtime Postgres Changes + Broadcast Fast Sync + Presence, `supabase/schema.sql`)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, 차분한 슬레이트 UI 크롬 + 웅장한 레전드/슈퍼스타/월클 카드 글로우 & 선명한 4색 피치 시너지선)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **32개 파일 / 132개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **32개 파일 / 133개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환, `.github/workflows/deploy.yml`에서 `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY` Secret 주입)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`), `stable-before-v8.4-live-skip` (`v8.3` `600c7da`), `stable-before-mp-sync-ucl` (`v8.4.2` `9f6e976`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.5.3 전술 수정 시 자동진행 일시정지 & 다음 경기 적용 안내 · 싱글/멀티 실시간 미니 순위표(경·승·무·패·득실·승점)**:
+  - **전술 수정 일시정지 & 안내 (`useSoloTacticEditPause.ts`, `SoloLiveScoreboard.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`, `MpLeagueRoot.tsx`, `MpLeagueDashboard.tsx`, `MpLeagueSquadEditor.tsx`)**: 솔로 자동진행 중 전술/포메이션/라인업 변경 시 3초 일시정지(연속 편집 시 연장, `[재개]` 즉시 해제) + 다음 경기 적용 배너 표시. 멀티리그도 전술 저장 직후 2.5초 유예 잠금 + 다음 경기 적용 안내 배너 표시.
+  - **실시간 미니 순위표 (`CompactLiveStandings.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`, `MpLeagueDashboard.tsx`, `MpUclSidePanel.tsx`)**: 솔로 리그·UCL PC(스코어보드 우측)/모바일(스코어보드 바로 아래)에 `# | 구단 | 경 | 승 | 무 | 패 | 득실 | 승점` 실시간 순위표(`[핵심 / 전체]` 토글) 추가 및 멀티리그 `SideStandings`·`SideUclStandings`에 `승·무·패` 컬럼 추가.
 - **v8.5.2 핫픽스 (`LiveMatchBroadcast.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 솔로 라이브 자동진행(`START_SOLO_STREAM_MATCH`, `liveHalftime.streamAutoMode = true`) 중 `LiveMatchBroadcast`가 `streamAutoMode`를 필터링하지 않아 상단 라이브 스코어보드 대신 2D 시뮬레이션 모달이 자동으로 덮어 열리던 회귀 버그 수정(`shouldRenderLiveMatchBroadcast` 가드 적용, 일시정지 → `[2D 경기 중계 입장]` 클릭 시에만 2D 오픈).
 - **v8.5.1 4인 멀티리그 2차전 맞대결 2D 집중 진행 · 4인 이적시장·인터뷰 렉/누락/팝업 오류 종합 최적화**:
   - **4인 리그 맞대결 템포 개선 (`mpLeagueEngine.ts`)**: `shouldPlayLeagueH2HLive`로 4인 이상 멀티리그에서 각 조합의 2차전(6경기)만 2D 시뮬레이션, 1차전(6경기)은 `resolveMpH2HFullInstant` + 라이브 스코어보드 실시간 중계(`watchedLive: false`)로 처리(H2H 전적 정상 누적, 2~3인 및 컵·UCL 기존 유지).

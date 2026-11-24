@@ -5,6 +5,17 @@
 
 ---
 
+## v8.5.3 — 전술 수정 시 자동진행 잠시 일시정지 & 다음 경기 적용 안내 · 싱글/멀티 실시간 미니 순위표(경·승·무·패·득실·승점)
+
+- **전술 수정 시 자동진행 잠시 일시정지 & 다음 경기 적용 안내 (`src/hooks/useSoloTacticEditPause.ts`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/multiplayer/league/MpLeagueRoot.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/multiplayer/league/MpLeagueSquadEditor.tsx`)**:
+  - 솔로(정규 리그·UCL) 라이브 자동진행 중 포메이션·전술·선발/벤치를 수정하면 `useSoloTacticEditPause`가 3초간 자동진행을 잠시 일시정지(연속 수정 시 연장, `[재개]` 클릭 시 즉시 재개; 이적·부상·2D 중계 중 오동작 방지)하고 `SoloLiveScoreboard`에 `[전술 수정됨 · 변경된 전술은 다음 경기부터 적용됩니다]` 배너를 다음 경기 시작 시까지 표시.
+  - 멀티리그에서는 `MpLeagueSquadEditor` 헤더에 `다음 경기부터 적용` 배지를 표시하고, 변경 사항 저장 직후 2.5초간 `tactics` 일시정지 유예(`tacticGraceActive`)를 유지하며 `MpLeagueDashboard`에 `[전술 수정 완료 · 변경된 전술은 다음 경기부터 적용됩니다]` 안내 배너 표시.
+- **싱글·멀티 실시간 미니 순위표 (`src/components/common/CompactLiveStandings.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/multiplayer/league/MpUclSidePanel.tsx`)**:
+  - PC·모바일 공통 컴팩트 실시간 순위표 `CompactLiveStandings`(`# | 구단 | 경 | 승 | 무 | 패 | 득실 | 승점` + `[핵심 / 전체]` 토글 + UCL/강등 컷라인)를 신설해, 솔로 정규 리그·UCL 자동진행 시 PC는 스코어보드 우측·모바일은 스코어보드 바로 아래에 실시간 표시(평상시에도 메인 탭 우측에 표시).
+  - 멀티리그 `SideStandings`와 `SideUclStandings`에도 `승·무·패` 컬럼을 추가해 360px 모바일부터 PC까지 깨짐 없이 표시되도록 통일(`v85MpSyncAndUclLayout.test.ts` 테스트 추가).
+
+---
+
 ## v8.5.2 — 솔로 라이브 자동진행 시 2D 중계 모달 오오픈 핫픽스
 
 - **솔로 라이브 스코어보드 자동진행 정상 복구 (`src/components/league/LiveMatchBroadcast.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:

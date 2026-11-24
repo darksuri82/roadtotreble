@@ -364,10 +364,26 @@ export function MpLeagueRoot({
     return () => window.clearTimeout(t);
   }, [emptyTransferKey, ack]);
 
+  const [tacticGraceActive, setTacticGraceActive] = useState(false);
+  const [tacticSavedScope, setTacticSavedScope] = useState<string | null>(null);
+  const tacticGraceTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (tacticGraceTimerRef.current !== null) {
+        window.clearTimeout(tacticGraceTimerRef.current);
+      }
+    };
+  }, []);
+
+  const currentRoundScope = live
+    ? `${live.stage}:${live.round}:${live.ucl?.stage ?? ''}:${live.ucl?.leaguePhaseRound ?? 0}:${live.ucl?.knockoutLeg ?? 0}`
+    : '';
+
   const inSeason = live?.stage === 'league' || live?.stage === 'ucl';
   const desiredLock: MpLeagueLockReason | null = !inSeason
     ? null
-    : editorOpen
+    : editorOpen || tacticGraceActive
       ? 'tactics'
       : interviewOpen
         ? 'interview'
@@ -617,11 +633,33 @@ export function MpLeagueRoot({
       onTickerDoneKey={setTickerDoneKey}
       hostMissing={host.hostMissing}
       errorMsg={errorMsg ?? host.hostError}
+      tacticSavedNotice={Boolean(
+        tacticSavedScope && tacticSavedScope === currentRoundScope,
+      )}
       onOpenEditor={() => setEditorOpen(true)}
       onCloseEditor={() => setEditorOpen(false)}
       onSaveSquad={(next) => {
+        const changed =
+          !mySquad ||
+          mySquad.formation !== next.formation ||
+          mySquad.tactic !== next.tactic ||
+          mySquad.starters.map((p) => p.id).join(',') !==
+            next.starters.map((p) => p.id).join(',') ||
+          mySquad.bench.map((p) => p.id).join(',') !==
+            next.bench.map((p) => p.id).join(',');
         saveSquad(next);
         setEditorOpen(false);
+        if (changed) {
+          setTacticSavedScope(currentRoundScope);
+          setTacticGraceActive(true);
+          if (tacticGraceTimerRef.current !== null) {
+            window.clearTimeout(tacticGraceTimerRef.current);
+          }
+          tacticGraceTimerRef.current = window.setTimeout(() => {
+            tacticGraceTimerRef.current = null;
+            setTacticGraceActive(false);
+          }, 2500);
+        }
       }}
       onAck={ack}
       hiddenEventKey={answeredEventKey}

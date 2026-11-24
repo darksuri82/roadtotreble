@@ -45,8 +45,10 @@ import {
   resolveClubRoster,
   resolvePlayerById,
 } from '../../utils/playerLookup';
+import { useSoloTacticEditPause } from '../../hooks/useSoloTacticEditPause';
 import { ClubSquadModal } from '../common/ClubSquadModal';
 import { ClubTag } from '../common/ClubTag';
+import { CompactLiveStandings } from '../common/CompactLiveStandings';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
 import { MatchDetailModal } from '../common/MatchDetailModal';
@@ -263,15 +265,29 @@ export function SeasonDashboard() {
     [streamHalftime?.competition, enterLiveBroadcastFromStream],
   );
 
+  const tacticSignature = `${state.formation}|${season?.defaultTactic ?? ''}|${season?.nextMatchTactic ?? ''}|${state.starters.map((p) => p?.id ?? '').join(',')}|${state.bench.map((p) => p?.id ?? '').join(',')}`;
+  const {
+    tacticPauseActive,
+    tacticNoticeLabel,
+    clearTacticPause,
+    resetTacticNotice,
+  } = useSoloTacticEditPause({
+    tacticSignature,
+    liveAutoActive,
+    suppressChanges: isTransferOpen || hasPendingInjury || hasActive2DBroadcast,
+    matchScopeKey: streamHalftime?.fixtureId ?? `gap:${season?.currentRound ?? 0}`,
+  });
+
   const stopLiveAuto = useCallback(() => {
     liveAutoNeedsPromptRef.current = null;
+    resetTacticNotice();
     setLiveAutoActive(false);
     setLiveAutoUserPaused(false);
     setLiveAutoCupPromptOpen(false);
     setLiveAutoResumePrompt(null);
     cancelSoloStreamMatch();
     setSoloTickerPlaying(false);
-  }, [cancelSoloStreamMatch, setSoloTickerPlaying]);
+  }, [cancelSoloStreamMatch, setSoloTickerPlaying, resetTacticNotice]);
 
   // Schedule next live auto-advance match (or ask resume confirmation after cup/2D/transfer/injury)
   const liveAutoBlockedByEvent =
@@ -280,6 +296,7 @@ export function SeasonDashboard() {
     hasPendingEvent ||
     uncelebratedCupWin ||
     hasActive2DBroadcast ||
+    tacticPauseActive ||
     liveAutoCupPromptOpen ||
     liveAutoResumePrompt !== null;
 
@@ -641,24 +658,56 @@ export function SeasonDashboard() {
         </div>
       </section>
 
-      {/* Solo Live Scoreboard Auto-Advance Strip (5초 / 7초 / 9초) */}
+      {/* Solo Live Scoreboard + Real-Time Compact Standings Strip (PC side-by-side / Mobile stacked right below) */}
       {liveAutoActive && (
-        <SoloLiveScoreboard
-          match={liveAutoMatch}
-          clubsById={clubsById}
-          myClubId={USER_CLUB_ID}
-          durationMs={liveAutoDurationMs}
-          onChangeDurationMs={setLiveAutoDurationMs}
-          paused={liveAutoUserPaused || Boolean(liveAutoPauseReason)}
-          pauseReasonLabel={liveAutoPauseReason}
-          onTogglePause={() => {
-            if (liveAutoPauseReason) return;
-            setLiveAutoUserPaused((p) => !p);
-          }}
-          onStop={stopLiveAuto}
-          onMatchDone={handleLiveAutoMatchDone}
-          onEnterLiveMatch={handleEnterLive2DFromStream}
-        />
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
+          <div className="lg:col-span-7">
+            <SoloLiveScoreboard
+              match={liveAutoMatch}
+              clubsById={clubsById}
+              myClubId={USER_CLUB_ID}
+              durationMs={liveAutoDurationMs}
+              onChangeDurationMs={setLiveAutoDurationMs}
+              paused={
+                liveAutoUserPaused ||
+                tacticPauseActive ||
+                Boolean(liveAutoPauseReason)
+              }
+              pauseReasonLabel={
+                liveAutoPauseReason ??
+                (tacticPauseActive ? '전술 수정 일시정지' : null)
+              }
+              noticeLabel={tacticNoticeLabel}
+              onTogglePause={() => {
+                if (liveAutoPauseReason) return;
+                if (tacticPauseActive) {
+                  clearTacticPause();
+                  setLiveAutoUserPaused(false);
+                  return;
+                }
+                setLiveAutoUserPaused((p) => !p);
+              }}
+              onStop={stopLiveAuto}
+              onMatchDone={handleLiveAutoMatchDone}
+              onEnterLiveMatch={handleEnterLive2DFromStream}
+            />
+          </div>
+          <div className="lg:col-span-5">
+            <CompactLiveStandings
+              title={`${league.koreanName} 실시간 순위`}
+              standings={displayStandings}
+              myClubId={USER_CLUB_ID}
+              variant="league"
+              uclSpots={league.uclSpots}
+              relegationSpots={league.relegationSpots}
+              roundLabel={`${displayRound}/${season.totalRounds}R`}
+              onSelectClub={(teamId) => {
+                const c = clubsById[teamId];
+                if (c) setInspectedClub({ club: c, leagueId: season.leagueId });
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {/* TAB 1: 경기장/일정 */}
@@ -825,6 +874,22 @@ export function SeasonDashboard() {
                   {season.replacedClubName}을(를) 대신해 참가했습니다. 상대 전술과 포메이션을 확인하고 개막전을 지휘하세요.
                 </span>
               </div>
+            )}
+
+            {!liveAutoActive && (
+              <CompactLiveStandings
+                title={`${league.koreanName} 실시간 순위`}
+                standings={displayStandings}
+                myClubId={USER_CLUB_ID}
+                variant="league"
+                uclSpots={league.uclSpots}
+                relegationSpots={league.relegationSpots}
+                roundLabel={`${displayRound}/${season.totalRounds}R`}
+                onSelectClub={(teamId) => {
+                  const c = clubsById[teamId];
+                  if (c) setInspectedClub({ club: c, leagueId: season.leagueId });
+                }}
+              />
             )}
 
             {season.currentRound > 0 && (() => {

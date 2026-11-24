@@ -47,7 +47,9 @@ import {
   resolveClubRoster,
   resolvePlayerById,
 } from '../../utils/playerLookup';
+import { useSoloTacticEditPause } from '../../hooks/useSoloTacticEditPause';
 import { ClubSquadModal } from '../common/ClubSquadModal';
+import { CompactLiveStandings } from '../common/CompactLiveStandings';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
@@ -219,20 +221,37 @@ export function UclDashboard() {
     [enterLiveBroadcastFromStream],
   );
 
+  const tacticSignature = `${state.formation}|${season?.defaultTactic ?? ''}|${season?.nextMatchTactic ?? ''}|${state.starters.map((p) => p?.id ?? '').join(',')}|${state.bench.map((p) => p?.id ?? '').join(',')}`;
+  const {
+    tacticPauseActive,
+    tacticNoticeLabel,
+    clearTacticPause,
+    resetTacticNotice,
+  } = useSoloTacticEditPause({
+    tacticSignature,
+    liveAutoActive,
+    suppressChanges: isTransferOpen || hasPendingInjury || hasActive2DBroadcast,
+    matchScopeKey:
+      streamHalftime?.fixtureId ??
+      `ucl-gap:${ucl?.leaguePhaseRound ?? 0}:${ucl?.stage ?? ''}:${ucl?.knockoutLeg ?? 0}`,
+  });
+
   const stopUclLiveAuto = useCallback(() => {
     liveAutoNeedsPromptRef.current = null;
+    resetTacticNotice();
     setLiveAutoActive(false);
     setLiveAutoUserPaused(false);
     setLiveAutoResumePrompt(null);
     cancelSoloStreamMatch();
     setSoloTickerPlaying(false);
-  }, [cancelSoloStreamMatch, setSoloTickerPlaying]);
+  }, [cancelSoloStreamMatch, setSoloTickerPlaying, resetTacticNotice]);
 
   const liveAutoBlocked =
     isTransferOpen ||
     hasActive2DBroadcast ||
     hasPendingInjury ||
     hasPendingEvent ||
+    tacticPauseActive ||
     liveAutoResumePrompt !== null;
 
   useEffect(() => {
@@ -632,6 +651,57 @@ export function UclDashboard() {
         </div>
       </div>
 
+      {/* UCL Solo Live Scoreboard + Real-Time 36-Team Compact Standings Strip */}
+      {liveAutoActive && (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
+          <div className="lg:col-span-7">
+            <SoloLiveScoreboard
+              match={liveAutoMatch}
+              clubsById={clubsById}
+              myClubId={USER_CLUB_ID}
+              durationMs={liveAutoDurationMs}
+              onChangeDurationMs={setLiveAutoDurationMs}
+              paused={
+                liveAutoUserPaused ||
+                tacticPauseActive ||
+                Boolean(liveAutoPauseReason)
+              }
+              pauseReasonLabel={
+                liveAutoPauseReason ??
+                (tacticPauseActive ? '전술 수정 일시정지' : null)
+              }
+              noticeLabel={tacticNoticeLabel}
+              onTogglePause={() => {
+                if (liveAutoPauseReason) return;
+                if (tacticPauseActive) {
+                  clearTacticPause();
+                  setLiveAutoUserPaused(false);
+                  return;
+                }
+                setLiveAutoUserPaused((p) => !p);
+              }}
+              onStop={stopUclLiveAuto}
+              onMatchDone={handleUclLiveMatchDone}
+              onEnterLiveMatch={handleEnterLive2DFromStream}
+            />
+          </div>
+          <div className="lg:col-span-5">
+            <CompactLiveStandings
+              title="UCL 리그 페이즈 실시간 순위"
+              standings={ucl.standings}
+              myClubId={USER_CLUB_ID}
+              variant="ucl"
+              roundLabel={`${ucl.leaguePhaseRound}/8R`}
+              onSelectClub={(teamId) => {
+                const c = clubsById[teamId];
+                if (c) setInspectedClub(c);
+              }}
+              onOpenFullModal={() => setLpStandingsModalOpen(true)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* UCL 1-Match Skip Result Popup Modal (League Phase + Knockout Playoff/R16/QF/SF/Final) */}
       {skipResultModalOpen &&
         season.userUclMatchHistory.length > 0 &&
@@ -1016,26 +1086,7 @@ export function UclDashboard() {
       {/* TAB 1: MATCH & PROGRESSION */}
       {tab === 'match' && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          <div className="lg:col-span-8 space-y-4">
-            {liveAutoActive && (
-              <SoloLiveScoreboard
-                match={liveAutoMatch}
-                clubsById={clubsById}
-                myClubId={USER_CLUB_ID}
-                durationMs={liveAutoDurationMs}
-                onChangeDurationMs={setLiveAutoDurationMs}
-                paused={liveAutoUserPaused || Boolean(liveAutoPauseReason)}
-                pauseReasonLabel={liveAutoPauseReason}
-                onTogglePause={() => {
-                  if (liveAutoPauseReason) return;
-                  setLiveAutoUserPaused((p) => !p);
-                }}
-                onStop={stopUclLiveAuto}
-                onMatchDone={handleUclLiveMatchDone}
-                onEnterLiveMatch={handleEnterLive2DFromStream}
-              />
-            )}
-
+          <div className={`${liveAutoActive ? 'lg:col-span-12' : 'lg:col-span-8'} space-y-4`}>
             {showLpSummary && ucl.leaguePhaseRound >= 8 && !liveTickerPlaying && (() => {
               const finalRank = ucl.userLeaguePhaseRank ?? userUclRank;
               const uRow = ucl.standings.find((r) => r.teamId === USER_CLUB_ID);
@@ -1356,84 +1407,23 @@ export function UclDashboard() {
             )}
           </div>
 
-          {/* Right Mini Standings / Qualification Zones */}
-          <div className="lg:col-span-4 rounded-2xl border border-slate-800 bg-slate-900/75 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-extrabold text-white">
-                36팀 스위스 리그 요약 (상위권 & 우리 팀)
-              </h3>
-              <button
-                type="button"
-                onClick={() => setLpStandingsModalOpen(true)}
-                className="text-[11px] font-bold text-sky-400 hover:underline cursor-pointer"
-              >
-                전체 36팀 팝업 →
-              </button>
+          {/* Right Compact Real-Time Standings (hidden while already shown beside SoloLiveScoreboard above) */}
+          {!liveAutoActive && (
+            <div className="lg:col-span-4">
+              <CompactLiveStandings
+                title="UCL 리그 페이즈 실시간 순위"
+                standings={ucl.standings}
+                myClubId={USER_CLUB_ID}
+                variant="ucl"
+                roundLabel={`${ucl.leaguePhaseRound}/8R`}
+                onSelectClub={(teamId) => {
+                  const c = clubsById[teamId];
+                  if (c) setInspectedClub(c);
+                }}
+                onOpenFullModal={() => setLpStandingsModalOpen(true)}
+              />
             </div>
-            <div className="space-y-1 text-xs">
-              {ucl.standings.slice(0, 10).map((row, idx) => (
-                <button
-                  key={row.teamId}
-                  type="button"
-                  onClick={() => {
-                    const c = clubsById[row.teamId];
-                    if (c) setInspectedClub(c);
-                  }}
-                  className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left transition-colors cursor-pointer ${
-                    row.isUser
-                      ? 'bg-emerald-500/20 font-bold text-emerald-200 hover:bg-emerald-500/30'
-                      : 'bg-slate-950/50 text-slate-300 hover:bg-slate-800/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className={`w-4 text-center font-mono text-[11px] font-black ${
-                        idx < 8 ? 'text-emerald-400' : 'text-amber-400'
-                      }`}
-                    >
-                      {idx + 1}
-                    </span>
-                    <span className="truncate">{row.teamName}</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-mono text-[11px]">
-                    <span className="text-slate-400">
-                      {row.goalDifference >= 0
-                        ? `+${row.goalDifference}`
-                        : row.goalDifference}
-                    </span>
-                    <span className="font-black text-white">{row.points}</span>
-                  </div>
-                </button>
-              ))}
-              {userUclRank > 10 && (() => {
-                const uRow = ucl.standings[userUclRank - 1];
-                if (!uRow) return null;
-                return (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const c = clubsById[uRow.teamId];
-                      if (c) setInspectedClub(c);
-                    }}
-                    className="mt-2 flex w-full items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 text-left font-bold text-emerald-200 hover:bg-emerald-500/25 cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="w-5 text-center font-mono text-[11px]">
-                        {userUclRank}
-                      </span>
-                      <span>{uRow.teamName}</span>
-                    </div>
-                    <span className="font-mono font-black">{uRow.points}점</span>
-                  </button>
-                );
-              })()}
-            </div>
-            <div className="flex flex-wrap gap-2 border-t border-slate-800 pt-2.5 text-[10px]">
-              <span className="text-emerald-400">● 1~8위 16강 직행</span>
-              <span className="text-amber-400">● 9~24위 플레이오프</span>
-              <span className="text-rose-400">● 25~36위 탈락</span>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
