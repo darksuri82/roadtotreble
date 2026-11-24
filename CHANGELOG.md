@@ -5,6 +5,25 @@
 
 ---
 
+## v8.5 — 멀티리그 Broadcast 즉시 동기화 · 순위표 즉시 반영 · 컵 우승 조기 스포일러 차단 · 챔스(Phase 2) 전용 레이아웃 & 실시간 사이드바
+
+- **멀티리그 이적시장·인터뷰 팝업 지연/미표시 근본 수정 & Fast Sync (`src/services/mpLeagueService.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `src/components/multiplayer/league/MpLeagueRoot.tsx`, `src/components/multiplayer/league/MpLiveTicker.tsx`, `src/types/mpLeague.ts`)**:
+  - `MpLiveTicker` `useEffect` 의존성에 매 리렌더마다 새 참조가 되는 `ordered`가 포함되어 360ms 완료 타이머가 cleanup에 의해 취소되고 `doneRef.current`가 이미 `true`로 굳어 `onDone` 콜백이 영구 유실(다른 버튼을 눌러 리렌더를 일으켜야 팝업이 뜨던 현상)되던 근본 원인을 제거.
+  - `orderedRef` 분리, 월클럭(`performance.now()`) 기반 진행 + 350ms 백그라운드 탭 워치독 + `visibilitychange` 복구, `hasPlayableTickerMatches` 가드, `MpLeagueRoot` React 상태 동기화 effect, `${flow.key}:${templateId}` 복합 이벤트 키 스코프 적용.
+  - `mp-league:${roomId}` Realtime 채널에 경량 Broadcast(`live_updated`, `player_signal`) + 시즌 중 `mp_league_picks`를 건너뛰는 1-RTT `fetchLeagueLiveOnly` + 방장 커밋 락스텝(`onHostLiveCommitted`)·즉시 기상(`wakeNow`)을 구축해 방장과 비방장 참여자 화면에 이적시장·인터뷰 팝업이 동시에 뜨도록 최적화(DB `postgres_changes` + 2.5초 안전 폴링 Fallback 유지).
+- **정규 리그 순위표 라운드 종료 즉시 실시간 반영 (`src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/multiplayer/league/MpLiveTicker.tsx`)**:
+  - 낡은 `frozen` 상태를 제거하고 티커 스냅샷(`prevStandings`, `prevTopScorers`, `prevTopAssisters`) 기반 결정적 뷰 전환 + `FT` 도달 즉시 0ms `onDone` 호출로 순위표·승점·득실·득점/도움 순위가 라운드 종료 순간 즉각 반영되도록 개선.
+- **컵대회 우승(코파 이탈리아 등) 및 최종 결산 조기 스포일러 완전 차단 (`src/engine/mpLeagueEngine.ts`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/multiplayer/league/MpLeagueRoot.tsx`, `src/components/multiplayer/league/MpUclSidePanel.tsx`)**:
+  - `stepLeagueRound`·`stepCupStage`·`stepUclLeaguePhase` 티커에 `prevCup`·`prevUclStandings`·`prevTopScorers`/`prevTopAssisters`·`prevUclTopScorers`/`prevUclTopAssisters`를 포함해 라이브 중계 중 컵 대진표/우승 배지/순위표 스포일러를 원천 차단.
+  - `MpLeagueSeasonSummary`, 신규 `MpCupChampionPopup`, `MpLeagueFinalBoard`/`MpLeaguePodiumPopup`, `UclMilestoneModal` 전원을 `!tickerPlaying && !live.cast` 완료 게이트로 통일.
+- **멀티리그 챔피언스리그(Phase 2) 사이드바 실시간 순위표 전환 & 전용 레이아웃 (`src/components/multiplayer/league/MpUclSidePanel.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/league/LeagueLeadersSideCard.tsx`, `src/engine/mpLeagueEngine.ts`)**:
+  - `MpUclLive`에 실시간 `topScorers`/`topAssisters` 추가. Phase 2 진입 시 상단 헤더가 챔스 전용 네이비/별빛 테마(`UEFA CHAMPIONS LEAGUE`, 진행 라운드, 진출권 배지, 8R/토너먼트 단계 진행 바)로 자동 전환되고 끝난 국내 리그 요소를 정리.
+  - 우측 사이드바가 자동으로 `SideUclStandings`(1~8위 16강 직행 / 9~24위 PO / 25~36위 탈락 컷라인 + 친구 강조 + `[핵심 | 전체 36]` 토글) → 토너먼트 시 `SideUclKnockoutCard` + UCL 득점/도움 `LeagueLeadersSideCard`로 전환.
+  - 모바일(`lg:hidden`)에 라이브 스코어보드 하단 3분할 컴팩트 전환 바(`[진행 · 순위표/토너먼트 · 기록]`)를 추가해 단일 스크롤로 쾌적하게 탐색 가능(CSS `zoom`·이중 스크롤 미사용).
+- **테스트 (`src/__tests__/v85MpSyncAndUclLayout.test.ts`)**: `hasPlayableTickerMatches`, `uclZoneOf`, 세리에A+코파 이탈리아+UCL 풀시즌 시뮬레이션에서 컵 결승 `prevCup` 비스포일러 및 UCL 36팀 순위표/득점·도움 스냅샷 검증 3건 추가.
+
+---
+
 ## v8.4.2 — 라이브 중 2D 입장 · 이벤트 후 자동진행 선택 · 승부차기 추가시간 키커 중계 · 스킵 중 인터뷰 정지 수정
 
 - **라이브 스트리밍 일시정지 → 2D 경기 시뮬레이션 즉시 입장 (`src/types/league.ts`, `src/store/GameContext.tsx`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:

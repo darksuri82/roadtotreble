@@ -305,6 +305,16 @@ export interface MpCastLive {
   matches: MpCastMatch[];
   /** League table before this round, shown while the scoreboard is still replaying */
   prevStandings?: StandingRow[];
+  /** Cup state before this round (prevents cup champion spoiler while final is still streaming) */
+  prevCup?: DomesticCupState | null;
+  /** UCL standings before this round (prevents UCL table spoiler while match is streaming) */
+  prevUclStandings?: StandingRow[];
+  /** League leaders before this round (prevents scorer/assister spoiler while match is streaming) */
+  prevTopScorers?: PlayerSeasonStats[];
+  prevTopAssisters?: PlayerSeasonStats[];
+  /** UCL leaders before this round */
+  prevUclTopScorers?: PlayerSeasonStats[];
+  prevUclTopAssisters?: PlayerSeasonStats[];
 }
 
 export interface MpFriendRankRow {
@@ -347,7 +357,25 @@ export interface MpUclLive {
   lastScores: MpLiteMatch[];
   /** Top UCL player stats (used for UCL MVP display in UclMilestoneModal) */
   topPlayerStats?: Record<string, PlayerSeasonStats>;
+  /** Real-time UCL top scorers & assisters for the Phase 2 sidebar */
+  topScorers?: PlayerSeasonStats[];
+  topAssisters?: PlayerSeasonStats[];
 }
+
+/** Lightweight Realtime Broadcast signal for instant host <-> guest wake-up (DB remains source of truth). */
+export type MpLeagueBroadcastEvent =
+  | {
+      type: 'live_updated';
+      rev: number;
+      stage: MpLeagueStage;
+      flowKind: MpLeagueFlow['kind'];
+      flowKey?: string;
+    }
+  | {
+      type: 'player_signal';
+      playerId: string;
+      reason: 'action' | 'activity' | 'squad' | 'pick';
+    };
 
 export interface MpHumanLive {
   clubId: string;

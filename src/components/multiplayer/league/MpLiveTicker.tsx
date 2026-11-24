@@ -10,6 +10,11 @@ export function isMpTickerPlayed(key: string | null | undefined): boolean {
   return !key || playedKeys.has(key);
 }
 
+/** True only when the ticker actually has at least one non-instant match to replay. */
+export function hasPlayableTickerMatches(ticker: MpCastLive | null | undefined): boolean {
+  return Boolean(ticker && ticker.matches.some((m) => !m.instant));
+}
+
 /** Per-kick reveal cadence during extra penalty shootout phase (added ON TOP of match duration). */
 export const LIVE_PK_KICK_INTERVAL_MS = 700;
 
@@ -515,43 +520,53 @@ const TickerInner = memo(function TickerInner({
       ),
     [ticker.matches, myClubId],
   );
-
-  // Phase 1: Smooth rAF clock 0' → 90' (or 120' for ET)
+  const orderedRef = useRef(ordered);
   useEffect(() => {
+    orderedRef.current = ordered;
+  }, [ordered]);
+
+  const startTsRef = useRef<number | null>(null);
+  const pkStartTsRef = useRef<number | null>(null);
+
+  // Phase 1: Smooth wall-clock rAF 0' → 90' (or 120' for ET) + background-tab safety watchdog
+  useEffect(() => {
+    const completeNow = () => {
+      if (doneRef.current) return;
+      doneRef.current = true;
+      playedKeys.add(ticker.key);
+      onDoneRef.current(ticker.key);
+    };
+
     if (alreadyPlayed || !needsReplay) {
-      if (!doneRef.current) {
-        doneRef.current = true;
-        playedKeys.add(ticker.key);
-        const t = window.setTimeout(() => onDoneRef.current(ticker.key), 0);
-        return () => window.clearTimeout(t);
-      }
-      return;
+      const t = window.setTimeout(completeNow, 0);
+      return () => window.clearTimeout(t);
+    }
+
+    if (startTsRef.current === null) {
+      startTsRef.current = performance.now();
     }
 
     let rafId = 0;
-    let doneTimer = 0;
-    let lastTs = performance.now();
     let lastCommittedInt = Math.floor(progressMinRef.current);
 
-    const step = (now: number) => {
-      const dt = Math.min(100, Math.max(0, now - lastTs));
-      lastTs = now;
-      const safeDuration = Math.max(2000, durationRef.current);
-      const nextFloat = Math.min(
-        lastMinute,
-        progressMinRef.current + (dt / safeDuration) * 90,
-      );
-      progressMinRef.current = nextFloat;
-
-      for (const m of ordered) {
+    const syncBars = (currentFloat: number) => {
+      for (const m of orderedRef.current) {
         if (m.instant) continue;
         const el = barElsRef.current.get(m.key);
         if (el) {
           const maxM = endMinuteOfCastMatch(m);
-          const ratio = Math.min(1, nextFloat / maxM);
+          const ratio = Math.min(1, currentFloat / maxM);
           el.style.transform = `scaleX(${ratio})`;
         }
       }
+    };
+
+    const advanceClock = (now: number): boolean => {
+      const safeDuration = Math.max(2000, durationRef.current);
+      const elapsed = Math.max(0, now - (startTsRef.current ?? now));
+      const nextFloat = Math.min(lastMinute, (elapsed / safeDuration) * 90);
+      progressMinRef.current = nextFloat;
+      syncBars(nextFloat);
 
       const nextInt = Math.floor(nextFloat);
       if (nextInt !== lastCommittedInt) {
@@ -564,39 +579,73 @@ const TickerInner = memo(function TickerInner({
           lastCommittedInt = lastMinute;
           setMinute(lastMinute);
         }
-        // Only finish right here if there are NO penalty kicks to reveal afterwards
-        if (maxPkKicks === 0 && !doneRef.current) {
-          doneRef.current = true;
-          playedKeys.add(ticker.key);
-          doneTimer = window.setTimeout(() => onDoneRef.current(ticker.key), 360);
+        if (maxPkKicks === 0) {
+          // Reveal standings, leaders, and pending interview/transfer popups immediately at FT!
+          completeNow();
         }
-        return;
+        return true;
       }
+      return false;
+    };
 
+    const step = (now: number) => {
+      if (advanceClock(now)) return;
       rafId = window.requestAnimationFrame(step);
     };
 
     rafId = window.requestAnimationFrame(step);
+
+    // Safety watchdog: even if rAF is throttled/paused in a background tab, finish right on schedule
+    const watchdog = window.setInterval(() => {
+      if (doneRef.current || progressMinRef.current >= lastMinute) {
+        window.clearInterval(watchdog);
+        return;
+      }
+      if (advanceClock(performance.now())) {
+        window.clearInterval(watchdog);
+      }
+    }, 350);
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && !doneRef.current) {
+        advanceClock(performance.now());
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
     return () => {
       window.cancelAnimationFrame(rafId);
-      if (doneTimer) window.clearTimeout(doneTimer);
+      window.clearInterval(watchdog);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [alreadyPlayed, needsReplay, lastMinute, maxPkKicks, ticker.key, ordered]);
+  }, [alreadyPlayed, needsReplay, lastMinute, maxPkKicks, ticker.key]);
 
   // Phase 2 (Extra time on top of configured seconds): sequential PK kicker reveal
   useEffect(() => {
     if (alreadyPlayed || !needsReplay || maxPkKicks === 0) return;
     if (minute < lastMinute || doneRef.current) return;
 
+    if (pkStartTsRef.current === null) {
+      pkStartTsRef.current = performance.now();
+    }
+
     if (revealedPenKicks >= maxPkKicks) {
-      doneRef.current = true;
-      playedKeys.add(ticker.key);
-      const t = window.setTimeout(() => onDoneRef.current(ticker.key), 750);
+      const t = window.setTimeout(() => {
+        if (doneRef.current) return;
+        doneRef.current = true;
+        playedKeys.add(ticker.key);
+        onDoneRef.current(ticker.key);
+      }, 450);
       return () => window.clearTimeout(t);
     }
 
     const t = window.setTimeout(() => {
-      setRevealedPenKicks((prev) => Math.min(maxPkKicks, prev + 1));
+      const elapsedPk = performance.now() - (pkStartTsRef.current ?? performance.now());
+      const expectedByClock = Math.max(
+        revealedPenKicks + 1,
+        Math.floor(elapsedPk / LIVE_PK_KICK_INTERVAL_MS),
+      );
+      setRevealedPenKicks(Math.min(maxPkKicks, expectedByClock));
     }, LIVE_PK_KICK_INTERVAL_MS);
     return () => window.clearTimeout(t);
   }, [

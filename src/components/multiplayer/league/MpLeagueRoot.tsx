@@ -5,8 +5,10 @@ import {
   submitTacticBarrier,
 } from '../../../services/multiplayerService';
 import {
+  broadcastLeagueEvent,
   enqueueLeagueAction,
   fetchLeagueBundle,
+  fetchLeagueLiveOnly,
   fetchLeaguePicks,
   fetchLeagueRev,
   subscribeToLeague,
@@ -17,6 +19,7 @@ import type { LeagueId } from '../../../types/league';
 import type {
   MpLeagueActionKind,
   MpLeagueActivity,
+  MpLeagueBroadcastEvent,
   MpLeagueLive,
   MpLeagueLockReason,
   MpLeaguePickRow,
@@ -30,7 +33,7 @@ import { MpLeagueFinalBoard } from './MpLeagueFinalBoard';
 import { MpLeagueH2HView } from './MpLeagueH2HView';
 import { MpLeaguePodiumPopup } from './MpLeaguePodiumPopup';
 import { MpLeagueSnakeDraft } from './MpLeagueSnakeDraft';
-import { isMpTickerPlayed } from './MpLiveTicker';
+import { hasPlayableTickerMatches, isMpTickerPlayed } from './MpLiveTicker';
 import { useMpLeagueHost } from './useMpLeagueHost';
 
 const LEAGUE_LABEL: Record<LeagueId, string> = {
@@ -70,23 +73,36 @@ export function MpLeagueRoot({
   const [editorOpen, setEditorOpen] = useState(false);
   const [dismissedResolutionKey, setDismissedResolutionKey] = useState<string | null>(null);
   const [busyRev, setBusyRev] = useState<number | null>(null);
-  const [answeredEventId, setAnsweredEventId] = useState<string | null>(null);
+  const [answeredEventKey, setAnsweredEventKey] = useState<string | null>(null);
   const [podiumSeenKey, setPodiumSeenKey] = useState<string | null>(null);
   const [podiumOpen, setPodiumOpen] = useState(false);
   const activityRef = useRef<MpLeagueActivity>(activity);
   const changeRef = useRef(0);
   const revRef = useRef<number | null>(null);
   const stageRef = useRef<MpLeagueLive['stage'] | null>(null);
+  const hostWakeRef = useRef<(() => void) | null>(null);
 
-  // Realtime: public league state + snake draft picks.
-  // Every signal first asks only for the revision number; the big state is downloaded on a real change.
+  const applyLive = useCallback((nextLive: MpLeagueLive | null) => {
+    if (!nextLive) return;
+    if (revRef.current !== null && nextLive.rev < revRef.current) return;
+    if (revRef.current === nextLive.rev) return;
+    revRef.current = nextLive.rev;
+    stageRef.current = nextLive.stage;
+    setLive(nextLive);
+    setErrorMsg(null);
+  }, []);
+
+  // Realtime: Broadcast fast-sync (1-RTT live fetch) + postgres_changes & visibility/poll fallback.
   useEffect(() => {
     let disposed = false;
     let running = false;
     let queued = false;
-    const refresh = async () => {
+    let queuedForce = false;
+
+    const refresh = async (forceLiveFetch = false) => {
       if (running) {
         queued = true;
+        if (forceLiveFetch) queuedForce = true;
         return;
       }
       running = true;
@@ -94,22 +110,40 @@ export function MpLeagueRoot({
         changeRef.current += 1;
         const stage = stageRef.current;
         const inDraft = stage === null || stage === 'setup' || stage === 'draft';
+
+        // Fast path: Broadcast notified us of a newer rev during active season → skip rev probe & picks table!
+        if (forceLiveFetch && !inDraft) {
+          const res = await fetchLeagueLiveOnly(room.id);
+          if (disposed) return;
+          if (res.data) {
+            applyLive(res.data);
+          } else if (res.error) {
+            setErrorMsg(res.error);
+          }
+          return;
+        }
+
         const rev = await fetchLeagueRev(room.id);
         if (disposed) return;
         if (rev === null || rev !== revRef.current || inDraft) {
           if (rev !== null && rev === revRef.current && inDraft) {
-            // Only the picks can have changed
             const nextPicks = await fetchLeaguePicks(room.id, draftGeneration);
             if (!disposed && nextPicks) {
               setPicks((prev) => (prev.length === nextPicks.length ? prev : nextPicks));
+            }
+          } else if (!inDraft) {
+            const res = await fetchLeagueLiveOnly(room.id);
+            if (disposed) return;
+            if (res.data) {
+              applyLive(res.data);
+            } else if (res.error) {
+              setErrorMsg(res.error);
             }
           } else {
             const res = await fetchLeagueBundle(room.id, draftGeneration);
             if (disposed) return;
             if (res.data) {
-              revRef.current = res.data.live?.rev ?? null;
-              stageRef.current = res.data.live?.stage ?? null;
-              setLive(res.data.live);
+              if (res.data.live) applyLive(res.data.live);
               const nextPicks = res.data.picks;
               setPicks((prev) => (prev.length === nextPicks.length ? prev : nextPicks));
               setErrorMsg(null);
@@ -121,22 +155,43 @@ export function MpLeagueRoot({
       } finally {
         running = false;
         if (queued && !disposed) {
+          const nextForce = queuedForce;
           queued = false;
-          void refresh();
+          queuedForce = false;
+          void refresh(nextForce);
         }
       }
     };
+
+    const handleBroadcast = (ev: MpLeagueBroadcastEvent) => {
+      if (disposed) return;
+      if (ev.type === 'live_updated') {
+        if (revRef.current === null || ev.rev > revRef.current) {
+          void refresh(true);
+        }
+        return;
+      }
+      if (ev.type === 'player_signal') {
+        changeRef.current += 1;
+        hostWakeRef.current?.();
+        if (ev.reason === 'pick') {
+          void refresh(false);
+        }
+      }
+    };
+
     const unsubscribe = subscribeToLeague({
       roomId: room.id,
       onChange: () => {
-        void refresh();
+        void refresh(false);
       },
+      onBroadcast: handleBroadcast,
     });
     return () => {
       disposed = true;
       unsubscribe();
     };
-  }, [room.id, draftGeneration]);
+  }, [room.id, draftGeneration, applyLive]);
 
   const host = useMpLeagueHost({
     enabled: isHost,
@@ -146,13 +201,27 @@ export function MpLeagueRoot({
     live,
     picks,
     changeRef,
+    onHostLiveCommitted: applyLive,
   });
+
+  useEffect(() => {
+    hostWakeRef.current = isHost ? host.wakeNow : null;
+    return () => {
+      hostWakeRef.current = null;
+    };
+  }, [isHost, host.wakeNow]);
 
   const writeActivity = useCallback(
     (next: MpLeagueActivity) => {
       activityRef.current = next;
       setActivity(next);
-      void updateLeagueActivity(room.id, playerId, next);
+      void updateLeagueActivity(room.id, playerId, next).then(() => {
+        broadcastLeagueEvent(room.id, {
+          type: 'player_signal',
+          playerId,
+          reason: 'activity',
+        });
+      });
     },
     [room.id, playerId],
   );
@@ -198,6 +267,13 @@ export function MpLeagueRoot({
     async (payload: MpLeagueSquadPayload) => {
       const res = await updateLeaguePayload(room.id, playerId, payload);
       if (res.error) setErrorMsg(res.error);
+      else {
+        broadcastLeagueEvent(room.id, {
+          type: 'player_signal',
+          playerId,
+          reason: 'squad',
+        });
+      }
     },
     [room.id, playerId],
   );
@@ -220,11 +296,22 @@ export function MpLeagueRoot({
 
   // Global pause lock: only engage interview/injury locks once the live scoreboard has finished replaying
   const tickerKey = live?.ticker?.key ?? null;
+  const tickerHasPlayable = hasPlayableTickerMatches(live?.ticker);
   const tickerPlaying = Boolean(
-    live?.ticker &&
+    tickerHasPlayable &&
       tickerDoneKey !== tickerKey &&
       !isMpTickerPlayed(tickerKey),
   );
+
+  // Sync React state whenever a ticker is already marked played or has no playable matches (prevents stale UI gating)
+  useEffect(() => {
+    if (!tickerKey || tickerDoneKey === tickerKey) return;
+    if (!tickerHasPlayable || isMpTickerPlayed(tickerKey)) {
+      const t = window.setTimeout(() => setTickerDoneKey(tickerKey), 0);
+      return () => window.clearTimeout(t);
+    }
+  }, [tickerKey, tickerDoneKey, tickerHasPlayable]);
+
   const transferActiveNow = Boolean(
     live?.flow.kind === 'transfer' && mine && mine.offers.length > 0,
   );
@@ -280,6 +367,12 @@ export function MpLeagueRoot({
       if (res.error) {
         setErrorMsg(res.error);
         setBusyRev(null);
+      } else {
+        broadcastLeagueEvent(room.id, {
+          type: 'player_signal',
+          playerId,
+          reason: 'action',
+        });
       }
     },
     [room.id, playerId, live?.rev],
@@ -306,7 +399,7 @@ export function MpLeagueRoot({
 
   const actionBusy = busyRev !== null && live !== null && busyRev === live.rev;
 
-  const finalKey = live?.stage === 'final' ? live.seasonKey : null;
+  const finalKey = live?.stage === 'final' && !tickerPlaying ? live.seasonKey : null;
   useEffect(() => {
     if (!finalKey || podiumSeenKey === finalKey) return;
     const t = window.setTimeout(() => {
@@ -364,7 +457,7 @@ export function MpLeagueRoot({
     );
   }
 
-  if (live.stage === 'final' && live.final) {
+  if (live.stage === 'final' && live.final && !tickerPlaying) {
     const showPodium = podiumOpen && live.final.rows.length >= 3;
     const showDuel = podiumOpen && live.final.rows.length === 2;
     const finalClubsById: Record<string, (typeof live.clubs)[number]> = {};
@@ -432,14 +525,21 @@ export function MpLeagueRoot({
         onSubmitBarrier={async (submission: MpTacticSubmission) => {
           const res = await submitTacticBarrier(room.id, playerId, submission);
           if (res.error) setErrorMsg(res.error);
-          else if (submission.phase === 'pre_match' && mySquad) {
-            saveSquad({
-              ...mySquad,
-              formation: submission.formation,
-              tactic: submission.tactic,
-              starters: submission.starters,
-              bench: submission.bench,
+          else {
+            broadcastLeagueEvent(room.id, {
+              type: 'player_signal',
+              playerId,
+              reason: 'activity',
             });
+            if (submission.phase === 'pre_match' && mySquad) {
+              saveSquad({
+                ...mySquad,
+                formation: submission.formation,
+                tactic: submission.tactic,
+                starters: submission.starters,
+                bench: submission.bench,
+              });
+            }
           }
         }}
         onClearBarrier={async () => {
@@ -449,6 +549,13 @@ export function MpLeagueRoot({
       />
     );
   }
+
+  const activeEventScopeKey =
+    live.flow.kind === 'event' && mine?.event
+      ? `${live.flow.key}:${mine.event.templateId}`
+      : mine?.event
+        ? `r${live.round}:${mine.event.templateId}`
+        : null;
 
   return (
     <MpLeagueDashboard
@@ -475,10 +582,11 @@ export function MpLeagueRoot({
         setEditorOpen(false);
       }}
       onAck={ack}
-      hiddenEventId={answeredEventId}
+      hiddenEventKey={answeredEventKey}
+      activeEventKey={activeEventScopeKey}
       onEventChoice={(choiceId) => {
         // Hide the question right away so one answer is sent exactly once
-        setAnsweredEventId(mine?.event?.templateId ?? null);
+        setAnsweredEventKey(activeEventScopeKey);
         void sendAction('event_choice', { choiceId });
       }}
       onDismissResolution={setDismissedResolutionKey}

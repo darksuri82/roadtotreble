@@ -45,6 +45,7 @@ import {
 } from '../../../engine/mpLeagueH2H';
 import { DEFAULT_MP_LEAGUE_POOL } from '../../../services/multiplayerService';
 import {
+  broadcastLeagueEvent,
   completeLeagueAction,
   fetchPendingLeagueActions,
   insertLeaguePick,
@@ -88,6 +89,8 @@ interface HostInputs {
   picks: MpLeaguePickRow[];
   /** Bumped (without re-rendering) whenever a league table changed */
   changeRef: { current: number };
+  /** Called immediately after the host publishes a new live state so host UI updates in lockstep with Broadcast. */
+  onHostLiveCommitted?: (live: MpLeagueLive) => void;
 }
 
 export interface MpLeagueHostApi {
@@ -96,6 +99,8 @@ export interface MpLeagueHostApi {
   hostError: string | null;
   forceResume: () => void;
   setAutoMs: (ms: number) => void;
+  /** Wakes up the host tick loop immediately upon receiving a guest Broadcast signal. */
+  wakeNow: () => void;
 }
 
 function payloadToSquad(row: MpRoomPlayerRow | undefined): MpSquadInput | null {
@@ -158,8 +163,15 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
     }
   }, []);
 
+  const wakeTickRef = useRef<(() => void) | null>(null);
+
   const setAutoMs = useCallback((ms: number) => {
     pendingAutoMsRef.current = ms;
+    wakeTickRef.current?.();
+  }, []);
+
+  const wakeNow = useCallback(() => {
+    wakeTickRef.current?.();
   }, []);
 
   useEffect(() => {
@@ -178,8 +190,19 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       hostRef.current = stamped;
       publishedRevRef.current = stamped.rev;
       void saveHostLeagueState(stamped);
-      const res = await publishLeagueLive(roomId, buildMpLeagueLive(stamped, squads));
+      const nextLive = buildMpLeagueLive(stamped, squads);
+      const res = await publishLeagueLive(roomId, nextLive);
       setHostError(res.error);
+      if (!res.error) {
+        broadcastLeagueEvent(roomId, {
+          type: 'live_updated',
+          rev: nextLive.rev,
+          stage: nextLive.stage,
+          flowKind: nextLive.flow.kind,
+          flowKey: 'key' in nextLive.flow ? nextLive.flow.key : undefined,
+        });
+        latest.current.onHostLiveCommitted?.(nextLive);
+      }
     };
 
     const resolveSquads = async (
@@ -230,6 +253,15 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       publishedRevRef.current = nextLive.rev;
       const res = await publishLeagueLive(p.room.id, nextLive);
       setHostError(res.error);
+      if (!res.error) {
+        broadcastLeagueEvent(p.room.id, {
+          type: 'live_updated',
+          rev: nextLive.rev,
+          stage: nextLive.stage,
+          flowKind: nextLive.flow.kind,
+        });
+        latest.current.onHostLiveCommitted?.(nextLive);
+      }
     };
 
     const handleDraft = async (p: HostInputs, live: MpLeagueLive) => {
@@ -815,11 +847,17 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       }
     };
 
+    wakeTickRef.current = () => {
+      void tick();
+    };
     const interval = window.setInterval(() => {
       void tick();
     }, TICK_MS);
-    return () => window.clearInterval(interval);
+    return () => {
+      wakeTickRef.current = null;
+      window.clearInterval(interval);
+    };
   }, [inputs.enabled]);
 
-  return { hostMissing, hostError, forceResume, setAutoMs };
+  return { hostMissing, hostError, forceResume, setAutoMs, wakeNow };
 }

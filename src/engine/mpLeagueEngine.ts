@@ -1002,6 +1002,9 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
       key: `league-${state.seasonKey}-r${nextRound}`,
       title: `리그 ${nextRound}R`,
       prevStandings: state.standings,
+      prevCup: slimCup(state.cup),
+      prevTopScorers: topBy(state.allPlayerStats, 'goals'),
+      prevTopAssisters: topBy(state.allPlayerStats, 'assists'),
       matches: buildTickerMatches(
         humanOutcomes,
         `리그 ${nextRound}R`,
@@ -1164,7 +1167,12 @@ function stepCupStage(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
     ticker: {
       key: `${state.ticker?.key ?? `cup-${state.seasonKey}`}-${stage}`,
       title: state.ticker?.title ?? label,
-      prevStandings: state.ticker?.prevStandings,
+      prevStandings: state.ticker?.prevStandings ?? state.standings,
+      prevCup:
+        state.ticker?.prevCup !== undefined ? state.ticker.prevCup : slimCup(state.cup),
+      prevTopScorers: state.ticker?.prevTopScorers ?? topBy(state.allPlayerStats, 'goals'),
+      prevTopAssisters:
+        state.ticker?.prevTopAssisters ?? topBy(state.allPlayerStats, 'assists'),
       matches: [
         ...(state.ticker?.matches ?? []),
         ...buildTickerMatches(
@@ -2060,6 +2068,9 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
     ticker: {
       key: `ucl-${state.seasonKey}-lp${target}`,
       title: label,
+      prevUclStandings: ucl.standings,
+      prevUclTopScorers: topBy(state.uclPlayerStats, 'goals'),
+      prevUclTopAssisters: topBy(state.uclPlayerStats, 'assists'),
       matches: buildTickerMatches(
         humanOutcomes,
         label,
@@ -2642,6 +2653,8 @@ function buildUclLive(state: MpLeagueHostState): MpUclLive | null {
     humanClubIds: state.uclHumanClubIds,
     lastScores: state.uclLastScores,
     topPlayerStats,
+    topScorers: topBy(state.uclPlayerStats, 'goals'),
+    topAssisters: topBy(state.uclPlayerStats, 'assists'),
   };
 }
 

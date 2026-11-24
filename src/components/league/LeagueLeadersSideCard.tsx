@@ -13,6 +13,8 @@ interface LeagueLeadersSideCardProps {
   friendLabelByClub?: Record<string, string>;
   maxRows?: number;
   desktopLayout?: 'stack' | 'two-col';
+  competitionPrefix?: string;
+  accent?: 'league' | 'ucl';
   onSelectPlayer?: (stats: PlayerSeasonStats) => void;
 }
 
@@ -130,6 +132,8 @@ export const LeagueLeadersSideCard = memo(function LeagueLeadersSideCard({
   friendLabelByClub,
   maxRows = 5,
   desktopLayout = 'stack',
+  competitionPrefix,
+  accent = 'league',
   onSelectPlayer,
 }: LeagueLeadersSideCardProps) {
   const [mobileTab, setMobileTab] = useState<LeaderTab>('goals');
@@ -137,6 +141,12 @@ export const LeagueLeadersSideCard = memo(function LeagueLeadersSideCard({
   const hasAny =
     scorers.some((s) => s.goals > 0) || assisters.some((a) => a.assists > 0);
   if (!hasAny) return null;
+
+  const cardSurface =
+    accent === 'ucl'
+      ? 'border-sky-500/30 bg-[#0b1324]'
+      : 'border-slate-800/90 bg-[#0d131c]';
+  const prefix = competitionPrefix ? `${competitionPrefix} ` : '';
 
   return (
     <>
@@ -146,11 +156,11 @@ export const LeagueLeadersSideCard = memo(function LeagueLeadersSideCard({
           desktopLayout === 'two-col' ? 'grid-cols-2' : 'grid-cols-1'
         }`}
       >
-        <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
+        <div className={`rounded-xl border p-2.5 space-y-1.5 ${cardSurface}`}>
           <div className="flex items-center justify-between px-0.5">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-200">
               <Crown className="w-3.5 h-3.5 text-amber-400" />
-              득점 순위
+              {prefix}득점 순위
             </span>
             <span className="text-[10px] font-semibold text-slate-500">TOP {maxRows}</span>
           </div>
@@ -164,11 +174,11 @@ export const LeagueLeadersSideCard = memo(function LeagueLeadersSideCard({
           />
         </div>
 
-        <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
+        <div className={`rounded-xl border p-2.5 space-y-1.5 ${cardSurface}`}>
           <div className="flex items-center justify-between px-0.5">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-200">
               <Award className="w-3.5 h-3.5 text-sky-400" />
-              도움 순위
+              {prefix}도움 순위
             </span>
             <span className="text-[10px] font-semibold text-slate-500">TOP {maxRows}</span>
           </div>
@@ -184,7 +194,7 @@ export const LeagueLeadersSideCard = memo(function LeagueLeadersSideCard({
       </div>
 
       {/* Mobile (<lg): Compact single card with instant [득점 | 도움] toggle */}
-      <div className="lg:hidden rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-2">
+      <div className={`lg:hidden rounded-xl border p-2.5 space-y-2 ${cardSurface}`}>
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-200">
             {mobileTab === 'goals' ? (
@@ -192,7 +202,7 @@ export const LeagueLeadersSideCard = memo(function LeagueLeadersSideCard({
             ) : (
               <Award className="w-3.5 h-3.5 text-sky-400" />
             )}
-            개인 기록 TOP {maxRows}
+            {prefix}개인 기록 TOP {maxRows}
           </span>
           <div className="inline-flex rounded-lg border border-slate-800 bg-[#0b1018] p-0.5 text-[10px]">
             <button

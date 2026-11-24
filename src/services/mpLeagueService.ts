@@ -4,6 +4,7 @@ import type {
   MpLeagueActionKind,
   MpLeagueActionRow,
   MpLeagueActivity,
+  MpLeagueBroadcastEvent,
   MpLeagueHostState,
   MpLeagueLive,
   MpLeaguePickJson,
@@ -76,6 +77,30 @@ export async function fetchLeagueBundle(
         live: (liveRes.data?.live as MpLeagueLive | null) ?? null,
         picks: (picksRes.data ?? []) as MpLeaguePickRow[],
       },
+      error: null,
+    };
+  } catch (err) {
+    return { data: null, error: describeError(err, '리그 상태 조회 중 오류') };
+  }
+}
+
+/** Fast 1-RTT live-only fetch used during active league / UCL stages (skips draft picks table). */
+export async function fetchLeagueLiveOnly(
+  roomId: string,
+): Promise<MpLeagueResult<MpLeagueLive | null>> {
+  const client = getSupabaseClient();
+  if (!client) return { data: null, error: 'Supabase 미연결' };
+  try {
+    const { data, error } = await client
+      .from('mp_league_state')
+      .select('live')
+      .eq('room_id', roomId)
+      .maybeSingle();
+    if (error) {
+      return { data: null, error: describeError(error, '리그 상태 조회 실패') };
+    }
+    return {
+      data: (data?.live as MpLeagueLive | null) ?? null,
       error: null,
     };
   } catch (err) {
@@ -314,53 +339,104 @@ export async function completeLeagueAction(
     .eq('id', actionId);
 }
 
-/** Realtime subscription for the three multi league tables (falls back to a light safety poll). */
+const activeLeagueChannels = new Map<string, RealtimeChannel>();
+
+/**
+ * Sends a tiny Realtime Broadcast wake-up signal over the already-subscribed room channel.
+ * DB persistence + postgres_changes + safety poll remain the authoritative fallback.
+ */
+export function broadcastLeagueEvent(
+  roomId: string,
+  event: MpLeagueBroadcastEvent,
+): void {
+  const ch = activeLeagueChannels.get(roomId);
+  if (!ch) return;
+  try {
+    void ch.send({
+      type: 'broadcast',
+      event: 'mp_sync',
+      payload: event,
+    });
+  } catch {
+    // Non-fatal: postgres_changes + safety poll will still deliver state
+  }
+}
+
+/** Realtime subscription (Broadcast fast-path + postgres_changes + visibility/safety poll fallback). */
 export function subscribeToLeague(params: {
   roomId: string;
   onChange: () => void;
+  onBroadcast?: (event: MpLeagueBroadcastEvent) => void;
 }): () => void {
   const client = getSupabaseClient();
   if (!client) return () => {};
-  const { roomId, onChange } = params;
+  const { roomId, onChange, onBroadcast } = params;
   let disposed = false;
   let timer: number | null = null;
 
-  const schedule = () => {
+  const schedule = (delayMs = 50) => {
     if (disposed) return;
     if (timer !== null) window.clearTimeout(timer);
     timer = window.setTimeout(() => {
+      timer = null;
       if (!disposed) onChange();
-    }, 60);
+    }, delayMs);
   };
 
   const channel: RealtimeChannel = client
-    .channel(`mp-league:${roomId}`)
+    .channel(`mp-league:${roomId}`, {
+      config: { broadcast: { self: false, ack: false } },
+    })
+    .on('broadcast', { event: 'mp_sync' }, ({ payload }) => {
+      if (disposed) return;
+      const ev = payload as MpLeagueBroadcastEvent | null;
+      if (ev && typeof ev === 'object' && 'type' in ev && onBroadcast) {
+        onBroadcast(ev);
+      } else {
+        schedule(0);
+      }
+    })
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'mp_league_state', filter: `room_id=eq.${roomId}` },
-      schedule,
+      () => schedule(30),
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'mp_league_picks', filter: `room_id=eq.${roomId}` },
-      schedule,
+      () => schedule(40),
     )
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'mp_league_actions', filter: `room_id=eq.${roomId}` },
-      schedule,
+      () => schedule(30),
     )
     .subscribe((status) => {
-      if (!disposed && status === 'SUBSCRIBED') schedule();
+      if (disposed) return;
+      if (status === 'SUBSCRIBED') {
+        activeLeagueChannels.set(roomId, channel);
+        schedule(0);
+      }
     });
 
+  const handleVisibility = () => {
+    if (!disposed && document.visibilityState === 'visible') {
+      schedule(0);
+    }
+  };
+  document.addEventListener('visibilitychange', handleVisibility);
+
   const poll = window.setInterval(() => {
-    if (!disposed && document.visibilityState === 'visible') schedule();
+    if (!disposed && document.visibilityState === 'visible') schedule(0);
   }, 2500);
 
   return () => {
     disposed = true;
+    if (activeLeagueChannels.get(roomId) === channel) {
+      activeLeagueChannels.delete(roomId);
+    }
     if (timer !== null) window.clearTimeout(timer);
+    document.removeEventListener('visibilitychange', handleVisibility);
     window.clearInterval(poll);
     void client.removeChannel(channel);
   };

@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v8.4.2)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.5)
 
 > Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
@@ -9,15 +9,19 @@
 ## 1. 기술 스택 및 실행 환경
 
 - **Framework**: React 19 + TypeScript (strict) + Vite 8.3.8 (Rolldown)
-- **Realtime Backend**: Supabase (`@supabase/supabase-js` — Postgres `mp_rooms` / `mp_room_players` + Realtime Postgres Changes + Presence, `supabase/schema.sql`)
+- **Realtime Backend**: Supabase (`@supabase/supabase-js` — Postgres `mp_rooms` / `mp_room_players` + Realtime Postgres Changes + Broadcast Fast Sync + Presence, `supabase/schema.sql`)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, 차분한 슬레이트 UI 크롬 + 웅장한 레전드/슈퍼스타/월클 카드 글로우 & 선명한 4색 피치 시너지선)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **31개 파일 / 128개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **32개 파일 / 131개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환, `.github/workflows/deploy.yml`에서 `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY` Secret 주입)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
-- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`), `stable-before-v8.4-live-skip` (`v8.3` `600c7da`)
+- **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`), `stable-before-v8.4-live-skip` (`v8.3` `600c7da`), `stable-before-mp-sync-ucl` (`v8.4.2` `9f6e976`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.5 멀티리그 Broadcast 즉시 동기화 · 순위표 즉시 반영 · 컵/우승 스포일러 차단 · 챔스(Phase 2) 전용 레이아웃 & 실시간 사이드바**:
+  - **Broadcast Fast Sync & 비방장 팝업 지연/미표시 근본 수정 (`mpLeagueService.ts`, `useMpLeagueHost.ts`, `MpLeagueRoot.tsx`, `MpLiveTicker.tsx`)**: `MpLiveTicker` `useEffect` 의존성에서 `ordered`를 제거해 리렌더 시 `onDone` 유실(다른 버튼 클릭 시 뒤늦게 팝업이 뜨던 버그)을 원천 해결하고, 월클럭 + 백그라운드 워치독 + `hasPlayableTickerMatches` 가드 + `mp-league:${roomId}` Broadcast(`live_updated`/`player_signal`) + 1-RTT `fetchLeagueLiveOnly` + 방장 커밋 락스텝/즉시 기상으로 방장·참여자 동시 팝업 구현.
+  - **순위표 즉시 반영 & 컵/리그/UCL 조기 스포일러 완전 차단 (`mpLeagueEngine.ts`, `MpLeagueDashboard.tsx`, `MpLeagueRoot.tsx`, `MpUclSidePanel.tsx`)**: 티커에 `prevStandings`/`prevCup`/`prevUclStandings`/`prevTopScorers`/`prevTopAssisters`를 분리 보존해 중계 중 스포일러 차단 및 `FT` 도달 즉시 실시간 반영. `MpLeagueSeasonSummary`, `MpCupChampionPopup`, `MpLeagueFinalBoard`/`MpLeaguePodiumPopup`, `UclMilestoneModal` 전원을 `!tickerPlaying && !live.cast` 완료 후에만 노출.
+  - **멀티리그 Phase 2 챔스 전용 레이아웃 & 실시간 사이드바 (`MpUclSidePanel.tsx`, `MpLeagueDashboard.tsx`, `LeagueLeadersSideCard.tsx`, `mpLeagueEngine.ts`)**: 챔스 진입 시 깊은 네이비 전용 헤더 + 우측 사이드바 `SideUclStandings`(1~8/9~24/25~36 컷라인·친구 강조·`[핵심|전체36]`) / 토너먼트 `SideUclKnockoutCard` + UCL 득점·도움 자동 전환, 모바일 3분할 컴팩트 전환 바 적용(`v85MpSyncAndUclLayout.test.ts`).
 - **v8.4.2 라이브 중 2D 난입 · 이벤트 후 재개 선택 · 승부차기 추가시간 키커 중계 · 스킵 중 인터뷰 정지 수정**:
   - **라이브 중 2D 시뮬레이션 입장 (`league.ts`, `GameContext.tsx`, `SoloLiveScoreboard.tsx`, `LiveMatchBroadcast.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 솔로 라이브 자동진행을 `liveHalftime.streamAutoMode` 미확정 상태로 실행(`START_SOLO_STREAM_MATCH` → `FT`+PK 시 `COMMIT_LIVE_MATCH`)해 일시정지 시 `[2D 경기 중계 입장]`(`ENTER_LIVE_BROADCAST_FROM_STREAM`)으로 멈춘 분/구간 그대로 2D 중계에 난입 가능.
   - **이벤트 후 `[이어서 자동진행 / 일시정지]` 선택지 (`SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 컵대회/2D 직접 지휘·이적시장·부상 대응 완료 후 재개 선택 모달 표시(인터뷰는 응답 직후 자동진행 즉시 이어감).

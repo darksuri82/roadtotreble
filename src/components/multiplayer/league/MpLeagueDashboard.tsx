@@ -18,6 +18,8 @@ import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemis
 import { getMoraleLabel } from '../../../engine/conditionEngine';
 import { getLeagueById } from '../../../engine/dataLoader';
 import { getNextTransferWindowRound } from '../../../engine/transferEngine';
+import { UCL_STAGE_LABELS } from '../../../engine/uclEngine';
+import type { DomesticCupState } from '../../../types/cup';
 import type { Club, LeagueId, PlayerSeasonStats, StandingRow } from '../../../types/league';
 import type {
   MpH2HRecord,
@@ -33,6 +35,7 @@ import {
 } from '../../../types/mpLeague';
 import type { MpRoomPlayerRow } from '../../../types/multiplayer';
 import type { Player } from '../../../types/player';
+import type { UclKnockoutStage } from '../../../types/ucl';
 import { resolvePlayerById } from '../../../utils/playerLookup';
 import { InjuryAlertModal } from '../../common/InjuryAlertModal';
 import { ManagerEventModal } from '../../common/ManagerEventModal';
@@ -50,8 +53,18 @@ import { MpLeagueSeasonSummary } from './MpLeagueSeasonSummary';
 import { MpLeagueSquadEditor } from './MpLeagueSquadEditor';
 import { MpLeagueTransferModal } from './MpLeagueTransferModal';
 import type { MpCounterTradePayload } from './MpLeagueTransferModal';
-import { isMpTickerPlayed, MpLiveTicker } from './MpLiveTicker';
+import {
+  hasPlayableTickerMatches,
+  isMpTickerPlayed,
+  MpLiveTicker,
+} from './MpLiveTicker';
 import { MpUclMulticastBoard } from './MpUclMulticastBoard';
+import {
+  MpCupChampionPopup,
+  SideUclKnockoutCard,
+  SideUclStandings,
+  uclZoneOf,
+} from './MpUclSidePanel';
 import { buildUclViewForViewer, reachedUclMilestone } from './mpUclView';
 import type { MpUclMilestone } from './mpUclView';
 
@@ -63,7 +76,16 @@ const LEAGUE_LABEL: Record<LeagueId, string> = {
   ligue1: '리그1',
 };
 
-type DashTab = 'results' | 'cup' | 'ucl';
+const UCL_KO_STEPS: { id: UclKnockoutStage; label: string }[] = [
+  { id: 'playoff', label: 'PO' },
+  { id: 'r16', label: '16강' },
+  { id: 'qf', label: '8강' },
+  { id: 'sf', label: '4강' },
+  { id: 'final', label: '결승' },
+];
+
+type DashTab = 'results' | 'cup' | 'ucl' | 'domestic';
+type MobileSection = 'main' | 'table' | 'leaders';
 
 /** Popups each tab has already shown (survives remounts when a friend match takes over the screen). */
 const seenPopups = new Set<string>();
@@ -83,7 +105,8 @@ interface MpLeagueDashboardProps {
   dismissedResolutionKey: string | null;
   tickerDoneKey: string | null;
   onTickerDoneKey: (key: string) => void;
-  hiddenEventId: string | null;
+  hiddenEventKey: string | null;
+  activeEventKey: string | null;
   hostMissing: boolean;
   errorMsg: string | null;
   onOpenEditor: () => void;
@@ -101,13 +124,18 @@ interface MpLeagueDashboardProps {
   onLeaveRoom: () => void;
 }
 
-interface FrozenView {
+interface LiveViewData {
   standings: StandingRow[];
+  cup: DomesticCupState | null;
+  uclStandings: StandingRow[];
   byClub: Record<string, MpHumanLive>;
   lastRound: MpLeagueLive['lastRound'];
   cupNews: MpLiteMatch[];
+  uclLastScores: MpLiteMatch[];
   topScorers: PlayerSeasonStats[];
   topAssisters: PlayerSeasonStats[];
+  uclTopScorers: PlayerSeasonStats[];
+  uclTopAssisters: PlayerSeasonStats[];
 }
 
 function resultTone(m: MpLiteMatch, clubId: string): string {
@@ -286,7 +314,8 @@ export function MpLeagueDashboard({
   dismissedResolutionKey,
   tickerDoneKey,
   onTickerDoneKey,
-  hiddenEventId,
+  hiddenEventKey,
+  activeEventKey,
   hostMissing,
   errorMsg,
   onOpenEditor,
@@ -304,14 +333,25 @@ export function MpLeagueDashboard({
   onLeaveRoom,
 }: MpLeagueDashboardProps) {
   const [tabChoice, setTabChoice] = useState<DashTab | null>(null);
-  const [frozen, setFrozen] = useState<FrozenView | null>(null);
+  const [mobileSection, setMobileSection] = useState<MobileSection>('main');
   const [popupTick, setPopupTick] = useState(0);
   const [summaryReviewOpen, setSummaryReviewOpen] = useState(false);
   const [inspected, setInspected] = useState<{
     player: Player;
     stats?: PlayerSeasonStats | null;
   } | null>(null);
-  const tab: DashTab = tabChoice ?? (live.stage === 'ucl' && live.ucl ? 'ucl' : 'results');
+
+  const isUclStage = live.stage === 'ucl' && Boolean(live.ucl);
+  const tab: DashTab = useMemo(() => {
+    if (isUclStage) {
+      if (tabChoice === 'results' || tabChoice === 'domestic' || tabChoice === 'ucl') {
+        return tabChoice;
+      }
+      return 'ucl';
+    }
+    if (tabChoice === 'cup' || tabChoice === 'results') return tabChoice;
+    return 'results';
+  }, [isUclStage, tabChoice]);
 
   const leagueMeta = getLeagueById(live.leagueId);
   const myHuman = live.humans.find((h) => h.playerId === playerId) ?? null;
@@ -337,50 +377,58 @@ export function MpLeagueDashboard({
   const rowByPlayer = (human: MpLeagueHuman) =>
     players.find((p) => p.player_id === human.playerId) ?? null;
 
-  // While the live scoreboard is replaying a round, keep previous table & leaders (no spoilers)
+  // Deterministic spoiler guard: while the live ticker is actively replaying, show exact pre-round snapshots;
+  // the instant FT (or PK end) fires, immediately switch to live standings, cup, UCL, and leaders.
   const tickerKey = live.ticker?.key ?? null;
+  const tickerHasPlayable = hasPlayableTickerMatches(live.ticker);
   const tickerPlaying = Boolean(
-    live.ticker && tickerDoneKey !== tickerKey && !isMpTickerPlayed(tickerKey),
+    tickerHasPlayable && tickerDoneKey !== tickerKey && !isMpTickerPlayed(tickerKey),
   );
-  const hideRecent = tickerPlaying && !frozen;
-  const view: FrozenView = tickerPlaying
-    ? frozen ?? {
+  const playingClubIds = useMemo(() => {
+    const set = new Set<string>();
+    if (!tickerPlaying || !live.ticker) return set;
+    for (const m of live.ticker.matches) {
+      if (!m.instant) {
+        set.add(m.homeTeamId);
+        set.add(m.awayTeamId);
+      }
+    }
+    return set;
+  }, [tickerPlaying, live.ticker]);
+
+  const view: LiveViewData = tickerPlaying
+    ? {
         standings: live.ticker?.prevStandings ?? live.standings,
+        cup: live.ticker?.prevCup !== undefined ? live.ticker.prevCup : live.cup,
+        uclStandings: live.ticker?.prevUclStandings ?? live.ucl?.standings ?? [],
         byClub: live.byClub,
         lastRound: null,
         cupNews: [],
-        topScorers: [],
-        topAssisters: [],
+        uclLastScores: [],
+        topScorers: live.ticker?.prevTopScorers ?? live.topScorers,
+        topAssisters: live.ticker?.prevTopAssisters ?? live.topAssisters ?? [],
+        uclTopScorers: live.ticker?.prevUclTopScorers ?? live.ucl?.topScorers ?? [],
+        uclTopAssisters: live.ticker?.prevUclTopAssisters ?? live.ucl?.topAssisters ?? [],
       }
     : {
         standings: live.standings,
+        cup: live.cup,
+        uclStandings: live.ucl?.standings ?? [],
         byClub: live.byClub,
         lastRound: live.lastRound,
         cupNews: live.cupNews,
+        uclLastScores: live.ucl?.lastScores ?? [],
         topScorers: live.topScorers,
         topAssisters: live.topAssisters ?? [],
+        uclTopScorers: live.ucl?.topScorers ?? [],
+        uclTopAssisters: live.ucl?.topAssisters ?? [],
       };
+
   const handleTickerDone = useCallback(
     (key: string) => {
       onTickerDoneKey(key);
-      setFrozen({
-        standings: live.standings,
-        byClub: live.byClub,
-        lastRound: live.lastRound,
-        cupNews: live.cupNews,
-        topScorers: live.topScorers,
-        topAssisters: live.topAssisters ?? [],
-      });
     },
-    [
-      onTickerDoneKey,
-      live.standings,
-      live.byClub,
-      live.lastRound,
-      live.cupNews,
-      live.topScorers,
-      live.topAssisters,
-    ],
+    [onTickerDoneKey],
   );
 
   const mine: MpHumanLive | null = myClubId ? live.byClub[myClubId] ?? null : null;
@@ -443,6 +491,58 @@ export function MpLeagueDashboard({
   const myRank = myRankIdx === -1 ? 10 : myRankIdx + 1;
   const myStandingRow = myRankIdx === -1 ? null : view.standings[myRankIdx];
 
+  const myUclQualified = Boolean(
+    myClubId && live.ucl && live.ucl.humanClubIds.includes(myClubId),
+  );
+  const myUclRankIdx =
+    myClubId && isUclStage
+      ? view.uclStandings.findIndex((r) => r.teamId === myClubId)
+      : -1;
+  const myUclRank = myUclRankIdx === -1 ? null : myUclRankIdx + 1;
+  const myUclRow = myUclRankIdx === -1 ? null : view.uclStandings[myUclRankIdx];
+
+  const getClubUclKnockoutStatus = useCallback(
+    (clubId: string): { label: string; tone: string } => {
+      const ucl = live.ucl;
+      if (!ucl || !ucl.humanClubIds.includes(clubId)) {
+        return { label: '미진출', tone: 'bg-slate-800 text-slate-400 border-slate-700' };
+      }
+      if (!tickerPlaying && !live.cast && ucl.championTeamId === clubId) {
+        return {
+          label: '🏆 UCL 우승',
+          tone: 'bg-amber-500/20 text-amber-200 border-amber-400/45',
+        };
+      }
+      const stages: UclKnockoutStage[] = ['final', 'sf', 'qf', 'r16', 'playoff'];
+      for (const st of stages) {
+        const tie = ucl.ties[st]?.find((t) => t.teamAId === clubId || t.teamBId === clubId);
+        if (!tie) continue;
+        if (tie.winnerId && tie.winnerId !== clubId) {
+          return {
+            label: `${UCL_STAGE_LABELS[st]} 탈락`,
+            tone: 'bg-rose-500/15 text-rose-300 border-rose-500/35',
+          };
+        }
+        return {
+          label: `${UCL_STAGE_LABELS[st]} 진출`,
+          tone: 'bg-sky-500/18 text-sky-200 border-sky-400/40',
+        };
+      }
+      const lpIdx = view.uclStandings.findIndex((r) => r.teamId === clubId);
+      if (lpIdx >= 24) {
+        return {
+          label: `리그 ${lpIdx + 1}위 탈락`,
+          tone: 'bg-rose-500/15 text-rose-300 border-rose-500/35',
+        };
+      }
+      return {
+        label: '토너먼트 대기',
+        tone: 'bg-sky-500/15 text-sky-200 border-sky-400/35',
+      };
+    },
+    [live.ucl, live.cast, tickerPlaying, view.uclStandings],
+  );
+
   const lockNotes = players
     .filter((p) => {
       const reason = p.activity?.lock?.reason;
@@ -496,7 +596,9 @@ export function MpLeagueDashboard({
     : null;
   const showResolution = Boolean(resolutionKey && resolutionKey !== dismissedResolutionKey);
   const visibleEvent =
-    mine?.event && mine.event.templateId !== hiddenEventId ? mine.event : null;
+    mine?.event && (!activeEventKey || activeEventKey !== hiddenEventKey)
+      ? mine.event
+      : null;
   const transferDone = flow.kind === 'transfer' && ackKeys.includes(flow.key);
   const showTransfer =
     flow.kind === 'transfer' &&
@@ -517,11 +619,47 @@ export function MpLeagueDashboard({
   const lpKey =
     live.ucl && live.ucl.leaguePhaseRound >= 8 ? `${live.seasonKey}:lp-table` : null;
   const popupsAllowed = !live.cast && !tickerPlaying && flow.kind !== 'cast';
+  const summaryActive = flow.kind === 'summary' && live.summary !== null;
+
+  // Spoiler-free Domestic Cup Champion popup: ONLY allowed once live stream finishes FT/PK!
+  const cupChampKey =
+    view.cup?.completed && view.cup.championTeamId
+      ? `${live.seasonKey}:cup-champ`
+      : null;
+  const showCupChampion = Boolean(
+    popupTick >= 0 &&
+      popupsAllowed &&
+      !showTransfer &&
+      !visibleEvent &&
+      !showResolution &&
+      cupChampKey &&
+      !seenPopups.has(cupChampKey) &&
+      view.cup &&
+      (view.cup.championTeamId === myClubId || !summaryActive),
+  );
+
+  // League season summary popup: ALSO strictly gated behind !tickerPlaying & !showCupChampion!
+  const showSummary =
+    ((summaryActive && popupsAllowed && !showCupChampion) || summaryReviewOpen) &&
+    live.summary !== null;
+
   const showLpTable = Boolean(
-    popupTick >= 0 && popupsAllowed && lpKey && !seenPopups.has(lpKey) && uclView,
+    popupTick >= 0 &&
+      popupsAllowed &&
+      !showSummary &&
+      !showCupChampion &&
+      lpKey &&
+      !seenPopups.has(lpKey) &&
+      uclView,
   );
   const showMilestone = Boolean(
-    popupsAllowed && !showLpTable && milestoneKey && !seenPopups.has(milestoneKey) && uclView,
+    popupsAllowed &&
+      !showSummary &&
+      !showCupChampion &&
+      !showLpTable &&
+      milestoneKey &&
+      !seenPopups.has(milestoneKey) &&
+      uclView,
   );
   const closePopup = (key: string | null) => {
     if (key) seenPopups.add(key);
@@ -534,10 +672,20 @@ export function MpLeagueDashboard({
       live.standings[0]?.teamId === myClubId,
   );
 
-  const progressPct = Math.min(
-    100,
-    Math.round((live.round / Math.max(1, live.totalRounds)) * 100),
-  );
+  const displayRound = tickerPlaying
+    ? Math.max(0, live.round - (live.lastRound ? 1 : 0))
+    : live.round;
+  const displayUclLpRound =
+    isUclStage && live.ucl
+      ? tickerPlaying && live.ucl.stage === 'league_phase'
+        ? Math.max(0, live.ucl.leaguePhaseRound - 1)
+        : live.ucl.leaguePhaseRound
+      : 0;
+
+  const progressPct = isUclStage
+    ? Math.min(100, Math.round((displayUclLpRound / 8) * 100))
+    : Math.min(100, Math.round((displayRound / Math.max(1, live.totalRounds)) * 100));
+
   const nextTransferRound =
     live.stage === 'league' && live.transferWindows
       ? getNextTransferWindowRound(
@@ -575,56 +723,118 @@ export function MpLeagueDashboard({
     [publicSquads],
   );
 
-  const summaryActive = flow.kind === 'summary' && live.summary !== null;
-  const showSummary = (summaryActive || summaryReviewOpen) && live.summary !== null;
+  const uclKoStageIdx =
+    isUclStage && live.ucl
+      ? UCL_KO_STEPS.findIndex((s) => s.id === live.ucl?.stage)
+      : -1;
 
   return (
     <div className="mx-auto max-w-6xl px-2.5 py-2.5 sm:px-4 sm:py-4 space-y-3">
-      {/* Unified Top Season Status Card — aligned with single-player SeasonDashboard.tsx */}
-      <section className="rounded-xl sm:rounded-2xl border border-slate-800 bg-[#111822] p-2.5 sm:p-4 space-y-2.5">
+      {/* Top Status Card — automatically switches to UEFA Champions League navy theme in Phase 2 */}
+      <section
+        className={`rounded-xl sm:rounded-2xl border p-2.5 sm:p-4 space-y-2.5 ${
+          isUclStage
+            ? 'border-sky-500/35 bg-gradient-to-r from-[#091224] via-[#0d182e] to-[#0b1526] shadow-lg'
+            : 'border-slate-800 bg-[#111822]'
+        }`}
+      >
         <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <span
-                className="rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold text-slate-950"
-                style={{ backgroundColor: leagueMeta.accentColor }}
-              >
-                {leagueMeta.koreanName}
-              </span>
-              <span className="font-display text-[11px] sm:text-xs font-bold text-slate-200 tabular-nums">
-                {live.stage === 'ucl' && live.ucl
-                  ? live.ucl.stage === 'league_phase'
-                    ? `UCL 리그 페이즈 ${live.ucl.leaguePhaseRound}/8R`
-                    : 'UCL 토너먼트'
-                  : `${live.round}/${live.totalRounds}R`}
-              </span>
-              {myStandingRow && (
+            {isUclStage && live.ucl ? (
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span className="inline-flex items-center gap-1 rounded border border-sky-400/40 bg-sky-500/20 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-black tracking-wide text-sky-200">
+                  <Trophy className="w-3 h-3 text-sky-300" />
+                  UEFA CHAMPIONS LEAGUE
+                </span>
+                <span className="font-display text-[11px] sm:text-xs font-bold text-white tabular-nums">
+                  {live.ucl.stage === 'league_phase'
+                    ? `리그 페이즈 ${displayUclLpRound}/8R`
+                    : live.ucl.stage === 'final'
+                      ? '결승전'
+                      : live.ucl.stage === 'completed'
+                        ? '토너먼트 완료'
+                        : `${UCL_STAGE_LABELS[live.ucl.stage]} · ${live.ucl.knockoutLeg}차전`}
+                </span>
+                {myClubId && myUclQualified ? (
+                  live.ucl.stage === 'league_phase' && myUclRank !== null && myUclRow ? (
+                    <span
+                      className={`rounded border px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold tabular-nums ${
+                        uclZoneOf(myUclRank).badgeCls
+                      }`}
+                    >
+                      {myUclRank}위 · {myUclRow.points}점 · {uclZoneOf(myUclRank).label}
+                    </span>
+                  ) : (
+                    (() => {
+                      const st = getClubUclKnockoutStatus(myClubId);
+                      return (
+                        <span
+                          className={`rounded border px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold ${st.tone}`}
+                        >
+                          {st.label}
+                        </span>
+                      );
+                    })()
+                  )
+                ) : (
+                  <span className="rounded border border-slate-700 bg-slate-800/80 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-slate-300">
+                    관전 중
+                  </span>
+                )}
+                <span className="font-mono text-[10px] text-slate-500">#{roomCode}</span>
                 <span
-                  className={`rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold tabular-nums ${
-                    myRank <= (leagueMeta.uclSpots ?? 4)
-                      ? 'bg-emerald-500/15 text-emerald-300'
-                      : 'bg-slate-800 text-slate-300'
+                  className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                    connectionStatus === 'connected'
+                      ? 'bg-emerald-500/10 text-emerald-300'
+                      : 'bg-amber-500/15 text-amber-300'
                   }`}
                 >
-                  {myRank}위 · {myStandingRow.points}점 ({myStandingRow.won}승{' '}
-                  {myStandingRow.drawn}무 {myStandingRow.lost}패)
+                  {connectionStatus === 'connected' ? (
+                    <Wifi className="w-3 h-3" />
+                  ) : (
+                    <WifiOff className="w-3 h-3" />
+                  )}
                 </span>
-              )}
-              <span className="font-mono text-[10px] text-slate-500">#{roomCode}</span>
-              <span
-                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                  connectionStatus === 'connected'
-                    ? 'bg-emerald-500/10 text-emerald-300'
-                    : 'bg-amber-500/15 text-amber-300'
-                }`}
-              >
-                {connectionStatus === 'connected' ? (
-                  <Wifi className="w-3 h-3" />
-                ) : (
-                  <WifiOff className="w-3 h-3" />
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span
+                  className="rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold text-slate-950"
+                  style={{ backgroundColor: leagueMeta.accentColor }}
+                >
+                  {leagueMeta.koreanName}
+                </span>
+                <span className="font-display text-[11px] sm:text-xs font-bold text-slate-200 tabular-nums">
+                  {displayRound}/{live.totalRounds}R
+                </span>
+                {myStandingRow && (
+                  <span
+                    className={`rounded px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-bold tabular-nums ${
+                      myRank <= (leagueMeta.uclSpots ?? 4)
+                        ? 'bg-emerald-500/15 text-emerald-300'
+                        : 'bg-slate-800 text-slate-300'
+                    }`}
+                  >
+                    {myRank}위 · {myStandingRow.points}점 ({myStandingRow.won}승{' '}
+                    {myStandingRow.drawn}무 {myStandingRow.lost}패)
+                  </span>
                 )}
-              </span>
-            </div>
+                <span className="font-mono text-[10px] text-slate-500">#{roomCode}</span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                    connectionStatus === 'connected'
+                      ? 'bg-emerald-500/10 text-emerald-300'
+                      : 'bg-amber-500/15 text-amber-300'
+                  }`}
+                >
+                  {connectionStatus === 'connected' ? (
+                    <Wifi className="w-3 h-3" />
+                  ) : (
+                    <WifiOff className="w-3 h-3" />
+                  )}
+                </span>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] sm:text-xs text-slate-400 tabular-nums">
               {ratings && (
@@ -646,7 +856,7 @@ export function MpLeagueDashboard({
                   사기 {getMoraleLabel(mine.morale)}
                 </span>
               )}
-              {nextTransferRound !== null && (
+              {!isUclStage && nextTransferRound !== null && (
                 <span className="inline-flex items-center gap-0.5 text-amber-300/90">
                   <Calendar className="w-3 h-3" />
                   이적 {nextTransferRound}R
@@ -666,7 +876,9 @@ export function MpLeagueDashboard({
                     onClick={() => onSetAutoMs(ms)}
                     className={`rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums cursor-pointer ${
                       live.autoMs === ms
-                        ? 'bg-emerald-500/20 text-emerald-300'
+                        ? isUclStage
+                          ? 'bg-sky-500/25 text-sky-200'
+                          : 'bg-emerald-500/20 text-emerald-300'
                         : 'text-slate-500 hover:text-slate-300'
                     }`}
                   >
@@ -690,7 +902,11 @@ export function MpLeagueDashboard({
               type="button"
               disabled={!mySquad}
               onClick={onOpenEditor}
-              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/45 bg-emerald-500/15 px-2.5 py-1.5 text-[11px] font-extrabold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 cursor-pointer"
+              className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-extrabold disabled:opacity-40 cursor-pointer ${
+                isUclStage
+                  ? 'border-sky-400/45 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25'
+                  : 'border-emerald-500/45 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+              }`}
             >
               <Shield className="w-3 h-3" />
               스쿼드 · 전술
@@ -706,27 +922,61 @@ export function MpLeagueDashboard({
           </div>
         </div>
 
-        {/* Minimal Season Progress Bar with Transfer Window Markers (matches SeasonDashboard.tsx) */}
-        <div className="relative h-1 sm:h-1.5 w-full rounded-full bg-slate-900">
-          <div
-            className="h-full rounded-full bg-emerald-500 transition-all duration-300"
-            style={{ width: `${progressPct}%` }}
-          />
-          {live.transferWindows?.map((winRound, i) => {
-            const leftPct = (winRound / Math.max(1, live.totalRounds)) * 100;
-            const doneWin = live.completedWindows?.includes(i + 1);
-            return (
+        {/* Stage-specific progress indicator */}
+        {isUclStage && live.ucl ? (
+          live.ucl.stage === 'league_phase' ? (
+            <div className="relative h-1 sm:h-1.5 w-full rounded-full bg-slate-900/90 overflow-hidden">
               <div
-                key={winRound}
-                style={{ left: `${leftPct}%` }}
-                title={`제 ${i + 1}차 이적시장 (${winRound}R 종료 후)`}
-                className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full border border-slate-950 ${
-                  doneWin ? 'bg-emerald-400' : 'bg-amber-400'
-                }`}
+                className="h-full rounded-full bg-gradient-to-r from-sky-500 to-indigo-400 transition-all duration-300"
+                style={{ width: `${progressPct}%` }}
               />
-            );
-          })}
-        </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-5 gap-1">
+              {UCL_KO_STEPS.map((st, idx) => {
+                const isCurrent = live.ucl?.stage === st.id;
+                const isDone =
+                  live.ucl?.stage === 'completed' ||
+                  (uclKoStageIdx >= 0 && idx < uclKoStageIdx);
+                return (
+                  <div
+                    key={st.id}
+                    className={`rounded-md border px-2 py-0.5 text-center text-[10px] font-extrabold ${
+                      isCurrent
+                        ? 'border-sky-400/60 bg-sky-500/20 text-sky-100'
+                        : isDone
+                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300/80'
+                          : 'border-slate-800/80 bg-[#080f1d] text-slate-500'
+                    }`}
+                  >
+                    {st.label}
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          <div className="relative h-1 sm:h-1.5 w-full rounded-full bg-slate-900">
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+              style={{ width: `${progressPct}%` }}
+            />
+            {live.transferWindows?.map((winRound, i) => {
+              const leftPct = (winRound / Math.max(1, live.totalRounds)) * 100;
+              const doneWin = live.completedWindows?.includes(i + 1);
+              return (
+                <div
+                  key={winRound}
+                  style={{ left: `${leftPct}%` }}
+                  title={`제 ${i + 1}차 이적시장 (${winRound}R 종료 후)`}
+                  className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full border border-slate-950 ${
+                    doneWin ? 'bg-emerald-400' : 'bg-amber-400'
+                  }`}
+                />
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {(errorMsg || hostMissing) && (
@@ -805,27 +1055,97 @@ export function MpLeagueDashboard({
         />
       )}
 
+      {/* Mobile (<lg) Compact Section Switcher — eliminates long vertical scroll between main & sidebar */}
+      <div
+        className={`lg:hidden grid grid-cols-3 gap-1 rounded-xl border p-1 ${
+          isUclStage
+            ? 'border-sky-500/30 bg-[#08101f]'
+            : 'border-slate-800 bg-[#0b1018]'
+        }`}
+      >
+        {(
+          [
+            {
+              id: 'main' as const,
+              label: isUclStage ? '챔스 진행' : '진행 · 결과',
+            },
+            {
+              id: 'table' as const,
+              label: isUclStage
+                ? live.ucl?.stage === 'league_phase'
+                  ? 'UCL 순위표'
+                  : '토너먼트'
+                : '리그 순위표',
+            },
+            {
+              id: 'leaders' as const,
+              label: isUclStage ? 'UCL 기록' : '득점 · 도움',
+            },
+          ] as { id: MobileSection; label: string }[]
+        ).map((sec) => {
+          const active = mobileSection === sec.id;
+          return (
+            <button
+              key={sec.id}
+              type="button"
+              onClick={() => setMobileSection(sec.id)}
+              className={`rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-colors cursor-pointer touch-manipulation ${
+                active
+                  ? isUclStage
+                    ? 'border-sky-400/50 bg-sky-500/20 text-sky-100'
+                    : 'border-emerald-500/45 bg-slate-800 text-white'
+                  : 'border-transparent text-slate-400'
+              }`}
+            >
+              {sec.label}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
-        <div className="lg:col-span-8 space-y-3">
-          {/* Friends strip */}
+        {/* Left Main Column (8 cols on desktop; visible when mobileSection === 'main' on mobile) */}
+        <div
+          className={`lg:col-span-8 space-y-3 ${
+            mobileSection === 'main' ? 'block' : 'hidden lg:block'
+          }`}
+        >
+          {/* Friends strip — displays live UCL standings/knockout status during Phase 2 */}
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             {live.humans.map((h) => {
               const hl = view.byClub[h.clubId];
-              const rankIdx = view.standings.findIndex((r) => r.teamId === h.clubId);
-              const row = rankIdx === -1 ? null : view.standings[rankIdx];
               const online = onlinePlayerIds.includes(h.playerId);
               const isMe = h.playerId === playerId;
+              const inUcl = Boolean(isUclStage && live.ucl?.humanClubIds.includes(h.clubId));
+
+              const leagueRankIdx = view.standings.findIndex((r) => r.teamId === h.clubId);
+              const leagueRow = leagueRankIdx === -1 ? null : view.standings[leagueRankIdx];
+              const uclRankIdx = isUclStage
+                ? view.uclStandings.findIndex((r) => r.teamId === h.clubId)
+                : -1;
+              const uclRow = uclRankIdx === -1 ? null : view.uclStandings[uclRankIdx];
+
               const nextOpp = hl?.nextOpponentId ? clubsById[hl.nextOpponentId] : null;
               const nextIsFriend = Boolean(
                 hl?.nextOpponentId && humanIds.has(hl.nextOpponentId),
               );
+              const rawRecent = hl?.recent ?? [];
+              const safeRecent =
+                tickerPlaying && playingClubIds.has(h.clubId)
+                  ? rawRecent.slice(0, Math.max(0, rawRecent.length - 1))
+                  : rawRecent;
+
               return (
                 <div
                   key={h.clubId}
                   className={`rounded-xl border p-2.5 space-y-1.5 ${
                     isMe
-                      ? 'border-emerald-500/45 bg-[#0f1a24]'
-                      : 'border-slate-800/90 bg-[#111822]'
+                      ? isUclStage
+                        ? 'border-sky-400/50 bg-[#0d192f]'
+                        : 'border-emerald-500/45 bg-[#0f1a24]'
+                      : isUclStage
+                        ? 'border-sky-500/20 bg-[#0b1324]'
+                        : 'border-slate-800/90 bg-[#111822]'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -854,12 +1174,39 @@ export function MpLeagueDashboard({
                       <div className="truncate text-[10px] text-slate-400">{h.profile.name}</div>
                     </div>
                     <div className="ml-auto text-right shrink-0">
-                      <div className="font-mono text-xs font-black text-white tabular-nums">
-                        {rankIdx === -1 ? '-' : `${rankIdx + 1}위`}
-                      </div>
-                      <div className="text-[10px] font-bold text-slate-400 tabular-nums">
-                        {row?.points ?? 0}점
-                      </div>
+                      {isUclStage && live.ucl ? (
+                        inUcl ? (
+                          live.ucl.stage === 'league_phase' && uclRankIdx >= 0 ? (
+                            <>
+                              <div
+                                className={`font-mono text-xs font-black tabular-nums ${
+                                  uclZoneOf(uclRankIdx + 1).rankCls
+                                }`}
+                              >
+                                {uclRankIdx + 1}위
+                              </div>
+                              <div className="text-[10px] font-bold text-slate-400 tabular-nums">
+                                {uclRow?.points ?? 0}점
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-[10px] font-extrabold text-sky-300">
+                              {getClubUclKnockoutStatus(h.clubId).label}
+                            </div>
+                          )
+                        ) : (
+                          <div className="text-[10px] font-bold text-slate-500">미진출</div>
+                        )
+                      ) : (
+                        <>
+                          <div className="font-mono text-xs font-black text-white tabular-nums">
+                            {leagueRankIdx === -1 ? '-' : `${leagueRankIdx + 1}위`}
+                          </div>
+                          <div className="text-[10px] font-bold text-slate-400 tabular-nums">
+                            {leagueRow?.points ?? 0}점
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold">
@@ -867,7 +1214,7 @@ export function MpLeagueDashboard({
                       <Swords className="w-2.5 h-2.5 text-amber-300" />
                       {hl?.h2h.won ?? 0}승 {hl?.h2h.drawn ?? 0}무 {hl?.h2h.lost ?? 0}패
                     </span>
-                    {(hideRecent ? [] : hl?.recent ?? []).slice(-3).map((m, idx) => (
+                    {safeRecent.slice(-3).map((m, idx) => (
                       <span
                         key={`${m.label}-${idx}`}
                         title={m.label}
@@ -877,7 +1224,7 @@ export function MpLeagueDashboard({
                       </span>
                     ))}
                   </div>
-                  {nextOpp && live.stage === 'league' && (
+                  {!isUclStage && nextOpp && live.stage === 'league' && (
                     <div
                       className={`truncate text-[10px] font-bold ${
                         nextIsFriend ? 'text-amber-300' : 'text-slate-500'
@@ -886,19 +1233,49 @@ export function MpLeagueDashboard({
                       다음 {nextOpp.name}
                     </div>
                   )}
+                  {isUclStage && inUcl && live.ucl?.stage === 'league_phase' && uclRankIdx >= 0 && (
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span
+                        className={`rounded border px-1.5 py-px text-[9px] font-bold ${
+                          uclZoneOf(uclRankIdx + 1).badgeCls
+                        }`}
+                      >
+                        {uclZoneOf(uclRankIdx + 1).label}
+                      </span>
+                      <span className="font-mono text-slate-400 tabular-nums">
+                        득실 {(uclRow?.goalDifference ?? 0) >= 0 ? `+${uclRow?.goalDifference ?? 0}` : uclRow?.goalDifference}
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
 
-          {/* Unified Navigation Tabs — matches SeasonDashboard.tsx */}
-          <div className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-slate-800 bg-[#0b1018] p-1">
-            {(
-              [
-                { id: 'results', label: '라운드 결과' },
-                { id: 'cup', label: live.cup?.meta.koreanName ?? '컵' },
-                ...(live.ucl ? [{ id: 'ucl', label: '챔피언스리그' }] : []),
-              ] as { id: DashTab; label: string }[]
+          {/* Navigation Tabs — tailored per phase */}
+          <div
+            className={`inline-flex flex-wrap items-center gap-1 rounded-xl border p-1 ${
+              isUclStage
+                ? 'border-sky-500/25 bg-[#08101f]'
+                : 'border-slate-800 bg-[#0b1018]'
+            }`}
+          >
+            {(isUclStage
+              ? ([
+                  {
+                    id: 'ucl',
+                    label:
+                      live.ucl?.stage === 'league_phase'
+                        ? 'UCL 전체 순위표'
+                        : 'UCL 토너먼트 대진표',
+                  },
+                  { id: 'results', label: '최근 경기 결과' },
+                  { id: 'domestic', label: '국내 리그 · 컵' },
+                ] as { id: DashTab; label: string }[])
+              : ([
+                  { id: 'results', label: '라운드 결과' },
+                  { id: 'cup', label: live.cup?.meta.koreanName ?? '컵' },
+                ] as { id: DashTab; label: string }[])
             ).map((t) => (
               <button
                 key={t.id}
@@ -906,7 +1283,9 @@ export function MpLeagueDashboard({
                 onClick={() => setTabChoice(t.id)}
                 className={`rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors cursor-pointer ${
                   tab === t.id
-                    ? 'bg-slate-800 text-white border-emerald-500/45 shadow-sm'
+                    ? isUclStage
+                      ? 'bg-sky-500/20 text-sky-100 border-sky-400/50 shadow-sm'
+                      : 'bg-slate-800 text-white border-emerald-500/45 shadow-sm'
                     : 'border-transparent text-slate-400 hover:text-slate-200'
                 }`}
               >
@@ -917,19 +1296,19 @@ export function MpLeagueDashboard({
 
           {tab === 'results' && (
             <div className="space-y-2.5">
-              {live.stage === 'ucl' && live.ucl && live.ucl.lastScores.length > 0 && (
-                <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
+              {isUclStage && view.uclLastScores.length > 0 && (
+                <div className="rounded-xl border border-sky-500/25 bg-[#0b1324] p-2.5 space-y-1.5">
                   <div className="text-[11px] font-bold text-sky-300">
-                    {live.ucl.lastScores[0].label}
+                    {view.uclLastScores[0].label}
                   </div>
                   <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                    {live.ucl.lastScores.map((m, idx) => (
+                    {view.uclLastScores.map((m, idx) => (
                       <ScoreLine key={idx} m={m} clubsById={clubsById} humanIds={humanIds} />
                     ))}
                   </div>
                 </div>
               )}
-              {view.cupNews.length > 0 && (
+              {!isUclStage && view.cupNews.length > 0 && (
                 <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
                   <div className="flex items-center gap-1 text-[11px] font-bold text-amber-200">
                     <Trophy className="w-3 h-3" />
@@ -942,7 +1321,7 @@ export function MpLeagueDashboard({
                   </div>
                 </div>
               )}
-              {view.lastRound && (
+              {!isUclStage && view.lastRound && (
                 <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2.5 space-y-1.5">
                   <div className="text-[11px] font-bold text-slate-400">
                     {view.lastRound.round}R 결과
@@ -954,12 +1333,34 @@ export function MpLeagueDashboard({
                   </div>
                 </div>
               )}
+              {isUclStage && view.uclLastScores.length === 0 && (
+                <div className="rounded-xl border border-sky-500/20 bg-[#0b1324] px-3 py-6 text-center text-xs font-bold text-slate-400">
+                  경기 진행 중... 라운드 종료 시 결과가 반영됩니다.
+                </div>
+              )}
             </div>
           )}
 
-          {tab === 'cup' && live.cup && (
+          {tab === 'cup' && view.cup && (
             <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2 overflow-x-auto">
-              <CupBracketView cup={live.cup} clubs={live.clubs} leagueId={live.leagueId} />
+              <CupBracketView cup={view.cup} clubs={live.clubs} leagueId={live.leagueId} />
+            </div>
+          )}
+
+          {tab === 'domestic' && isUclStage && (
+            <div className="space-y-3">
+              <SideStandings
+                standings={view.standings}
+                humans={live.humans}
+                myClubId={myClubId}
+                uclSpots={leagueMeta.uclSpots}
+                relegationSpots={leagueMeta.relegationSpots}
+              />
+              {view.cup && (
+                <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2 overflow-x-auto">
+                  <CupBracketView cup={view.cup} clubs={live.clubs} leagueId={live.leagueId} />
+                </div>
+              )}
             </div>
           )}
 
@@ -967,13 +1368,13 @@ export function MpLeagueDashboard({
             <div className="space-y-2">
               {live.ucl.stage === 'league_phase' ? (
                 <StandingsTable
-                  standings={live.ucl.standings}
+                  standings={view.uclStandings}
                   clubsById={clubsById}
                   uclSpots={8}
                   relegationSpots={12}
                 />
               ) : (
-                <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2 overflow-x-auto">
+                <div className="rounded-xl border border-sky-500/25 bg-[#0b1324] p-2 overflow-x-auto">
                   <UclBracketTree ucl={uclView.ucl} clubsById={uclView.clubsById} />
                 </div>
               )}
@@ -981,24 +1382,57 @@ export function MpLeagueDashboard({
           )}
         </div>
 
-        {/* Right Side Column: League Table + Top Scorers & Top Assisters */}
-        <div className="lg:col-span-4 space-y-2.5">
-          <SideStandings
-            standings={view.standings}
-            humans={live.humans}
-            myClubId={myClubId}
-            uclSpots={leagueMeta.uclSpots}
-            relegationSpots={leagueMeta.relegationSpots}
-          />
-          <LeagueLeadersSideCard
-            scorers={view.topScorers}
-            assisters={view.topAssisters}
-            myClubId={myClubId}
-            friendLabelByClub={friendLabelByClub}
-            maxRows={5}
-            desktopLayout="stack"
-            onSelectPlayer={handleInspectLeader}
-          />
+        {/* Right Side Column (4 cols on desktop; split cleanly into table / leaders on mobile) */}
+        <div
+          className={`lg:col-span-4 space-y-2.5 ${
+            mobileSection === 'main' ? 'hidden lg:block' : 'block'
+          }`}
+        >
+          <div className={mobileSection === 'table' ? 'block' : 'hidden lg:block'}>
+            {isUclStage && live.ucl ? (
+              live.ucl.stage === 'league_phase' ? (
+                <SideUclStandings
+                  standings={view.uclStandings}
+                  humans={live.humans}
+                  myClubId={myClubId}
+                  round={displayUclLpRound}
+                />
+              ) : (
+                <SideUclKnockoutCard
+                  ucl={live.ucl}
+                  clubsById={clubsById}
+                  humans={live.humans}
+                  myClubId={myClubId}
+                  onOpenBracket={() => {
+                    setTabChoice('ucl');
+                    setMobileSection('main');
+                  }}
+                />
+              )
+            ) : (
+              <SideStandings
+                standings={view.standings}
+                humans={live.humans}
+                myClubId={myClubId}
+                uclSpots={leagueMeta.uclSpots}
+                relegationSpots={leagueMeta.relegationSpots}
+              />
+            )}
+          </div>
+
+          <div className={mobileSection === 'leaders' ? 'block' : 'hidden lg:block'}>
+            <LeagueLeadersSideCard
+              scorers={isUclStage ? view.uclTopScorers : view.topScorers}
+              assisters={isUclStage ? view.uclTopAssisters : view.topAssisters}
+              myClubId={myClubId}
+              friendLabelByClub={friendLabelByClub}
+              maxRows={5}
+              desktopLayout="stack"
+              competitionPrefix={isUclStage ? 'UCL' : undefined}
+              accent={isUclStage ? 'ucl' : 'league'}
+              onSelectPlayer={handleInspectLeader}
+            />
+          </div>
         </div>
       </div>
 
@@ -1009,6 +1443,17 @@ export function MpLeagueDashboard({
           conditions={mine?.conditions ?? {}}
           onSave={onSaveSquad}
           onClose={onCloseEditor}
+        />
+      )}
+
+      {showCupChampion && view.cup && (
+        <MpCupChampionPopup
+          cup={view.cup}
+          leagueId={live.leagueId}
+          clubsById={clubsById}
+          humans={live.humans}
+          myClubId={myClubId}
+          onClose={() => closePopup(cupChampKey)}
         />
       )}
 
@@ -1041,7 +1486,8 @@ export function MpLeagueDashboard({
         myHuman &&
         !tickerPlaying &&
         !showTransfer &&
-        !showSummary && (
+        !showSummary &&
+        !showCupChampion && (
           <ManagerEventModal
             activeEvent={visibleEvent}
             lastResolution={showResolution ? mine.resolution : null}
@@ -1063,7 +1509,8 @@ export function MpLeagueDashboard({
         !mine.event &&
         !tickerPlaying &&
         !showTransfer &&
-        !showSummary && (
+        !showSummary &&
+        !showCupChampion && (
           <InjuryAlertModal
             alerts={mine.alerts}
             formation={mySquad.formation}
