@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v8.5.3)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.5.4)
 
 > Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
@@ -18,6 +18,7 @@
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`), `stable-before-v8.4-live-skip` (`v8.3` `600c7da`), `stable-before-mp-sync-ucl` (`v8.4.2` `9f6e976`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.5.4 스쿼드 탭 `[전술 수정]` 일시정지 → `[수정 확정]` 즉시 재개 UX (`useSoloTacticEditPause.ts` `useSoloTacticEditSession`, `SoloLiveScoreboard.tsx`, `SquadManagerModal.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`, `MpLeagueRoot.tsx`)**: 3초 자동 일시정지 타이머 대신 솔로 정규 리그·UCL 스쿼드 탭(및 스코어보드 상단)의 `[전술 수정]` 클릭 시 일시정지·편집 잠금 해제 → `[수정 확정]` 클릭 시 즉시 자동진행 재개 + 다음 경기 적용 안내 표시(멀티리그도 저장 직후 유예 대기 없이 즉시 재개).
 - **v8.5.3 전술 수정 시 자동진행 일시정지 & 다음 경기 적용 안내 · 싱글/멀티 실시간 미니 순위표(경·승·무·패·득실·승점)**:
   - **전술 수정 일시정지 & 안내 (`useSoloTacticEditPause.ts`, `SoloLiveScoreboard.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`, `MpLeagueRoot.tsx`, `MpLeagueDashboard.tsx`, `MpLeagueSquadEditor.tsx`)**: 솔로 자동진행 중 전술/포메이션/라인업 변경 시 3초 일시정지(연속 편집 시 연장, `[재개]` 즉시 해제) + 다음 경기 적용 배너 표시. 멀티리그도 전술 저장 직후 2.5초 유예 잠금 + 다음 경기 적용 안내 배너 표시.
   - **실시간 미니 순위표 (`CompactLiveStandings.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`, `MpLeagueDashboard.tsx`, `MpUclSidePanel.tsx`)**: 솔로 리그·UCL PC(스코어보드 우측)/모바일(스코어보드 바로 아래)에 `# | 구단 | 경 | 승 | 무 | 패 | 득실 | 승점` 실시간 순위표(`[핵심 / 전체]` 토글) 추가 및 멀티리그 `SideStandings`·`SideUclStandings`에 `승·무·패` 컬럼 추가.

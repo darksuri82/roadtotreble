@@ -45,7 +45,7 @@ import {
   resolveClubRoster,
   resolvePlayerById,
 } from '../../utils/playerLookup';
-import { useSoloTacticEditPause } from '../../hooks/useSoloTacticEditPause';
+import { useSoloTacticEditSession } from '../../hooks/useSoloTacticEditPause';
 import { ClubSquadModal } from '../common/ClubSquadModal';
 import { ClubTag } from '../common/ClubTag';
 import { CompactLiveStandings } from '../common/CompactLiveStandings';
@@ -267,27 +267,32 @@ export function SeasonDashboard() {
 
   const tacticSignature = `${state.formation}|${season?.defaultTactic ?? ''}|${season?.nextMatchTactic ?? ''}|${state.starters.map((p) => p?.id ?? '').join(',')}|${state.bench.map((p) => p?.id ?? '').join(',')}`;
   const {
-    tacticPauseActive,
+    tacticEditMode,
     tacticNoticeLabel,
-    clearTacticPause,
-    resetTacticNotice,
-  } = useSoloTacticEditPause({
+    startTacticEdit,
+    confirmTacticEdit,
+    resetTacticEdit,
+  } = useSoloTacticEditSession({
     tacticSignature,
     liveAutoActive,
-    suppressChanges: isTransferOpen || hasPendingInjury || hasActive2DBroadcast,
     matchScopeKey: streamHalftime?.fixtureId ?? `gap:${season?.currentRound ?? 0}`,
   });
 
+  const handleStartLiveTacticEdit = useCallback(() => {
+    startTacticEdit();
+    setActiveTab('squad');
+  }, [startTacticEdit]);
+
   const stopLiveAuto = useCallback(() => {
     liveAutoNeedsPromptRef.current = null;
-    resetTacticNotice();
+    resetTacticEdit();
     setLiveAutoActive(false);
     setLiveAutoUserPaused(false);
     setLiveAutoCupPromptOpen(false);
     setLiveAutoResumePrompt(null);
     cancelSoloStreamMatch();
     setSoloTickerPlaying(false);
-  }, [cancelSoloStreamMatch, setSoloTickerPlaying, resetTacticNotice]);
+  }, [cancelSoloStreamMatch, setSoloTickerPlaying, resetTacticEdit]);
 
   // Schedule next live auto-advance match (or ask resume confirmation after cup/2D/transfer/injury)
   const liveAutoBlockedByEvent =
@@ -296,7 +301,7 @@ export function SeasonDashboard() {
     hasPendingEvent ||
     uncelebratedCupWin ||
     hasActive2DBroadcast ||
-    tacticPauseActive ||
+    tacticEditMode ||
     liveAutoCupPromptOpen ||
     liveAutoResumePrompt !== null;
 
@@ -670,21 +675,23 @@ export function SeasonDashboard() {
               onChangeDurationMs={setLiveAutoDurationMs}
               paused={
                 liveAutoUserPaused ||
-                tacticPauseActive ||
+                tacticEditMode ||
                 Boolean(liveAutoPauseReason)
               }
               pauseReasonLabel={
-                liveAutoPauseReason ??
-                (tacticPauseActive ? '전술 수정 일시정지' : null)
+                liveAutoPauseReason ?? (tacticEditMode ? '전술 수정 중' : null)
               }
               noticeLabel={tacticNoticeLabel}
+              tacticEditActive={tacticEditMode}
+              onStartTacticEdit={
+                liveAutoPauseReason ? undefined : handleStartLiveTacticEdit
+              }
+              onConfirmTacticEdit={() => {
+                confirmTacticEdit();
+                setLiveAutoUserPaused(false);
+              }}
               onTogglePause={() => {
-                if (liveAutoPauseReason) return;
-                if (tacticPauseActive) {
-                  clearTacticPause();
-                  setLiveAutoUserPaused(false);
-                  return;
-                }
+                if (liveAutoPauseReason || tacticEditMode) return;
                 setLiveAutoUserPaused((p) => !p);
               }}
               onStop={stopLiveAuto}
@@ -925,7 +932,23 @@ export function SeasonDashboard() {
       )}
 
       {/* TAB 2: 스쿼드/전술 */}
-      {activeTab === 'squad' && <SquadManagerModal embedded />}
+      {activeTab === 'squad' && (
+        <SquadManagerModal
+          embedded
+          liveAutoEdit={
+            liveAutoActive
+              ? {
+                  editing: tacticEditMode,
+                  onStartEdit: startTacticEdit,
+                  onConfirmEdit: () => {
+                    confirmTacticEdit();
+                    setLiveAutoUserPaused(false);
+                  },
+                }
+              : undefined
+          }
+        />
+      )}
 
       {/* TAB 3: 순위/기록 (5대 리그 전환 지원) */}
       {activeTab === 'standings' && (

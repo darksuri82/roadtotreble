@@ -3,7 +3,7 @@ import { computeFocusedStandingIndices } from '../components/common/CompactLiveS
 import { hasPlayableTickerMatches } from '../components/multiplayer/league/MpLiveTicker';
 import { uclZoneOf } from '../components/multiplayer/league/MpUclSidePanel';
 import { ACTIVE_PLAYERS } from '../engine/dataLoader';
-import { TACTIC_EDIT_PAUSE_MS, TACTIC_NEXT_MATCH_NOTICE } from '../hooks/useSoloTacticEditPause';
+import { TACTIC_NEXT_MATCH_NOTICE } from '../hooks/useSoloTacticEditPause';
 import {
   buildMpLeagueLive,
   closeMpLeagueSummary,
@@ -472,7 +472,6 @@ describe('v8.5 MP Fast Sync, Spoiler-Free Cup/Standings Snapshots & UCL Phase 2 
     const uclTopFocus = computeFocusedStandingIndices(ucl36, 'c3', 'ucl');
     expect(uclTopFocus).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
 
-    expect(TACTIC_EDIT_PAUSE_MS).toBeGreaterThanOrEqual(2000);
     expect(TACTIC_NEXT_MATCH_NOTICE).toContain('다음 경기');
   });
 });

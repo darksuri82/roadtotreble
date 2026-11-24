@@ -5,6 +5,15 @@
 
 ---
 
+## v8.5.4 — 스쿼드 탭 [전술 수정] 일시정지 → [수정 확정] 즉시 재개 UX 개편
+
+- **명시적 [전술 수정] → [수정 확정] 흐름 전환 (`src/hooks/useSoloTacticEditPause.ts`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/league/SquadManagerModal.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/multiplayer/league/MpLeagueRoot.tsx`)**:
+  - 기존의 3초 자동 일시정지 타이머(`useSoloTacticEditPause`)를 명시적 편집 세션(`useSoloTacticEditSession`)으로 개편.
+  - 솔로 정규 리그·UCL 라이브 자동진행 중 스쿼드 탭(또는 스코어보드 상단)의 `[전술 수정]` 클릭 시 자동진행이 일시정지되고 편집 UI가 열리며, 수정 완료 후 `[수정 확정]` 클릭 시 즉시 자동진행이 재개되고 변경 사항이 있으면 `[전술 수정 완료 · 변경된 전술은 다음 경기부터 적용됩니다]` 배너를 표시(자동진행 비활성 시에는 기존처럼 즉시 편집).
+  - 멀티리그도 `[스쿼드·전술]` 저장 직후 2.5초 유예 대기 없이 즉시 재개되면서 다음 경기 적용 안내를 유지하도록 통일.
+
+---
+
 ## v8.5.3 — 전술 수정 시 자동진행 잠시 일시정지 & 다음 경기 적용 안내 · 싱글/멀티 실시간 미니 순위표(경·승·무·패·득실·승점)
 
 - **전술 수정 시 자동진행 잠시 일시정지 & 다음 경기 적용 안내 (`src/hooks/useSoloTacticEditPause.ts`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/multiplayer/league/MpLeagueRoot.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/multiplayer/league/MpLeagueSquadEditor.tsx`)**:

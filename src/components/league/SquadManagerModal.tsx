@@ -1,8 +1,10 @@
 import {
   ArrowLeftRight,
   ArrowUpDown,
+  Check,
   Crown,
   Diamond,
+  SlidersHorizontal,
   Wand2,
   X,
   Zap,
@@ -34,9 +36,18 @@ import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
 
+export interface SquadLiveAutoEditProps {
+  /** True when user clicked [전술 수정] (auto-advance is paused and controls are unlocked) */
+  editing: boolean;
+  onStartEdit: () => void;
+  onConfirmEdit: () => void;
+}
+
 interface SquadManagerModalProps {
   onClose?: () => void;
   embedded?: boolean;
+  /** Provided while solo live auto-advance is active: [전술 수정] pauses and [수정 확정] resumes */
+  liveAutoEdit?: SquadLiveAutoEditProps;
 }
 
 type SortKey = 'ovr' | 'apps' | 'goals' | 'assists' | 'xg' | 'cs' | 'mom' | 'rating';
@@ -44,6 +55,7 @@ type SortKey = 'ovr' | 'apps' | 'goals' | 'assists' | 'xg' | 'cs' | 'mom' | 'rat
 export function SquadManagerModal({
   onClose,
   embedded = false,
+  liveAutoEdit,
 }: SquadManagerModalProps) {
   const {
     state,
@@ -61,10 +73,12 @@ export function SquadManagerModal({
     slotSubPosition?: SubPosition;
   } | null>(null);
 
+  const editLocked = Boolean(liveAutoEdit && !liveAutoEdit.editing);
   const allStats = state.season?.allPlayerStats ?? {};
   const formationSlots = FORMATIONS[state.formation].slots;
 
   const handleSlotClick = (area: 'starter' | 'bench', index: number) => {
+    if (editLocked) return;
     const clicked =
       area === 'starter' ? state.starters[index] : state.bench[index];
     if (!clicked) return;
@@ -148,8 +162,61 @@ export function SquadManagerModal({
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
       {/* Left: Manager Trait + 6 Formations + 5 Tactics + Quick Auto-Lineup + Pitch */}
       <div className="lg:col-span-5 space-y-3">
+        {liveAutoEdit && (
+          <div
+            className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 ${
+              liveAutoEdit.editing
+                ? 'border-amber-400/45 bg-amber-500/12'
+                : 'border-sky-400/35 bg-sky-500/10'
+            }`}
+          >
+            <div className="min-w-0 text-[11px] font-bold">
+              {liveAutoEdit.editing ? (
+                <span className="text-amber-200">
+                  전술 수정 중 (일시정지) · 다음 경기부터 적용
+                </span>
+              ) : (
+                <span className="text-sky-200">
+                  자동진행 중 · 버튼 클릭 시 일시정지 후 수정
+                </span>
+              )}
+            </div>
+            {liveAutoEdit.editing ? (
+              <button
+                id="squad-confirm-tactic-edit-btn"
+                type="button"
+                onClick={() => {
+                  setSelectedSlot(null);
+                  liveAutoEdit.onConfirmEdit();
+                }}
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer shrink-0"
+              >
+                <Check className="w-3.5 h-3.5" />
+                수정 확정
+              </button>
+            ) : (
+              <button
+                id="squad-start-tactic-edit-btn"
+                type="button"
+                onClick={() => {
+                  setSelectedSlot(null);
+                  liveAutoEdit.onStartEdit();
+                }}
+                className="inline-flex items-center gap-1 rounded-lg bg-sky-500 px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-sky-400 cursor-pointer shrink-0"
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                전술 수정
+              </button>
+            )}
+          </div>
+        )}
+
         <ManagerTraitBadgeCard traitId={state.manager.traitId} compact />
-        <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2.5">
+        <div
+          className={`rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2.5 ${
+            editLocked ? 'opacity-60' : ''
+          }`}
+        >
           <div className="flex items-center justify-between gap-2">
             <span className="text-[11px] font-semibold text-slate-400">
               포메이션
@@ -157,12 +224,13 @@ export function SquadManagerModal({
             <button
               id="quick-best-xi-btn"
               type="button"
+              disabled={editLocked}
               onClick={() => {
                 setSelectedSlot(null);
                 autoOptimizeLineup();
               }}
               title="16명 전체 선수 대상으로 실효 OVR과 케미스트리를 극대화하는 베스트 11을 자동 배치합니다"
-              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/45 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/45 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               <Wand2 className="w-3 h-3" />
               빠른 선발
@@ -173,12 +241,13 @@ export function SquadManagerModal({
               <button
                 key={f.id}
                 type="button"
+                disabled={editLocked}
                 title={f.name}
                 onClick={() => {
                   setSelectedSlot(null);
                   changeFormation(f.id);
                 }}
-                className={`rounded-lg border py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate transition-colors ${
+                className={`rounded-lg border py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer disabled:cursor-not-allowed truncate transition-colors ${
                   state.formation === f.id
                     ? 'border-sky-400/55 bg-sky-500/18 text-white'
                     : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
@@ -202,8 +271,9 @@ export function SquadManagerModal({
                 <button
                   key={t.id}
                   type="button"
+                  disabled={editLocked}
                   onClick={() => setDefaultTactic(t.id)}
-                  className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer transition-colors ${
+                  className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer disabled:cursor-not-allowed transition-colors ${
                     state.defaultTactic === t.id
                       ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
                       : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
@@ -219,7 +289,11 @@ export function SquadManagerModal({
         <div className="flex items-center justify-between text-xs">
           <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300">
             <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
-            {selectedSlot ? '교체할 선수를 클릭하세요' : '클릭·드래그 교환 / 우클릭·ⓘ 상세'}
+            {editLocked
+              ? '[전술 수정]을 눌러 선수를 교체하세요'
+              : selectedSlot
+                ? '교체할 선수를 클릭하세요'
+                : '클릭·드래그 교환 / 우클릭·ⓘ 상세'}
           </span>
           <span className="inline-flex items-center gap-1 text-slate-400 tabular-nums">
             <Zap className="w-3.5 h-3.5 text-emerald-400" />
@@ -234,12 +308,16 @@ export function SquadManagerModal({
           bench={state.bench}
           chemistry={chemistry}
           managerTraitId={state.manager.traitId}
-          selectedSlot={selectedSlot}
-          onSlotClick={handleSlotClick}
-          onSlotSwap={(from, to) => {
-            swapSquadPositions(from, to);
-            setSelectedSlot(null);
-          }}
+          selectedSlot={editLocked ? null : selectedSlot}
+          onSlotClick={editLocked ? undefined : handleSlotClick}
+          onSlotSwap={
+            editLocked
+              ? undefined
+              : (from, to) => {
+                  swapSquadPositions(from, to);
+                  setSelectedSlot(null);
+                }
+          }
           onInspectPlayer={(player, slotSubPosition) =>
             setInspected({ player, slotSubPosition })
           }

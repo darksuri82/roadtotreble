@@ -1,4 +1,4 @@
-import { Pause, Play, Radio, Square, Tv } from 'lucide-react';
+import { Check, Pause, Play, Radio, SlidersHorizontal, Square, Tv } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Club, MatchResult } from '../../types/league';
 import type { MpCastMatch, MpFeedItem } from '../../types/mpLeague';
@@ -94,6 +94,10 @@ interface SoloLiveScoreboardProps {
   pauseReasonLabel?: string | null;
   /** Optional status notice (e.g. tactic changed → applies from next match). */
   noticeLabel?: string | null;
+  /** True while user is explicitly editing tactics in the squad tab */
+  tacticEditActive?: boolean;
+  onStartTacticEdit?: () => void;
+  onConfirmTacticEdit?: () => void;
   onTogglePause: () => void;
   onStop: () => void;
   onMatchDone: (matchKey: string) => void;
@@ -111,6 +115,9 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
     paused,
     pauseReasonLabel,
     noticeLabel,
+    tacticEditActive = false,
+    onStartTacticEdit,
+    onConfirmTacticEdit,
     onTogglePause,
     onStop,
     onMatchDone,
@@ -134,6 +141,7 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
     match &&
       paused &&
       !pauseReasonLabel &&
+      !tacticEditActive &&
       onEnterLiveMatch &&
       !progressStateRef.current.finished,
   );
@@ -142,7 +150,7 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
     <div className="rounded-xl sm:rounded-2xl border border-emerald-500/35 bg-[#0c131d] p-2.5 sm:p-3.5 space-y-2.5 shadow-lg">
       {/* Compact control bar */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
           <span
             className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-extrabold ${
               paused || pauseReasonLabel
@@ -155,6 +163,30 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
             />
             {pauseReasonLabel ?? (paused ? '일시정지' : '라이브 자동진행')}
           </span>
+
+          {tacticEditActive && onConfirmTacticEdit ? (
+            <button
+              id="solo-live-confirm-tactic-btn"
+              type="button"
+              onClick={onConfirmTacticEdit}
+              className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1 text-[11px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer shadow-sm"
+            >
+              <Check className="w-3 h-3" />
+              수정 확정 · 재개
+            </button>
+          ) : (
+            onStartTacticEdit && (
+              <button
+                id="solo-live-edit-tactic-btn"
+                type="button"
+                onClick={onStartTacticEdit}
+                className="inline-flex items-center gap-1 rounded-lg border border-sky-400/40 bg-sky-500/15 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+              >
+                <SlidersHorizontal className="w-3 h-3" />
+                전술 수정
+              </button>
+            )
+          )}
 
           {canEnterLive2D && onEnterLiveMatch && (
             <button
@@ -196,23 +228,25 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
             })}
           </div>
 
-          <button
-            type="button"
-            onClick={onTogglePause}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#111822] px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:border-amber-400/50 hover:text-amber-200 cursor-pointer"
-          >
-            {paused ? (
-              <>
-                <Play className="w-3 h-3 fill-current" />
-                재개
-              </>
-            ) : (
-              <>
-                <Pause className="w-3 h-3" />
-                일시정지
-              </>
-            )}
-          </button>
+          {!tacticEditActive && (
+            <button
+              type="button"
+              onClick={onTogglePause}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#111822] px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:border-amber-400/50 hover:text-amber-200 cursor-pointer"
+            >
+              {paused ? (
+                <>
+                  <Play className="w-3 h-3 fill-current" />
+                  재개
+                </>
+              ) : (
+                <>
+                  <Pause className="w-3 h-3" />
+                  일시정지
+                </>
+              )}
+            </button>
+          )}
 
           <button
             type="button"
@@ -225,7 +259,13 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
         </div>
       </div>
 
-      {noticeLabel && (
+      {tacticEditActive && (
+        <div className="rounded-lg border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-200">
+          전술 수정 중 · 수정 확정 시 자동진행이 재개되며 변경된 전술은 다음 경기부터 적용됩니다
+        </div>
+      )}
+
+      {!tacticEditActive && noticeLabel && (
         <div className="rounded-lg border border-sky-400/35 bg-sky-500/10 px-2.5 py-1 text-[11px] font-bold text-sky-200">
           {noticeLabel}
         </div>

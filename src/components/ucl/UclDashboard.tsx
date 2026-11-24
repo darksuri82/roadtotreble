@@ -1,9 +1,11 @@
 import {
   Award,
+  Check,
   FastForward,
   Play,
   Radio,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   Trophy,
   Users,
@@ -47,7 +49,7 @@ import {
   resolveClubRoster,
   resolvePlayerById,
 } from '../../utils/playerLookup';
-import { useSoloTacticEditPause } from '../../hooks/useSoloTacticEditPause';
+import { useSoloTacticEditSession } from '../../hooks/useSoloTacticEditPause';
 import { ClubSquadModal } from '../common/ClubSquadModal';
 import { CompactLiveStandings } from '../common/CompactLiveStandings';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
@@ -223,35 +225,40 @@ export function UclDashboard() {
 
   const tacticSignature = `${state.formation}|${season?.defaultTactic ?? ''}|${season?.nextMatchTactic ?? ''}|${state.starters.map((p) => p?.id ?? '').join(',')}|${state.bench.map((p) => p?.id ?? '').join(',')}`;
   const {
-    tacticPauseActive,
+    tacticEditMode,
     tacticNoticeLabel,
-    clearTacticPause,
-    resetTacticNotice,
-  } = useSoloTacticEditPause({
+    startTacticEdit,
+    confirmTacticEdit,
+    resetTacticEdit,
+  } = useSoloTacticEditSession({
     tacticSignature,
     liveAutoActive,
-    suppressChanges: isTransferOpen || hasPendingInjury || hasActive2DBroadcast,
     matchScopeKey:
       streamHalftime?.fixtureId ??
       `ucl-gap:${ucl?.leaguePhaseRound ?? 0}:${ucl?.stage ?? ''}:${ucl?.knockoutLeg ?? 0}`,
   });
 
+  const handleStartLiveTacticEdit = useCallback(() => {
+    startTacticEdit();
+    setTab('squad');
+  }, [startTacticEdit]);
+
   const stopUclLiveAuto = useCallback(() => {
     liveAutoNeedsPromptRef.current = null;
-    resetTacticNotice();
+    resetTacticEdit();
     setLiveAutoActive(false);
     setLiveAutoUserPaused(false);
     setLiveAutoResumePrompt(null);
     cancelSoloStreamMatch();
     setSoloTickerPlaying(false);
-  }, [cancelSoloStreamMatch, setSoloTickerPlaying, resetTacticNotice]);
+  }, [cancelSoloStreamMatch, setSoloTickerPlaying, resetTacticEdit]);
 
   const liveAutoBlocked =
     isTransferOpen ||
     hasActive2DBroadcast ||
     hasPendingInjury ||
     hasPendingEvent ||
-    tacticPauseActive ||
+    tacticEditMode ||
     liveAutoResumePrompt !== null;
 
   useEffect(() => {
@@ -663,21 +670,23 @@ export function UclDashboard() {
               onChangeDurationMs={setLiveAutoDurationMs}
               paused={
                 liveAutoUserPaused ||
-                tacticPauseActive ||
+                tacticEditMode ||
                 Boolean(liveAutoPauseReason)
               }
               pauseReasonLabel={
-                liveAutoPauseReason ??
-                (tacticPauseActive ? '전술 수정 일시정지' : null)
+                liveAutoPauseReason ?? (tacticEditMode ? '전술 수정 중' : null)
               }
               noticeLabel={tacticNoticeLabel}
+              tacticEditActive={tacticEditMode}
+              onStartTacticEdit={
+                liveAutoPauseReason ? undefined : handleStartLiveTacticEdit
+              }
+              onConfirmTacticEdit={() => {
+                confirmTacticEdit();
+                setLiveAutoUserPaused(false);
+              }}
               onTogglePause={() => {
-                if (liveAutoPauseReason) return;
-                if (tacticPauseActive) {
-                  clearTacticPause();
-                  setLiveAutoUserPaused(false);
-                  return;
-                }
+                if (liveAutoPauseReason || tacticEditMode) return;
                 setLiveAutoUserPaused((p) => !p);
               }}
               onStop={stopUclLiveAuto}
@@ -1607,110 +1616,170 @@ export function UclDashboard() {
       )}
 
       {/* TAB 5: SQUAD & TACTICS (Normalized Pitch Proportions matching Regular League SquadManagerModal) */}
-      {tab === 'squad' && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-          {/* Left: Compact Formation Pitch (5 cols, max-w-[440px]) */}
-          <div className="lg:col-span-5">
-            <div className="mx-auto max-w-[440px]">
-              <PitchBoard
-                formation={state.formation}
-                starters={state.starters}
-                bench={state.bench}
-                chemistry={chemistry}
-                managerTraitId={state.manager.traitId}
-                conditionByPlayerId={season.playerConditions}
-                selectedSlot={swapPick}
-                onSlotClick={handleSquadSlotClick}
-                onSlotSwap={swapSquadPositions}
-                onInspectPlayer={(player, slotSubPosition) =>
-                  setInspected({ player, slotSubPosition })
-                }
-                headerRight={
-                  <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-slate-300 tabular-nums">
-                    <Zap className="h-3 w-3 text-emerald-400" />
-                    A <strong className="text-white">{ratings.effectiveAtt}</strong> / M{' '}
-                    <strong className="text-white">{ratings.effectiveMid}</strong> / D{' '}
-                    <strong className="text-white">{ratings.effectiveDef}</strong>
-                  </span>
-                }
-                showBench
-                showChemBreakdown
-                compact
-              />
-            </div>
-          </div>
+      {tab === 'squad' && (() => {
+        const uclEditLocked = liveAutoActive && !tacticEditMode;
+        return (
+          <div className="space-y-3">
+            {liveAutoActive && (
+              <div
+                className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3.5 py-2 ${
+                  tacticEditMode
+                    ? 'border-amber-400/45 bg-amber-500/12'
+                    : 'border-sky-400/35 bg-sky-500/10'
+                }`}
+              >
+                <div className="min-w-0 text-[11px] font-bold">
+                  {tacticEditMode ? (
+                    <span className="text-amber-200">
+                      전술 수정 중 (일시정지) · 다음 경기부터 적용
+                    </span>
+                  ) : (
+                    <span className="text-sky-200">
+                      자동진행 중 · [전술 수정] 클릭 시 일시정지 후 수정
+                    </span>
+                  )}
+                </div>
+                {tacticEditMode ? (
+                  <button
+                    id="ucl-squad-confirm-tactic-edit-btn"
+                    type="button"
+                    onClick={() => {
+                      setSwapPick(null);
+                      confirmTacticEdit();
+                      setLiveAutoUserPaused(false);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer shrink-0"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    수정 확정
+                  </button>
+                ) : (
+                  <button
+                    id="ucl-squad-start-tactic-edit-btn"
+                    type="button"
+                    onClick={() => {
+                      setSwapPick(null);
+                      startTacticEdit();
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg bg-sky-500 px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-sky-400 cursor-pointer shrink-0"
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    전술 수정
+                  </button>
+                )}
+              </div>
+            )}
 
-          {/* Right: Formation & Tactic Controls + Manager Trait + 16-Player UCL Squad Summary (7 cols) */}
-          <div className="lg:col-span-7 space-y-4">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1.5 text-xs font-black text-white">
-                  <Users className="h-4 w-4 text-sky-400" />
-                  포메이션 &amp; 기본 전술
-                </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    id="ucl-squad-line-ovr"
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2.5 py-1 text-xs font-bold text-slate-300 tabular-nums"
-                  >
-                    <Zap className="h-3.5 w-3.5 text-emerald-400" />
-                    A <strong className="text-white">{ratings.effectiveAtt}</strong> / M{' '}
-                    <strong className="text-white">{ratings.effectiveMid}</strong> / D{' '}
-                    <strong className="text-white">{ratings.effectiveDef}</strong>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={autoOptimizeLineup}
-                    className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/30 cursor-pointer"
-                  >
-                    자동 최적 배치
-                  </button>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              {/* Left: Compact Formation Pitch (5 cols, max-w-[440px]) */}
+              <div className="lg:col-span-5">
+                <div className="mx-auto max-w-[440px]">
+                  <PitchBoard
+                    formation={state.formation}
+                    starters={state.starters}
+                    bench={state.bench}
+                    chemistry={chemistry}
+                    managerTraitId={state.manager.traitId}
+                    conditionByPlayerId={season.playerConditions}
+                    selectedSlot={uclEditLocked ? null : swapPick}
+                    onSlotClick={uclEditLocked ? undefined : handleSquadSlotClick}
+                    onSlotSwap={uclEditLocked ? undefined : swapSquadPositions}
+                    onInspectPlayer={(player, slotSubPosition) =>
+                      setInspected({ player, slotSubPosition })
+                    }
+                    headerRight={
+                      <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-slate-300 tabular-nums">
+                        <Zap className="h-3 w-3 text-emerald-400" />
+                        A <strong className="text-white">{ratings.effectiveAtt}</strong> / M{' '}
+                        <strong className="text-white">{ratings.effectiveMid}</strong> / D{' '}
+                        <strong className="text-white">{ratings.effectiveDef}</strong>
+                      </span>
+                    }
+                    showBench
+                    showChemBreakdown
+                    compact
+                  />
                 </div>
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
-                {FORMATION_LIST.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    title={f.name}
-                    onClick={() => changeFormation(f.id)}
-                    className={`rounded-lg border py-1.5 px-1 text-[11px] font-bold cursor-pointer truncate transition-colors ${
-                      state.formation === f.id
-                        ? 'border-sky-400/55 bg-sky-500/18 text-white'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                    }`}
-                  >
-                    {f.id === '4-4-2-diamond'
-                      ? '4-4-2◇'
-                      : f.id === '3-5-2-dm'
-                        ? '3-5-2 DM'
-                        : f.id}
-                  </button>
-                ))}
-              </div>
-              <div className="pt-2 border-t border-slate-800 space-y-1.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
-                  <Shield className="h-3.5 w-3.5 text-amber-400" />
-                  기본 전술
+
+              {/* Right: Formation & Tactic Controls + Manager Trait + 16-Player UCL Squad Summary (7 cols) */}
+              <div className="lg:col-span-7 space-y-4">
+                <div
+                  className={`rounded-2xl border border-slate-800 bg-slate-900/75 p-4 space-y-3 ${
+                    uclEditLocked ? 'opacity-60' : ''
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-black text-white">
+                      <Users className="h-4 w-4 text-sky-400" />
+                      포메이션 &amp; 기본 전술
+                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        id="ucl-squad-line-ovr"
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2.5 py-1 text-xs font-bold text-slate-300 tabular-nums"
+                      >
+                        <Zap className="h-3.5 w-3.5 text-emerald-400" />
+                        A <strong className="text-white">{ratings.effectiveAtt}</strong> / M{' '}
+                        <strong className="text-white">{ratings.effectiveMid}</strong> / D{' '}
+                        <strong className="text-white">{ratings.effectiveDef}</strong>
+                      </span>
+                      <button
+                        type="button"
+                        disabled={uclEditLocked}
+                        onClick={autoOptimizeLineup}
+                        className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        자동 최적 배치
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                    {FORMATION_LIST.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        disabled={uclEditLocked}
+                        title={f.name}
+                        onClick={() => changeFormation(f.id)}
+                        className={`rounded-lg border py-1.5 px-1 text-[11px] font-bold cursor-pointer disabled:cursor-not-allowed truncate transition-colors ${
+                          state.formation === f.id
+                            ? 'border-sky-400/55 bg-sky-500/18 text-white'
+                            : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                        }`}
+                      >
+                        {f.id === '4-4-2-diamond'
+                          ? '4-4-2◇'
+                          : f.id === '3-5-2-dm'
+                            ? '3-5-2 DM'
+                            : f.id}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="pt-2 border-t border-slate-800 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-300">
+                      <Shield className="h-3.5 w-3.5 text-amber-400" />
+                      기본 전술
+                    </div>
+                    <div className="grid grid-cols-5 gap-1">
+                      {TACTIC_LIST.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          disabled={uclEditLocked}
+                          onClick={() => setDefaultTactic(t.id as TacticId)}
+                          className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer disabled:cursor-not-allowed transition-colors ${
+                            season.defaultTactic === t.id
+                              ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
+                              : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                          }`}
+                        >
+                          {t.shortName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="grid grid-cols-5 gap-1">
-                  {TACTIC_LIST.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => setDefaultTactic(t.id as TacticId)}
-                      className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer transition-colors ${
-                        season.defaultTactic === t.id
-                          ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
-                          : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                      }`}
-                    >
-                      {t.shortName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
 
             <ManagerTraitBadgeCard traitId={state.manager.traitId} compact />
 
@@ -1860,7 +1929,9 @@ export function UclDashboard() {
             </div>
           </div>
         </div>
-      )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

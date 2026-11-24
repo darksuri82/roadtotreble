@@ -1,90 +1,60 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
-export const TACTIC_EDIT_PAUSE_MS = 3000;
 export const TACTIC_NEXT_MATCH_NOTICE =
-  '전술 수정됨 · 변경된 전술은 다음 경기부터 적용됩니다';
+  '전술 수정 완료 · 변경된 전술은 다음 경기부터 적용됩니다';
 
-export interface SoloTacticEditPauseOptions {
+export interface SoloTacticEditSessionOptions {
   /** Stable string signature of formation + tactics + starter/bench lineup */
   tacticSignature: string;
-  /** Whether solo live auto-advance is currently running */
+  /** Whether solo live auto-advance is currently active */
   liveAutoActive: boolean;
-  /** Suppress detection during transfer market, injury swaps, or active 2D broadcast */
-  suppressChanges: boolean;
   /** Scope key for the current match/gap; notice clears automatically once the next match starts */
   matchScopeKey: string;
 }
 
-export interface SoloTacticEditPauseState {
-  /** True during the brief post-edit pause (auto-resumes after 3s or immediately via clearTacticPause) */
-  tacticPauseActive: boolean;
-  /** Non-null notice text while the modified tactics are queued for the next match */
+export interface SoloTacticEditSessionState {
+  /** True while the user explicitly entered [전술 수정] mode (pauses live auto-advance until [수정 확정]) */
+  tacticEditMode: boolean;
+  /** Non-null notice text shown until the next match begins */
   tacticNoticeLabel: string | null;
-  /** Immediately cancel the brief pause (e.g. user clicked [재개]) */
-  clearTacticPause: () => void;
-  /** Reset both pause & notice (e.g. user stopped live auto-advance) */
-  resetTacticNotice: () => void;
+  /** Enters [전술 수정] mode, pausing auto-advance and snapshotting current tactics */
+  startTacticEdit: () => void;
+  /** Confirms [수정 확정], resumes auto-advance, and shows next-match notice if tactics changed */
+  confirmTacticEdit: () => void;
+  /** Resets edit mode & notice (e.g. when live auto-advance stops) */
+  resetTacticEdit: () => void;
 }
 
 /**
- * Briefly pauses solo live auto-advance whenever the manager edits tactics/formation/lineup
- * and displays a clear notice that the change takes effect from the next match.
+ * Explicit [전술 수정] → pause → [수정 확정] → resume session for solo live auto-advance.
+ * Auto-advance stays paused for as long as the user is editing tactics, resumes immediately
+ * on confirmation, and displays a next-match notice if anything changed.
  */
-export function useSoloTacticEditPause(
-  options: SoloTacticEditPauseOptions,
-): SoloTacticEditPauseState {
-  const { tacticSignature, liveAutoActive, suppressChanges, matchScopeKey } =
-    options;
+export function useSoloTacticEditSession(
+  options: SoloTacticEditSessionOptions,
+): SoloTacticEditSessionState {
+  const { tacticSignature, liveAutoActive, matchScopeKey } = options;
 
-  const [tacticPauseActive, setTacticPauseActive] = useState(false);
+  const [tacticEditMode, setTacticEditMode] = useState(false);
   const [noticeScopeKey, setNoticeScopeKey] = useState<string | null>(null);
-  const prevSigRef = useRef<string>(tacticSignature);
-  const timerRef = useRef<number | null>(null);
+  const startSigRef = useRef<string>(tacticSignature);
 
-  const clearTimer = useCallback(() => {
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }, []);
+  const startTacticEdit = useCallback(() => {
+    startSigRef.current = tacticSignature;
+    setTacticEditMode(true);
+  }, [tacticSignature]);
 
-  const clearTacticPause = useCallback(() => {
-    clearTimer();
-    setTacticPauseActive(false);
-  }, [clearTimer]);
-
-  const resetTacticNotice = useCallback(() => {
-    clearTimer();
-    setTacticPauseActive(false);
-    setNoticeScopeKey(null);
-  }, [clearTimer]);
-
-  useEffect(() => {
-    return () => {
-      clearTimer();
-    };
-  }, [clearTimer]);
-
-  useEffect(() => {
-    if (prevSigRef.current === tacticSignature) return;
-    prevSigRef.current = tacticSignature;
-
-    if (!liveAutoActive || suppressChanges) return;
-
-    clearTimer();
-    const startT = window.setTimeout(() => {
-      setTacticPauseActive(true);
+  const confirmTacticEdit = useCallback(() => {
+    setTacticEditMode(false);
+    if (tacticSignature !== startSigRef.current) {
       setNoticeScopeKey(matchScopeKey);
-    }, 0);
-    timerRef.current = window.setTimeout(() => {
-      timerRef.current = null;
-      setTacticPauseActive(false);
-    }, TACTIC_EDIT_PAUSE_MS);
+    }
+  }, [tacticSignature, matchScopeKey]);
 
-    return () => {
-      window.clearTimeout(startT);
-    };
-  }, [tacticSignature, liveAutoActive, suppressChanges, matchScopeKey, clearTimer]);
+  const resetTacticEdit = useCallback(() => {
+    setTacticEditMode(false);
+    setNoticeScopeKey(null);
+  }, []);
 
   const tacticNoticeLabel =
     liveAutoActive && noticeScopeKey !== null && noticeScopeKey === matchScopeKey
@@ -92,9 +62,10 @@ export function useSoloTacticEditPause(
       : null;
 
   return {
-    tacticPauseActive: liveAutoActive && tacticPauseActive,
+    tacticEditMode: liveAutoActive && tacticEditMode,
     tacticNoticeLabel,
-    clearTacticPause,
-    resetTacticNotice,
+    startTacticEdit,
+    confirmTacticEdit,
+    resetTacticEdit,
   };
 }
