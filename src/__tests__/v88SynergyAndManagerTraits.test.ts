@@ -316,8 +316,26 @@ describe('v8.8 Unified 1-Pt 2/4/8 Line Synergy, Decoupled +1 Manager Fit & 14 Ma
       starters: makeCustomXI({ playstylesFn: () => ['stopper_cb', 'poacher'] }),
       tactic: 'balanced',
     });
-    expect(spm.xgBonus).toBeGreaterThanOrEqual(0.28);
-    expect(spm.oppXgPenalty).toBe(0.08);
+    expect(spm.xgBonus).toBeGreaterThanOrEqual(0.26);
+    expect(spm.oppXgPenalty).toBe(0.06);
+
+    // Quick-sim / auto-sim averaging for halftime_wizard & super_sub
+    const hwQuick = evaluateManagerTeamEffect({
+      traitId: 'halftime_wizard',
+      starters: baseXI,
+      tactic: 'balanced',
+      isFullMatchQuickSim: true,
+    });
+    expect(hwQuick.situationalAttDelta).toBeGreaterThan(0.5);
+    expect(hwQuick.xgBonus).toBeGreaterThan(0.08);
+    const ssQuick = evaluateManagerTeamEffect({
+      traitId: 'super_sub',
+      starters: baseXI,
+      tactic: 'balanced',
+      isFullMatchQuickSim: true,
+    });
+    expect(ssQuick.situationalAttDelta).toBeGreaterThan(0.5);
+    expect(ssQuick.xgBonus).toBeGreaterThan(0.08);
 
     // gegenpress_guru stamina reduction check
     const ggStam = computePlayerStaminaPct({

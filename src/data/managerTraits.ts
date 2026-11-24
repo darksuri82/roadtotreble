@@ -138,7 +138,7 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '세트피스 장인',
     tagline: '코너킥과 프리킥으로 승점을 수확하는 디테일',
     effectSummary:
-      '매 경기 세트피스 xG +0.18~+0.32 (궁합 비례) · 코너/프리킥 2.8배 · 상대 xG -0.08 | 궁합 +1',
+      '매 경기 세트피스 xG +0.16~+0.28 (궁합 비례) · 코너/프리킥 2.8배 · 상대 xG -0.06 | 궁합 +1',
     draftGuideTip:
       '제공권이 강한 파이터 CB·완성형 FW·포처와 킥이 정교한 딥라잉 플레이메이커를 모으세요.',
     badgeColor: '#14b8a6',
@@ -391,6 +391,8 @@ export interface ManagerTeamEffectInput {
   halftimeSubsMade?: number;
   isSecondHalf?: boolean;
   trailingAtHalftime?: boolean;
+  /** True during full-match quick/auto-sim so halftime_wizard & super_sub apply realistic 2nd-half averaged impact */
+  isFullMatchQuickSim?: boolean;
 }
 
 export interface ManagerTeamEffectResult {
@@ -461,6 +463,7 @@ export function evaluateManagerTeamEffect(
     halftimeSubsMade = 0,
     isSecondHalf = false,
     trailingAtHalftime = false,
+    isFullMatchQuickSim = false,
   } = input;
 
   const empty: ManagerTeamEffectResult = {
@@ -602,9 +605,9 @@ export function evaluateManagerTeamEffect(
     }
 
     case 'set_piece_master':
-      // Scales set-piece xG cleanly from +0.18 up to +0.32 with aerial/set-piece specialists
-      xgBonus += 0.18 + 0.14 * progressRatio;
-      oppXgPenalty += 0.08;
+      // Scales set-piece xG cleanly from +0.16 up to +0.28 with aerial/set-piece specialists
+      xgBonus += 0.16 + 0.12 * progressRatio;
+      oppXgPenalty += 0.06;
       break;
 
     case 'big_game_hunter': {
@@ -661,6 +664,13 @@ export function evaluateManagerTeamEffect(
         situationalBadge = trailingAtHalftime
           ? '라커룸 대역전 발동 · 스윙 1.8배'
           : '하프타임 마법사 발동 · 스윙 1.8배';
+      } else if (isFullMatchQuickSim) {
+        // Quick/auto-sim averages the coach's 2nd-half halftime adaptation across 90 minutes
+        isSituationalActive = true;
+        situationalAttDelta += 0.9;
+        situationalMidDelta += 0.8;
+        situationalDefDelta += 0.7;
+        xgBonus += 0.12;
       }
       break;
 
@@ -673,6 +683,14 @@ export function evaluateManagerTeamEffect(
         situationalDefDelta += 1.0;
         xgBonus += Math.min(0.3, halftimeSubsMade * 0.1);
         situationalBadge = `조커 ${halftimeSubsMade}명 발동 · OVR +3.0`;
+      } else if (isFullMatchQuickSim) {
+        // Quick/auto-sim averages 2nd-half super-sub impact across 90 minutes
+        isSituationalActive = true;
+        const effectiveQuickSubs = Math.max(2, halftimeSubsMade);
+        situationalAttDelta += 0.9;
+        situationalMidDelta += 0.7;
+        situationalDefDelta += 0.5;
+        xgBonus += Math.min(0.16, effectiveQuickSubs * 0.055);
       }
       break;
   }

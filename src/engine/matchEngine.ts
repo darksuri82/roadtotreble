@@ -142,6 +142,7 @@ function computeManagerTraitModifiers(params: {
   halftimeSubsMade?: number;
   isSecondHalf?: boolean;
   trailingAtHalftime?: boolean;
+  isFullMatchQuickSim?: boolean;
 }) {
   const eff = evaluateManagerTeamEffect({
     traitId: params.traitId,
@@ -155,6 +156,7 @@ function computeManagerTraitModifiers(params: {
     halftimeSubsMade: params.halftimeSubsMade,
     isSecondHalf: params.isSecondHalf,
     trailingAtHalftime: params.trailingAtHalftime,
+    isFullMatchQuickSim: params.isFullMatchQuickSim,
   });
 
   return {
@@ -278,6 +280,7 @@ function resolveMatchStrengths(params: {
   userContext?: UserMatchContext;
   opponentUserContext?: UserMatchContext;
   isSecondHalf?: boolean;
+  isFullMatchQuickSim?: boolean;
   scoreDiffHome?: number; // homeGoals - awayGoals entering 2nd half
   evalMinute?: number;
   enteredAtMinute?: Record<string, number>;
@@ -305,6 +308,7 @@ function resolveMatchStrengths(params: {
     userContext,
     opponentUserContext,
     isSecondHalf = false,
+    isFullMatchQuickSim = false,
     scoreDiffHome = 0,
     evalMinute = isSecondHalf ? 72 : 30,
     enteredAtMinute = {},
@@ -573,6 +577,7 @@ function resolveMatchStrengths(params: {
         halftimeSubsMade: homeSubsCount,
         isSecondHalf,
         trailingAtHalftime: isSecondHalf && scoreDiffHome < 0,
+        isFullMatchQuickSim,
       })
     : null;
 
@@ -589,6 +594,7 @@ function resolveMatchStrengths(params: {
         halftimeSubsMade: awaySubsCount,
         isSecondHalf,
         trailingAtHalftime: isSecondHalf && scoreDiffHome > 0,
+        isFullMatchQuickSim,
       })
     : null;
 
@@ -650,7 +656,11 @@ function resolveMatchStrengths(params: {
       attDelta: clamp((impact.attDelta - aiBaseline) * 0.65, -4.2, 2.4),
       midDelta: clamp((impact.midDelta - aiBaseline) * 0.65, -4.2, 2.4),
       defDelta: clamp((impact.defDelta - aiBaseline) * 0.65, -4.2, 2.4),
-      freshSubXgBonus: isSecondHalf ? impact.freshSubXgBonus : 0,
+      freshSubXgBonus: isSecondHalf
+        ? impact.freshSubXgBonus
+        : isFullMatchQuickSim
+          ? impact.freshSubXgBonus * 0.5
+          : 0,
       oppXgFatigueLeak:
         impact.avgStaminaPct < 48
           ? 0.22
@@ -2848,6 +2858,7 @@ export function simulateMatch(
         }
       : undefined,
     isSecondHalf: false,
+    isFullMatchQuickSim: true,
     evalMinute: 62,
     enteredAtMinute,
   });
