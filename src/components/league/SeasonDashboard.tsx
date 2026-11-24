@@ -1162,12 +1162,12 @@ export function SeasonDashboard() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={startLiveMatch}
+                  onClick={() => setActiveTab('match')}
                   disabled={controlsBlocked}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-300 cursor-pointer"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
-                  2D 컵 중계 시작
+                  컵 프리뷰 · 2D 지휘
                 </button>
                 <button
                   type="button"
@@ -1254,6 +1254,10 @@ export function SeasonDashboard() {
         mode={skipFlowState === 'running' ? 'unified' : null}
         clubsById={clubsById}
         onPausedForTransfer={() => setSkipFlowState('paused_for_transfer')}
+        onOpenCupPreview={() => {
+          setSkipFlowState('idle');
+          setActiveTab('match');
+        }}
         onClose={() => setSkipFlowState('idle')}
       />
 
@@ -1576,14 +1580,14 @@ export function SeasonDashboard() {
                 <button
                   type="button"
                   onClick={() => {
-                    liveAutoNeedsPromptRef.current = 'cup';
                     setLiveAutoCupPromptOpen(false);
-                    startLiveMatch();
+                    setLiveAutoUserPaused(true);
+                    setActiveTab('match');
                   }}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
-                  2D 직접 지휘
+                  프리뷰 후 2D 지휘
                 </button>
               </div>
             </div>

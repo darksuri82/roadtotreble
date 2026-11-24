@@ -36,6 +36,8 @@ interface FastSimModalProps {
   onClose: () => void;
   /** Called when skip automatically pauses because a transfer window opened. */
   onPausedForTransfer?: () => void;
+  /** Called when the user opts to open the Cup Match Preview before entering 2D simulation. */
+  onOpenCupPreview?: () => void;
 }
 
 type FastSimSpeed = 'fast' | 'ultra';
@@ -50,6 +52,7 @@ export function FastSimModal({
   clubsById,
   onClose,
   onPausedForTransfer,
+  onOpenCupPreview,
 }: FastSimModalProps) {
   if (!mode) return null;
   return (
@@ -59,6 +62,7 @@ export function FastSimModal({
       clubsById={clubsById}
       onClose={onClose}
       onPausedForTransfer={onPausedForTransfer}
+      onOpenCupPreview={onOpenCupPreview}
     />
   );
 }
@@ -68,16 +72,17 @@ function FastSimModalInner({
   clubsById,
   onClose,
   onPausedForTransfer,
+  onOpenCupPreview,
 }: {
   mode: FastSimMode;
   clubsById: Record<string, Club>;
   onClose: () => void;
   onPausedForTransfer?: () => void;
+  onOpenCupPreview?: () => void;
 }) {
   useBodyScrollLock(true);
   const {
     state,
-    startLiveMatch,
     simulateSingleMatchInstant,
     simulateOneFastRound,
     simulateToNextTransfer,
@@ -254,8 +259,11 @@ function FastSimModalInner({
   };
 
   const handlePlayCupLive = () => {
-    onClose();
-    startLiveMatch();
+    if (onOpenCupPreview) {
+      onOpenCupPreview();
+    } else {
+      onClose();
+    }
   };
 
   const handleSkipCupAndContinue = () => {
@@ -427,7 +435,7 @@ function FastSimModalInner({
                   className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-amber-300 transition-colors cursor-pointer"
                 >
                   <Play className="h-3.5 w-3.5 fill-current" />
-                  직접 경기 진행
+                  프리뷰 후 2D 지휘
                 </button>
                 <button
                   type="button"
