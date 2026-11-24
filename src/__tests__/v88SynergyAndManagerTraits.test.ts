@@ -233,11 +233,11 @@ describe('v8.8 Unified 1-Pt 2/4/8 Line Synergy, Decoupled +1 Manager Fit & 14 Ma
   it('activates all 6 specialist manager traits with distinct mechanics (no generic forced 1..8)', () => {
     const baseXI = makeCustomXI({ ovr: 84, mainPosExtra: true });
 
-    // 1) total_football: versatile players lift all lines
+    // 1) total_football: versatile players lift all lines (up to 11 players -> +2.75)
     const tf = evaluateManagerTeamEffect({ traitId: 'total_football', starters: baseXI, tactic: 'balanced' });
-    expect(tf.baseAttDelta).toBeCloseTo(1.5, 2);
-    expect(tf.baseMidDelta).toBeCloseTo(1.5, 2);
-    expect(tf.baseDefDelta).toBeCloseTo(1.5, 2);
+    expect(tf.baseAttDelta).toBeCloseTo(2.75, 2);
+    expect(tf.baseMidDelta).toBeCloseTo(2.75, 2);
+    expect(tf.baseDefDelta).toBeCloseTo(2.75, 2);
 
     // 2) halftime_wizard: 2nd half adjustment + trailing comeback boost
     const hw = evaluateManagerTeamEffect({
@@ -261,7 +261,7 @@ describe('v8.8 Unified 1-Pt 2/4/8 Line Synergy, Decoupled +1 Manager Fit & 14 Ma
       halftimeSubsMade: 3,
     });
     expect(ss.situationalAttDelta).toBeGreaterThan(1.5);
-    expect(ss.xgBonus).toBeCloseTo(0.3, 2);
+    expect(ss.xgBonus).toBeCloseTo(0.33, 2);
     const stamSuper = computeLineupStaminaImpact({
       starters: baseXI,
       formation: '4-3-3',
@@ -288,8 +288,8 @@ describe('v8.8 Unified 1-Pt 2/4/8 Line Synergy, Decoupled +1 Manager Fit & 14 Ma
       tactic: 'balanced',
       isBigKnockout: true,
     });
-    expect(bgh.situationalAttDelta).toBe(2.4);
-    expect(bgh.xgBonus).toBe(0.12);
+    expect(bgh.situationalAttDelta).toBe(2.6);
+    expect(bgh.xgBonus).toBe(0.14);
 
     // 5) underdog_killer: scales with OVR gap (0..1 / 2..4 / 5+)
     const ukSmall = evaluateManagerTeamEffect({
@@ -306,8 +306,8 @@ describe('v8.8 Unified 1-Pt 2/4/8 Line Synergy, Decoupled +1 Manager Fit & 14 Ma
       userAvgOvr: 82,
       oppAvgOvr: 89,
     });
-    expect(ukSmall.situationalAttDelta).toBe(1.6);
-    expect(ukHuge.situationalAttDelta).toBe(3.2);
+    expect(ukSmall.situationalAttDelta).toBe(1.8);
+    expect(ukHuge.situationalAttDelta).toBe(3.5);
     expect(ukHuge.oppXgPenalty).toBe(0.12);
 
     // 6) set_piece_master: xG + corner/FK + oppXgPenalty

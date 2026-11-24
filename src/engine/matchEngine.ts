@@ -598,9 +598,9 @@ function resolveMatchStrengths(params: {
       })
     : null;
 
-  // AI Manager tactical trait modifiers (8%..20% scaled by manager OVR: keeps base league tables accurate while preserving clear coach identity)
+  // AI Manager tactical trait modifiers (7%..17% scaled by manager OVR: keeps base league tables accurate while preserving clear coach identity)
   const computeAiTraitScale = (mgrOvr: number) =>
-    clamp(0.08 + ((mgrOvr - 74) / 20) * 0.12, 0.08, 0.2);
+    clamp(0.07 + ((mgrOvr - 74) / 20) * 0.1, 0.07, 0.17);
 
   const homeAiTraitMod =
     !homeIsHuman && homeManager && effectiveHomeRoster.length > 0

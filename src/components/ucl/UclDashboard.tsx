@@ -131,6 +131,7 @@ export function UclDashboard() {
   const [lpFastSimOpen, setLpFastSimOpen] = useState(false);
   const [lpStandingsModalOpen, setLpStandingsModalOpen] = useState(false);
   const [skipResultModalOpen, setSkipResultModalOpen] = useState(false);
+  const [knockoutAutoPopupOpen, setKnockoutAutoPopupOpen] = useState(false);
   const [pendingMilestone, setPendingMilestone] =
     useState<UclMilestoneStage | null>(null);
   const [swapPick, setSwapPick] = useState<SlotRef | null>(null);
@@ -143,7 +144,7 @@ export function UclDashboard() {
   const [inspectedTie, setInspectedTie] = useState<UclKnockoutTie | null>(null);
   const [inspectedClub, setInspectedClub] = useState<Club | null>(null);
 
-  // Solo UCL League Phase Live Scoreboard Auto-Advance (5s / 7s / 9s)
+  // Solo UCL Live Scoreboard Auto-Advance (League Phase + Knockout, 5s / 7s / 9s)
   const [liveAutoActive, setLiveAutoActive] = useState(false);
   const [liveAutoUserPaused, setLiveAutoUserPaused] = useState(false);
   const [liveAutoDurationMs, setLiveAutoDurationMs] =
@@ -203,17 +204,42 @@ export function UclDashboard() {
     }
   }, [liveAutoActive, isTransferOpen, hasPendingInjury]);
 
+  const canPlayNextUclAutoMatch = useMemo(() => {
+    if (!season || !ucl || ucl.completed || Boolean(ucl.userEliminatedAt)) {
+      return false;
+    }
+    if (ucl.stage === 'league_phase') {
+      return ucl.leaguePhaseRound < 8;
+    }
+    if (
+      ucl.stage === 'playoff' ||
+      ucl.stage === 'r16' ||
+      ucl.stage === 'qf' ||
+      ucl.stage === 'sf' ||
+      ucl.stage === 'final'
+    ) {
+      return Boolean(getUserKnockoutFixtureInfo(ucl, USER_CLUB_ID));
+    }
+    return false;
+  }, [season, ucl]);
+
   const launchNextUclLiveMatch = useCallback(() => {
-    if (!season || !ucl || ucl.stage !== 'league_phase' || ucl.leaguePhaseRound >= 8) {
+    if (!canPlayNextUclAutoMatch) {
       setLiveAutoActive(false);
       return;
     }
     startSoloStreamMatch();
-  }, [season, ucl, startSoloStreamMatch]);
+  }, [canPlayNextUclAutoMatch, startSoloStreamMatch]);
 
   const handleUclLiveMatchDone = useCallback(() => {
+    const wasKnockout = Boolean(
+      ucl && ucl.stage !== 'league_phase' && ucl.stage !== 'special_transfer',
+    );
     commitLiveMatch();
-  }, [commitLiveMatch]);
+    if (wasKnockout) {
+      setKnockoutAutoPopupOpen(true);
+    }
+  }, [ucl, commitLiveMatch]);
 
   const handleEnterLive2DFromStream = useCallback(
     (minute: number, inPenalties: boolean) => {
@@ -250,6 +276,7 @@ export function UclDashboard() {
     setLiveAutoActive(false);
     setLiveAutoUserPaused(false);
     setLiveAutoResumePrompt(null);
+    setKnockoutAutoPopupOpen(false);
     cancelSoloStreamMatch();
     setSoloTickerPlaying(false);
   }, [cancelSoloStreamMatch, setSoloTickerPlaying, resetTacticEdit]);
@@ -260,6 +287,9 @@ export function UclDashboard() {
     hasPendingInjury ||
     hasPendingEvent ||
     tacticEditMode ||
+    knockoutAutoPopupOpen ||
+    lpStandingsModalOpen ||
+    pendingMilestone !== null ||
     liveAutoResumePrompt !== null;
 
   useEffect(() => {
@@ -273,7 +303,7 @@ export function UclDashboard() {
     ) {
       return;
     }
-    if (ucl.stage !== 'league_phase' || ucl.leaguePhaseRound >= 8) {
+    if (!canPlayNextUclAutoMatch) {
       liveAutoNeedsPromptRef.current = null;
       const stopT = window.setTimeout(() => setLiveAutoActive(false), 0);
       return () => window.clearTimeout(stopT);
@@ -295,6 +325,7 @@ export function UclDashboard() {
     liveAutoUserPaused,
     liveTickerPlaying,
     liveAutoBlocked,
+    canPlayNextUclAutoMatch,
     launchNextUclLiveMatch,
   ]);
 
@@ -303,15 +334,17 @@ export function UclDashboard() {
       ? null
       : hasActive2DBroadcast
         ? '2D 경기 진행 중'
-        : liveAutoResumePrompt !== null
-          ? '진행 선택 대기'
-          : isTransferOpen
-            ? '이적시장 일시정지'
-            : hasPendingEvent
-              ? '인터뷰 일시정지'
-              : hasPendingInjury
-                ? '부상 알림 일시정지'
-                : null;
+        : knockoutAutoPopupOpen
+          ? '경기 결과 확인 중'
+          : liveAutoResumePrompt !== null
+            ? '진행 선택 대기'
+            : isTransferOpen
+              ? '이적시장 일시정지'
+              : hasPendingEvent
+                ? '인터뷰 일시정지'
+                : hasPendingInjury
+                  ? '부상 알림 일시정지'
+                  : null;
 
   const prevLpRoundRef = useRef<number>(ucl?.leaguePhaseRound ?? 0);
   useEffect(() => {
@@ -696,24 +729,96 @@ export function UclDashboard() {
             />
           </div>
           <div className="lg:col-span-5">
-            <CompactLiveStandings
-              title="UCL 리그페이즈 순위"
-              standings={ucl.standings}
-              myClubId={USER_CLUB_ID}
-              variant="ucl"
-              roundLabel={`${ucl.leaguePhaseRound}/8R`}
-              onSelectClub={(teamId) => {
-                const c = clubsById[teamId];
-                if (c) setInspectedClub(c);
-              }}
-              onOpenFullModal={() => setLpStandingsModalOpen(true)}
-            />
+            {ucl.stage === 'league_phase' ? (
+              <CompactLiveStandings
+                title="UCL 리그페이즈 순위"
+                standings={ucl.standings}
+                myClubId={USER_CLUB_ID}
+                variant="ucl"
+                roundLabel={`${ucl.leaguePhaseRound}/8R`}
+                onSelectClub={(teamId) => {
+                  const c = clubsById[teamId];
+                  if (c) setInspectedClub(c);
+                }}
+                onOpenFullModal={() => setLpStandingsModalOpen(true)}
+              />
+            ) : (() => {
+              const stageKey =
+                ucl.stage === 'playoff' ||
+                ucl.stage === 'r16' ||
+                ucl.stage === 'qf' ||
+                ucl.stage === 'sf' ||
+                ucl.stage === 'final'
+                  ? ucl.stage
+                  : null;
+              const stageTies = stageKey ? (ucl.ties[stageKey] ?? []) : [];
+              return (
+                <div className="rounded-2xl border border-slate-800/90 bg-[#0d1420] p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2 px-0.5">
+                    <span className="text-xs font-extrabold text-sky-200">
+                      🏆 {UCL_STAGE_LABELS[ucl.stage]} 대진 현황
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setTab('bracket')}
+                      className="text-[10px] font-bold text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      전체 대진표 →
+                    </button>
+                  </div>
+                  <div className="space-y-1.5 max-h-[250px] overflow-y-auto pr-0.5">
+                    {stageTies.map((t) => {
+                      const cA = clubsById[t.teamAId];
+                      const cB = clubsById[t.teamBId];
+                      const isMine =
+                        t.teamAId === USER_CLUB_ID || t.teamBId === USER_CLUB_ID;
+                      return (
+                        <div
+                          key={t.id}
+                          className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] tabular-nums ${
+                            isMine
+                              ? 'border-emerald-500/40 bg-emerald-950/20 text-white'
+                              : 'border-slate-800/80 bg-[#0a1019] text-slate-300'
+                          }`}
+                        >
+                          <span
+                            className={`truncate flex-1 font-bold ${
+                              t.winnerId === t.teamAId
+                                ? 'text-emerald-300'
+                                : t.teamAId === USER_CLUB_ID
+                                  ? 'text-emerald-200'
+                                  : ''
+                            }`}
+                          >
+                            {cA?.shortName ?? t.teamAId}
+                          </span>
+                          <span className="shrink-0 font-mono text-[11px] font-extrabold text-amber-300">
+                            {t.leg1 ? `${t.aggTeamA} : ${t.aggTeamB}` : 'vs'}
+                          </span>
+                          <span
+                            className={`truncate flex-1 text-right font-bold ${
+                              t.winnerId === t.teamBId
+                                ? 'text-emerald-300'
+                                : t.teamBId === USER_CLUB_ID
+                                  ? 'text-emerald-200'
+                                  : ''
+                            }`}
+                          >
+                            {cB?.shortName ?? t.teamBId}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
 
-      {/* UCL 1-Match Skip Result Popup Modal (League Phase + Knockout Playoff/R16/QF/SF/Final) */}
-      {skipResultModalOpen &&
+      {/* UCL Match & Knockout Aggregate Result Popup Modal (1-Match Skip + Knockout Live Auto-Advance) */}
+      {(skipResultModalOpen || knockoutAutoPopupOpen) &&
         season.userUclMatchHistory.length > 0 &&
         (() => {
           const lastMatch =
@@ -1805,12 +1910,12 @@ export function UclDashboard() {
                               season.defaultTactic === t.id
                                 ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
                                 : isMgrPreferred
-                                  ? 'border-violet-500/40 bg-[#131428] text-slate-200 hover:border-violet-400/70'
+                                  ? 'border-slate-700 bg-slate-950 text-slate-200 hover:border-slate-500 hover:text-white'
                                   : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                             }`}
                           >
                             {isMgrPreferred && (
-                              <span className="text-violet-300 mr-0.5">★</span>
+                              <span className="text-amber-300 mr-0.5">★</span>
                             )}
                             {t.shortName}
                           </button>

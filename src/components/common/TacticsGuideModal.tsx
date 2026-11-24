@@ -193,8 +193,8 @@ export function TacticsGuideModal({
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-violet-400/25 bg-violet-500/5 p-2.5 text-slate-300">
-                    <strong className="text-violet-300">★ 감독 궁합 &amp; 철학 (독립 보정):</strong> 선수 시너지(2/4/8선 → 최대 +3)와 별개로 감독 궁합 일치 선수 모두 <strong className="text-violet-200">+1</strong>(최대 총 +4)을 받습니다. 전술형 감독은 궁합 선수 수(1~8명)와 ★추천 전술에 따라 팀 A/M/D가 실시간 상승하며, 스페셜리스트 감독은 포지션·하프타임·교체·빅매치·언더독·세트피스에서 고유 특색을 발휘합니다.
+                  <div className="rounded-lg border border-amber-400/25 bg-amber-500/5 p-2.5 text-slate-300">
+                    <strong className="text-amber-300">★ 감독 궁합 &amp; 철학 (독립 보정):</strong> 선수 시너지(2/4/8선 → 최대 +3)와 별개로 감독 궁합 일치 선수 모두 <strong className="text-emerald-300">+1</strong>(최대 총 +4 · 노란 별 ★ 표시)을 받습니다. 전술형 감독은 궁합 선수 수(1~11명)와 ★추천 전술에 따라 팀 A/M/D가 실시간 상승하며, 스페셜리스트 감독은 포지션·하프타임·교체·빅매치·언더독·세트피스에서 고유 특색을 발휘합니다.
                   </div>
 
                   <div className="pt-1">

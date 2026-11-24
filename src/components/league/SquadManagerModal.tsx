@@ -288,12 +288,12 @@ export function SquadManagerModal({
                       state.defaultTactic === t.id
                         ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
                         : isMgrPreferred
-                          ? 'bg-[#131428] text-slate-200 border-violet-500/40 hover:border-violet-400/70'
+                          ? 'bg-[#111822] text-slate-200 border-slate-700 hover:border-slate-500 hover:text-white'
                           : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
                     }`}
                   >
                     {isMgrPreferred && (
-                      <span className="text-violet-300 mr-0.5">★</span>
+                      <span className="text-amber-300 mr-0.5">★</span>
                     )}
                     {t.shortName}
                   </button>

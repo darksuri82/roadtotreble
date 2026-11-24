@@ -9,7 +9,10 @@ import {
 import { useMemo, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
 import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
-import { MANAGER_TRAITS } from '../../data/managerTraits';
+import {
+  evaluateManagerTeamEffect,
+  MANAGER_TRAITS,
+} from '../../data/managerTraits';
 import {
   calculateChemistry,
   calculateTeamRatings,
@@ -344,25 +347,27 @@ function RevealFormationPitch({
                 >
                   {fit ? fit.effectiveOvr : (player?.ovr ?? '-')}
                 </span>
-                {neighborBonus > 0 && (
+                {synBonus > 0 && (
                   <span
-                    title={`선수 시너지 +${neighborBonus} (${slotSyn?.lineCount ?? 0}선)`}
+                    title={[
+                      neighborBonus > 0
+                        ? `연결 ${slotSyn?.lineCount ?? 0}선 (+${neighborBonus})`
+                        : null,
+                      managerBonus > 0 ? `감독 궁합 (+${managerBonus})` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                     className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7px] font-bold text-emerald-300/90 leading-none"
                   >
-                    +{neighborBonus}
+                    +{synBonus}
                   </span>
                 )}
                 {managerBonus > 0 && (
                   <span
-                    title={`감독 궁합 +${managerBonus}`}
-                    className="rounded bg-violet-950/85 border border-violet-400/35 px-0.5 py-px text-[6.5px] font-bold text-violet-300 leading-none"
+                    title={`감독 궁합 (+${managerBonus})`}
+                    className="text-[8px] font-bold text-amber-300 leading-none drop-shadow-[0_0_2px_rgba(251,191,36,0.45)]"
                   >
-                    ★{managerBonus}
-                  </span>
-                )}
-                {synBonus > 0 && neighborBonus === 0 && managerBonus === 0 && (
-                  <span className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7px] font-bold text-emerald-300/90 leading-none">
-                    +{synBonus}
+                    ★
                   </span>
                 )}
                 {player && (
@@ -495,6 +500,30 @@ export function PreKickoffRevealModal({
     );
   }, [isHost, hostSub, guestSub, hostTraitId, guestTraitId]);
 
+  const hostMgrEffect = useMemo(
+    () =>
+      evaluateManagerTeamEffect({
+        traitId: hostTraitId,
+        starters: hostSub.starters,
+        tactic: hostSub.tactic,
+        userAvgOvr: hostStats.ratings.ovr,
+        oppAvgOvr: guestStats.ratings.ovr,
+      }),
+    [hostTraitId, hostSub.starters, hostSub.tactic, hostStats.ratings.ovr, guestStats.ratings.ovr],
+  );
+
+  const guestMgrEffect = useMemo(
+    () =>
+      evaluateManagerTeamEffect({
+        traitId: guestTraitId,
+        starters: guestSub.starters,
+        tactic: guestSub.tactic,
+        userAvgOvr: guestStats.ratings.ovr,
+        oppAvgOvr: hostStats.ratings.ovr,
+      }),
+    [guestTraitId, guestSub.starters, guestSub.tactic, guestStats.ratings.ovr, hostStats.ratings.ovr],
+  );
+
   const myRow = isHost ? hostRow : guestRow;
   const bothReady = Boolean(hostRow.is_ready && guestRow.is_ready);
 
@@ -505,6 +534,7 @@ export function PreKickoffRevealModal({
       sub: hostSub,
       traitId: hostTraitId,
       stats: hostStats,
+      mgrEffect: hostMgrEffect,
       isMe: isHost,
       isHostCard: true,
     },
@@ -514,6 +544,7 @@ export function PreKickoffRevealModal({
       sub: guestSub,
       traitId: guestTraitId,
       stats: guestStats,
+      mgrEffect: guestMgrEffect,
       isMe: !isHost,
       isHostCard: false,
     },
@@ -548,7 +579,7 @@ export function PreKickoffRevealModal({
           {/* Side-by-Side Formation Pitches */}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {cards.map(
-              ({ roleLabel, row, sub, traitId, stats, isMe, isHostCard }) => (
+              ({ roleLabel, row, sub, traitId, stats, mgrEffect, isMe, isHostCard }) => (
                 <div
                   key={row.player_id}
                   className={`rounded-xl border p-3 space-y-2.5 ${
@@ -618,6 +649,25 @@ export function PreKickoffRevealModal({
                         {TACTICS[sub.tactic].shortName}
                       </div>
                     </div>
+                  </div>
+
+                  {/* Concise Manager Ability Row */}
+                  <div
+                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-[#090e15] px-2.5 py-1 text-[10.5px]"
+                    title={MANAGER_TRAITS[traitId]?.effectSummary}
+                  >
+                    <span className="inline-flex items-center gap-1 font-semibold text-slate-300 shrink-0">
+                      <span className="text-amber-300">★</span>
+                      <span>{MANAGER_TRAITS[traitId]?.name ?? ''}</span>
+                      {mgrEffect.targetCount > 0 && (
+                        <span className="text-slate-400 tabular-nums">
+                          {Math.min(mgrEffect.matchedCount, mgrEffect.targetCount)}/{mgrEffect.targetCount}
+                        </span>
+                      )}
+                    </span>
+                    <span className="truncate font-semibold text-emerald-300/90 tabular-nums">
+                      {mgrEffect.compactSummary}
+                    </span>
                   </div>
 
                   {/* Key Metrics Strip */}

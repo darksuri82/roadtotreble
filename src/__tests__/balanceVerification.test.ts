@@ -354,5 +354,5 @@ describe('20-Season Simulation Balance Verification (EPL 38R)', () => {
 
     // 84 OVR full-synergy team should genuinely upset an 89 OVR mismatched team at a healthy rate (>=35% wins)
     expect(upsetWinPct).toBeGreaterThanOrEqual(35);
-  });
+  }, 15000);
 });

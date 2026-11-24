@@ -760,8 +760,14 @@ export function SeasonDashboard() {
                       id="play-next-round-btn"
                       type="button"
                       onClick={() => {
-                        stopLiveAuto();
-                        startLiveMatch();
+                        if (liveAutoActive && isNextCupMatch && liveAutoUserPaused) {
+                          liveAutoNeedsPromptRef.current = 'cup';
+                          setLiveAutoUserPaused(false);
+                          startLiveMatch();
+                        } else {
+                          stopLiveAuto();
+                          startLiveMatch();
+                        }
                       }}
                       disabled={controlsBlocked}
                       className="sm:col-span-8 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-colors cursor-pointer"

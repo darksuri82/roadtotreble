@@ -1837,6 +1837,7 @@ export function MpLeagueDashboard({
           onAccept={onTradeAccept}
           onReject={onTradeReject}
           onCounter={onTradeCounter}
+          onSaveSquad={onSaveSquad}
           onFinish={() => onAck(flow.key)}
         />
       )}

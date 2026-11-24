@@ -181,7 +181,7 @@ export function SystemGuideContent() {
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
-              선수당 연결선 <strong className="text-emerald-300">2/4/8선 → +1/+2/+3</strong>이 적용되며, 감독 궁합은 별도 분리되어 일치 선수 모두 <strong className="text-violet-300">★+1</strong>(최대 총 +4)을 받습니다. 연결선이 늘수록 팀 케미(0~100)가 꾸준히 상승합니다.
+              선수당 연결선 <strong className="text-emerald-300">2/4/8선 → +1/+2/+3</strong>이 적용되며, 감독 궁합은 별도 분리되어 일치 선수 모두 <strong className="text-amber-300">★</strong> 표시와 함께 <strong className="text-emerald-300">+1</strong>(최대 총 +4)을 받습니다. 연결선이 늘수록 팀 케미(0~100)가 꾸준히 상승합니다.
             </p>
           </div>
         </div>

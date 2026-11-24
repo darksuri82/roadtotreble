@@ -25,12 +25,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '티키타카 마스터',
     tagline: '완벽한 삼각 패스와 점유율 축구',
     effectSummary:
-      '궁합 1~8명 MID +2.4 · 점유율 +5% | 점유율 전술 시 ATT +0.8 · MID +0.8 추가 | 궁합 선수 OVR +1',
+      '궁합 1~11명 MID +3.0 · 점유율 +6% | 점유율 전술 시 ATT +0.9 · MID +0.9 추가 | 궁합 선수 OVR +1',
     draftGuideTip:
       '딥라잉·플레이메이커·빌드업 CB·인버티드 윙어를 모을수록 중원과 점유율이 극대화됩니다.',
     badgeColor: '#38bdf8',
     category: 'builder',
-    philosophyTarget: 8,
+    philosophyTarget: 11,
     synergyTactic: 'possession',
     synergyPlaystyles: [
       'deep_playmaker',
@@ -45,12 +45,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '게겐프레싱 전도사',
     tagline: '전방 압박이 최고의 플레이메이커',
     effectSummary:
-      '궁합 1~8명 ATT +1.6 · MID +1.2 | 압박 전술 시 ATT/DEF +0.6 · 체력 소모 완화(1.35→1.15배) | 궁합 +1',
+      '궁합 1~11명 ATT +2.0 · MID +1.6 | 압박 전술 시 ATT/DEF +0.7 · 체력 소모 완화(1.35→1.15배) | 궁합 +1',
     draftGuideTip:
       '박스투박스·볼위너·라인브레이커·공격형 윙백을 모으면 90분 내내 지치지 않는 전방 압박이 완성됩니다.',
     badgeColor: '#f97316',
     category: 'builder',
-    philosophyTarget: 8,
+    philosophyTarget: 11,
     synergyTactic: 'gegenpressing',
     synergyPlaystyles: [
       'box_to_box',
@@ -64,12 +64,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '카테나치오',
     tagline: '질식 수비와 치명적 한 방의 역습',
     effectSummary:
-      '궁합 1~8명 DEF +2.4 | 역습 전술 시 DEF +1.0 · 상대 xG -0.10 추가 | 궁합 선수 OVR +1',
+      '궁합 1~11명 DEF +3.0 | 역습 전술 시 DEF +1.1 · 상대 xG -0.12 추가 | 궁합 선수 OVR +1',
     draftGuideTip:
       '파이터 CB·선방형 GK·볼위너·라인브레이커를 모으고 역습 전술을 쓰면 극단적 빗장수비가 완성됩니다.',
     badgeColor: '#94a3b8',
     category: 'builder',
-    philosophyTarget: 8,
+    philosophyTarget: 11,
     synergyTactic: 'counter',
     synergyPlaystyles: [
       'stopper_cb',
@@ -83,12 +83,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '측면 폭격기',
     tagline: '하프스페이스와 터치라인을 가르는 폭격',
     effectSummary:
-      '궁합 1~8명 ATT +2.2 | 측면 전술 시 ATT +1.0 · xG +0.10 추가 | 궁합 선수 OVR +1',
+      '궁합 1~11명 ATT +2.8 | 측면 전술 시 ATT +1.1 · xG +0.12 추가 | 궁합 선수 OVR +1',
     draftGuideTip:
       '윙어·공격형 윙백·포처를 모으고 측면 공략을 쓰면 크로스와 컷백 화력이 폭발합니다.',
     badgeColor: '#22c55e',
     category: 'builder',
-    philosophyTarget: 8,
+    philosophyTarget: 11,
     synergyTactic: 'wingplay',
     synergyPlaystyles: [
       'attacking_wingback',
@@ -102,7 +102,7 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '하프타임 마법사',
     tagline: '라커룸 연설로 경기를 뒤집는 전략가',
     effectSummary:
-      '하프타임 전술·포메이션 변경 시 후반 스윙 1.8배 · A/M/D +1.4/+1.2/+1.0 · xG +0.18 (열세 시 추가 ATT +0.8 · xG +0.10)',
+      '하프타임 전술·포메이션 변경 시 후반 스윙 1.8배 · A/M/D +1.6/+1.4/+1.2 · xG +0.20 (열세 시 추가 ATT +0.8 · xG +0.12)',
     draftGuideTip:
       '후반 전술 전환에 강한 플레이메이커·딥라잉·박스투박스·완성형 FW로 다재다능한 스쿼드를 구성하세요.',
     badgeColor: '#f59e0b',
@@ -120,7 +120,7 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '빅게임 승부사',
     tagline: '강팀일수록 불타오르는 큰 경기 전문 감독',
     effectSummary:
-      '상위 6팀 · OVR 84+ 강팀 · 컵 4강/결승 · UCL 토너먼트 시 전 라인 +2.4 · xG +0.12 | 궁합 선수 OVR +1',
+      '상위 6팀 · OVR 84+ 강팀 · 컵 4강/결승 · UCL 토너먼트 시 전 라인 +2.6 · xG +0.14 | 궁합 선수 OVR +1',
     draftGuideTip:
       '큰 경기를 결정짓는 완성형 FW·선방형 GK·파이터 CB·플레이메이커로 중심축을 세우세요.',
     badgeColor: '#ef4444',
@@ -138,12 +138,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '세트피스 장인',
     tagline: '코너킥과 프리킥으로 승점을 수확하는 디테일',
     effectSummary:
-      '매 경기 세트피스 xG +0.16~+0.28 (궁합 비례) · 코너/프리킥 2.8배 · 상대 xG -0.06 | 궁합 +1',
+      '궁합 1~11명 세트피스 xG +0.16~+0.30 · 코너/프리킥 2.8배 · 상대 xG -0.06 | 궁합 +1',
     draftGuideTip:
       '제공권이 강한 파이터 CB·완성형 FW·포처와 킥이 정교한 딥라잉 플레이메이커를 모으세요.',
     badgeColor: '#14b8a6',
     category: 'specialist',
-    philosophyTarget: 8,
+    philosophyTarget: 11,
     synergyPlaystyles: [
       'stopper_cb',
       'complete_forward',
@@ -156,7 +156,7 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '언더독 킬러',
     tagline: '약팀을 이끌고 거인을 쓰러뜨리는 자이언트 킬러',
     effectSummary:
-      '상대 OVR ≥ 우리 OVR 시 격차 비례 전 라인 +1.6 / +2.4 / +3.2 + 역전 xG·실점 억제 | 궁합 +1',
+      '상대 OVR ≥ 우리 OVR 시 격차 비례 전 라인 +1.8 / +2.6 / +3.5 + 역전 xG·실점 억제 | 궁합 +1',
     draftGuideTip:
       '강팀 뒷공간을 찌르는 라인브레이커·볼위너·선방형 GK·박스투박스 조합이 자이언트 킬링에 최적입니다.',
     badgeColor: '#eab308',
@@ -174,12 +174,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '토탈 풋볼',
     tagline: '포지션의 경계를 허무는 유연한 스위칭 전술',
     effectSummary:
-      '부포지션 페널티 0 · 동일라인 -2 · 타라인 -8 | 멀티포지션(3+) 1명당 전 라인 +0.25 (최대 +1.5) | 궁합 +1',
+      '부포지션 페널티 0 · 동일라인 -2 · 타라인 -8 | 멀티포지션(3+) 1~11명당 전 라인 +0.25 (최대 +2.75) | 궁합 +1',
     draftGuideTip:
       '3개 이상 포지션 소화 가능한 멀티플레이어와 박스투박스·완성형 FW·빌드업 CB를 적극 영입하세요.',
     badgeColor: '#06b6d4',
     category: 'specialist',
-    philosophyTarget: 6,
+    philosophyTarget: 11,
     synergyPlaystyles: ['box_to_box', 'complete_forward', 'ball_playing_cb'],
   },
   galactico_manager: {
@@ -187,12 +187,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '갈락티코 매니저',
     tagline: '월드클래스 스타 군단을 하나로 묶는 카리스마',
     effectSummary:
-      '선발 91+·레전드 1명당 전 라인 +0.4 (최대 6명 +2.4) | 88+·레전드 개인 궁합 OVR +1',
+      '선발 91+·레전드 1~11명당 전 라인 +0.35 (최대 +3.85) | 88+·레전드 개인 궁합 OVR +1',
     draftGuideTip:
       'OVR 91+ 슈퍼스타·레전드를 최대한 확보할수록 팀 전체 화력과 위압감이 폭발합니다.',
     badgeColor: '#fbbf24',
     category: 'builder',
-    philosophyTarget: 6,
+    philosophyTarget: 11,
     synergyPlaystyles: [
       'complete_forward',
       'inverted_winger',
@@ -204,12 +204,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '다이렉트 풋볼',
     tagline: '군더더기 없는 종패스와 압도적 마무리',
     effectSummary:
-      '전술 무관 상시 궁합 1~8명 ATT +2.8 · xG 최대 +0.16 | 직선 공격 자원 개인 OVR +1',
+      '전술 무관 상시 궁합 1~11명 ATT +3.4 · xG 최대 +0.18 | 직선 공격 자원 개인 OVR +1',
     draftGuideTip:
       '라인브레이커·포처·완성형 FW·클래식 윙어를 모으면 어떤 전술이든 최전방 화력이 폭발합니다.',
     badgeColor: '#fb7185',
     category: 'builder',
-    philosophyTarget: 8,
+    philosophyTarget: 11,
     synergyPlaystyles: [
       'line_breaker',
       'poacher',
@@ -222,12 +222,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '수비 조직력 전문가',
     tagline: '리그 최소 실점을 만드는 완벽한 간격 유지',
     effectSummary:
-      '전술 무관 상시 궁합 1~8명 DEF +2.6 · 상대 xG 최대 -0.14 | 수비 핵심 자원 개인 OVR +1',
+      '전술 무관 상시 궁합 1~11명 DEF +3.3 · 상대 xG 최대 -0.16 | 수비 핵심 자원 개인 OVR +1',
     draftGuideTip:
       '파이터 CB·빌드업 CB·볼위너·선방형 GK를 모으면 어떤 전술에서도 최소 실점에 도전할 수 있습니다.',
     badgeColor: '#60a5fa',
     category: 'builder',
-    philosophyTarget: 8,
+    philosophyTarget: 11,
     synergyPlaystyles: [
       'stopper_cb',
       'ball_playing_cb',
@@ -240,12 +240,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '중원 지배자',
     tagline: '허리를 장악하는 자가 경기를 지배한다',
     effectSummary:
-      '전술 무관 상시 궁합 1~8명 MID +2.8 · 점유율 최대 +6% | 미드필더 핵심 자원 개인 OVR +1',
+      '전술 무관 상시 궁합 1~11명 MID +3.4 · 점유율 최대 +7% | 미드필더 핵심 자원 개인 OVR +1',
     draftGuideTip:
       '딥라잉·플레이메이커·박스투박스·볼위너를 모으면 어떤 전술을 써도 중원을 완전히 장악합니다.',
     badgeColor: '#34d399',
     category: 'builder',
-    philosophyTarget: 8,
+    philosophyTarget: 11,
     synergyPlaystyles: [
       'deep_playmaker',
       'playmaker_10',
@@ -258,7 +258,7 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '교체 카드의 귀재',
     tagline: '후반전 벤치 투입으로 흐름을 단숨에 바꾼다',
     effectSummary:
-      '후반 교체 투입 선수 전원 조커 OVR +3.0 · 팀 A/M/D +1.8/+1.4/+1.0 · 교체당 xG +0.10(최대 +0.30)',
+      '후반 교체 투입 선수 전원 조커 OVR +3.0 · 팀 A/M/D +2.0/+1.5/+1.2 · 교체당 xG +0.11(최대 +0.33)',
     draftGuideTip:
       '벤치까지 라인브레이커·포처·크랙 및 체력(STA) 86+ 자원을 두텁게 챙겨 후반 승부를 뒤집으세요.',
     badgeColor: '#f472b6',
@@ -534,70 +534,70 @@ export function evaluateManagerTeamEffect(
   let situationalBadge: string | undefined;
 
   switch (traitId) {
-    // ── Group A: Tactic + 1..8 Builder Managers ────────────────────────────
+    // ── Group A: Tactic + 1..11 Builder Managers ───────────────────────────
     case 'tiki_taka':
-      baseMidDelta += 2.4 * progressRatio;
-      possessionBonus += 5 * progressRatio;
+      baseMidDelta += 3.0 * progressRatio;
+      possessionBonus += 6 * progressRatio;
       if (isTacticSynergyActive) {
-        baseAttDelta += 0.8;
-        baseMidDelta += 0.8;
+        baseAttDelta += 0.9;
+        baseMidDelta += 0.9;
       }
       break;
 
     case 'gegenpress_guru':
-      baseAttDelta += 1.6 * progressRatio;
-      baseMidDelta += 1.2 * progressRatio;
+      baseAttDelta += 2.0 * progressRatio;
+      baseMidDelta += 1.6 * progressRatio;
       if (isTacticSynergyActive) {
-        baseAttDelta += 0.6;
-        baseDefDelta += 0.6;
+        baseAttDelta += 0.7;
+        baseDefDelta += 0.7;
         staminaDrainMult = 1.15 / 1.35; // mitigates gegenpressing stamina drain 1.35 -> 1.15
       }
       break;
 
     case 'catenaccio':
-      baseDefDelta += 2.4 * progressRatio;
+      baseDefDelta += 3.0 * progressRatio;
       if (isTacticSynergyActive) {
-        baseDefDelta += 1.0;
-        oppXgPenalty += 0.1;
+        baseDefDelta += 1.1;
+        oppXgPenalty += 0.12;
       }
       break;
 
     case 'wing_bomber':
-      baseAttDelta += 2.2 * progressRatio;
+      baseAttDelta += 2.8 * progressRatio;
       if (isTacticSynergyActive) {
-        baseAttDelta += 1.0;
-        xgBonus += 0.1;
+        baseAttDelta += 1.1;
+        xgBonus += 0.12;
       }
       break;
 
-    // ── Group B: Always-On Style Builders ──────────────────────────────────
+    // ── Group B: Always-On Style Builders (1..11) ──────────────────────────
     case 'defensive_architect':
-      baseDefDelta += 2.6 * progressRatio;
-      oppXgPenalty += 0.14 * progressRatio;
+      baseDefDelta += 3.3 * progressRatio;
+      oppXgPenalty += 0.16 * progressRatio;
       break;
 
     case 'midfield_maestro':
-      baseMidDelta += 2.8 * progressRatio;
-      possessionBonus += 6 * progressRatio;
+      baseMidDelta += 3.4 * progressRatio;
+      possessionBonus += 7 * progressRatio;
       break;
 
     case 'direct_football':
-      baseAttDelta += 2.8 * progressRatio;
-      xgBonus += 0.16 * progressRatio;
+      baseAttDelta += 3.4 * progressRatio;
+      xgBonus += 0.18 * progressRatio;
       break;
 
     case 'galactico_manager': {
-      const lift = Math.min(2.4, matchedCount * 0.4);
+      const lift = Math.min(3.85, matchedCount * 0.35);
       baseAttDelta += lift;
       baseMidDelta += lift;
       baseDefDelta += lift;
       break;
     }
 
-    // ── Group C: Signature Specialists (no forced 1..8 generic A/M/D) ──────
+    // ── Group C: Signature Specialists ─────────────────────────────────────
     case 'total_football': {
-      // Main identity: position penalty 0/-2/-8 in positionEngine + multi-position switching bonus
-      const lift = Math.min(1.5, matchedCount * 0.25);
+      // Main identity: position penalty 0/-2/-8 in positionEngine + multi-position switching bonus (up to 11)
+      const lift = Math.min(2.75, matchedCount * 0.25);
       baseAttDelta += lift;
       baseMidDelta += lift;
       baseDefDelta += lift;
@@ -605,8 +605,8 @@ export function evaluateManagerTeamEffect(
     }
 
     case 'set_piece_master':
-      // Scales set-piece xG cleanly from +0.16 up to +0.28 with aerial/set-piece specialists
-      xgBonus += 0.16 + 0.12 * progressRatio;
+      // Scales set-piece xG cleanly from +0.16 up to +0.30 across 1..11 aerial/set-piece specialists
+      xgBonus += 0.16 + 0.14 * progressRatio;
       oppXgPenalty += 0.06;
       break;
 
@@ -617,11 +617,11 @@ export function evaluateManagerTeamEffect(
         (oppAvgOvr !== undefined && oppAvgOvr >= 84);
       if (isBig) {
         isSituationalActive = true;
-        situationalAttDelta += 2.4;
-        situationalMidDelta += 2.4;
-        situationalDefDelta += 2.4;
-        xgBonus += 0.12;
-        situationalBadge = '빅게임 발동 · 전라인 +2.4';
+        situationalAttDelta += 2.6;
+        situationalMidDelta += 2.6;
+        situationalDefDelta += 2.6;
+        xgBonus += 0.14;
+        situationalBadge = '빅게임 전라인 +2.6';
       }
       break;
     }
@@ -631,23 +631,23 @@ export function evaluateManagerTeamEffect(
         const gap = oppAvgOvr - userAvgOvr;
         isSituationalActive = true;
         if (gap >= 5) {
-          situationalAttDelta += 3.2;
-          situationalMidDelta += 3.2;
-          situationalDefDelta += 3.2;
-          xgBonus += 0.15;
+          situationalAttDelta += 3.5;
+          situationalMidDelta += 3.5;
+          situationalDefDelta += 3.5;
+          xgBonus += 0.16;
           oppXgPenalty += 0.12;
-          situationalBadge = '자이언트 킬러 · 전라인 +3.2';
+          situationalBadge = '자이언트 킬러 전라인 +3.5';
         } else if (gap >= 2) {
-          situationalAttDelta += 2.4;
-          situationalMidDelta += 2.4;
-          situationalDefDelta += 2.4;
+          situationalAttDelta += 2.6;
+          situationalMidDelta += 2.6;
+          situationalDefDelta += 2.6;
           oppXgPenalty += 0.1;
-          situationalBadge = '언더독 발동 · 전라인 +2.4';
+          situationalBadge = '언더독 전라인 +2.6';
         } else {
-          situationalAttDelta += 1.6;
-          situationalMidDelta += 1.6;
-          situationalDefDelta += 1.6;
-          situationalBadge = '언더독 발동 · 전라인 +1.6';
+          situationalAttDelta += 1.8;
+          situationalMidDelta += 1.8;
+          situationalDefDelta += 1.8;
+          situationalBadge = '언더독 전라인 +1.8';
         }
       }
       break;
@@ -657,20 +657,20 @@ export function evaluateManagerTeamEffect(
       if (isSecondHalf && halftimeAdjusted) {
         isSituationalActive = true;
         halftimeTacticMultiplier = 1.8;
-        situationalAttDelta += 1.4 + (trailingAtHalftime ? 0.8 : 0);
-        situationalMidDelta += 1.2;
-        situationalDefDelta += 1.0;
-        xgBonus += 0.18 + (trailingAtHalftime ? 0.1 : 0);
+        situationalAttDelta += 1.6 + (trailingAtHalftime ? 0.8 : 0);
+        situationalMidDelta += 1.4;
+        situationalDefDelta += 1.2;
+        xgBonus += 0.2 + (trailingAtHalftime ? 0.12 : 0);
         situationalBadge = trailingAtHalftime
-          ? '라커룸 대역전 발동 · 스윙 1.8배'
-          : '하프타임 마법사 발동 · 스윙 1.8배';
+          ? '라커룸 역전 · 스윙 1.8배'
+          : '하프타임 전환 · 스윙 1.8배';
       } else if (isFullMatchQuickSim) {
         // Quick/auto-sim averages the coach's 2nd-half halftime adaptation across 90 minutes
         isSituationalActive = true;
-        situationalAttDelta += 0.9;
-        situationalMidDelta += 0.8;
-        situationalDefDelta += 0.7;
-        xgBonus += 0.12;
+        situationalAttDelta += 1.0;
+        situationalMidDelta += 0.9;
+        situationalDefDelta += 0.8;
+        xgBonus += 0.14;
       }
       break;
 
@@ -678,19 +678,19 @@ export function evaluateManagerTeamEffect(
       jokerOvrLift = 3.0;
       if (isSecondHalf && halftimeSubsMade > 0) {
         isSituationalActive = true;
-        situationalAttDelta += 1.8;
-        situationalMidDelta += 1.4;
-        situationalDefDelta += 1.0;
-        xgBonus += Math.min(0.3, halftimeSubsMade * 0.1);
-        situationalBadge = `조커 ${halftimeSubsMade}명 발동 · OVR +3.0`;
+        situationalAttDelta += 2.0;
+        situationalMidDelta += 1.5;
+        situationalDefDelta += 1.2;
+        xgBonus += Math.min(0.33, halftimeSubsMade * 0.11);
+        situationalBadge = `조커 ${halftimeSubsMade}명 · OVR +3.0`;
       } else if (isFullMatchQuickSim) {
         // Quick/auto-sim averages 2nd-half super-sub impact across 90 minutes
         isSituationalActive = true;
         const effectiveQuickSubs = Math.max(2, halftimeSubsMade);
-        situationalAttDelta += 0.9;
-        situationalMidDelta += 0.7;
-        situationalDefDelta += 0.5;
-        xgBonus += Math.min(0.16, effectiveQuickSubs * 0.055);
+        situationalAttDelta += 1.0;
+        situationalMidDelta += 0.8;
+        situationalDefDelta += 0.6;
+        xgBonus += Math.min(0.18, effectiveQuickSubs * 0.06);
       }
       break;
   }
@@ -713,18 +713,18 @@ export function evaluateManagerTeamEffect(
     if (traitId === 'set_piece_master') {
       compactSummary = `세트피스 xG +${xgBonus.toFixed(2)}`;
     } else if (traitId === 'big_game_hunter') {
-      compactSummary = situationalBadge ?? '강팀·토너먼트 시 +2.4';
+      compactSummary = situationalBadge ?? '강팀·토너먼트 전라인 +2.6';
     } else if (traitId === 'underdog_killer') {
-      compactSummary = situationalBadge ?? '동급↑ 상대 시 +1.6~3.2';
+      compactSummary = situationalBadge ?? '동급↑ 상대 전라인 +1.8~3.5';
     } else if (traitId === 'halftime_wizard') {
-      compactSummary = '하프타임 전환 시 1.8배';
+      compactSummary = '하프타임 전환 1.8배';
     } else if (traitId === 'super_sub') {
       compactSummary = '교체 조커 OVR +3.0';
     } else if (traitId === 'total_football') {
       compactSummary = '부포지션 0 · 멀티 스위칭';
     }
   } else if (isTacticSynergyActive && cfg.synergyTactic) {
-    compactSummary = `${compactSummary} · ★전술`;
+    compactSummary = `${compactSummary} (추천 전술)`;
   }
 
   return {

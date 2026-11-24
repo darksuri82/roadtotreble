@@ -208,6 +208,36 @@ export function MatchDayTacticsRoom({
     activeTactic,
   ]);
 
+  const oppManagerEffect = useMemo(() => {
+    const isBigKnockout =
+      (headerAccent === 'cup' && /(준결승|결승)/.test(headerBadge)) ||
+      (headerAccent === 'ucl' && /(16강|8강|4강|준결승|결승|플레이오프)/.test(headerBadge));
+    const oppAvgOvr = (opponent.att + opponent.mid + opponent.def) / 3;
+    const baseUserAvgOvr =
+      ((ourRatings.effectiveAtt - (ourRatings.managerAttBonus ?? 0)) +
+        (ourRatings.effectiveMid - (ourRatings.managerMidBonus ?? 0)) +
+        (ourRatings.effectiveDef - (ourRatings.managerDefBonus ?? 0))) /
+      3;
+    return evaluateManagerTeamEffect({
+      traitId: oppManager.traitId,
+      starters: opponentRoster.slice(0, 11),
+      tactic: opponent.defaultTactic,
+      userAvgOvr: oppAvgOvr,
+      oppAvgOvr: baseUserAvgOvr,
+      isBigKnockout,
+    });
+  }, [
+    oppManager.traitId,
+    opponentRoster,
+    opponent.defaultTactic,
+    opponent.att,
+    opponent.mid,
+    opponent.def,
+    ourRatings,
+    headerAccent,
+    headerBadge,
+  ]);
+
   const displayAtt = Math.round(
     (ourRatings.effectiveAtt + (liveManagerEffect?.situationalAttDelta ?? 0)) * 10,
   ) / 10;
@@ -331,18 +361,6 @@ export function MatchDayTacticsRoom({
             <strong className="text-white">{displayMid}</strong> / D{' '}
             <strong className="text-white">{displayDef}</strong>
           </span>
-          {liveManagerEffect?.compactSummary && (
-            <span
-              title={
-                managerTraitId
-                  ? `${MANAGER_TRAITS[managerTraitId]?.name}: ${MANAGER_TRAITS[managerTraitId]?.effectSummary}`
-                  : undefined
-              }
-              className="inline-flex items-center gap-1 rounded-lg border border-violet-400/35 bg-violet-500/12 px-2 py-1 text-[10px] font-extrabold text-violet-200 whitespace-nowrap"
-            >
-              ★ {liveManagerEffect.compactSummary}
-            </span>
-          )}
           <button
             type="button"
             onClick={() => setGuideOpen(true)}
@@ -530,6 +548,61 @@ export function MatchDayTacticsRoom({
           />
         </div>
 
+        {/* Concise Dual Manager Ability Strip (My Manager vs Opponent Manager) */}
+        {(liveManagerEffect || oppManagerEffect) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[10.5px]">
+            <div
+              className="flex items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-[#090e15] px-2.5 py-1.5 min-w-0"
+              title={
+                managerTraitId
+                  ? `${MANAGER_TRAITS[managerTraitId]?.name}: ${MANAGER_TRAITS[managerTraitId]?.effectSummary}`
+                  : undefined
+              }
+            >
+              <div className="flex items-center gap-1.5 min-w-0 shrink-0">
+                <span className="text-[9.5px] font-bold text-emerald-400/90">
+                  내 감독
+                </span>
+                <span className="font-bold text-slate-100 truncate">
+                  {managerTraitId ? MANAGER_TRAITS[managerTraitId]?.name : '-'}
+                </span>
+                {liveManagerEffect && liveManagerEffect.targetCount > 0 && (
+                  <span className="text-[10px] font-semibold text-amber-300/95 tabular-nums">
+                    ★{Math.min(liveManagerEffect.matchedCount, liveManagerEffect.targetCount)}/{liveManagerEffect.targetCount}
+                  </span>
+                )}
+              </div>
+              <span className="truncate font-semibold text-emerald-300/90 tabular-nums">
+                {liveManagerEffect?.compactSummary ?? '-'}
+              </span>
+            </div>
+
+            <div
+              className="flex items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-[#090e15] px-2.5 py-1.5 min-w-0"
+              title={`${oppManager.name} (OVR ${oppManager.ovr} · ${MANAGER_TRAITS[oppManager.traitId]?.name ?? ''}): ${MANAGER_TRAITS[oppManager.traitId]?.effectSummary ?? ''}`}
+            >
+              <div className="flex items-center gap-1.5 min-w-0 shrink-0">
+                <span className="text-[9.5px] font-bold text-slate-400">
+                  상대 감독
+                </span>
+                <span className="font-bold text-slate-100 truncate">
+                  {MANAGER_TRAITS[oppManager.traitId]?.name ?? '-'}
+                </span>
+                {!blindOpponentStatus && oppManagerEffect.targetCount > 0 && (
+                  <span className="text-[10px] font-semibold text-amber-300/85 tabular-nums">
+                    ★{Math.min(oppManagerEffect.matchedCount, oppManagerEffect.targetCount)}/{oppManagerEffect.targetCount}
+                  </span>
+                )}
+              </div>
+              <span className="truncate font-semibold text-amber-200/90 tabular-nums">
+                {blindOpponentStatus
+                  ? '전술 비공개'
+                  : oppManagerEffect.compactSummary}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Minimal 1-Line Unified Tactical Zone Summary Strip + Interactive ? Help */}
         {blindOpponentStatus ? (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-[#090e15] px-3 py-1.5 text-[11px]">
@@ -585,13 +658,13 @@ export function MatchDayTacticsRoom({
                     active
                       ? 'bg-emerald-500/18 text-emerald-100 border border-emerald-400/55 font-extrabold'
                       : isMgrPreferred
-                        ? 'bg-[#131428] text-slate-200 border border-violet-500/40 hover:border-violet-400/70 font-bold'
+                        ? 'bg-[#111822] text-slate-200 border border-slate-700 hover:border-slate-500 font-bold'
                         : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600 font-bold'
                   }`}
                 >
                   <div className="truncate text-[10px] sm:text-[11px] leading-tight">
                     {isMgrPreferred && (
-                      <span className="text-violet-300 mr-0.5">★</span>
+                      <span className="text-amber-300 mr-0.5">★</span>
                     )}
                     {t.shortName}
                   </div>

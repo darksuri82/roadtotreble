@@ -435,25 +435,27 @@ export function OpponentPitchView({
                   >
                     {player ? displayOvr : '-'}
                   </span>
-                  {neighborBonus > 0 && (
+                  {totalBonus > 0 && (
                     <span
-                      title={`선수 시너지 +${neighborBonus} (${syn?.lineCount ?? 0}선)`}
+                      title={[
+                        neighborBonus > 0
+                          ? `연결 ${syn?.lineCount ?? 0}선 (+${neighborBonus})`
+                          : null,
+                        managerBonus > 0 ? `감독 궁합 (+${managerBonus})` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                       className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-emerald-300/90 leading-none"
                     >
-                      +{neighborBonus}
+                      +{totalBonus}
                     </span>
                   )}
                   {managerBonus > 0 && (
                     <span
-                      title={`감독 궁합 +${managerBonus}`}
-                      className="rounded bg-violet-950/85 border border-violet-400/35 px-0.5 py-px text-[7px] sm:text-[7.5px] font-bold text-violet-300 leading-none"
+                      title={`감독 궁합 (+${managerBonus})`}
+                      className="text-[8.5px] font-bold text-amber-300 leading-none drop-shadow-[0_0_2px_rgba(251,191,36,0.45)]"
                     >
-                      ★{managerBonus}
-                    </span>
-                  )}
-                  {totalBonus > 0 && neighborBonus === 0 && managerBonus === 0 && (
-                    <span className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-emerald-300/90 leading-none">
-                      +{totalBonus}
+                      ★
                     </span>
                   )}
                   {player && (

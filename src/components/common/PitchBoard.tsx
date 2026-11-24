@@ -679,20 +679,29 @@ export function PitchBoard({
                             >
                               {fit.effectiveOvr}
                             </span>
-                            {slotSyn && slotSyn.neighborBonus > 0 && (
+                            {slotSyn && slotSyn.totalBonus > 0 && (
                               <span
-                                title={`연결 ${slotSyn.lineCount ?? 0}선 → +${slotSyn.neighborBonus} (${slotSyn.playerReasons?.join(' · ') ?? ''})`}
+                                title={[
+                                  slotSyn.neighborBonus > 0
+                                    ? `연결 ${slotSyn.lineCount ?? 0}선 (+${slotSyn.neighborBonus})`
+                                    : null,
+                                  slotSyn.managerBonus > 0
+                                    ? (slotSyn.managerReason ?? '감독 궁합 (+1)')
+                                    : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
                                 className="rounded bg-emerald-950/80 border border-emerald-500/30 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-emerald-300/95 leading-none"
                               >
-                                +{slotSyn.neighborBonus}
+                                +{slotSyn.totalBonus}
                               </span>
                             )}
                             {slotSyn && slotSyn.managerBonus > 0 && (
                               <span
-                                title={slotSyn.managerReason ?? '감독 궁합 +1'}
-                                className="rounded bg-violet-950/85 border border-violet-400/40 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-violet-200 leading-none"
+                                title={slotSyn.managerReason ?? '감독 궁합 (+1)'}
+                                className="text-[8.5px] sm:text-[9px] font-bold text-amber-300 leading-none drop-shadow-[0_0_2px_rgba(251,191,36,0.45)]"
                               >
-                                ★1
+                                ★
                               </span>
                             )}
                             {starterOvrBr.moraleBonus !== 0 && (
@@ -809,11 +818,9 @@ export function PitchBoard({
               />
               88+
             </span>
-            <span className="inline-flex items-center gap-0.5 text-violet-300/90">
-              <span className="rounded bg-violet-950/85 border border-violet-400/40 px-1 text-[8px] font-bold">
-                ★1
-              </span>
-              감독
+            <span className="inline-flex items-center gap-0.5 text-amber-300/90">
+              <span className="text-[10px] font-bold leading-none">★</span>
+              감독(+1)
             </span>
           </div>
           {(() => {
@@ -830,7 +837,7 @@ export function PitchBoard({
                   {formatPitchDisplayName(focusedP.name, true)} · {lc}선(
                   <span className="text-emerald-300">+{focusedSyn.neighborBonus}</span>)
                   {focusedSyn.managerBonus > 0 && (
-                    <span className="text-violet-300"> · 감독 ★+1</span>
+                    <span className="text-amber-300"> · ★감독 +1</span>
                   )}
                 </span>
               );

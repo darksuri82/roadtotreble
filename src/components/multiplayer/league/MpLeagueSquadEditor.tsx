@@ -206,12 +206,12 @@ export function MpLeagueSquadEditor({
                       tactic === t.id
                         ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
                         : isMgrPreferred
-                          ? 'border-violet-500/40 bg-[#131428] text-slate-200 hover:border-violet-400/70'
+                          ? 'border-slate-700 bg-[#111822] text-slate-200 hover:border-slate-500 hover:text-white'
                           : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600 hover:text-slate-200'
                     }`}
                   >
                     {isMgrPreferred && (
-                      <span className="text-violet-300 mr-0.5">★</span>
+                      <span className="text-amber-300 mr-0.5">★</span>
                     )}
                     {t.shortName}
                   </button>

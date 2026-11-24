@@ -232,18 +232,19 @@ export function DraftScreen() {
             </span>
           )}
           {(displayedRatings.managerTargetCount ?? 0) > 0 && (
-            <span className="rounded-md border border-violet-400/35 bg-violet-500/12 px-1.5 py-0.5 text-[10px] font-extrabold text-violet-200 tabular-nums">
-              ★ {displayedRatings.managerMatchedCount ?? 0}/{displayedRatings.managerTargetCount}
+            <span className="rounded-md border border-slate-700/80 bg-[#090e15] px-1.5 py-0.5 text-[10px] font-bold text-slate-200 tabular-nums">
+              <span className="text-amber-300 mr-0.5">★</span>
+              {displayedRatings.managerMatchedCount ?? 0}/{displayedRatings.managerTargetCount}
             </span>
           )}
           {displayedRatings.managerEffectSummary && (
-            <span className="hidden md:inline-flex rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300 tabular-nums">
+            <span className="hidden md:inline-flex text-[10px] font-semibold text-emerald-300/90 tabular-nums">
               {displayedRatings.managerEffectSummary}
             </span>
           )}
           {activeTrait?.synergyTactic && (
-            <span className="hidden sm:inline-flex rounded-md bg-emerald-500/12 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-              추천: {TACTICS[activeTrait.synergyTactic].name}
+            <span className="hidden sm:inline-flex rounded-md border border-slate-800 bg-[#090e15] px-2 py-0.5 text-[10px] font-semibold text-slate-300">
+              추천 <span className="text-emerald-300 ml-1">{TACTICS[activeTrait.synergyTactic].shortName}</span>
             </span>
           )}
         </div>

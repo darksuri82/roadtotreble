@@ -83,7 +83,7 @@ export function ManagerTraitBadgeCard({
               </span>
             </div>
             {teamEffect.compactSummary && (
-              <div className="mt-0.5 text-[10.5px] font-bold text-violet-200 tabular-nums truncate">
+              <div className="mt-0.5 text-[10.5px] font-semibold text-emerald-300/95 tabular-nums truncate">
                 {teamEffect.compactSummary}
               </div>
             )}
@@ -93,18 +93,22 @@ export function ManagerTraitBadgeCard({
           <span
             className={`shrink-0 inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold ${
               teamEffect.isTacticSynergyActive
-                ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200'
+                ? 'border-emerald-400/50 bg-emerald-500/18 text-emerald-200'
                 : 'border-slate-700 bg-slate-900 text-slate-400'
             }`}
           >
             <Sparkles className="w-2.5 h-2.5" />
             {TACTICS[trait.synergyTactic].shortName}
-            {teamEffect.isTacticSynergyActive ? ' ★' : ''}
+            {teamEffect.isTacticSynergyActive ? (
+              <span className="text-amber-300">★</span>
+            ) : (
+              ''
+            )}
           </span>
         )}
       </div>
 
-      {/* Live 1..8 (or 1..6) Progressive Philosophy Bar */}
+      {/* Live 1..11 Progressive Philosophy Bar */}
       {hasGauge && (
         <div className="flex items-center gap-2 text-[10px] tabular-nums">
           <span className="text-slate-400 font-semibold shrink-0">
@@ -138,14 +142,16 @@ export function ManagerTraitBadgeCard({
 
       {trait.synergyPlaystyles && trait.synergyPlaystyles.length > 0 && (
         <div className="flex flex-wrap items-center gap-1 text-[10px]">
-          <span className="text-slate-500 font-semibold mr-0.5">궁합 ★+1:</span>
+          <span className="text-slate-400 font-semibold mr-0.5">
+            <span className="text-amber-300 mr-0.5">★</span>궁합 (+1):
+          </span>
           {trait.synergyPlaystyles.map((psId) => {
             const ps = PLAYSTYLES[psId];
             if (!ps) return null;
             return (
               <span
                 key={psId}
-                className="rounded-md border border-violet-500/25 bg-violet-500/10 px-1.5 py-0.5 font-semibold text-violet-200"
+                className="rounded-md border border-slate-700/80 bg-[#090e15] px-1.5 py-0.5 font-semibold text-slate-200"
               >
                 {ps.shortName}
               </span>

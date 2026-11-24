@@ -11,15 +11,18 @@ import {
   LayoutGrid,
   List,
   ShieldAlert,
+  SlidersHorizontal,
   Sparkles,
   TrendingDown,
   TrendingUp,
   Users,
   X,
   XCircle,
+  Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { FORMATIONS } from '../../data/formations';
+import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
+import { MANAGER_TRAITS } from '../../data/managerTraits';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { calculateTeamRatings } from '../../engine/chemistryEngine';
 import {
@@ -35,6 +38,7 @@ import {
   formatMainPositions,
 } from '../../engine/positionEngine';
 import { getUserRank } from '../../engine/standingsEngine';
+import { TACTIC_LIST } from '../../engine/tacticEngine';
 import {
   analyzeClubPositionNeeds,
   buildTradeClubOfferForClub,
@@ -59,6 +63,7 @@ import { buildPlayerCompetitionBreakdown } from '../../utils/playerLookup';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
+import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { PitchBoard } from '../common/PitchBoard';
 import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
@@ -68,7 +73,7 @@ interface TransferMarketModalProps {
   embedded?: boolean;
 }
 
-type MarketTab = 'explore' | 'incoming';
+type MarketTab = 'explore' | 'incoming' | 'tactics';
 type PosFilter = 'ALL' | Position;
 type PickerViewMode = 'formation' | 'list';
 
@@ -193,6 +198,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
   const {
     state,
     chemistry,
+    changeFormation,
+    setDefaultTactic,
+    autoOptimizeLineup,
+    swapSquadPositions,
     transferSpinClubs,
     transferSubmitOffer,
     tradeSubmitPackage,
@@ -210,6 +219,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
   ).length;
 
   const [activeTab, setActiveTab] = useState<MarketTab>('explore');
+  const [tacticsSelectedSlot, setTacticsSelectedSlot] =
+    useState<SlotRef | null>(null);
   const [pickerViewMode, setPickerViewMode] =
     useState<PickerViewMode>('formation');
   const [animating, setAnimating] = useState(false);
@@ -800,6 +811,22 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
             {pendingIncomingCount}
           </span>
         </button>
+        <button
+          id="transfer-tactics-tab"
+          type="button"
+          onClick={() => {
+            setTacticsSelectedSlot(null);
+            setActiveTab('tactics');
+          }}
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+            activeTab === 'tactics'
+              ? 'bg-slate-800 text-white border border-emerald-400/45 shadow-sm'
+              : 'bg-slate-900/70 text-slate-400 border border-slate-800 hover:bg-slate-800/80 hover:text-slate-200'
+          }`}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5 text-emerald-300" />
+          스쿼드 · 전술
+        </button>
         {counterOfferClub && activeTab === 'explore' && counterOfferOrigin === 'incoming' && (
           <button
             type="button"
@@ -818,7 +845,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       {/* Scrollable Body */}
       <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 space-y-4">
         {/* Last Negotiation Result Banner */}
-        {tm.lastOfferResult && (
+        {tm.lastOfferResult && activeTab !== 'tactics' && (
           <div
             className={`rounded-xl border px-4 py-3 space-y-1 ${
               tm.lastOfferResult.success
@@ -842,6 +869,175 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: IN-MODAL SQUAD & TACTICS EDITOR */}
+        {activeTab === 'tactics' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+            <div className="lg:col-span-5 space-y-3">
+              <ManagerTraitBadgeCard traitId={state.manager.traitId} compact />
+
+              <div className="rounded-xl border border-slate-800/90 bg-[#0b1018] p-3 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-300">
+                    포메이션 · 전술 설정
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTacticsSelectedSlot(null);
+                      autoOptimizeLineup();
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-sky-500/35 bg-sky-500/12 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/20 transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    빠른 선발
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1">
+                  {FORMATION_LIST.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => {
+                        setTacticsSelectedSlot(null);
+                        changeFormation(f.id);
+                      }}
+                      className={`rounded-lg border py-1.5 px-1 text-[10px] sm:text-[11px] font-bold cursor-pointer truncate transition-colors ${
+                        state.formation === f.id
+                          ? 'border-sky-400/55 bg-sky-500/18 text-white'
+                          : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
+                      }`}
+                    >
+                      {f.id === '4-4-2-diamond'
+                        ? '4-4-2◇'
+                        : f.id === '3-5-2-dm'
+                          ? '3-5-2 DM'
+                          : f.id}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-semibold text-slate-400">
+                    기본 전술
+                  </div>
+                  <div className="grid grid-cols-5 gap-1">
+                    {TACTIC_LIST.map((t) => {
+                      const isMgrPreferred = state.manager.traitId
+                        ? MANAGER_TRAITS[state.manager.traitId]?.synergyTactic ===
+                          t.id
+                        : false;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          title={
+                            isMgrPreferred
+                              ? `${t.name} · 감독 추천 전술`
+                              : t.name
+                          }
+                          onClick={() => setDefaultTactic(t.id)}
+                          className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer transition-colors ${
+                            state.defaultTactic === t.id
+                              ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
+                              : isMgrPreferred
+                                ? 'bg-[#111822] text-slate-200 border-slate-700 hover:border-slate-500 hover:text-white'
+                                : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
+                          }`}
+                        >
+                          {isMgrPreferred && (
+                            <span className="text-amber-300 mr-0.5">★</span>
+                          )}
+                          {t.shortName}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-1.5 pt-1 text-center tabular-nums">
+                  <div className="rounded-lg border border-slate-800/80 bg-[#090e15] py-1.5">
+                    <div className="text-[9.5px] text-slate-500">ATT</div>
+                    <div className="font-display text-xs font-bold text-white">
+                      {teamRatings.effectiveAtt}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-800/80 bg-[#090e15] py-1.5">
+                    <div className="text-[9.5px] text-slate-500">MID</div>
+                    <div className="font-display text-xs font-bold text-white">
+                      {teamRatings.effectiveMid}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-800/80 bg-[#090e15] py-1.5">
+                    <div className="text-[9.5px] text-slate-500">DEF</div>
+                    <div className="font-display text-xs font-bold text-white">
+                      {teamRatings.effectiveDef}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-800/80 bg-[#090e15] py-1.5">
+                    <div className="text-[9.5px] text-slate-500">케미</div>
+                    <div className="font-display text-xs font-bold text-emerald-300">
+                      {chemistry.total}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 space-y-2">
+              <div className="flex items-center justify-between text-xs px-0.5">
+                <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300">
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
+                  {tacticsSelectedSlot
+                    ? '교체할 선수를 클릭하세요'
+                    : '클릭·드래그 교환 / 우클릭·ⓘ 상세'}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 tabular-nums">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
+                  OVR {Math.round(teamRatings.ovr)}
+                </span>
+              </div>
+
+              <PitchBoard
+                formation={state.formation}
+                starters={state.starters}
+                bench={state.bench}
+                chemistry={chemistry}
+                managerTraitId={state.manager.traitId}
+                conditionByPlayerId={season.playerConditions}
+                selectedSlot={tacticsSelectedSlot}
+                onSlotClick={(area: 'starter' | 'bench', index: number) => {
+                  if (!tacticsSelectedSlot) {
+                    const p =
+                      area === 'starter'
+                        ? state.starters[index]
+                        : state.bench[index];
+                    if (!p) return;
+                    setTacticsSelectedSlot({ area, index });
+                    return;
+                  }
+                  if (
+                    tacticsSelectedSlot.area === area &&
+                    tacticsSelectedSlot.index === index
+                  ) {
+                    setTacticsSelectedSlot(null);
+                    return;
+                  }
+                  swapSquadPositions(tacticsSelectedSlot, { area, index });
+                  setTacticsSelectedSlot(null);
+                }}
+                onSlotSwap={(from: SlotRef, to: SlotRef) => {
+                  swapSquadPositions(from, to);
+                  setTacticsSelectedSlot(null);
+                }}
+                onInspectPlayer={(p) => setInspectedPlayer(p)}
+                showChemLegend
+                compact
+              />
             </div>
           </div>
         )}
