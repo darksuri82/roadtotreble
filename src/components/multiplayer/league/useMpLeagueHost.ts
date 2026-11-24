@@ -22,6 +22,7 @@ import {
   createMpLeagueSeason,
   endMpLeagueCast,
   getMpCastDurationMs,
+  getMpTickerExtraPkMs,
   grantMpLeagueConsent,
   mpHumanClubId,
   rejectMpLeagueOffer,
@@ -533,7 +534,8 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         if (!match.finalResult) return;
         let next = completeMpLeagueH2H(st, match.finalResult);
         if (next.flow.kind === 'auto') next = runMpLeague(next, { squads });
-        nextAutoAtRef.current = Date.now() + st.settings.autoMs;
+        nextAutoAtRef.current =
+          Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
         if (next.flow.kind === 'cast') {
           castUntilRef.current = Date.now() + getMpCastDurationMs(next);
         }
@@ -717,7 +719,8 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         }
         if (Date.now() < nextAutoAtRef.current) return;
         const next = runMpLeague(st, { squads });
-        nextAutoAtRef.current = Date.now() + st.settings.autoMs;
+        nextAutoAtRef.current =
+          Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
         if (next === st) return;
         if (next.flow.kind === 'cast') {
           castUntilRef.current = Date.now() + getMpCastDurationMs(next);
@@ -774,7 +777,8 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         );
         if (!all) return;
         const next = runMpLeague(grantMpLeagueConsent(st), { squads });
-        nextAutoAtRef.current = Date.now() + st.settings.autoMs;
+        nextAutoAtRef.current =
+          Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
         if (next.flow.kind === 'cast') {
           castUntilRef.current = Date.now() + getMpCastDurationMs(next);
         }

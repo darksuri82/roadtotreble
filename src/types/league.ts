@@ -285,6 +285,12 @@ export interface LiveHalftimeState {
     | 'penalties';
   fullMatchResult?: MatchResult;
   etFirstHalfResult?: MatchResult;
+  /** True while solo live scoreboard is streaming this match before committing (hides fullscreen 2D modal). */
+  streamAutoMode?: boolean;
+  /** If user jumps into 2D broadcast mid-stream, start playback from this match minute. */
+  resumeFromMinute?: number;
+  /** Preserved 90-minute result before precomputed ET so mid-2nd-half takeover can play fresh ET/subs. */
+  streamResult90?: MatchResult;
 }
 
 export interface Fixture {

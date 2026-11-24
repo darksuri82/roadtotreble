@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import type { Club } from '../../../types/league';
+import type { Club, PenaltyKickLog } from '../../../types/league';
 import type { MpCastLive, MpCastMatch, MpLeagueHuman } from '../../../types/mpLeague';
 import { JerseySvg } from '../../common/JerseySvg';
 
@@ -9,6 +9,9 @@ const playedKeys = new Set<string>();
 export function isMpTickerPlayed(key: string | null | undefined): boolean {
   return !key || playedKeys.has(key);
 }
+
+/** Per-kick reveal cadence during extra penalty shootout phase (added ON TOP of match duration). */
+export const LIVE_PK_KICK_INTERVAL_MS = 700;
 
 interface MpLiveTickerProps {
   ticker: MpCastLive;
@@ -52,6 +55,8 @@ export interface LiveTickerMatchCardProps {
   clubsById: Record<string, Club>;
   humanByClub?: Record<string, MpLeagueHuman>;
   myClubId: string | null;
+  /** Number of penalty kicks revealed so far (added on top of 120' duration). */
+  revealedPenKicks?: number;
   /** Optional ref callback for smooth 60fps progress bar transform updates (zero React rerenders). */
   barRef?: (el: HTMLDivElement | null) => void;
   /** Initial progress ratio (0..1) when barRef isn't driving updates or match already ended. */
@@ -67,12 +72,28 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
   clubsById,
   humanByClub,
   myClubId,
+  revealedPenKicks,
   barRef,
   initialRatio,
   alwaysShowFeed = false,
 }: LiveTickerMatchCardProps) {
   const maxMin = endMinuteOfCastMatch(match);
-  const over = finished || Boolean(match.instant) || minute >= maxMin;
+  const pkKicks: PenaltyKickLog[] = match.penalties?.kicks ?? [];
+  const hasPkKicks = pkKicks.length > 0;
+  const clockEnded = finished || Boolean(match.instant) || minute >= maxMin;
+  const effectiveRevealedKicks =
+    !hasPkKicks
+      ? 0
+      : finished || match.instant || revealedPenKicks === undefined
+        ? pkKicks.length
+        : Math.min(pkKicks.length, Math.max(0, revealedPenKicks));
+  const pkInProgress =
+    hasPkKicks &&
+    !match.instant &&
+    !finished &&
+    minute >= maxMin &&
+    effectiveRevealedKicks < pkKicks.length;
+  const over = finished || Boolean(match.instant) || (minute >= maxMin && !pkInProgress);
   const isMine =
     alwaysShowFeed || Boolean(myClubId && match.humanClubIds.includes(myClubId));
 
@@ -93,19 +114,19 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
   let lastGoal: (typeof sortedGoals)[number] | null = null;
   for (let i = 0; i < sortedGoals.length; i += 1) {
     const g = sortedGoals[i];
-    if (!over && g.minute > minute) break;
+    if (!clockEnded && g.minute > minute) break;
     shownCount += 1;
     lastGoal = g;
     if (g.teamId === match.homeTeamId) homeGoals += 1;
     else if (g.teamId === match.awayTeamId) awayGoals += 1;
   }
-  if (over) {
+  if (clockEnded) {
     homeGoals = match.homeGoals;
     awayGoals = match.awayGoals;
   }
 
   let feedItem: (typeof sortedFeed)[number] | null = null;
-  if (isMine && !over && sortedFeed.length > 0) {
+  if (isMine && !clockEnded && sortedFeed.length > 0) {
     for (let i = sortedFeed.length - 1; i >= 0; i -= 1) {
       if (sortedFeed[i].minute <= minute) {
         feedItem = sortedFeed[i];
@@ -115,18 +136,20 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
   }
 
   const goalFlash =
-    !over && !match.instant && lastGoal !== null && minute - lastGoal.minute <= 3;
+    !clockEnded && !match.instant && lastGoal !== null && minute - lastGoal.minute <= 3;
   const home = clubsById[match.homeTeamId];
   const away = clubsById[match.awayTeamId];
   const clock = match.instant
     ? 'FT'
-    : over
-      ? match.penalties
-        ? 'PK'
-        : match.extraTime
-          ? 'AET'
-          : 'FT'
-      : `${Math.min(minute, maxMin)}'`;
+    : pkInProgress
+      ? 'PK'
+      : over
+        ? match.penalties
+          ? 'PK'
+          : match.extraTime
+            ? 'AET'
+            : 'FT'
+        : `${Math.min(minute, maxMin)}'`;
 
   const renderSide = (
     clubId: string,
@@ -166,17 +189,47 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
     );
   };
 
-  const fallbackRatio = over ? 1 : Math.min(1, Math.max(0, minute / maxMin));
+  const fallbackRatio = clockEnded ? 1 : Math.min(1, Math.max(0, minute / maxMin));
   const barRatio = initialRatio !== undefined ? initialRatio : fallbackRatio;
+
+  // Penalty shootout visual state (visible once 120' ends and shootout begins or completes)
+  const showPkBox = Boolean(match.penalties && clockEnded);
+  const shownKicks = showPkBox && hasPkKicks ? pkKicks.slice(0, effectiveRevealedKicks) : [];
+  const latestKick = shownKicks.length > 0 ? shownKicks[shownKicks.length - 1] : null;
+  const nextKick =
+    pkInProgress && effectiveRevealedKicks < pkKicks.length
+      ? pkKicks[effectiveRevealedKicks]
+      : null;
+  const liveHomePen = latestKick
+    ? latestKick.homeScoreAfter
+    : over
+      ? (match.penalties?.home ?? 0)
+      : 0;
+  const liveAwayPen = latestKick
+    ? latestKick.awayScoreAfter
+    : over
+      ? (match.penalties?.away ?? 0)
+      : 0;
+  const homeKicks = shownKicks.filter((k) => k.teamId === match.homeTeamId);
+  const awayKicks = shownKicks.filter((k) => k.teamId === match.awayTeamId);
+  const pkSlotCount = Math.max(
+    5,
+    homeKicks.length + (nextKick?.teamId === match.homeTeamId ? 1 : 0),
+    awayKicks.length + (nextKick?.teamId === match.awayTeamId ? 1 : 0),
+  );
+  const isSuddenDeath = (nextKick?.round ?? latestKick?.round ?? 1) > 5;
+  const pkWinnerClub = match.penalties ? clubsById[match.penalties.winnerId] : undefined;
 
   return (
     <div
       className={`relative overflow-hidden rounded-xl border px-2.5 py-2 transition-colors duration-300 ${
-        goalFlash
-          ? 'scoreboard-goal-flash border-amber-400/75 bg-amber-500/12'
-          : isMine
-            ? 'border-emerald-500/40 bg-[#0e1722]'
-            : 'border-slate-800/90 bg-[#0d131c]'
+        pkInProgress
+          ? 'border-amber-400/75 bg-[#161510]'
+          : goalFlash
+            ? 'scoreboard-goal-flash border-amber-400/75 bg-amber-500/12'
+            : isMine
+              ? 'border-emerald-500/40 bg-[#0e1722]'
+              : 'border-slate-800/90 bg-[#0d131c]'
       }`}
     >
       {/* Top 60fps progress strip */}
@@ -184,17 +237,19 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
         <div
           ref={barRef}
           className={`h-full origin-left ${
-            over
-              ? 'bg-emerald-500/70'
-              : goalFlash
-                ? 'bg-amber-400'
-                : isMine
-                  ? 'bg-emerald-400'
-                  : 'bg-sky-400/80'
+            pkInProgress
+              ? 'bg-amber-400'
+              : clockEnded
+                ? 'bg-emerald-500/70'
+                : goalFlash
+                  ? 'bg-amber-400'
+                  : isMine
+                    ? 'bg-emerald-400'
+                    : 'bg-sky-400/80'
           }`}
           style={{
-            transform: `scaleX(${over ? 1 : barRatio})`,
-            willChange: over ? 'auto' : 'transform',
+            transform: `scaleX(${clockEnded ? 1 : barRatio})`,
+            willChange: clockEnded ? 'auto' : 'transform',
           }}
         />
       </div>
@@ -202,14 +257,23 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
       <div className="flex items-center justify-between gap-2 text-[9px] font-bold text-slate-500">
         <span className="truncate">{match.label}</span>
         <div className="flex shrink-0 items-center gap-1.5">
-          {goalFlash && (
+          {pkInProgress && (
+            <span className="rounded bg-amber-400/20 border border-amber-400/50 px-1 py-px text-[8px] font-black tracking-wider text-amber-200 animate-pulse">
+              승부차기
+            </span>
+          )}
+          {goalFlash && !pkInProgress && (
             <span className="scoreboard-feed-in rounded bg-amber-400/20 border border-amber-400/50 px-1 py-px text-[8px] font-black tracking-wider text-amber-200">
               GOAL
             </span>
           )}
           <span
             className={`font-mono tabular-nums ${
-              over ? 'text-slate-400' : 'text-rose-300'
+              pkInProgress
+                ? 'text-amber-300'
+                : over
+                  ? 'text-slate-400'
+                  : 'text-rose-300'
             }`}
           >
             {clock}
@@ -221,15 +285,15 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
         {renderSide(match.homeTeamId, home, 'left')}
         <div className="shrink-0 font-mono text-lg font-black text-white tabular-nums">
           <span
-            key={!over && minute > 0 ? `h-${homeGoals}` : 'h-static'}
-            className={!over && homeGoals > 0 ? 'scoreboard-score-pop' : undefined}
+            key={!clockEnded && minute > 0 ? `h-${homeGoals}` : 'h-static'}
+            className={!clockEnded && homeGoals > 0 ? 'scoreboard-score-pop' : undefined}
           >
             {homeGoals}
           </span>
           <span className="mx-1 text-slate-600">:</span>
           <span
-            key={!over && minute > 0 ? `a-${awayGoals}` : 'a-static'}
-            className={!over && awayGoals > 0 ? 'scoreboard-score-pop' : undefined}
+            key={!clockEnded && minute > 0 ? `a-${awayGoals}` : 'a-static'}
+            className={!clockEnded && awayGoals > 0 ? 'scoreboard-score-pop' : undefined}
           >
             {awayGoals}
           </span>
@@ -237,9 +301,119 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
         {renderSide(match.awayTeamId, away, 'right')}
       </div>
 
-      {over && match.penalties && (
-        <div className="text-center text-[9px] font-bold text-amber-300 tabular-nums">
-          PK {match.penalties.home}–{match.penalties.away}
+      {/* Live Penalty Shootout Kicker Board (runs as extra phase after 120') */}
+      {showPkBox && match.penalties && (
+        <div className="mt-2 rounded-lg border border-amber-400/30 bg-[#0b1018]/90 px-2 py-1.5 space-y-1.5">
+          <div className="flex items-center justify-between gap-2 text-[9px] font-extrabold">
+            <span className="flex items-center gap-1 text-amber-200">
+              승부차기
+              {isSuddenDeath && (
+                <span className="rounded bg-rose-500/25 border border-rose-400/45 px-1 py-px text-[8px] text-rose-200">
+                  서든데스
+                </span>
+              )}
+            </span>
+            <span className="font-mono text-[11px] font-black text-amber-300 tabular-nums">
+              PK {liveHomePen} : {liveAwayPen}
+            </span>
+          </div>
+
+          {hasPkKicks && (
+            <div className="space-y-1">
+              {[
+                {
+                  teamId: match.homeTeamId,
+                  shortName: home?.shortName ?? 'HOME',
+                  kicks: homeKicks,
+                },
+                {
+                  teamId: match.awayTeamId,
+                  shortName: away?.shortName ?? 'AWAY',
+                  kicks: awayKicks,
+                },
+              ].map((row) => (
+                <div
+                  key={row.teamId}
+                  className="flex items-center justify-between gap-2 text-[9px]"
+                >
+                  <span
+                    className={`w-10 shrink-0 truncate font-extrabold ${
+                      row.teamId === myClubId ? 'text-emerald-300' : 'text-slate-400'
+                    }`}
+                  >
+                    {row.shortName}
+                  </span>
+                  <div className="flex flex-1 flex-wrap items-center gap-1">
+                    {Array.from({ length: pkSlotCount }, (_, idx) => {
+                      const kick = row.kicks[idx];
+                      const isSteppingUp =
+                        !kick &&
+                        nextKick?.teamId === row.teamId &&
+                        idx === row.kicks.length;
+                      if (kick) {
+                        return (
+                          <span
+                            key={idx}
+                            title={`${kick.round}번 키커 ${kick.kickerName} (${kick.scored ? '성공' : '실축'})`}
+                            className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black transition-transform ${
+                              kick.scored
+                                ? 'bg-emerald-400 text-slate-950'
+                                : 'bg-rose-500/85 text-white'
+                            }`}
+                          >
+                            {kick.scored ? 'O' : 'X'}
+                          </span>
+                        );
+                      }
+                      return (
+                        <span
+                          key={idx}
+                          className={`inline-flex h-4 w-4 items-center justify-center rounded-full border text-[8px] ${
+                            isSteppingUp
+                              ? 'border-amber-400 bg-amber-400/20 text-amber-200 animate-pulse'
+                              : 'border-slate-700 bg-slate-900/70 text-slate-600'
+                          }`}
+                        >
+                          {isSteppingUp ? '•' : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {latestKick && (
+            <div
+              key={`pk-${latestKick.round}-${latestKick.teamId}-${latestKick.kickerName}`}
+              className="scoreboard-feed-in flex items-center justify-between gap-1.5 border-t border-slate-800/80 pt-1 text-[10px] font-bold"
+            >
+              <span className="truncate text-slate-200">
+                <span className="mr-1 font-mono text-[9px] text-slate-500">
+                  R{latestKick.round}
+                </span>
+                <span className="mr-1 text-slate-400">{latestKick.teamShortName}</span>
+                {latestKick.kickerName}
+              </span>
+              <span
+                className={`shrink-0 rounded border px-1.5 py-px text-[9px] font-black ${
+                  latestKick.scored
+                    ? 'border-emerald-400/50 bg-emerald-500/20 text-emerald-200'
+                    : 'border-rose-400/50 bg-rose-500/20 text-rose-200'
+                }`}
+              >
+                {latestKick.scored ? '성공 ⚽' : '실축 ✕'}
+              </span>
+            </div>
+          )}
+
+          {!pkInProgress && pkWinnerClub && (
+            <div className="text-center text-[9px] font-extrabold text-emerald-300">
+              🏆 {pkWinnerClub.shortName} 승부차기 승 ({match.penalties.home}:
+              {match.penalties.away})
+            </div>
+          )}
         </div>
       )}
 
@@ -300,7 +474,18 @@ const TickerInner = memo(function TickerInner({
   const alreadyPlayed = playedKeys.has(ticker.key);
   const needsReplay = ticker.matches.some((m) => !m.instant);
   const lastMinute = ticker.matches.some((m) => m.extraTime && !m.instant) ? 120 : 90;
+  const maxPkKicks = useMemo(
+    () =>
+      ticker.matches.reduce(
+        (max, m) => Math.max(max, m.instant ? 0 : (m.penalties?.kicks?.length ?? 0)),
+        0,
+      ),
+    [ticker.matches],
+  );
   const [minute, setMinute] = useState<number>(alreadyPlayed || !needsReplay ? lastMinute : 0);
+  const [revealedPenKicks, setRevealedPenKicks] = useState<number>(
+    alreadyPlayed || !needsReplay ? maxPkKicks : 0,
+  );
   const doneRef = useRef(false);
   const onDoneRef = useRef(onDone);
   useEffect(() => {
@@ -331,6 +516,7 @@ const TickerInner = memo(function TickerInner({
     [ticker.matches, myClubId],
   );
 
+  // Phase 1: Smooth rAF clock 0' → 90' (or 120' for ET)
   useEffect(() => {
     if (alreadyPlayed || !needsReplay) {
       if (!doneRef.current) {
@@ -348,7 +534,6 @@ const TickerInner = memo(function TickerInner({
     let lastCommittedInt = Math.floor(progressMinRef.current);
 
     const step = (now: number) => {
-      // Clamp frame delta to prevent giant jumps on background tab resume while still keeping steady pace
       const dt = Math.min(100, Math.max(0, now - lastTs));
       lastTs = now;
       const safeDuration = Math.max(2000, durationRef.current);
@@ -358,7 +543,6 @@ const TickerInner = memo(function TickerInner({
       );
       progressMinRef.current = nextFloat;
 
-      // Update every active card's progress strip directly at 60fps
       for (const m of ordered) {
         if (m.instant) continue;
         const el = barElsRef.current.get(m.key);
@@ -380,7 +564,8 @@ const TickerInner = memo(function TickerInner({
           lastCommittedInt = lastMinute;
           setMinute(lastMinute);
         }
-        if (!doneRef.current) {
+        // Only finish right here if there are NO penalty kicks to reveal afterwards
+        if (maxPkKicks === 0 && !doneRef.current) {
           doneRef.current = true;
           playedKeys.add(ticker.key);
           doneTimer = window.setTimeout(() => onDoneRef.current(ticker.key), 360);
@@ -396,9 +581,35 @@ const TickerInner = memo(function TickerInner({
       window.cancelAnimationFrame(rafId);
       if (doneTimer) window.clearTimeout(doneTimer);
     };
-  }, [alreadyPlayed, needsReplay, lastMinute, ticker.key, ordered]);
+  }, [alreadyPlayed, needsReplay, lastMinute, maxPkKicks, ticker.key, ordered]);
 
-  const finished = minute >= lastMinute;
+  // Phase 2 (Extra time on top of configured seconds): sequential PK kicker reveal
+  useEffect(() => {
+    if (alreadyPlayed || !needsReplay || maxPkKicks === 0) return;
+    if (minute < lastMinute || doneRef.current) return;
+
+    if (revealedPenKicks >= maxPkKicks) {
+      doneRef.current = true;
+      playedKeys.add(ticker.key);
+      const t = window.setTimeout(() => onDoneRef.current(ticker.key), 750);
+      return () => window.clearTimeout(t);
+    }
+
+    const t = window.setTimeout(() => {
+      setRevealedPenKicks((prev) => Math.min(maxPkKicks, prev + 1));
+    }, LIVE_PK_KICK_INTERVAL_MS);
+    return () => window.clearTimeout(t);
+  }, [
+    alreadyPlayed,
+    needsReplay,
+    maxPkKicks,
+    minute,
+    lastMinute,
+    revealedPenKicks,
+    ticker.key,
+  ]);
+
+  const finished = minute >= lastMinute && revealedPenKicks >= maxPkKicks;
   const count = ordered.length;
   if (count === 0) return null;
 
@@ -420,6 +631,7 @@ const TickerInner = memo(function TickerInner({
           match={m}
           minute={minute}
           finished={finished}
+          revealedPenKicks={revealedPenKicks}
           clubsById={clubsById}
           humanByClub={humanByClub}
           myClubId={myClubId}

@@ -5,6 +5,23 @@
 
 ---
 
+## v8.4.2 — 라이브 중 2D 입장 · 이벤트 후 자동진행 선택 · 승부차기 추가시간 키커 중계 · 스킵 중 인터뷰 정지 수정
+
+- **라이브 스트리밍 일시정지 → 2D 경기 시뮬레이션 즉시 입장 (`src/types/league.ts`, `src/store/GameContext.tsx`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - 솔로 라이브 자동진행 경기를 `liveHalftime.streamAutoMode = true` 미확정 상태로 시뮬레이션(`START_SOLO_STREAM_MATCH`)하고 `FT`(+PK) 시점에 `COMMIT_LIVE_MATCH`로 확정하도록 구조를 개편(스포일러 원천 제거).
+  - 일시정지 상태에서 `[2D 경기 중계 입장]` 클릭 시 `ENTER_LIVE_BROADCAST_FROM_STREAM`으로 멈춘 분(`resumeFromMinute`)과 구간(`first_half` / `second_half` / `extra_time` / `extra_time_2` / `penalties`) 그대로 2D 중계에 난입(전반 진입 시 하프타임 전술 지휘 가능, 이전 하이라이트 재재생 차단).
+- **컵대회/2D·이적시장·부상 후 `[이어서 자동진행 / 일시정지]` 확인 팝업 (`src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - 자동진행 중 자국 컵대회 2D 지휘, 라이브 중 2D 난입, 이적시장 종료, 부상 알림 대응 완료 직후 바로 달리지 않고 `[일시정지]` vs `[이어서 자동진행]` 선택 모달을 표시. 감독 인터뷰는 기존대로 응답 직후 자동진행 즉시 이어감.
+- **라이브 스트리밍 승부차기(PK) 추가시간 진행 & 키커별 성공/실축 UI (`src/types/mpLeague.ts`, `src/engine/mpLeagueEngine.ts`, `src/components/multiplayer/league/MpLiveTicker.tsx`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/multiplayer/league/useMpLeagueHost.ts`)**:
+  - `MpCastMatch['penalties']`에 `kicks?: PenaltyKickLog[]` 포함. 솔로·멀티 라이브 스코어보드에서 120분 종료 후 정해진 경기 시간(5·7·9초)에 더해 `700ms/키커` 추가 페이즈로 승부차기를 순차 진행.
+  - 실시간 PK 스코어, 서든데스 배지, 팀별 `O`/`X`/다음 키커 도트 보드, 현재 키커 성공/실축 속보 배너 구현 및 멀티 방장 자동진행·캐스트 타이머(`getMpTickerExtraPkMs`, `getMpCastDurationMs`) 연장 동기화.
+- **경기 스킵 중 인터뷰·부상 팝업 뒤 백그라운드 진행 버그 전역 수정 (`src/components/ucl/UclLeaguePhaseFastSimModal.tsx`, `src/components/league/FastSimModal.tsx`, `src/store/GameContext.tsx`)**:
+  - `UclLeaguePhaseFastSimModal`에 누락되어 있던 `hasPendingEvent`·`isTransferOpen`·`hasLiveHalftime` 정지 조건과 상태 배지(`인터뷰 일시정지`/`부상 알림 일시정지`)·`[즉시 완료]` 비활성화 추가.
+  - `FastSimModal` 이적시장 650ms 자동 전환 및 스텝 타이머·`[즉시 완료]`도 인터뷰/부상/2D 중계 중 완전 정지하도록 보강하고, `GameContext` 리듀서(`SIMULATE_ONE_FAST_ROUND`, `SIMULATE_SINGLE_MATCH_INSTANT`, `SIMULATE_TO_NEXT_TRANSFER`, `SKIP_TO_SEASON_END`, `SIMULATE_UCL_LEAGUE_PHASE_TO_END`, `SIMULATE_UCL_TO_END`) 전원 방어 가드 적용.
+- **테스트 (`src/__tests__/v84LiveScoreboardAndSkip.test.ts`)**: 미확정 라이브 스트림 + 전반/후반 2D 난입 + 취소/확정, 인터뷰/부상 대기 중 고속 스킵 리듀서 차단, 승부차기 키커 로그 보존 및 추가시간 계산 검증 3건 추가.
+
+---
+
 ## v8.4.1 — 솔로 라이브 자동진행 경기 후 인터뷰·부상·이적 팝업 미노출(교착) 핫픽스
 
 - **솔로 라이브 자동진행 교착 수정 (`src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:

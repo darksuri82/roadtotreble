@@ -92,13 +92,20 @@ function UclLeaguePhaseFastSimModalInner({
   const hasPendingInjury = Boolean(
     season?.pendingInjuryAlerts && season.pendingInjuryAlerts.length > 0,
   );
+  const hasPendingEvent = Boolean(
+    season?.managerEvents?.activeEvent || season?.managerEvents?.lastResolution,
+  );
+  const isTransferOpen = Boolean(season?.transferMarket.isOpen);
+  const hasLiveHalftime = Boolean(season?.liveHalftime);
+  const blockedByPopup =
+    hasPendingInjury || hasPendingEvent || isTransferOpen || hasLiveHalftime;
 
   const isTargetReached =
     !ucl || ucl.stage !== 'league_phase' || ucl.leaguePhaseRound >= 8;
 
-  // Step 1 round at a time with smooth animation interval, auto-pausing if an injury alert pops up
+  // Step 1 round at a time with smooth animation interval, auto-pausing for interviews, injuries, transfers, or 2D live modals
   useEffect(() => {
-    if (!ucl || paused || isTargetReached || hasPendingInjury) {
+    if (!ucl || paused || isTargetReached || blockedByPopup) {
       return;
     }
 
@@ -113,7 +120,7 @@ function UclLeaguePhaseFastSimModalInner({
     paused,
     speed,
     isTargetReached,
-    hasPendingInjury,
+    blockedByPopup,
     simulateSingleMatchInstant,
   ]);
 
@@ -156,6 +163,7 @@ function UclLeaguePhaseFastSimModalInner({
         : { text: '탈락권', cls: 'text-rose-300 bg-rose-500/15 border-rose-500/35' };
 
   const handleInstantComplete = () => {
+    if (blockedByPopup) return;
     simulateUclLeaguePhaseToEnd();
   };
 
@@ -169,7 +177,7 @@ function UclLeaguePhaseFastSimModalInner({
               className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-black ${
                 isTargetReached
                   ? 'bg-emerald-500 text-slate-950'
-                  : paused
+                  : blockedByPopup || paused
                     ? 'bg-amber-400 text-slate-950'
                     : 'bg-sky-500 text-slate-950'
               }`}
@@ -177,9 +185,13 @@ function UclLeaguePhaseFastSimModalInner({
               <FastForward className="w-3 h-3" />
               {isTargetReached
                 ? '8R 완료'
-                : paused
-                  ? '일시정지'
-                  : '고속 진행 중'}
+                : hasPendingEvent
+                  ? '인터뷰 일시정지'
+                  : hasPendingInjury
+                    ? '부상 알림 일시정지'
+                    : paused
+                      ? '일시정지'
+                      : '고속 진행 중'}
             </span>
             <h2 className="text-sm sm:text-base font-extrabold text-white">
               UCL 스위스 리그 페이즈(8R) 고속 진행
@@ -235,7 +247,8 @@ function UclLeaguePhaseFastSimModalInner({
                 <button
                   type="button"
                   onClick={handleInstantComplete}
-                  className="inline-flex items-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/15 px-3 py-1.5 text-xs font-bold text-sky-300 hover:bg-sky-500/25 cursor-pointer"
+                  disabled={blockedByPopup}
+                  className="inline-flex items-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/15 px-3 py-1.5 text-xs font-bold text-sky-300 hover:bg-sky-500/25 disabled:opacity-45 cursor-pointer"
                 >
                   <SkipForward className="w-3.5 h-3.5" />
                   즉시 완료

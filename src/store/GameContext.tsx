@@ -1454,6 +1454,12 @@ type GameAction =
       type: 'COMMIT_LIVE_MATCH';
       payload?: { secondHalfTactic?: TacticId };
     }
+  | { type: 'START_SOLO_STREAM_MATCH' }
+  | {
+      type: 'ENTER_LIVE_BROADCAST_FROM_STREAM';
+      payload: { minute: number; inPenalties?: boolean };
+    }
+  | { type: 'CANCEL_SOLO_STREAM_MATCH' }
   | { type: 'SIMULATE_SINGLE_MATCH_INSTANT' }
   | {
       type: 'SIMULATE_ONE_FAST_ROUND';
@@ -4127,11 +4133,188 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       return commitLiveMatchResult(state, userMatchResult);
     }
 
+    case 'START_SOLO_STREAM_MATCH': {
+      if ((state.phase !== 'season' && state.phase !== 'ucl') || !state.season) {
+        return state;
+      }
+      if (
+        state.season.transferMarket.isOpen ||
+        state.season.liveHalftime ||
+        (state.season.pendingInjuryAlerts?.length ?? 0) > 0 ||
+        Boolean(state.season.managerEvents?.activeEvent) ||
+        Boolean(state.season.managerEvents?.lastResolution)
+      ) {
+        return state;
+      }
+
+      let next = gameReducer(state, { type: 'START_LIVE_MATCH' });
+      const ht1 = next.season?.liveHalftime;
+      if (next === state || !ht1) return state;
+
+      const filledStarters = next.starters.filter((p): p is Player => p !== null);
+      next = gameReducer(next, {
+        type: 'START_SECOND_HALF_BROADCAST',
+        payload: {
+          secondHalfTactic: ht1.userTacticAtKickoff,
+          subPlayerIds: [],
+          firstHalfStarters: filledStarters,
+        },
+      });
+      const ht2 = next.season?.liveHalftime;
+      const res90 = ht2?.fullMatchResult;
+      if (!next.season || !ht2 || !res90) return state;
+
+      // Preserve the 90-minute result before precomputing ET so mid-2nd-half takeover can play fresh ET/subs
+      const streamResult90 = res90;
+      const aggH = (ht2.aggHomeBeforeMatch ?? 0) + res90.homeGoals;
+      const aggA = (ht2.aggAwayBeforeMatch ?? 0) + res90.awayGoals;
+      if (ht2.isKnockoutDecider && aggH === aggA) {
+        next = gameReducer(next, {
+          type: 'START_EXTRA_TIME_BROADCAST',
+          payload: {
+            etTactic: ht2.userTacticAtKickoff,
+            firstHalfStarters: filledStarters,
+            halftimeSubIds: [],
+          },
+        });
+        next = gameReducer(next, {
+          type: 'START_ET_SECOND_HALF_BROADCAST',
+          payload: {
+            etTactic: ht2.userTacticAtKickoff,
+            firstHalfStarters: filledStarters,
+            halftimeSubIds: [],
+          },
+        });
+      }
+
+      if (!next.season?.liveHalftime) return state;
+      return {
+        ...next,
+        season: {
+          ...next.season,
+          liveHalftime: {
+            ...next.season.liveHalftime,
+            streamAutoMode: true,
+            streamResult90,
+          },
+        },
+      };
+    }
+
+    case 'ENTER_LIVE_BROADCAST_FROM_STREAM': {
+      const season = state.season;
+      const ht = season?.liveHalftime ?? null;
+      if (!season || !ht || !ht.streamAutoMode) return state;
+
+      const rawMinute = Math.max(0, Math.floor(action.payload.minute));
+      const inPenalties = Boolean(action.payload.inPenalties);
+      const hasPenalties = Boolean(ht.fullMatchResult?.extraTime?.penalties);
+      const hasExtraTime = Boolean(ht.fullMatchResult?.extraTime);
+
+      if (inPenalties && hasPenalties) {
+        return {
+          ...state,
+          season: {
+            ...season,
+            liveHalftime: {
+              ...ht,
+              streamAutoMode: false,
+              phase: 'penalties',
+              resumeFromMinute: 120,
+            },
+          },
+        };
+      }
+
+      if (rawMinute < 45) {
+        // Re-entering in 1st half: discard precomputed 2nd half so halftime tactics & subs truly affect the 2nd half!
+        return {
+          ...state,
+          season: {
+            ...season,
+            liveHalftime: {
+              ...ht,
+              streamAutoMode: false,
+              phase: 'first_half',
+              resumeFromMinute: rawMinute,
+              fullMatchResult: undefined,
+              etFirstHalfResult: undefined,
+              streamResult90: undefined,
+            },
+          },
+        };
+      }
+
+      if (rawMinute < 90 || !hasExtraTime) {
+        const clampedMin = Math.max(46, Math.min(89, rawMinute));
+        return {
+          ...state,
+          season: {
+            ...season,
+            liveHalftime: {
+              ...ht,
+              streamAutoMode: false,
+              phase: 'second_half',
+              resumeFromMinute: clampedMin,
+              fullMatchResult: ht.streamResult90 ?? ht.fullMatchResult,
+              etFirstHalfResult: undefined,
+            },
+          },
+        };
+      }
+
+      if (rawMinute < 105 && ht.etFirstHalfResult) {
+        return {
+          ...state,
+          season: {
+            ...season,
+            liveHalftime: {
+              ...ht,
+              streamAutoMode: false,
+              phase: 'extra_time',
+              resumeFromMinute: Math.max(91, rawMinute),
+              fullMatchResult: ht.etFirstHalfResult,
+            },
+          },
+        };
+      }
+
+      return {
+        ...state,
+        season: {
+          ...season,
+          liveHalftime: {
+            ...ht,
+            streamAutoMode: false,
+            phase: 'extra_time_2',
+            resumeFromMinute: Math.max(106, Math.min(119, rawMinute)),
+          },
+        },
+      };
+    }
+
+    case 'CANCEL_SOLO_STREAM_MATCH': {
+      if (!state.season?.liveHalftime?.streamAutoMode) return state;
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          liveHalftime: null,
+        },
+      };
+    }
+
     case 'SIMULATE_SINGLE_MATCH_INSTANT': {
       if ((state.phase !== 'season' && state.phase !== 'ucl') || !state.season) {
         return state;
       }
-      if (state.season.transferMarket.isOpen || state.season.liveHalftime) {
+      if (
+        state.season.transferMarket.isOpen ||
+        state.season.liveHalftime ||
+        (state.season.pendingInjuryAlerts?.length ?? 0) > 0 ||
+        Boolean(state.season.managerEvents?.activeEvent) ||
+        Boolean(state.season.managerEvents?.lastResolution)
+      ) {
         return state;
       }
 
@@ -4361,7 +4544,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
 
     case 'SIMULATE_ONE_FAST_ROUND': {
       if (state.phase !== 'season' || !state.season) return state;
-      if (state.season.transferMarket.isOpen || state.season.liveHalftime) {
+      if (
+        state.season.transferMarket.isOpen ||
+        state.season.liveHalftime ||
+        (state.season.pendingInjuryAlerts?.length ?? 0) > 0 ||
+        Boolean(state.season.managerEvents?.activeEvent) ||
+        Boolean(state.season.managerEvents?.lastResolution)
+      ) {
         return state;
       }
       if (state.season.currentRound >= state.season.totalRounds) {
@@ -4489,7 +4678,12 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
 
     case 'SIMULATE_TO_NEXT_TRANSFER': {
       if (state.phase !== 'season' || !state.season) return state;
-      if (state.season.transferMarket.isOpen || state.season.liveHalftime) {
+      if (
+        state.season.transferMarket.isOpen ||
+        state.season.liveHalftime ||
+        Boolean(state.season.managerEvents?.activeEvent) ||
+        Boolean(state.season.managerEvents?.lastResolution)
+      ) {
         return state;
       }
 
@@ -4560,6 +4754,12 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
 
     case 'SKIP_TO_SEASON_END': {
       if (state.phase !== 'season' || !state.season) return state;
+      if (
+        Boolean(state.season.managerEvents?.activeEvent) ||
+        Boolean(state.season.managerEvents?.lastResolution)
+      ) {
+        return state;
+      }
 
       const filledStarters = state.starters.filter((p): p is Player => p !== null);
       const filledBench = state.bench.filter((p): p is Player => p !== null);
@@ -5419,7 +5619,12 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       if (state.phase !== 'ucl' || !state.season || !state.season.ucl) {
         return state;
       }
-      if (state.season.transferMarket.isOpen || state.season.liveHalftime) {
+      if (
+        state.season.transferMarket.isOpen ||
+        state.season.liveHalftime ||
+        Boolean(state.season.managerEvents?.activeEvent) ||
+        Boolean(state.season.managerEvents?.lastResolution)
+      ) {
         return state;
       }
       if (
@@ -5573,7 +5778,12 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       if (state.phase !== 'ucl' || !state.season || !state.season.ucl) {
         return state;
       }
-      if (state.season.transferMarket.isOpen || state.season.liveHalftime) {
+      if (
+        state.season.transferMarket.isOpen ||
+        state.season.liveHalftime ||
+        Boolean(state.season.managerEvents?.activeEvent) ||
+        Boolean(state.season.managerEvents?.lastResolution)
+      ) {
         return state;
       }
 
@@ -6248,6 +6458,9 @@ interface GameContextValue {
   }) => void;
   enterPenaltyShootout: () => void;
   commitLiveMatch: (secondHalfTactic?: TacticId) => void;
+  startSoloStreamMatch: () => void;
+  enterLiveBroadcastFromStream: (minute: number, inPenalties?: boolean) => void;
+  cancelSoloStreamMatch: () => void;
   simulateSingleMatchInstant: () => void;
   simulateOneFastRound: (stopAtTransfer: boolean, stopAtCup?: boolean) => void;
   simulateToNextTransfer: () => void;
@@ -6314,16 +6527,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
-        const toSave: GameState = state.season?.playerConditions
+        const sanitizedSeason = state.season
           ? {
-              ...state,
-              season: {
-                ...state.season,
-                playerConditions: compactConditionMapForStorage(
-                  state.season.playerConditions,
-                ),
-              },
+              ...state.season,
+              liveHalftime: state.season.liveHalftime?.streamAutoMode
+                ? null
+                : state.season.liveHalftime,
+              ...(state.season.playerConditions
+                ? {
+                    playerConditions: compactConditionMapForStorage(
+                      state.season.playerConditions,
+                    ),
+                  }
+                : {}),
             }
+          : state.season;
+        const toSave: GameState = state.season
+          ? { ...state, season: sanitizedSeason }
           : state;
         window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(toSave));
       }
@@ -6662,6 +6882,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
       enterPenaltyShootout: () => dispatch({ type: 'ENTER_PENALTY_SHOOTOUT' }),
       commitLiveMatch: (secondHalfTactic) =>
         dispatch({ type: 'COMMIT_LIVE_MATCH', payload: { secondHalfTactic } }),
+      startSoloStreamMatch: () => dispatch({ type: 'START_SOLO_STREAM_MATCH' }),
+      enterLiveBroadcastFromStream: (minute, inPenalties = false) =>
+        dispatch({
+          type: 'ENTER_LIVE_BROADCAST_FROM_STREAM',
+          payload: { minute, inPenalties },
+        }),
+      cancelSoloStreamMatch: () => dispatch({ type: 'CANCEL_SOLO_STREAM_MATCH' }),
       simulateSingleMatchInstant: () =>
         dispatch({ type: 'SIMULATE_SINGLE_MATCH_INSTANT' }),
       simulateOneFastRound: (stopAtTransfer, stopAtCup = false) =>

@@ -139,6 +139,10 @@ function FastSimModalInner({
     season?.managerEvents?.activeEvent || season?.managerEvents?.lastResolution,
   );
 
+  const hasLiveHalftime = Boolean(season?.liveHalftime);
+
+  const blockedByPopup = hasPendingInjury || hasPendingEvent || hasLiveHalftime;
+
   const reachedTransferOpen = Boolean(stopAtTransfer && season?.transferMarket.isOpen);
 
   const isTargetReached = useMemo(() => {
@@ -149,16 +153,16 @@ function FastSimModalInner({
     return false;
   }, [reachedTransferOpen, season, state.phase, pendingCupNode]);
 
-  // Auto-handoff into Transfer Market once transfer window opens during unified skip
+  // Auto-handoff into Transfer Market once transfer window opens during unified skip (wait for any open interview/injury modal first)
   useEffect(() => {
-    if (!reachedTransferOpen || !onPausedForTransfer) return;
+    if (!reachedTransferOpen || !onPausedForTransfer || blockedByPopup) return;
     const t = window.setTimeout(() => {
       onPausedForTransfer();
     }, 650);
     return () => window.clearTimeout(t);
-  }, [reachedTransferOpen, onPausedForTransfer]);
+  }, [reachedTransferOpen, onPausedForTransfer, blockedByPopup]);
 
-  // Step 1 round at a time with smooth animation interval, auto-pausing for Domestic Cup matches, trophy celebration, events, and user injuries
+  // Step 1 round at a time with smooth animation interval, auto-pausing for Domestic Cup matches, trophy celebration, events, 2D modals, and user injuries
   useEffect(() => {
     if (
       !season ||
@@ -166,8 +170,7 @@ function FastSimModalInner({
       isTargetReached ||
       Boolean(pendingCupNode) ||
       uncelebratedCupWin ||
-      hasPendingInjury ||
-      hasPendingEvent
+      blockedByPopup
     ) {
       return;
     }
@@ -186,8 +189,7 @@ function FastSimModalInner({
     isTargetReached,
     pendingCupNode,
     uncelebratedCupWin,
-    hasPendingInjury,
-    hasPendingEvent,
+    blockedByPopup,
     simulateOneFastRound,
   ]);
 
@@ -230,6 +232,7 @@ function FastSimModalInner({
     : null;
 
   const handleInstantComplete = () => {
+    if (blockedByPopup) return;
     const remainingTransfer = stopAtTransfer
       ? getNextTransferWindowRound(
           season.currentRound,
@@ -256,6 +259,7 @@ function FastSimModalInner({
   };
 
   const handleSkipCupAndContinue = () => {
+    if (blockedByPopup) return;
     simulateSingleMatchInstant();
   };
 
@@ -289,23 +293,25 @@ function FastSimModalInner({
               className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-black ${
                 isTargetReached
                   ? 'bg-emerald-500 text-slate-950'
-                  : pendingCupNode
+                  : blockedByPopup || pendingCupNode || paused
                     ? 'bg-amber-400 text-slate-950'
-                    : paused
-                      ? 'bg-amber-400 text-slate-950'
-                      : 'bg-sky-500 text-slate-950'
+                    : 'bg-sky-500 text-slate-950'
               }`}
             >
               <FastForward className="w-3 h-3" />
-              {reachedTransferOpen
-                ? '이적시장 자동 일시정지'
-                : isTargetReached
-                  ? '도달 완료'
-                  : pendingCupNode
-                    ? '컵대회 일시정지'
-                    : paused
-                      ? '일시정지'
-                      : '경기 스킵 중'}
+              {hasPendingEvent
+                ? '인터뷰 일시정지'
+                : hasPendingInjury
+                  ? '부상 알림 일시정지'
+                  : reachedTransferOpen
+                    ? '이적시장 자동 일시정지'
+                    : isTargetReached
+                      ? '도달 완료'
+                      : pendingCupNode
+                        ? '컵대회 일시정지'
+                        : paused
+                          ? '일시정지'
+                          : '경기 스킵 중'}
             </span>
             <h2 className="text-sm sm:text-base font-extrabold text-white">
               {hasUpcomingTransfer
@@ -363,7 +369,8 @@ function FastSimModalInner({
                 <button
                   type="button"
                   onClick={handleInstantComplete}
-                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
+                  disabled={blockedByPopup}
+                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-45 cursor-pointer"
                 >
                   <SkipForward className="w-3.5 h-3.5" />
                   즉시 완료

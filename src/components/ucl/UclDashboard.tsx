@@ -39,7 +39,6 @@ import type {
   PlayerSeasonStats,
   TacticId,
 } from '../../types/league';
-import type { MpCastMatch } from '../../types/mpLeague';
 import type { Player, SubPosition } from '../../types/player';
 import type { UclKnockoutTie, UclTournamentState } from '../../types/ucl';
 import {
@@ -76,6 +75,25 @@ import {
 } from './UclMilestoneModal';
 
 type UclTab = 'match' | 'standings' | 'bracket' | 'stats' | 'squad';
+type UclLiveAutoResumeReason = 'live_match' | 'transfer' | 'injury';
+
+const UCL_LIVE_AUTO_RESUME_COPY: Record<
+  UclLiveAutoResumeReason,
+  { title: string; subtitle: string }
+> = {
+  live_match: {
+    title: '2D 경기 종료',
+    subtitle: '라이브 자동진행을 이어서 진행할까요?',
+  },
+  transfer: {
+    title: '이적시장 종료',
+    subtitle: '스쿼드를 점검하려면 일시정지를, 바로 달리려면 이어서 진행을 선택하세요.',
+  },
+  injury: {
+    title: '부상 대응 완료',
+    subtitle: '라인업을 더 점검하려면 일시정지를, 바로 달리려면 이어서 진행을 선택하세요.',
+  },
+};
 
 export function UclDashboard() {
   const {
@@ -83,7 +101,6 @@ export function UclDashboard() {
     activeTactic,
     chemistry,
     ratings,
-    soloTickerPlaying,
     setSoloTickerPlaying,
     changeFormation,
     autoOptimizeLineup,
@@ -91,6 +108,10 @@ export function UclDashboard() {
     setNextMatchTactic,
     swapSquadPositions,
     startLiveMatch,
+    startSoloStreamMatch,
+    enterLiveBroadcastFromStream,
+    cancelSoloStreamMatch,
+    commitLiveMatch,
     simulateSingleMatchInstant,
     simulateUclPlayoffBye,
     simulateUclToEnd,
@@ -119,14 +140,33 @@ export function UclDashboard() {
   const [liveAutoUserPaused, setLiveAutoUserPaused] = useState(false);
   const [liveAutoDurationMs, setLiveAutoDurationMs] =
     useState<SoloLiveDurationMs>(5000);
-  const [liveAutoMatch, setLiveAutoMatch] = useState<MpCastMatch | null>(null);
-  const liveAutoWaitingRef = useRef<{
-    prevFixtureId: string | null;
-    label: string;
-  } | null>(null);
+  const [liveAutoResumePrompt, setLiveAutoResumePrompt] =
+    useState<UclLiveAutoResumeReason | null>(null);
+  const liveAutoNeedsPromptRef = useRef<UclLiveAutoResumeReason | null>(null);
 
   const season = state.season;
   const ucl = season?.ucl ?? null;
+
+  const streamHalftime = season?.liveHalftime?.streamAutoMode
+    ? season.liveHalftime
+    : null;
+  const liveTickerPlaying = Boolean(streamHalftime);
+
+  const liveAutoMatch = useMemo(() => {
+    if (!streamHalftime?.fullMatchResult) return null;
+    const label =
+      streamHalftime.competitionLabel ||
+      `UCL 리그 페이즈 ${streamHalftime.round}R`;
+    return matchResultToCastMatch(
+      streamHalftime.fullMatchResult,
+      label,
+      USER_CLUB_ID,
+    );
+  }, [streamHalftime]);
+
+  useEffect(() => {
+    setSoloTickerPlaying(liveTickerPlaying);
+  }, [liveTickerPlaying, setSoloTickerPlaying]);
 
   useEffect(() => {
     return () => {
@@ -134,67 +174,63 @@ export function UclDashboard() {
     };
   }, [setSoloTickerPlaying]);
 
+  const isTransferOpen = Boolean(season?.transferMarket.isOpen);
   const hasPendingInjury = Boolean(
     season?.pendingInjuryAlerts && season.pendingInjuryAlerts.length > 0,
   );
   const hasPendingEvent = Boolean(
     season?.managerEvents?.activeEvent || season?.managerEvents?.lastResolution,
   );
-  const latestUclMatch =
-    season && season.userUclMatchHistory.length > 0
-      ? season.userUclMatchHistory[season.userUclMatchHistory.length - 1]
-      : null;
+  const hasActive2DBroadcast = Boolean(
+    season?.liveHalftime && !season.liveHalftime.streamAutoMode,
+  );
 
+  // Ask [이어서 자동진행 / 일시정지] after transfer window or injury alert (interviews auto-continue)
   useEffect(() => {
-    const waiting = liveAutoWaitingRef.current;
-    if (!waiting || !latestUclMatch) return;
-    if (latestUclMatch.fixtureId === waiting.prevFixtureId) return;
-    liveAutoWaitingRef.current = null;
-    const cast = matchResultToCastMatch(
-      latestUclMatch,
-      waiting.label,
-      USER_CLUB_ID,
-    );
-    const t = window.setTimeout(() => setLiveAutoMatch(cast), 0);
-    return () => window.clearTimeout(t);
-  }, [latestUclMatch]);
+    if (!liveAutoActive) return;
+    if (isTransferOpen) {
+      liveAutoNeedsPromptRef.current = 'transfer';
+    } else if (hasPendingInjury) {
+      liveAutoNeedsPromptRef.current = 'injury';
+    }
+  }, [liveAutoActive, isTransferOpen, hasPendingInjury]);
 
   const launchNextUclLiveMatch = useCallback(() => {
     if (!season || !ucl || ucl.stage !== 'league_phase' || ucl.leaguePhaseRound >= 8) {
       setLiveAutoActive(false);
-      setSoloTickerPlaying(false);
       return;
     }
-    const prevId =
-      season.userUclMatchHistory.length > 0
-        ? season.userUclMatchHistory[season.userUclMatchHistory.length - 1].fixtureId
-        : null;
-    liveAutoWaitingRef.current = {
-      prevFixtureId: prevId,
-      label: `UCL 리그 페이즈 ${ucl.leaguePhaseRound + 1}R`,
-    };
-    setSoloTickerPlaying(true);
-    simulateSingleMatchInstant();
-  }, [season, ucl, setSoloTickerPlaying, simulateSingleMatchInstant]);
+    startSoloStreamMatch();
+  }, [season, ucl, startSoloStreamMatch]);
 
   const handleUclLiveMatchDone = useCallback(() => {
-    setLiveAutoMatch(null);
-    setSoloTickerPlaying(false);
-  }, [setSoloTickerPlaying]);
+    commitLiveMatch();
+  }, [commitLiveMatch]);
+
+  const handleEnterLive2DFromStream = useCallback(
+    (minute: number, inPenalties: boolean) => {
+      liveAutoNeedsPromptRef.current = 'live_match';
+      setLiveAutoUserPaused(false);
+      enterLiveBroadcastFromStream(minute, inPenalties);
+    },
+    [enterLiveBroadcastFromStream],
+  );
 
   const stopUclLiveAuto = useCallback(() => {
-    liveAutoWaitingRef.current = null;
+    liveAutoNeedsPromptRef.current = null;
     setLiveAutoActive(false);
     setLiveAutoUserPaused(false);
-    setLiveAutoMatch(null);
+    setLiveAutoResumePrompt(null);
+    cancelSoloStreamMatch();
     setSoloTickerPlaying(false);
-  }, [setSoloTickerPlaying]);
+  }, [cancelSoloStreamMatch, setSoloTickerPlaying]);
 
   const liveAutoBlocked =
-    Boolean(season?.transferMarket.isOpen) ||
-    Boolean(season?.liveHalftime) ||
+    isTransferOpen ||
+    hasActive2DBroadcast ||
     hasPendingInjury ||
-    hasPendingEvent;
+    hasPendingEvent ||
+    liveAutoResumePrompt !== null;
 
   useEffect(() => {
     if (
@@ -202,15 +238,21 @@ export function UclDashboard() {
       !ucl ||
       !liveAutoActive ||
       liveAutoUserPaused ||
-      liveAutoMatch !== null ||
-      liveAutoWaitingRef.current !== null ||
+      liveTickerPlaying ||
       liveAutoBlocked
     ) {
       return;
     }
     if (ucl.stage !== 'league_phase' || ucl.leaguePhaseRound >= 8) {
+      liveAutoNeedsPromptRef.current = null;
       const stopT = window.setTimeout(() => setLiveAutoActive(false), 0);
       return () => window.clearTimeout(stopT);
+    }
+    if (liveAutoNeedsPromptRef.current !== null) {
+      const reason = liveAutoNeedsPromptRef.current;
+      liveAutoNeedsPromptRef.current = null;
+      const promptT = window.setTimeout(() => setLiveAutoResumePrompt(reason), 80);
+      return () => window.clearTimeout(promptT);
     }
     const timer = window.setTimeout(() => {
       launchNextUclLiveMatch();
@@ -221,32 +263,25 @@ export function UclDashboard() {
     ucl,
     liveAutoActive,
     liveAutoUserPaused,
-    liveAutoMatch,
+    liveTickerPlaying,
     liveAutoBlocked,
     launchNextUclLiveMatch,
   ]);
 
-  // Watchdog: never leave global soloTickerPlaying stuck true if no match arrived
-  useEffect(() => {
-    if (!soloTickerPlaying || liveAutoMatch !== null) return;
-    const t = window.setTimeout(() => {
-      liveAutoWaitingRef.current = null;
-      setSoloTickerPlaying(false);
-    }, 1500);
-    return () => window.clearTimeout(t);
-  }, [soloTickerPlaying, liveAutoMatch, setSoloTickerPlaying]);
-
-  const liveTickerPlaying = soloTickerPlaying || liveAutoMatch !== null;
   const liveAutoPauseReason =
     !liveAutoActive || liveTickerPlaying
       ? null
-      : season?.transferMarket.isOpen
-        ? '이적시장 일시정지'
-        : hasPendingEvent
-          ? '인터뷰 일시정지'
-          : hasPendingInjury
-            ? '부상 알림 일시정지'
-            : null;
+      : hasActive2DBroadcast
+        ? '2D 경기 진행 중'
+        : liveAutoResumePrompt !== null
+          ? '진행 선택 대기'
+          : isTransferOpen
+            ? '이적시장 일시정지'
+            : hasPendingEvent
+              ? '인터뷰 일시정지'
+              : hasPendingInjury
+                ? '부상 알림 일시정지'
+                : null;
 
   const prevLpRoundRef = useRef<number>(ucl?.leaguePhaseRound ?? 0);
   useEffect(() => {
@@ -920,6 +955,59 @@ export function UclDashboard() {
           );
         })()}
 
+      {/* UCL Live Auto-Advance Resume Confirmation Modal (after 2D play, Transfer Market, or Injury) */}
+      {liveAutoActive &&
+        liveAutoResumePrompt !== null &&
+        !liveTickerPlaying &&
+        !hasActive2DBroadcast &&
+        !isTransferOpen &&
+        !hasPendingInjury &&
+        !hasPendingEvent && (
+          <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4">
+            <ModalBodyLock />
+            <div className="modal-panel w-full max-w-sm rounded-2xl border border-slate-700 bg-[#111822] p-5 shadow-2xl space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+                  <Radio className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white">
+                    {UCL_LIVE_AUTO_RESUME_COPY[liveAutoResumePrompt].title}
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                    {UCL_LIVE_AUTO_RESUME_COPY[liveAutoResumePrompt].subtitle}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  id="ucl-live-auto-resume-pause-btn"
+                  type="button"
+                  onClick={() => {
+                    setLiveAutoResumePrompt(null);
+                    setLiveAutoUserPaused(true);
+                  }}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+                >
+                  일시정지
+                </button>
+                <button
+                  id="ucl-live-auto-resume-continue-btn"
+                  type="button"
+                  onClick={() => {
+                    setLiveAutoResumePrompt(null);
+                    setLiveAutoUserPaused(false);
+                  }}
+                  className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                >
+                  이어서 자동진행
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       {/* TAB 1: MATCH & PROGRESSION */}
       {tab === 'match' && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
@@ -939,6 +1027,7 @@ export function UclDashboard() {
                 }}
                 onStop={stopUclLiveAuto}
                 onMatchDone={handleUclLiveMatchDone}
+                onEnterLiveMatch={handleEnterLive2DFromStream}
               />
             )}
 

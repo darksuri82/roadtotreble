@@ -1,4 +1,4 @@
-# Road To Treble — PROJECT HANDOFF GUIDE (v8.4.1)
+# Road To Treble — PROJECT HANDOFF GUIDE (v8.4.2)
 
 > Claude Code 세션은 루트 `CLAUDE.md`(세션 시작 절차·불문율·워크플로우)를 먼저 따릅니다.
 
@@ -12,12 +12,17 @@
 - **Realtime Backend**: Supabase (`@supabase/supabase-js` — Postgres `mp_rooms` / `mp_room_players` + Realtime Postgres Changes + Presence, `supabase/schema.sql`)
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/vite`) — 미니멀 다크 스포츠 대시보드 테마 (`#090d13`, `#0d131c`, `#0e141d`, `#111822`, 차분한 슬레이트 UI 크롬 + 웅장한 레전드/슈퍼스타/월클 카드 글로우 & 선명한 4색 피치 시너지선)
 - **Icons**: `lucide-react` + 커스텀 도트 SVG (`RoadToTrebleHeroSvg.tsx`, `PixelTrophySvg.tsx`, `PixelManagerAvatar.tsx`, `PixelStatusIcon.tsx`, `PixelEventSceneBanner.tsx`) + 105개국 인라인 SVG 국기 (`CountryFlagSvg.tsx`)
-- **Testing & Lint**: Vitest (`npm run test` — **31개 파일 / 125개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
+- **Testing & Lint**: Vitest (`npm run test` — **31개 파일 / 128개 테스트**, `balanceVerification.test.ts`는 난수·병렬 부하로 간헐 타임아웃 가능 시 단독 재실행 검증), `oxlint` (`npm run lint` — 0 errors)
 - **Build**: `npm run build` (`tsc -b && vite build` — `base: './'` 설정으로 GitHub Pages 서브경로 및 루트 배포 모두 호환, `.github/workflows/deploy.yml`에서 `VITE_SUPABASE_URL`·`VITE_SUPABASE_ANON_KEY` Secret 주입)
 - **라이브 URL**: `https://darksuri82.github.io/roadtotreble/` (`.github/workflows/deploy.yml` 자동 배포 활성화 완료)
 - **롤백 세이브포인트 태그**: `stable-before-v5-tactics` (`v4.1` `a77f6a4`), `stable-before-v5-polish` (`v5.0.2` `4eb1f74`), `stable-before-mobile-compact` (`v5.1` `17be061`), `stable-before-v6-hof-roster` (`v5.2` `9af2760`), `stable-before-v6-balance-ux` (`v6.1` `8133925`), `stable-before-v6-color-polish` (`v6.2-core` `c0717dd`), `stable-before-v7-multi-1v1` (`v6.2.1` `88bb954`), `stable-before-v6-bugfix-mp` (`v7.1` `c5b9540`), `stable-before-v8.2-mp-polish` (`v8.1` `68620bf`), `stable-before-v8.3-ui-bench` (`v8.2` `3d5f660`), `stable-before-v8.4-live-skip` (`v8.3` `600c7da`)
 - **필수 운영 규칙 (패치노트 기본 기록)**: 기능 추가·밸런스 조정·버그 수정 등 **모든 수정 배포 시 기존 버전을 덮어쓰지 말고 반드시 새 버전(`vX.Y` 또는 `vX.Y.Z`)으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단 추가) 및 `CHANGELOG.md`에 변경 사항을 빠짐없이 시간순 누적 기록**할 것.
 - **UI 미니멀리즘 원칙**: 게임 플레이 화면에 장황한 AI식 설명 문구·홍보 배너·"새 기능!" 잡다한 텍스트를 배치하지 않고, 간결한 아이콘·수치로만 표현하며 상세 설명은 기존 가이드/전술 도감 모달 및 클릭형 `?` 팝오버(`InfoHelpButton.tsx`, `UnifiedTacticsStrip.tsx`) 내부에만 수록.
+- **v8.4.2 라이브 중 2D 난입 · 이벤트 후 재개 선택 · 승부차기 추가시간 키커 중계 · 스킵 중 인터뷰 정지 수정**:
+  - **라이브 중 2D 시뮬레이션 입장 (`league.ts`, `GameContext.tsx`, `SoloLiveScoreboard.tsx`, `LiveMatchBroadcast.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 솔로 라이브 자동진행을 `liveHalftime.streamAutoMode` 미확정 상태로 실행(`START_SOLO_STREAM_MATCH` → `FT`+PK 시 `COMMIT_LIVE_MATCH`)해 일시정지 시 `[2D 경기 중계 입장]`(`ENTER_LIVE_BROADCAST_FROM_STREAM`)으로 멈춘 분/구간 그대로 2D 중계에 난입 가능.
+  - **이벤트 후 `[이어서 자동진행 / 일시정지]` 선택지 (`SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 컵대회/2D 직접 지휘·이적시장·부상 대응 완료 후 재개 선택 모달 표시(인터뷰는 응답 직후 자동진행 즉시 이어감).
+  - **승부차기 추가시간 진행 & 키커별 보드 (`mpLeague.ts`, `mpLeagueEngine.ts`, `MpLiveTicker.tsx`, `SoloLiveScoreboard.tsx`, `useMpLeagueHost.ts`)**: `penalties.kicks` 기반 700ms/키커 추가 페이즈 + 실시간 PK 스코어·`O`/`X` 도트·서든데스 배지·키커 속보 배너 적용 및 멀티 방장 대기시간(`getMpTickerExtraPkMs`, `getMpCastDurationMs`) 동기화.
+  - **고속 스킵 인터뷰/부상 백그라운드 진행 차단 (`UclLeaguePhaseFastSimModal.tsx`, `FastSimModal.tsx`, `GameContext.tsx`)**: 모든 고속 스킵 모달 타이머·이적시장 자동전환·`[즉시 완료]` 및 리듀서 액션(`SIMULATE_ONE_FAST_ROUND`, `SIMULATE_SINGLE_MATCH_INSTANT`, `SIMULATE_TO_NEXT_TRANSFER`, `SKIP_TO_SEASON_END`, `SIMULATE_UCL_LEAGUE_PHASE_TO_END`, `SIMULATE_UCL_TO_END`)에 인터뷰/부상 정지 가드 완비(`v84LiveScoreboardAndSkip.test.ts`).
 - **v8.4.1 핫픽스 (`SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 솔로 `[라이브 자동진행]` 중 경기 후 인터뷰·부상·이적 이벤트가 스코어보드 재생(`0'→90'`) 도중 `paused=true`를 걸어 `soloTickerPlaying` 해제가 막히고 팝업이 뜨지 않던 교착 버그 수정(`liveTickerPlaying` 동안 `liveAutoPauseReason` 유예 + 1.5초 워치독 추가).
 - **v8.4 라이브 스코어보드 자동진행 · 솔로 스킵 단일화 · 멀티 H2H 프리뷰 스킵/결과 확인 · 인터뷰 빈도/조기 배지 수정**:
   - **솔로 라이브 자동진행(5·7·9초) & 스코어보드 rAF 최적화 (`SoloLiveScoreboard.tsx`, `MpLiveTicker.tsx`, `index.css`, `GameContext.tsx` `soloTickerPlaying`, `App.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`)**: 60fps DOM ref 진행률 바 보간 + 정수 분 커밋 + 스코어 플립/골 속보 연출을 솔로·멀티 공용화하고, 솔로 리그·UCL 리그 페이즈에 5/7/9초 라이브 자동진행 도입(인터뷰·부상·자국 컵·이적시장 시 자동 일시정지 → 처리 후 자동 재개).

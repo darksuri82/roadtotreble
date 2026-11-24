@@ -1,16 +1,17 @@
-import { Pause, Play, Radio, Square } from 'lucide-react';
+import { Pause, Play, Radio, Square, Tv } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Club, MatchResult } from '../../types/league';
 import type { MpCastMatch, MpFeedItem } from '../../types/mpLeague';
 import {
   endMinuteOfCastMatch,
+  LIVE_PK_KICK_INTERVAL_MS,
   LiveTickerMatchCard,
 } from '../multiplayer/league/MpLiveTicker';
 
 export const SOLO_LIVE_SPEED_OPTIONS = [5000, 7000, 9000] as const;
 export type SoloLiveDurationMs = (typeof SOLO_LIVE_SPEED_OPTIONS)[number];
 
-/** Converts a solo MatchResult into the shared live scoreboard match structure (deduping ET events). */
+/** Converts a solo MatchResult into the shared live scoreboard match structure (deduping ET events + keeping PK kicks). */
 export function matchResultToCastMatch(
   result: MatchResult,
   label: string,
@@ -67,6 +68,7 @@ export function matchResultToCastMatch(
           home: result.extraTime.penalties.homePenGoals,
           away: result.extraTime.penalties.awayPenGoals,
           winnerId: result.extraTime.penalties.winnerTeamId,
+          kicks: result.extraTime.penalties.kicks,
         }
       : null,
     winnerId: result.extraTime?.winnerTeamId ?? null,
@@ -93,6 +95,8 @@ interface SoloLiveScoreboardProps {
   onTogglePause: () => void;
   onStop: () => void;
   onMatchDone: (matchKey: string) => void;
+  /** Called when user pauses mid-stream and chooses to jump straight into this match's 2D broadcast. */
+  onEnterLiveMatch?: (minute: number, inPenalties: boolean) => void;
 }
 
 export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
@@ -107,7 +111,29 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
     onTogglePause,
     onStop,
     onMatchDone,
+    onEnterLiveMatch,
   } = props;
+
+  const progressStateRef = useRef<{ minute: number; inPenalties: boolean; finished: boolean }>({
+    minute: 0,
+    inPenalties: false,
+    finished: false,
+  });
+
+  // Reset tracked progress whenever a new match starts
+  const lastMatchKeyRef = useRef<string | null>(null);
+  if ((match?.key ?? null) !== lastMatchKeyRef.current) {
+    lastMatchKeyRef.current = match?.key ?? null;
+    progressStateRef.current = { minute: 0, inPenalties: false, finished: false };
+  }
+
+  const canEnterLive2D = Boolean(
+    match &&
+      paused &&
+      !pauseReasonLabel &&
+      onEnterLiveMatch &&
+      !progressStateRef.current.finished,
+  );
 
   return (
     <div className="rounded-xl sm:rounded-2xl border border-emerald-500/35 bg-[#0c131d] p-2.5 sm:p-3.5 space-y-2.5 shadow-lg">
@@ -126,6 +152,23 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
             />
             {pauseReasonLabel ?? (paused ? '일시정지' : '라이브 자동진행')}
           </span>
+
+          {canEnterLive2D && onEnterLiveMatch && (
+            <button
+              id="solo-live-enter-2d-btn"
+              type="button"
+              onClick={() =>
+                onEnterLiveMatch(
+                  progressStateRef.current.minute,
+                  progressStateRef.current.inPenalties,
+                )
+              }
+              className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1 text-[11px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer shadow-sm"
+            >
+              <Tv className="w-3 h-3" />
+              2D 경기 중계 입장
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
@@ -179,7 +222,7 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
         </div>
       </div>
 
-      {/* Smooth 60fps Live Scoreboard Match Card */}
+      {/* Smooth 60fps Live Scoreboard Match Card (+ Extra PK Shootout Phase) */}
       {match ? (
         <SoloScoreboardMatchRunner
           key={match.key}
@@ -188,11 +231,14 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
           myClubId={myClubId}
           durationMs={durationMs}
           paused={paused}
+          onProgress={(minute, inPenalties, finished) => {
+            progressStateRef.current = { minute, inPenalties, finished };
+          }}
           onDone={onMatchDone}
         />
       ) : (
         <div className="rounded-xl border border-slate-800/80 bg-[#0b1018] px-3 py-3 text-center text-xs font-bold text-slate-400">
-          다음 라운드 준비 중...
+          {pauseReasonLabel ?? (paused ? '일시정지됨 · 재개를 누르면 이어서 진행됩니다' : '다음 라운드 준비 중...')}
         </div>
       )}
     </div>
@@ -205,6 +251,7 @@ function SoloScoreboardMatchRunner({
   myClubId,
   durationMs,
   paused,
+  onProgress,
   onDone,
 }: {
   match: MpCastMatch;
@@ -212,15 +259,19 @@ function SoloScoreboardMatchRunner({
   myClubId: string;
   durationMs: SoloLiveDurationMs;
   paused: boolean;
+  onProgress: (minute: number, inPenalties: boolean, finished: boolean) => void;
   onDone: (key: string) => void;
 }) {
   const maxMin = useMemo(() => endMinuteOfCastMatch(match), [match]);
+  const totalPkKicks = match.penalties?.kicks?.length ?? 0;
   const [minute, setMinute] = useState(0);
+  const [revealedPenKicks, setRevealedPenKicks] = useState(0);
   const progressMinRef = useRef(0);
   const barElRef = useRef<HTMLDivElement | null>(null);
   const doneRef = useRef(false);
   const durationRef = useRef(durationMs);
   const onDoneRef = useRef(onDone);
+  const onProgressRef = useRef(onProgress);
 
   useEffect(() => {
     durationRef.current = durationMs;
@@ -231,10 +282,21 @@ function SoloScoreboardMatchRunner({
   }, [onDone]);
 
   useEffect(() => {
-    if (paused || doneRef.current) return;
+    onProgressRef.current = onProgress;
+  }, [onProgress]);
+
+  // Keep parent informed of current minute & PK status for mid-stream 2D takeover
+  useEffect(() => {
+    const inPk = totalPkKicks > 0 && minute >= maxMin && revealedPenKicks < totalPkKicks;
+    const isFinished = minute >= maxMin && revealedPenKicks >= totalPkKicks;
+    onProgressRef.current(minute, inPk, isFinished);
+  }, [minute, maxMin, totalPkKicks, revealedPenKicks]);
+
+  // Phase 1: Match clock 0' → 90' (or 120' for ET)
+  useEffect(() => {
+    if (paused || doneRef.current || progressMinRef.current >= maxMin) return;
 
     let rafId = 0;
-    let doneTimer = 0;
     let lastTs = performance.now();
     let lastCommittedInt = Math.floor(progressMinRef.current);
 
@@ -262,10 +324,6 @@ function SoloScoreboardMatchRunner({
           lastCommittedInt = maxMin;
           setMinute(maxMin);
         }
-        if (!doneRef.current) {
-          doneRef.current = true;
-          doneTimer = window.setTimeout(() => onDoneRef.current(match.key), 420);
-        }
         return;
       }
 
@@ -275,15 +333,45 @@ function SoloScoreboardMatchRunner({
     rafId = window.requestAnimationFrame(step);
     return () => {
       window.cancelAnimationFrame(rafId);
-      if (doneTimer) window.clearTimeout(doneTimer);
     };
-  }, [paused, maxMin, match.key]);
+  }, [paused, maxMin]);
+
+  // Phase 2: Extra Penalty Shootout (runs ON TOP of configured match duration, pauses cleanly!) & FT completion
+  useEffect(() => {
+    if (paused || doneRef.current || minute < maxMin) return;
+
+    if (totalPkKicks === 0) {
+      const t = window.setTimeout(() => {
+        if (doneRef.current) return;
+        doneRef.current = true;
+        onDoneRef.current(match.key);
+      }, 420);
+      return () => window.clearTimeout(t);
+    }
+
+    if (revealedPenKicks >= totalPkKicks) {
+      const t = window.setTimeout(() => {
+        if (doneRef.current) return;
+        doneRef.current = true;
+        onDoneRef.current(match.key);
+      }, 750);
+      return () => window.clearTimeout(t);
+    }
+
+    const t = window.setTimeout(() => {
+      setRevealedPenKicks((prev) => Math.min(totalPkKicks, prev + 1));
+    }, LIVE_PK_KICK_INTERVAL_MS);
+    return () => window.clearTimeout(t);
+  }, [paused, totalPkKicks, minute, maxMin, revealedPenKicks, match.key]);
+
+  const finished = minute >= maxMin && revealedPenKicks >= totalPkKicks;
 
   return (
     <LiveTickerMatchCard
       match={match}
       minute={minute}
-      finished={minute >= maxMin}
+      finished={finished}
+      revealedPenKicks={revealedPenKicks}
       clubsById={clubsById}
       myClubId={myClubId}
       alwaysShowFeed

@@ -2199,6 +2199,7 @@ function toCastMatch(
           home: result.extraTime.penalties.homePenGoals,
           away: result.extraTime.penalties.awayPenGoals,
           winnerId: result.extraTime.penalties.winnerTeamId,
+          kicks: result.extraTime.penalties.kicks,
         }
       : null,
     winnerId,
@@ -2434,12 +2435,25 @@ function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
   };
 }
 
+/** Extra duration (ms) appended ON TOP of regular match stream time for penalty shootout kicks. */
+export function getMpTickerExtraPkMs(matches?: MpCastMatch[] | null): number {
+  if (!matches || matches.length === 0) return 0;
+  let maxKicks = 0;
+  for (const m of matches) {
+    if (!m.penalties) continue;
+    const count = m.penalties.kicks?.length ?? 10;
+    if (count > maxKicks) maxKicks = count;
+  }
+  if (maxKicks === 0) return 0;
+  return maxKicks * 700 + 1200;
+}
+
 /** How long the host keeps the multicast board up before moving on (ms). */
 export function getMpCastDurationMs(state: MpLeagueHostState): number {
   if (!state.cast) return 0;
   const hasEt = state.cast.matches.some((m) => m.extraTime);
-  const hasPens = state.cast.matches.some((m) => m.penalties);
-  return 7000 + (hasEt ? 2500 : 0) + (hasPens ? 1500 : 0) + 2500;
+  const extraPkMs = getMpTickerExtraPkMs(state.cast.matches);
+  return 7000 + (hasEt ? 2500 : 0) + extraPkMs + 2500;
 }
 
 export function endMpLeagueCast(state: MpLeagueHostState): MpLeagueHostState {

@@ -53,6 +53,7 @@ import type {
   Club,
   LiveHalftimeState,
   LiveSubRecord,
+  MatchEvent,
   PlayerSeasonStats,
   TacticId,
 } from '../../types/league';
@@ -289,8 +290,18 @@ export function LiveMatchBroadcast({
 
   // Reset clock & dramatic state when phase changes across match stages
   useEffect(() => {
+    if (!halftime) return;
+    const resumeMin = halftime.resumeFromMinute;
+    const preHandledKeys = (targetMin: number, eventsSource: MatchEvent[]) =>
+      eventsSource
+        .map((ev, idx) => ({ ev, key: makeEventKey(ev, idx) }))
+        .filter(({ ev }) => ev.minute <= targetMin)
+        .map(({ key }) => key);
+
     if (phase === 'first_half') {
-      setMinute(0);
+      const startM =
+        resumeMin !== undefined && resumeMin < 45 ? Math.max(0, resumeMin) : 0;
+      setMinute(startM);
       setSubbedInIds([]);
       setConfirmedSubRecords([]);
       setSwapPick(null);
@@ -301,8 +312,10 @@ export function LiveMatchBroadcast({
       setPendingLiveSubs([]);
       setRevealedPenKicks(0);
       setDramaticEvent(null);
-      setHandledHighlightKeys([]);
-      if (halftime) setSelectedTactic(halftime.userTacticAtKickoff);
+      setHandledHighlightKeys(
+        startM > 0 ? preHandledKeys(startM, halftime.firstHalfEvents) : [],
+      );
+      setSelectedTactic(halftime.userTacticAtKickoff);
     } else if (phase === 'halftime') {
       setMinute(45);
       setSwapPick(null);
@@ -311,11 +324,25 @@ export function LiveMatchBroadcast({
       setLiveSubOpen(false);
       setDramaticEvent(null);
     } else if (phase === 'second_half') {
-      setMinute(46);
+      const startM =
+        resumeMin !== undefined && resumeMin >= 45 && resumeMin < 90
+          ? Math.max(46, resumeMin)
+          : 46;
+      setMinute(startM);
       setLiveSubOpen(false);
       setLiveSubPick(null);
       setPendingLiveSubs([]);
       setDramaticEvent(null);
+      if (startM > 46 && halftime.fullMatchResult) {
+        setHandledHighlightKeys((prev) =>
+          Array.from(
+            new Set([
+              ...prev,
+              ...preHandledKeys(startM, halftime.fullMatchResult!.events),
+            ]),
+          ),
+        );
+      }
     } else if (phase === 'extra_time_break') {
       setMinute(90);
       setSwapPick(null);
@@ -324,8 +351,22 @@ export function LiveMatchBroadcast({
       setLiveSubOpen(false);
       setDramaticEvent(null);
     } else if (phase === 'extra_time') {
-      setMinute(91);
+      const startM =
+        resumeMin !== undefined && resumeMin >= 90 && resumeMin < 105
+          ? Math.max(91, resumeMin)
+          : 91;
+      setMinute(startM);
       setDramaticEvent(null);
+      if (startM > 91 && halftime.fullMatchResult) {
+        setHandledHighlightKeys((prev) =>
+          Array.from(
+            new Set([
+              ...prev,
+              ...preHandledKeys(startM, halftime.fullMatchResult!.events),
+            ]),
+          ),
+        );
+      }
     } else if (phase === 'extra_time_ht') {
       setMinute(105);
       setSwapPick(null);
@@ -334,15 +375,29 @@ export function LiveMatchBroadcast({
       setLiveSubOpen(false);
       setDramaticEvent(null);
     } else if (phase === 'extra_time_2') {
-      setMinute(106);
+      const startM =
+        resumeMin !== undefined && resumeMin >= 105
+          ? Math.max(106, Math.min(119, resumeMin))
+          : 106;
+      setMinute(startM);
       setDramaticEvent(null);
+      if (startM > 106 && halftime.fullMatchResult) {
+        setHandledHighlightKeys((prev) =>
+          Array.from(
+            new Set([
+              ...prev,
+              ...preHandledKeys(startM, halftime.fullMatchResult!.events),
+            ]),
+          ),
+        );
+      }
     } else if (phase === 'penalties') {
       setMinute(120);
       setDramaticEvent(null);
       setRevealedPenKicks(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, halftime?.fixtureId]);
+  }, [phase, halftime?.fixtureId, halftime?.resumeFromMinute]);
 
   const allMatchEvents = useMemo(() => {
     if (!halftime) return [];

@@ -21,6 +21,7 @@ import {
   completeMpLeagueH2H,
   createMpLeagueSeason,
   endMpLeagueCast,
+  getMpTickerExtraPkMs,
   grantMpLeagueConsent,
   MP_LEAGUE_MAX_EVENTS_PER_SEASON,
   MP_LEAGUE_MIN_EVENT_COOLDOWN,
@@ -34,6 +35,7 @@ import {
   resolveMpH2HFullInstant,
 } from '../engine/mpLeagueH2H';
 import type { MpH2HSideInput } from '../engine/mpLeagueH2H';
+import { createInitialState, gameReducer } from '../store/GameContext';
 import { DEFAULT_MANAGER_AVATAR } from '../types/game';
 import type { FormationId, ManagerTraitId } from '../types/game';
 import type { MatchResult } from '../types/league';
@@ -404,4 +406,219 @@ describe('v8.4 solo live scoreboard, H2H preview skip/result confirmation & redu
       );
     }
   }, 25_000);
+
+  it('v8.4.2: supports uncommitted solo live streaming, mid-stream 2D jump-in (1st/2nd half), and clean cancel', () => {
+    let st = createInitialState();
+    st = gameReducer(st, { type: 'START_NEW_CAREER' });
+    st = gameReducer(st, { type: 'START_DRAFT' });
+    st = gameReducer(st, { type: 'AUTO_COMPLETE_DRAFT' });
+    st = gameReducer(st, { type: 'SELECT_LEAGUE', payload: { leagueId: 'epl' } });
+
+    expect(st.season?.currentRound).toBe(0);
+
+    // Start solo live stream → uncommitted streamAutoMode liveHalftime with fullMatchResult
+    const streaming = gameReducer(st, { type: 'START_SOLO_STREAM_MATCH' });
+    expect(streaming.season?.currentRound).toBe(0);
+    expect(streaming.season?.liveHalftime?.streamAutoMode).toBe(true);
+    expect(streaming.season?.liveHalftime?.fullMatchResult).toBeTruthy();
+    expect(streaming.season?.liveHalftime?.streamResult90).toBeTruthy();
+
+    // Jump into 2D mid-1st-half (minute 28) → switches to first_half, clears fullMatchResult so halftime coaching works
+    const mid1st = gameReducer(streaming, {
+      type: 'ENTER_LIVE_BROADCAST_FROM_STREAM',
+      payload: { minute: 28, inPenalties: false },
+    });
+    expect(mid1st.season?.liveHalftime?.streamAutoMode).toBe(false);
+    expect(mid1st.season?.liveHalftime?.phase).toBe('first_half');
+    expect(mid1st.season?.liveHalftime?.resumeFromMinute).toBe(28);
+    expect(mid1st.season?.liveHalftime?.fullMatchResult).toBeUndefined();
+
+    // Jump into 2D mid-2nd-half (minute 66) → switches to second_half keeping streamResult90
+    const mid2nd = gameReducer(streaming, {
+      type: 'ENTER_LIVE_BROADCAST_FROM_STREAM',
+      payload: { minute: 66, inPenalties: false },
+    });
+    expect(mid2nd.season?.liveHalftime?.streamAutoMode).toBe(false);
+    expect(mid2nd.season?.liveHalftime?.phase).toBe('second_half');
+    expect(mid2nd.season?.liveHalftime?.resumeFromMinute).toBe(66);
+    expect(mid2nd.season?.liveHalftime?.fullMatchResult).toBeTruthy();
+
+    // Cancel uncommitted stream cleanly without mutating standings/round
+    const cancelled = gameReducer(streaming, { type: 'CANCEL_SOLO_STREAM_MATCH' });
+    expect(cancelled.season?.liveHalftime).toBeNull();
+    expect(cancelled.season?.currentRound).toBe(0);
+
+    // Committing after scoreboard FT advances round to 1
+    const committed = gameReducer(streaming, { type: 'COMMIT_LIVE_MATCH' });
+    expect(committed.season?.liveHalftime).toBeNull();
+    expect(committed.season?.currentRound).toBe(1);
+  });
+
+  it('v8.4.2: freezes all fast-skip and instant-match reducers while an interview or injury alert is pending', () => {
+    let st = createInitialState();
+    st = gameReducer(st, { type: 'START_NEW_CAREER' });
+    st = gameReducer(st, { type: 'START_DRAFT' });
+    st = gameReducer(st, { type: 'AUTO_COMPLETE_DRAFT' });
+    st = gameReducer(st, { type: 'SELECT_LEAGUE', payload: { leagueId: 'epl' } });
+
+    const withActiveInterview = {
+      ...st,
+      season: {
+        ...st.season!,
+        managerEvents: {
+          ...st.season!.managerEvents!,
+          activeEvent: {
+            templateId: 'press_test',
+            category: 'press_conference' as const,
+            targetScope: 'team' as const,
+            title: '테스트 기자회견',
+            speakerLabel: 'BBC 기자',
+            contextBadge: '기자회견',
+            prompt: '질문',
+            choices: [
+              {
+                id: 'c1',
+                label: '응답',
+                toneTag: '자신감',
+                quote: '우리는 준비됐다.',
+                successEffect: {
+                  summaryText: '팀 사기 +1',
+                  reactionText: '선수단이 호응했다.',
+                  teamMoraleDelta: 1,
+                },
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    expect(
+      gameReducer(withActiveInterview, {
+        type: 'SIMULATE_ONE_FAST_ROUND',
+        payload: { stopAtTransfer: true, stopAtCup: true },
+      }),
+    ).toBe(withActiveInterview);
+    expect(
+      gameReducer(withActiveInterview, { type: 'SIMULATE_SINGLE_MATCH_INSTANT' }),
+    ).toBe(withActiveInterview);
+    expect(
+      gameReducer(withActiveInterview, { type: 'SIMULATE_TO_NEXT_TRANSFER' }),
+    ).toBe(withActiveInterview);
+    expect(
+      gameReducer(withActiveInterview, { type: 'SKIP_TO_SEASON_END' }),
+    ).toBe(withActiveInterview);
+
+    const starter0 = st.starters[0]!;
+    const withInjury = {
+      ...st,
+      season: {
+        ...st.season!,
+        pendingInjuryAlerts: [
+          {
+            playerId: starter0.id,
+            playerName: starter0.name,
+            nationality: starter0.nationality,
+            nationalityCode: starter0.nationalityCode,
+            position: starter0.position,
+            mainPosition: starter0.mainPositions[0] ?? 'GK',
+            ovr: starter0.ovr,
+            isStarter: true,
+            starterSlotIndex: 0,
+            injury: {
+              id: 'inj-test-1',
+              name: '경미한 타박상',
+              severity: 'minor' as const,
+              matchesRemaining: 2,
+              initialMatches: 2,
+              canPlayThrough: true,
+              playThroughPenalty: -2,
+              recoveryMatchesRemaining: 0,
+            },
+          },
+        ],
+      },
+    };
+    expect(
+      gameReducer(withInjury, {
+        type: 'SIMULATE_ONE_FAST_ROUND',
+        payload: { stopAtTransfer: true, stopAtCup: true },
+      }),
+    ).toBe(withInjury);
+    expect(
+      gameReducer(withInjury, { type: 'SIMULATE_SINGLE_MATCH_INSTANT' }),
+    ).toBe(withInjury);
+  });
+
+  it('v8.4.2: preserves PK kicker logs in live cast and computes extra shootout duration beyond match clock', () => {
+    let homePk = 0;
+    let awayPk = 0;
+    const kicks = Array.from({ length: 10 }, (_, idx) => {
+      const isHome = idx % 2 === 0;
+      const scored = idx !== 9;
+      if (scored) {
+        if (isHome) homePk += 1;
+        else awayPk += 1;
+      }
+      return {
+        round: Math.floor(idx / 2) + 1,
+        teamId: isHome ? 'user' : 'opp',
+        teamShortName: isHome ? 'USR' : 'OPP',
+        kickerName: `키커${idx + 1}`,
+        scored,
+        homeScoreAfter: homePk,
+        awayScoreAfter: awayPk,
+      };
+    });
+
+    const pkResult: MatchResult = {
+      fixtureId: 'cup-final-pk',
+      round: 30,
+      homeTeamId: 'user',
+      awayTeamId: 'opp',
+      homeGoals: 1,
+      awayGoals: 1,
+      homeXg: 1.5,
+      awayXg: 1.4,
+      homeShots: 12,
+      awayShots: 11,
+      homeShotsOnTarget: 5,
+      awayShotsOnTarget: 4,
+      homePossession: 52,
+      homeFormation: '4-3-3',
+      awayFormation: '4-3-3',
+      homeTactic: 'balanced',
+      awayTactic: 'balanced',
+      homeTacticBonus: 0,
+      awayTacticBonus: 0,
+      events: [],
+      extraTime: {
+        homeEtGoals: 0,
+        awayEtGoals: 0,
+        etEvents: [],
+        winnerTeamId: 'user',
+        penalties: {
+          homePenGoals: 5,
+          awayPenGoals: 4,
+          winnerTeamId: 'user',
+          kicks,
+        },
+      },
+      playerRatings: [],
+      momPlayerId: 'p1',
+      momPlayerName: '키커1',
+      momRating: 8.2,
+    };
+
+    const cast = matchResultToCastMatch(pkResult, 'FA컵 결승', 'user');
+    expect(cast.penalties?.kicks).toHaveLength(10);
+    expect(cast.penalties?.kicks?.[9]).toMatchObject({
+      round: 5,
+      teamId: 'opp',
+      kickerName: '키커10',
+      scored: false,
+    });
+    expect(getMpTickerExtraPkMs([cast])).toBe(10 * 700 + 1200);
+    expect(getMpTickerExtraPkMs([{ ...cast, penalties: undefined }])).toBe(0);
+  });
 });

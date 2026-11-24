@@ -38,9 +38,7 @@ import type {
   LeagueId,
   MatchResult,
   PlayerSeasonStats,
-  StandingRow,
 } from '../../types/league';
-import type { MpCastMatch } from '../../types/mpLeague';
 import {
   buildPlayerCompetitionBreakdown,
   getPlayerNationalityMeta,
@@ -78,6 +76,29 @@ import { StandingsTable } from './StandingsTable';
 type SeasonTab = 'match' | 'cup' | 'squad' | 'standings' | 'transfer';
 type RecordSubTab = 'goals' | 'assists' | 'cleanSheets' | 'rating';
 type SkipFlowState = 'idle' | 'running' | 'paused_for_transfer' | 'prompt_resume';
+type LiveAutoResumeReason = 'cup' | 'live_match' | 'transfer' | 'injury';
+
+const LIVE_AUTO_RESUME_COPY: Record<
+  LiveAutoResumeReason,
+  { title: string; subtitle: string }
+> = {
+  cup: {
+    title: '컵대회 경기 종료',
+    subtitle: '라이브 자동진행을 이어서 진행할까요?',
+  },
+  live_match: {
+    title: '2D 경기 종료',
+    subtitle: '라이브 자동진행을 이어서 진행할까요?',
+  },
+  transfer: {
+    title: '이적시장 종료',
+    subtitle: '스쿼드를 점검하려면 일시정지를, 바로 달리려면 이어서 진행을 선택하세요.',
+  },
+  injury: {
+    title: '부상 대응 완료',
+    subtitle: '라인업을 더 점검하려면 일시정지를, 바로 달리려면 이어서 진행을 선택하세요.',
+  },
+};
 
 export function SeasonDashboard() {
   const {
@@ -85,13 +106,16 @@ export function SeasonDashboard() {
     activeTactic,
     chemistry,
     ratings,
-    soloTickerPlaying,
     setSoloTickerPlaying,
     changeFormation,
     autoOptimizeLineup,
     swapSquadPositions,
     setNextMatchTactic,
     startLiveMatch,
+    startSoloStreamMatch,
+    enterLiveBroadcastFromStream,
+    cancelSoloStreamMatch,
+    commitLiveMatch,
     simulateSingleMatchInstant,
     markCupCelebrated,
   } = useGame();
@@ -118,17 +142,10 @@ export function SeasonDashboard() {
   const [liveAutoUserPaused, setLiveAutoUserPaused] = useState(false);
   const [liveAutoDurationMs, setLiveAutoDurationMs] =
     useState<SoloLiveDurationMs>(5000);
-  const [liveAutoMatch, setLiveAutoMatch] = useState<MpCastMatch | null>(null);
-  const [liveAutoFrozen, setLiveAutoFrozen] = useState<{
-    standings: StandingRow[];
-    round: number;
-    lastMatch: MatchResult | null;
-  } | null>(null);
   const [liveAutoCupPromptOpen, setLiveAutoCupPromptOpen] = useState(false);
-  const liveAutoWaitingRef = useRef<{
-    prevFixtureId: string | null;
-    label: string;
-  } | null>(null);
+  const [liveAutoResumePrompt, setLiveAutoResumePrompt] =
+    useState<LiveAutoResumeReason | null>(null);
+  const liveAutoNeedsPromptRef = useRef<LiveAutoResumeReason | null>(null);
   const prevTransferOpenRef = useRef<boolean>(false);
 
   const season = state.season;
@@ -141,7 +158,28 @@ export function SeasonDashboard() {
     return map;
   }, [season]);
 
-  // Ensure global ticker flag is cleared on unmount
+  // Active uncommitted live-stream match stored in liveHalftime (enables mid-match 2D jump-in!)
+  const streamHalftime = season?.liveHalftime?.streamAutoMode
+    ? season.liveHalftime
+    : null;
+  const liveTickerPlaying = Boolean(streamHalftime);
+
+  const liveAutoMatch = useMemo(() => {
+    if (!streamHalftime?.fullMatchResult) return null;
+    const label =
+      streamHalftime.competitionLabel || `리그 ${streamHalftime.round}R`;
+    return matchResultToCastMatch(
+      streamHalftime.fullMatchResult,
+      label,
+      USER_CLUB_ID,
+    );
+  }, [streamHalftime]);
+
+  // Sync global soloTickerPlaying flag & clean up on unmount
+  useEffect(() => {
+    setSoloTickerPlaying(liveTickerPlaying);
+  }, [liveTickerPlaying, setSoloTickerPlaying]);
+
   useEffect(() => {
     return () => {
       setSoloTickerPlaying(false);
@@ -176,86 +214,71 @@ export function SeasonDashboard() {
       didUserWinCup(season.cup, USER_CLUB_ID) &&
       !season.cupChampionCelebrated,
   );
+  const hasActive2DBroadcast = Boolean(
+    season?.liveHalftime && !season.liveHalftime.streamAutoMode,
+  );
 
-  // Capture newly simulated user match into the live scoreboard card
-  const latestUserMatch = season?.lastUserMatch ?? null;
+  // Remember when transfer market or injury alert interrupts live auto-advance so we ask [이어서 자동진행 / 일시정지] after
+  // (Interviews intentionally do NOT set this ref — they auto-resume smoothly!)
   useEffect(() => {
-    const waiting = liveAutoWaitingRef.current;
-    if (!waiting || !latestUserMatch) return;
-    if (latestUserMatch.fixtureId === waiting.prevFixtureId) return;
-    liveAutoWaitingRef.current = null;
-    const cast = matchResultToCastMatch(
-      latestUserMatch,
-      waiting.label,
-      USER_CLUB_ID,
-    );
-    const t = window.setTimeout(() => setLiveAutoMatch(cast), 0);
-    return () => window.clearTimeout(t);
-  }, [latestUserMatch]);
+    if (!liveAutoActive) return;
+    if (isTransferOpen) {
+      liveAutoNeedsPromptRef.current = 'transfer';
+    } else if (hasPendingInjury) {
+      liveAutoNeedsPromptRef.current = 'injury';
+    }
+  }, [liveAutoActive, isTransferOpen, hasPendingInjury]);
 
   const launchNextLiveAutoMatch = useCallback(
     (allowCup = false) => {
       if (!season || state.phase !== 'season') return;
       if (season.currentRound >= season.totalRounds && !pendingCupNode) {
         setLiveAutoActive(false);
-        setSoloTickerPlaying(false);
         return;
       }
       if (pendingCupNode && !allowCup) {
         setLiveAutoCupPromptOpen(true);
         return;
       }
-      const nextLabel =
-        pendingCupNode && season.cup && pendingCupStage
-          ? `${season.cup.meta.koreanName} ${CUP_STAGE_LABELS[pendingCupStage]}`
-          : `리그 ${season.currentRound + 1}R`;
-
-      setLiveAutoFrozen({
-        standings: season.standings,
-        round: season.currentRound,
-        lastMatch: season.lastUserMatch,
-      });
-      liveAutoWaitingRef.current = {
-        prevFixtureId: season.lastUserMatch?.fixtureId ?? null,
-        label: nextLabel,
-      };
-      setSoloTickerPlaying(true);
-      simulateSingleMatchInstant();
+      startSoloStreamMatch();
     },
-    [
-      season,
-      state.phase,
-      pendingCupNode,
-      pendingCupStage,
-      setSoloTickerPlaying,
-      simulateSingleMatchInstant,
-    ],
+    [season, state.phase, pendingCupNode, startSoloStreamMatch],
   );
 
   const handleLiveAutoMatchDone = useCallback(() => {
-    setLiveAutoMatch(null);
-    setLiveAutoFrozen(null);
-    setSoloTickerPlaying(false);
-  }, [setSoloTickerPlaying]);
+    // Commit the streamed match result now → updates standings/stats/events/injuries/transfers with zero spoilers
+    commitLiveMatch();
+  }, [commitLiveMatch]);
+
+  const handleEnterLive2DFromStream = useCallback(
+    (minute: number, inPenalties: boolean) => {
+      liveAutoNeedsPromptRef.current =
+        streamHalftime?.competition === 'cup' ? 'cup' : 'live_match';
+      setLiveAutoUserPaused(false);
+      enterLiveBroadcastFromStream(minute, inPenalties);
+    },
+    [streamHalftime?.competition, enterLiveBroadcastFromStream],
+  );
 
   const stopLiveAuto = useCallback(() => {
-    liveAutoWaitingRef.current = null;
+    liveAutoNeedsPromptRef.current = null;
     setLiveAutoActive(false);
     setLiveAutoUserPaused(false);
-    setLiveAutoMatch(null);
-    setLiveAutoFrozen(null);
     setLiveAutoCupPromptOpen(false);
+    setLiveAutoResumePrompt(null);
+    cancelSoloStreamMatch();
     setSoloTickerPlaying(false);
-  }, [setSoloTickerPlaying]);
+  }, [cancelSoloStreamMatch, setSoloTickerPlaying]);
 
-  // Schedule next live auto-advance match once current scoreboard finishes & no blocking event/popup is open
+  // Schedule next live auto-advance match (or ask resume confirmation after cup/2D/transfer/injury)
   const liveAutoBlockedByEvent =
     isTransferOpen ||
     hasPendingInjury ||
     hasPendingEvent ||
     uncelebratedCupWin ||
-    Boolean(season?.liveHalftime) ||
-    liveAutoCupPromptOpen;
+    hasActive2DBroadcast ||
+    liveAutoCupPromptOpen ||
+    liveAutoResumePrompt !== null;
 
   useEffect(() => {
     if (
@@ -263,15 +286,22 @@ export function SeasonDashboard() {
       state.phase !== 'season' ||
       !liveAutoActive ||
       liveAutoUserPaused ||
-      liveAutoMatch !== null ||
-      liveAutoWaitingRef.current !== null ||
+      liveTickerPlaying ||
       liveAutoBlockedByEvent
     ) {
       return;
     }
     if (season.currentRound >= season.totalRounds && !pendingCupNode) {
+      liveAutoNeedsPromptRef.current = null;
       const stopT = window.setTimeout(() => setLiveAutoActive(false), 0);
       return () => window.clearTimeout(stopT);
+    }
+    // After direct cup/2D play, transfer window, or injury handling, ask user whether to continue or stay paused
+    if (liveAutoNeedsPromptRef.current !== null) {
+      const reason = liveAutoNeedsPromptRef.current;
+      liveAutoNeedsPromptRef.current = null;
+      const promptT = window.setTimeout(() => setLiveAutoResumePrompt(reason), 80);
+      return () => window.clearTimeout(promptT);
     }
     if (pendingCupNode) {
       const cupT = window.setTimeout(() => setLiveAutoCupPromptOpen(true), 120);
@@ -286,34 +316,17 @@ export function SeasonDashboard() {
     state.phase,
     liveAutoActive,
     liveAutoUserPaused,
-    liveAutoMatch,
+    liveTickerPlaying,
     liveAutoBlockedByEvent,
     pendingCupNode,
     launchNextLiveAutoMatch,
   ]);
 
-  // Watchdog: never leave global soloTickerPlaying stuck true if no match arrived
-  useEffect(() => {
-    if (!soloTickerPlaying || liveAutoMatch !== null) return;
-    const t = window.setTimeout(() => {
-      liveAutoWaitingRef.current = null;
-      setLiveAutoFrozen(null);
-      setSoloTickerPlaying(false);
-    }, 1500);
-    return () => window.clearTimeout(t);
-  }, [soloTickerPlaying, liveAutoMatch, setSoloTickerPlaying]);
-
   if (!season) return null;
 
-  const liveTickerPlaying = soloTickerPlaying || liveAutoMatch !== null;
-  const displayStandings =
-    liveTickerPlaying && liveAutoFrozen ? liveAutoFrozen.standings : season.standings;
-  const displayRound =
-    liveTickerPlaying && liveAutoFrozen ? liveAutoFrozen.round : season.currentRound;
-  const displayLastMatch =
-    liveTickerPlaying && liveAutoFrozen
-      ? liveAutoFrozen.lastMatch
-      : season.lastUserMatch;
+  const displayStandings = season.standings;
+  const displayRound = season.currentRound;
+  const displayLastMatch = season.lastUserMatch;
 
   const league = getLeagueById(season.leagueId);
   const viewedLeagueId: LeagueId = standingsLeagueId ?? season.leagueId;
@@ -434,17 +447,21 @@ export function SeasonDashboard() {
   const liveAutoPauseReason =
     !liveAutoActive || liveTickerPlaying
       ? null
-      : liveAutoCupPromptOpen
-        ? '컵대회 일시정지'
-        : isTransferOpen
-          ? '이적시장 일시정지'
-          : hasPendingEvent
-            ? '인터뷰 일시정지'
-            : hasPendingInjury
-              ? '부상 알림 일시정지'
-              : uncelebratedCupWin
-                ? '컵 우승 축하'
-                : null;
+      : hasActive2DBroadcast
+        ? '2D 경기 진행 중'
+        : liveAutoResumePrompt !== null
+          ? '진행 선택 대기'
+          : liveAutoCupPromptOpen
+            ? '컵대회 일시정지'
+            : isTransferOpen
+              ? '이적시장 일시정지'
+              : hasPendingEvent
+                ? '인터뷰 일시정지'
+                : hasPendingInjury
+                  ? '부상 알림 일시정지'
+                  : uncelebratedCupWin
+                    ? '컵 우승 축하'
+                    : null;
 
   const controlsBlocked =
     season.transferMarket.isOpen ||
@@ -637,6 +654,7 @@ export function SeasonDashboard() {
           }}
           onStop={stopLiveAuto}
           onMatchDone={handleLiveAutoMatchDone}
+          onEnterLiveMatch={handleEnterLive2DFromStream}
         />
       )}
 
@@ -1459,6 +1477,7 @@ export function SeasonDashboard() {
                 <button
                   type="button"
                   onClick={() => {
+                    liveAutoNeedsPromptRef.current = 'cup';
                     setLiveAutoCupPromptOpen(false);
                     startLiveMatch();
                   }}
@@ -1472,6 +1491,59 @@ export function SeasonDashboard() {
           </div>
         );
       })()}
+
+      {/* Live Auto-Advance Resume Confirmation Modal (after Cup/2D play, Transfer Market, or Injury) */}
+      {liveAutoActive &&
+        liveAutoResumePrompt !== null &&
+        !liveTickerPlaying &&
+        !hasActive2DBroadcast &&
+        !isTransferOpen &&
+        !hasPendingInjury &&
+        !hasPendingEvent && (
+          <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4">
+            <ModalBodyLock />
+            <div className="modal-panel w-full max-w-sm rounded-2xl border border-slate-700 bg-[#111822] p-5 shadow-2xl space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
+                  <Radio className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-white">
+                    {LIVE_AUTO_RESUME_COPY[liveAutoResumePrompt].title}
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                    {LIVE_AUTO_RESUME_COPY[liveAutoResumePrompt].subtitle}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  id="live-auto-resume-pause-btn"
+                  type="button"
+                  onClick={() => {
+                    setLiveAutoResumePrompt(null);
+                    setLiveAutoUserPaused(true);
+                  }}
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+                >
+                  일시정지
+                </button>
+                <button
+                  id="live-auto-resume-continue-btn"
+                  type="button"
+                  onClick={() => {
+                    setLiveAutoResumePrompt(null);
+                    setLiveAutoUserPaused(false);
+                  }}
+                  className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                >
+                  이어서 자동진행
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* Club Squad Modal */}
       <ClubSquadModal

@@ -22,6 +22,7 @@ import type {
   GlobalSeasonAwards,
   LeagueId,
   MatchResult,
+  PenaltyKickLog,
   PlayerSeasonStats,
   SeasonAwards,
   StandingRow,
@@ -261,7 +262,12 @@ export interface MpCastMatch {
   homeGoals: number;
   awayGoals: number;
   extraTime: boolean;
-  penalties?: { home: number; away: number; winnerId: string } | null;
+  penalties?: {
+    home: number;
+    away: number;
+    winnerId: string;
+    kicks?: PenaltyKickLog[];
+  } | null;
   winnerId?: string | null;
   humanClubIds: string[];
   /** Key moments (goals, big saves, chances) shown only on the viewer's own match card */
