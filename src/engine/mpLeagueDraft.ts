@@ -13,18 +13,31 @@ import type { Player, Position, SubPosition } from '../types/player';
 import { getLeagueById } from './dataLoader';
 import { DEFAULT_ROULETTE_LEGEND_RATE, spinClubRoulette } from './draftEngine';
 
-/** Snake order: 1→2→3→3→2→1→1→2→3 ... Returns the index into `order` for a 0-based pick number. */
+/**
+ * Rotating round-start draft order so every player (2/3/4P) gets equal first-pick & roulette turns:
+ * - 2P: 1→2, 2→1 (8/8)
+ * - 3P: 1→2→3, 2→3→1, 3→1→2 (6/5/5)
+ * - 4P: 1→2→3→4, 2→3→4→1, 3→4→1→2, 4→1→2→3 (4/4/4/4)
+ */
 export function snakePickerIndex(pickNo: number, playerCount: number): number {
   if (playerCount <= 0) return 0;
   const round = Math.floor(pickNo / playerCount);
   const pos = pickNo % playerCount;
-  return round % 2 === 0 ? pos : playerCount - 1 - pos;
+  return (round + pos) % playerCount;
 }
 
 export function snakePickerId(pickNo: number, order: string[]): string | null {
   if (order.length === 0) return null;
   if (pickNo >= order.length * MP_LEAGUE_DRAFT_PICKS) return null;
   return order[snakePickerIndex(pickNo, order.length)] ?? null;
+}
+
+/** Ordered player IDs for a given 0-based draft round (index 0 is that round's roulette spinner). */
+export function roundOrderIds(round: number, order: string[]): string[] {
+  const n = order.length;
+  if (n === 0) return [];
+  const start = ((round % n) + n) % n;
+  return Array.from({ length: n }, (_, i) => order[(start + i) % n]);
 }
 
 export function totalSnakePicks(playerCount: number): number {

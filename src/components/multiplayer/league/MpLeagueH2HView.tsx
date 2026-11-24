@@ -714,6 +714,15 @@ function MpLeagueH2HInner({
   };
   const goLocal = (phase: MpMatchPhase) => setLocalPhase({ remote: remotePhaseKey, phase });
 
+  const homeBarrierLocked = Boolean(
+    currentBarrierKey &&
+      rowOf(homeHuman)?.tactic_submission?.barrierKey === currentBarrierKey,
+  );
+  const awayBarrierLocked = Boolean(
+    currentBarrierKey &&
+      rowOf(awayHuman)?.tactic_submission?.barrierKey === currentBarrierKey,
+  );
+
   const override: LiveMatchBroadcastOverride = {
     state: {
       formation: current.formation,
@@ -731,6 +740,15 @@ function MpLeagueH2HInner({
       ovr: 86,
       traitId: viewIsHome ? match.guestManagerTraitId : match.hostManagerTraitId,
     },
+    isSpectator: !isParticipant,
+    spectatorStatus: !isParticipant
+      ? {
+          homeName: homeHuman.nickname,
+          awayName: awayHuman.nickname,
+          homeLocked: homeBarrierLocked,
+          awayLocked: awayBarrierLocked,
+        }
+      : undefined,
     disableInstantFinish: true,
     disableLiveSub: true,
     lockSpeed: spec.speed,

@@ -13,7 +13,7 @@ import {
   WifiOff,
   Zap,
 } from 'lucide-react';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemistryEngine';
 import { getMoraleLabel } from '../../../engine/conditionEngine';
 import { getLeagueById } from '../../../engine/dataLoader';
@@ -87,8 +87,38 @@ const UCL_KO_STEPS: { id: UclKnockoutStage; label: string }[] = [
 type DashTab = 'results' | 'cup' | 'ucl' | 'domestic';
 type MobileSection = 'main' | 'table' | 'leaders';
 
-/** Popups each tab has already shown (survives remounts when a friend match takes over the screen). */
-const seenPopups = new Set<string>();
+const SEEN_POPUPS_STORAGE_KEY = 'rtt_mp_seen_popups_v1';
+
+function loadPersistedSeenPopups(): string[] {
+  try {
+    const raw = window.localStorage.getItem(SEEN_POPUPS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((x): x is string => typeof x === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Popups already displayed for this room/season/player (persisted in localStorage + memory). */
+const seenPopups = new Set<string>(loadPersistedSeenPopups());
+
+export function markMpPopupSeen(key: string): void {
+  if (seenPopups.has(key)) return;
+  seenPopups.add(key);
+  try {
+    const recent = Array.from(seenPopups).slice(-40);
+    window.localStorage.setItem(SEEN_POPUPS_STORAGE_KEY, JSON.stringify(recent));
+  } catch {
+    // Ignore storage quota/private mode errors
+  }
+}
+
+export function hasMpPopupBeenSeen(key: string): boolean {
+  return seenPopups.has(key);
+}
 
 interface MpLeagueDashboardProps {
   roomCode: string;
@@ -342,7 +372,9 @@ export function MpLeagueDashboard({
 }: MpLeagueDashboardProps) {
   const [tabChoice, setTabChoice] = useState<DashTab | null>(null);
   const [mobileSection, setMobileSection] = useState<MobileSection>('main');
-  const [popupTick, setPopupTick] = useState(0);
+  const [openCupPopupKey, setOpenCupPopupKey] = useState<string | null>(null);
+  const [openLpPopupKey, setOpenLpPopupKey] = useState<string | null>(null);
+  const [openMilestoneKey, setOpenMilestoneKey] = useState<string | null>(null);
   const [summaryReviewOpen, setSummaryReviewOpen] = useState(false);
   const [inspected, setInspected] = useState<{
     player: Player;
@@ -623,56 +655,88 @@ export function MpLeagueDashboard({
   const milestone: MpUclMilestone | null = live.ucl
     ? reachedUclMilestone(live.ucl, myClubId)
     : null;
-  const milestoneKey = milestone ? `${live.seasonKey}:ms:${milestone}` : null;
+  const milestoneKey = milestone ? `${roomCode}:${live.seasonKey}:${playerId}:ms:${milestone}` : null;
   const lpKey =
-    live.ucl && live.ucl.leaguePhaseRound >= 8 ? `${live.seasonKey}:lp-table` : null;
+    live.ucl && live.ucl.leaguePhaseRound >= 8
+      ? `${roomCode}:${live.seasonKey}:${playerId}:lp-table`
+      : null;
   const popupsAllowed = !live.cast && !tickerPlaying && flow.kind !== 'cast';
   const summaryActive = flow.kind === 'summary' && live.summary !== null;
 
-  // Spoiler-free Domestic Cup Champion popup: ONLY allowed once live stream finishes FT/PK!
+  // Spoiler-free Domestic Cup Champion popup: ONLY triggers once during domestic league stage after live stream finishes
   const cupChampKey =
-    view.cup?.completed && view.cup.championTeamId
-      ? `${live.seasonKey}:cup-champ`
+    live.stage === 'league' && view.cup?.completed && view.cup.championTeamId
+      ? `${roomCode}:${live.seasonKey}:${playerId}:cup-champ`
       : null;
-  const showCupChampion = Boolean(
-    popupTick >= 0 &&
-      popupsAllowed &&
+  const canTriggerCupChampion = Boolean(
+    popupsAllowed &&
       !showTransfer &&
       !visibleEvent &&
       !showResolution &&
       cupChampKey &&
-      !seenPopups.has(cupChampKey) &&
-      view.cup &&
-      (view.cup.championTeamId === myClubId || !summaryActive),
+      live.cup?.completed &&
+      (live.cup.championTeamId === myClubId || !summaryActive),
   );
+  const cupPending = Boolean(
+    canTriggerCupChampion && cupChampKey && !hasMpPopupBeenSeen(cupChampKey),
+  );
+  const showCupChampion = Boolean(openCupPopupKey && live.cup?.completed);
 
   // League season summary popup: ALSO strictly gated behind !tickerPlaying & !showCupChampion!
   const showSummary =
-    ((summaryActive && popupsAllowed && !showCupChampion) || summaryReviewOpen) &&
+    ((summaryActive && popupsAllowed && !showCupChampion && !cupPending) || summaryReviewOpen) &&
     live.summary !== null;
 
-  const showLpTable = Boolean(
-    popupTick >= 0 &&
-      popupsAllowed &&
-      !showSummary &&
-      !showCupChampion &&
-      lpKey &&
-      !seenPopups.has(lpKey) &&
-      uclView,
+  const canTriggerLpTable = Boolean(
+    popupsAllowed && !showSummary && !showCupChampion && !cupPending && lpKey && uclView,
   );
-  const showMilestone = Boolean(
+  const lpPending = Boolean(canTriggerLpTable && lpKey && !hasMpPopupBeenSeen(lpKey));
+  const showLpTable = Boolean(openLpPopupKey && uclView);
+
+  const canTriggerMilestone = Boolean(
     popupsAllowed &&
       !showSummary &&
       !showCupChampion &&
+      !cupPending &&
       !showLpTable &&
+      !lpPending &&
       milestoneKey &&
-      !seenPopups.has(milestoneKey) &&
       uclView,
   );
-  const closePopup = (key: string | null) => {
-    if (key) seenPopups.add(key);
-    setPopupTick((n) => n + 1);
-  };
+  const showMilestone = Boolean(openMilestoneKey && uclView && milestone && myHuman);
+
+  // Latch domestic cup champion popup strictly once (persisted in localStorage + memory)
+  useEffect(() => {
+    if (!canTriggerCupChampion || !cupChampKey || hasMpPopupBeenSeen(cupChampKey)) return;
+    const timer = window.setTimeout(() => {
+      if (hasMpPopupBeenSeen(cupChampKey)) return;
+      markMpPopupSeen(cupChampKey);
+      setOpenCupPopupKey(cupChampKey);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canTriggerCupChampion, cupChampKey]);
+
+  // Latch UCL League Phase final standings popup strictly once
+  useEffect(() => {
+    if (!canTriggerLpTable || !lpKey || hasMpPopupBeenSeen(lpKey)) return;
+    const timer = window.setTimeout(() => {
+      if (hasMpPopupBeenSeen(lpKey)) return;
+      markMpPopupSeen(lpKey);
+      setOpenLpPopupKey(lpKey);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canTriggerLpTable, lpKey]);
+
+  // Latch UCL milestone popup strictly once
+  useEffect(() => {
+    if (!canTriggerMilestone || !milestoneKey || hasMpPopupBeenSeen(milestoneKey)) return;
+    const timer = window.setTimeout(() => {
+      if (hasMpPopupBeenSeen(milestoneKey)) return;
+      markMpPopupSeen(milestoneKey);
+      setOpenMilestoneKey(milestoneKey);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [canTriggerMilestone, milestoneKey]);
   const isTreble = Boolean(
     myClubId &&
       live.ucl?.championTeamId === myClubId &&
@@ -1022,7 +1086,7 @@ export function MpLeagueDashboard({
         <div className="rounded-xl border border-sky-400/40 bg-gradient-to-r from-[#0a1628] via-[#0e1b30] to-[#0c1422] px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex flex-wrap items-center gap-2">
             <PixelTrophySvg variant="ucl" size={20} />
-            <span className="text-xs font-extrabold text-sky-200">{flow.label} 시작</span>
+            <span className="text-xs font-extrabold text-sky-200">{flow.label} · 전술 정비</span>
             {live.humans.map((h) => {
               const ok = rowByPlayer(h)?.activity?.ackKeys?.includes(flow.key);
               return (
@@ -1045,15 +1109,26 @@ export function MpLeagueDashboard({
               {pendingAckNames(flow.key).join(', ')} 대기 중
             </span>
           ) : (
-            <button
-              id="mpl-consent-btn"
-              type="button"
-              onClick={() => onAck(flow.key)}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
-            >
-              <Check className="w-3.5 h-3.5" />
-              진행 동의
-            </button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                disabled={!mySquad}
+                onClick={onOpenEditor}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 disabled:opacity-40 cursor-pointer"
+              >
+                <Shield className="w-3.5 h-3.5" />
+                전술 수정
+              </button>
+              <button
+                id="mpl-consent-btn"
+                type="button"
+                onClick={() => onAck(flow.key)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+              >
+                <Check className="w-3.5 h-3.5" />
+                준비 완료
+              </button>
+            </div>
           )}
         </div>
       )}
@@ -1088,7 +1163,7 @@ export function MpLeagueDashboard({
               id: 'table' as const,
               label: isUclStage
                 ? live.ucl?.stage === 'league_phase'
-                  ? 'UCL 순위표'
+                  ? '리그페이즈 순위'
                   : '토너먼트'
                 : '리그 순위표',
             },
@@ -1281,7 +1356,7 @@ export function MpLeagueDashboard({
                     id: 'ucl',
                     label:
                       live.ucl?.stage === 'league_phase'
-                        ? 'UCL 전체 순위표'
+                        ? 'UCL 리그페이즈 순위'
                         : 'UCL 토너먼트 대진표',
                   },
                   { id: 'results', label: '최근 경기 결과' },
@@ -1386,7 +1461,13 @@ export function MpLeagueDashboard({
                   standings={view.uclStandings}
                   clubsById={clubsById}
                   uclSpots={8}
+                  midZoneSpots={24}
                   relegationSpots={12}
+                  title={`UCL 리그페이즈 순위 (${displayUclLpRound}/8R)`}
+                  topZoneLabel="1~8위 16강 직행"
+                  midZoneLabel="9~24위 플레이오프"
+                  bottomZoneLabel="25~36위 탈락"
+                  accent="ucl"
                 />
               ) : (
                 <div className="rounded-xl border border-sky-500/25 bg-[#0b1324] p-2 overflow-x-auto">
@@ -1461,14 +1542,14 @@ export function MpLeagueDashboard({
         />
       )}
 
-      {showCupChampion && view.cup && (
+      {showCupChampion && live.cup && (
         <MpCupChampionPopup
-          cup={view.cup}
+          cup={live.cup}
           leagueId={live.leagueId}
           clubsById={clubsById}
           humans={live.humans}
           myClubId={myClubId}
-          onClose={() => closePopup(cupChampKey)}
+          onClose={() => setOpenCupPopupKey(null)}
         />
       )}
 
@@ -1502,7 +1583,8 @@ export function MpLeagueDashboard({
         !tickerPlaying &&
         !showTransfer &&
         !showSummary &&
-        !showCupChampion && (
+        !showCupChampion &&
+        !cupPending && (
           <ManagerEventModal
             activeEvent={visibleEvent}
             lastResolution={showResolution ? mine.resolution : null}
@@ -1525,7 +1607,8 @@ export function MpLeagueDashboard({
         !tickerPlaying &&
         !showTransfer &&
         !showSummary &&
-        !showCupChampion && (
+        !showCupChampion &&
+        !cupPending && (
           <InjuryAlertModal
             alerts={mine.alerts}
             formation={mySquad.formation}
@@ -1579,7 +1662,7 @@ export function MpLeagueDashboard({
           ucl={uclView.ucl}
           clubsById={uclView.clubsById}
           teamEntryById={uclView.teamEntryById}
-          onClose={() => closePopup(lpKey)}
+          onClose={() => setOpenLpPopupKey(null)}
         />
       )}
 
@@ -1594,7 +1677,7 @@ export function MpLeagueDashboard({
           clubsById={uclView.clubsById}
           uclPlayerStats={uclView.uclPlayerStats}
           isTreble={isTreble}
-          onClose={() => closePopup(milestoneKey)}
+          onClose={() => setOpenMilestoneKey(null)}
         />
       )}
 

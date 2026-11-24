@@ -636,7 +636,7 @@ export function UclDashboard() {
           {(
             [
               ['match', '경기'],
-              ['standings', '순위표'],
+              ['standings', '리그페이즈 순위'],
               ['bracket', '대진표'],
               ['stats', '개인기록'],
               ['squad', '스쿼드'],
@@ -696,7 +696,7 @@ export function UclDashboard() {
           </div>
           <div className="lg:col-span-5">
             <CompactLiveStandings
-              title="UCL 리그 페이즈 실시간 순위"
+              title="UCL 리그페이즈 순위"
               standings={ucl.standings}
               myClubId={USER_CLUB_ID}
               variant="ucl"
@@ -1420,7 +1420,7 @@ export function UclDashboard() {
           {!liveAutoActive && (
             <div className="lg:col-span-4">
               <CompactLiveStandings
-                title="UCL 리그 페이즈 실시간 순위"
+                title="UCL 리그페이즈 순위"
                 standings={ucl.standings}
                 myClubId={USER_CLUB_ID}
                 variant="ucl"
@@ -1441,7 +1441,7 @@ export function UclDashboard() {
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-black text-white">
-              UCL 36팀 통합 스위스 리그 순위표 ({ucl.leaguePhaseRound} / 8R)
+              UCL 리그페이즈 순위 ({ucl.leaguePhaseRound} / 8R)
             </h2>
             <div className="flex flex-wrap gap-3 text-[11px]">
               <span className="text-emerald-400 font-bold">1~8위: 16강 직행</span>

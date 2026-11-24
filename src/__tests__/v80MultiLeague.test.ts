@@ -210,7 +210,7 @@ function assertWorldUnique(
 }
 
 describe('v8.0 multi league — snake draft', () => {
-  it('follows 1→2→3→3→2→1 turns and never hands out the same player twice', () => {
+  it('follows rotating 1→2→3, 2→3→1, 3→1→2 turns and never hands out the same player twice', () => {
     const humans = makeHumans(3);
     const { picks, turnLog, rollIdsByRound } = runSnakeDraft(humans, mulberry32(11));
     // Every pick of a round comes out of that round's single shared roulette
@@ -219,7 +219,7 @@ describe('v8.0 multi league — snake draft', () => {
       expect(rollIdsByRound[round]).toContain(row.player_ref);
     }
     expect(turnLog.slice(0, 9)).toEqual([
-      'p1', 'p2', 'p3', 'p3', 'p2', 'p1', 'p1', 'p2', 'p3',
+      'p1', 'p2', 'p3', 'p2', 'p3', 'p1', 'p3', 'p1', 'p2',
     ]);
     expect(picks).toHaveLength(48);
     expect(new Set(picks.map((p) => p.player_ref)).size).toBe(48);

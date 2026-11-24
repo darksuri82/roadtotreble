@@ -5,6 +5,23 @@
 
 ---
 
+## v8.6 — 멀티 드래프트 균등 순환 순서·내 턴 알림 · 관전자 하프타임 차단 · 컵 우승 팝업 1회 고정 · UCL 리그페이즈 명칭/전술 정비 개편
+
+- **멀티 드래프트 룰렛·첫 턴 균등 순환 배분 (`src/engine/mpLeagueDraft.ts`, `src/components/multiplayer/league/MpLeagueDraftBoard.tsx`)**:
+  - `snakePickerIndex(pickNo, playerCount)`를 스네이크 반전에서 라운드 순환 `(round + pos) % playerCount`로 개편하고 `roundOrderIds`를 추가해 2인(8/8)·3인(6/5/5)·4인(4/4/4/4) 전 참가자가 룰렛과 라운드 첫 픽 기회를 균등하게 배분받도록 개선.
+  - 드래프트 상단에 현재 라운드 순번 트랙(`{round + 1}R 순서`)과 `다음 {round + 2}R 룰렛` 담당자 표시 추가.
+- **멀티 드래프트 내 차례 가벼운 비차단 알림 (`src/components/multiplayer/league/MpLeagueDraftBoard.tsx`)**:
+  - 상대 턴에서 내 턴(룰렛 돌리기/선수 지명)으로 전환 시 클릭을 방해하지 않는 상단 플로팅 토스트(`pointer-events-none`), 에메랄드 테두리 펄스, 브라우저 탭 `[내 차례]` 표기, 모바일 진동 및 `localStorage`(`rtt_mp_draft_turn_sound_v1`) 음소거 토글 가능한 Web Audio 2음 차임 추가.
+- **멀티 맞대결 관전자 하프타임 전술 조작 원천 차단 (`src/components/multiplayer/league/MpLeagueH2HView.tsx`, `src/components/league/LiveMatchBroadcast.tsx`)**:
+  - `LiveMatchBroadcastOverride`에 `isSpectator`·`spectatorStatus`를 도입해 관전자에게 홈 팀 하프타임 라커룸 UI가 렌더링되거나 수석코치 `[추천 적용]`·선발/교체 조작이 가능했던 버그를 차단하고, 전용 읽기 전용 `하프타임 · 양 팀 전술 조정 중` 대기 패널과 양 감독 확정 상태만 표시.
+- **멀티 자국 컵 우승 팝업 반복 노출 버그 근본 해결 (`src/components/multiplayer/league/MpLeagueDashboard.tsx`)**:
+  - `localStorage`(`rtt_mp_seen_popups_v1`) + 메모리 기반 `markMpPopupSeen`/`hasMpPopupBeenSeen`과 1회 래치 상태(`openCupPopupKey`, `openLpPopupKey`, `openMilestoneKey`)로 개편하고 자국 컵 팝업을 `live.stage === 'league'`로 한정해 다음 라운드 티커/Realtime 재수신/새로고침에도 절대 재노출되지 않도록 보장.
+- **UCL 리그페이즈 순위 명칭 통일 & 챔스·토너먼트 진입 전술 정비 일시정지 (`src/components/league/StandingsTable.tsx`, `src/components/multiplayer/league/MpUclSidePanel.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/engine/mpLeagueEngine.ts`)**:
+  - `StandingsTable`에 `title`·존 라벨·`accent` 옵션을 추가해 UCL Phase 2에서 `"리그 순위표"` 대신 `"UCL 리그페이즈 순위"`(1~8위 16강 직행 / 9~24위 플레이오프 / 25~36위 탈락)로 명확히 표기하고, 사이드바·모바일 전환 바·싱글 UCL 탭/테이블 명칭도 통일.
+  - `closeMpLeagueSummary` 및 `stepUclLeaguePhase`에 `ucl-consent-league_phase` 게이트를 추가하고 `flow.kind === 'consent'` 배너에 `[전술 수정]` + `[준비 완료]` 버튼을 배치해, 챔스 리그페이즈 진입 시점과 토너먼트 각 단계 진입 시 한 번 멈춰 전술을 정비한 뒤 진행하도록 개선(`v86MpDraftAndUclPrep.test.ts` 테스트 추가).
+
+---
+
 ## v8.5.4 — 스쿼드 탭 [전술 수정] 일시정지 → [수정 확정] 즉시 재개 UX 개편
 
 - **명시적 [전술 수정] → [수정 확정] 흐름 전환 (`src/hooks/useSoloTacticEditPause.ts`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/league/SquadManagerModal.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/multiplayer/league/MpLeagueRoot.tsx`)**:

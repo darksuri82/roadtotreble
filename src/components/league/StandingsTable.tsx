@@ -6,7 +6,13 @@ interface StandingsTableProps {
   standings: StandingRow[];
   clubsById: Record<string, Club>;
   uclSpots?: number;
+  midZoneSpots?: number;
   relegationSpots?: number;
+  title?: string;
+  topZoneLabel?: string;
+  midZoneLabel?: string;
+  bottomZoneLabel?: string;
+  accent?: 'league' | 'ucl';
   onSelectClub?: (clubId: string) => void;
 }
 
@@ -14,27 +20,52 @@ export function StandingsTable({
   standings,
   clubsById,
   uclSpots = 4,
+  midZoneSpots,
   relegationSpots = 3,
+  title = '리그 순위표',
+  topZoneLabel,
+  midZoneLabel,
+  bottomZoneLabel = '강등권',
+  accent = 'league',
   onSelectClub,
 }: StandingsTableProps) {
   const totalTeams = standings.length;
+  const resolvedTopLabel = topZoneLabel ?? `1~${uclSpots}위 챔피언스리그 진출권`;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-[#101822] shadow-xl">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
+    <div
+      className={`overflow-hidden rounded-2xl border shadow-xl ${
+        accent === 'ucl'
+          ? 'border-sky-500/30 bg-[#0b1324]'
+          : 'border-slate-800 bg-[#101822]'
+      }`}
+    >
+      <div
+        className={`flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 ${
+          accent === 'ucl' ? 'border-sky-500/20 bg-sky-950/20' : 'border-slate-800'
+        }`}
+      >
         <div className="flex items-center gap-2">
-          <Trophy className="w-4 h-4 text-emerald-400" />
-          <h2 className="text-sm font-extrabold text-white">리그 순위표</h2>
+          <Trophy className={`w-4 h-4 ${accent === 'ucl' ? 'text-sky-300' : 'text-emerald-400'}`} />
+          <h2 className="text-sm font-extrabold text-white">{title}</h2>
         </div>
-        <div className="flex items-center gap-3 text-[11px] font-semibold">
+        <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold">
           <span className="flex items-center gap-1.5 text-emerald-300">
             <span className="h-2.5 w-1 rounded-full bg-emerald-400" />
-            1~{uclSpots}위 챔피언스리그 진출권
+            {resolvedTopLabel}
           </span>
-          <span className="hidden sm:flex items-center gap-1.5 text-rose-400">
-            <span className="h-2.5 w-1 rounded-full bg-rose-500" />
-            강등권
-          </span>
+          {midZoneSpots && midZoneLabel && (
+            <span className="hidden sm:flex items-center gap-1.5 text-sky-300">
+              <span className="h-2.5 w-1 rounded-full bg-sky-400" />
+              {midZoneLabel}
+            </span>
+          )}
+          {relegationSpots > 0 && (
+            <span className="hidden sm:flex items-center gap-1.5 text-rose-400">
+              <span className="h-2.5 w-1 rounded-full bg-rose-500" />
+              {bottomZoneLabel}
+            </span>
+          )}
         </div>
       </div>
 
@@ -59,6 +90,7 @@ export function StandingsTable({
             {standings.map((row, idx) => {
               const rank = idx + 1;
               const isUcl = rank <= uclSpots;
+              const isMidZone = Boolean(midZoneSpots && rank > uclSpots && rank <= midZoneSpots);
               const isRelegation = rank > totalTeams - relegationSpots;
               const club = clubsById[row.teamId];
 
@@ -73,12 +105,17 @@ export function StandingsTable({
                       ? 'bg-emerald-500/15 hover:bg-emerald-500/20'
                       : isUcl
                         ? 'bg-emerald-950/15 hover:bg-slate-800/40'
-                        : 'hover:bg-slate-800/35'
+                        : isMidZone
+                          ? 'bg-sky-950/10 hover:bg-slate-800/35'
+                          : 'hover:bg-slate-800/35'
                   }`}
                 >
                   <td className="relative py-1 sm:py-2 pl-2 sm:pl-3 pr-1 sm:pr-2 text-center font-display text-xs sm:text-sm font-bold">
                     {isUcl && (
                       <span className="absolute inset-y-0.5 left-0 w-1 rounded-r bg-emerald-400" />
+                    )}
+                    {isMidZone && (
+                      <span className="absolute inset-y-0.5 left-0 w-1 rounded-r bg-sky-400/80" />
                     )}
                     {isRelegation && (
                       <span className="absolute inset-y-0.5 left-0 w-1 rounded-r bg-rose-500/80" />
@@ -87,9 +124,11 @@ export function StandingsTable({
                       className={
                         isUcl
                           ? 'text-emerald-300'
-                          : isRelegation
-                            ? 'text-rose-400'
-                            : 'text-slate-400'
+                          : isMidZone
+                            ? 'text-sky-300'
+                            : isRelegation
+                              ? 'text-rose-400'
+                              : 'text-slate-400'
                       }
                     >
                       {rank}

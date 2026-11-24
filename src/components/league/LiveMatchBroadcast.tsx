@@ -93,6 +93,13 @@ export interface LiveMatchBroadcastOverride {
     ovr: number;
     traitId: ManagerTraitId;
   };
+  isSpectator?: boolean;
+  spectatorStatus?: {
+    homeName: string;
+    awayName: string;
+    homeLocked: boolean;
+    awayLocked: boolean;
+  };
   disableInstantFinish?: boolean;
   disableLiveSub?: boolean;
   lockSpeed?: 1 | 2 | 4;
@@ -1052,11 +1059,14 @@ export function LiveMatchBroadcast({
     setPendingHtSubConfirm(null);
   };
 
+  const isSpectator = Boolean(override?.isSpectator);
+  const isLockerLocked = isSpectator || Boolean(override?.waitingForOpponentLabel);
+
   const handleApplyCoachRecommendation = (
     starterIndex: number,
     benchIndex: number,
   ) => {
-    if (subsUsed >= maxSubsAllowed) return;
+    if (isLockerLocked || subsUsed >= maxSubsAllowed) return;
     const outPlayer = state.starters[starterIndex];
     const inPlayer = state.bench[benchIndex];
     if (!outPlayer || !inPlayer || subbedOutIdSet.has(inPlayer.id)) return;
@@ -1071,6 +1081,7 @@ export function LiveMatchBroadcast({
   };
 
   const handleHalftimeQuickBestXi = () => {
+    if (isLockerLocked) return;
     setSwapPick(null);
     optimizeHalftimeStarters(selectedTactic);
     setHtNotice(
@@ -1079,6 +1090,7 @@ export function LiveMatchBroadcast({
   };
 
   const handleSlotClick = (area: 'starter' | 'bench', index: number) => {
+    if (isLockerLocked) return;
     const clicked =
       area === 'starter' ? state.starters[index] : state.bench[index];
     if (!clicked) return;
@@ -1943,8 +1955,55 @@ export function LiveMatchBroadcast({
             </div>
           )}
 
+          {/* SPECTATOR-ONLY BREAK PANEL (never exposes tactics / formation / substitution controls to spectators) */}
+          {isLockerPhase && isSpectator && (
+            <div className="mx-auto max-w-xl rounded-2xl border border-sky-500/35 bg-[#0b1220] p-5 sm:p-6 text-center space-y-4">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-500/15 px-3 py-1 text-[11px] font-extrabold text-sky-200">
+                <span className="h-2 w-2 rounded-full bg-sky-400 animate-pulse" />
+                {phase === 'halftime'
+                  ? '하프타임 · 양 팀 전술 조정 중'
+                  : phase === 'extra_time_break'
+                    ? "90' 종료 · 연장전 전술 조정 중"
+                    : "105' 연장 하프타임 · 전술 조정 중"}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-slate-800 bg-[#0d1524] p-3 space-y-1">
+                  <div className="truncate text-xs font-extrabold text-white">
+                    {override?.spectatorStatus?.homeName ?? home.name}
+                  </div>
+                  <div
+                    className={`text-[11px] font-bold ${
+                      override?.spectatorStatus?.homeLocked
+                        ? 'text-emerald-300'
+                        : 'text-amber-300'
+                    }`}
+                  >
+                    {override?.spectatorStatus?.homeLocked ? '전술 확정' : '전술 수정 중'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#0d1524] p-3 space-y-1">
+                  <div className="truncate text-xs font-extrabold text-white">
+                    {override?.spectatorStatus?.awayName ?? away.name}
+                  </div>
+                  <div
+                    className={`text-[11px] font-bold ${
+                      override?.spectatorStatus?.awayLocked
+                        ? 'text-emerald-300'
+                        : 'text-amber-300'
+                    }`}
+                  >
+                    {override?.spectatorStatus?.awayLocked ? '전술 확정' : '전술 수정 중'}
+                  </div>
+                </div>
+              </div>
+              <div className="text-xs font-semibold text-slate-400">
+                {override?.waitingForOpponentLabel ?? '양 팀 감독의 전술 확정을 기다리고 있습니다...'}
+              </div>
+            </div>
+          )}
+
           {/* UNIFIED LOCKER ROOM PANEL (45' Halftime, 90' Extra Time Break, 105' ET Halftime) */}
-          {isLockerPhase && (
+          {isLockerPhase && !isSpectator && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
               <div className="lg:col-span-6 space-y-3">
                 <div className="flex items-center justify-between gap-2">
@@ -2091,14 +2150,14 @@ export function LiveMatchBroadcast({
                               </div>
                               <button
                                 type="button"
-                                disabled={subsRemaining <= 0}
+                                disabled={isLockerLocked || subsRemaining <= 0}
                                 onClick={() =>
                                   handleApplyCoachRecommendation(
                                     rec.starterIndex,
                                     rec.benchIndex,
                                   )
                                 }
-                                className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2.5 py-1 text-[10px] font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-40 cursor-pointer"
+                                className="inline-flex items-center gap-1 rounded-md bg-emerald-500 px-2.5 py-1 text-[10px] font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                               >
                                 <UserCheck className="w-3 h-3" />
                                 추천 적용

@@ -91,7 +91,7 @@ export const SideUclStandings = memo(function SideUclStandings({
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="inline-block h-2 w-2 rounded-full bg-sky-400" />
           <span className="font-extrabold text-sky-100 truncate">
-            UCL 리그 페이즈 {round}/8R
+            UCL 리그페이즈 순위 ({round}/8R)
           </span>
         </div>
         <div className="inline-flex rounded-md border border-sky-500/25 bg-[#0c162b] p-0.5 text-[9px] shrink-0">

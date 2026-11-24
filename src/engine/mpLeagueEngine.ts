@@ -2017,10 +2017,22 @@ function stepLeagueSummary(state: MpLeagueHostState): MpLeagueHostState {
 
 export function closeMpLeagueSummary(state: MpLeagueHostState): MpLeagueHostState {
   if (state.flow.kind !== 'summary') return state;
+  const nextTodo = state.todo[0]?.t === 'league_summary' ? state.todo.slice(1) : state.todo;
+  const enteringUclLp =
+    state.stage === 'ucl' &&
+    state.ucl?.stage === 'league_phase' &&
+    state.ucl.leaguePhaseRound === 0 &&
+    state.uclConsentedStage !== 'league_phase';
   return {
     ...state,
-    flow: { kind: 'auto' },
-    todo: state.todo[0]?.t === 'league_summary' ? state.todo.slice(1) : state.todo,
+    flow: enteringUclLp
+      ? {
+          kind: 'consent',
+          key: 'ucl-consent-league_phase',
+          label: 'UCL 리그페이즈',
+        }
+      : { kind: 'auto' },
+    todo: nextTodo,
   };
 }
 
@@ -2045,6 +2057,17 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
   const target = ucl.leaguePhaseRound + 1;
   if (target > 8 || ucl.stage !== 'league_phase') {
     return { ...state, todo: [{ t: 'ucl_ko_leg' }] };
+  }
+  // Pause once when UCL Phase 2 opens so every manager can review matchups & tweak tactics before 1R
+  if (ucl.leaguePhaseRound === 0 && state.uclConsentedStage !== 'league_phase') {
+    return {
+      ...state,
+      flow: {
+        kind: 'consent',
+        key: 'ucl-consent-league_phase',
+        label: 'UCL 리그페이즈',
+      },
+    };
   }
   const label = `UCL 리그 페이즈 ${target}R`;
   const fixtures = ucl.leaguePhaseFixtures.filter(

@@ -1,10 +1,13 @@
 import {
+  Bell,
   Check,
   FastForward,
   Loader2,
   LogOut,
   Timer,
   Users,
+  Volume2,
+  VolumeX,
   Zap,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -19,6 +22,7 @@ import {
   findNextOpenDraftSlot,
   rebuildSquadFromPicks,
   rollCandidates,
+  roundOrderIds,
   roundSpinnerId,
   snakePickerId,
   spinSharedRoll,
@@ -40,6 +44,47 @@ import type { SlotRef } from '../../common/PitchBoard';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
 import { PlayerDetailModal } from '../../common/PlayerDetailModal';
 import { RouletteReelsView } from '../../draft/RouletteReelsView';
+
+const TURN_SOUND_STORAGE_KEY = 'rtt_mp_draft_turn_sound_v1';
+
+function readTurnSoundPref(): boolean {
+  try {
+    return window.localStorage.getItem(TURN_SOUND_STORAGE_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+/** Plays a very gentle, non-intrusive 2-note Web Audio chime when the player's turn arrives. */
+function playSoftTurnChime(): void {
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    const notes = [523.25, 659.25];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + i * 0.09);
+      gain.gain.setValueAtTime(0.0001, now + i * 0.09);
+      gain.gain.exponentialRampToValueAtTime(0.055, now + i * 0.09 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.09 + 0.17);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.09);
+      osc.stop(now + i * 0.09 + 0.18);
+    });
+    window.setTimeout(() => {
+      void ctx.close().catch(() => {});
+    }, 450);
+  } catch {
+    // Ignore autoplay/browser audio restrictions silently
+  }
+}
 
 interface MpLeagueDraftBoardProps {
   room: MpRoomRow;
@@ -166,13 +211,16 @@ export function MpLeagueDraftBoard({
   const [selectedSlot, setSelectedSlot] = useState<SlotRef | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [activeTabPlayerId, setActiveTabPlayerId] = useState<string>(playerId);
+  const [turnSoundOn, setTurnSoundOn] = useState<boolean>(readTurnSoundPref);
+  const [turnToast, setTurnToast] = useState<string | null>(null);
+  const [turnPulse, setTurnPulse] = useState(false);
   const [inspected, setInspected] = useState<{
     player: Player;
     slotSubPosition?: SubPosition;
   } | null>(null);
   const finalSavedRef = useRef<string | null>(null);
   const autoActedRef = useRef<string | null>(null);
-  const prevIsMyTurnRef = useRef(false);
+  const prevTurnCueRef = useRef<string | null>(null);
 
   const draft = live.draft;
   const order = useMemo(() => draft?.order ?? [], [draft?.order]);
@@ -183,17 +231,76 @@ export function MpLeagueDraftBoard({
   const round = draftRoundOf(pickNo, order.length);
   const currentPickerId = draft && !draftFinished ? snakePickerId(pickNo, order) : null;
   const spinnerId = draft && !draftFinished ? roundSpinnerId(round, order) : null;
+  const nextRoundSpinnerId =
+    draft && !draftFinished && round + 1 < 16 ? roundSpinnerId(round + 1, order) : null;
+  const currentRoundOrder = useMemo(
+    () => (draft && !draftFinished ? roundOrderIds(round, order) : []),
+    [draft, draftFinished, round, order],
+  );
   const isMyTurn = currentPickerId === playerId;
   const iAmSpinner = spinnerId === playerId;
   const rouletteClubCount = order.length >= 3 ? 4 : 3;
 
-  // Automatically focus "내 팀" tab when my turn starts
+  const toggleTurnSound = useCallback(() => {
+    setTurnSoundOn((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(TURN_SOUND_STORAGE_KEY, next ? 'on' : 'off');
+      } catch {
+        // Ignore storage write errors
+      }
+      return next;
+    });
+  }, []);
+
+  // Subtle non-blocking turn cue (tab focus + brief top pill + border pulse + optional soft chime)
+  const myTurnCueId = isMyTurn && !draftFinished ? `${generation}:${pickNo}` : null;
   useEffect(() => {
-    if (isMyTurn && !prevIsMyTurnRef.current) {
-      setActiveTabPlayerId(playerId);
+    if (!myTurnCueId) {
+      prevTurnCueRef.current = null;
+      return;
     }
-    prevIsMyTurnRef.current = isMyTurn;
-  }, [isMyTurn, playerId]);
+    if (prevTurnCueRef.current === myTurnCueId) return;
+    prevTurnCueRef.current = myTurnCueId;
+
+    const msg =
+      iAmSpinner && pickNo % Math.max(1, order.length) === 0
+        ? '내 차례 · 룰렛을 돌려주세요'
+        : '내 차례 · 선수를 지명하세요';
+
+    const tStart = window.setTimeout(() => {
+      setActiveTabPlayerId(playerId);
+      setTurnToast(msg);
+      setTurnPulse(true);
+    }, 0);
+    if (turnSoundOn) {
+      playSoftTurnChime();
+    }
+    try {
+      navigator.vibrate?.(40);
+    } catch {
+      // Ignore vibration API errors
+    }
+    const tPulse = window.setTimeout(() => setTurnPulse(false), 2200);
+    const tToast = window.setTimeout(() => setTurnToast(null), 2600);
+    return () => {
+      window.clearTimeout(tStart);
+      window.clearTimeout(tPulse);
+      window.clearTimeout(tToast);
+    };
+  }, [myTurnCueId, iAmSpinner, pickNo, order.length, playerId, turnSoundOn]);
+
+  // Subtle browser tab title cue while waiting in another tab
+  useEffect(() => {
+    if (!isMyTurn || draftFinished) return;
+    const originalTitle = document.title;
+    if (!originalTitle.startsWith('[내 차례]')) {
+      document.title = `[내 차례] ${originalTitle}`;
+    }
+    return () => {
+      document.title = originalTitle;
+    };
+  }, [isMyTurn, draftFinished]);
 
   const formation: FormationId = myPayload?.formation ?? '4-3-3';
   const tactic: TacticId = myPayload?.tactic ?? 'possession';
@@ -491,74 +598,157 @@ export function MpLeagueDraftBoard({
 
   return (
     <div className="mx-auto max-w-6xl px-2.5 py-2 sm:px-4 sm:py-3 space-y-2.5">
-      {/* Compact Top Bar */}
-      <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] px-3 py-2 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <span className="inline-flex items-center gap-1 rounded-md border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-extrabold text-sky-300">
-            <Users className="w-3 h-3" />
-            스네이크 드래프트
-          </span>
-          <span className="font-mono text-[11px] font-bold text-slate-400">#{room.code}</span>
-          <span className="text-xs font-bold text-white tabular-nums">
-            {Math.min(round + 1, 16)}/16R · {Math.min(pickNo, totalPicks)}/{totalPicks}
-          </span>
-          <span className="hidden sm:inline text-[11px] text-slate-400">
-            ({MANAGER_TRAITS[managerTraitId]?.name})
-          </span>
+      {/* Non-blocking subtle turn cue pill (never intercepts clicks or covers controls) */}
+      {turnToast && isMyTurn && !draftFinished && (
+        <div
+          aria-live="polite"
+          className="pointer-events-none fixed top-3 left-1/2 z-40 -translate-x-1/2 animate-fade-in"
+        >
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/55 bg-[#0a1612]/95 px-3.5 py-1.5 text-xs font-extrabold text-emerald-200 shadow-lg backdrop-blur-sm">
+            <Bell className="w-3.5 h-3.5 text-emerald-300" />
+            <span>{turnToast}</span>
+          </div>
         </div>
+      )}
 
-        <div className="flex flex-wrap items-center gap-1.5">
-          {!draftFinished && draft && (
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`rounded-md border px-2 py-0.5 text-[11px] font-extrabold ${
-                  isMyTurn
-                    ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-300'
-                    : 'border-slate-700 bg-[#111822] text-slate-300'
+      {/* Compact Top Bar */}
+      <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] px-3 py-2 space-y-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="inline-flex items-center gap-1 rounded-md border border-sky-400/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-extrabold text-sky-300">
+              <Users className="w-3 h-3" />
+              순환 드래프트
+            </span>
+            <span className="font-mono text-[11px] font-bold text-slate-400">#{room.code}</span>
+            <span className="text-xs font-bold text-white tabular-nums">
+              {Math.min(round + 1, 16)}/16R · {Math.min(pickNo, totalPicks)}/{totalPicks}
+            </span>
+            <span className="hidden sm:inline text-[11px] text-slate-400">
+              ({MANAGER_TRAITS[managerTraitId]?.name})
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {!draftFinished && draft && (
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`rounded-md border px-2 py-0.5 text-[11px] font-extrabold ${
+                    isMyTurn
+                      ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-300'
+                      : 'border-slate-700 bg-[#111822] text-slate-300'
+                  }`}
+                >
+                  {isMyTurn ? '내 차례' : `${currentPicker?.nickname ?? '상대'} 차례`}
+                </span>
+                <TurnTimer
+                  turnKey={`${generation}:${pickNo}`}
+                  turnSec={draft.turnSec}
+                  onExpire={handleExpire}
+                />
+              </div>
+            )}
+            {draftFinished && (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-300">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                시즌 준비 중
+              </span>
+            )}
+            {!draftFinished && (
+              <button
+                type="button"
+                onClick={toggleTurnSound}
+                title={turnSoundOn ? '내 차례 알림음 끄기' : '내 차례 알림음 켜기'}
+                aria-label={turnSoundOn ? '내 차례 알림음 끄기' : '내 차례 알림음 켜기'}
+                className={`inline-flex items-center rounded-lg border p-1.5 cursor-pointer ${
+                  turnSoundOn
+                    ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-300'
+                    : 'border-slate-800 bg-[#111822] text-slate-500 hover:text-slate-300'
                 }`}
               >
-                {isMyTurn ? '내 차례' : `${currentPicker?.nickname ?? '상대'} 차례`}
-              </span>
-              <TurnTimer
-                turnKey={`${generation}:${pickNo}`}
-                turnSec={draft.turnSec}
-                onExpire={handleExpire}
-              />
-            </div>
-          )}
-          {draftFinished && (
-            <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-300">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              시즌 준비 중
-            </span>
-          )}
-          {!draftFinished && (
+                {turnSoundOn ? (
+                  <Volume2 className="w-3.5 h-3.5" />
+                ) : (
+                  <VolumeX className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
+            {!draftFinished && (
+              <button
+                id="mpl-auto-draft-btn"
+                type="button"
+                disabled={iAgreedAuto}
+                onClick={() => onAck(autoKey)}
+                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10.5px] font-bold ${
+                  iAgreedAuto
+                    ? 'border-emerald-500/40 bg-emerald-500/12 text-emerald-300'
+                    : 'border-slate-700 bg-[#111822] text-slate-300 hover:border-emerald-400/50 cursor-pointer'
+                }`}
+              >
+                <FastForward className="w-3 h-3" />
+                자동{' '}
+                {players.filter((p) => p.activity?.ackKeys?.includes(autoKey)).length}/
+                {players.length}
+              </button>
+            )}
             <button
-              id="mpl-auto-draft-btn"
               type="button"
-              disabled={iAgreedAuto}
-              onClick={() => onAck(autoKey)}
-              className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10.5px] font-bold ${
-                iAgreedAuto
-                  ? 'border-emerald-500/40 bg-emerald-500/12 text-emerald-300'
-                  : 'border-slate-700 bg-[#111822] text-slate-300 hover:border-emerald-400/50 cursor-pointer'
-              }`}
+              onClick={onLeaveRoom}
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#111822] px-2 py-1 text-[10.5px] font-bold text-slate-400 hover:text-rose-300 cursor-pointer"
             >
-              <FastForward className="w-3 h-3" />
-              자동{' '}
-              {players.filter((p) => p.activity?.ackKeys?.includes(autoKey)).length}/
-              {players.length}
+              <LogOut className="w-3 h-3" />
+              나가기
             </button>
-          )}
-          <button
-            type="button"
-            onClick={onLeaveRoom}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#111822] px-2 py-1 text-[10.5px] font-bold text-slate-400 hover:text-rose-300 cursor-pointer"
-          >
-            <LogOut className="w-3 h-3" />
-            나가기
-          </button>
+          </div>
         </div>
+
+        {/* Compact Rotating Round Order & Roulette Track */}
+        {!draftFinished && currentRoundOrder.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-1.5 border-t border-slate-800/70 pt-1.5 text-[10.5px]">
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="font-bold text-slate-500 mr-0.5">
+                {round + 1}R 순서
+              </span>
+              {currentRoundOrder.map((pid, idx) => {
+                const nick = nicknameByPlayerId[pid] ?? '참가자';
+                const isActive = pid === currentPickerId;
+                const isSpinner = idx === 0;
+                const doneInRound = idx < pickNo % Math.max(1, currentRoundOrder.length);
+                return (
+                  <span key={pid} className="inline-flex items-center gap-1">
+                    {idx > 0 && <span className="text-slate-600">→</span>}
+                    <span
+                      className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-bold ${
+                        isActive
+                          ? 'border border-emerald-400/55 bg-emerald-500/18 text-emerald-200'
+                          : doneInRound
+                            ? 'bg-slate-900/70 text-slate-500 line-through'
+                            : 'bg-[#111822] text-slate-300'
+                      }`}
+                    >
+                      {isSpinner && (
+                        <span className="rounded bg-amber-500/20 px-1 text-[9px] font-extrabold text-amber-300">
+                          룰렛
+                        </span>
+                      )}
+                      <span>{nick}</span>
+                      {pid === playerId && (
+                        <span className="text-[9px] font-black text-emerald-400">ME</span>
+                      )}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+            {nextRoundSpinnerId && (
+              <span className="text-[10px] font-semibold text-slate-400">
+                다음 {round + 2}R 룰렛:{' '}
+                <strong className="text-slate-200">
+                  {nicknameByPlayerId[nextRoundSpinnerId] ?? '-'}
+                </strong>
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Main 2-Column Layout: [Left: Player Tabs + Single Original Pitch] | [Right: Compact Candidate Pool] */}
@@ -566,8 +756,12 @@ export function MpLeagueDraftBoard({
         {/* Right/Top on mobile: Compact Shared Roulette & Candidate Pool (7 cols) */}
         <div className="lg:col-span-7 order-1 lg:order-2">
           <div
-            className={`rounded-xl sm:rounded-2xl border bg-[#0d131c] p-2 sm:p-2.5 space-y-2 ${
-              isMyTurn ? 'border-emerald-500/40' : 'border-slate-800/90'
+            className={`rounded-xl sm:rounded-2xl border bg-[#0d131c] p-2 sm:p-2.5 space-y-2 transition-shadow duration-300 ${
+              turnPulse
+                ? 'border-emerald-400/80 ring-2 ring-emerald-400/45 shadow-[0_0_24px_rgba(16,185,129,0.2)]'
+                : isMyTurn
+                  ? 'border-emerald-500/45'
+                  : 'border-slate-800/90'
             }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs px-0.5">
