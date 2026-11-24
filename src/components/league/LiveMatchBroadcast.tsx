@@ -172,6 +172,12 @@ function getStaminaTextColor(pct: number): string {
   return 'text-rose-400';
 }
 
+export function shouldRenderLiveMatchBroadcast(
+  liveHalftime: LiveHalftimeState | null | undefined,
+): liveHalftime is LiveHalftimeState {
+  return Boolean(liveHalftime && !liveHalftime.streamAutoMode);
+}
+
 export function LiveMatchBroadcast({
   clubsById,
   override,
@@ -216,7 +222,10 @@ export function LiveMatchBroadcast({
     ? override.commitLiveMatch
     : gameCtx.commitLiveMatch;
 
-  const halftime = state.season?.liveHalftime ?? null;
+  const rawHalftime = state.season?.liveHalftime ?? null;
+  const halftime = shouldRenderLiveMatchBroadcast(rawHalftime)
+    ? rawHalftime
+    : null;
   useBodyScrollLock(Boolean(halftime));
 
   const lockedSpeed = override?.lockSpeed;

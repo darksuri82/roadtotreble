@@ -12,15 +12,32 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v8.5.1';
+export const CURRENT_APP_VERSION = 'v8.5.2';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v8.5.2',
+    codename: '솔로 라이브 자동진행 시 2D 경기 중계 모달이 덮어 열리던 오류 핫픽스',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '솔로 플레이에서 [자동진행]을 눌렀을 때 상단 라이브 스코어보드 대신 2D 경기 시뮬레이션 모달이 자동으로 열리던 오류를 수정했습니다. 이제 자동진행 중에는 상단 라이브 스코어보드로 매끄럽게 중계되며, 일시정지 후 [2D 경기 중계 입장] 버튼을 눌렀을 때에만 해당 경기 2D 시뮬레이션으로 진입합니다.',
+    sections: [
+      {
+        category: '솔로 라이브 스코어보드 자동진행 핫픽스',
+        items: [
+          'v8.4.2에서 중계 중 2D 난입을 지원하기 위해 liveHalftime에 streamAutoMode: true 상태로 보관하던 라이브 스트리밍 경기를 2D 중계 모달(LiveMatchBroadcast)이 일반 2D 경기로 오인해 즉시 화면을 덮어 열던 버그를 수정했습니다.',
+          '정규 리그(SeasonDashboard)와 챔피언스리그(UclDashboard) 및 LiveMatchBroadcast 내부에 streamAutoMode 차단 가드(shouldRenderLiveMatchBroadcast)를 적용해, 상단 라이브 스코어보드 자동진행과 일시정지 후 2D 난입이 모두 정상 동작하도록 복구했습니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v8.5.1',
     codename:
       '4인 멀티리그 2차전 맞대결 2D 집중 진행 · 4인 이적시장·인터뷰 렉/누락/버튼 잠금 종합 최적화',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'MAJOR',
     summary:
       '4인 멀티리그에서 12번의 리그 맞대결을 모두 2D로 치르며 진행이 루즈해지던 템포를 개선해, 각 대진의 2차전(후반기 리턴매치 6경기)만 2D 시뮬레이션으로 진행하고 1차전은 라이브 스코어보드로 자연스럽게 중계되도록 개편했습니다. 아울러 4인 동시 이적시장·인터뷰 환경에서 발생하던 3·4번 참가자 제안 0건 누락, 과대 페이로드 렉, 동시 클릭 버튼 잠금 꼬임, 모달 z-index 가림 및 리렌더 스파이크를 다각적으로 진단해 일괄 수정했습니다.',
     sections: [

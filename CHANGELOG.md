@@ -5,6 +5,14 @@
 
 ---
 
+## v8.5.2 — 솔로 라이브 자동진행 시 2D 중계 모달 오오픈 핫픽스
+
+- **솔로 라이브 스코어보드 자동진행 정상 복구 (`src/components/league/LiveMatchBroadcast.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - `START_SOLO_STREAM_MATCH`가 미확정 스트리밍 경기를 `liveHalftime.streamAutoMode = true`로 저장할 때, `LiveMatchBroadcast`가 `streamAutoMode`를 필터링하지 않아 상단 `SoloLiveScoreboard` 대신 전체 화면 2D 경기 중계 모달이 즉시 열리던 회귀 버그를 수정.
+  - `shouldRenderLiveMatchBroadcast(liveHalftime)`(`Boolean(liveHalftime && !liveHalftime.streamAutoMode)`)를 `LiveMatchBroadcast` 내부와 `SeasonDashboard`·`UclDashboard` 마운트 조건 모두에 적용해, 자동진행 중에는 상단 라이브 스코어보드로 재생되고 일시정지 → `[2D 경기 중계 입장]` 클릭 시(`streamAutoMode: false`)에만 2D 시뮬레이션으로 전환되도록 복구(`v84LiveScoreboardAndSkip.test.ts` 회귀 검증 추가).
+
+---
+
 ## v8.5.1 — 4인 멀티리그 2차전 맞대결 2D 집중 진행 · 4인 이적시장·인터뷰 렉/누락/팝업 오류 종합 수정
 
 - **4인 멀티리그 리그 맞대결 2차전만 2D 시뮬레이션 (`src/engine/mpLeagueEngine.ts`)**:

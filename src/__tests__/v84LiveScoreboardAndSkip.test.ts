@@ -3,6 +3,7 @@ import {
   matchResultToCastMatch,
   SOLO_LIVE_SPEED_OPTIONS,
 } from '../components/common/SoloLiveScoreboard';
+import { shouldRenderLiveMatchBroadcast } from '../components/league/LiveMatchBroadcast';
 import { ACTIVE_PLAYERS } from '../engine/dataLoader';
 import {
   buildAutoPick,
@@ -417,9 +418,11 @@ describe('v8.4 solo live scoreboard, H2H preview skip/result confirmation & redu
     expect(st.season?.currentRound).toBe(0);
 
     // Start solo live stream → uncommitted streamAutoMode liveHalftime with fullMatchResult
+    // Crucial: LiveMatchBroadcast MUST NOT open while streamAutoMode === true (top SoloLiveScoreboard plays instead!)
     const streaming = gameReducer(st, { type: 'START_SOLO_STREAM_MATCH' });
     expect(streaming.season?.currentRound).toBe(0);
     expect(streaming.season?.liveHalftime?.streamAutoMode).toBe(true);
+    expect(shouldRenderLiveMatchBroadcast(streaming.season?.liveHalftime)).toBe(false);
     expect(streaming.season?.liveHalftime?.fullMatchResult).toBeTruthy();
     expect(streaming.season?.liveHalftime?.streamResult90).toBeTruthy();
 
@@ -429,6 +432,7 @@ describe('v8.4 solo live scoreboard, H2H preview skip/result confirmation & redu
       payload: { minute: 28, inPenalties: false },
     });
     expect(mid1st.season?.liveHalftime?.streamAutoMode).toBe(false);
+    expect(shouldRenderLiveMatchBroadcast(mid1st.season?.liveHalftime)).toBe(true);
     expect(mid1st.season?.liveHalftime?.phase).toBe('first_half');
     expect(mid1st.season?.liveHalftime?.resumeFromMinute).toBe(28);
     expect(mid1st.season?.liveHalftime?.fullMatchResult).toBeUndefined();
@@ -439,6 +443,7 @@ describe('v8.4 solo live scoreboard, H2H preview skip/result confirmation & redu
       payload: { minute: 66, inPenalties: false },
     });
     expect(mid2nd.season?.liveHalftime?.streamAutoMode).toBe(false);
+    expect(shouldRenderLiveMatchBroadcast(mid2nd.season?.liveHalftime)).toBe(true);
     expect(mid2nd.season?.liveHalftime?.phase).toBe('second_half');
     expect(mid2nd.season?.liveHalftime?.resumeFromMinute).toBe(66);
     expect(mid2nd.season?.liveHalftime?.fullMatchResult).toBeTruthy();
@@ -446,6 +451,7 @@ describe('v8.4 solo live scoreboard, H2H preview skip/result confirmation & redu
     // Cancel uncommitted stream cleanly without mutating standings/round
     const cancelled = gameReducer(streaming, { type: 'CANCEL_SOLO_STREAM_MATCH' });
     expect(cancelled.season?.liveHalftime).toBeNull();
+    expect(shouldRenderLiveMatchBroadcast(cancelled.season?.liveHalftime)).toBe(false);
     expect(cancelled.season?.currentRound).toBe(0);
 
     // Committing after scoreboard FT advances round to 1

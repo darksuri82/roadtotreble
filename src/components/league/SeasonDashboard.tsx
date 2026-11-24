@@ -67,7 +67,10 @@ import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
 import { FastSimModal } from './FastSimModal';
 import { LeagueLeadersSideCard } from './LeagueLeadersSideCard';
-import { LiveMatchBroadcast } from './LiveMatchBroadcast';
+import {
+  LiveMatchBroadcast,
+  shouldRenderLiveMatchBroadcast,
+} from './LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from './MatchDayTacticsRoom';
 import { MatchReportPanel } from './MatchReportPanel';
 import { SquadManagerModal } from './SquadManagerModal';
@@ -1148,7 +1151,9 @@ export function SeasonDashboard() {
       )}
 
       {/* Real-Time Match Broadcast Modal (0' -> 45' HT -> 90' FT -> ET/PK) */}
-      <LiveMatchBroadcast clubsById={clubsById} />
+      {shouldRenderLiveMatchBroadcast(season.liveHalftime) && (
+        <LiveMatchBroadcast clubsById={clubsById} />
+      )}
 
       {/* Fast-Forward Unified Simulation Modal */}
       <FastSimModal

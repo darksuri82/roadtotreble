@@ -63,7 +63,10 @@ import {
   SoloLiveScoreboard,
 } from '../common/SoloLiveScoreboard';
 import type { SoloLiveDurationMs } from '../common/SoloLiveScoreboard';
-import { LiveMatchBroadcast } from '../league/LiveMatchBroadcast';
+import {
+  LiveMatchBroadcast,
+  shouldRenderLiveMatchBroadcast,
+} from '../league/LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
 import { UclBracketTree } from './UclBracketTree';
@@ -420,7 +423,9 @@ export function UclDashboard() {
       {season.transferMarket.isOpen && <TransferMarketModal />}
 
       {/* Live Match Broadcast Modal (reuses full 2D pitch + Slow-Mo + Stamina + ET/PK!) */}
-      {season.liveHalftime && <LiveMatchBroadcast clubsById={clubsById} />}
+      {shouldRenderLiveMatchBroadcast(season.liveHalftime) && (
+        <LiveMatchBroadcast clubsById={clubsById} />
+      )}
 
       {/* UCL League Phase Animated Fast-Sim Modal */}
       <UclLeaguePhaseFastSimModal
