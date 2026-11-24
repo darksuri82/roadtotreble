@@ -1430,6 +1430,10 @@ export interface GenerateIncomingTradeOffersParams {
   conditionMap?: PlayerConditionMap;
   departedPlayerIds?: string[];
   allowedLeagueIds?: LeagueId[];
+  /** AI club IDs to skip (e.g. already negotiating with another human in multiplayer) */
+  excludeClubIds?: string[];
+  /** Minimum offer count floor (default 0; multiplayer sets 1 so every manager opens the window with offers) */
+  minOfferCount?: number;
   rng?: () => number;
 }
 
@@ -1455,6 +1459,8 @@ export function generateIncomingTradeOffers(
     conditionMap,
     departedPlayerIds = [],
     allowedLeagueIds,
+    excludeClubIds = [],
+    minOfferCount = 0,
     rng = Math.random,
   } = params;
 
@@ -1474,6 +1480,7 @@ export function generateIncomingTradeOffers(
   else if (rollCount < 0.94) targetCount = 4;
   else targetCount = 5;
 
+  targetCount = Math.max(minOfferCount, targetCount);
   if (targetCount === 0) return [];
 
   const ownedIds = new Set(userSquad.map((p) => p.id));
@@ -1484,11 +1491,12 @@ export function generateIncomingTradeOffers(
     allowedLeagueIds && allowedLeagueIds.length > 0
       ? new Set<LeagueId>(allowedLeagueIds)
       : null;
+  const excludedClubs = new Set<string>(excludeClubIds);
   const candidateClubs = (
     allowedSet
       ? ALL_CLUBS_WITH_LEAGUE.filter((c) => allowedSet.has(c.leagueId))
       : ALL_CLUBS_WITH_LEAGUE
-  ).filter((c) => !c.club.isUser);
+  ).filter((c) => !c.club.isUser && !excludedClubs.has(c.club.id));
 
   // Shuffle clubs (slight preference for user's own league so rivalries feel alive)
   const shuffled = [...candidateClubs].sort((a, b) => {
@@ -1538,67 +1546,97 @@ export function generateIncomingTradeOffers(
       userCandidates.length > 0
         ? userCandidates
         : userSquad
-            .filter((p) => !(p.position === 'GK' && userGkCount <= 1) && p.ovr >= 78)
+            .filter((p) => !(p.position === 'GK' && userGkCount <= 1) && p.ovr >= 75)
             .sort((a, b) => b.ovr - a.ovr);
 
     if (fallbackUserCandidates.length === 0) continue;
+
+    // Rare (~8%, max 1 per window) "Luka Dončić trade" shock bargain offer!
+    const isBlockbusterTry = blockbusterCount === 0 && rng() < 0.08;
+    const aiGkCount = clubRoster.filter((p) => p.position === 'GK').length;
+
+    const findChipsFor = (target: Player, targetVal: ReturnType<typeof computePlayerTradePoints>) =>
+      clubRoster
+        .filter((p) => {
+          if (p.position === target.position) return false;
+          if (p.position === topNeedPos) return false;
+          if (
+            p.position === 'GK' &&
+            (aiGkCount <= 2 || clubNeeds.neededPositions.includes('GK'))
+          ) {
+            return false;
+          }
+          if (isBlockbusterTry) {
+            return p.ovr >= target.ovr + 1 && p.ovr <= target.ovr + 5;
+          }
+          return Math.abs(p.ovr - target.ovr) <= 4;
+        })
+        .map((p) => {
+          const val = computePlayerTradePoints({
+            player: p,
+            receivingClubNeeds: null,
+            sellingClubNeeds: clubNeeds,
+            isShockBargain: isBlockbusterTry,
+            stats: allPlayerStats[p.id] ?? null,
+            conditionMap,
+          });
+          const surplusBonus = clubNeeds.saturatedPositions.includes(p.position)
+            ? -14
+            : clubNeeds.neededPositions.includes(p.position)
+              ? 14
+              : 0;
+          return { player: p, val, surplusBonus };
+        })
+        .sort((a, b) =>
+          isBlockbusterTry
+            ? b.player.ovr - a.player.ovr
+            : Math.abs(a.val.effectiveTp - targetVal.effectiveTp) +
+              a.surplusBonus -
+              (Math.abs(b.val.effectiveTp - targetVal.effectiveTp) +
+                b.surplusBonus),
+        );
 
     const pickIdx = Math.min(
       fallbackUserCandidates.length - 1,
       Math.floor(rng() * Math.min(4, fallbackUserCandidates.length)),
     );
-    const requestedPlayer = fallbackUserCandidates[pickIdx];
-    const requestedVal = computePlayerTradePoints({
+    let requestedPlayer = fallbackUserCandidates[pickIdx];
+    let requestedVal = computePlayerTradePoints({
       player: requestedPlayer,
       receivingClubNeeds: clubNeeds,
       stats: allPlayerStats[requestedPlayer.id] ?? null,
       conditionMap,
     });
+    let aiChips = findChipsFor(requestedPlayer, requestedVal);
 
-    // Rare (~8%, max 1 per window) "Luka Dončić trade" shock bargain offer!
-    const isBlockbusterTry =
-      blockbusterCount === 0 && rng() < 0.08;
-
-    const aiGkCount = clubRoster.filter((p) => p.position === 'GK').length;
-    const aiChips = clubRoster
-      .filter((p) => {
-        if (p.position === requestedPlayer.position) return false;
-        if (p.position === topNeedPos) return false;
-        if (
-          p.position === 'GK' &&
-          (aiGkCount <= 2 || clubNeeds.neededPositions.includes('GK'))
-        ) {
-          return false;
-        }
-        if (isBlockbusterTry) {
-          return p.ovr >= requestedPlayer.ovr + 1 && p.ovr <= requestedPlayer.ovr + 5;
-        }
-        return Math.abs(p.ovr - requestedPlayer.ovr) <= 4;
-      })
-      .map((p) => {
-        const val = computePlayerTradePoints({
-          player: p,
-          receivingClubNeeds: null,
-          sellingClubNeeds: clubNeeds,
-          isShockBargain: isBlockbusterTry,
-          stats: allPlayerStats[p.id] ?? null,
+    // If the user's top-4 superstars exceed every remaining AI club's OVR reach (common in 4-player rooms),
+    // fall back to an eligible user squad member whose OVR matches this AI club's available chips.
+    if (aiChips.length === 0) {
+      const clubMaxOvr = Math.max(...clubRoster.map((p) => p.ovr));
+      const allEligible = userSquad
+        .filter((p) => !(p.position === 'GK' && userGkCount <= 1))
+        .sort((a, b) => Math.abs(a.ovr - clubMaxOvr) - Math.abs(b.ovr - clubMaxOvr));
+      for (const alt of allEligible) {
+        if (alt.id === requestedPlayer.id) continue;
+        const altVal = computePlayerTradePoints({
+          player: alt,
+          receivingClubNeeds: clubNeeds,
+          stats: allPlayerStats[alt.id] ?? null,
           conditionMap,
         });
-        const surplusBonus = clubNeeds.saturatedPositions.includes(p.position)
-          ? -14
-          : clubNeeds.neededPositions.includes(p.position)
-            ? 14
-            : 0;
-        return { player: p, val, surplusBonus };
-      })
-      .sort((a, b) =>
-        isBlockbusterTry
-          ? b.player.ovr - a.player.ovr
-          : Math.abs(a.val.effectiveTp - requestedVal.effectiveTp) +
-            a.surplusBonus -
-            (Math.abs(b.val.effectiveTp - requestedVal.effectiveTp) +
-              b.surplusBonus),
-      );
+        const altChips = findChipsFor(alt, altVal);
+        if (altChips.length > 0) {
+          const altRatio =
+            altChips[0].val.effectiveTp / Math.max(1, altVal.effectiveTp);
+          if (isBlockbusterTry || (altRatio >= 0.72 && altRatio <= 1.35)) {
+            requestedPlayer = alt;
+            requestedVal = altVal;
+            aiChips = altChips;
+            break;
+          }
+        }
+      }
+    }
 
     if (aiChips.length === 0) continue;
 

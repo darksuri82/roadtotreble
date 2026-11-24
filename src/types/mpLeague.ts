@@ -434,6 +434,8 @@ export interface MpLeagueLive {
   summary: MpLeagueSummary | null;
   final: MpLeagueFinal | null;
   transferWindowIndex: number | null;
+  /** Most recently processed mp_league_actions IDs so each player clears busy state accurately even under 4-player concurrency */
+  handledActionIds?: string[];
   updatedAt: string;
 }
 
@@ -485,6 +487,7 @@ export interface MpLeagueHostState {
   final: MpLeagueFinal | null;
   /** Last squads the host validated for every friend (source of truth for roster membership) */
   squads: Record<string, MpSquadInput>;
+  handledActionIds?: string[];
   rev: number;
 }
 

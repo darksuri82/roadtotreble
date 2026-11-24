@@ -72,7 +72,7 @@ export function MpLeagueRoot({
   );
   const [editorOpen, setEditorOpen] = useState(false);
   const [dismissedResolutionKey, setDismissedResolutionKey] = useState<string | null>(null);
-  const [busyRev, setBusyRev] = useState<number | null>(null);
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
   const [answeredEventKey, setAnsweredEventKey] = useState<string | null>(null);
   const [podiumSeenKey, setPodiumSeenKey] = useState<string | null>(null);
   const [podiumOpen, setPodiumOpen] = useState(false);
@@ -81,6 +81,12 @@ export function MpLeagueRoot({
   const revRef = useRef<number | null>(null);
   const stageRef = useRef<MpLeagueLive['stage'] | null>(null);
   const hostWakeRef = useRef<(() => void) | null>(null);
+
+  const wakeHostLocally = useCallback(() => {
+    if (!hostWakeRef.current) return;
+    changeRef.current += 1;
+    hostWakeRef.current();
+  }, []);
 
   const applyLive = useCallback((nextLive: MpLeagueLive | null) => {
     if (!nextLive) return;
@@ -221,9 +227,10 @@ export function MpLeagueRoot({
           playerId,
           reason: 'activity',
         });
+        wakeHostLocally();
       });
     },
-    [room.id, playerId],
+    [room.id, playerId, wakeHostLocally],
   );
 
   const ack = useCallback(
@@ -273,9 +280,10 @@ export function MpLeagueRoot({
           playerId,
           reason: 'squad',
         });
+        wakeHostLocally();
       }
     },
-    [room.id, playerId],
+    [room.id, playerId, wakeHostLocally],
   );
 
   const saveSquad = useCallback(
@@ -335,6 +343,27 @@ export function MpLeagueRoot({
       mine &&
       mine.alerts.length > 0,
   );
+
+  // Close the tactics modal automatically if a room-wide transfer or interview opens underneath
+  useEffect(() => {
+    if (!editorOpen || tickerPlaying) return;
+    if (transferActiveNow || live?.flow.kind === 'event' || summaryActiveNow) {
+      const t = window.setTimeout(() => setEditorOpen(false), 0);
+      return () => window.clearTimeout(t);
+    }
+  }, [editorOpen, tickerPlaying, transferActiveNow, live?.flow.kind, summaryActiveNow]);
+
+  // Defensive fallback: if a player ever received 0 transfer offers, auto-ack so they never look stranded
+  const emptyTransferKey =
+    !tickerPlaying && live?.flow.kind === 'transfer' && mine && mine.offers.length === 0
+      ? live.flow.key
+      : null;
+  useEffect(() => {
+    if (!emptyTransferKey) return;
+    const t = window.setTimeout(() => ack(emptyTransferKey), 0);
+    return () => window.clearTimeout(t);
+  }, [emptyTransferKey, ack]);
+
   const inSeason = live?.stage === 'league' || live?.stage === 'ucl';
   const desiredLock: MpLeagueLockReason | null = !inSeason
     ? null
@@ -362,20 +391,23 @@ export function MpLeagueRoot({
 
   const sendAction = useCallback(
     async (kind: MpLeagueActionKind, payload: Record<string, unknown>) => {
-      setBusyRev(live?.rev ?? 0);
+      setPendingActionId('sending');
       const res = await enqueueLeagueAction({ roomId: room.id, playerId, kind, payload });
-      if (res.error) {
-        setErrorMsg(res.error);
-        setBusyRev(null);
+      if (res.error || !res.data) {
+        setErrorMsg(res.error ?? '요청 전송 실패');
+        setPendingActionId(null);
+        if (kind === 'event_choice') setAnsweredEventKey(null);
       } else {
+        setPendingActionId(res.data);
         broadcastLeagueEvent(room.id, {
           type: 'player_signal',
           playerId,
           reason: 'action',
         });
+        wakeHostLocally();
       }
     },
-    [room.id, playerId, live?.rev],
+    [room.id, playerId, wakeHostLocally],
   );
 
   // Leaving the screen must never keep the whole room paused
@@ -390,14 +422,23 @@ export function MpLeagueRoot({
     };
   }, [room.id, playerId]);
 
-  // Safety: never leave the trade buttons disabled if the host answer got lost
-  useEffect(() => {
-    if (busyRev === null) return;
-    const t = window.setTimeout(() => setBusyRev(null), 8000);
-    return () => window.clearTimeout(t);
-  }, [busyRev]);
+  const actionResolved = Boolean(
+    pendingActionId &&
+      pendingActionId !== 'sending' &&
+      live?.handledActionIds?.includes(pendingActionId),
+  );
 
-  const actionBusy = busyRev !== null && live !== null && busyRev === live.rev;
+  // Clear pendingActionId immediately once acknowledged by host, or after 6s safety timeout
+  useEffect(() => {
+    if (!pendingActionId) return;
+    const t = window.setTimeout(
+      () => setPendingActionId(null),
+      actionResolved ? 0 : 6000,
+    );
+    return () => window.clearTimeout(t);
+  }, [pendingActionId, actionResolved]);
+
+  const actionBusy = Boolean(pendingActionId && !actionResolved);
 
   const finalKey = live?.stage === 'final' && !tickerPlaying ? live.seasonKey : null;
   useEffect(() => {
@@ -531,6 +572,7 @@ export function MpLeagueRoot({
               playerId,
               reason: 'activity',
             });
+            wakeHostLocally();
             if (submission.phase === 'pre_match' && mySquad) {
               saveSquad({
                 ...mySquad,

@@ -5,6 +5,21 @@
 
 ---
 
+## v8.5.1 — 4인 멀티리그 2차전 맞대결 2D 집중 진행 · 4인 이적시장·인터뷰 렉/누락/팝업 오류 종합 수정
+
+- **4인 멀티리그 리그 맞대결 2차전만 2D 시뮬레이션 (`src/engine/mpLeagueEngine.ts`)**:
+  - `shouldPlayLeagueH2HLive` 도입: 참가자 4인 이상일 때 리그 맞대결 12경기 중 각 조합의 **2차전(6경기)**만 2D 시뮬레이션(`flow.kind === 'h2h'`)으로 진입하고, 1차전(6경기)은 양 팀 실제 전술·케미·사기·컨디션이 반영된 `resolveMpH2HFullInstant` 결과를 `watchedLive: false`로 기록해 `MpLiveTicker` 라이브 스코어보드에서 실시간 중계되도록 개선(H2H 전적·순위·스탯 100% 반영, 2~3인 및 컵·UCL 맞대결은 기존 유지).
+- **4인 이적시장·인터뷰 렉·팝업 누락·동시성 오류 다각 수정 (`src/engine/transferEngine.ts`, `src/engine/mpLeagueEngine.ts`, `src/types/mpLeague.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `src/components/multiplayer/league/MpLeagueRoot.tsx`, `src/components/multiplayer/MultiplayerArena.tsx`, `src/components/common/PlayerDetailModal.tsx`)**:
+  - `generateIncomingTradeOffers`에 `excludeClubIds`·`minOfferCount` 및 OVR 범위 폴백을 추가하고 `stepTransfer`에 4회 재시도를 적용: 4인 드래프트로 상위 64명이 빠져나가 AI 구단과 최상위 4인 OVR 차이가 벌어지거나 10% 빈 제안/구단 충돌이 겹쳐 일부 참가자의 이적시장 팝업이 0건으로 아예 안 뜨던 버그를 근본 수정(방어적 0건 자동 `ack` 포함).
+  - `buildMpLeagueLive`에서 완료된 오퍼의 `offerClubs` 16인 로스터를 즉시 제거해 4인 이적시장 클릭당 DB/Realtime JSON 페이로드 대폭 축소.
+  - `useMpLeagueHost` `handleActions`의 `completeLeagueAction`·`updateLeaguePayload`를 `Promise.all` 병렬화하고 틱 실행 중 도착한 브로드캐스트를 즉시 재실행(`pendingWake`) + `handledActionIds` 발행.
+  - `MpLeagueRoot`에 고유 요청 ID 기반 `actionBusy`(`handledActionIds`), 방장 본인 클릭 0ms 즉시 기상(`wakeHostLocally`), `event_choice` 전송 실패 시 `answeredEventKey` 복구, 이적시장/인터뷰/정산 진입 시 `editorOpen` 자동 종료 추가.
+  - `MultiplayerArena` `mergeRoomSnapshot`에서 미변경 참가자 행과 동일 `rev` `league_payload` 참조를 유지해 타 참가자 클릭 시 4인 이적시장/대시보드 `useMemo` 재계산 스파이크 차단.
+  - `PlayerDetailModal` z-index를 `z-[60]` → `z-[85]`로 상향해 이적시장(`z-[70]`)·시즌 정산(`z-[65]`)·전술 편집 모달 뒤로 가려지던 팝업 중첩 버그 해결.
+- **테스트 (`src/__tests__/v85MpSyncAndUclLayout.test.ts`)**: 4인 EPL 풀시즌 스트레스 테스트 추가(12경기 중 2차전 6경기만 2D, 1차전 6경기 라이브 스코어보드 재생 + H2H 누적, 3회 이적시장 전원 1건+ 비겹침 제안 & `offerClubs` 프루닝 페이로드 감소, 4인 인터뷰 정상 완료 검증).
+
+---
+
 ## v8.5 — 멀티리그 Broadcast 즉시 동기화 · 순위표 즉시 반영 · 컵 우승 조기 스포일러 차단 · 챔스(Phase 2) 전용 레이아웃 & 실시간 사이드바
 
 - **멀티리그 이적시장·인터뷰 팝업 지연/미표시 근본 수정 & Fast Sync (`src/services/mpLeagueService.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `src/components/multiplayer/league/MpLeagueRoot.tsx`, `src/components/multiplayer/league/MpLiveTicker.tsx`, `src/types/mpLeague.ts`)**:

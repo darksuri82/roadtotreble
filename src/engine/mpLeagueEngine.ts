@@ -49,6 +49,7 @@ import {
 import { buildAiClubRoster, buildAiClubSquad16, getLeagueById } from './dataLoader';
 import type { UserMatchContext } from './matchEngine';
 import { simulateExtraTimeAndPenalties, simulateMatch } from './matchEngine';
+import { resolveMpH2HFullInstant } from './mpLeagueH2H';
 import { finalizeMpLeagueSeason } from './mpLeagueScore';
 import {
   advanceOtherLeaguesToProgress,
@@ -749,6 +750,28 @@ function refreshHumanClubs(
 
 // ── Step: one league round ───────────────────────────────────────────────────
 
+/**
+ * In 4-player multi-leagues (6 pairs × 2 meetings = 12 league H2H), playing every single league
+ * H2H in full 2D slows the season down too much. Play only the 2nd league meeting per pair in 2D
+ * (6 dramatic second-half rematches), while simulating the 1st meeting live on the scoreboard!
+ * 2-3 player leagues keep full 2D for every league H2H.
+ */
+export function shouldPlayLeagueH2HLive(
+  state: Pick<MpLeagueHostState, 'humans' | 'fixtures'>,
+  fixture: Fixture,
+): boolean {
+  if (state.humans.length < 4) return true;
+  const pairFixtures = state.fixtures
+    .filter(
+      (f) =>
+        (f.homeTeamId === fixture.homeTeamId && f.awayTeamId === fixture.awayTeamId) ||
+        (f.homeTeamId === fixture.awayTeamId && f.awayTeamId === fixture.homeTeamId),
+    )
+    .sort((a, b) => a.round - b.round);
+  const idx = pairFixtures.findIndex((f) => f.id === fixture.id);
+  return idx >= 1;
+}
+
 function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostState {
   const rng = env.rng ?? Math.random;
   const nextRound = state.round + 1;
@@ -763,7 +786,8 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
     (f) =>
       isHumanClub(state, f.homeTeamId) &&
       isHumanClub(state, f.awayTeamId) &&
-      !state.h2hResults[f.id],
+      !state.h2hResults[f.id] &&
+      shouldPlayLeagueH2HLive(state, f),
   );
   if (missingH2H.length > 0) {
     return openH2H(
@@ -792,6 +816,7 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
     setup: MpHumanMatchSetup;
     result: MatchResult;
     isH2H: boolean;
+    watchedLive?: boolean;
   }[] = [];
   const usedKeys: string[] = [];
 
@@ -801,9 +826,51 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
 
     if (homeHuman && awayHuman) {
       const pre = state.h2hResults[fixture.id];
-      usedKeys.push(fixture.id);
+      let baseResult: MatchResult;
+      let watchedLive = false;
+      if (pre) {
+        baseResult = pre;
+        watchedLive = true;
+        usedKeys.push(fixture.id);
+      } else {
+        // 4-player 1st meeting: simulate accurately with both managers' tactics & show live on MpLiveTicker
+        const homeSquad = env.squads[homeHuman.clubId];
+        const awaySquad = env.squads[awayHuman.clubId];
+        const instant = resolveMpH2HFullInstant({
+          spec: {
+            key: fixture.id,
+            ctx: 'league',
+            label: `리그 ${nextRound}R 맞대결`,
+            homeClubId: homeHuman.clubId,
+            awayClubId: awayHuman.clubId,
+            round: nextRound,
+            knockout: false,
+            speed: 4,
+          },
+          seasonKey: state.seasonKey,
+          home: {
+            human: homeHuman,
+            formation: homeSquad.formation,
+            tactic: homeSquad.tactic,
+            starters: homeSquad.starters,
+            bench: homeSquad.bench,
+            teamMorale: state.perHuman[homeHuman.clubId]?.events.teamMorale ?? 0,
+          },
+          away: {
+            human: awayHuman,
+            formation: awaySquad.formation,
+            tactic: awaySquad.tactic,
+            starters: awaySquad.starters,
+            bench: awaySquad.bench,
+            teamMorale: state.perHuman[awayHuman.clubId]?.events.teamMorale ?? 0,
+          },
+          conditions,
+          rng,
+        });
+        baseResult = instant.finalResult!;
+      }
       const tagged: MatchResult = {
-        ...pre,
+        ...baseResult,
         fixtureId: fixture.id,
         round: nextRound,
         competition: 'league',
@@ -811,7 +878,7 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
       };
       results.push(tagged);
       for (const side of buildH2HSetups(state, env, conditions, tagged, 'league')) {
-        humanOutcomes.push({ ...side, result: tagged, isH2H: true });
+        humanOutcomes.push({ ...side, result: tagged, isH2H: true, watchedLive });
       }
       continue;
     }
@@ -896,7 +963,7 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
     const oppId =
       o.result.homeTeamId === o.human.clubId ? o.result.awayTeamId : o.result.homeTeamId;
     const oppRank = rankOf(state.standings, oppId);
-    perHuman[o.human.clubId] = applyPostHumanMatch({
+    let nextHs = applyPostHumanMatch({
       state: working,
       conditions,
       human: o.human,
@@ -910,6 +977,25 @@ function stepLeagueRound(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHo
       isH2H: o.isH2H,
       rng,
     });
+    // 4-player 1st-meeting H2Hs skip completeMpLeagueH2H, so record their H2H tally here
+    if (o.isH2H && !o.watchedLive) {
+      const isHome = o.result.homeTeamId === o.human.clubId;
+      const gf = isHome ? o.result.homeGoals : o.result.awayGoals;
+      const ga = isHome ? o.result.awayGoals : o.result.homeGoals;
+      const outcome = outcomeOf(o.result, o.human.clubId);
+      nextHs = {
+        ...nextHs,
+        h2h: {
+          played: nextHs.h2h.played + 1,
+          won: nextHs.h2h.won + (outcome === 'W' ? 1 : 0),
+          drawn: nextHs.h2h.drawn + (outcome === 'D' ? 1 : 0),
+          lost: nextHs.h2h.lost + (outcome === 'L' ? 1 : 0),
+          goalsFor: nextHs.h2h.goalsFor + gf,
+          goalsAgainst: nextHs.h2h.goalsAgainst + ga,
+        },
+      };
+    }
+    perHuman[o.human.clubId] = nextHs;
     working = { ...working, perHuman };
   }
 
@@ -1343,23 +1429,7 @@ function stepTransfer(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
     const squad = env.squads[human.clubId];
     const hs = perHuman[human.clubId];
     if (!squad || !hs) continue;
-    const raw = generateIncomingTradeOffers({
-      windowIndex: trigger.windowIndex,
-      currentRound: state.round,
-      userLeagueId: state.settings.leagueId,
-      userStarters: squad.starters,
-      userBench: squad.bench,
-      standings: state.standings,
-      otherLeagues: state.otherLeagues,
-      aiRosters: state.aiRosters,
-      allPlayerStats: state.allPlayerStats,
-      conditionMap: state.conditions,
-      departedPlayerIds: [
-        ...state.departedIds,
-        ...allHumanPlayerIds(env.squads, human.clubId),
-      ],
-      rng,
-    });
+
     const offers: IncomingTradeOffer[] = [];
     const offerClubs: Record<string, TransferClubOffer> = {};
     const mySquadIds = new Set(squadPlayers(squad).map((p) => p.id));
@@ -1367,53 +1437,80 @@ function stepTransfer(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
       ...state.departedIds,
       ...allHumanPlayerIds(env.squads),
     ]);
-    for (const offer of raw) {
-      if (offers.length >= MAX_OFFERS_PER_HUMAN) break;
-      // One AI club never negotiates with two friends at once (no duplicate players possible)
-      if (usedClubIds.has(offer.club.id)) continue;
-      if (replaced.has(offer.club.name)) continue;
-      if (
-        offer.leagueId === state.settings.leagueId &&
-        !leagueClubIds.has(offer.club.id)
-      ) {
-        continue;
-      }
-      if (offer.aiOffersPlayers.some((p) => usedAiPlayerIds.has(p.id))) continue;
-      if (offer.aiOffersPlayers.length !== 1 || offer.userRequestedPlayers.length !== 1) {
-        continue;
-      }
-      usedClubIds.add(offer.club.id);
-      for (const p of offer.aiOffersPlayers) usedAiPlayerIds.add(p.id);
-      const taggedOffer: IncomingTradeOffer = {
-        ...offer,
-        id: `${human.clubId}-${offer.id}`,
-      };
-      offers.push(taggedOffer);
 
-      const isUserLeague = offer.leagueId === state.settings.leagueId;
-      const liveRoster = isUserLeague
-        ? state.aiRosters[offer.club.id]
-        : state.otherLeagues[offer.leagueId]?.aiRosters?.[offer.club.id];
-      const statsMap = isUserLeague
-        ? state.allPlayerStats
-        : state.otherLeagues[offer.leagueId]?.playerStats ?? state.allPlayerStats;
-      offerClubs[taggedOffer.id] = buildTradeClubOfferForClub({
-        club: offer.club,
-        leagueId: offer.leagueId,
-        clubRank: offer.clubRank,
-        leagueSize: offer.leagueSize,
-        currentRound: state.round,
-        totalRounds: state.totalRounds,
+    // Retry up to 4 times if RNG rolled 0 offers or all collided with other friends' clubs
+    // so every player in a 2~4 player room reliably receives incoming offers and sees the transfer modal.
+    for (let attempt = 0; attempt < 4 && offers.length === 0; attempt += 1) {
+      const raw = generateIncomingTradeOffers({
         windowIndex: trigger.windowIndex,
-        userRank: rankOf(state.standings, human.clubId) ?? 10,
-        userLeagueSize: state.standings.length || 20,
-        isUserLeague,
-        aiRoster: liveRoster,
-        allPlayerStats: statsMap,
-        ownedIds: mySquadIds,
-        excludeIds: baseExcludeIds,
+        currentRound: state.round,
+        userLeagueId: state.settings.leagueId,
+        userStarters: squad.starters,
+        userBench: squad.bench,
+        standings: state.standings,
+        otherLeagues: state.otherLeagues,
+        aiRosters: state.aiRosters,
+        allPlayerStats: state.allPlayerStats,
+        conditionMap: state.conditions,
+        departedPlayerIds: [
+          ...state.departedIds,
+          ...allHumanPlayerIds(env.squads, human.clubId),
+          ...Array.from(usedAiPlayerIds),
+        ],
+        excludeClubIds: Array.from(usedClubIds),
+        minOfferCount: 1,
+        rng,
       });
+
+      for (const offer of raw) {
+        if (offers.length >= MAX_OFFERS_PER_HUMAN) break;
+        // One AI club never negotiates with two friends at once (no duplicate players possible)
+        if (usedClubIds.has(offer.club.id)) continue;
+        if (replaced.has(offer.club.name)) continue;
+        if (
+          offer.leagueId === state.settings.leagueId &&
+          !leagueClubIds.has(offer.club.id)
+        ) {
+          continue;
+        }
+        if (offer.aiOffersPlayers.some((p) => usedAiPlayerIds.has(p.id))) continue;
+        if (offer.aiOffersPlayers.length !== 1 || offer.userRequestedPlayers.length !== 1) {
+          continue;
+        }
+        usedClubIds.add(offer.club.id);
+        for (const p of offer.aiOffersPlayers) usedAiPlayerIds.add(p.id);
+        const taggedOffer: IncomingTradeOffer = {
+          ...offer,
+          id: `${human.clubId}-${offer.id}`,
+        };
+        offers.push(taggedOffer);
+
+        const isUserLeague = offer.leagueId === state.settings.leagueId;
+        const liveRoster = isUserLeague
+          ? state.aiRosters[offer.club.id]
+          : state.otherLeagues[offer.leagueId]?.aiRosters?.[offer.club.id];
+        const statsMap = isUserLeague
+          ? state.allPlayerStats
+          : state.otherLeagues[offer.leagueId]?.playerStats ?? state.allPlayerStats;
+        offerClubs[taggedOffer.id] = buildTradeClubOfferForClub({
+          club: offer.club,
+          leagueId: offer.leagueId,
+          clubRank: offer.clubRank,
+          leagueSize: offer.leagueSize,
+          currentRound: state.round,
+          totalRounds: state.totalRounds,
+          windowIndex: trigger.windowIndex,
+          userRank: rankOf(state.standings, human.clubId) ?? 10,
+          userLeagueSize: state.standings.length || 20,
+          isUserLeague,
+          aiRoster: liveRoster,
+          allPlayerStats: statsMap,
+          ownedIds: mySquadIds,
+          excludeIds: baseExcludeIds,
+        });
+      }
     }
+
     perHuman[human.clubId] = {
       ...hs,
       offers,
@@ -2229,7 +2326,7 @@ function toCastMatch(
 
 /** Scoreboard cards for every friend-involved match of a just-simulated league / cup / UCL league round. */
 function buildTickerMatches(
-  outcomes: { result: MatchResult; isH2H: boolean }[],
+  outcomes: { result: MatchResult; isH2H: boolean; watchedLive?: boolean }[],
   label: string,
   humanIds: Set<string>,
 ): MpCastMatch[] {
@@ -2246,7 +2343,7 @@ function buildTickerMatches(
         [o.result.homeTeamId, o.result.awayTeamId].filter((id) => humanIds.has(id)),
         {},
         o.result.extraTime?.winnerTeamId ?? null,
-        { instant: o.isH2H },
+        { instant: o.watchedLive ?? o.isH2H },
       ),
     );
   }
@@ -2670,6 +2767,18 @@ export function buildMpLeagueLive(
         f.round === state.round + 1 &&
         (f.homeTeamId === human.clubId || f.awayTeamId === human.clubId),
     );
+    let prunedOfferClubs: Record<string, TransferClubOffer> | undefined;
+    if (state.flow.kind === 'transfer' && hs.offerClubs && hs.attemptsLeft > 0) {
+      const pendingClubs: Record<string, TransferClubOffer> = {};
+      for (const offer of hs.offers) {
+        if (offer.status === 'pending' && hs.offerClubs[offer.id]) {
+          pendingClubs[offer.id] = hs.offerClubs[offer.id];
+        }
+      }
+      if (Object.keys(pendingClubs).length > 0) {
+        prunedOfferClubs = pendingClubs;
+      }
+    }
     byClub[human.clubId] = {
       clubId: human.clubId,
       morale: hs.events.teamMorale,
@@ -2678,7 +2787,7 @@ export function buildMpLeagueLive(
       event: hs.events.activeEvent,
       resolution: hs.events.lastResolution,
       offers: hs.offers,
-      offerClubs: state.flow.kind === 'transfer' ? hs.offerClubs : undefined,
+      offerClubs: prunedOfferClubs,
       attemptsLeft: hs.attemptsLeft,
       tradeNote: hs.tradeNote,
       h2h: hs.h2h,
@@ -2720,6 +2829,7 @@ export function buildMpLeagueLive(
     summary: state.summary,
     final: state.final,
     transferWindowIndex: state.transferWindowIndex,
+    handledActionIds: state.handledActionIds,
     updatedAt: new Date().toISOString(),
   };
 }

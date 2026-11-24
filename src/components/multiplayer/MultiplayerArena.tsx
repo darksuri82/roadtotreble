@@ -203,14 +203,39 @@ function diffSubstitutions(
   return subs;
 }
 
-function isSameRoomSnapshot(a: MpRoomSnapshot | null, b: MpRoomSnapshot): boolean {
-  if (!a) return false;
-  if (a.room.id !== b.room.id || a.room.updated_at !== b.room.updated_at) return false;
-  if (a.players.length !== b.players.length) return false;
-  return a.players.every((p, i) => {
-    const q = b.players[i];
-    return p.id === q.id && p.updated_at === q.updated_at;
+function mergeRoomSnapshot(
+  prev: MpRoomSnapshot | null,
+  next: MpRoomSnapshot,
+): MpRoomSnapshot {
+  if (!prev) return next;
+  const sameRoom =
+    prev.room.id === next.room.id && prev.room.updated_at === next.room.updated_at;
+  const prevById = new Map(prev.players.map((p) => [p.id, p]));
+  let playersChanged = prev.players.length !== next.players.length;
+  const mergedPlayers = next.players.map((q, i) => {
+    const p = prevById.get(q.id);
+    if (p && p.updated_at === q.updated_at) {
+      if (prev.players[i]?.id !== q.id) playersChanged = true;
+      return p;
+    }
+    playersChanged = true;
+    // Even if activity updated on this row, keep the same league_payload reference when rev matches
+    if (
+      p?.league_payload &&
+      q.league_payload &&
+      p.league_payload.rev === q.league_payload.rev &&
+      p.league_payload.by === q.league_payload.by &&
+      p.league_payload.starters.length === q.league_payload.starters.length
+    ) {
+      return { ...q, league_payload: p.league_payload };
+    }
+    return q;
   });
+  if (sameRoom && !playersChanged) return prev;
+  return {
+    room: sameRoom ? prev.room : next.room,
+    players: playersChanged ? mergedPlayers : prev.players,
+  };
 }
 
 export function MultiplayerArena() {
@@ -319,8 +344,8 @@ export function MultiplayerArena() {
       playerId,
       nickname: nickname.trim() || DEFAULT_MANAGER_NAME,
       onSnapshot: (nextSnap) => {
-        // The 2s safety poll returns identical rows most of the time: keep the same object so nothing re-renders
-        setSnapshot((prev) => (isSameRoomSnapshot(prev, nextSnap) ? prev : nextSnap));
+        // Keep identical references for unchanged rows & league_payload so 4-player updates don't thrash memos
+        setSnapshot((prev) => mergeRoomSnapshot(prev, nextSnap));
       },
       onPresenceChange: (ids) => {
         setOnlinePlayerIds(ids);

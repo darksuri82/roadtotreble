@@ -11,8 +11,10 @@ import {
   endMpLeagueCast,
   grantMpLeagueConsent,
   mpHumanClubId,
+  rejectMpLeagueOffer,
   resolveMpLeagueEvent,
   runMpLeague,
+  shouldPlayLeagueH2HLive,
 } from '../engine/mpLeagueEngine';
 import { resolveMpH2HFullInstant } from '../engine/mpLeagueH2H';
 import { DEFAULT_MANAGER_AVATAR } from '../types/game';
@@ -262,5 +264,175 @@ describe('v8.5 MP Fast Sync, Spoiler-Free Cup/Standings Snapshots & UCL Phase 2 
     expect(verifiedLeagueTickerSnapshot).toBe(true);
     expect(verifiedCupFinalNoSpoiler).toBe(true);
     expect(verifiedUclSidebarSnapshot).toBe(true);
+  }, 25_000);
+
+  it('4-player league plays only 2nd league H2H in 2D (6 total), streams 1st H2H live, guarantees transfer offers for all 4, prunes offerClubs, and resolves all interviews cleanly', () => {
+    const rng = mulberry32(202644);
+    const used = new Set<string>();
+    const humans = [makeHuman(0), makeHuman(1), makeHuman(2), makeHuman(3)];
+    const squads: Record<string, MpSquadInput> = {};
+    for (const h of humans) squads[h.clubId] = buildQuickSquad(used);
+    const env = { squads, rng };
+
+    let state = createMpLeagueSeason({
+      roomId: 'room-4p',
+      seasonKey: 's-4p',
+      settings: normalizeMpLeagueSettings({
+        leagueId: 'epl',
+        uclEnabled: false,
+        autoMs: 5000,
+      }),
+      draftLeaguePool: ['epl', 'laliga', 'seriea', 'bundesliga', 'ligue1'],
+      humans,
+      squads,
+      rng,
+    });
+
+    const humanIdSet = new Set(humans.map((h) => h.clubId));
+    const pairMeetings = new Map<string, number[]>();
+    for (const f of state.fixtures) {
+      if (humanIdSet.has(f.homeTeamId) && humanIdSet.has(f.awayTeamId)) {
+        const pairKey = [f.homeTeamId, f.awayTeamId].sort().join(':');
+        const list = pairMeetings.get(pairKey) ?? [];
+        list.push(f.round);
+        pairMeetings.set(pairKey, list);
+      }
+    }
+    expect(pairMeetings.size).toBe(6);
+    for (const rounds of pairMeetings.values()) {
+      rounds.sort((a, b) => a - b);
+      expect(rounds.length).toBe(2);
+    }
+
+    // Verify shouldPlayLeagueH2HLive directly on all 12 league H2H fixtures
+    const liveFlagged = state.fixtures.filter(
+      (f) =>
+        humanIdSet.has(f.homeTeamId) &&
+        humanIdSet.has(f.awayTeamId) &&
+        shouldPlayLeagueH2HLive(state, f),
+    );
+    expect(liveFlagged.length).toBe(6);
+
+    const played2dLeaguePairs = new Map<string, number[]>();
+    let streamedFirstH2HCount = 0;
+    let transferWindowsChecked = 0;
+    let interviewRoundsChecked = 0;
+
+    for (let step = 0; step < 300; step += 1) {
+      if (state.flow.kind === 'done') break;
+      if (state.flow.kind === 'auto') {
+        state = runMpLeague(state, env);
+        const live = buildMpLeagueLive(state, squads);
+        // Count 1st-meeting H2H matches that stream live on the scoreboard (instant === false)
+        if (live.stage === 'league' && live.ticker) {
+          for (const m of live.ticker.matches) {
+            if (m.humanClubIds.length === 2 && !m.instant) {
+              streamedFirstH2HCount += 1;
+            }
+          }
+        }
+      } else if (state.flow.kind === 'h2h' && state.h2hLive) {
+        const spec = state.h2hLive.spec;
+        if (spec.ctx === 'league') {
+          const pairKey = [spec.homeClubId, spec.awayClubId].sort().join(':');
+          const rounds = pairMeetings.get(pairKey)!;
+          // Must strictly be the 2nd meeting!
+          expect(spec.round).toBe(rounds[1]);
+          const seen = played2dLeaguePairs.get(pairKey) ?? [];
+          seen.push(spec.round);
+          played2dLeaguePairs.set(pairKey, seen);
+        }
+        const hHuman = humans.find((h) => h.clubId === spec.homeClubId)!;
+        const aHuman = humans.find((h) => h.clubId === spec.awayClubId)!;
+        const hSq = squads[spec.homeClubId];
+        const aSq = squads[spec.awayClubId];
+        const finished = resolveMpH2HFullInstant({
+          spec,
+          seasonKey: state.seasonKey,
+          home: {
+            human: hHuman,
+            formation: hSq.formation,
+            tactic: hSq.tactic,
+            starters: hSq.starters,
+            bench: hSq.bench,
+            teamMorale: 0,
+          },
+          away: {
+            human: aHuman,
+            formation: aSq.formation,
+            tactic: aSq.tactic,
+            starters: aSq.starters,
+            bench: aSq.bench,
+            teamMorale: 0,
+          },
+          conditions: state.conditions,
+          rng,
+        });
+        state = completeMpLeagueH2H(state, finished.finalResult!);
+      } else if (state.flow.kind === 'transfer') {
+        transferWindowsChecked += 1;
+        const liveBefore = buildMpLeagueLive(state, squads);
+        const bytesBefore = JSON.stringify(liveBefore).length;
+
+        const seenAiClubs = new Set<string>();
+        const seenAiPlayers = new Set<string>();
+        for (const h of humans) {
+          const hs = state.perHuman[h.clubId];
+          expect(hs.offers.length).toBeGreaterThanOrEqual(1);
+          for (const offer of hs.offers) {
+            expect(seenAiClubs.has(offer.club.id)).toBe(false);
+            seenAiClubs.add(offer.club.id);
+            for (const p of offer.aiOffersPlayers) {
+              expect(seenAiPlayers.has(p.id)).toBe(false);
+              seenAiPlayers.add(p.id);
+            }
+          }
+          // Reject every pending offer to verify offerClubs pruning immediately shrinks payload
+          for (const offer of hs.offers) {
+            state = rejectMpLeagueOffer(state, h.clubId, offer.id);
+          }
+        }
+        const liveAfter = buildMpLeagueLive(state, squads);
+        const bytesAfter = JSON.stringify(liveAfter).length;
+        for (const h of humans) {
+          expect(Object.keys(liveAfter.byClub[h.clubId].offerClubs ?? {}).length).toBe(0);
+        }
+        expect(bytesAfter).toBeLessThan(bytesBefore);
+        state = closeMpLeagueTransferWindow(state);
+      } else if (state.flow.kind === 'event') {
+        interviewRoundsChecked += 1;
+        let answered = 0;
+        for (const h of humans) {
+          const ev = state.perHuman[h.clubId]?.events.activeEvent;
+          if (ev) {
+            state = resolveMpLeagueEvent(state, env, h.clubId, ev.choices[0].id);
+            answered += 1;
+          }
+        }
+        expect(answered).toBeGreaterThanOrEqual(1);
+        expect(state.flow.kind).toBe('auto');
+      } else if (state.flow.kind === 'summary') {
+        state = closeMpLeagueSummary(state);
+      } else if (state.flow.kind === 'consent') {
+        state = grantMpLeagueConsent(state);
+      } else if (state.flow.kind === 'cast') {
+        state = endMpLeagueCast(state);
+      }
+    }
+
+    expect(state.flow.kind).toBe('done');
+    // Exactly 6 pairs × 1 (second meeting only) played in 2D
+    expect(played2dLeaguePairs.size).toBe(6);
+    for (const rounds of played2dLeaguePairs.values()) {
+      expect(rounds.length).toBe(1);
+    }
+    // At least the 6 first-meeting league H2Hs streamed live on ticker
+    expect(streamedFirstH2HCount).toBeGreaterThanOrEqual(6);
+    // Every human's H2H record includes ALL 6 league meetings (3 opponents × 2) + any cup H2H
+    for (const h of humans) {
+      expect(state.perHuman[h.clubId].h2h.played).toBeGreaterThanOrEqual(6);
+    }
+    expect(transferWindowsChecked).toBe(3);
+    expect(interviewRoundsChecked).toBeGreaterThanOrEqual(1);
   }, 25_000);
 });

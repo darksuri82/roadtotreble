@@ -127,7 +127,7 @@ export function PlayerDetailModal({
 
   return (
     <div
-      className="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
+      className="modal-backdrop fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
       onClick={onClose}
     >
       <div

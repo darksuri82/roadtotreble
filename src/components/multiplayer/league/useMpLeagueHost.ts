@@ -612,12 +612,16 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       let current = st;
       let nextSquads = squads;
       let changed = false;
+      const batchHandledIds: string[] = [];
+      const completionTasks: Promise<unknown>[] = [];
+      const squadUpdates = new Map<string, { playerId: string; squad: MpSquadInput }>();
+
       for (const action of rows) {
         if (handledActionsRef.current.has(action.id)) continue;
         handledActionsRef.current.add(action.id);
         const human = current.humans.find((h) => h.playerId === action.player_id);
         if (!human) {
-          await completeLeagueAction(action.id, { ok: false });
+          completionTasks.push(completeLeagueAction(action.id, { ok: false }));
           continue;
         }
         const env = { squads: nextSquads };
@@ -664,23 +668,45 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
           current = outcome.state;
           if (outcome.squad) {
             nextSquads = { ...nextSquads, [human.clubId]: outcome.squad };
-            const row = p.players.find((r) => r.player_id === human.playerId);
             rewriteAtRef.current[human.clubId] = Date.now();
-            await updateLeaguePayload(p.room.id, human.playerId, {
-              ...outcome.squad,
-              setupReady: true,
-              rev: (row?.league_payload?.rev ?? 0) + 1,
-              by: 'host',
+            squadUpdates.set(human.clubId, {
+              playerId: human.playerId,
+              squad: outcome.squad,
             });
           }
         }
-        await completeLeagueAction(action.id, { ok: true });
+        completionTasks.push(completeLeagueAction(action.id, { ok: true }));
+        batchHandledIds.push(action.id);
         changed = true;
+      }
+
+      if (squadUpdates.size > 0) {
+        for (const [, entry] of squadUpdates) {
+          const row = p.players.find((r) => r.player_id === entry.playerId);
+          completionTasks.push(
+            updateLeaguePayload(p.room.id, entry.playerId, {
+              ...entry.squad,
+              setupReady: true,
+              rev: (row?.league_payload?.rev ?? 0) + 1,
+              by: 'host',
+            }),
+          );
+        }
+      }
+      if (completionTasks.length > 0) {
+        await Promise.all(completionTasks);
       }
       if (changed) {
         if (current.flow.kind === 'auto' && st.flow.kind !== 'auto') {
           nextAutoAtRef.current = Date.now() + st.settings.autoMs;
         }
+        current = {
+          ...current,
+          handledActionIds: [
+            ...(current.handledActionIds ?? []),
+            ...batchHandledIds,
+          ].slice(-24),
+        };
         await commit(current, nextSquads, p.room.id);
       }
       return changed;
@@ -825,8 +851,15 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       }
     };
 
+    let pendingWake = false;
+    let disposed = false;
+
     const tick = async () => {
-      if (busyRef.current) return;
+      if (disposed) return;
+      if (busyRef.current) {
+        pendingWake = true;
+        return;
+      }
       const p = latest.current;
       if (!p.enabled || !p.live) return;
       // Wait until our own last publish has come back before acting on the public state
@@ -844,6 +877,10 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         setHostError(err instanceof Error ? err.message : '방장 진행 처리 중 오류');
       } finally {
         busyRef.current = false;
+        if (pendingWake && !disposed) {
+          pendingWake = false;
+          void tick();
+        }
       }
     };
 
@@ -854,6 +891,7 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       void tick();
     }, TICK_MS);
     return () => {
+      disposed = true;
       wakeTickRef.current = null;
       window.clearInterval(interval);
     };
