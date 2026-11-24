@@ -1603,6 +1603,7 @@ export function buildHistoricalClubForMatch(team: HistoricalTeamEntry): {
     hofChem.total,
     team.managerTraitId,
     hofChem.slotSynergies,
+    team.defaultTactic,
   );
   const topAttackers = [...team.starters]
     .sort((a, b) => b.att - a.att || b.ovr - a.ovr)

@@ -250,8 +250,9 @@ export function MultiplayerBlindDraft({
         displayChemistry.total,
         managerTraitId,
         displayChemistry.slotSynergies,
+        defaultTactic,
       ),
-    [formation, previewStarters, displayChemistry, managerTraitId],
+    [formation, previewStarters, displayChemistry, managerTraitId, defaultTactic],
   );
 
   const finalizeAndUploadLineup = useCallback(

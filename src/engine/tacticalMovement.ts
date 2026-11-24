@@ -1,5 +1,5 @@
 import { FORMATIONS } from '../data/formations';
-import type { FormationId } from '../types/game';
+import type { FormationId, ManagerTraitId } from '../types/game';
 import type { TacticId } from '../types/league';
 
 export interface TacticalVec2 {
@@ -17,6 +17,7 @@ export interface TacticalMovementInput {
   attackPhase: number; // 0=buildup, 1=midfield, 2=final-third, 3=box-probe
   ball: TacticalVec2;
   simClock: number;
+  managerTraitId?: ManagerTraitId | null;
 }
 
 /**
@@ -42,6 +43,7 @@ export function computeTacticalPlayerOffset(
     attackPhase,
     ball,
     simClock,
+    managerTraitId = null,
   } = input;
 
   const dir = isHome ? 1 : -1; // +1 attacks right, -1 attacks left
@@ -56,9 +58,9 @@ export function computeTacticalPlayerOffset(
 
   // Goalkeeper positioning (sweeper behavior in possession / high press)
   if (slotIndex === 0) {
-    if (hasBall && (tactic === 'possession' || tactic === 'gegenpressing')) {
+    if (hasBall && (tactic === 'possession' || tactic === 'gegenpressing' || managerTraitId === 'tiki_taka')) {
       dx += dir * 0.032; // GK steps up to act as 3rd buildup option
-    } else if (!hasBall && tactic === 'gegenpressing') {
+    } else if (!hasBall && (tactic === 'gegenpressing' || managerTraitId === 'gegenpress_guru')) {
       dx += dir * 0.024; // Sweeper keeper covers space behind high line
     }
     return { x: dx, y: dy };
@@ -252,24 +254,79 @@ export function computeTacticalPlayerOffset(
     }
   }
 
+  // =========================================================================
+  // MANAGER TRAIT SIGNATURE 2D IDENTITY (LIVE PITCH VISUALIZATION)
+  // =========================================================================
+  if (managerTraitId === 'tiki_taka' || managerTraitId === 'midfield_maestro') {
+    if (hasBall && (isCM || isCAM || isCDM)) {
+      // Tighter central triangles & rhythmic pocket rotation
+      dx += dir * 0.022;
+      dy += (ball.y - base.y) * 0.1 + Math.sin(simClock * 2.0 + slotIndex) * 0.025;
+    }
+  } else if (managerTraitId === 'gegenpress_guru') {
+    if (!hasBall) {
+      // Extra high-line squeeze & aggressive ball-swarm
+      const distToBall = Math.hypot(base.x - ball.x, base.y - ball.y);
+      if (distToBall < 0.38) {
+        dx += (ball.x - base.x) * 0.12;
+        dy += (ball.y - base.y) * 0.12;
+      } else {
+        dx += dir * 0.03;
+      }
+    }
+  } else if (managerTraitId === 'catenaccio' || managerTraitId === 'defensive_architect') {
+    if (!hasBall && !isST) {
+      // Compact ultra-disciplined defensive block
+      dx += -dir * 0.035;
+      dy += (0.5 - base.y) * 0.1;
+    } else if (hasBall && managerTraitId === 'catenaccio' && (isST || isWinger)) {
+      // Springing vertical counter runs
+      dx += dir * 0.035;
+    }
+  } else if (managerTraitId === 'wing_bomber') {
+    if (hasBall && (isFB || isWinger)) {
+      // Extra touchline width & aggressive wing overlaps
+      dx += dir * 0.035;
+      dy += sideSign * 0.035;
+    }
+  } else if (managerTraitId === 'direct_football') {
+    if (hasBall && (isST || isWinger || isCAM)) {
+      // Relentless vertical box-attacking runs
+      dx += dir * 0.045;
+    }
+  } else if (managerTraitId === 'total_football') {
+    if (hasBall) {
+      // Fluid positional interchange across lines
+      dx += dir * Math.sin(simClock * 1.7 + slotIndex * 1.1) * 0.035;
+      dy += Math.cos(simClock * 1.4 + slotIndex * 0.9) * 0.055;
+    }
+  }
+
   return { x: dx, y: dy };
 }
 
 /**
- * Returns the next carrier index & tactical pass delay according to team tactic.
+ * Returns the next carrier index & tactical pass delay according to team tactic and manager trait.
  */
 export function pickTacticalPassNext(params: {
   tactic: TacticId;
   attackPhase: number;
   carrierIdx: number;
   activeBase: TacticalVec2[];
+  managerTraitId?: ManagerTraitId | null;
 }): { nextCarrierIdx: number; passDelay: number } {
-  const { tactic, attackPhase, carrierIdx, activeBase } = params;
+  const {
+    tactic,
+    attackPhase,
+    carrierIdx,
+    activeBase,
+    managerTraitId = null,
+  } = params;
 
-  // Possession occasionally recycles through GK (slot 0) during deep buildup
+  // Possession / Tiki-Taka occasionally recycles through GK (slot 0) during deep buildup
   const pool =
     attackPhase === 0
-      ? tactic === 'possession'
+      ? tactic === 'possession' || managerTraitId === 'tiki_taka'
         ? [0, 1, 2, 3, 4, 5]
         : [1, 2, 3, 4]
       : attackPhase === 1
@@ -278,16 +335,20 @@ export function pickTacticalPassNext(params: {
 
   let chosen = pool[Math.floor(Math.random() * pool.length)];
 
-  if (tactic === 'wingplay' && attackPhase >= 1) {
+  if ((tactic === 'wingplay' || managerTraitId === 'wing_bomber') && attackPhase >= 1) {
     const wideSorted = [...pool].sort(
       (a, b) =>
         Math.abs(activeBase[b].y - 0.5) - Math.abs(activeBase[a].y - 0.5),
     );
     chosen =
-      Math.random() < 0.76
+      Math.random() < 0.78
         ? wideSorted[0]
         : wideSorted[Math.min(1, wideSorted.length - 1)];
-  } else if (tactic === 'possession') {
+  } else if (
+    tactic === 'possession' ||
+    managerTraitId === 'tiki_taka' ||
+    managerTraitId === 'midfield_maestro'
+  ) {
     // Prefer nearest triangular passing partner
     const cur = activeBase[carrierIdx] ?? { x: 0.5, y: 0.5 };
     const nearSorted = [...pool]
@@ -299,11 +360,16 @@ export function pickTacticalPassNext(params: {
       );
     if (nearSorted.length > 0) {
       chosen =
-        Math.random() < 0.72
+        Math.random() < 0.74
           ? nearSorted[0]
           : nearSorted[Math.min(1, nearSorted.length - 1)];
     }
-  } else if (tactic === 'counter' && attackPhase >= 1) {
+  } else if (
+    (tactic === 'counter' ||
+      managerTraitId === 'direct_football' ||
+      managerTraitId === 'catenaccio') &&
+    attackPhase >= 1
+  ) {
     // Launch direct vertical ball to most advanced runner
     const fwdSorted = [...pool].sort((a, b) => b - a);
     chosen = fwdSorted[Math.floor(Math.random() * Math.min(2, fwdSorted.length))];
@@ -314,10 +380,13 @@ export function pickTacticalPassNext(params: {
   }
 
   const passDelay =
-    tactic === 'counter' || tactic === 'gegenpressing'
-      ? 0.38
-      : tactic === 'possession'
-        ? 0.44 // Crisp tiki-taka tempo
+    tactic === 'counter' ||
+    tactic === 'gegenpressing' ||
+    managerTraitId === 'direct_football' ||
+    managerTraitId === 'gegenpress_guru'
+      ? 0.36
+      : tactic === 'possession' || managerTraitId === 'tiki_taka'
+        ? 0.42 // Crisp tiki-taka tempo
         : 0.48;
 
   return { nextCarrierIdx: chosen, passDelay };

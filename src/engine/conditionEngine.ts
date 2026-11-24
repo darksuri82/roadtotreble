@@ -397,7 +397,7 @@ export function computeFullPlayerOvrBreakdown(params: {
   const hasSplitSynergy =
     playerSynergyBonus !== undefined || managerBonus !== undefined;
   const effectiveSynergySum = hasSplitSynergy
-    ? Math.min(3, (playerSynergyBonus ?? 0) + (managerBonus ?? 0))
+    ? (playerSynergyBonus ?? 0) + (managerBonus ?? 0)
     : synergyBonus;
   const condBr = getPlayerConditionOvrBreakdown(condition);
   const isUnavailableInjured = isPlayerUnavailable(condition);

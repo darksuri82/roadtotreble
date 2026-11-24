@@ -151,6 +151,7 @@ export function DraftScreen() {
       displayedChemistry.total,
       state.manager.traitId,
       displayedChemistry.slotSynergies,
+      state.defaultTactic,
     );
   }, [
     previewCandidate,
@@ -159,6 +160,7 @@ export function DraftScreen() {
     displayedStarters,
     displayedChemistry,
     state.manager.traitId,
+    state.defaultTactic,
   ]);
 
   const previewSlotSynergy =
@@ -222,8 +224,21 @@ export function DraftScreen() {
             {state.manager.name}
           </span>
           {activeTrait && (
-            <span className="rounded-md border border-amber-400/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-amber-200">
+            <span
+              title={activeTrait.effectSummary}
+              className="rounded-md border border-amber-400/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-amber-200"
+            >
               {activeTrait.name}
+            </span>
+          )}
+          {(displayedRatings.managerTargetCount ?? 0) > 0 && (
+            <span className="rounded-md border border-violet-400/35 bg-violet-500/12 px-1.5 py-0.5 text-[10px] font-extrabold text-violet-200 tabular-nums">
+              ★ {displayedRatings.managerMatchedCount ?? 0}/{displayedRatings.managerTargetCount}
+            </span>
+          )}
+          {displayedRatings.managerEffectSummary && (
+            <span className="hidden md:inline-flex rounded-md border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300 tabular-nums">
+              {displayedRatings.managerEffectSummary}
             </span>
           )}
           {activeTrait?.synergyTactic && (

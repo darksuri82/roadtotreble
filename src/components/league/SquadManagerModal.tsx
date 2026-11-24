@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
+import { MANAGER_TRAITS } from '../../data/managerTraits';
 import {
   computeFullPlayerOvrBreakdown,
   getInjuryTooltip,
@@ -211,7 +212,12 @@ export function SquadManagerModal({
           </div>
         )}
 
-        <ManagerTraitBadgeCard traitId={state.manager.traitId} compact />
+        <ManagerTraitBadgeCard
+          traitId={state.manager.traitId}
+          starters={state.starters}
+          tactic={state.defaultTactic}
+          compact
+        />
         <div
           className={`rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2.5 ${
             editLocked ? 'opacity-60' : ''
@@ -267,21 +273,32 @@ export function SquadManagerModal({
               기본 전술
             </div>
             <div className="grid grid-cols-5 gap-1">
-              {TACTIC_LIST.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  disabled={editLocked}
-                  onClick={() => setDefaultTactic(t.id)}
-                  className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer disabled:cursor-not-allowed transition-colors ${
-                    state.defaultTactic === t.id
-                      ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
-                      : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
-                  }`}
-                >
-                  {t.shortName}
-                </button>
-              ))}
+              {TACTIC_LIST.map((t) => {
+                const isMgrPreferred = state.manager.traitId
+                  ? MANAGER_TRAITS[state.manager.traitId]?.synergyTactic === t.id
+                  : false;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    disabled={editLocked}
+                    title={isMgrPreferred ? `${t.name} · 감독 추천 전술` : t.name}
+                    onClick={() => setDefaultTactic(t.id)}
+                    className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer disabled:cursor-not-allowed transition-colors ${
+                      state.defaultTactic === t.id
+                        ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
+                        : isMgrPreferred
+                          ? 'bg-[#131428] text-slate-200 border-violet-500/40 hover:border-violet-400/70'
+                          : 'bg-[#111822] text-slate-400 border-slate-800 hover:border-slate-600 hover:text-slate-200'
+                    }`}
+                  >
+                    {isMgrPreferred && (
+                      <span className="text-violet-300 mr-0.5">★</span>
+                    )}
+                    {t.shortName}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

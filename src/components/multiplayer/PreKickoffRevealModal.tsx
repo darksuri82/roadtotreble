@@ -270,6 +270,8 @@ function RevealFormationPitch({
           ? chemistry.slotSynergies?.[slot.index]
           : undefined;
         const synBonus = slotSyn?.totalBonus ?? 0;
+        const neighborBonus = slotSyn?.neighborBonus ?? 0;
+        const managerBonus = slotSyn?.managerBonus ?? 0;
 
         const penaltyTagCls =
           fit?.fit === 'secondary'
@@ -342,7 +344,23 @@ function RevealFormationPitch({
                 >
                   {fit ? fit.effectiveOvr : (player?.ovr ?? '-')}
                 </span>
-                {synBonus > 0 && (
+                {neighborBonus > 0 && (
+                  <span
+                    title={`선수 시너지 +${neighborBonus} (${slotSyn?.lineCount ?? 0}선)`}
+                    className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7px] font-bold text-emerald-300/90 leading-none"
+                  >
+                    +{neighborBonus}
+                  </span>
+                )}
+                {managerBonus > 0 && (
+                  <span
+                    title={`감독 궁합 +${managerBonus}`}
+                    className="rounded bg-violet-950/85 border border-violet-400/35 px-0.5 py-px text-[6.5px] font-bold text-violet-300 leading-none"
+                  >
+                    ★{managerBonus}
+                  </span>
+                )}
+                {synBonus > 0 && neighborBonus === 0 && managerBonus === 0 && (
                   <span className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7px] font-bold text-emerald-300/90 leading-none">
                     +{synBonus}
                   </span>
@@ -417,6 +435,7 @@ export function PreKickoffRevealModal({
       chem.total,
       hostTraitId,
       chem.slotSynergies,
+      hostSub.tactic,
     );
     const fit = evaluateTeamTacticalProfile({
       starters: hostSub.starters,
@@ -441,6 +460,7 @@ export function PreKickoffRevealModal({
       chem.total,
       guestTraitId,
       chem.slotSynergies,
+      guestSub.tactic,
     );
     const fit = evaluateTeamTacticalProfile({
       starters: guestSub.starters,

@@ -189,6 +189,7 @@ export function buildHumanMatchSetup(params: {
     chem.total,
     human.managerTraitId,
     chem.slotSynergies,
+    squad.tactic,
   );
   const top3 = [...effStarters]
     .sort((a, b) => b.att - a.att)
@@ -2755,7 +2756,13 @@ export function runMpLeague(
       continue;
     }
 
-    if (step.t === 'cup_stage') current = stepCupStage(current, env);
+    if (step.t === 'cup_stage') {
+      const beforeCupDone = Boolean(current.cup?.completed);
+      current = stepCupStage(current, env);
+      if (!beforeCupDone && current.cup?.completed) {
+        pacedBudget = 0;
+      }
+    }
     else if (step.t === 'events') current = stepEvents(current, env);
     else if (step.t === 'transfer') current = stepTransfer(current, env);
     else if (step.t === 'finish_league') current = stepFinishLeague(current, env);

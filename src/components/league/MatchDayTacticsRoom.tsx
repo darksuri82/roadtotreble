@@ -12,7 +12,10 @@ import {
 import { useMemo, useState } from 'react';
 import { getClubManager } from '../../data/aiManagers';
 import { FORMATION_LIST } from '../../data/formations';
-import { MANAGER_TRAITS } from '../../data/managerTraits';
+import {
+  evaluateManagerTeamEffect,
+  MANAGER_TRAITS,
+} from '../../data/managerTraits';
 import { calculateTeamRatings } from '../../engine/chemistryEngine';
 import { TACTIC_LIST, TACTICS } from '../../engine/tacticEngine';
 import {
@@ -169,9 +172,54 @@ export function MatchDayTacticsRoom({
         chemistry.total,
         managerTraitId,
         chemistry.slotSynergies,
+        activeTactic,
       ),
-    [formation, filledStarters, chemistry, managerTraitId],
+    [formation, filledStarters, chemistry, managerTraitId, activeTactic],
   );
+
+  const liveManagerEffect = useMemo(() => {
+    if (!managerTraitId) return null;
+    const isBigKnockout =
+      (headerAccent === 'cup' && /(준결승|결승)/.test(headerBadge)) ||
+      (headerAccent === 'ucl' && /(16강|8강|4강|준결승|결승|플레이오프)/.test(headerBadge));
+    const oppAvgOvr = (opponent.att + opponent.mid + opponent.def) / 3;
+    const baseUserAvgOvr =
+      ((ourRatings.effectiveAtt - (ourRatings.managerAttBonus ?? 0)) +
+        (ourRatings.effectiveMid - (ourRatings.managerMidBonus ?? 0)) +
+        (ourRatings.effectiveDef - (ourRatings.managerDefBonus ?? 0))) /
+      3;
+    return evaluateManagerTeamEffect({
+      traitId: managerTraitId,
+      starters: filledStarters,
+      tactic: activeTactic,
+      userAvgOvr: baseUserAvgOvr,
+      oppAvgOvr,
+      isBigKnockout,
+    });
+  }, [
+    managerTraitId,
+    headerAccent,
+    headerBadge,
+    opponent.att,
+    opponent.mid,
+    opponent.def,
+    ourRatings,
+    filledStarters,
+    activeTactic,
+  ]);
+
+  const displayAtt = Math.round(
+    (ourRatings.effectiveAtt + (liveManagerEffect?.situationalAttDelta ?? 0)) * 10,
+  ) / 10;
+  const displayMid = Math.round(
+    (ourRatings.effectiveMid + (liveManagerEffect?.situationalMidDelta ?? 0)) * 10,
+  ) / 10;
+  const displayDef = Math.round(
+    (ourRatings.effectiveDef + (liveManagerEffect?.situationalDefDelta ?? 0)) * 10,
+  ) / 10;
+  const managerPreferredTactic = managerTraitId
+    ? MANAGER_TRAITS[managerTraitId]?.synergyTactic
+    : undefined;
 
   const unifiedMatchup = useMemo(
     () =>
@@ -279,10 +327,22 @@ export function MatchDayTacticsRoom({
             className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2 py-1 text-[11px] font-bold text-slate-300 tabular-nums whitespace-nowrap"
           >
             <Zap className="w-3 h-3 text-emerald-400" />
-            A <strong className="text-white">{ourRatings.effectiveAtt}</strong> / M{' '}
-            <strong className="text-white">{ourRatings.effectiveMid}</strong> / D{' '}
-            <strong className="text-white">{ourRatings.effectiveDef}</strong>
+            A <strong className="text-white">{displayAtt}</strong> / M{' '}
+            <strong className="text-white">{displayMid}</strong> / D{' '}
+            <strong className="text-white">{displayDef}</strong>
           </span>
+          {liveManagerEffect?.compactSummary && (
+            <span
+              title={
+                managerTraitId
+                  ? `${MANAGER_TRAITS[managerTraitId]?.name}: ${MANAGER_TRAITS[managerTraitId]?.effectSummary}`
+                  : undefined
+              }
+              className="inline-flex items-center gap-1 rounded-lg border border-violet-400/35 bg-violet-500/12 px-2 py-1 text-[10px] font-extrabold text-violet-200 whitespace-nowrap"
+            >
+              ★ {liveManagerEffect.compactSummary}
+            </span>
+          )}
           <button
             type="button"
             onClick={() => setGuideOpen(true)}
@@ -455,17 +515,17 @@ export function MatchDayTacticsRoom({
         <div className="grid grid-cols-3 gap-2">
           <StatComparePill
             label="ATT 공격"
-            ourVal={ourRatings.att}
+            ourVal={Math.round(displayAtt)}
             oppVal={opponent.att}
           />
           <StatComparePill
             label="MID 중원"
-            ourVal={ourRatings.mid}
+            ourVal={Math.round(displayMid)}
             oppVal={opponent.mid}
           />
           <StatComparePill
             label="DEF 수비"
-            ourVal={ourRatings.def}
+            ourVal={Math.round(displayDef)}
             oppVal={opponent.def}
           />
         </div>
@@ -509,6 +569,7 @@ export function MatchDayTacticsRoom({
             {TACTIC_LIST.map((t) => {
               const active = activeTactic === t.id;
               const fitPct = tacticFits[t.id];
+              const isMgrPreferred = managerPreferredTactic === t.id;
               return (
                 <button
                   key={t.id}
@@ -517,16 +578,21 @@ export function MatchDayTacticsRoom({
                   onClick={() => {
                     if (!locked) onSelectTactic(t.id);
                   }}
-                  title={`${t.name} (현재 라인업 완성도 ${fitPct}%)`}
+                  title={`${t.name} (라인업 완성도 ${fitPct}%${isMgrPreferred ? ' · 감독 추천 전술' : ''})`}
                   className={`relative min-w-0 rounded-lg py-1.5 px-1 text-center transition-colors ${
                     locked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'
                   } ${
                     active
                       ? 'bg-emerald-500/18 text-emerald-100 border border-emerald-400/55 font-extrabold'
-                      : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600 font-bold'
+                      : isMgrPreferred
+                        ? 'bg-[#131428] text-slate-200 border border-violet-500/40 hover:border-violet-400/70 font-bold'
+                        : 'bg-[#111822] text-slate-300 border border-slate-800 hover:border-slate-600 font-bold'
                   }`}
                 >
                   <div className="truncate text-[10px] sm:text-[11px] leading-tight">
+                    {isMgrPreferred && (
+                      <span className="text-violet-300 mr-0.5">★</span>
+                    )}
                     {t.shortName}
                   </div>
                   <div

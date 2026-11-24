@@ -163,38 +163,38 @@ export function TacticsGuideModal({
               <section className="space-y-2.5">
                 <div className="flex items-center gap-1.5 text-xs font-extrabold text-amber-300">
                   <Sparkles className="w-4 h-4" />
-                  3. 선수 시너지 4원칙 &amp; 감독 궁합 분리 (전 구단·명전 동일 적용)
+                  3. 선수 시너지 4원칙 (2/4/8선 → +1/+2/+3) &amp; 감독 궁합 ★+1
                 </div>
                 <div className="rounded-xl border border-slate-800 bg-[#0a1019] p-3.5 space-y-3 text-[11px]">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div className="rounded-lg bg-slate-900/80 p-2.5 space-y-1">
-                      <div className="font-bold text-emerald-300">① 같은 팀 · 전 소속팀 (최대 35점)</div>
+                      <div className="font-bold text-emerald-300">① 같은 팀 · 전 소속팀 (1선)</div>
                       <p className="text-slate-400">
-                        현재 동일 소속 구단뿐 아니라 실제 공식 1군 커리어상 과거 같은 구단(<code className="text-slate-300">전 소속팀</code>) 인연이 있으면 발동합니다.
+                        현재 동일 소속 구단 또는 과거 공식 1군 커리어상 같은 구단 인연 시 연결됩니다.
                       </p>
                     </div>
                     <div className="rounded-lg bg-slate-900/80 p-2.5 space-y-1">
-                      <div className="font-bold text-sky-300">② 같은 국적 (최대 20점)</div>
+                      <div className="font-bold text-sky-300">② 같은 국적 (1선)</div>
                       <p className="text-slate-400">
                         인접 슬롯에 동일 국적 선수를 배치하면 국적 케미선이 연결됩니다.
                       </p>
                     </div>
                     <div className="rounded-lg bg-slate-900/80 p-2.5 space-y-1">
-                      <div className="font-bold text-amber-300">③ 스타일 궁합 (최대 30점)</div>
+                      <div className="font-bold text-amber-300">③ 스타일 궁합 (1선)</div>
                       <p className="text-slate-400">
-                        크로스 윙어↔포처, 플레이메이커↔라인브레이커, 빌드업 CB↔파이터 CB 등 상호 보완 플레이스타일 조합 시 발동합니다.
+                        크로스 윙어↔포처, 플레이메이커↔라인브레이커 등 상호 보완 스타일 조합 시 연결됩니다.
                       </p>
                     </div>
                     <div className="rounded-lg bg-slate-900/80 p-2.5 space-y-1">
-                      <div className="font-bold text-purple-300">④ 엘리트 페어 OVR {ELITE_PAIR_MIN_OVR}+ (최대 15점)</div>
+                      <div className="font-bold text-purple-300">④ 엘리트 페어 OVR {ELITE_PAIR_MIN_OVR}+ (1선)</div>
                       <p className="text-slate-400">
-                        인접한 두 선수 모두 기본 OVR {ELITE_PAIR_MIN_OVR} 이상(월드클래스·슈퍼스타·레전드)일 때 최상위 호흡 시너지가 발동합니다.
+                        인접한 두 선수 모두 기본 OVR {ELITE_PAIR_MIN_OVR} 이상일 때 엘리트 시너지선이 연결됩니다.
                       </p>
                     </div>
                   </div>
 
-                  <div className="rounded-lg border border-amber-400/25 bg-amber-500/5 p-2.5 text-slate-300">
-                    <strong className="text-amber-300">⭐ 감독 스타일 궁합 (독립 보정):</strong> 선수 간 시너지(+0~+2)와 별개로 감독 스타일이 일치하는 선수의 실효 OVR이 직접 +1 상승합니다 (OVR 86+ 명장의 핵심 스타일 일치 시 최대 +2, 개인 합산 상한 +3).
+                  <div className="rounded-lg border border-violet-400/25 bg-violet-500/5 p-2.5 text-slate-300">
+                    <strong className="text-violet-300">★ 감독 궁합 &amp; 철학 (독립 보정):</strong> 선수 시너지(2/4/8선 → 최대 +3)와 별개로 감독 궁합 일치 선수 모두 <strong className="text-violet-200">+1</strong>(최대 총 +4)을 받습니다. 전술형 감독은 궁합 선수 수(1~8명)와 ★추천 전술에 따라 팀 A/M/D가 실시간 상승하며, 스페셜리스트 감독은 포지션·하프타임·교체·빅매치·언더독·세트피스에서 고유 특색을 발휘합니다.
                   </div>
 
                   <div className="pt-1">

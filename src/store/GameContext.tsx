@@ -684,6 +684,7 @@ function simulateFullSingleRound(
     chem.total,
     managerTraitId,
     chem.slotSynergies,
+    tactic,
   );
 
   const updatedClubs = season.clubs.map((c) =>
@@ -1010,6 +1011,7 @@ function syncCupAfterRound(params: {
       chem.total,
       managerTraitId,
       chem.slotSynergies,
+      tactic,
     );
     const clubsById: Record<string, Club> = Object.fromEntries(
       current.clubs.map((c) => [
@@ -1117,6 +1119,7 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
     chem.total,
     state.manager.traitId,
     chem.slotSynergies,
+    state.season.defaultTactic,
   );
   const userRow = state.season.standings.find((r) => r.teamId === USER_CLUB_ID);
   const finalRank = getUserRank(state.season.standings, USER_CLUB_ID);
@@ -1287,6 +1290,7 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
       chem.total,
       state.manager.traitId,
       chem.slotSynergies,
+      finalSeason.defaultTactic,
     );
     const userClubEntry = buildUserClubEntry(
       state.userClub,
@@ -1559,6 +1563,8 @@ function commitLiveMatchResult(
     filledStarters,
     chem.total,
     state.manager.traitId,
+    chem.slotSynergies,
+    activeTactic,
   );
 
   const updatedClubs = season.clubs.map((c) =>
@@ -2329,6 +2335,8 @@ function executeBidirectionalTrade(params: {
       nextFilledStarters,
       chemAfter.total,
       state.manager.traitId,
+      chemAfter.slotSynergies,
+      season.defaultTactic,
     );
     nextUcl = {
       ...nextUcl,
@@ -3032,6 +3040,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         chem.total,
         state.manager.traitId,
         chem.slotSynergies,
+        state.defaultTactic,
       );
       const userClubEntry = buildUserClubEntry(
         state.userClub,
@@ -3158,6 +3167,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         chem.total,
         state.manager.traitId,
         chem.slotSynergies,
+        activeTactic,
       );
 
       let userFixture: SeasonState['fixtures'][number] | null = null;
@@ -3284,6 +3294,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           managerTraitId: state.manager.traitId,
           competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
+          isBigKnockout:
+            (competition === 'cup' && /(준결승|결승)/.test(competitionLabel)) ||
+            (competition === 'ucl' && /(16강|8강|4강|준결승|결승|플레이오프)/.test(competitionLabel)),
         },
       });
 
@@ -3349,6 +3362,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         chem.total,
         state.manager.traitId,
         chem.slotSynergies,
+        secondHalfTactic,
       );
 
       const activeClubs =
@@ -3411,6 +3425,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           managerTraitId: state.manager.traitId,
           competition: halftime.competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
+          isBigKnockout:
+            (halftime.competition === 'cup' && /(준결승|결승)/.test(halftime.competitionLabel ?? '')) ||
+            (halftime.competition === 'ucl' && /(16강|8강|4강|준결승|결승|플레이오프)/.test(halftime.competitionLabel ?? '')),
           halftimeSubIds: subPlayerIds,
           firstHalfStarters,
           liveSubs: halftime.liveSubs ?? [],
@@ -3547,6 +3564,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         chem.total,
         state.manager.traitId,
         chem.slotSynergies,
+        userTactic,
       );
 
       const activeClubs =
@@ -3608,6 +3626,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           managerTraitId: state.manager.traitId,
           competition: halftime.competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
+          isBigKnockout:
+            (halftime.competition === 'cup' && /(준결승|결승)/.test(halftime.competitionLabel ?? '')) ||
+            (halftime.competition === 'ucl' && /(16강|8강|4강|준결승|결승|플레이오프)/.test(halftime.competitionLabel ?? '')),
           halftimeSubIds,
           firstHalfStarters,
           liveSubs: allSubsSoFar,
@@ -3697,6 +3718,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         chem.total,
         state.manager.traitId,
         chem.slotSynergies,
+        userTactic,
       );
 
       const activeClubs =
@@ -3810,6 +3832,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         chem.total,
         state.manager.traitId,
         chem.slotSynergies,
+        userTactic,
       );
 
       const activeClubs =
@@ -3965,6 +3988,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             chem.total,
             state.manager.traitId,
             chem.slotSynergies,
+            userTactic,
           );
           const clubsById = buildClubsById(ratings);
           const allSubsSoFar = halftime.liveSubs ?? [];
@@ -4017,6 +4041,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
               chem.total,
               state.manager.traitId,
               chem.slotSynergies,
+              userTactic,
             );
             const clubsById = buildClubsById(ratings);
             finalRes = simulateExtraTimeAndPenalties({
@@ -4064,6 +4089,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
+        secondHalfTactic,
       );
 
       const clubsById = buildClubsById(ratings);
@@ -4090,8 +4117,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           tactic: secondHalfTactic,
           chemistry: chem.total,
           ratings,
+          slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          competition: halftime.competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
+          isBigKnockout:
+            (halftime.competition === 'cup' && /(준결승|결승)/.test(halftime.competitionLabel ?? '')) ||
+            (halftime.competition === 'ucl' && /(16강|8강|4강|준결승|결승|플레이오프)/.test(halftime.competitionLabel ?? '')),
           liveSubs: halftime.liveSubs ?? [],
           allowAutoSubs: true,
         },
@@ -4360,6 +4392,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           chem.total,
           state.manager.traitId,
           chem.slotSynergies,
+          activeTactic,
         );
         const syncedUcl = {
           ...ucl,
@@ -5135,6 +5168,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           nextFilledStarters,
           chemAfter.total,
           state.manager.traitId,
+          chemAfter.slotSynergies,
+          state.season.defaultTactic,
         );
         nextUcl = {
           ...nextUcl,
@@ -5549,6 +5584,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
+        state.season.defaultTactic,
       );
       const userClubEntry = buildUserClubEntry(
         state.userClub,
@@ -5650,6 +5687,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         chem.total,
         state.manager.traitId,
         chem.slotSynergies,
+        activeTactic,
       );
       const syncedUcl = {
         ...state.season.ucl,
@@ -5811,6 +5849,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         chem.total,
         state.manager.traitId,
         chem.slotSynergies,
+        activeTactic,
       );
       const syncedUcl = {
         ...state.season.ucl,
@@ -5893,6 +5932,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         chem.total,
         state.manager.traitId,
+        chem.slotSynergies,
+        activeTactic,
       );
       const userClubEntry = buildUserClubEntry(
         state.userClub,
@@ -6026,6 +6067,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           filledStarters,
           chem.total,
           state.manager.traitId,
+          chem.slotSynergies,
+          activeTactic,
         );
         const sim = simulateUclToCompletion({
           ucl: finalUcl,
@@ -6576,6 +6619,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         chemistry.total,
         state.manager.traitId,
         chemistry.slotSynergies,
+        activeTactic,
       ),
     [
       state.formation,
@@ -6583,6 +6627,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       chemistry.total,
       chemistry.slotSynergies,
       state.manager.traitId,
+      activeTactic,
     ],
   );
 

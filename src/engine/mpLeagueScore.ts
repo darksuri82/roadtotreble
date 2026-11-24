@@ -136,6 +136,7 @@ export function computeMpHumanSeasonScore(params: {
     chem.total,
     human.managerTraitId,
     chem.slotSynergies,
+    squad.tactic,
   );
   const rowIdx = state.standings.findIndex((r) => r.teamId === clubId);
   const row = rowIdx === -1 ? null : state.standings[rowIdx];

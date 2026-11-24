@@ -247,6 +247,13 @@ export function advanceCupStage(params: {
   const stageNum = stageIndex + 1;
   const competitionLabel = `${cup.meta.koreanName} ${CUP_STAGE_LABELS[stage]}`;
   const existingMatches = cup.rounds[stage];
+  const isBigCupStage = stage === 'sf' || stage === 'final';
+  const effectiveUserContext = userContext
+    ? {
+        ...userContext,
+        isBigKnockout: userContext.isBigKnockout || isBigCupStage,
+      }
+    : undefined;
 
   const updatedMatches: CupMatchNode[] = [];
   const stageResults: MatchResult[] = [];
@@ -325,7 +332,7 @@ export function advanceCupStage(params: {
           awayClub,
           homeRoster,
           awayRoster,
-          userContext,
+          userContext: effectiveUserContext,
           rng,
         });
       }
@@ -337,7 +344,7 @@ export function advanceCupStage(params: {
         awayClub,
         homeRoster,
         awayRoster,
-        involvesUser ? userContext : undefined,
+        involvesUser ? effectiveUserContext : undefined,
         rng,
       );
       const tagged: MatchResult = {
@@ -353,7 +360,7 @@ export function advanceCupStage(params: {
               awayClub,
               homeRoster,
               awayRoster,
-              userContext: involvesUser ? userContext : undefined,
+              userContext: involvesUser ? effectiveUserContext : undefined,
               rng,
             })
           : tagged;

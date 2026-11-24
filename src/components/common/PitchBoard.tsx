@@ -679,12 +679,20 @@ export function PitchBoard({
                             >
                               {fit.effectiveOvr}
                             </span>
-                            {synBonus > 0 && (
+                            {slotSyn && slotSyn.neighborBonus > 0 && (
                               <span
-                                title={`시너지 +${synBonus} (${slotSyn?.reasons.join(' · ')})`}
-                                className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-emerald-300/90 leading-none"
+                                title={`연결 ${slotSyn.lineCount ?? 0}선 → +${slotSyn.neighborBonus} (${slotSyn.playerReasons?.join(' · ') ?? ''})`}
+                                className="rounded bg-emerald-950/80 border border-emerald-500/30 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-emerald-300/95 leading-none"
                               >
-                                +{synBonus}
+                                +{slotSyn.neighborBonus}
+                              </span>
+                            )}
+                            {slotSyn && slotSyn.managerBonus > 0 && (
+                              <span
+                                title={slotSyn.managerReason ?? '감독 궁합 +1'}
+                                className="rounded bg-violet-950/85 border border-violet-400/40 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-violet-200 leading-none"
+                              >
+                                ★1
                               </span>
                             )}
                             {starterOvrBr.moraleBonus !== 0 && (
@@ -769,70 +777,109 @@ export function PitchBoard({
         })}
       </div>
 
-      {/* Multi-Line Chemistry Legend (4 official synergy line colors) */}
+      {/* Multi-Line Chemistry Legend + Live Hover 1-Line Synergy Pill */}
       {showChemLegend && (
         <div className="flex flex-wrap items-center justify-between gap-1.5 rounded-xl border border-slate-800/80 bg-[#0e141e] px-2.5 py-1 text-[10px] text-slate-400">
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1">
               <span
-                className="h-0.5 w-3 rounded-full"
+                className="h-0.5 w-2.5 rounded-full"
                 style={{ backgroundColor: LINE_COLORS.club }}
               />
-              구단·전소속
+              구단
             </span>
             <span className="inline-flex items-center gap-1">
               <span
-                className="h-0.5 w-3 rounded-full"
+                className="h-0.5 w-2.5 rounded-full"
                 style={{ backgroundColor: LINE_COLORS.nation }}
               />
               국적
             </span>
             <span className="inline-flex items-center gap-1">
               <span
-                className="h-0.5 w-3 rounded-full"
+                className="h-0.5 w-2.5 rounded-full"
                 style={{ backgroundColor: LINE_COLORS.style }}
               />
               스타일
             </span>
             <span className="inline-flex items-center gap-1">
               <span
-                className="h-0.5 w-3 rounded-full"
+                className="h-0.5 w-2.5 rounded-full"
                 style={{ backgroundColor: LINE_COLORS.elite }}
               />
-              엘리트 88+
+              88+
+            </span>
+            <span className="inline-flex items-center gap-0.5 text-violet-300/90">
+              <span className="rounded bg-violet-950/85 border border-violet-400/40 px-1 text-[8px] font-bold">
+                ★1
+              </span>
+              감독
             </span>
           </div>
-          <span className="text-[9.5px] text-slate-500">
-            {onInspectPlayer ? '호버 선 강조 · ⓘ 상세' : '호버 시 선 강조'}
-          </span>
+          {(() => {
+            const focusedP =
+              focusedStarterIdx !== null ? starters[focusedStarterIdx] : null;
+            const focusedSyn =
+              focusedStarterIdx !== null
+                ? chemistry.slotSynergies?.[focusedStarterIdx]
+                : undefined;
+            if (focusedP && focusedSyn) {
+              const lc = focusedSyn.lineCount ?? 0;
+              return (
+                <span className="text-[9.5px] font-semibold text-slate-200 tabular-nums">
+                  {formatPitchDisplayName(focusedP.name, true)} · {lc}선(
+                  <span className="text-emerald-300">+{focusedSyn.neighborBonus}</span>)
+                  {focusedSyn.managerBonus > 0 && (
+                    <span className="text-violet-300"> · 감독 ★+1</span>
+                  )}
+                </span>
+              );
+            }
+            return (
+              <span className="text-[9.5px] text-slate-500 tabular-nums">
+                2·4·8선 → +1·2·3{onInspectPlayer ? ' · ⓘ상세' : ''}
+              </span>
+            );
+          })()}
         </div>
       )}
 
-      {/* 4-Pillar Player Synergy Breakdown */}
+      {/* 4-Color Active Line Count Strip (1 line = 1 pt) */}
       {showChemBreakdown && (
-        <div className="grid grid-cols-4 gap-1 rounded-xl border border-slate-800/80 bg-[#111822] p-1.5 text-center text-[9.5px]">
+        <div className="grid grid-cols-5 gap-1 rounded-xl border border-slate-800/80 bg-[#111822] p-1.5 text-center text-[9.5px]">
           <div className="rounded-lg bg-slate-950/60 py-1 px-1">
-            <div className="text-emerald-400/90">구단·전소속</div>
-            <div className="font-display text-[11px] font-bold text-white">
-              {chemistry.breakdown.club} / 35
+            <div className="text-emerald-400/90">구단</div>
+            <div className="font-display text-[11px] font-bold text-white tabular-nums">
+              {chemistry.breakdown.club}선
             </div>
           </div>
           <div className="rounded-lg bg-slate-950/60 py-1 px-1">
-            <div className="text-sky-400/90">동일 국적</div>
-            <div className="font-display text-[11px] font-bold text-white">
-              {chemistry.breakdown.nation} / 20
+            <div className="text-sky-400/90">국적</div>
+            <div className="font-display text-[11px] font-bold text-white tabular-nums">
+              {chemistry.breakdown.nation}선
             </div>
           </div>
           <div className="rounded-lg bg-slate-950/60 py-1 px-1">
-            <div className="text-amber-400/90">스타일 궁합</div>
-            <div className="font-display text-[11px] font-bold text-white">
-              {chemistry.breakdown.tacticStyle} / 30
+            <div className="text-amber-400/90">스타일</div>
+            <div className="font-display text-[11px] font-bold text-white tabular-nums">
+              {chemistry.breakdown.tacticStyle}선
             </div>
           </div>
           <div className="rounded-lg bg-slate-950/60 py-1 px-1">
-            <div className="text-purple-400/90">엘리트 88+</div>
-            <div className="font-display text-[11px] font-bold text-white">
-              {chemistry.breakdown.roleBalance} / 15
+            <div className="text-purple-400/90">88+</div>
+            <div className="font-display text-[11px] font-bold text-white tabular-nums">
+              {chemistry.breakdown.roleBalance}선
+            </div>
+          </div>
+          <div className="rounded-lg bg-emerald-950/40 border border-emerald-500/20 py-1 px-1">
+            <div className="text-emerald-300">총 연결</div>
+            <div className="font-display text-[11px] font-bold text-emerald-200 tabular-nums">
+              {chemistry.breakdown.totalLines ??
+                chemistry.breakdown.club +
+                  chemistry.breakdown.nation +
+                  chemistry.breakdown.tacticStyle +
+                  chemistry.breakdown.roleBalance}
+              선
             </div>
           </div>
         </div>

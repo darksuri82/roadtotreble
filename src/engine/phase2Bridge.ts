@@ -68,6 +68,8 @@ export function buildPhase2HandoffState(params: {
     starters,
     chemResult.total,
     managerTraitId,
+    chemResult.slotSynergies,
+    defaultTactic,
   );
 
   const uclQualifiedByLeague = buildFiveLeagueUclQualifiers({

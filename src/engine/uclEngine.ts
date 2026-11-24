@@ -892,6 +892,9 @@ export function advanceUclKnockoutLeg(params: {
   const competitionLabel = isFinal
     ? `UCL ${stageLabel}`
     : `UCL ${stageLabel} ${currentLeg}차전`;
+  const effectiveUserContext = userContext
+    ? { ...userContext, isBigKnockout: true }
+    : undefined;
 
   const legResults: MatchResult[] = [];
   let userResult: MatchResult | null = null;
@@ -1049,7 +1052,7 @@ export function advanceUclKnockoutLeg(params: {
           awayClub,
           homeRoster,
           awayRoster,
-          involvesUser ? userContext : undefined,
+          involvesUser ? effectiveUserContext : undefined,
           rng,
         );
         const tagged: MatchResult = {
@@ -1065,7 +1068,7 @@ export function advanceUclKnockoutLeg(params: {
                 awayClub,
                 homeRoster,
                 awayRoster,
-                userContext: involvesUser ? userContext : undefined,
+                userContext: involvesUser ? effectiveUserContext : undefined,
                 rng,
               })
             : tagged;
@@ -1134,7 +1137,7 @@ export function advanceUclKnockoutLeg(params: {
           awayClub,
           homeRoster,
           awayRoster,
-          involvesUser ? userContext : undefined,
+          involvesUser ? effectiveUserContext : undefined,
           rng,
         );
         res = { ...base, competition: 'ucl', competitionLabel };
@@ -1201,7 +1204,7 @@ export function advanceUclKnockoutLeg(params: {
         awayClub,
         homeRoster,
         awayRoster,
-        involvesUser ? userContext : undefined,
+        involvesUser ? effectiveUserContext : undefined,
         rng,
       );
       const tagged: MatchResult = {
@@ -1217,7 +1220,7 @@ export function advanceUclKnockoutLeg(params: {
               awayClub,
               homeRoster,
               awayRoster,
-              userContext: involvesUser ? userContext : undefined,
+              userContext: involvesUser ? effectiveUserContext : undefined,
               aggHomeBeforeMatch: prevAggA,
               aggAwayBeforeMatch: prevAggB,
               rng,

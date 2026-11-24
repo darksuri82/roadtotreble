@@ -211,8 +211,9 @@ export function DreamMatchArena() {
         chemistry.total,
         manager.traitId,
         chemistry.slotSynergies,
+        activeTactic,
       ),
-    [formation, filledStarters, chemistry, manager.traitId],
+    [formation, filledStarters, chemistry, manager.traitId, activeTactic],
   );
 
   const userMatchClub: Club = useMemo(
@@ -544,6 +545,7 @@ export function DreamMatchArena() {
         curChem.total,
         manager.traitId,
         curChem.slotSynergies,
+        tacticToUse,
       );
       return {
         userClubId: USER_CLUB_ID,
@@ -798,6 +800,7 @@ export function DreamMatchArena() {
           curChem.total,
           manager.traitId,
           curChem.slotSynergies,
+          subTactic,
         );
 
         const resim = resimulateRemainingSecondHalf({

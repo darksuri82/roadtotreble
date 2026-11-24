@@ -206,13 +206,14 @@ describe('v5.0 — 9 Formations, Unified Tactical Engine, 4-Pillar Synergy & AI 
     const nonEliteLink = evaluatePairLink({ ...pA, ovr: 87 }, eliteB);
     expect(nonEliteLink.hasEliteLink).toBe(false);
 
-    // Independent Manager Compatibility scales with Manager OVR (90+ core match -> +2)
+    // Independent Manager Compatibility gives flat +1 to all matching players (decoupled from +3 player link cap)
     const pedri = findPlayerByName('페드리');
     const stdMgr = evaluateManagerPlayerSynergy(pedri, 'tiki_taka', 80);
     const eliteMgr = evaluateManagerPlayerSynergy(pedri, 'tiki_taka', 94);
     expect(stdMgr.isMatch).toBe(true);
     expect(stdMgr.bonus).toBe(1);
-    expect(eliteMgr.bonus).toBe(2);
+    expect(eliteMgr.isMatch).toBe(true);
+    expect(eliteMgr.bonus).toBe(1);
   });
 
   it('4) evaluates Unified 2-Stage Tactical Matchup realistically across formations, tactics, and personnel', () => {

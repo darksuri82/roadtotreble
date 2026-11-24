@@ -24,20 +24,22 @@ describe('V4 Multi-MainPosition Fit, No-Same-League Multi-Line Chemistry & Match
     expect(evaluatePositionFit(mbappe, 'ST').penalty).toBe(0);
     expect(evaluatePositionFit(mbappe, 'LW').penalty).toBe(0);
 
-    // Valverde 3 main positions -> 0, secondary CDM -> -3 (-1 with Total Football)
+    // Valverde 3 main positions -> 0, secondary CDM -> -3 (0 with Total Football)
     expect(evaluatePositionFit(valverde, 'CM').penalty).toBe(0);
     expect(evaluatePositionFit(valverde, 'RB').penalty).toBe(0);
     expect(evaluatePositionFit(valverde, 'RW').penalty).toBe(0);
     expect(evaluatePositionFit(valverde, 'CDM').penalty).toBe(-3);
-    expect(evaluatePositionFit(valverde, 'CDM', 'total_football').penalty).toBe(-1);
+    expect(evaluatePositionFit(valverde, 'CDM', 'total_football').penalty).toBe(0);
 
-    // Same line out-of-pos CB -> LB -> -6 (-3 with Total Football)
+    // Same line out-of-pos CB -> LB -> -6 (-2 with Total Football)
     expect(evaluatePositionFit(saliba, 'LB').penalty).toBe(-6);
-    expect(evaluatePositionFit(saliba, 'LB', 'total_football').penalty).toBe(-3);
+    expect(evaluatePositionFit(saliba, 'LB', 'total_football').penalty).toBe(-2);
 
-    // Different line or GK mismatch -> -15
+    // Different line or GK mismatch -> -15 (-8 outfield, -15 GK with Total Football)
     expect(evaluatePositionFit(mbappe, 'CB').penalty).toBe(-15);
+    expect(evaluatePositionFit(mbappe, 'CB', 'total_football').penalty).toBe(-8);
     expect(evaluatePositionFit(mbappe, 'GK').penalty).toBe(-15);
+    expect(evaluatePositionFit(mbappe, 'GK', 'total_football').penalty).toBe(-15);
   });
 
   it('removes Same League completely, computes multi-line parallel criteria, and preserves [-1.5..+2.5] bounds', () => {
@@ -92,9 +94,9 @@ describe('V4 Multi-MainPosition Fit, No-Same-League Multi-Line Chemistry & Match
         chem.breakdown.nation +
         chem.breakdown.tacticStyle +
         chem.breakdown.roleBalance,
-    ).toBeGreaterThanOrEqual(chem.total);
+    ).toBe(chem.breakdown.totalLines);
 
-    const ratings = calculateTeamRatings('4-3-3', starters, chem.total, 'tiki_taka');
+    const ratings = calculateTeamRatings('4-3-3', starters, chem.total, 'tiki_taka', chem.slotSynergies, 'possession');
     expect(ratings.chemistryBonus).toBeGreaterThanOrEqual(-1.5);
     expect(ratings.chemistryBonus).toBeLessThanOrEqual(2.5);
   });

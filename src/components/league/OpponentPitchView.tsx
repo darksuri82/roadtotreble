@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { getClubManager } from '../../data/aiManagers';
 import { FORMATIONS } from '../../data/formations';
-import { MANAGER_TRAITS } from '../../data/managerTraits';
+import {
+  evaluateManagerTeamEffect,
+  MANAGER_TRAITS,
+} from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import { calculateChemistry } from '../../engine/chemistryEngine';
 import {
@@ -138,7 +141,7 @@ export function OpponentPitchView({
     [opponent, expectedStarters, oppManager.traitId],
   );
 
-  // Apply the exact same v5.0 4-pillar player synergy + independent AI Manager OVR compatibility!
+  // Apply the exact same 1-line=1-pt 2/4/8 synergy + decoupled +1 manager compatibility!
   const oppChemistry = useMemo(
     () =>
       calculateChemistry(
@@ -150,6 +153,17 @@ export function OpponentPitchView({
       ),
     [opponent.formation, lineup, opponent.defaultTactic, oppManager.traitId, oppManager.ovr],
   );
+
+  const oppMgrEffect = useMemo(
+    () =>
+      evaluateManagerTeamEffect({
+        traitId: oppManager.traitId,
+        starters: lineup,
+        tactic: opponent.defaultTactic,
+      }),
+    [oppManager.traitId, lineup, opponent.defaultTactic],
+  );
+  const oppTraitCfg = MANAGER_TRAITS[oppManager.traitId];
 
   const keyThreats = useMemo(() => {
     return lineup
@@ -169,8 +183,8 @@ export function OpponentPitchView({
 
   return (
     <div className="space-y-1.5">
-      {/* Pitch Header Strip (includes formation + chemistry so nothing ever overlaps ST node) */}
-      <div className="flex items-center justify-between gap-1.5 px-1 text-[11px] min-h-[22px]">
+      {/* Pitch Header Strip (includes formation + chemistry + opponent manager trait) */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5 px-1 text-[11px] min-h-[22px]">
         <div className="flex items-center gap-1.5 min-w-0">
           <span
             className="h-2.5 w-2.5 rounded-full shrink-0 border border-white/25"
@@ -192,11 +206,22 @@ export function OpponentPitchView({
           </span>
         </div>
         <span
-          className="hidden sm:inline text-[10px] font-semibold text-slate-400 shrink-0 tabular-nums"
-          title={`${oppManager.name} (OVR ${oppManager.ovr} · ${MANAGER_TRAITS[oppManager.traitId]?.name ?? ''})`}
+          className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 shrink-0 tabular-nums"
+          title={`${oppManager.name} (OVR ${oppManager.ovr} · ${oppTraitCfg?.name ?? ''} · ${oppMgrEffect.compactSummary})`}
         >
-          {oppManager.name}{' '}
+          <span className="hidden sm:inline">{oppManager.name}</span>
           <span className="text-amber-300/85">{oppManager.ovr}</span>
+          {oppTraitCfg && (
+            <span
+              className="rounded px-1 py-px text-[9px] font-extrabold text-slate-950"
+              style={{ backgroundColor: oppTraitCfg.badgeColor }}
+            >
+              {oppTraitCfg.name}
+              {oppMgrEffect.targetCount > 0
+                ? ` ${Math.min(oppMgrEffect.matchedCount, oppMgrEffect.targetCount)}/${oppMgrEffect.targetCount}`
+                : ''}
+            </span>
+          )}
         </span>
       </div>
 
@@ -347,6 +372,8 @@ export function OpponentPitchView({
             ? syn.effectiveOvrWithSynergy
             : (player?.ovr ?? 0);
           const totalBonus = syn?.totalBonus ?? 0;
+          const neighborBonus = syn?.neighborBonus ?? 0;
+          const managerBonus = syn?.managerBonus ?? 0;
           const primaryStyle = player?.playstyles[0]
             ? PLAYSTYLES[player.playstyles[0]]?.shortName
             : null;
@@ -408,7 +435,23 @@ export function OpponentPitchView({
                   >
                     {player ? displayOvr : '-'}
                   </span>
-                  {totalBonus > 0 && (
+                  {neighborBonus > 0 && (
+                    <span
+                      title={`선수 시너지 +${neighborBonus} (${syn?.lineCount ?? 0}선)`}
+                      className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-emerald-300/90 leading-none"
+                    >
+                      +{neighborBonus}
+                    </span>
+                  )}
+                  {managerBonus > 0 && (
+                    <span
+                      title={`감독 궁합 +${managerBonus}`}
+                      className="rounded bg-violet-950/85 border border-violet-400/35 px-0.5 py-px text-[7px] sm:text-[7.5px] font-bold text-violet-300 leading-none"
+                    >
+                      ★{managerBonus}
+                    </span>
+                  )}
+                  {totalBonus > 0 && neighborBonus === 0 && managerBonus === 0 && (
                     <span className="rounded bg-emerald-950/80 border border-emerald-500/25 px-0.5 py-px text-[7.5px] sm:text-[8px] font-bold text-emerald-300/90 leading-none">
                       +{totalBonus}
                     </span>

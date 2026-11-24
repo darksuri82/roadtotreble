@@ -220,18 +220,18 @@ describe('20-Season Simulation Balance Verification (EPL 38R)', () => {
 
     // Synergy Upset Test: 84 OVR full-synergy team vs 89 OVR mismatched giant (200 neutral/home-away matches)
     const rng = createSeededRng(4000);
-    const synSquad = makeSyntheticSquad(84, '4-3-3', ['deep_playmaker', 'ball_playing_cb', 'inverted_winger']);
+    const synSquad = makeSyntheticSquad(84, '4-3-3', ['deep_playmaker', 'ball_playing_cb', 'inverted_winger']).map((p) =>
+      p.position === 'MF' ? { ...p, def: 79 } : p,
+    );
     const synChem = calculateChemistry('4-3-3', synSquad, 'possession', 'tiki_taka');
-    const synRatings = {
-      ...calculateTeamRatings('4-3-3', synSquad, synChem.total, 'tiki_taka'),
-      att: 84,
-      mid: 84,
-      def: 84,
-      ovr: 84,
-      effectiveAtt: 84 + synChem.chemistryOvrBonus,
-      effectiveMid: 84 + synChem.chemistryOvrBonus,
-      effectiveDef: 84 + synChem.chemistryOvrBonus,
-    };
+    const synRatings = calculateTeamRatings(
+      '4-3-3',
+      synSquad,
+      synChem.total,
+      'tiki_taka',
+      synChem.slotSynergies,
+      'possession',
+    );
 
     const giantClub: Club = {
       id: 'giant-ai',
@@ -288,6 +288,7 @@ describe('20-Season Simulation Balance Verification (EPL 38R)', () => {
           tactic: 'possession',
           chemistry: synChem.total,
           ratings: synRatings,
+          slotSynergies: synChem.slotSynergies,
           managerTraitId: 'tiki_taka',
           opponentRank: 1,
         },

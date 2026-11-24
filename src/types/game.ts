@@ -120,6 +120,14 @@ export interface TeamRatings {
   effectiveAtt: number;
   effectiveMid: number;
   effectiveDef: number;
+  /** Manager philosophy + tactic bonuses already included in effectiveAtt/Mid/Def */
+  managerAttBonus?: number;
+  managerMidBonus?: number;
+  managerDefBonus?: number;
+  managerMatchedCount?: number;
+  managerTargetCount?: number;
+  managerTacticActive?: boolean;
+  managerEffectSummary?: string;
 }
 
 export type ChemistryLinkStatus = 'none' | 'weak' | 'strong' | 'legend';
@@ -143,19 +151,22 @@ export interface ChemistryLink {
 }
 
 export interface ChemistryBreakdown {
-  club: number; // 0..30 (Same Club + Former Clubs)
-  nation: number; // 0..25 (Same Nationality)
-  tacticStyle: number; // 0..30 (Complementary Playstyle Pairs)
-  roleBalance: number; // 0..15 (Elite Pair 88+ Superstar Synergy)
-  elite?: number; // alias mirror of roleBalance for v5.0 4-pillar clarity
+  club: number; // active Same Club / Former Club lines count
+  nation: number; // active Same Nationality lines count
+  tacticStyle: number; // active Complementary Playstyle lines count
+  roleBalance: number; // active Elite 88+ Pair lines count
+  elite?: number; // alias mirror of roleBalance
+  totalLines?: number; // total active lines across all formation edges
+  maxReferenceLines?: number; // formation-normalized line count for 100 chemistry
 }
 
 export interface PlayerSlotSynergy {
   slotIndex: number;
   playerId: string;
-  totalBonus: number; // 0..3 combined cap (player synergy 0..2 + independent manager fit 0..2, max 3)
-  managerBonus: number; // 0..2 independent Manager Style × OVR direct player boost
-  neighborBonus: number; // 0..2 strictly 4-pillar player-to-player synergy
+  totalBonus: number; // 0..4 (neighborBonus 0..3 + independent managerBonus 0..1)
+  managerBonus: number; // 0 or 1 independent Manager Style direct player boost
+  neighborBonus: number; // 0..3 strictly by connected line count (2->+1, 4->+2, 8->+3)
+  lineCount?: number; // total active lines connected to this player
   reasons: string[];
   playerReasons?: string[];
   managerReason?: string;

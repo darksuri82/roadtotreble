@@ -510,6 +510,7 @@ export function MpLeagueDashboard({
             chemistry.total,
             mySquad.managerTraitId,
             chemistry.slotSynergies,
+            mySquad.tactic,
           )
         : null,
     [mySquad, chemistry],

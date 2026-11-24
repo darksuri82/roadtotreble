@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
+import { MANAGER_TRAITS } from '../../data/managerTraits';
 import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import {
   computeFullPlayerOvrBreakdown,
@@ -1789,26 +1790,42 @@ export function UclDashboard() {
                       기본 전술
                     </div>
                     <div className="grid grid-cols-5 gap-1">
-                      {TACTIC_LIST.map((t) => (
-                        <button
-                          key={t.id}
-                          type="button"
-                          disabled={uclEditLocked}
-                          onClick={() => setDefaultTactic(t.id as TacticId)}
-                          className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer disabled:cursor-not-allowed transition-colors ${
-                            season.defaultTactic === t.id
-                              ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
-                              : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                          }`}
-                        >
-                          {t.shortName}
-                        </button>
-                      ))}
+                      {TACTIC_LIST.map((t) => {
+                        const isMgrPreferred = state.manager.traitId
+                          ? MANAGER_TRAITS[state.manager.traitId]?.synergyTactic === t.id
+                          : false;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            disabled={uclEditLocked}
+                            title={isMgrPreferred ? `${t.name} · 감독 추천 전술` : t.name}
+                            onClick={() => setDefaultTactic(t.id as TacticId)}
+                            className={`rounded-lg border py-1.5 text-[11px] font-bold cursor-pointer disabled:cursor-not-allowed transition-colors ${
+                              season.defaultTactic === t.id
+                                ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
+                                : isMgrPreferred
+                                  ? 'border-violet-500/40 bg-[#131428] text-slate-200 hover:border-violet-400/70'
+                                  : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                            }`}
+                          >
+                            {isMgrPreferred && (
+                              <span className="text-violet-300 mr-0.5">★</span>
+                            )}
+                            {t.shortName}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
 
-            <ManagerTraitBadgeCard traitId={state.manager.traitId} compact />
+            <ManagerTraitBadgeCard
+              traitId={state.manager.traitId}
+              starters={state.starters}
+              tactic={season.defaultTactic}
+              compact
+            />
 
             {/* Compact 16-Player UCL Squad Stats List */}
             <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4 space-y-2.5">

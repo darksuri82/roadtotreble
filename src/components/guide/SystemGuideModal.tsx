@@ -116,43 +116,43 @@ export function SystemGuideContent() {
           <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5">
             <div className="mb-2 flex items-center gap-1.5 font-bold text-white">
               <Zap className="w-4 h-4 text-emerald-400" />
-              선수 시너지 4원칙 (총 100점 · 감독 궁합 별도 분리)
+              4색 시너지선 (1선 = 1점 · 2 / 4 / 8선 → +1 / +2 / +3)
             </div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div className="rounded-lg bg-[#111822] p-2.5 border border-slate-800">
                 <div className="flex justify-between font-bold">
                   <span className="text-emerald-300">1) 같은 팀 · 전 소속팀</span>
-                  <span className="text-white">최대 35점</span>
+                  <span className="text-emerald-200">1선</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  현재 동일 구단(+1.6)뿐 아니라 실제 공식 1군 커리어상 과거 같은 구단 인연(+1.25)까지 반영됩니다.
+                  현재 동일 구단 또는 과거 1군 커리어상 같은 구단 인연 시 연결됩니다.
                 </p>
               </div>
               <div className="rounded-lg bg-[#111822] p-2.5 border border-slate-800">
                 <div className="flex justify-between font-bold">
                   <span className="text-sky-300">2) 같은 국적</span>
-                  <span className="text-white">최대 20점</span>
+                  <span className="text-sky-200">1선</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  포메이션 인접 링크 간 동일 국적 선수(+1.1) 연결 비율로 산출됩니다.
+                  포메이션 인접 슬롯에 동일 국적 선수를 배치하면 연결됩니다.
                 </p>
               </div>
               <div className="rounded-lg bg-[#111822] p-2.5 border border-amber-500/35">
                 <div className="flex justify-between font-bold">
                   <span className="text-amber-300">3) 스타일 궁합</span>
-                  <span className="text-white">최대 30점</span>
+                  <span className="text-amber-200">1선</span>
                 </div>
                 <p className="text-[11px] text-slate-300 mt-1">
-                  크로스 윙어+포처, 플레이메이커+라인브레이커 등 실제 축구 보완 플레이스타일 조합(+1.1) 시 발동합니다.
+                  크로스 윙어+포처, 플레이메이커+라인브레이커 등 보완 스타일 조합 시 연결됩니다.
                 </p>
               </div>
               <div className="rounded-lg bg-[#111822] p-2.5 border border-purple-500/35">
                 <div className="flex justify-between font-bold">
                   <span className="text-purple-300">4) 엘리트 페어 (OVR 88+)</span>
-                  <span className="text-white">최대 15점</span>
+                  <span className="text-purple-200">1선</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  인접한 두 선수 모두 기본 OVR 88 이상 월드클래스/슈퍼스타/레전드일 때 발동(+1.25)합니다.
+                  인접한 두 선수 모두 기본 OVR 88 이상일 때 연결됩니다.
                 </p>
               </div>
             </div>
@@ -160,28 +160,28 @@ export function SystemGuideContent() {
 
           <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2">
             <div className="font-bold text-white">
-              4색 다중 병렬 연결선 · 감독 궁합 분리 보정
+              선수 시너지(+3) · 감독 궁합(★+1) 독립 분리 · 팀 케미
             </div>
             <div className="flex flex-wrap gap-3 text-[11px] text-slate-300">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-0.5 w-4 rounded-full bg-emerald-400" />
-                에메랄드: 구단·전소속
+                구단·전소속
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-0.5 w-4 rounded-full bg-sky-400" />
-                스카이블루: 동일 국적
+                국적
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-0.5 w-4 rounded-full bg-amber-400" />
-                골드: 스타일 궁합
+                스타일
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-0.5 w-4 rounded-full bg-purple-400" />
-                바이올렛: 엘리트 88+
+                엘리트 88+
               </span>
             </div>
             <p className="text-[11px] text-slate-400">
-              감독 스타일 궁합은 선수 간 시너지(+0~+2)와 분리되어 선수의 실효 OVR을 직접 +1~+2 상승시킵니다 (개인 합산 최대 +3). 5대 리그 AI 구단 및 명전 팀에도 동일 적용됩니다.
+              선수당 연결선 <strong className="text-emerald-300">2/4/8선 → +1/+2/+3</strong>이 적용되며, 감독 궁합은 별도 분리되어 일치 선수 모두 <strong className="text-violet-300">★+1</strong>(최대 총 +4)을 받습니다. 연결선이 늘수록 팀 케미(0~100)가 꾸준히 상승합니다.
             </p>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { ArrowLeftRight, Check, Wand2, X, Zap } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { FORMATION_LIST } from '../../../data/formations';
+import { MANAGER_TRAITS } from '../../../data/managerTraits';
 import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemistryEngine';
 import {
   optimizeBestLineup,
@@ -56,8 +57,9 @@ export function MpLeagueSquadEditor({
         chemistry.total,
         managerTraitId,
         chemistry.slotSynergies,
+        tactic,
       ),
-    [formation, starters, chemistry, managerTraitId],
+    [formation, starters, chemistry, managerTraitId, tactic],
   );
 
   const swap = (from: SlotRef, to: SlotRef) => {
@@ -140,7 +142,12 @@ export function MpLeagueSquadEditor({
         </div>
 
         <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3">
-          <ManagerTraitBadgeCard traitId={managerTraitId} compact />
+          <ManagerTraitBadgeCard
+            traitId={managerTraitId}
+            starters={starters}
+            tactic={tactic}
+            compact
+          />
 
         {/* Formation & Tactic Controls — identical to single-player SquadManagerModal */}
         <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2.5">
@@ -186,20 +193,30 @@ export function MpLeagueSquadEditor({
           <div>
             <div className="mb-1.5 text-[11px] font-semibold text-slate-400">기본 전술</div>
             <div className="grid grid-cols-5 gap-1">
-              {TACTIC_LIST.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setTactic(t.id)}
-                  className={`rounded-lg border py-1.5 text-[11px] font-bold transition-colors cursor-pointer truncate ${
-                    tactic === t.id
-                      ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
-                      : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                  }`}
-                >
-                  {t.shortName}
-                </button>
-              ))}
+              {TACTIC_LIST.map((t) => {
+                const isMgrPreferred =
+                  MANAGER_TRAITS[managerTraitId]?.synergyTactic === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    title={isMgrPreferred ? `${t.name} · 감독 추천 전술` : t.name}
+                    onClick={() => setTactic(t.id)}
+                    className={`rounded-lg border py-1.5 text-[11px] font-bold transition-colors cursor-pointer truncate ${
+                      tactic === t.id
+                        ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
+                        : isMgrPreferred
+                          ? 'border-violet-500/40 bg-[#131428] text-slate-200 hover:border-violet-400/70'
+                          : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                    }`}
+                  >
+                    {isMgrPreferred && (
+                      <span className="text-violet-300 mr-0.5">★</span>
+                    )}
+                    {t.shortName}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>

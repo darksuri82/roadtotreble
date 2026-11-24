@@ -220,8 +220,16 @@ export function MpLeagueTransferModal({
         myChemistry.total,
         managerTraitId,
         myChemistry.slotSynergies,
+        myTactic,
       ),
-    [myFormation, myStarters, myChemistry.total, myChemistry.slotSynergies, managerTraitId],
+    [
+      myFormation,
+      myStarters,
+      myChemistry.total,
+      myChemistry.slotSynergies,
+      managerTraitId,
+      myTactic,
+    ],
   );
   const selectedUserSlotKeys = useMemo(
     () => new Set(selectedUserSlots.map((s) => slotKey(s))),

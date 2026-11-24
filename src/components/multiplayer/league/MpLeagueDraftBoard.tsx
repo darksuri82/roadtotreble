@@ -567,6 +567,7 @@ export function MpLeagueDraftBoard({
         chemistry.total,
         pTrait,
         chemistry.slotSynergies,
+        pTactic,
       );
       const pickCount = picks.filter((x) => x.picker_id === p.player_id).length;
       return {

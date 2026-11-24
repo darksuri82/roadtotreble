@@ -59,8 +59,12 @@ describe('v2.7 Stage 1 Core Engine: Synergy OVR, Strict League Points, Concrete 
     );
     expect(boosted.length).toBeGreaterThanOrEqual(4);
     for (const s of Object.values(chem.slotSynergies)) {
-      expect(s.totalBonus).toBeGreaterThanOrEqual(0);
-      expect(s.totalBonus).toBeLessThanOrEqual(3);
+      expect(s.neighborBonus).toBeGreaterThanOrEqual(0);
+      expect(s.neighborBonus).toBeLessThanOrEqual(3);
+      expect(s.managerBonus).toBeGreaterThanOrEqual(0);
+      expect(s.managerBonus).toBeLessThanOrEqual(1);
+      expect(s.totalBonus).toBe(s.neighborBonus + s.managerBonus);
+      expect(s.totalBonus).toBeLessThanOrEqual(4);
       expect(s.effectiveOvrWithSynergy).toBe(
         Math.min(99, s.baseEffectiveOvr + s.totalBonus),
       );

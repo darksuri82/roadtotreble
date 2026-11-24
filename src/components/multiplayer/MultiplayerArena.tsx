@@ -114,6 +114,7 @@ function buildClubFromLineup(params: {
     chem.total,
     managerTraitId,
     chem.slotSynergies,
+    tactic,
   );
   return {
     id,
@@ -160,6 +161,7 @@ function buildHumanMatchContext(params: {
     chem.total,
     params.managerTraitId,
     chem.slotSynergies,
+    params.tactic,
   );
   return {
     userClubId: params.clubId,

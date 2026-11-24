@@ -56,8 +56,16 @@ export function computePlayerStaminaPct(params: {
   tactic: TacticId;
   minutesPlayed: number;
   initialStaminaCap?: number;
+  managerTraitId?: ManagerTraitId | null;
 }): number {
-  const { staminaStat, subPosition, tactic, minutesPlayed, initialStaminaCap = 100 } = params;
+  const {
+    staminaStat,
+    subPosition,
+    tactic,
+    minutesPlayed,
+    initialStaminaCap = 100,
+    managerTraitId = null,
+  } = params;
   const startCap = Math.max(50, Math.min(100, Math.round(initialStaminaCap)));
   if (minutesPlayed <= 0) return startCap;
 
@@ -65,7 +73,11 @@ export function computePlayerStaminaPct(params: {
   // STA 60 -> 1.48x drain, STA 82 -> 1.07x drain, STA 99 -> 0.76x drain
   const statFactor = 1.48 - ((clampedStat - 60) / 39) * 0.72;
   const posMult = POSITION_STAMINA_MULT[subPosition] ?? 1.0;
-  const tacticMult = TACTIC_STAMINA_MULT[tactic] ?? 1.0;
+  let tacticMult = TACTIC_STAMINA_MULT[tactic] ?? 1.0;
+  // Gegenpress Guru signature: mitigates gegenpressing drain (1.35 -> 1.15)
+  if (managerTraitId === 'gegenpress_guru' && tactic === 'gegenpressing') {
+    tacticMult = 1.15;
+  }
 
   const drainPerMin = 0.44 * statFactor * posMult * tacticMult;
   const remaining = startCap - drainPerMin * minutesPlayed;
@@ -103,6 +115,7 @@ export function computeLineupStaminaImpact(params: {
   tactic: TacticId;
   minute: number;
   enteredAtMinute?: Record<string, number>;
+  managerTraitId?: ManagerTraitId | null;
 }): {
   attDelta: number;
   midDelta: number;
@@ -110,7 +123,14 @@ export function computeLineupStaminaImpact(params: {
   freshSubXgBonus: number;
   avgStaminaPct: number;
 } {
-  const { starters, formation, tactic, minute, enteredAtMinute = {} } = params;
+  const {
+    starters,
+    formation,
+    tactic,
+    minute,
+    enteredAtMinute = {},
+    managerTraitId = null,
+  } = params;
   const slots = (FORMATIONS[formation] ?? FORMATIONS['4-3-3']).slots;
 
   let attSum = 0;
@@ -122,6 +142,8 @@ export function computeLineupStaminaImpact(params: {
   let totalPct = 0;
   let freshSubCount = 0;
 
+  const isSuperSub = managerTraitId === 'super_sub';
+
   starters.forEach((player, idx) => {
     const subPos = slots[idx]?.subPosition ?? getPrimaryPosition(player);
     const entryMin = enteredAtMinute[player.id] ?? 0;
@@ -131,13 +153,14 @@ export function computeLineupStaminaImpact(params: {
       subPosition: subPos,
       tactic,
       minutesPlayed: minsOnPitch,
+      managerTraitId,
     });
     const penalty = getStaminaPenalty(pct).ovrPenalty;
     totalPct += pct;
 
-    // Fresh substitute in 2nd half provides an energetic boost against tired legs
+    // Fresh substitute in 2nd half provides an energetic boost against tired legs (super_sub: +3.0 vs +1.4)
     const isFreshSub = entryMin >= 45 && pct >= 80 && player.position !== 'GK';
-    const jokerOvrLift = isFreshSub ? 1.4 : 0;
+    const jokerOvrLift = isFreshSub ? (isSuperSub ? 3.0 : 1.4) : 0;
     if (isFreshSub) freshSubCount += 1;
 
     const netDelta = penalty + jokerOvrLift;
@@ -160,7 +183,7 @@ export function computeLineupStaminaImpact(params: {
     attDelta: attCount > 0 ? Math.round((attSum / attCount) * 100) / 100 : 0,
     midDelta: midCount > 0 ? Math.round((midSum / midCount) * 100) / 100 : 0,
     defDelta: defCount > 0 ? Math.round((defSum / defCount) * 100) / 100 : 0,
-    freshSubXgBonus: Math.min(0.24, freshSubCount * 0.06),
+    freshSubXgBonus: Math.min(isSuperSub ? 0.36 : 0.24, freshSubCount * (isSuperSub ? 0.09 : 0.06)),
     avgStaminaPct,
   };
 }

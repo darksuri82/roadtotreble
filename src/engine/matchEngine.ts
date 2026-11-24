@@ -1,6 +1,9 @@
 import { getClubManager } from '../data/aiManagers';
 import { FORMATIONS } from '../data/formations';
-import { evaluateManagerPlayerSynergy } from '../data/managerTraits';
+import {
+  evaluateManagerPlayerSynergy,
+  evaluateManagerTeamEffect,
+} from '../data/managerTraits';
 import type {
   FormationId,
   ManagerTraitId,
@@ -71,6 +74,7 @@ export interface UserMatchContext {
   managerTraitId: ManagerTraitId | null;
   competition?: MatchCompetitionType;
   opponentRank?: number; // 1..20 (for big_game_hunter)
+  isBigKnockout?: boolean; // Cup SF/Final or UCL Knockout (for big_game_hunter)
   halftimeAdjusted?: boolean;
   halftimeSubsMade?: number;
   halftimeSubIds?: string[];
@@ -133,137 +137,41 @@ function computeManagerTraitModifiers(params: {
   userAvgOvr: number;
   oppAvgOvr: number;
   opponentRank?: number;
+  isBigKnockout?: boolean;
   halftimeAdjusted?: boolean;
   halftimeSubsMade?: number;
   isSecondHalf?: boolean;
-}): {
-  attDelta: number;
-  midDelta: number;
-  defDelta: number;
-  xgBonus: number;
-  oppXgPenalty: number;
-  possessionBonus: number;
-  halftimeTacticMultiplier: number;
-} {
-  const {
-    traitId,
-    starters,
-    userTactic,
-    userAvgOvr,
-    oppAvgOvr,
-    opponentRank,
-    halftimeAdjusted,
-    halftimeSubsMade = 0,
-    isSecondHalf = false,
-  } = params;
+  trailingAtHalftime?: boolean;
+}) {
+  const eff = evaluateManagerTeamEffect({
+    traitId: params.traitId,
+    starters: params.starters,
+    tactic: params.userTactic,
+    userAvgOvr: params.userAvgOvr,
+    oppAvgOvr: params.oppAvgOvr,
+    opponentRank: params.opponentRank,
+    isBigKnockout: params.isBigKnockout,
+    halftimeAdjusted: params.halftimeAdjusted,
+    halftimeSubsMade: params.halftimeSubsMade,
+    isSecondHalf: params.isSecondHalf,
+    trailingAtHalftime: params.trailingAtHalftime,
+  });
 
-  const out = {
-    attDelta: 0,
-    midDelta: 0,
-    defDelta: 0,
-    xgBonus: 0,
-    oppXgPenalty: 0,
-    possessionBonus: 0,
-    halftimeTacticMultiplier: 1.0,
+  return {
+    baseAttDelta: eff.baseAttDelta,
+    baseMidDelta: eff.baseMidDelta,
+    baseDefDelta: eff.baseDefDelta,
+    situationalAttDelta: eff.situationalAttDelta,
+    situationalMidDelta: eff.situationalMidDelta,
+    situationalDefDelta: eff.situationalDefDelta,
+    attDelta: eff.attDelta,
+    midDelta: eff.midDelta,
+    defDelta: eff.defDelta,
+    xgBonus: eff.xgBonus,
+    oppXgPenalty: eff.oppXgPenalty,
+    possessionBonus: eff.possessionBonus,
+    halftimeTacticMultiplier: eff.halftimeTacticMultiplier,
   };
-
-  if (!traitId) return out;
-
-  switch (traitId) {
-    case 'tiki_taka':
-      if (userTactic === 'possession') {
-        out.attDelta += 0.85;
-        out.midDelta += 1.25;
-        out.defDelta += 0.85;
-        out.possessionBonus += 3;
-      }
-      break;
-    case 'gegenpress_guru':
-      if (userTactic === 'gegenpressing') {
-        out.attDelta += 1.15;
-        out.midDelta += 1.05;
-        out.defDelta += 0.85;
-      }
-      break;
-    case 'catenaccio':
-      if (userTactic === 'counter') {
-        out.defDelta += 1.8;
-        out.oppXgPenalty += 0.08;
-      } else {
-        out.defDelta += 0.6;
-      }
-      break;
-    case 'wing_bomber':
-      if (userTactic === 'wingplay') {
-        out.attDelta += 1.4;
-        out.xgBonus += 0.08;
-      }
-      break;
-    case 'halftime_wizard':
-      if (isSecondHalf && halftimeAdjusted) {
-        out.halftimeTacticMultiplier = 1.5;
-        out.xgBonus += 0.1;
-      }
-      break;
-    case 'big_game_hunter':
-      if ((opponentRank !== undefined && opponentRank <= 6) || oppAvgOvr >= 84) {
-        out.attDelta += 1.4;
-        out.midDelta += 1.4;
-        out.defDelta += 1.4;
-      }
-      break;
-    case 'set_piece_master':
-      out.xgBonus += 0.13;
-      break;
-    case 'underdog_killer':
-      if (userAvgOvr < oppAvgOvr) {
-        out.attDelta += 1.8;
-        out.midDelta += 1.8;
-        out.defDelta += 1.8;
-      }
-      break;
-    case 'galactico_manager': {
-      const stars = starters.filter((p) => p.isLegend || p.ovr >= 91).length;
-      const bonus = Math.min(1.8, stars * 0.35);
-      out.attDelta += bonus;
-      out.midDelta += bonus;
-      out.defDelta += bonus;
-      break;
-    }
-    case 'direct_football': {
-      const directFw = starters.filter((p) =>
-        p.playstyles.some((ps) =>
-          ['line_breaker', 'poacher', 'complete_forward'].includes(ps),
-        ),
-      ).length;
-      if (directFw > 0) {
-        out.attDelta += Math.min(1.4, 0.6 + directFw * 0.28);
-      }
-      break;
-    }
-    case 'defensive_architect':
-      out.defDelta += 1.2;
-      out.oppXgPenalty += 0.1;
-      break;
-    case 'midfield_maestro':
-      out.midDelta += 1.4;
-      out.possessionBonus += 4;
-      break;
-    case 'super_sub':
-      if (isSecondHalf && halftimeSubsMade > 0) {
-        out.attDelta += 1.7;
-        out.midDelta += 1.5;
-        out.defDelta += 1.2;
-      } else if (!isSecondHalf) {
-        out.attDelta += 0.35;
-      }
-      break;
-    case 'total_football':
-      // Main effect is applied in positionEngine (penalty mitigation)
-      break;
-  }
-
-  return out;
 }
 
 export interface IndividualRosterImpact {
@@ -504,9 +412,9 @@ function resolveMatchStrengths(params: {
         ? chem.chemistryOvrBonus * 0.45
         : Math.min(0.3, Math.max(0, chem.chemistryOvrBonus - avgSynBonus * 0.75));
 
-    // Center AI synergy + manager OVR lift around league baseline (avgSyn ~1.8, manager OVR ~85)
-    // so elite cohesive clubs & world-class managers (90+) gain +0.20~+0.32 while keeping league points rock-solid
-    const relativeSynLift = clamp((avgSynBonus - 1.8) * 0.12, -0.14, 0.15);
+    // Center AI synergy + manager OVR lift around league baseline (avgSyn ~2.55, manager OVR ~85)
+    // so elite cohesive clubs & world-class managers (90+) keep realistic parity without inflating mid-table AI
+    const relativeSynLift = clamp((avgSynBonus - 2.55) * 0.14, -0.25, 0.22);
     const mgrCoachingBonus = clamp((manager.ovr - 85) * 0.018, -0.15, 0.18);
     const uclPrestigeBonus =
       userContext?.competition === 'ucl' && (club.att + club.mid + club.def) / 3 >= 82
@@ -597,8 +505,23 @@ function resolveMatchStrengths(params: {
         def: awayAiBundle ? awayAiBundle.def : awayClub.def,
       };
 
-  const homeAvgOvr = (homeBase.att + homeBase.mid + homeBase.def) / 3;
-  const awayAvgOvr = (awayBase.att + awayBase.mid + awayBase.def) / 3;
+  const homeBakedMgrAtt = homeUserCtx?.ratings.managerAttBonus ?? 0;
+  const homeBakedMgrMid = homeUserCtx?.ratings.managerMidBonus ?? 0;
+  const homeBakedMgrDef = homeUserCtx?.ratings.managerDefBonus ?? 0;
+  const awayBakedMgrAtt = awayUserCtx?.ratings.managerAttBonus ?? 0;
+  const awayBakedMgrMid = awayUserCtx?.ratings.managerMidBonus ?? 0;
+  const awayBakedMgrDef = awayUserCtx?.ratings.managerDefBonus ?? 0;
+
+  const homeAvgOvr =
+    ((homeBase.att - homeBakedMgrAtt) +
+      (homeBase.mid - homeBakedMgrMid) +
+      (homeBase.def - homeBakedMgrDef)) /
+    3;
+  const awayAvgOvr =
+    ((awayBase.att - awayBakedMgrAtt) +
+      (awayBase.mid - awayBakedMgrMid) +
+      (awayBase.def - awayBakedMgrDef)) /
+    3;
 
   // Unified v5.0 Tactical Matchup Engine (Manager + Formation + Tactic + Full XI Sub-Attributes & Styles)
   const hasFullRosters = effectiveHomeRoster.length >= 11 && effectiveAwayRoster.length >= 11;
@@ -630,6 +553,13 @@ function resolveMatchStrengths(params: {
     ? evaluateFormationMatchup(homeFormation, awayFormation).possessionDelta
     : 0;
 
+  const homeSubsCount = homeUserCtx
+    ? Math.max(homeUserCtx.halftimeSubsMade ?? 0, homeUserCtx.liveSubs?.length ?? 0)
+    : 0;
+  const awaySubsCount = awayUserCtx
+    ? Math.max(awayUserCtx.halftimeSubsMade ?? 0, awayUserCtx.liveSubs?.length ?? 0)
+    : 0;
+
   const homeHumanTraitMod = homeUserCtx
     ? computeManagerTraitModifiers({
         traitId: homeUserCtx.managerTraitId,
@@ -638,9 +568,11 @@ function resolveMatchStrengths(params: {
         userAvgOvr: homeAvgOvr,
         oppAvgOvr: awayAvgOvr,
         opponentRank: homeUserCtx.opponentRank,
+        isBigKnockout: homeUserCtx.isBigKnockout,
         halftimeAdjusted: homeUserCtx.halftimeAdjusted,
-        halftimeSubsMade: homeUserCtx.halftimeSubsMade,
+        halftimeSubsMade: homeSubsCount,
         isSecondHalf,
+        trailingAtHalftime: isSecondHalf && scoreDiffHome < 0,
       })
     : null;
 
@@ -652,15 +584,17 @@ function resolveMatchStrengths(params: {
         userAvgOvr: awayAvgOvr,
         oppAvgOvr: homeAvgOvr,
         opponentRank: awayUserCtx.opponentRank,
+        isBigKnockout: awayUserCtx.isBigKnockout,
         halftimeAdjusted: awayUserCtx.halftimeAdjusted,
-        halftimeSubsMade: awayUserCtx.halftimeSubsMade,
+        halftimeSubsMade: awaySubsCount,
         isSecondHalf,
+        trailingAtHalftime: isSecondHalf && scoreDiffHome > 0,
       })
     : null;
 
-  // AI Manager tactical trait modifiers (scaled smoothly by manager OVR so top coaches leave a genuine footprint)
+  // AI Manager tactical trait modifiers (8%..20% scaled by manager OVR: keeps base league tables accurate while preserving clear coach identity)
   const computeAiTraitScale = (mgrOvr: number) =>
-    clamp(0.08 + ((mgrOvr - 75) / 20) * 0.12, 0.08, 0.22);
+    clamp(0.08 + ((mgrOvr - 74) / 20) * 0.12, 0.08, 0.2);
 
   const homeAiTraitMod =
     !homeIsHuman && homeManager && effectiveHomeRoster.length > 0
@@ -672,6 +606,7 @@ function resolveMatchStrengths(params: {
           oppAvgOvr: awayAvgOvr,
           halftimeAdjusted: isAwayUser && aiHalftimeAdjusted,
           isSecondHalf,
+          trailingAtHalftime: isSecondHalf && scoreDiffHome < 0,
         })
       : null;
   const awayAiTraitMod =
@@ -684,11 +619,14 @@ function resolveMatchStrengths(params: {
           oppAvgOvr: homeAvgOvr,
           halftimeAdjusted: isHomeUser && aiHalftimeAdjusted,
           isSecondHalf,
+          trailingAtHalftime: isSecondHalf && scoreDiffHome > 0,
         })
       : null;
 
   const homeAiScale = homeManager ? computeAiTraitScale(homeManager.ovr) : 0;
   const awayAiScale = awayManager ? computeAiTraitScale(awayManager.ovr) : 0;
+  const homeIsHist = homeClub.id.startsWith('hist-');
+  const awayIsHist = awayClub.id.startsWith('hist-');
 
   // Stamina impact relative to baseline fatigue (computed symmetrically for both human players in PvP)
   const computeHumanStaminaMod = (
@@ -704,13 +642,14 @@ function resolveMatchStrengths(params: {
       tactic: ctx.tactic,
       minute: evalMinute,
       enteredAtMinute: entryMap,
+      managerTraitId: ctx.managerTraitId,
     });
     const aiBaseline =
       evalMinute >= 60 ? (oppRawAvg >= 85 ? -0.75 : -0.95) : -0.15;
     return {
-      attDelta: clamp((impact.attDelta - aiBaseline) * 0.65, -4.2, 1.8),
-      midDelta: clamp((impact.midDelta - aiBaseline) * 0.65, -4.2, 1.8),
-      defDelta: clamp((impact.defDelta - aiBaseline) * 0.65, -4.2, 1.8),
+      attDelta: clamp((impact.attDelta - aiBaseline) * 0.65, -4.2, 2.4),
+      midDelta: clamp((impact.midDelta - aiBaseline) * 0.65, -4.2, 2.4),
+      defDelta: clamp((impact.defDelta - aiBaseline) * 0.65, -4.2, 2.4),
       freshSubXgBonus: isSecondHalf ? impact.freshSubXgBonus : 0,
       oppXgFatigueLeak:
         impact.avgStaminaPct < 48
@@ -785,29 +724,76 @@ function resolveMatchStrengths(params: {
         })
       : { xgDelta: 0, possessionDelta: 0 };
 
+  // Zero-double-count net manager A/M/D deltas (subtracting anything already baked into ratings/HOF club ratings)
+  const homeHumanAttDelta = homeHumanTraitMod
+    ? homeHumanTraitMod.attDelta - homeBakedMgrAtt
+    : 0;
+  const homeHumanMidDelta = homeHumanTraitMod
+    ? homeHumanTraitMod.midDelta - homeBakedMgrMid
+    : 0;
+  const homeHumanDefDelta = homeHumanTraitMod
+    ? homeHumanTraitMod.defDelta - homeBakedMgrDef
+    : 0;
+
+  const awayHumanAttDelta = awayHumanTraitMod
+    ? awayHumanTraitMod.attDelta - awayBakedMgrAtt
+    : 0;
+  const awayHumanMidDelta = awayHumanTraitMod
+    ? awayHumanTraitMod.midDelta - awayBakedMgrMid
+    : 0;
+  const awayHumanDefDelta = awayHumanTraitMod
+    ? awayHumanTraitMod.defDelta - awayBakedMgrDef
+    : 0;
+
+  const homeAiAttDelta =
+    !homeIsHuman && homeAiTraitMod
+      ? (homeIsHist ? homeAiTraitMod.situationalAttDelta : homeAiTraitMod.attDelta) * homeAiScale
+      : 0;
+  const homeAiMidDelta =
+    !homeIsHuman && homeAiTraitMod
+      ? (homeIsHist ? homeAiTraitMod.situationalMidDelta : homeAiTraitMod.midDelta) * homeAiScale
+      : 0;
+  const homeAiDefDelta =
+    !homeIsHuman && homeAiTraitMod
+      ? (homeIsHist ? homeAiTraitMod.situationalDefDelta : homeAiTraitMod.defDelta) * homeAiScale
+      : 0;
+
+  const awayAiAttDelta =
+    !awayIsHuman && awayAiTraitMod
+      ? (awayIsHist ? awayAiTraitMod.situationalAttDelta : awayAiTraitMod.attDelta) * awayAiScale
+      : 0;
+  const awayAiMidDelta =
+    !awayIsHuman && awayAiTraitMod
+      ? (awayIsHist ? awayAiTraitMod.situationalMidDelta : awayAiTraitMod.midDelta) * awayAiScale
+      : 0;
+  const awayAiDefDelta =
+    !awayIsHuman && awayAiTraitMod
+      ? (awayIsHist ? awayAiTraitMod.situationalDefDelta : awayAiTraitMod.defDelta) * awayAiScale
+      : 0;
+
   const home: EffectiveTeamStrength = {
     att:
       homeBase.att +
       homeAttTac +
       homeSecondHalfAttUrgency +
       (homeIndiv ? homeIndiv.attDelta * 0.35 : 0) +
-      (homeHumanTraitMod ? homeHumanTraitMod.attDelta : 0) +
-      (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.attDelta * homeAiScale : 0) +
+      homeHumanAttDelta +
+      homeAiAttDelta +
       (homeStaminaMod ? homeStaminaMod.attDelta : 0),
     mid:
       homeBase.mid +
       homeMidTac +
       (homeIndiv ? homeIndiv.midDelta * 0.35 : 0) +
-      (homeHumanTraitMod ? homeHumanTraitMod.midDelta : 0) +
-      (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.midDelta * homeAiScale : 0) +
+      homeHumanMidDelta +
+      homeAiMidDelta +
       (homeStaminaMod ? homeStaminaMod.midDelta : 0),
     def:
       homeBase.def +
       homeDefTac +
       homeSecondHalfDefUrgency +
       (homeIndiv ? homeIndiv.defDelta * 0.35 : 0) +
-      (homeHumanTraitMod ? homeHumanTraitMod.defDelta : 0) +
-      (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.defDelta * homeAiScale : 0) +
+      homeHumanDefDelta +
+      homeAiDefDelta +
       (homeStaminaMod ? homeStaminaMod.defDelta : 0),
     tacticBonus: Math.round((unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
     xgBonus:
@@ -834,23 +820,23 @@ function resolveMatchStrengths(params: {
       awayAttTac +
       awaySecondHalfAttUrgency +
       (awayIndiv ? awayIndiv.attDelta * 0.35 : 0) +
-      (awayHumanTraitMod ? awayHumanTraitMod.attDelta : 0) +
-      (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.attDelta * awayAiScale : 0) +
+      awayHumanAttDelta +
+      awayAiAttDelta +
       (awayStaminaMod ? awayStaminaMod.attDelta : 0),
     mid:
       awayBase.mid +
       awayMidTac +
       (awayIndiv ? awayIndiv.midDelta * 0.35 : 0) +
-      (awayHumanTraitMod ? awayHumanTraitMod.midDelta : 0) +
-      (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.midDelta * awayAiScale : 0) +
+      awayHumanMidDelta +
+      awayAiMidDelta +
       (awayStaminaMod ? awayStaminaMod.midDelta : 0),
     def:
       awayBase.def +
       awayDefTac +
       awaySecondHalfDefUrgency +
       (awayIndiv ? awayIndiv.defDelta * 0.35 : 0) +
-      (awayHumanTraitMod ? awayHumanTraitMod.defDelta : 0) +
-      (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.defDelta * awayAiScale : 0) +
+      awayHumanDefDelta +
+      awayAiDefDelta +
       (awayStaminaMod ? awayStaminaMod.defDelta : 0),
     tacticBonus: Math.round(-(unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
     xgBonus:
@@ -948,12 +934,12 @@ export function pickHighlightPattern(params: {
     cutback_finish: 13,
     through_ball_1v1: 14,
     cut_inside_curler: 15.5,
-    corner_kick: 14,
-    direct_free_kick: 9.5,
+    corner_kick: 19.5,
+    direct_free_kick: 9.0,
     high_press_counter: 12,
     u_buildup_switch: 13,
     rebound_finish: 11.5,
-    penalty_kick: allowPenalty ? 11.5 : 0,
+    penalty_kick: allowPenalty ? 10.2 : 0,
   };
 
   // Tactic weighting
@@ -985,21 +971,39 @@ export function pickHighlightPattern(params: {
       break;
   }
 
-  // Manager trait weighting
+  // Manager trait weighting (vividly reflects each manager's signature football in 2D highlights)
   if (managerTraitId === 'set_piece_master') {
-    weights.corner_kick *= 2.15;
-    weights.direct_free_kick *= 2.25;
+    weights.corner_kick *= 2.8;
+    weights.direct_free_kick *= 2.8;
   } else if (managerTraitId === 'wing_bomber') {
-    weights.wing_cross_header *= 1.6;
-    weights.cutback_finish *= 1.45;
-    weights.u_buildup_switch *= 1.4;
+    weights.wing_cross_header *= 1.85;
+    weights.cutback_finish *= 1.65;
+    weights.u_buildup_switch *= 1.45;
   } else if (managerTraitId === 'gegenpress_guru') {
-    weights.high_press_counter *= 1.65;
+    weights.high_press_counter *= 1.95;
+    weights.rebound_finish *= 1.25;
   } else if (managerTraitId === 'direct_football') {
-    weights.through_ball_1v1 *= 1.55;
-    weights.rebound_finish *= 1.3;
+    weights.through_ball_1v1 *= 1.85;
+    weights.rebound_finish *= 1.45;
   } else if (managerTraitId === 'tiki_taka') {
-    weights.u_buildup_switch *= 1.55;
+    weights.u_buildup_switch *= 1.85;
+    weights.cutback_finish *= 1.35;
+  } else if (managerTraitId === 'catenaccio') {
+    weights.through_ball_1v1 *= 1.6;
+    weights.high_press_counter *= 1.45;
+  } else if (managerTraitId === 'midfield_maestro') {
+    weights.u_buildup_switch *= 1.5;
+    weights.cutback_finish *= 1.3;
+  } else if (managerTraitId === 'galactico_manager') {
+    weights.cut_inside_curler *= 1.55;
+    weights.direct_free_kick *= 1.35;
+  } else if (managerTraitId === 'underdog_killer') {
+    weights.through_ball_1v1 *= 1.5;
+    weights.high_press_counter *= 1.5;
+  } else if (managerTraitId === 'total_football') {
+    weights.u_buildup_switch *= 1.35;
+    weights.cutback_finish *= 1.35;
+    weights.through_ball_1v1 *= 1.25;
   }
 
   // Individual player stat & playstyle direct weighting
@@ -1149,7 +1153,7 @@ function generateHalfGoalEvents(params: {
     const pattern = pickHighlightPattern({
       tactic,
       roster: activeRoster,
-      managerTraitId: isUser ? managerTraitId : null,
+      managerTraitId: isUser ? managerTraitId : getClubManager(club).traitId,
       allowPenalty: true,
       rng,
     });
@@ -1349,7 +1353,7 @@ function generateHalfFlavorEvents(params: {
     const pattern = pickHighlightPattern({
       tactic: cTactic,
       roster: cRoster,
-      managerTraitId: cIsUser ? managerTraitId : null,
+      managerTraitId: cIsUser ? managerTraitId : getClubManager(cClub).traitId,
       allowPenalty: cIdx === 0 && rng() < 0.22,
       rng,
     });
@@ -1459,10 +1463,11 @@ function generateHalfFlavorEvents(params: {
       const atkTactic = defIsHome ? awayTactic : homeTactic;
       const atkIsUser = defIsHome ? isAwayUser : isHomeUser;
 
+      const atkClub = defIsHome ? awayClub : homeClub;
       const pattern = pickHighlightPattern({
         tactic: atkTactic,
         roster: atkRoster,
-        managerTraitId: atkIsUser ? managerTraitId : null,
+        managerTraitId: atkIsUser ? managerTraitId : getClubManager(atkClub).traitId,
         allowPenalty: sIdx === 0 && rng() < 0.22,
         rng,
       });

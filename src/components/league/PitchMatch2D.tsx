@@ -4,7 +4,7 @@ import {
   computeTacticalPlayerOffset,
   pickTacticalPassNext,
 } from '../../engine/tacticalMovement';
-import type { FormationId } from '../../types/game';
+import type { FormationId, ManagerTraitId } from '../../types/game';
 import type {
   AttackRouteId,
   Club,
@@ -37,6 +37,8 @@ interface PitchMatch2DProps {
   awayXg?: number;
   homeTactic?: TacticId;
   awayTactic?: TacticId;
+  homeManagerTraitId?: ManagerTraitId | null;
+  awayManagerTraitId?: ManagerTraitId | null;
   dramaticEvent: DramaticHighlightPayload | null;
 }
 
@@ -178,6 +180,8 @@ export function PitchMatch2D({
   awayXg = 0,
   homeTactic = 'balanced',
   awayTactic = 'balanced',
+  homeManagerTraitId = null,
+  awayManagerTraitId = null,
   dramaticEvent,
 }: PitchMatch2DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -199,6 +203,8 @@ export function PitchMatch2D({
     awayXg,
     homeTactic,
     awayTactic,
+    homeManagerTraitId,
+    awayManagerTraitId,
   });
 
   useEffect(() => {
@@ -218,6 +224,8 @@ export function PitchMatch2D({
       awayXg,
       homeTactic,
       awayTactic,
+      homeManagerTraitId,
+      awayManagerTraitId,
     };
   }, [
     homeClub,
@@ -235,6 +243,8 @@ export function PitchMatch2D({
     awayXg,
     homeTactic,
     awayTactic,
+    homeManagerTraitId,
+    awayManagerTraitId,
   ]);
 
   const sequenceRef = useRef<ActiveSequence | null>(null);
@@ -1373,11 +1383,15 @@ export function PitchMatch2D({
           const activeTacticNow = possessionIsHome
             ? curHomeTactic
             : curAwayTactic;
+          const activeMgrTraitNow = possessionIsHome
+            ? propsRef.current.homeManagerTraitId
+            : propsRef.current.awayManagerTraitId;
           const nextPass = pickTacticalPassNext({
             tactic: activeTacticNow,
             attackPhase,
             carrierIdx,
             activeBase,
+            managerTraitId: activeMgrTraitNow,
           });
           carrierIdx = nextPass.nextCarrierIdx;
           nextPassClock =
@@ -1423,19 +1437,27 @@ export function PitchMatch2D({
         (curPoss / 100) * 0.5 + liveShotShare * 0.25 + liveXgShare * 0.25;
       const territorialShiftX = (territorialHome - 0.5) * 0.26;
       const homeLineOffset =
-        propsRef.current.homeTactic === 'gegenpressing'
+        propsRef.current.homeTactic === 'gegenpressing' ||
+        propsRef.current.homeManagerTraitId === 'gegenpress_guru'
           ? 0.04
-          : propsRef.current.homeTactic === 'possession'
+          : propsRef.current.homeTactic === 'possession' ||
+              propsRef.current.homeManagerTraitId === 'tiki_taka'
             ? 0.025
-            : propsRef.current.homeTactic === 'counter' && !possessionIsHome
+            : (propsRef.current.homeTactic === 'counter' ||
+                  propsRef.current.homeManagerTraitId === 'catenaccio') &&
+                !possessionIsHome
               ? -0.04
               : 0;
       const awayLineOffset =
-        propsRef.current.awayTactic === 'gegenpressing'
+        propsRef.current.awayTactic === 'gegenpressing' ||
+        propsRef.current.awayManagerTraitId === 'gegenpress_guru'
           ? -0.04
-          : propsRef.current.awayTactic === 'possession'
+          : propsRef.current.awayTactic === 'possession' ||
+              propsRef.current.awayManagerTraitId === 'tiki_taka'
             ? -0.025
-            : propsRef.current.awayTactic === 'counter' && possessionIsHome
+            : (propsRef.current.awayTactic === 'counter' ||
+                  propsRef.current.awayManagerTraitId === 'catenaccio') &&
+                possessionIsHome
               ? 0.04
               : 0;
 
@@ -1459,6 +1481,7 @@ export function PitchMatch2D({
               attackPhase,
               ball,
               simClock,
+              managerTraitId: propsRef.current.homeManagerTraitId,
             })
           : { x: 0, y: 0 };
 
@@ -1523,6 +1546,7 @@ export function PitchMatch2D({
               attackPhase,
               ball,
               simClock,
+              managerTraitId: propsRef.current.awayManagerTraitId,
             })
           : { x: 0, y: 0 };
 

@@ -80,6 +80,7 @@ function buildClub(
     chem.total,
     traitId,
     chem.slotSynergies,
+    tactic,
   );
   return {
     id,
@@ -127,6 +128,7 @@ function buildCtx(params: {
     chem.total,
     params.traitId,
     chem.slotSynergies,
+    params.tactic,
   );
   return {
     userClubId: params.clubId,

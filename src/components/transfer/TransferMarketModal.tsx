@@ -263,8 +263,16 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         chemistry.total,
         state.manager.traitId,
         chemistry.slotSynergies,
+        state.defaultTactic,
       ),
-    [state.formation, state.starters, chemistry.total, chemistry.slotSynergies, state.manager.traitId],
+    [
+      state.formation,
+      state.starters,
+      chemistry.total,
+      chemistry.slotSynergies,
+      state.manager.traitId,
+      state.defaultTactic,
+    ],
   );
 
   const selectedUserSlotKeys = useMemo(

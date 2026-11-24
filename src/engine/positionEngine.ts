@@ -68,9 +68,9 @@ export function isCompatibleSubPosition(
 /**
  * Evaluates a player's fit for a specific formation slot subPosition.
  * - Any position in `mainPositions`: 0 penalty (100%)
- * - `secondaryPositions` or compatible pair (LB<->LWB, RB<->RWB, LW<->LM, RW<->RM): -3 OVR (-1 with Total Football)
- * - Same line out-of-position (e.g. CB->LB, CDM->CAM, ST->LW): -6 OVR (-3 with Total Football)
- * - Different line or GK mismatch: -15 OVR
+ * - `secondaryPositions` or compatible pair (LB<->LWB, RB<->RWB, LW<->LM, RW<->RM): -3 OVR (0 with Total Football)
+ * - Same line out-of-position (e.g. CB->LB, CDM->CAM, ST->LW): -6 OVR (-2 with Total Football)
+ * - Different line: -15 OVR (-8 with Total Football for outfielders; GK mismatch stays -15)
  */
 export function evaluatePositionFit(
   player: Pick<Player, 'ovr' | 'mainPositions' | 'secondaryPositions'>,
@@ -100,12 +100,12 @@ export function evaluatePositionFit(
     );
 
   if (isSecondaryOrCompat) {
-    const penalty = isTotalFootball ? -1 : -3;
+    const penalty = isTotalFootball ? 0 : -3;
     return {
-      fit: 'secondary',
+      fit: isTotalFootball ? 'main' : 'secondary',
       penalty,
       effectiveOvr: Math.max(40, player.ovr + penalty),
-      label: isTotalFootball ? '부포지션 (토탈풋볼 완화)' : '부포지션',
+      label: isTotalFootball ? '부포지션 (토탈풋볼 0)' : '부포지션',
     };
   }
 
@@ -118,19 +118,22 @@ export function evaluatePositionFit(
     });
 
   if (sharesLine) {
-    const penalty = isTotalFootball ? -3 : -6;
+    const penalty = isTotalFootball ? -2 : -6;
     return {
       fit: 'out_of_pos',
       penalty,
       effectiveOvr: Math.max(40, player.ovr + penalty),
-      label: '동일 라인 비적합',
+      label: isTotalFootball ? '동일 라인 (토탈풋볼 완화)' : '동일 라인 비적합',
     };
   }
 
+  const isGkMismatch =
+    slotSubPosition === 'GK' || player.mainPositions.includes('GK');
+  const severePenalty = isTotalFootball && !isGkMismatch ? -8 : -15;
   return {
     fit: 'severe',
-    penalty: -15,
-    effectiveOvr: Math.max(40, player.ovr - 15),
-    label: '포지션 불일치',
+    penalty: severePenalty,
+    effectiveOvr: Math.max(40, player.ovr + severePenalty),
+    label: isTotalFootball && !isGkMismatch ? '타 라인 (토탈풋볼 완화)' : '포지션 불일치',
   };
 }

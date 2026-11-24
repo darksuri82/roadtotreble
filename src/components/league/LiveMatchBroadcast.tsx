@@ -897,6 +897,7 @@ export function LiveMatchBroadcast({
       subPosition: slot?.subPosition ?? 'CM',
       tactic: userActiveTactic,
       minutesPlayed: minsOnPitch,
+      managerTraitId: state.manager.traitId,
     });
     return {
       index: idx,
@@ -931,6 +932,7 @@ export function LiveMatchBroadcast({
         subPosition: formationSlots[rec?.slotIndex ?? 5]?.subPosition ?? 'CM',
         tactic: userActiveTactic,
         minutesPlayed: minsPlayed,
+        managerTraitId: state.manager.traitId,
       });
     } else {
       staminaByPlayerId[bp.id] = 100;
@@ -1837,6 +1839,12 @@ export function LiveMatchBroadcast({
                   awayXg={liveAwayXg}
                   homeTactic={fullResult?.homeTactic ?? halftime.homeTactic}
                   awayTactic={fullResult?.awayTactic ?? halftime.awayTactic}
+                  homeManagerTraitId={
+                    halftime.isUserHome ? state.manager.traitId : oppManager.traitId
+                  }
+                  awayManagerTraitId={
+                    halftime.isUserHome ? oppManager.traitId : state.manager.traitId
+                  }
                   dramaticEvent={dramaticEvent}
                 />
               </div>
@@ -2199,7 +2207,17 @@ export function LiveMatchBroadcast({
                         )
                       </span>
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 tabular-nums">
+                      {isWizard && (
+                        <span className="rounded border border-amber-400/40 bg-amber-500/15 px-1.5 py-0.5 text-amber-200">
+                          ⚡ 변경 시 후반 1.8배
+                        </span>
+                      )}
+                      {state.manager.traitId === 'super_sub' && (
+                        <span className="rounded border border-pink-400/40 bg-pink-500/15 px-1.5 py-0.5 text-pink-200">
+                          ⚡ 조커 OVR +3.0
+                        </span>
+                      )}
                       {TACTICS[selectedTactic].name} · {htTacticFits[selectedTactic]}%
                     </span>
                   </div>
