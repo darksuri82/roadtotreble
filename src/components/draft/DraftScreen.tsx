@@ -11,6 +11,7 @@ import { PLAYSTYLES } from '../../data/playstyles';
 import {
   calculateChemistry,
   calculateTeamRatings,
+  evaluatePairLink,
 } from '../../engine/chemistryEngine';
 import { TACTICS } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
@@ -171,6 +172,45 @@ export function DraftScreen() {
     ? displayedChemistry.total - chemistry.total
     : 0;
 
+  const expectedLinksByPlayerId = useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!isStarterPick || !draft.hasSpun || draft.reels.length === 0) return out;
+    const targetIdx = draft.currentSlotIndex;
+    const neighborPlayers: Player[] = [];
+    for (const [fromIdx, toIdx] of formationConfig.links) {
+      const otherIdx =
+        fromIdx === targetIdx ? toIdx : toIdx === targetIdx ? fromIdx : -1;
+      if (otherIdx === -1) continue;
+      const neighbor = starters[otherIdx];
+      if (neighbor) neighborPlayers.push(neighbor);
+    }
+    if (neighborPlayers.length === 0) return out;
+    for (const reel of draft.reels) {
+      for (const cand of reel.candidates) {
+        let sum = 0;
+        for (const neighbor of neighborPlayers) {
+          sum += evaluatePairLink(
+            cand,
+            neighbor,
+            state.defaultTactic,
+            state.manager.traitId,
+          ).score;
+        }
+        out[cand.id] = sum;
+      }
+    }
+    return out;
+  }, [
+    isStarterPick,
+    draft.hasSpun,
+    draft.reels,
+    draft.currentSlotIndex,
+    formationConfig.links,
+    starters,
+    state.defaultTactic,
+    state.manager.traitId,
+  ]);
+
   const handleSlotClick = (area: 'starter' | 'bench', index: number) => {
     const clickedPlayer =
       area === 'starter' ? displayedStarters[index] : displayedBench[index];
@@ -256,6 +296,7 @@ export function DraftScreen() {
               label="감독 팁"
               size="xs"
               align="right"
+              guideTab="chemistry"
             >
               <p className="text-[11px] leading-relaxed text-slate-300 mb-2">
                 {activeTrait.draftGuideTip}
@@ -289,15 +330,16 @@ export function DraftScreen() {
           )}
 
           <InfoHelpButton
-            title="시너지 4원칙 · 팀 케미"
+            title="시너지 4원칙 · 감독 궁합 · 팀 케미"
             label="공식"
             size="xs"
             align="right"
+            guideTab="chemistry"
             items={[
-              '감독 궁합(독립): 스타일 일치 선발 선수 개인 OVR +1~+2',
-              '🟢 구단(+1.6)·전소속(+1.25) / 🔵 국적(+1.1) / 🟡 스타일(+1.1) / 🟣 88+(+1.25)',
-              '선수 시너지(+0~+2) + 감독 궁합 합산 최대 +3 OVR',
-              '팀 케미 0~100점 → 팀 실효 OVR -1.5 ~ +2.5 반영',
+              '🟢 구단·전소속 / 🔵 국적 / 🟡 스타일 / 🟣 엘리트 88+ — 모든 연결선 1선 = 1점 통일',
+              '개인 인접 시너지: 2선(+1) · 4선(+2) · 8선(+3)',
+              '★ 감독 궁합(독립): 일치 선수 모두 별도 +1 → 개인 합산 최대 +4 OVR',
+              '팀 케미(0~100): 연결선 단조 증가(-1.5~+2.5, 개별 시너지와 중복 차단 후 팀 조직력 최대 +0.8 추가)',
             ]}
           />
         </div>
@@ -318,10 +360,11 @@ export function DraftScreen() {
             <InfoHelpButton
               title="드래프트 조작"
               align="left"
+              guideTab="basics"
               items={[
-                '후보 1회 클릭: 포메이션 임시 배치(시너지 실시간 프리뷰)',
-                '[영입 확정] 또는 재클릭 시 영입 완료',
-                '피치/벤치 선수 클릭으로 자유 교환 가능',
+                '후보 1회 클릭: 포메이션 임시 배치(시너지·팀 케미 실시간 프리뷰)',
+                '카드 우측 [🔗 N선] 배지: 현재 슬롯 배치 시 바로 생기는 연결선 수',
+                '[영입 확정] 또는 재클릭 시 영입 완료 · 피치/벤치 자유 교환 가능',
               ]}
             />
           </div>
@@ -371,6 +414,7 @@ export function DraftScreen() {
               onSelectPreviewCandidate={handleSelectPreviewCandidate}
               previewSlotSynergy={previewSlotSynergy}
               previewChemDelta={previewChemDelta}
+              expectedLinksByPlayerId={expectedLinksByPlayerId}
               onSpin={() => {
                 setPreviewCandidate(null);
                 setPreviewSwaps([]);

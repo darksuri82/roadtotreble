@@ -1,4 +1,4 @@
-import { Crown, Diamond, Lock, Star } from 'lucide-react';
+import { Crown, Diamond, Link2, Lock, Star } from 'lucide-react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
@@ -38,6 +38,8 @@ interface PlayerCardProps {
   disableConfirmAction?: boolean;
   /** Text displayed on the disabled confirm button while waiting for opponent turn */
   disabledActionLabel?: string | null;
+  /** Live expected adjacent 4-color chemistry link count when placed in the active draft starter slot */
+  expectedLinkCount?: number;
 }
 
 const TIER_STYLES: Record<
@@ -98,6 +100,7 @@ export function PlayerCard({
   lockedBadgeLabel = null,
   disableConfirmAction = false,
   disabledActionLabel = null,
+  expectedLinkCount,
 }: PlayerCardProps) {
   const tier = getCardTier(player);
   const style = TIER_STYLES[tier];
@@ -333,6 +336,19 @@ export function PlayerCard({
               >
                 <Star className="w-2 h-2 fill-amber-300 text-amber-300" />
                 +1
+              </span>
+            )}
+            {typeof expectedLinkCount === 'number' && expectedLinkCount > 0 && (
+              <span
+                title={`현재 슬롯 배치 시 인접 연결 ${expectedLinkCount}선 (${expectedLinkCount >= 4 ? '시너지 +2' : expectedLinkCount >= 2 ? '시너지 +1' : '연결 1선'})`}
+                className={`inline-flex shrink-0 items-center gap-0.5 rounded border px-1 py-px text-[8.5px] font-extrabold leading-none tabular-nums ${
+                  expectedLinkCount >= 2
+                    ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200'
+                    : 'border-slate-700/80 bg-slate-900/90 text-slate-300'
+                }`}
+              >
+                <Link2 className="w-2 h-2 shrink-0" />
+                {expectedLinkCount}선
               </span>
             )}
           </div>

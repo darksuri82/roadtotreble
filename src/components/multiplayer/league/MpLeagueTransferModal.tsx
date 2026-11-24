@@ -57,6 +57,7 @@ import {
   type Position,
 } from '../../../types/player';
 import { CountryFlagSvg } from '../../common/CountryFlagSvg';
+import { InfoHelpButton } from '../../common/InfoHelpButton';
 import { JerseySvg } from '../../common/JerseySvg';
 import { ManagerTraitBadgeCard } from '../../common/ManagerTraitBadgeCard';
 import { PitchBoard } from '../../common/PitchBoard';
@@ -1390,17 +1391,49 @@ export function MpLeagueTransferModal({
                           <span className="font-bold text-slate-300">
                             {tradeEval.gmReaction}
                           </span>
-                          <span
-                            className={`font-display text-base font-black tabular-nums ${
-                              tradeEval.acceptanceChance >= 70
-                                ? 'text-emerald-300'
-                                : tradeEval.acceptanceChance >= 40
-                                  ? 'text-amber-300'
-                                  : 'text-rose-300'
-                            }`}
-                          >
-                            성사 확률 {tradeEval.acceptanceChance}%
-                          </span>
+                          <div className="inline-flex items-center gap-1.5">
+                            <span
+                              className={`font-display text-base font-black tabular-nums ${
+                                tradeEval.acceptanceChance >= 70
+                                  ? 'text-emerald-300'
+                                  : tradeEval.acceptanceChance >= 40
+                                    ? 'text-amber-300'
+                                    : 'text-rose-300'
+                              }`}
+                            >
+                              성사 확률 {tradeEval.acceptanceChance}%
+                            </span>
+                            <InfoHelpButton
+                              title="성사 확률 · TP 가치 내역"
+                              align="right"
+                              size="xs"
+                              guideTab="basics"
+                            >
+                              <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400">우리 제안 유효 TP</span>
+                                  <span className="font-bold text-white">
+                                    {tradeEval.userEffectiveTp} TP
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400">상대 요구 TP</span>
+                                  <span className="font-bold text-emerald-300">
+                                    {tradeEval.aiEffectiveTp} TP
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-400">가치 비율</span>
+                                  <span className="font-bold text-sky-300">
+                                    {Math.round(tradeEval.ratio * 100)}%
+                                  </span>
+                                </div>
+                                <div className="pt-1 border-t border-slate-800 text-[10px] text-slate-400">
+                                  • 상대 니즈(🔥+32% / ✨+18%) · 다인 통합세(100/78/60%) · 급매(-35%) 반영
+                                </div>
+                              </div>
+                            </InfoHelpButton>
+                          </div>
                         </div>
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-900">
                           <div

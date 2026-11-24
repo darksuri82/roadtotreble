@@ -181,6 +181,7 @@ export function LegacyHubModal() {
                 <InfoHelpButton
                   title="명예의 전당 등재 기준"
                   align="left"
+                  guideTab="season"
                   items={[
                     '자동 등재: 시즌 스코어 5,500+ (역대 강팀급) · S+ 등급 · UCL 우승 · 트레블 달성 시',
                     '수동 등재: 기준 미만 시즌도 시즌 결산 화면의 [수동 등록] 버튼으로 직접 등재 가능',

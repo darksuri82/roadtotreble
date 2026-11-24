@@ -29,6 +29,7 @@ import type {
 } from '../../types/game';
 import type { Club, TacticId } from '../../types/league';
 import type { Player, SubPosition } from '../../types/player';
+import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
@@ -300,6 +301,50 @@ export function MatchDayTacticsRoom({
     }
     return map;
   }, [starters, formation, managerTraitId]);
+
+  const tacticCompareRows = useMemo(() => {
+    if (blindOpponentStatus) return [];
+    const oppStarters = opponentRoster.slice(0, 11);
+    return TACTIC_LIST.map((t) => {
+      const m = evaluateUnifiedTacticalMatchup(
+        {
+          starters,
+          formation,
+          tactic: t.id,
+          managerTraitId,
+          managerOvr: 86,
+        },
+        {
+          starters: oppStarters,
+          formation: opponent.formation,
+          tactic: opponent.defaultTactic,
+          managerTraitId: oppManager.traitId,
+          managerOvr: oppManager.ovr,
+        },
+      );
+      const upCount = m.zones.filter((z) => z.status === 'up').length;
+      const downCount = m.zones.filter((z) => z.status === 'down').length;
+      return {
+        id: t.id,
+        name: t.shortName,
+        fit: m.myProfile.tacticalFit,
+        upCount,
+        downCount,
+        net: m.netOvrEquivalent,
+        isPreferred: managerPreferredTactic === t.id,
+      };
+    }).sort((a, b) => b.net - a.net || b.fit - a.fit);
+  }, [
+    blindOpponentStatus,
+    opponentRoster,
+    starters,
+    formation,
+    managerTraitId,
+    opponent.formation,
+    opponent.defaultTactic,
+    oppManager,
+    managerPreferredTactic,
+  ]);
 
   const handleSlotClick = (area: 'starter' | 'bench', index: number) => {
     if (locked) return;
@@ -627,6 +672,71 @@ export function MatchDayTacticsRoom({
             <span className="inline-flex items-center gap-1.5 font-bold text-slate-200">
               <Compass className="w-3.5 h-3.5 text-emerald-400" />
               전술
+              {!blindOpponentStatus && tacticCompareRows.length > 0 && (
+                <InfoHelpButton
+                  title="현재 상대 기준 전술 5종 비교"
+                  label="비교"
+                  align="left"
+                  size="xs"
+                  guideTab="tactics"
+                  popoverWidthClass="w-[min(22rem,calc(100vw-1.5rem))]"
+                >
+                  <div className="space-y-1 text-[10.5px] tabular-nums">
+                    {tacticCompareRows.map((row, idx) => {
+                      const isCur = row.id === activeTactic;
+                      return (
+                        <div
+                          key={row.id}
+                          className={`flex items-center justify-between gap-1.5 rounded-lg border px-2 py-1 ${
+                            isCur
+                              ? 'border-emerald-500/45 bg-emerald-500/12'
+                              : idx === 0
+                                ? 'border-slate-700/90 bg-slate-900/90'
+                                : 'border-slate-800/80 bg-[#0d1420]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="font-bold text-white whitespace-nowrap">
+                              {row.isPreferred && (
+                                <span className="text-amber-300 mr-0.5">★</span>
+                              )}
+                              {row.name}
+                            </span>
+                            {idx === 0 && (
+                              <span className="rounded bg-emerald-500/20 px-1 py-px text-[9px] font-extrabold text-emerald-300 whitespace-nowrap">
+                                유력
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-slate-400">
+                              완성 <strong className="text-slate-200">{row.fit}%</strong>
+                            </span>
+                            <span className="whitespace-nowrap">
+                              <strong className="text-emerald-300">▲{row.upCount}</strong>
+                              <span className="text-slate-600 mx-0.5">/</span>
+                              <strong className="text-rose-300">▼{row.downCount}</strong>
+                            </span>
+                            {!locked && !isCur ? (
+                              <button
+                                type="button"
+                                onClick={() => onSelectTactic(row.id)}
+                                className="rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[9.5px] font-bold text-emerald-300 hover:border-emerald-400/60 cursor-pointer whitespace-nowrap"
+                              >
+                                적용
+                              </button>
+                            ) : (
+                              <span className="text-[9.5px] font-bold text-emerald-300 whitespace-nowrap">
+                                {isCur ? '선택됨' : '-'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </InfoHelpButton>
+              )}
               {locked && (
                 <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] font-extrabold text-sky-300">
                   확정됨

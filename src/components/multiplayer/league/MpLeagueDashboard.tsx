@@ -37,6 +37,7 @@ import type { MpRoomPlayerRow } from '../../../types/multiplayer';
 import type { Player } from '../../../types/player';
 import type { UclKnockoutStage } from '../../../types/ucl';
 import { resolvePlayerById } from '../../../utils/playerLookup';
+import { InfoHelpButton } from '../../common/InfoHelpButton';
 import { InjuryAlertModal } from '../../common/InjuryAlertModal';
 import { ManagerEventModal } from '../../common/ManagerEventModal';
 import type { SlotRef } from '../../common/PitchBoard';
@@ -959,6 +960,17 @@ export function MpLeagueDashboard({
                     <WifiOff className="w-3 h-3" />
                   )}
                 </span>
+                <InfoHelpButton
+                  title="멀티 챔스 · 생존자 규칙"
+                  align="left"
+                  size="xs"
+                  guideTab="season"
+                  items={[
+                    '리그 페이즈 8경기(1~8위 직행 · 9~24위 PO · 25~36위 탈락) 후 토너먼트 진입',
+                    '토너먼트 단계 및 1↔2차전 전환 시 현재 생존자 전원 [준비 완료] 후 즉시 진행 (탈락자는 관전)',
+                    '최종 친구 순위 = 공정 시즌 점수 + 친구 맞대결 점수(최대 1,500점)',
+                  ]}
+                />
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -997,6 +1009,17 @@ export function MpLeagueDashboard({
                     <WifiOff className="w-3 h-3" />
                   )}
                 </span>
+                <InfoHelpButton
+                  title="멀티 리그 진행 규칙"
+                  align="left"
+                  size="xs"
+                  guideTab="season"
+                  items={[
+                    '누군가 스쿼드·전술 수정, 인터뷰, 부상 대응 중이면 방 전체가 안전하게 일시정지됩니다',
+                    '친구 맞대결은 2D 중계(4인 리그 맞대결은 2차전 2D · 1차전 라이브 중계), 비당사자는 읽기 전용 관전',
+                    '최종 친구 순위 = 공정 시즌 점수 + 맞대결 점수(최대 1,500점)',
+                  ]}
+                />
               </div>
             )}
 

@@ -7,11 +7,17 @@ import {
   Trophy,
   Zap,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CURRENT_APP_VERSION } from '../../data/patchNotes';
 import { getAchievementProgress } from '../../engine/legacyEngine';
 import { useGame } from '../../store/GameContext';
 import type { GamePhase } from '../../types/game';
+import {
+  type GuideTabId,
+  OPEN_SOLO_TUTORIAL_EVENT,
+  OPEN_SYSTEM_GUIDE_EVENT,
+} from '../guide/guideNavigation';
+import { SoloVisualTutorialModal } from '../guide/SoloVisualTutorialModal';
 import { SystemGuideModal } from '../guide/SystemGuideModal';
 import { JerseySvg } from './JerseySvg';
 import { PatchNotesModal } from './PatchNotesModal';
@@ -39,9 +45,27 @@ export function HeaderNav() {
     resetGame,
   } = useGame();
   const [confirmReset, setConfirmReset] = useState(false);
-  const [showGuide, setShowGuide] = useState(false);
+  const [guideModalTab, setGuideModalTab] = useState<GuideTabId | null>(null);
   const [showTacticsGuide, setShowTacticsGuide] = useState(false);
   const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [showTutorialReplay, setShowTutorialReplay] = useState(false);
+
+  useEffect(() => {
+    const handleOpenGuide = (e: Event) => {
+      const custom = e as CustomEvent<{ tab?: GuideTabId }>;
+      setGuideModalTab(custom.detail?.tab ?? 'basics');
+    };
+    const handleOpenTutorial = () => {
+      setGuideModalTab(null);
+      setShowTutorialReplay(true);
+    };
+    window.addEventListener(OPEN_SYSTEM_GUIDE_EVENT, handleOpenGuide);
+    window.addEventListener(OPEN_SOLO_TUTORIAL_EVENT, handleOpenTutorial);
+    return () => {
+      window.removeEventListener(OPEN_SYSTEM_GUIDE_EVENT, handleOpenGuide);
+      window.removeEventListener(OPEN_SOLO_TUTORIAL_EVENT, handleOpenTutorial);
+    };
+  }, []);
 
   const currentStepIdx = STEPS.findIndex((s) => s.phase === state.phase);
   const achProgress = getAchievementProgress(legacyState);
@@ -185,7 +209,7 @@ export function HeaderNav() {
                 <button
                   id="open-guide-btn"
                   type="button"
-                  onClick={() => setShowGuide(true)}
+                  onClick={() => setGuideModalTab('basics')}
                   className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
                   title="게임 시스템 & 부상·사기 가이드 열기"
                 >
@@ -232,7 +256,23 @@ export function HeaderNav() {
         </div>
       </header>
 
-      {showGuide && <SystemGuideModal onClose={() => setShowGuide(false)} />}
+      {guideModalTab && (
+        <SystemGuideModal
+          initialTab={guideModalTab}
+          onClose={() => setGuideModalTab(null)}
+          onOpenTutorial={() => {
+            setGuideModalTab(null);
+            setShowTutorialReplay(true);
+          }}
+        />
+      )}
+      {showTutorialReplay && (
+        <SoloVisualTutorialModal
+          open={showTutorialReplay}
+          mode="replay"
+          onClose={() => setShowTutorialReplay(false)}
+        />
+      )}
       <TacticsGuideModal
         open={showTacticsGuide}
         onClose={() => setShowTacticsGuide(false)}

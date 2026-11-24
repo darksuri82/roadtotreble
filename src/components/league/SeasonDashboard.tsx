@@ -50,6 +50,7 @@ import { ClubSquadModal } from '../common/ClubSquadModal';
 import { ClubTag } from '../common/ClubTag';
 import { CompactLiveStandings } from '../common/CompactLiveStandings';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
+import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
 import { MatchDetailModal } from '../common/MatchDetailModal';
 import {
@@ -607,6 +608,18 @@ export function SeasonDashboard() {
                   이적 {nextTransferRound}R
                 </span>
               )}
+              <InfoHelpButton
+                title="시즌 진행 · 자동진행 · 스킵 안내"
+                align="right"
+                size="xs"
+                guideTab="season"
+                items={[
+                  '2D 중계: 직접 경기를 관전하며 하프타임(45\') 전술 수싸움 및 최대 5명 교체 지휘',
+                  '라이브 자동진행(5/7/9초): 일시정지 후 [2D 경기 중계 입장]으로 멈춘 분 그대로 난입 가능',
+                  '자동진행 중 [전술 수정] → [수정 확정]으로 다음 경기 전술 즉시 반영 · 컵/이적/부상 시 자동 멈춤',
+                  '리그 4위 이내 진입 시 36팀 UEFA 챔피언스리그 자동 진출',
+                ]}
+              />
             </div>
           </div>
 

@@ -79,11 +79,18 @@ export function PlayerDetailModal({
     ? evaluatePositionFit(player, slotSubPosition, managerTraitId)
     : null;
   const mgrSynergy = evaluateManagerPlayerSynergy(player, managerTraitId);
-  const synBonus = slotSynergy?.totalBonus ?? (mgrSynergy.isMatch ? 1 : 0);
+  const playerSynBonus = slotSynergy?.neighborBonus ?? 0;
+  const managerSynBonus = slotSynergy
+    ? slotSynergy.managerBonus
+    : mgrSynergy.isMatch
+      ? 1
+      : 0;
+  const synBonus = playerSynBonus + managerSynBonus;
   const ovrBr = computeFullPlayerOvrBreakdown({
     baseOvr: player.ovr,
     positionPenalty: fit?.penalty ?? 0,
-    synergyBonus: synBonus,
+    playerSynergyBonus: playerSynBonus,
+    managerBonus: managerSynBonus,
     condition,
   });
   const displayOvr = ovrBr.finalEffectiveOvr;

@@ -1,9 +1,10 @@
-import { HelpCircle, X } from 'lucide-react';
+import { BookOpen, HelpCircle, X } from 'lucide-react';
 import { useState } from 'react';
 import type {
   TacticalZoneId,
   UnifiedTacticalMatchup,
 } from '../../engine/unifiedTacticsEngine';
+import { openSystemGuide } from '../guide/guideNavigation';
 
 interface UnifiedTacticsStripProps {
   matchup: UnifiedTacticalMatchup;
@@ -147,6 +148,19 @@ export function UnifiedTacticsStrip({
                 변경할 수 있습니다.
               </div>
             )}
+            <div className="pt-1.5 border-t border-slate-800/90 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setHelpOpen(false);
+                  openSystemGuide('tactics');
+                }}
+                className="inline-flex items-center gap-1 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-200 transition-colors cursor-pointer whitespace-nowrap"
+              >
+                <BookOpen className="h-3 w-3 shrink-0" />
+                가이드북 · 통합 전술·포메이션 →
+              </button>
+            </div>
           </div>
         </div>
       )}

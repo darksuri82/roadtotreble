@@ -223,6 +223,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     useState<SlotRef | null>(null);
   const [pickerViewMode, setPickerViewMode] =
     useState<PickerViewMode>('formation');
+  const [highlightNeedsOnly, setHighlightNeedsOnly] = useState(false);
   const [animating, setAnimating] = useState(false);
   const [lockedCount, setLockedCount] = useState(tm.hasSpunClubs ? 3 : 0);
   const [tick, setTick] = useState(0);
@@ -726,13 +727,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
               </span>
             )}
             <InfoHelpButton
-              title="트레이드 규칙"
+              title="트레이드 규칙 · 가치(TP)"
               align="left"
+              guideTab="basics"
               items={[
-                '1:1 · 2:1 · 3:1 패키지 트레이드 (로스터 16인 유지)',
-                '상대 구단의 부족 포지션(🔥/✨) 제공 시 가치 보너스 적용',
-                'OVR 87+ 슈퍼스타는 핵심 자산 포함이 필요(저가치 묶음 꼼수 차단)',
-                '선수 이름 클릭 시 세부 능력치 카드 확인 가능',
+                '1:1 · 2:1 · 3:1 패키지 트레이드 (로스터 16인 · GK 최소 1명 유지)',
+                '상대 최우선 니즈(🔥 +32% · +8%p) / 보강 니즈(✨ +18% · +4%p) / 포화(-25% · -10%p)',
+                '다인 통합세(100%/78%/60%, 니즈 +15% 완화) · 프런트 급매(🚨 -35% · +12%p)',
+                'OVR 87+ 슈퍼스타 영입 시(급매 제외) 대상 OVR -7 이상 핵심 자산 필요',
               ]}
             />
           </div>
@@ -1572,7 +1574,22 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {activeClubNeeds && (
+                              <button
+                                type="button"
+                                onClick={() => setHighlightNeedsOnly((v) => !v)}
+                                title="상대 구단이 필요로 하는 포지션(🔥/✨)의 우리 선수를 한눈에 강조합니다"
+                                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold transition-colors cursor-pointer whitespace-nowrap ${
+                                  highlightNeedsOnly
+                                    ? 'border-amber-400/60 bg-amber-500/18 text-amber-200'
+                                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                                }`}
+                              >
+                                <Sparkles className="h-3 w-3 text-amber-300 shrink-0" />
+                                니즈 강조
+                              </button>
+                            )}
                             {/* Formation / List View Toggle */}
                             <div className="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-0.5 gap-0.5">
                               <button
@@ -1849,6 +1866,46 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                     <span className="text-[11px] font-mono text-slate-400 tabular-nums">
                                       트레이드 가치 비교 {Math.round(tradeEval.ratio * 100)}%
                                     </span>
+                                    <InfoHelpButton
+                                      title="성사 확률 · TP 가치 내역"
+                                      align="left"
+                                      size="xs"
+                                      guideTab="basics"
+                                    >
+                                      <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-400">우리 제안 유효 TP</span>
+                                          <span className="font-bold text-white">
+                                            {tradeEval.userEffectiveTp} TP
+                                            {selectedUserPlayers.length > 1 && (
+                                              <span className="text-slate-500 ml-1">
+                                                (원가 {tradeEval.userRawTp})
+                                              </span>
+                                            )}
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-400">상대 요구 TP</span>
+                                          <span className="font-bold text-emerald-300">
+                                            {tradeEval.aiEffectiveTp} TP
+                                          </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-400">가치 비율</span>
+                                          <span className="font-bold text-sky-300">
+                                            {Math.round(tradeEval.ratio * 100)}%
+                                          </span>
+                                        </div>
+                                        {selectedUserPlayers.length > 1 && (
+                                          <div className="pt-1 border-t border-slate-800 text-[10px] text-slate-400">
+                                            • 다인 패키지 통합세(100% / 78% / 60%, 니즈 +15% 완화) 반영
+                                          </div>
+                                        )}
+                                        <div className="text-[10px] text-slate-400">
+                                          • 상대 니즈(🔥+32% / ✨+18%) · 급매(🚨-35%) · 구단 순위 위상 포함
+                                        </div>
+                                      </div>
+                                    </InfoHelpButton>
                                   </div>
                                   <p className="text-xs text-slate-200 leading-relaxed">
                                     {tradeEval.gmReaction}
@@ -2150,19 +2207,45 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       null,
                                     conditionMap: season.playerConditions,
                                   });
+                                  const isTopNeed = tpVal.needModPct >= 30;
+                                  const isSecondNeed = tpVal.needModPct > 0 && tpVal.needModPct < 30;
+                                  const isSaturated = tpVal.needModPct < 0;
                                   return (
-                                    <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[7.5px] sm:text-[8px] tabular-nums leading-none">
+                                    <div
+                                      className={`mt-0.5 flex items-center justify-center gap-0.5 text-[7.5px] sm:text-[8px] tabular-nums leading-none ${
+                                        highlightNeedsOnly && !isTopNeed && !isSecondNeed
+                                          ? 'opacity-40'
+                                          : ''
+                                      }`}
+                                    >
                                       <span className="font-mono font-bold text-rose-300/95">
                                         {Math.round(tpVal.effectiveTp)}
                                       </span>
-                                      {tpVal.needModPct >= 30 && (
-                                        <span className="text-[8px] font-black text-amber-300">
-                                          🔥
+                                      {isTopNeed && (
+                                        <span
+                                          className={`font-black text-amber-300 ${
+                                            highlightNeedsOnly
+                                              ? 'rounded bg-amber-500/25 border border-amber-400/50 px-1 py-px text-[7px]'
+                                              : 'text-[8px]'
+                                          }`}
+                                        >
+                                          {highlightNeedsOnly ? '🔥+32%' : '🔥'}
                                         </span>
                                       )}
-                                      {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
-                                        <span className="text-[8px] font-black text-sky-300">
-                                          ✨
+                                      {isSecondNeed && (
+                                        <span
+                                          className={`font-black text-sky-300 ${
+                                            highlightNeedsOnly
+                                              ? 'rounded bg-sky-500/20 border border-sky-400/45 px-1 py-px text-[7px]'
+                                              : 'text-[8px]'
+                                          }`}
+                                        >
+                                          {highlightNeedsOnly ? '✨+18%' : '✨'}
+                                        </span>
+                                      )}
+                                      {highlightNeedsOnly && isSaturated && (
+                                        <span className="text-[7px] font-bold text-slate-500">
+                                          포화
                                         </span>
                                       )}
                                     </div>

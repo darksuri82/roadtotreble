@@ -23,6 +23,7 @@ import type {
 import { getCardTier } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
 import { CountryFlagSvg } from './CountryFlagSvg';
+import { InfoHelpButton } from './InfoHelpButton';
 import { PixelStatusIcon } from './PixelStatusIcon';
 
 export interface SlotRef {
@@ -234,6 +235,39 @@ export function PitchBoard({
       ? config.slots[selectedSlot.index]?.subPosition
       : undefined;
 
+  const selectedSlotSynergy =
+    selectedSlot?.area === 'starter'
+      ? (chemistry.slotSynergies?.[selectedSlot.index] ?? null)
+      : null;
+  const selectedFit =
+    selectedPlayer && selectedSubPos
+      ? evaluatePositionFit(
+          selectedPlayer,
+          selectedSubPos,
+          managerTraitId,
+          config.slots[selectedSlot?.index ?? -1]?.alternateSubPositions,
+        )
+      : null;
+  const selectedCond = selectedPlayer
+    ? conditionByPlayerId?.[selectedPlayer.id]
+    : undefined;
+  const selectedOvrBr = selectedPlayer
+    ? computeFullPlayerOvrBreakdown({
+        baseOvr: selectedPlayer.ovr,
+        positionPenalty: selectedFit?.penalty ?? 0,
+        playerSynergyBonus: selectedSlotSynergy?.neighborBonus ?? 0,
+        managerBonus: selectedSlotSynergy?.managerBonus ?? 0,
+        condition: selectedCond ?? null,
+      })
+    : null;
+
+  const totalChemLines =
+    chemistry.breakdown.totalLines ??
+    chemistry.breakdown.club +
+      chemistry.breakdown.nation +
+      chemistry.breakdown.tacticStyle +
+      chemistry.breakdown.roleBalance;
+
   const formationShort =
     formation === '4-4-2-diamond'
       ? '4-4-2◇'
@@ -258,12 +292,54 @@ export function PitchBoard({
             케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
             {chemistry.chemistryOvrBonus.toFixed(1)})
           </span>
+          <InfoHelpButton
+            title={`팀 케미 ${chemistry.total} · 연결선 내역`}
+            align="left"
+            size="xs"
+            guideTab="chemistry"
+          >
+            <div className="space-y-2 text-[11px] text-slate-300 tabular-nums">
+              <div className="grid grid-cols-4 gap-1 text-center text-[10px]">
+                <div className="rounded bg-slate-900/90 py-1 px-1">
+                  <div className="text-emerald-400">구단</div>
+                  <div className="font-bold text-white">{chemistry.breakdown.club}선</div>
+                </div>
+                <div className="rounded bg-slate-900/90 py-1 px-1">
+                  <div className="text-sky-400">국적</div>
+                  <div className="font-bold text-white">{chemistry.breakdown.nation}선</div>
+                </div>
+                <div className="rounded bg-slate-900/90 py-1 px-1">
+                  <div className="text-amber-400">스타일</div>
+                  <div className="font-bold text-white">{chemistry.breakdown.tacticStyle}선</div>
+                </div>
+                <div className="rounded bg-slate-900/90 py-1 px-1">
+                  <div className="text-purple-400">88+</div>
+                  <div className="font-bold text-white">{chemistry.breakdown.roleBalance}선</div>
+                </div>
+              </div>
+              <ul className="space-y-1 text-[10.5px] text-slate-300 leading-relaxed">
+                <li>
+                  • 총 <strong className="text-emerald-300">{totalChemLines}선</strong> → 팀 케미{' '}
+                  <strong className="text-white">{chemistry.total}</strong> (기본 보정{' '}
+                  <strong className="text-emerald-300">
+                    {chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
+                    {chemistry.chemistryOvrBonus.toFixed(1)}
+                  </strong>
+                  , 개별 시너지와 중복 차단 후 팀 조직력 최대 +0.8 추가)
+                </li>
+                <li>
+                  • 개인 보너스: 인접 <strong className="text-emerald-300">2/4/8선 → +1/+2/+3</strong> + 감독 궁합{' '}
+                  <strong className="text-amber-300">★+1</strong> (개인 최대 +4)
+                </li>
+              </ul>
+            </div>
+          </InfoHelpButton>
         </div>
         {headerRight && <div className="shrink-0">{headerRight}</div>}
       </div>
 
       {/* Tap-safe Mobile Inspect Bar: appears only when a player is selected so tapping pitch cards NEVER opens detail modal by mistake */}
-      {selectedPlayer && onInspectPlayer && (
+      {selectedPlayer && selectedOvrBr && (
         <div className="sm:hidden flex items-center justify-between gap-2 rounded-xl border border-slate-700/80 bg-slate-900/90 px-2.5 py-1.5 text-[11px]">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className="rounded border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-px text-[9px] font-bold text-emerald-300 shrink-0">
@@ -272,18 +348,84 @@ export function PitchBoard({
             <span className="truncate font-bold text-slate-100">
               {selectedPlayer.name}
             </span>
-            <span className="font-mono text-[10px] font-bold text-amber-300/90 shrink-0">
-              {selectedPlayer.ovr}
+            <span className="font-mono text-[10px] font-bold text-amber-300/90 shrink-0 tabular-nums">
+              {selectedOvrBr.finalEffectiveOvr}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => onInspectPlayer(selectedPlayer, selectedSubPos)}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200 hover:border-sky-400/50 cursor-pointer shrink-0 touch-manipulation"
-          >
-            <Info className="w-3 h-3" />
-            선수 상세
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <InfoHelpButton
+              title={`${selectedPlayer.name} · 실효 OVR 내역`}
+              label="내역"
+              size="xs"
+              align="right"
+              guideTab="condition"
+            >
+              <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
+                <div className="flex justify-between">
+                  <span className="text-slate-400">기본 OVR</span>
+                  <span className="font-bold text-white">{selectedOvrBr.baseOvr}</span>
+                </div>
+                {selectedOvrBr.positionPenalty < 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">포지션 ({selectedFit?.label})</span>
+                    <span className="font-bold text-rose-300">{selectedOvrBr.positionPenalty}</span>
+                  </div>
+                )}
+                {selectedSlotSynergy && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">
+                      인접 시너지 ({selectedSlotSynergy.lineCount ?? 0}선)
+                    </span>
+                    <span className="font-bold text-emerald-300">
+                      +{selectedSlotSynergy.neighborBonus}
+                    </span>
+                  </div>
+                )}
+                {(selectedSlotSynergy?.managerBonus ?? 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">★ 감독 궁합</span>
+                    <span className="font-bold text-amber-300">+1</span>
+                  </div>
+                )}
+                {selectedOvrBr.moraleBonus !== 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">사기 보정</span>
+                    <span
+                      className={`font-bold ${selectedOvrBr.moraleBonus > 0 ? 'text-amber-300' : 'text-sky-300'}`}
+                    >
+                      {selectedOvrBr.moraleBonus > 0
+                        ? `+${selectedOvrBr.moraleBonus}`
+                        : selectedOvrBr.moraleBonus}
+                    </span>
+                  </div>
+                )}
+                {selectedOvrBr.injuryPenalty < 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">부상 / 회복기</span>
+                    <span className="font-bold text-rose-300">
+                      {selectedOvrBr.isUnavailableInjured
+                        ? '출전 불가'
+                        : selectedOvrBr.injuryPenalty}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-slate-800 pt-1 font-extrabold">
+                  <span className="text-sky-300">최종 실효 OVR</span>
+                  <span className="text-white">{selectedOvrBr.finalEffectiveOvr}</span>
+                </div>
+              </div>
+            </InfoHelpButton>
+            {onInspectPlayer && (
+              <button
+                type="button"
+                onClick={() => onInspectPlayer(selectedPlayer, selectedSubPos)}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-[10px] font-bold text-slate-200 hover:border-sky-400/50 cursor-pointer shrink-0 touch-manipulation"
+              >
+                <Info className="w-3 h-3" />
+                상세
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -471,7 +613,6 @@ export function PitchBoard({
               )
             : null;
           const slotSyn = player ? chemistry.slotSynergies?.[slot.index] : undefined;
-          const synBonus = slotSyn?.totalBonus ?? 0;
           const hasPenalty = Boolean(fit && fit.penalty < 0);
           const staminaPct =
             player && staminaByPlayerId !== undefined
@@ -494,7 +635,8 @@ export function PitchBoard({
             ? computeFullPlayerOvrBreakdown({
                 baseOvr: player.ovr,
                 positionPenalty: fit?.penalty ?? 0,
-                synergyBonus: synBonus,
+                playerSynergyBonus: slotSyn?.neighborBonus ?? 0,
+                managerBonus: slotSyn?.managerBonus ?? 0,
                 condition: starterCond ?? null,
               })
             : null;
@@ -833,13 +975,89 @@ export function PitchBoard({
             if (focusedP && focusedSyn) {
               const lc = focusedSyn.lineCount ?? 0;
               return (
-                <span className="text-[9.5px] font-semibold text-slate-200 tabular-nums">
-                  {formatPitchDisplayName(focusedP.name, true)} · {lc}선(
-                  <span className="text-emerald-300">+{focusedSyn.neighborBonus}</span>)
-                  {focusedSyn.managerBonus > 0 && (
-                    <span className="text-amber-300"> · ★감독 +1</span>
-                  )}
-                </span>
+                <div className="inline-flex items-center gap-1.5">
+                  <span className="text-[9.5px] font-semibold text-slate-200 tabular-nums">
+                    {formatPitchDisplayName(focusedP.name, true)} · {lc}선(
+                    <span className="text-emerald-300">+{focusedSyn.neighborBonus}</span>)
+                    {focusedSyn.managerBonus > 0 && (
+                      <span className="text-amber-300"> · ★감독 +1</span>
+                    )}
+                  </span>
+                  {selectedPlayer &&
+                    selectedOvrBr &&
+                    selectedPlayer.id === focusedP.id && (
+                      <span className="hidden sm:inline-flex">
+                        <InfoHelpButton
+                          title={`${selectedPlayer.name} · 실효 OVR 내역`}
+                          label="내역"
+                          size="xs"
+                          align="right"
+                          guideTab="condition"
+                        >
+                          <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">기본 OVR</span>
+                              <span className="font-bold text-white">
+                                {selectedOvrBr.baseOvr}
+                              </span>
+                            </div>
+                            {selectedOvrBr.positionPenalty < 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">
+                                  포지션 ({selectedFit?.label})
+                                </span>
+                                <span className="font-bold text-rose-300">
+                                  {selectedOvrBr.positionPenalty}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between">
+                              <span className="text-slate-400">
+                                인접 시너지 ({lc}선)
+                              </span>
+                              <span className="font-bold text-emerald-300">
+                                +{focusedSyn.neighborBonus}
+                              </span>
+                            </div>
+                            {focusedSyn.managerBonus > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">★ 감독 궁합</span>
+                                <span className="font-bold text-amber-300">+1</span>
+                              </div>
+                            )}
+                            {selectedOvrBr.moraleBonus !== 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">사기 보정</span>
+                                <span
+                                  className={`font-bold ${selectedOvrBr.moraleBonus > 0 ? 'text-amber-300' : 'text-sky-300'}`}
+                                >
+                                  {selectedOvrBr.moraleBonus > 0
+                                    ? `+${selectedOvrBr.moraleBonus}`
+                                    : selectedOvrBr.moraleBonus}
+                                </span>
+                              </div>
+                            )}
+                            {selectedOvrBr.injuryPenalty < 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-slate-400">부상 / 회복기</span>
+                                <span className="font-bold text-rose-300">
+                                  {selectedOvrBr.isUnavailableInjured
+                                    ? '출전 불가'
+                                    : selectedOvrBr.injuryPenalty}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between border-t border-slate-800 pt-1 font-extrabold">
+                              <span className="text-sky-300">최종 실효 OVR</span>
+                              <span className="text-white">
+                                {selectedOvrBr.finalEffectiveOvr}
+                              </span>
+                            </div>
+                          </div>
+                        </InfoHelpButton>
+                      </span>
+                    )}
+                </div>
               );
             }
             return (

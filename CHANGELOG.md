@@ -5,6 +5,26 @@
 
 ---
 
+## v8.10 — 가이드북 100% 엔진 동기화 · 가독성 개편 · 싱글 5단계 비주얼 튜토리얼 · 인게임 `?` 컨텍스트 도움말 & 논-클러터 편의 UX
+
+- **가이드북 · 전술 도감 · `?` 팝오버 100% 엔진 동기화 (`src/components/guide/SystemGuideModal.tsx`, `src/components/guide/InjuryMoraleGuideContent.tsx`, `src/components/guide/AttributeRoutesGuideContent.tsx`, `src/components/common/TacticsGuideModal.tsx`, `src/components/draft/DraftScreen.tsx`)**:
+  - 구버전 수치 12건 전수 청산: 실효 OVR 시너지 보너스 `+0 ~ +3` → 인접 시너지 `+0 ~ +3` + 독립 감독 궁합 `★+1`(합산 최대 `+4`), 경상 출전 강행 페널티 부상 유형별 고정 `-2~-4` 및 4% 악화 분기(30% 중상 격상 / 70% +2경기 연장), 치명적 중상 명칭 통일(`SEVERITY_LABELS`), 토탈 풋볼 포지션 페널티 `0 / -2 / -8`(GK `-15`), 9종 포메이션 + 2단계 통합 전술 수싸움, 14종 감독 직접 선택·빌드업/스페셜리스트 구분, 체력(`staminaEngine.ts`)·교체 5명·조커(+1.4/+3.0) 섹션 신설, NBA식 패키지 트레이드(TP·니즈·통합세·급매·역제안)·자유 벤치·라이브 자동진행(5/7/9초)·UCL 36팀·명예의 전당 24팀·멀티 리그 규칙 전면 현행화, `DraftScreen` `? 공식` 팝오버 최신화, `TacticsGuideModal` 스타일 궁합 21쌍 전체 표시.
+  - 핵심 상수(`ELITE_PAIR_MIN_OVR`, `DEFAULT_ROULETTE_LEGEND_RATE`, `TOP4_TRANSFER_LEGEND_RATE`, `UCL_CHAMPION_LEGEND_RATE`, `ATTEMPTS_PER_WINDOW`, `HOF_AUTO_INDUCTION_MIN_SCORE`, `MP_H2H_MAX_POINTS`, `MAX_MATCH_SUBS`, `TACTIC_STAMINA_MULT`, `SEVERITY_LABELS`, `ACTIVE_PLAYERS`/`LEGEND_PLAYERS`, `HISTORICAL_BENCHMARK_TEAMS`, `ALL_MANAGER_EVENTS`)를 엔진에서 직접 참조해 향후 불일치를 원천 차단.
+  - 전역 `break-keep`(`word-break: keep-all`)·상태 배지 `whitespace-nowrap`·테이블 최소 폭·하단 여유 패딩(`pb-8`) 적용 및 `SystemGuideModal` 감독 목록 중첩 스크롤(`max-h-56 overflow-y-auto`) 제거로 PC·모바일 한글 쪼개짐·문구 잘림·이중 스크롤 완전 해소.
+- **싱글플레이 5단계 비주얼 튜토리얼 신설 (`src/components/guide/SoloVisualTutorialModal.tsx`, `src/components/guide/guideNavigation.ts`, `src/components/setup/TitleScreen.tsx`, `src/components/common/HeaderNav.tsx`)**:
+  - 타이틀 화면 `[새 시즌 시작]` 최초 진입 시 다크 톤 커스텀 SVG·미니 UI 일러스트 중심의 5단계 비주얼 튜토리얼(목표 → 감독 → 드래프트·4색 시너지 → 전술·라이브·이적 → `?`·가이드북 안내)을 제공.
+  - `X` 닫기, `[바로 시작]` 스킵, `[다음부터 보지 않기]`(`localStorage` `rtt_solo_tutorial_dismissed_v1`), 상단 클릭 스텝 바, 키보드 화살표/모바일 좌우 스와이프, 타이틀·가이드북 상단 `[입문 튜토리얼]` 재실행 버튼 완비.
+- **인게임 `?` 컨텍스트 도움말 고도화 & 논-클러터 편의 UX 6종 (`src/components/common/InfoHelpButton.tsx`, `src/components/common/PitchBoard.tsx`, `src/components/common/PlayerCard.tsx`, `src/components/draft/RouletteReelsView.tsx`, `src/components/draft/DraftScreen.tsx`, `src/components/league/MatchDayTacticsRoom.tsx`, `src/components/common/UnifiedTacticsStrip.tsx`, `src/components/setup/ManagerRouletteScreen.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/legacy/LegacyHubModal.tsx`, `src/components/common/PlayerDetailModal.tsx`)**:
+  - `InfoHelpButton`에 모바일 뷰포트 자동 클램핑(`useLayoutEffect`), `pointerdown` 외부 탭 닫기, 하단 `[가이드북 · 해당 탭 →]` 딥링크(`openSystemGuide`)를 추가하고 감독 선택·드래프트·피치·전술실·이적시장·리그/UCL/멀티 대시보드·명예의 전당 적재적소에 배치.
+  - 피치 상단 `케미` 배지 옆 4색 연결선·조직력 보정 팝오버 및 선택 선수 `[내역]` 실효 OVR 분해 팝오버(시너지/감독 궁합 분리 표기) 추가.
+  - 드래프트 후보 카드에 현재 슬롯 배치 시 예상 인접 연결선 수(`🔗 N선`) 미세 칩 표시(0선 시 미표시).
+  - 매치데이 전술실 `[비교]` `?` 팝오버로 현재 상대 기준 5대 전술 완성도·5구역 `▲/▼` 1클릭 비교 및 즉시 적용 지원.
+  - 이적시장 `[니즈 강조]` 토글 및 성사 확률 옆 TP·다인 통합세·니즈·급매 분해 `?` 팝오버 추가.
+  - 감독 선택 화면 `[전체 14 | 빌드업·전술형 8 | 스페셜리스트 6]` 필터 및 하단 선택 바 궁합 플레이스타일 칩 미리보기 추가.
+- **테스트 (`src/__tests__/v810GuideTutorialAndUx.test.ts`)**: 가이드북 구버전 문구 0건 · 중첩 스크롤 0건 · 엔진 상수 정합성 · 토탈 풋볼 0/-2/-8 · 개인 최대 +4 분해 · 튜토리얼/가이드 네비게이션 회귀 검증 추가.
+
+---
+
 ## v8.7 — 챔스 1·2차전 전술 정비·생존자 한정 준비완료 · 0ms 즉시 반응 최적화 · 공용 실시간 대진표 · 이적시장 원본 피치 통일
 
 - **챔스 1차전↔2차전 전술 준비 & 멀티 생존자 한정 준비 완료 (`src/types/mpLeague.ts`, `src/engine/mpLeagueEngine.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:

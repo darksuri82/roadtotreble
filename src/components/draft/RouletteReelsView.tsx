@@ -42,6 +42,8 @@ interface RouletteReelsViewProps {
   waitingStatusLabel?: string | null;
   /** Map of playerId -> picker nickname; keeps taken cards locked in place instead of removing them */
   takenByPlayerId?: Record<string, string>;
+  /** Optional map of playerId -> expected adjacent 4-color chemistry links at active draft slot */
+  expectedLinksByPlayerId?: Record<string, number>;
 }
 
 export function RouletteReelsView({
@@ -63,6 +65,7 @@ export function RouletteReelsView({
   canSpin = true,
   waitingStatusLabel = null,
   takenByPlayerId,
+  expectedLinksByPlayerId,
 }: RouletteReelsViewProps) {
   const effectiveReelCount = Math.max(reelCount, reels.length || 0);
   const [lockedCount, setLockedCount] = useState(hasSpun ? effectiveReelCount : 0);
@@ -545,6 +548,7 @@ export function RouletteReelsView({
                           lockedBadgeLabel={pickedBy}
                           disableConfirmAction={!canPick}
                           disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
+                          expectedLinkCount={expectedLinksByPlayerId?.[player.id]}
                           onClick={() => handleCandidateCardClick(player)}
                           onConfirmAction={() => handleConfirmPick(player)}
                           actionLabel={pickActionLabel}
@@ -571,6 +575,7 @@ export function RouletteReelsView({
                             lockedBadgeLabel={pickedBy}
                             disableConfirmAction={!canPick}
                             disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
+                            expectedLinkCount={expectedLinksByPlayerId?.[player.id]}
                             onClick={() => handleCandidateCardClick(player)}
                             onConfirmAction={() => handleConfirmPick(player)}
                             actionLabel={pickActionLabel}

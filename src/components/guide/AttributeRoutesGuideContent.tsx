@@ -1,23 +1,26 @@
 import { Compass, Flame, Radar, Shield, Sparkles, Target, Zap } from 'lucide-react';
+import { ACTIVE_PLAYERS, LEGEND_PLAYERS } from '../../engine/dataLoader';
 
 export function AttributeRoutesGuideContent() {
+  const totalPlayers = ACTIVE_PLAYERS.length + LEGEND_PLAYERS.length;
+
   return (
-    <div className="space-y-4 text-xs leading-relaxed text-slate-300">
+    <div className="space-y-4 pb-2 text-xs leading-relaxed text-slate-300 break-keep">
       {/* 1. Sub-Attributes System Overview */}
       <div className="rounded-xl border border-emerald-500/35 bg-gradient-to-r from-emerald-950/30 via-[#0b131e] to-cyan-950/25 p-3.5 space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 font-extrabold text-white">
-            <Radar className="h-4 w-4 text-emerald-400" />
+            <Radar className="h-4 w-4 text-emerald-400 shrink-0" />
             1. 선수 세부 능력치 체계 (필드 7대 항목 · GK 5대 항목 · OVR 정합성 ±2)
           </div>
-          <span className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-            전 선수 2,239명 적용
+          <span className="rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300 whitespace-nowrap">
+            전 선수 {totalPlayers.toLocaleString()}명 적용
           </span>
         </div>
 
         <p className="text-[11px] text-slate-300">
           단일 OVR만으로는 구분되지 않던 선수 개성(예: 결정력형 9번 vs 크로스·스루패스 창조형 vs 폭발적 드리블러)을{' '}
-          <strong className="text-white">세부 능력치(40~99)</strong>로 세분화했습니다. 선수 상세 모달에서 레이더 차트와 스탯 바, 아키타입 배지를 확인할 수 있으며 시너지·사기·부상으로 변동된 실효 OVR이 세부 능력치에도 그대로 반영됩니다.
+          <strong className="text-white">세부 능력치(40~99)</strong>로 세분화했습니다. 선수 상세 모달에서 레이더 차트와 스탯 바, 아키타입 배지를 확인할 수 있으며 시너지·감독 궁합·사기·부상으로 변동된 실효 OVR이 세부 능력치에도 그대로 반영됩니다.
         </p>
 
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
@@ -60,7 +63,7 @@ export function AttributeRoutesGuideContent() {
       <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 font-extrabold text-white">
-            <Target className="h-4 w-4 text-amber-400" />
+            <Target className="h-4 w-4 text-amber-400 shrink-0" />
             2. 단계별 공격 체인 &amp; 다채로운 득점 · 어시스트 루트
           </div>
           <span className="text-[10px] text-slate-400">
@@ -69,62 +72,62 @@ export function AttributeRoutesGuideContent() {
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#080d14]">
-          <table className="w-full text-left text-[11px] tabular-nums">
+          <table className="w-full min-w-[600px] text-left text-[11px] tabular-nums break-keep">
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/70 text-slate-400">
-                <th className="py-2 px-2.5">공격 루트</th>
-                <th className="py-2 px-2">핵심 공격 능력치</th>
-                <th className="py-2 px-2">상대 수비 경합</th>
-                <th className="py-2 px-2.5">특징 &amp; 강화 전술</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">공격 루트</th>
+                <th className="py-2.5 px-2.5 whitespace-nowrap">핵심 공격 능력치</th>
+                <th className="py-2.5 px-2.5 whitespace-nowrap">상대 수비 경합</th>
+                <th className="py-2.5 px-3 whitespace-nowrap">특징 &amp; 강화 전술</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               <tr>
-                <td className="py-2 px-2.5 font-bold text-amber-300">🔥 원맨 드리블 쇼</td>
-                <td className="py-2 px-2 font-mono text-slate-200">DRI · PHY · SHO</td>
-                <td className="py-2 px-2 font-mono text-slate-400">수비수 DEF</td>
-                <td className="py-2 px-2.5 text-slate-300">
+                <td className="py-2.5 px-3 font-bold text-amber-300 whitespace-nowrap">🔥 원맨 드리블 쇼</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-200 whitespace-nowrap">DRI · PHY · SHO</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">수비수 DEF</td>
+                <td className="py-2.5 px-3 text-slate-300">
                   측면·하프스페이스에서 수비 1~3명을 단독 드리블로 제치고 마무리 (단독 골 비중 높음)
                 </td>
               </tr>
               <tr>
-                <td className="py-2 px-2.5 font-bold text-cyan-300">🎯 얼리 크로스 · 컷백</td>
-                <td className="py-2 px-2 font-mono text-slate-200">CRO · DRI → AER · SHO</td>
-                <td className="py-2 px-2 font-mono text-slate-400">수비수 AER · DEF</td>
-                <td className="py-2 px-2.5 text-slate-300">
+                <td className="py-2.5 px-3 font-bold text-cyan-300 whitespace-nowrap">🎯 얼리 크로스 · 컷백</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-200 whitespace-nowrap">CRO · DRI → AER · SHO</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">수비수 AER · DEF</td>
+                <td className="py-2.5 px-3 text-slate-300">
                   측면 윙어·윙백의 높은 어시스트 비중, 9번 스트라이커의 헤더·발리·논스톱 마무리 (<strong className="text-emerald-300">측면 공략</strong> 강화)
                 </td>
               </tr>
               <tr>
-                <td className="py-2 px-2.5 font-bold text-emerald-300">⚡ 티키타카 · 스루패스</td>
-                <td className="py-2 px-2 font-mono text-slate-200">PAS → PHY · SHO</td>
-                <td className="py-2 px-2 font-mono text-slate-400">수비 라인 · GK</td>
-                <td className="py-2 px-2.5 text-slate-300">
+                <td className="py-2.5 px-3 font-bold text-emerald-300 whitespace-nowrap">⚡ 티키타카 · 스루패스</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-200 whitespace-nowrap">PAS → PHY · SHO</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">수비 라인 · GK</td>
+                <td className="py-2.5 px-3 text-slate-300">
                   삼각형 원투패스 및 하프스페이스 킬패스 1대1 침투·칩슛 (<strong className="text-sky-300">점유율</strong> 강화)
                 </td>
               </tr>
               <tr>
-                <td className="py-2 px-2.5 font-bold text-orange-300">💨 압박 탈취 · 고속 역습</td>
-                <td className="py-2 px-2 font-mono text-slate-200">PHY · PAS · SHO</td>
-                <td className="py-2 px-2 font-mono text-slate-400">수비 복귀 속도</td>
-                <td className="py-2 px-2.5 text-slate-300">
+                <td className="py-2.5 px-3 font-bold text-orange-300 whitespace-nowrap">💨 압박 탈취 · 고속 역습</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-200 whitespace-nowrap">PHY · PAS · SHO</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">수비 복귀 속도</td>
+                <td className="py-2.5 px-3 text-slate-300">
                   게겐프레싱 탈취 직후 속공 또는 낮은 블록 탈취 후 롱볼 뒷공간 침투 (<strong className="text-orange-300">게겐·역습</strong> 강화)
                 </td>
               </tr>
               <tr>
-                <td className="py-2 px-2.5 font-bold text-sky-300">🚀 중거리 · 컷인 감아차기</td>
-                <td className="py-2 px-2 font-mono text-slate-200">SHO · DRI</td>
-                <td className="py-2 px-2 font-mono text-slate-400">GK DIV · REF</td>
-                <td className="py-2 px-2.5 text-slate-300">
+                <td className="py-2.5 px-3 font-bold text-sky-300 whitespace-nowrap">🚀 중거리 · 컷인 감아차기</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-200 whitespace-nowrap">SHO · DRI</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">GK DIV · REF</td>
+                <td className="py-2.5 px-3 text-slate-300">
                   2선 미드필더의 아크 정면 대포알 슈팅 및 인버티드 윙어의 파포스트 감아차기
                 </td>
               </tr>
               <tr>
-                <td className="py-2 px-2.5 font-bold text-rose-300">🚩 코너킥 · 프리킥 · PK</td>
-                <td className="py-2 px-2 font-mono text-slate-200">CRO · AER · SHO</td>
-                <td className="py-2 px-2 font-mono text-slate-400">수비 AER · GK</td>
-                <td className="py-2 px-2.5 text-slate-300">
-                  제공권 센터백·9번의 코너킥 헤더, 키커의 직접 프리킥, 크랙 드리블러의 PK 유도
+                <td className="py-2.5 px-3 font-bold text-rose-300 whitespace-nowrap">🚩 코너킥 · 프리킥 · PK</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-200 whitespace-nowrap">CRO · AER · SHO</td>
+                <td className="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">수비 AER · GK</td>
+                <td className="py-2.5 px-3 text-slate-300">
+                  제공권 센터백·9번의 코너킥 헤더, 키커의 직접 프리킥, 크랙 드리블러의 PK 유도 (<strong className="text-teal-300">세트피스 장인</strong> 시 2.8배)
                 </td>
               </tr>
             </tbody>
@@ -135,13 +138,13 @@ export function AttributeRoutesGuideContent() {
       {/* 3. Realistic Player Archetype Balance */}
       <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2.5">
         <div className="flex items-center gap-1.5 font-extrabold text-white">
-          <Sparkles className="h-4 w-4 text-sky-400" />
+          <Sparkles className="h-4 w-4 text-sky-400 shrink-0" />
           3. 선수 유형(아키타입)별 자연스러운 골 · 도움 균형
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 text-[11px]">
           <div className="rounded-lg border border-slate-800 bg-[#111822] p-2.5 space-y-1">
             <div className="flex items-center gap-1 font-bold text-rose-300">
-              <Flame className="h-3.5 w-3.5" />
+              <Flame className="h-3.5 w-3.5 shrink-0" />
               정통 9번 / 완성형 스트라이커
             </div>
             <p className="text-slate-400">
@@ -150,7 +153,7 @@ export function AttributeRoutesGuideContent() {
           </div>
           <div className="rounded-lg border border-slate-800 bg-[#111822] p-2.5 space-y-1">
             <div className="flex items-center gap-1 font-bold text-cyan-300">
-              <Zap className="h-3.5 w-3.5" />
+              <Zap className="h-3.5 w-3.5 shrink-0" />
               크랙 &amp; 찬스메이커 윙어 · 10번
             </div>
             <p className="text-slate-400">
@@ -159,7 +162,7 @@ export function AttributeRoutesGuideContent() {
           </div>
           <div className="rounded-lg border border-slate-800 bg-[#111822] p-2.5 space-y-1">
             <div className="flex items-center gap-1 font-bold text-emerald-300">
-              <Shield className="h-3.5 w-3.5" />
+              <Shield className="h-3.5 w-3.5 shrink-0" />
               수비수 · 윙백 · 골키퍼
             </div>
             <p className="text-slate-400">
@@ -172,7 +175,7 @@ export function AttributeRoutesGuideContent() {
       {/* 4. 2D Tactical Pitch Movement */}
       <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2">
         <div className="flex items-center gap-1.5 font-extrabold text-white">
-          <Compass className="h-4 w-4 text-emerald-400" />
+          <Compass className="h-4 w-4 text-emerald-400 shrink-0" />
           4. 전술별 2D 피치 빌드업 · 오프더볼 · 수비 조직력 움직임
         </div>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-[11px] text-slate-300">

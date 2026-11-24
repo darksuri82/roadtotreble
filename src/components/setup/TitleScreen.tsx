@@ -2,6 +2,7 @@ import {
   ArrowRight,
   BookOpen,
   Crown,
+  GraduationCap,
   Play,
   ScrollText,
   Swords,
@@ -12,6 +13,10 @@ import { CURRENT_APP_VERSION } from '../../data/patchNotes';
 import { getAchievementProgress } from '../../engine/legacyEngine';
 import { useGame } from '../../store/GameContext';
 import { PatchNotesModal } from '../common/PatchNotesModal';
+import {
+  isSoloTutorialDismissed,
+  SoloVisualTutorialModal,
+} from '../guide/SoloVisualTutorialModal';
 import { SystemGuideModal } from '../guide/SystemGuideModal';
 import { RoadToTrebleHeroSvg } from './RoadToTrebleHeroSvg';
 
@@ -32,8 +37,19 @@ export function TitleScreen() {
   } = useGame();
   const [showGuide, setShowGuide] = useState(false);
   const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [tutorialMode, setTutorialMode] = useState<
+    'onboarding' | 'replay' | null
+  >(null);
   const achProgress = getAchievementProgress(legacyState);
   const seasonCount = legacyState.hallOfFame.length;
+
+  const handleStartSoloClick = () => {
+    if (!isSoloTutorialDismissed()) {
+      setTutorialMode('onboarding');
+      return;
+    }
+    startNewCareer();
+  };
 
   return (
     <>
@@ -47,7 +63,7 @@ export function TitleScreen() {
 
           <div className="relative mx-auto max-w-2xl">
             {/* Minimal Eyebrow */}
-            <div className="flex items-center justify-center gap-2 text-[10px] sm:text-[11px] font-semibold tracking-[0.22em] text-slate-400 uppercase">
+            <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] sm:text-[11px] font-semibold tracking-[0.22em] text-slate-400 uppercase">
               <span>2026-27</span>
               <span className="text-slate-700">·</span>
               <button
@@ -57,6 +73,16 @@ export function TitleScreen() {
                 className="font-mono font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
               >
                 {CURRENT_APP_VERSION}
+              </button>
+              <span className="text-slate-700">·</span>
+              <button
+                id="hero-tutorial-btn"
+                type="button"
+                onClick={() => setTutorialMode('replay')}
+                className="inline-flex items-center gap-1 tracking-normal font-bold text-slate-300 hover:text-emerald-300 transition-colors cursor-pointer"
+              >
+                <GraduationCap className="h-3 w-3 text-emerald-400" />
+                입문 튜토리얼
               </button>
             </div>
 
@@ -88,7 +114,7 @@ export function TitleScreen() {
               <button
                 id="title-start-btn"
                 type="button"
-                onClick={startNewCareer}
+                onClick={handleStartSoloClick}
                 className="col-span-2 sm:col-span-1 group inline-flex items-center justify-center gap-1.5 sm:gap-2.5 rounded-xl bg-emerald-500 px-3 py-3 sm:px-7 sm:py-3.5 text-sm font-extrabold text-slate-950 shadow-lg shadow-emerald-500/20 transition-colors hover:bg-emerald-400 cursor-pointer touch-manipulation sm:w-auto sm:text-base"
               >
                 <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-current shrink-0" />
@@ -105,7 +131,7 @@ export function TitleScreen() {
                 <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-300 shrink-0" />
                 <span className="whitespace-nowrap">멀티플레이</span>
                 <span className="hidden sm:inline rounded bg-sky-400/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">
-                  1v1
+                  1v1 · 리그
                 </span>
               </button>
 
@@ -192,7 +218,24 @@ export function TitleScreen() {
         </nav>
       </div>
 
-      {showGuide && <SystemGuideModal onClose={() => setShowGuide(false)} />}
+      {showGuide && (
+        <SystemGuideModal
+          onClose={() => setShowGuide(false)}
+          onOpenTutorial={() => {
+            setShowGuide(false);
+            setTutorialMode('replay');
+          }}
+        />
+      )}
+      {tutorialMode && (
+        <SoloVisualTutorialModal
+          key={tutorialMode}
+          open={Boolean(tutorialMode)}
+          mode={tutorialMode}
+          onClose={() => setTutorialMode(null)}
+          onProceed={startNewCareer}
+        />
+      )}
       {showPatchNotes && (
         <PatchNotesModal onClose={() => setShowPatchNotes(false)} />
       )}
