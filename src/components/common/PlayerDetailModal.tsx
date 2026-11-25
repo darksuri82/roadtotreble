@@ -1,4 +1,4 @@
-import { ArrowRight, Crown, Diamond, Shield, Sparkles, Star, TrendingUp, Trophy, X } from 'lucide-react';
+import { ArrowRight, Crown, Diamond, Flame, Shield, Sparkles, Star, TrendingUp, Trophy, X } from 'lucide-react';
 import { useEffect } from 'react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
@@ -139,26 +139,36 @@ export function PlayerDetailModal({
     >
       <div
         className={`modal-panel flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border bg-[#0f1621] shadow-2xl ${
-          isLegend
-            ? 'border-amber-400/70 shadow-[0_0_28px_rgba(251,191,36,0.22)]'
-            : isSuperstar
-              ? 'border-cyan-400/70 shadow-[0_0_24px_rgba(34,211,238,0.2)]'
-              : 'border-slate-700'
+          player.awakening
+            ? 'border-rose-500/70 shadow-[0_0_28px_rgba(225,29,72,0.28)]'
+            : isLegend
+              ? 'border-amber-400/70 shadow-[0_0_28px_rgba(251,191,36,0.22)]'
+              : isSuperstar
+                ? 'border-cyan-400/70 shadow-[0_0_24px_rgba(34,211,238,0.2)]'
+                : 'border-slate-700'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div
           className={`flex shrink-0 items-start justify-between gap-3 border-b px-5 py-4 ${
-            isLegend
-              ? 'border-amber-500/30 bg-gradient-to-r from-amber-950/60 via-[#151b26] to-[#0f1621]'
-              : isSuperstar
-                ? 'border-cyan-500/30 bg-gradient-to-r from-cyan-950/55 via-[#151b26] to-[#0f1621]'
-                : 'border-slate-800 bg-[#0b1018]'
+            player.awakening
+              ? 'border-rose-500/35 bg-gradient-to-r from-[#241014] via-[#17121b] to-[#0f1621]'
+              : isLegend
+                ? 'border-amber-500/30 bg-gradient-to-r from-amber-950/60 via-[#151b26] to-[#0f1621]'
+                : isSuperstar
+                  ? 'border-cyan-500/30 bg-gradient-to-r from-cyan-950/55 via-[#151b26] to-[#0f1621]'
+                  : 'border-slate-800 bg-[#0b1018]'
           }`}
         >
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-1.5">
+              {player.awakening && (
+                <span className="inline-flex items-center gap-1 rounded border border-rose-400/50 bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-black text-rose-200 whitespace-nowrap">
+                  <Flame className="w-3 h-3 text-orange-400" />
+                  포텐 각성 {player.awakening.originalOvr}→{player.ovr} (+{player.awakening.ovrGain})
+                </span>
+              )}
               {isLegend && (
                 <span className="inline-flex items-center gap-1 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
                   <Crown className="w-3 h-3" />

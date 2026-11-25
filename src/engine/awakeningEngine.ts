@@ -44,7 +44,7 @@ export const AWAKENING_MIN_APPEARANCES = 4;
 export const AWAKENING_SECOND_COUNT_MULT = 0.9;
 export const AWAKENING_THIRD_PLUS_MULT = 0.15;
 export const AWAKENING_MAX_VALID_PER_TEAM = 4;
-export const AWAKENING_BASE_ELIGIBLE_PROB = 0.0042;
+export const AWAKENING_BASE_ELIGIBLE_PROB = 0.0145;
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -479,6 +479,24 @@ export function evaluatePostMatchAwakening(
       };
       const awakenedPlayer = applyAwakeningToPlayer(player, draftRecord);
       const finalRecord = awakenedPlayer.awakening!;
+      const reasonParts: string[] = [];
+      if (goals >= 2) reasonParts.push(`${goals}골 맹활약`);
+      else if (goals >= 1 && assists >= 1) reasonParts.push(`${goals}골 ${assists}도움`);
+      else if (goals >= 1) reasonParts.push('결정적인 득점');
+      else if (assists >= 1) reasonParts.push('날카로운 어시스트');
+      else if (cleanSheet && (player.position === 'GK' || player.position === 'DF')) {
+        reasonParts.push('무실점 철벽 수비');
+      }
+      if (rating >= 8.0) reasonParts.push(`평점 ${rating.toFixed(1)}`);
+      if (mgrFit.isMatch) reasonParts.push('감독 전술과의 완벽한 호흡');
+      else if (syn && syn.neighborBonus >= 2) reasonParts.push('팀 동료들과의 끈끈한 시너지');
+      if (staffCoachId === 'sys_potential_dev') reasonParts.push('잠재력 육성 코치의 집중 지도');
+      const reasonLead =
+        reasonParts.length > 0
+          ? `${reasonParts.slice(0, 2).join('과 ')} 속에`
+          : '꾸준한 실전 활약 속에';
+      const reason = `${reasonLead} 잠재력이 완전히 만개했습니다! 기본 OVR이 영구적으로 ${finalRecord.originalOvr}에서 ${awakenedPlayer.ovr}(+${finalRecord.ovrGain})로 성장했습니다.`;
+
       const alert: AwakeningAlertItem = {
         id: `awk-${competition}-r${round}-${player.id}`,
         playerId: player.id,
@@ -493,6 +511,7 @@ export function evaluatePostMatchAwakening(
         round,
         competition,
         statDeltas: finalRecord.statDeltas,
+        reason,
       };
       return {
         triggered: true,

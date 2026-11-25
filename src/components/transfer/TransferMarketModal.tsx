@@ -800,7 +800,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                 '1:1 · 2:1 · 3:1 패키지 트레이드 (로스터 16인 · GK 최소 1명 유지)',
                 '상대 최우선 니즈(🔥 +32% · +8%p) / 보강 니즈(✨ +18% · +4%p) / 포화(-25% · -10%p)',
                 '다인 통합세(100%/78%/60%, 니즈 +15% 완화) · 프런트 급매(🚨 -35% · +12%p)',
-                'OVR 87+ 슈퍼스타 영입 시(급매 제외) 대상 OVR -7 이상 핵심 자산 필요',
+                'OVR 87+ 슈퍼스타 영입 시(급매 제외) 대상 OVR -7 이상 핵심 자산 필요 (€80M+ 현금 시 1 완화)',
+                '드래프트 잔여 예산 현금 얹기: €1M당 +1.25 TP(통합세 면제) · 레전드 FA 최대 +15%p',
               ]}
             />
           </div>
@@ -1348,8 +1349,37 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         {/* TAB 1: EXPLORE CLUBS & NBA TRADE BUILDER */}
         {activeTab === 'explore' && (
           <div className="space-y-4">
-            {/* Step 1: 3-Club Roulette Banner */}
-            {!tm.hasSpunClubs && !counterOfferClub ? (
+            {/* Step 1: 3-Club Roulette Banner (or FFP Tier 2 Embargo Notice) */}
+            {ffpEmbargoActive ? (
+              <div className="rounded-2xl border border-rose-500/40 bg-rose-950/15 p-5 sm:p-6 text-center space-y-3">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-[11px] font-black text-rose-200">
+                  FFP 2단계 예산 초과 · 2차 이적시장 영입 동결
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  이번 2차 이적시장에서는 선수 영입이 제한됩니다
+                </h3>
+                <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed break-keep">
+                  드래프트 예산 15% 초과(FFP 2단계) 제재로 2차 이적시장 구단 추첨과 트레이드가 동결되었습니다.
+                  선임한 수석 코치와 현재 스쿼드 전술 정비 후 3차 이적시장에서 다시 보강할 수 있습니다.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('tactics')}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/40 bg-emerald-500/15 px-4 py-2.5 text-xs font-extrabold text-emerald-200 hover:bg-emerald-500/25 cursor-pointer"
+                  >
+                    스쿼드 · 전술 정비하기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => transferCloseWindow()}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-slate-200 px-5 py-2.5 text-xs font-black text-slate-950 hover:bg-white cursor-pointer"
+                  >
+                    이적시장 닫고 시즌 계속
+                  </button>
+                </div>
+              </div>
+            ) : !tm.hasSpunClubs && !counterOfferClub ? (
               <div className="rounded-2xl border border-slate-800 bg-[#0c1320] p-5 sm:p-6 text-center space-y-4">
                 <div className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[11px] font-bold text-sky-200">
                   <Dices className="h-3.5 w-3.5" />
@@ -1395,7 +1425,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                   <button
                     id="spin-transfer-clubs-btn"
                     type="button"
-                    disabled={animating}
+                    disabled={animating || ffpEmbargoActive}
                     onClick={handleSpin}
                     className="inline-flex items-center gap-2 rounded-xl bg-sky-400 px-6 py-3 text-sm font-black text-slate-950 shadow-lg hover:bg-sky-300 disabled:opacity-50 cursor-pointer"
                   >

@@ -15,6 +15,9 @@ import type { Player } from '../types/player';
 export const DRAFT_BUDGET_CAP_M = 950;
 export const LEGEND_FLAT_DRAFT_COST_M = 95;
 export const FFP_TIER1_MAX_EXCESS_RATIO = 0.15; // +1% .. +15%
+export const FFP_TIER1_MAX_OVERRUN_PCT = Math.round(
+  FFP_TIER1_MAX_EXCESS_RATIO * 100,
+); // 15
 export const FFP_TIER1_CHEM_PENALTY = 4; // -4 team chemistry
 export const FFP_TIER1_WINDOW2_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 2
 export const FFP_TIER2_WINDOW2_MAX_ATTEMPTS = 0; // Window 2 signings frozen
@@ -88,7 +91,7 @@ export function classifyFfpTier(
 }
 
 export function evaluateSquadBudget(
-  squad: (Player | null)[],
+  squad: readonly (Player | null | undefined)[],
   options?: {
     capM?: number;
     previewPlayer?: Player | null;

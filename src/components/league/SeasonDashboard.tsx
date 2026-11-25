@@ -193,6 +193,22 @@ export function SeasonDashboard() {
     };
   }, [setSoloTickerPlaying]);
 
+  useEffect(() => {
+    const handleGoToTactics = () => {
+      setActiveTab('match');
+      setLiveAutoUserPaused(true);
+      window.setTimeout(() => {
+        document
+          .getElementById('tactics-room-line-ovr')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 60);
+    };
+    window.addEventListener('rtt:go-to-tactics', handleGoToTactics);
+    return () => {
+      window.removeEventListener('rtt:go-to-tactics', handleGoToTactics);
+    };
+  }, []);
+
   // Unified skip flow: detect transfer market closing after auto-pause → show resume prompt
   const isTransferOpen = Boolean(season?.transferMarket.isOpen);
   useEffect(() => {
@@ -629,28 +645,28 @@ export function SeasonDashboard() {
                   이적 {nextTransferRound}R
                 </span>
               )}
-              {season.budget && (
+              {season.budgetState && (
                 <span
                   title={
-                    season.budget.ffpTier === 2
+                    season.budgetState.ffpTier === 2
                       ? 'FFP 2단계 대폭 초과: 2차 이적 동결 · 패배 사기 추가 하락 · 시즌 점수 -12%'
-                      : season.budget.ffpTier === 1
+                      : season.budgetState.ffpTier === 1
                         ? 'FFP 1단계 경미 초과: 잔여 자금 €0M · 2차 이적 1회 제한 · 팀 케미 -4'
-                        : `이적시장 협상에 얹을 수 있는 잔여 예산 €${season.budget.transferCashM}M`
+                        : `이적시장 협상에 얹을 수 있는 잔여 예산 €${season.budgetState.transferCashM}M`
                   }
                   className={`inline-flex items-center gap-1 rounded border px-1.5 py-px text-[10px] font-bold whitespace-nowrap tabular-nums ${
-                    season.budget.ffpTier === 2
+                    season.budgetState.ffpTier === 2
                       ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
-                      : season.budget.ffpTier === 1
+                      : season.budgetState.ffpTier === 1
                         ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
                         : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                   }`}
                 >
-                  {season.budget.ffpTier === 2
+                  {season.budgetState.ffpTier === 2
                     ? 'FFP 2단계'
-                    : season.budget.ffpTier === 1
+                    : season.budgetState.ffpTier === 1
                       ? 'FFP 1단계'
-                      : `자금 €${season.budget.transferCashM}M`}
+                      : `자금 €${season.budgetState.transferCashM}M`}
                 </span>
               )}
               {season.staffCoach?.hiredCoachId && (

@@ -378,50 +378,63 @@ describe('v3.2 / v3.3 NBA-Style Trade System, 16-Player AI Squad (11 Starters + 
         st = gameReducer(st, { type: 'SIMULATE_TO_NEXT_TRANSFER' });
         if (st.phase !== 'season' || !st.season) break;
 
-        if (st.season.transferMarket.isOpen) {
+        if (st.season.staffCoach?.pendingSelection) {
+          const firstOffer = st.season.staffCoach.offeredCoachIds[0];
+          st = gameReducer(
+            st,
+            firstOffer
+              ? { type: 'HIRE_STAFF_COACH', payload: { coachId: firstOffer } }
+              : { type: 'SKIP_STAFF_COACH' },
+          );
+        }
+
+        if (st.season?.transferMarket.isOpen) {
           windowsHandled += 1;
-          // 1) Spin clubs
-          st = gameReducer(st, { type: 'TRANSFER_SPIN_CLUBS' });
-          expect(st.season!.transferMarket.hasSpunClubs).toBe(true);
-          expect(st.season!.transferMarket.rolledClubs).toHaveLength(3);
+          const isEmbargoed = Boolean(st.season.transferMarket.ffpEmbargoActive);
+          if (!isEmbargoed) {
+            // 1) Spin clubs
+            st = gameReducer(st, { type: 'TRANSFER_SPIN_CLUBS' });
+            expect(st.season!.transferMarket.hasSpunClubs).toBe(true);
+            expect(st.season!.transferMarket.rolledClubs).toHaveLength(3);
 
-          // 2) Accept first pending incoming offer if any
-          const pendingInc = (st.season!.transferMarket.incomingOffers ?? []).find(
-            (o) => o.status === 'pending',
-          );
-          if (pendingInc) {
-            st = gameReducer(st, {
-              type: 'TRADE_ACCEPT_INCOMING',
-              payload: { offerId: pendingInc.id },
-            });
-          }
-
-          // 3) Submit a 1:1 trade with first non-legend rolled club
-          const clubOffer = st.season!.transferMarket.rolledClubs.find(
-            (c) => !c.isLegendSlot && c.club && c.leagueId !== 'LEGEND',
-          );
-          if (clubOffer && clubOffer.club && clubOffer.leagueId !== 'LEGEND') {
-            const target = clubOffer.squad.find(
-              (t) =>
-                t.player.position !== 'GK' &&
-                !st.season!.transferMarket.signedPlayerIds.includes(t.player.id),
+            // 2) Accept first pending incoming offer if any
+            const pendingInc = (st.season!.transferMarket.incomingOffers ?? []).find(
+              (o) => o.status === 'pending',
             );
-            const userIdx = st.starters.findIndex(
-              (p) => p !== null && p.position !== 'GK',
-            );
-            if (target && userIdx >= 0) {
+            if (pendingInc) {
               st = gameReducer(st, {
-                type: 'TRADE_SUBMIT_PACKAGE',
-                payload: {
-                  partnerClub: clubOffer.club,
-                  partnerLeagueId: clubOffer.leagueId,
-                  partnerClubRank: clubOffer.clubRank,
-                  partnerLeagueSize: clubOffer.leagueSize,
-                  userSentSlots: [{ area: 'starter', index: userIdx }],
-                  aiTargetPlayers: [target.player],
-                  overrideRoll: 0,
-                },
+                type: 'TRADE_ACCEPT_INCOMING',
+                payload: { offerId: pendingInc.id },
               });
+            }
+
+            // 3) Submit a 1:1 trade with first non-legend rolled club
+            const clubOffer = st.season!.transferMarket.rolledClubs.find(
+              (c) => !c.isLegendSlot && c.club && c.leagueId !== 'LEGEND',
+            );
+            if (clubOffer && clubOffer.club && clubOffer.leagueId !== 'LEGEND') {
+              const target = clubOffer.squad.find(
+                (t) =>
+                  t.player.position !== 'GK' &&
+                  !st.season!.transferMarket.signedPlayerIds.includes(t.player.id),
+              );
+              const userIdx = st.starters.findIndex(
+                (p) => p !== null && p.position !== 'GK',
+              );
+              if (target && userIdx >= 0) {
+                st = gameReducer(st, {
+                  type: 'TRADE_SUBMIT_PACKAGE',
+                  payload: {
+                    partnerClub: clubOffer.club,
+                    partnerLeagueId: clubOffer.leagueId,
+                    partnerClubRank: clubOffer.clubRank,
+                    partnerLeagueSize: clubOffer.leagueSize,
+                    userSentSlots: [{ area: 'starter', index: userIdx }],
+                    aiTargetPlayers: [target.player],
+                    overrideRoll: 0,
+                  },
+                });
+              }
             }
           }
 

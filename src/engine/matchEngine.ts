@@ -357,8 +357,9 @@ function resolveMatchStrengths(params: {
       tactic: homeUserCtx.tactic,
       staffCoachId: homeUserCtx.staffCoachId,
     });
+    const lastRound = homeUserCtx.tacticalHistory?.at(-1)?.round ?? 0;
     const seedVal = makeDeterministicSeed(
-      `${awayClub.id}|${homeUserCtx.formation}|${homeUserCtx.tactic}|${homeUserCtx.tacticalHistory?.length ?? 0}`,
+      `${awayClub.id}|${homeUserCtx.formation}|${homeUserCtx.tactic}|${homeUserCtx.tacticalHistory?.length ?? 0}|${lastRound}`,
     );
     awayPreMatchCounter = evaluateAiPreMatchCounter({
       exposure: exp,
@@ -374,8 +375,9 @@ function resolveMatchStrengths(params: {
       tactic: awayUserCtx.tactic,
       staffCoachId: awayUserCtx.staffCoachId,
     });
+    const lastRound = awayUserCtx.tacticalHistory?.at(-1)?.round ?? 0;
     const seedVal = makeDeterministicSeed(
-      `${homeClub.id}|${awayUserCtx.formation}|${awayUserCtx.tactic}|${awayUserCtx.tacticalHistory?.length ?? 0}`,
+      `${homeClub.id}|${awayUserCtx.formation}|${awayUserCtx.tactic}|${awayUserCtx.tacticalHistory?.length ?? 0}|${lastRound}`,
     );
     homePreMatchCounter = evaluateAiPreMatchCounter({
       exposure: exp,
@@ -872,7 +874,7 @@ function resolveMatchStrengths(params: {
       ? (awayIsHist ? awayAiTraitMod.situationalDefDelta : awayAiTraitMod.defDelta) * awayAiScale
       : 0;
 
-  // Pre-match AI tactical adaptation pattern-read penalties against repeated human tactics
+  // Pre-match AI tactical adaptation pattern-read penalties (values are <= 0) against repeated human tactics
   const homeAdaptAttPenalty = awayPreMatchCounter?.userAttPenalty ?? 0;
   const homeAdaptMidPenalty = awayPreMatchCounter?.userMidPenalty ?? 0;
   const homeAdaptDefPenalty = awayPreMatchCounter?.userDefPenalty ?? 0;
@@ -888,7 +890,7 @@ function resolveMatchStrengths(params: {
       (homeIndiv ? homeIndiv.attDelta * 0.35 : 0) +
       homeHumanAttDelta +
       homeAiAttDelta +
-      (homeStaminaMod ? homeStaminaMod.attDelta : 0) -
+      (homeStaminaMod ? homeStaminaMod.attDelta : 0) +
       homeAdaptAttPenalty,
     mid:
       homeBase.mid +
@@ -896,7 +898,7 @@ function resolveMatchStrengths(params: {
       (homeIndiv ? homeIndiv.midDelta * 0.35 : 0) +
       homeHumanMidDelta +
       homeAiMidDelta +
-      (homeStaminaMod ? homeStaminaMod.midDelta : 0) -
+      (homeStaminaMod ? homeStaminaMod.midDelta : 0) +
       homeAdaptMidPenalty,
     def:
       homeBase.def +
@@ -905,7 +907,7 @@ function resolveMatchStrengths(params: {
       (homeIndiv ? homeIndiv.defDelta * 0.35 : 0) +
       homeHumanDefDelta +
       homeAiDefDelta +
-      (homeStaminaMod ? homeStaminaMod.defDelta : 0) -
+      (homeStaminaMod ? homeStaminaMod.defDelta : 0) +
       homeAdaptDefPenalty,
     tacticBonus: Math.round((unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
     xgBonus:
@@ -936,7 +938,7 @@ function resolveMatchStrengths(params: {
       (awayIndiv ? awayIndiv.attDelta * 0.35 : 0) +
       awayHumanAttDelta +
       awayAiAttDelta +
-      (awayStaminaMod ? awayStaminaMod.attDelta : 0) -
+      (awayStaminaMod ? awayStaminaMod.attDelta : 0) +
       awayAdaptAttPenalty,
     mid:
       awayBase.mid +
@@ -944,7 +946,7 @@ function resolveMatchStrengths(params: {
       (awayIndiv ? awayIndiv.midDelta * 0.35 : 0) +
       awayHumanMidDelta +
       awayAiMidDelta +
-      (awayStaminaMod ? awayStaminaMod.midDelta : 0) -
+      (awayStaminaMod ? awayStaminaMod.midDelta : 0) +
       awayAdaptMidPenalty,
     def:
       awayBase.def +
@@ -953,7 +955,7 @@ function resolveMatchStrengths(params: {
       (awayIndiv ? awayIndiv.defDelta * 0.35 : 0) +
       awayHumanDefDelta +
       awayAiDefDelta +
-      (awayStaminaMod ? awayStaminaMod.defDelta : 0) -
+      (awayStaminaMod ? awayStaminaMod.defDelta : 0) +
       awayAdaptDefPenalty,
     tacticBonus: Math.round(-(unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
     xgBonus:

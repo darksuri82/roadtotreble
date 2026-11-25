@@ -76,9 +76,9 @@ export function StaffCoachHireModal({
             {coaches.map((coach) => {
               const isTacticMatched =
                 coach.category === 'tactic' &&
-                coach.linkedTacticId === activeTactic;
-              const linkedTacticName = coach.linkedTacticId
-                ? TACTICS[coach.linkedTacticId]?.koreanName
+                coach.tacticId === activeTactic;
+              const linkedTacticName = coach.tacticId
+                ? TACTICS[coach.tacticId]?.name
                 : null;
 
               return (
@@ -113,6 +113,8 @@ export function StaffCoachHireModal({
                       <div className="flex h-16 w-14 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#090d13] overflow-hidden">
                         <PixelManagerAvatar
                           avatar={coach.avatar}
+                          clubPrimaryColor={coach.clubPrimaryColor}
+                          clubSecondaryColor={coach.clubSecondaryColor}
                           size={44}
                           pose="default"
                         />
@@ -122,7 +124,7 @@ export function StaffCoachHireModal({
                           {coach.name}
                         </div>
                         <div className="text-[11px] font-semibold text-slate-400 mt-0.5 break-keep">
-                          {coach.title}
+                          {coach.roleTitle}
                         </div>
                         {linkedTacticName && (
                           <div className="text-[10px] font-bold text-sky-300/90 mt-1 whitespace-nowrap">
@@ -135,10 +137,10 @@ export function StaffCoachHireModal({
                     {/* Effect Highlight */}
                     <div className="rounded-lg border border-white/10 bg-[#0b1018] px-2.5 py-2 mb-2.5">
                       <div className="text-xs font-extrabold text-emerald-300 break-keep">
-                        {coach.shortEffect}
+                        {coach.shortBadge}
                       </div>
                       <p className="text-[11px] text-slate-400 leading-relaxed mt-1 break-keep">
-                        {coach.detailEffect}
+                        {coach.effectSummary}
                       </p>
                     </div>
                   </div>
@@ -146,7 +148,7 @@ export function StaffCoachHireModal({
                   <button
                     type="button"
                     onClick={() => onHire(coach.id)}
-                    className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 active:scale-[0.99] transition whitespace-nowrap"
+                    className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 active:scale-[0.99] transition whitespace-nowrap cursor-pointer"
                   >
                     <Check className="w-3.5 h-3.5" />
                     수석 코치 영입
@@ -162,13 +164,13 @@ export function StaffCoachHireModal({
           <span className="text-[11px] text-slate-400 break-keep">
             현재 기본 전술:{' '}
             <strong className="text-slate-200">
-              {TACTICS[activeTactic]?.koreanName ?? activeTactic}
+              {TACTICS[activeTactic]?.name ?? activeTactic}
             </strong>
           </span>
           <button
             type="button"
             onClick={onSkip}
-            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:bg-white/10 hover:text-slate-200 transition whitespace-nowrap"
+            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-400 hover:bg-white/10 hover:text-slate-200 transition whitespace-nowrap cursor-pointer"
           >
             이번 시즌 건너뛰기
           </button>

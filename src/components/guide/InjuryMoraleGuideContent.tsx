@@ -452,6 +452,12 @@ export function InjuryMoraleGuideContent() {
               <code>+3/+4</code> 역시 맹활약·집단 폭발이 없으면 1씩 안정 구간으로
               복귀합니다.
             </li>
+            <li>
+              • <strong className="text-sky-300">FFP 2단계 &amp; 수석 코치 연동:</strong>{' '}
+              드래프트 예산 15% 초과(FFP 2단계) 시 패배 사기 하락폭이 1단계 증가하며,{' '}
+              <strong className="text-amber-300">라커룸·케미 코치</strong>는 패배 사기 하락 1단계 방어,{' '}
+              <strong className="text-pink-300">슈퍼서브·피지컬 코치</strong>는 65&apos; 이후 체력 소모 -25% 및 교체 투입 선수 OVR +3.0을 제공합니다.
+            </li>
           </ul>
         </div>
 

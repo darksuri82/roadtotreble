@@ -447,6 +447,9 @@ export interface TacticalAdaptationAlert {
   repeatedFormation: FormationId;
   repeatedTactic: TacticId;
   consecutiveCount: number;
+  triggeredAtRound?: number;
+  headline?: string;
+  detail?: string;
 }
 
 export interface TacticalAdaptationState {
@@ -492,6 +495,7 @@ export interface AwakeningAlertItem {
   round: number;
   competition: 'league' | 'cup' | 'ucl';
   statDeltas: { key: string; label: string; before: number; after: number }[];
+  reason?: string;
 }
 
 export interface OtherLeagueSeasonState {

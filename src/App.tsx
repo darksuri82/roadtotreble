@@ -148,6 +148,11 @@ function GameRouter() {
         <TacticalAdaptationModal
           alert={pendingAdaptationAlert}
           onDismiss={dismissAdaptationAlert}
+          onGoToTactics={() => {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('rtt:go-to-tactics'));
+            }
+          }}
         />
       )}
       <ManagerEventModal

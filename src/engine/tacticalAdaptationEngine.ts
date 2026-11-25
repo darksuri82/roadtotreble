@@ -294,6 +294,7 @@ export function recordMatchTacticalAdaptation(params: {
     (projected.tier === 'warning' || projected.tier === 'danger') &&
     TIER_RANK[projected.tier] > TIER_RANK[base.highestAlertedTier]
   ) {
+    const streak = Math.max(1, projected.consecutiveExactStreak);
     nextHighest = projected.tier;
     pendingAlert = {
       id: `adapt-${params.competition}-r${params.round}-${projected.tier}`,
@@ -301,7 +302,16 @@ export function recordMatchTacticalAdaptation(params: {
       exposureScore: projected.exposureScore,
       repeatedFormation: params.formation,
       repeatedTactic: params.tactic,
-      consecutiveCount: Math.max(1, projected.consecutiveExactStreak),
+      consecutiveCount: streak,
+      triggeredAtRound: params.round,
+      headline:
+        projected.tier === 'danger'
+          ? '상대 감독들이 우리 전술 패턴을 완벽히 읽어냈습니다'
+          : '상대 스카우트들이 반복 전술을 분석하기 시작했습니다',
+      detail:
+        projected.tier === 'danger'
+          ? `최근 ${streak}경기 연속 동일 패턴이 노출되어(노출도 ${projected.exposureScore}/100), 다음 경기부터 상대 AI 감독이 경기 시작 전부터 맞춤 카운터 전술과 정밀 파훼 대응을 준비할 가능성이 높습니다.`
+          : `최근 ${streak}경기 동안 유사한 포메이션·전술이 반복되어(노출도 ${projected.exposureScore}/100) 상위권 AI 감독들이 사전 대응책을 마련하고 있습니다.`,
     };
   }
 

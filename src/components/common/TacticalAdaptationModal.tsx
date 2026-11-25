@@ -17,7 +17,21 @@ export function TacticalAdaptationModal({
   useBodyScrollLock(true);
 
   const isDanger = alert.tier === 'danger';
-  const tacticName = TACTICS[alert.repeatedTactic]?.koreanName ?? alert.repeatedTactic;
+  const tacticName = TACTICS[alert.repeatedTactic]?.name ?? alert.repeatedTactic;
+  const roundLabel =
+    typeof alert.triggeredAtRound === 'number'
+      ? `${alert.triggeredAtRound}R 스카우팅 리포트`
+      : '스카우팅 리포트';
+  const headline =
+    alert.headline ??
+    (isDanger
+      ? '상대 감독들이 우리 전술 패턴을 완벽히 읽어냈습니다'
+      : '상대 스카우트들이 반복 전술을 분석하기 시작했습니다');
+  const detail =
+    alert.detail ??
+    (isDanger
+      ? `최근 ${alert.consecutiveCount}경기 연속 동일 패턴이 노출되어(노출도 ${alert.exposureScore}/100), 다음 경기부터 상대 AI 감독이 경기 시작 전부터 맞춤 카운터 전술과 정밀 파훼 대응을 준비할 가능성이 높습니다.`
+      : `최근 ${alert.consecutiveCount}경기 동안 유사한 포메이션·전술이 반복되어(노출도 ${alert.exposureScore}/100) 상위권 AI 감독들이 사전 대응책을 마련하고 있습니다.`);
   const accentBorder = isDanger
     ? 'border-rose-500/40'
     : 'border-amber-500/35';
@@ -53,11 +67,11 @@ export function TacticalAdaptationModal({
                   {isDanger ? '전술 파훼 경계' : '전술 패턴 분석'}
                 </span>
                 <span className="text-[11px] font-semibold text-slate-400 whitespace-nowrap">
-                  {alert.triggeredAtRound}R 스카우팅 리포트
+                  {roundLabel}
                 </span>
               </div>
               <h3 className="text-sm font-black text-white truncate mt-0.5">
-                {alert.headline}
+                {headline}
               </h3>
             </div>
           </div>
@@ -107,7 +121,7 @@ export function TacticalAdaptationModal({
           </div>
 
           <p className="text-xs leading-relaxed text-slate-300 break-keep">
-            {alert.detail}
+            {detail}
           </p>
 
           <div className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-400 break-keep">

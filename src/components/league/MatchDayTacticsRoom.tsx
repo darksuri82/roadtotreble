@@ -20,8 +20,8 @@ import { calculateTeamRatings } from '../../engine/chemistryEngine';
 import { TACTIC_LIST, TACTICS } from '../../engine/tacticEngine';
 import {
   evaluateTacticalExposure,
-  TACTICAL_EXPOSURE_DANGER_THRESHOLD,
-  TACTICAL_EXPOSURE_WARNING_THRESHOLD,
+  EXPOSURE_DANGER_THRESHOLD,
+  EXPOSURE_WARNING_THRESHOLD,
 } from '../../engine/tacticalAdaptationEngine';
 import {
   evaluateTeamTacticalProfile,
@@ -699,8 +699,8 @@ export function MatchDayTacticsRoom({
             <div className="flex flex-wrap items-center gap-1.5 min-w-0">
               {tacticalExposure && (() => {
                 const score = tacticalExposure.exposureScore;
-                const isDanger = score >= TACTICAL_EXPOSURE_DANGER_THRESHOLD;
-                const isWarn = score >= TACTICAL_EXPOSURE_WARNING_THRESHOLD;
+                const isDanger = score >= EXPOSURE_DANGER_THRESHOLD;
+                const isWarn = score >= EXPOSURE_WARNING_THRESHOLD;
                 const tone = isDanger
                   ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
                   : isWarn
@@ -735,7 +735,7 @@ export function MatchDayTacticsRoom({
                       guideTab="tactics"
                       items={[
                         '최근 5경기에서 같은 포메이션+전술을 반복하면 상대 AI 감독이 경기 시작 전부터 맞춤 대응을 준비합니다.',
-                        `노출도 ${TACTICAL_EXPOSURE_WARNING_THRESHOLD} 이상 시 주의, ${TACTICAL_EXPOSURE_DANGER_THRESHOLD} 이상 시 파훼 경계 구간에 진입합니다.`,
+                        `노출도 ${EXPOSURE_WARNING_THRESHOLD} 이상 시 주의, ${EXPOSURE_DANGER_THRESHOLD} 이상 시 파훼 경계 구간에 진입합니다.`,
                         '포메이션이나 전술 스타일을 1경기라도 변주하면 노출도가 즉시 낮아집니다.',
                       ]}
                     />
@@ -1026,6 +1026,8 @@ export function MatchDayTacticsRoom({
               bench={bench}
               chemistry={chemistry}
               managerTraitId={managerTraitId}
+              staffCoachId={staffCoachId}
+              showStaffCoachBadge={false}
               tactic={activeTactic}
               selectedSlot={locked ? null : selectedSlot}
               onSlotClick={locked ? undefined : handleSlotClick}
@@ -1054,6 +1056,8 @@ export function MatchDayTacticsRoom({
                 bench={bench}
                 chemistry={chemistry}
                 managerTraitId={managerTraitId}
+                staffCoachId={staffCoachId}
+                showStaffCoachBadge={false}
                 tactic={activeTactic}
                 selectedSlot={locked ? null : selectedSlot}
                 onSlotClick={locked ? undefined : handleSlotClick}

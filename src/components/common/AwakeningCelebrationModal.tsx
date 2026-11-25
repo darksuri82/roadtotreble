@@ -114,7 +114,8 @@ export function AwakeningCelebrationModal({
           )}
 
           <p className="text-xs text-slate-300 leading-relaxed break-keep">
-            {alert.reason}
+            {alert.reason ??
+              `뛰어난 실전 활약 속에 잠재력이 완전히 만개했습니다! 기본 OVR이 영구적으로 ${alert.originalOvr}에서 ${alert.newOvr}(+${alert.ovrGain})로 성장했습니다.`}
           </p>
         </div>
 

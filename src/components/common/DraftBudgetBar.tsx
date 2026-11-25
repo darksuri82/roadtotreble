@@ -39,14 +39,14 @@ export function DraftBudgetBar({
       ? {
           badge: 'bg-rose-500/15 text-rose-300 border-rose-500/35',
           bar: 'bg-gradient-to-r from-rose-600 to-rose-400',
-          label: `FFP 2단계 (+${summary.overrunPct}%)`,
+          label: `FFP 2단계 (+${summary.excessPct}%)`,
           icon: <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0" />,
         }
       : summary.ffpTier === 1
         ? {
             badge: 'bg-amber-500/15 text-amber-300 border-amber-500/35',
             bar: 'bg-gradient-to-r from-amber-500 to-amber-400',
-            label: `FFP 1단계 (+${summary.overrunPct}%)`,
+            label: `FFP 1단계 (+${summary.excessPct}%)`,
             icon: <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />,
           }
         : {
@@ -97,7 +97,7 @@ export function DraftBudgetBar({
           <InfoHelpButton
             title="드래프트 예산 & FFP 소프트 캡"
             align="right"
-            guideTab="transfer"
+            guideTab="basics"
             items={[
               `16인 총 예산 상한은 €${DRAFT_BUDGET_CAP_M}M입니다. 남은 예산은 시즌 이적시장 현금 협상 자금으로 100% 이월됩니다.`,
               `레전드는 전원 €${LEGEND_FLAT_DRAFT_COST_M}M 균일가이며, 현역 90+ 슈퍼스타는 누진 몸값이 적용됩니다.`,

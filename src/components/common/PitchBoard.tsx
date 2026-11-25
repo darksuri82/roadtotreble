@@ -28,6 +28,7 @@ import { CountryFlagSvg } from './CountryFlagSvg';
 import { InfoHelpButton } from './InfoHelpButton';
 import { ManagerFitBadge } from './ManagerFitBadge';
 import { PixelStatusIcon } from './PixelStatusIcon';
+import { StaffCoachBadge } from './StaffCoachBadge';
 
 export interface SlotRef {
   area: 'starter' | 'bench';
@@ -40,6 +41,10 @@ interface PitchBoardProps {
   bench: (Player | null)[];
   chemistry: ChemistryResult;
   managerTraitId?: ManagerTraitId | null;
+  /** Optional hired staff coach override; defaults to current season's hired coach */
+  staffCoachId?: import('../../types/game').StaffCoachId | null;
+  /** Show compact Staff Coach badge under the pitch header when hired (defaults to true) */
+  showStaffCoachBadge?: boolean;
   /** Current team tactic used to evaluate manager tactic synergy accurately */
   tactic?: TacticId;
   /** Optional baseline starters (before draft candidate preview) for live delta feedback */
@@ -128,6 +133,8 @@ export function PitchBoard({
   bench,
   chemistry,
   managerTraitId = null,
+  staffCoachId: staffCoachProp,
+  showStaffCoachBadge = true,
   tactic,
   baselineStarters = null,
   showManagerFitStrip = true,
@@ -155,6 +162,10 @@ export function PitchBoard({
   const { state: gameState } = useGame();
   const conditionByPlayerId =
     conditionProp ?? gameState.season?.playerConditions;
+  const effectiveStaffCoachId =
+    staffCoachProp !== undefined
+      ? staffCoachProp
+      : (gameState.season?.staffCoach?.hiredCoachId ?? null);
   const effectiveTactic: TacticId =
     tactic ??
     gameState.season?.nextMatchTactic ??
@@ -355,17 +366,31 @@ export function PitchBoard({
         {headerRight && <div className="shrink-0">{headerRight}</div>}
       </div>
 
-      {/* Compact Manager Compatibility Strip (n/11 + live team boost + click detail popover) */}
-      {managerTraitId && showManagerFitStrip && (
-        <ManagerFitBadge
-          traitId={managerTraitId}
-          starters={starters}
-          baselineStarters={baselineStarters}
-          tactic={effectiveTactic}
-          formation={formation}
-          variant="strip"
-          align="left"
-        />
+      {/* Compact Manager Compatibility & Hired Assistant Coach Strip */}
+      {((managerTraitId && showManagerFitStrip) ||
+        (showStaffCoachBadge && effectiveStaffCoachId)) && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {managerTraitId && showManagerFitStrip && (
+            <div className="min-w-0 flex-1">
+              <ManagerFitBadge
+                traitId={managerTraitId}
+                starters={starters}
+                baselineStarters={baselineStarters}
+                tactic={effectiveTactic}
+                formation={formation}
+                variant="strip"
+                align="left"
+              />
+            </div>
+          )}
+          {showStaffCoachBadge && effectiveStaffCoachId && (
+            <StaffCoachBadge
+              coachId={effectiveStaffCoachId}
+              activeTactic={effectiveTactic}
+              compact
+            />
+          )}
+        </div>
       )}
 
       {/* Tap-safe Mobile Inspect Bar: appears only when a player is selected so tapping pitch cards NEVER opens detail modal by mistake */}

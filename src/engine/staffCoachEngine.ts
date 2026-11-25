@@ -277,6 +277,19 @@ export const STAFF_COACHES: Record<StaffCoachId, StaffCoachProfile> = {
 
 export const STAFF_COACH_LIST: StaffCoachProfile[] = Object.values(STAFF_COACHES);
 
+export const STAFF_COACH_CATEGORY_LABELS: Record<StaffCoachCategory, string> = {
+  tactic: '전술 특화',
+  line: '라인 강화',
+  system: '시스템 보너스',
+};
+
+export function getStaffCoachById(
+  id: StaffCoachId | null | undefined,
+): StaffCoachProfile | null {
+  if (!id) return null;
+  return STAFF_COACHES[id] ?? null;
+}
+
 const TACTIC_COACH_IDS: StaffCoachId[] = [
   'tactic_possession',
   'tactic_gegenpressing',

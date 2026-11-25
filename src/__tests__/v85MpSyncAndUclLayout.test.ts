@@ -378,9 +378,15 @@ describe('v8.5 MP Fast Sync, Spoiler-Free Cup/Standings Snapshots & UCL Phase 2 
 
         const seenAiClubs = new Set<string>();
         const seenAiPlayers = new Set<string>();
+        const isWindow2 = state.transferWindowIndex === 2;
         for (const h of humans) {
           const hs = state.perHuman[h.clubId];
-          expect(hs.offers.length).toBeGreaterThanOrEqual(1);
+          const isFfpEmbargo = isWindow2 && hs.budget?.ffpTier === 2;
+          if (isFfpEmbargo) {
+            expect(hs.offers.length).toBe(0);
+          } else {
+            expect(hs.offers.length).toBeGreaterThanOrEqual(1);
+          }
           for (const offer of hs.offers) {
             expect(seenAiClubs.has(offer.club.id)).toBe(false);
             seenAiClubs.add(offer.club.id);
@@ -399,7 +405,9 @@ describe('v8.5 MP Fast Sync, Spoiler-Free Cup/Standings Snapshots & UCL Phase 2 
         for (const h of humans) {
           expect(Object.keys(liveAfter.byClub[h.clubId].offerClubs ?? {}).length).toBe(0);
         }
-        expect(bytesAfter).toBeLessThan(bytesBefore);
+        if (seenAiClubs.size > 0) {
+          expect(bytesAfter).toBeLessThan(bytesBefore);
+        }
         state = closeMpLeagueTransferWindow(state);
       } else if (state.flow.kind === 'event') {
         interviewRoundsChecked += 1;
