@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useReducer,
+  useRef,
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
@@ -59,6 +60,7 @@ import {
   computeUserSeasonManagerRating,
   deleteHallOfFameEntry,
   evaluateAchievements,
+  generateSeasonRunId,
   isEligibleForAutoHofInduction,
   loadLegacyState,
   recordDreamMatchResult,
@@ -154,10 +156,19 @@ import type {
 } from '../types/league';
 import {
   createInitialTrackers,
+  type GlobalHofRankingEntry,
+  type GlobalRankingSubmitResult,
+  type GlobalTop15CelebrationPayload,
+  type HallOfFameEntry,
   type LegacyStorageState,
   type SeasonAchievementTrackers,
 } from '../types/legacy';
 import type { Player } from '../types/player';
+import {
+  hasCelebratedGlobalTop15,
+  markGlobalTop15Celebrated,
+  submitGlobalHofRanking,
+} from '../services/globalRankingService';
 import { extractRoomCodeFromUrl } from '../services/multiplayerService';
 import { normalizeManagerAvatar, saveClubPreset } from '../utils/clubPresets';
 
@@ -3083,6 +3094,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       });
 
       const season: SeasonState = {
+        runId: generateSeasonRunId(),
         leagueId: league.id,
         replacedClubName: weakest.name,
         defaultTactic: state.defaultTactic,
@@ -6412,6 +6424,8 @@ function loadSavedGameState(): GameState {
   }
 }
 
+export type LegacyModalTab = 'hof' | 'global_top15' | 'achievements';
+
 interface GameContextValue {
   state: GameState;
   activeTactic: TacticId;
@@ -6419,11 +6433,26 @@ interface GameContextValue {
   ratings: TeamRatings;
   legacyState: LegacyStorageState;
   legacyModalOpen: boolean;
+  legacyModalInitialTab: LegacyModalTab;
   setLegacyModalOpen: (open: boolean) => void;
+  openLegacyModal: (tab?: LegacyModalTab) => void;
   dreamMatchOpen: boolean;
   dreamMatchInitialOpponentId: string | null;
+  dreamMatchGlobalOpponent: GlobalHofRankingEntry | null;
   openDreamMatch: (opponentId?: string | null) => void;
+  openDreamMatchWithGlobalOpponent: (entry: GlobalHofRankingEntry) => void;
   closeDreamMatch: () => void;
+  globalTop15Celebration: GlobalTop15CelebrationPayload | null;
+  dismissGlobalTop15Celebration: () => void;
+  lastGlobalSubmitResult: {
+    runId: string;
+    result: GlobalRankingSubmitResult;
+  } | null;
+  globalRankingsVersion: number;
+  submitHallOfFameEntryToGlobal: (
+    entry: HallOfFameEntry,
+    options?: { triggerCelebration?: boolean },
+  ) => Promise<GlobalRankingSubmitResult>;
   multiplayerOpen: boolean;
   soloTickerPlaying: boolean;
   setSoloTickerPlaying: (playing: boolean) => void;
@@ -6556,9 +6585,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
     loadLegacyState(),
   );
   const [legacyModalOpen, setLegacyModalOpen] = useState(false);
+  const [legacyModalInitialTab, setLegacyModalInitialTab] =
+    useState<LegacyModalTab>('hof');
   const [dreamMatchOpen, setDreamMatchOpen] = useState(false);
   const [dreamMatchInitialOpponentId, setDreamMatchInitialOpponentId] =
     useState<string | null>(null);
+  const [dreamMatchGlobalOpponent, setDreamMatchGlobalOpponent] =
+    useState<GlobalHofRankingEntry | null>(null);
+  const [globalTop15Celebration, setGlobalTop15Celebration] =
+    useState<GlobalTop15CelebrationPayload | null>(null);
+  const [lastGlobalSubmitResult, setLastGlobalSubmitResult] = useState<{
+    runId: string;
+    result: GlobalRankingSubmitResult;
+  } | null>(null);
+  const [globalRankingsVersion, setGlobalRankingsVersion] = useState(0);
+  const inFlightGlobalSubmitRef = useRef<Set<string>>(new Set());
   const [multiplayerInitialRoomCode, setMultiplayerInitialRoomCode] =
     useState<string | null>(() => extractRoomCodeFromUrl());
   const [multiplayerOpen, setMultiplayerOpen] = useState<boolean>(() =>
@@ -6679,6 +6720,60 @@ export function GameProvider({ children }: { children: ReactNode }) {
     chemistry.total,
   ]);
 
+  const submitHallOfFameEntryToGlobal = useCallback(
+    async (
+      entry: HallOfFameEntry,
+      options?: { triggerCelebration?: boolean },
+    ): Promise<GlobalRankingSubmitResult> => {
+      const effectiveRunId = (entry.runId ?? entry.id).trim();
+      if (inFlightGlobalSubmitRef.current.has(effectiveRunId)) {
+        return {
+          ok: false,
+          entered: false,
+          rank: null,
+          alreadyExists: true,
+          cutoffScore: null,
+          totalCount: 0,
+          prunedCount: 0,
+          error: '이미 제출 중입니다.',
+        };
+      }
+      inFlightGlobalSubmitRef.current.add(effectiveRunId);
+      try {
+        const res = await submitGlobalHofRanking(entry);
+        setLastGlobalSubmitResult({ runId: effectiveRunId, result: res });
+        if (res.ok && res.entered && res.rank !== null) {
+          setGlobalRankingsVersion((v) => v + 1);
+          if (
+            options?.triggerCelebration &&
+            !res.alreadyExists &&
+            !hasCelebratedGlobalTop15(effectiveRunId)
+          ) {
+            markGlobalTop15Celebrated(effectiveRunId);
+            setGlobalTop15Celebration({
+              runId: effectiveRunId,
+              rank: res.rank,
+              totalScore: Math.round(entry.seasonScore.totalScore),
+              grade: entry.seasonScore.grade,
+              clubName: entry.userClub.name,
+              managerName: entry.managerName ?? DEFAULT_MANAGER_NAME,
+              trophies: entry.trophies,
+              isTreble: entry.isTreble,
+              uclWon: entry.uclWon,
+              isLeagueChampion: entry.isLeagueChampion,
+              cupWon: entry.cupWon,
+              prunedCount: res.prunedCount,
+            });
+          }
+        }
+        return res;
+      } finally {
+        inFlightGlobalSubmitRef.current.delete(effectiveRunId);
+      }
+    },
+    [],
+  );
+
   const archiveCurrentSeasonNow = useCallback(() => {
     if (!state.season || state.season.legacyArchived) return;
     const score =
@@ -6745,7 +6840,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       managerSynergyCount,
     });
 
+    const effectiveRunId = state.season.runId || generateSeasonRunId();
+
     const updated = archiveSeasonToHallOfFame({
+      runId: effectiveRunId,
       userClub: state.userClub,
       managerName: state.manager.name,
       managerAvatar: state.manager.avatar,
@@ -6773,10 +6871,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
     setLegacyState(updated);
     dispatch({ type: 'MARK_LEGACY_ARCHIVED' });
-  }, [state, ratings.rawOvr, chemistry]);
+
+    const archivedEntry =
+      updated.hallOfFame.find((e) => (e.runId ?? e.id) === effectiveRunId) ??
+      updated.hallOfFame[0];
+    if (archivedEntry) {
+      void submitHallOfFameEntryToGlobal(archivedEntry, {
+        triggerCelebration: true,
+      });
+    }
+  }, [state, ratings.rawOvr, chemistry, submitHallOfFameEntryToGlobal]);
 
   // Auto-archive completed runs into Hall of Fame ONLY when reaching historical-team caliber
-  // (score >= 5,500, S+ grade, UCL title, or Treble). Other seasons can be manually registered from SeasonSummary.
+  // (score >= 6,500, S+ grade, UCL title, or Treble). Other seasons can be manually registered from SeasonSummary.
   useEffect(() => {
     if (
       state.phase !== 'season_end' ||
@@ -6820,16 +6927,38 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setLegacyState(deleteHallOfFameEntry(entryId));
   }, []);
 
+  const openLegacyModal = useCallback((tab: LegacyModalTab = 'hof') => {
+    setLegacyModalInitialTab(tab);
+    setLegacyModalOpen(true);
+  }, []);
+
+  const dismissGlobalTop15Celebration = useCallback(() => {
+    setGlobalTop15Celebration(null);
+  }, []);
+
   const openDreamMatch = useCallback((opponentId?: string | null) => {
     setLegacyModalOpen(false);
     setMultiplayerOpen(false);
+    setDreamMatchGlobalOpponent(null);
     setDreamMatchInitialOpponentId(opponentId ?? null);
     setDreamMatchOpen(true);
   }, []);
 
+  const openDreamMatchWithGlobalOpponent = useCallback(
+    (entry: GlobalHofRankingEntry) => {
+      setLegacyModalOpen(false);
+      setMultiplayerOpen(false);
+      setDreamMatchInitialOpponentId(null);
+      setDreamMatchGlobalOpponent(entry);
+      setDreamMatchOpen(true);
+    },
+    [],
+  );
+
   const closeDreamMatch = useCallback(() => {
     setDreamMatchOpen(false);
     setDreamMatchInitialOpponentId(null);
+    setDreamMatchGlobalOpponent(null);
   }, []);
 
   const openMultiplayer = useCallback((roomCode?: string | null) => {
@@ -6863,11 +6992,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ratings,
       legacyState,
       legacyModalOpen,
+      legacyModalInitialTab,
       setLegacyModalOpen,
+      openLegacyModal,
       dreamMatchOpen,
       dreamMatchInitialOpponentId,
+      dreamMatchGlobalOpponent,
       openDreamMatch,
+      openDreamMatchWithGlobalOpponent,
       closeDreamMatch,
+      globalTop15Celebration,
+      dismissGlobalTop15Celebration,
+      lastGlobalSubmitResult,
+      globalRankingsVersion,
+      submitHallOfFameEntryToGlobal,
       multiplayerOpen,
       soloTickerPlaying,
       setSoloTickerPlaying,
@@ -6995,7 +7133,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
           type: 'DISMISS_INJURY_RETURN_TOAST',
           payload: id ? { id } : undefined,
         }),
-      resetGame: () => dispatch({ type: 'RESET_GAME' }),
+      resetGame: () => {
+        setGlobalTop15Celebration(null);
+        setLastGlobalSubmitResult(null);
+        dispatch({ type: 'RESET_GAME' });
+      },
     }),
     [
       state,
@@ -7004,10 +7146,19 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ratings,
       legacyState,
       legacyModalOpen,
+      legacyModalInitialTab,
+      openLegacyModal,
       dreamMatchOpen,
       dreamMatchInitialOpponentId,
+      dreamMatchGlobalOpponent,
       openDreamMatch,
+      openDreamMatchWithGlobalOpponent,
       closeDreamMatch,
+      globalTop15Celebration,
+      dismissGlobalTop15Celebration,
+      lastGlobalSubmitResult,
+      globalRankingsVersion,
+      submitHallOfFameEntryToGlobal,
       multiplayerOpen,
       soloTickerPlaying,
       multiplayerInitialRoomCode,

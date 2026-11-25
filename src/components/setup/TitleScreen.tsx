@@ -2,6 +2,7 @@ import {
   ArrowRight,
   BookOpen,
   Crown,
+  Globe,
   GraduationCap,
   Play,
   ScrollText,
@@ -31,7 +32,7 @@ export function TitleScreen() {
   const {
     startNewCareer,
     legacyState,
-    setLegacyModalOpen,
+    openLegacyModal,
     openDreamMatch,
     openMultiplayer,
   } = useGame();
@@ -151,18 +152,18 @@ export function TitleScreen() {
           </div>
         </section>
 
-        {/* Clean Compact 3-Item Auxiliary Bar */}
+        {/* Clean Compact 4-Item Auxiliary Bar */}
         <nav
           aria-label="보조 메뉴"
-          className="mt-2.5 sm:mt-3 grid grid-cols-3 gap-2 sm:gap-3"
+          className="mt-2.5 sm:mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5"
         >
           <button
             id="title-legacy-card"
             type="button"
-            onClick={() => setLegacyModalOpen(true)}
-            className="group flex items-center justify-between gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-800/80 bg-[#0d131c] px-2.5 py-2.5 text-left transition-colors hover:border-amber-500/40 hover:bg-[#121a26] cursor-pointer touch-manipulation sm:px-4 sm:py-3.5"
+            onClick={() => openLegacyModal('hof')}
+            className="group flex items-center justify-between gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-800/80 bg-[#0d131c] px-2.5 py-2.5 text-left transition-colors hover:border-amber-500/40 hover:bg-[#121a26] cursor-pointer touch-manipulation sm:px-3.5 sm:py-3"
           >
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <Crown className="h-4 w-4 shrink-0 text-amber-400 sm:h-5 sm:w-5" />
               <div className="min-w-0">
                 <div className="text-[11px] font-bold text-white sm:text-sm truncate">
@@ -177,12 +178,32 @@ export function TitleScreen() {
           </button>
 
           <button
+            id="title-global-top15-card"
+            type="button"
+            onClick={() => openLegacyModal('global_top15')}
+            className="group flex items-center justify-between gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-800/80 bg-[#0d131c] px-2.5 py-2.5 text-left transition-colors hover:border-sky-400/45 hover:bg-[#121a26] cursor-pointer touch-manipulation sm:px-3.5 sm:py-3"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <Globe className="h-4 w-4 shrink-0 text-sky-400 sm:h-5 sm:w-5" />
+              <div className="min-w-0">
+                <div className="text-[11px] font-bold text-white sm:text-sm truncate">
+                  역대 TOP 15
+                </div>
+                <div className="text-[10px] text-sky-300/90 truncate sm:text-[11px]">
+                  랭킹 · 1대1 도전
+                </div>
+              </div>
+            </div>
+            <ArrowRight className="hidden h-4 w-4 shrink-0 text-slate-600 group-hover:text-sky-300 sm:block" />
+          </button>
+
+          <button
             id="title-patchnotes-card"
             type="button"
             onClick={() => setShowPatchNotes(true)}
-            className="group flex items-center justify-between gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-800/80 bg-[#0d131c] px-2.5 py-2.5 text-left transition-colors hover:border-sky-500/40 hover:bg-[#121a26] cursor-pointer touch-manipulation sm:px-4 sm:py-3.5"
+            className="group flex items-center justify-between gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-800/80 bg-[#0d131c] px-2.5 py-2.5 text-left transition-colors hover:border-sky-500/40 hover:bg-[#121a26] cursor-pointer touch-manipulation sm:px-3.5 sm:py-3"
           >
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <ScrollText className="h-4 w-4 shrink-0 text-sky-400 sm:h-5 sm:w-5" />
               <div className="min-w-0">
                 <div className="text-[11px] font-bold text-white sm:text-sm truncate">
@@ -200,9 +221,9 @@ export function TitleScreen() {
             id="title-guide-card"
             type="button"
             onClick={() => setShowGuide(true)}
-            className="group flex items-center justify-between gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-800/80 bg-[#0d131c] px-2.5 py-2.5 text-left transition-colors hover:border-emerald-500/40 hover:bg-[#121a26] cursor-pointer touch-manipulation sm:px-4 sm:py-3.5"
+            className="group flex items-center justify-between gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-800/80 bg-[#0d131c] px-2.5 py-2.5 text-left transition-colors hover:border-emerald-500/40 hover:bg-[#121a26] cursor-pointer touch-manipulation sm:px-3.5 sm:py-3"
           >
-            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <BookOpen className="h-4 w-4 shrink-0 text-emerald-400 sm:h-5 sm:w-5" />
               <div className="min-w-0">
                 <div className="text-[11px] font-bold text-white sm:text-sm truncate">

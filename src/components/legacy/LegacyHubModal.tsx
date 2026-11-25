@@ -1,13 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  AlertCircle,
   Award,
   Calendar,
   Crown,
+  Globe,
   Lock,
+  RefreshCw,
   Sparkles,
   Swords,
   Trash2,
   Trophy,
+  Upload,
   X,
 } from 'lucide-react';
 import { HIDDEN_ACHIEVEMENTS } from '../../data/achievements';
@@ -19,12 +23,20 @@ import { MANAGER_TRAITS } from '../../data/managerTraits';
 import { calculateChemistry } from '../../engine/chemistryEngine';
 import {
   getAchievementProgress,
+  HOF_AUTO_INDUCTION_MIN_SCORE,
   reconstructHallOfFameSquad,
 } from '../../engine/legacyEngine';
 import { TACTICS } from '../../engine/tacticEngine';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
-import { useGame } from '../../store/GameContext';
+import { isSupabaseConfigured } from '../../lib/supabaseClient';
+import {
+  fetchGlobalTop15Rankings,
+  GLOBAL_TOP15_LIMIT,
+  reconstructSquadFromGlobalRanking,
+} from '../../services/globalRankingService';
+import { type LegacyModalTab, useGame } from '../../store/GameContext';
 import type {
+  GlobalHofRankingEntry,
   HallOfFameEntry,
   HistoricalTeamEntry,
 } from '../../types/legacy';
@@ -37,7 +49,6 @@ import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 
-type LegacyTab = 'hof' | 'achievements';
 type HofFilterTab = 'all' | 'user' | 'historical';
 type HofSortBy = 'score' | 'date';
 type HofDetailSubTab = 'squad' | 'history';
@@ -52,17 +63,48 @@ function formatShortDate(iso: string): string {
   }
 }
 
+function getMedalBadgeClass(rank: number): string {
+  if (rank === 1) {
+    return 'bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 text-slate-950 shadow-sm shadow-amber-500/30';
+  }
+  if (rank === 2) {
+    return 'bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 text-slate-950';
+  }
+  if (rank === 3) {
+    return 'bg-gradient-to-br from-amber-600 via-orange-400 to-amber-700 text-slate-950';
+  }
+  return 'bg-slate-800 text-slate-200 border border-slate-700';
+}
+
 export function LegacyHubModal() {
+  const { legacyModalOpen, legacyModalInitialTab } = useGame();
+  if (!legacyModalOpen) return null;
+  return (
+    <LegacyHubModalContent
+      key={legacyModalInitialTab}
+      initialTab={legacyModalInitialTab}
+    />
+  );
+}
+
+function LegacyHubModalContent({
+  initialTab,
+}: {
+  initialTab: LegacyModalTab;
+}) {
   const {
+    state,
     legacyState,
-    legacyModalOpen,
     setLegacyModalOpen,
     removeHallOfFameEntry,
     openDreamMatch,
+    openDreamMatchWithGlobalOpponent,
+    submitHallOfFameEntryToGlobal,
+    globalRankingsVersion,
   } = useGame();
-  useBodyScrollLock(legacyModalOpen);
+  useBodyScrollLock(true);
 
-  const [tab, setTab] = useState<LegacyTab>('hof');
+  const [tab, setTab] = useState<LegacyModalTab>(initialTab);
   const [hofFilter, setHofFilter] = useState<HofFilterTab>('all');
   const [sortBy, setSortBy] = useState<HofSortBy>('score');
   const [selectedEntry, setSelectedEntry] = useState<HallOfFameEntry | null>(
@@ -70,11 +112,138 @@ export function LegacyHubModal() {
   );
   const [selectedHistorical, setSelectedHistorical] =
     useState<HistoricalTeamEntry | null>(null);
+  const [selectedGlobal, setSelectedGlobal] =
+    useState<GlobalHofRankingEntry | null>(null);
   const [inspectedPlayer, setInspectedPlayer] = useState<Player | null>(null);
   const [detailSubTab, setDetailSubTab] = useState<HofDetailSubTab>('squad');
   const [historyFilter, setHistoryFilter] = useState<HofHistoryFilter>('all');
   const [achFilter, setAchFilter] = useState<'all' | 'unlocked' | 'locked'>(
     'all',
+  );
+
+  // Global TOP 15 state
+  const [globalEntries, setGlobalEntries] = useState<GlobalHofRankingEntry[]>(
+    [],
+  );
+  const [globalCutoff, setGlobalCutoff] = useState<number | null>(null);
+  const [globalLoading, setGlobalLoading] = useState<boolean>(
+    isSupabaseConfigured,
+  );
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [challengeNotice, setChallengeNotice] = useState<string | null>(null);
+  const [submittingRunId, setSubmittingRunId] = useState<string | null>(null);
+  const [manualSubmitMsgByRunId, setManualSubmitMsgByRunId] = useState<
+    Record<string, { ok: boolean; text: string }>
+  >({});
+
+  const loadGlobalRankings = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setGlobalLoading(false);
+      return;
+    }
+    setGlobalLoading(true);
+    setGlobalError(null);
+    const res = await fetchGlobalTop15Rankings();
+    if (res.ok) {
+      setGlobalEntries(res.entries);
+      setGlobalCutoff(res.cutoffScore);
+    } else {
+      setGlobalError(res.error ?? '랭킹을 불러오지 못했습니다.');
+    }
+    setGlobalLoading(false);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (!isSupabaseConfigured) return;
+    void fetchGlobalTop15Rankings().then((res) => {
+      if (!active) return;
+      if (res.ok) {
+        setGlobalEntries(res.entries);
+        setGlobalCutoff(res.cutoffScore);
+        setGlobalError(null);
+      } else {
+        setGlobalError(res.error ?? '랭킹을 불러오지 못했습니다.');
+      }
+      setGlobalLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [globalRankingsVersion]);
+
+  const localRunIds = useMemo(
+    () => new Set(legacyState.hallOfFame.map((e) => e.runId ?? e.id)),
+    [legacyState.hallOfFame],
+  );
+
+  const globalRankByRunId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const g of globalEntries) map.set(g.runId, g.rank);
+    return map;
+  }, [globalEntries]);
+
+  const hasPlayableChallengerSquad = useMemo(() => {
+    const hasHof = legacyState.hallOfFame.length > 0;
+    const hasOngoing =
+      state.starters.filter((p): p is Player => p !== null).length === 11;
+    return hasHof || hasOngoing;
+  }, [legacyState.hallOfFame.length, state.starters]);
+
+  const handleChallengeGlobalTeam = useCallback(
+    (entry: GlobalHofRankingEntry) => {
+      if (!hasPlayableChallengerSquad) {
+        setChallengeNotice(
+          '먼저 시즌을 시작하거나 명전 스쿼드를 등록해 주세요.',
+        );
+        return;
+      }
+      setChallengeNotice(null);
+      openDreamMatchWithGlobalOpponent(entry);
+    },
+    [hasPlayableChallengerSquad, openDreamMatchWithGlobalOpponent],
+  );
+
+  const handleManualGlobalSubmit = useCallback(
+    async (entry: HallOfFameEntry) => {
+      const runId = (entry.runId ?? entry.id).trim();
+      setSubmittingRunId(runId);
+      const res = await submitHallOfFameEntryToGlobal(entry, {
+        triggerCelebration: false,
+      });
+      setSubmittingRunId(null);
+      if (!res.ok) {
+        setManualSubmitMsgByRunId((prev) => ({
+          ...prev,
+          [runId]: { ok: false, text: res.error ?? '등록 실패' },
+        }));
+        return;
+      }
+      if (res.entered && res.rank !== null) {
+        setManualSubmitMsgByRunId((prev) => ({
+          ...prev,
+          [runId]: {
+            ok: true,
+            text: res.alreadyExists
+              ? `이미 글로벌 #${res.rank}위 등록됨`
+              : `글로벌 #${res.rank}위 등재 완료!`,
+          },
+        }));
+        void loadGlobalRankings();
+      } else {
+        setManualSubmitMsgByRunId((prev) => ({
+          ...prev,
+          [runId]: {
+            ok: false,
+            text:
+              res.cutoffScore !== null
+                ? `15위 컷(${res.cutoffScore.toLocaleString()}점) 미달`
+                : 'TOP 15 진입 기준 미달',
+          },
+        }));
+      }
+    },
+    [submitHallOfFameEntryToGlobal, loadGlobalRankings],
   );
 
   const progress = useMemo(
@@ -160,7 +329,39 @@ export function LegacyHubModal() {
     };
   }, [selectedEntry]);
 
-  if (!legacyModalOpen) return null;
+  const globalPitchData = useMemo(() => {
+    if (!selectedGlobal) return null;
+    const { starters, bench } = reconstructSquadFromGlobalRanking(selectedGlobal);
+    if (starters.length === 0) return null;
+    const chem = calculateChemistry(
+      selectedGlobal.formation,
+      starters,
+      selectedGlobal.defaultTactic,
+      selectedGlobal.managerTraitId,
+      selectedGlobal.managerRating,
+    );
+    const slotSyns = Object.values(chem.slotSynergies);
+    const avgSynBonus =
+      slotSyns.length > 0
+        ? slotSyns.reduce((sum, s) => sum + s.totalBonus, 0) / slotSyns.length
+        : 0;
+    const effectiveStarterOvr =
+      selectedGlobal.teamAvgOvr + avgSynBonus + chem.chemistryOvrBonus;
+    const statsById = new Map(
+      [
+        ...(selectedGlobal.squadSnapshot?.starters ?? []),
+        ...(selectedGlobal.squadSnapshot?.bench ?? []),
+      ].map((m) => [m.id, m]),
+    );
+    return {
+      starters,
+      bench,
+      chem,
+      avgSynBonus: Math.round(avgSynBonus * 10) / 10,
+      effectiveStarterOvr: Math.round(effectiveStarterOvr * 10) / 10,
+      statsById,
+    };
+  }, [selectedGlobal]);
 
   const isViewingDetail = Boolean(selectedEntry || selectedHistorical);
 
@@ -168,28 +369,28 @@ export function LegacyHubModal() {
     <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-3 sm:p-5">
       <div className="modal-panel flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0e141d] shadow-2xl">
         {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 bg-[#0a0f17] px-4 py-3.5 sm:px-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400/15 border border-amber-400/35 text-amber-300">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-slate-800 bg-[#0a0f17] px-4 py-3 sm:px-5">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-400/15 border border-amber-400/35 text-amber-300">
               <Crown className="h-4.5 w-4.5" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-black text-white">
+                <h2 className="text-base sm:text-lg font-black text-white truncate">
                   Road To Treble 명예의 전당
                 </h2>
                 <InfoHelpButton
-                  title="명예의 전당 등재 기준"
+                  title="명예의 전당 & 글로벌 TOP 15 기준"
                   align="left"
                   guideTab="season"
                   items={[
-                    '자동 등재: 시즌 스코어 5,500+ (역대 강팀급) · S+ 등급 · UCL 우승 · 트레블 달성 시',
+                    `자동 등재: 시즌 스코어 ${HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}+ (역대 강팀급) · S+ 등급 · UCL 우승 · 트레블 달성 시`,
                     '수동 등재: 기준 미만 시즌도 시즌 결산 화면의 [수동 등록] 버튼으로 직접 등재 가능',
-                    '도전과제(24종)는 등재 여부와 무관하게 매 시즌 자동 해금됩니다.',
+                    '글로벌 TOP 15: 상위 15개 기록만 유지되며 16위 이하로 밀려나면 자동 삭제됩니다.',
                   ]}
                 />
               </div>
-              <p className="text-[11px] text-slate-400 tabular-nums">
+              <p className="text-[11px] text-slate-400 tabular-nums truncate">
                 내 기록 {legacyState.hallOfFame.length} · 역대 강팀{' '}
                 {HISTORICAL_BENCHMARK_TEAMS.length} · 업적{' '}
                 <span className="font-bold text-amber-300">
@@ -199,7 +400,7 @@ export function LegacyHubModal() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="flex rounded-xl border border-slate-800 bg-slate-950/80 p-1 gap-1">
               <button
                 type="button"
@@ -207,14 +408,34 @@ export function LegacyHubModal() {
                   setTab('hof');
                   setSelectedEntry(null);
                   setSelectedHistorical(null);
+                  setSelectedGlobal(null);
+                  setChallengeNotice(null);
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold transition cursor-pointer whitespace-nowrap ${
                   tab === 'hof'
                     ? 'bg-slate-800 text-white border border-emerald-500/45 shadow-sm'
                     : 'text-slate-400 border border-transparent hover:text-white'
                 }`}
               >
-                🏛️ 명예의 전당 ({legacyState.hallOfFame.length + HISTORICAL_BENCHMARK_TEAMS.length})
+                🏛️ 명예의 전당
+              </button>
+              <button
+                id="legacy-tab-global-top15"
+                type="button"
+                onClick={() => {
+                  setTab('global_top15');
+                  setSelectedEntry(null);
+                  setSelectedHistorical(null);
+                  setSelectedGlobal(null);
+                  setChallengeNotice(null);
+                }}
+                className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                  tab === 'global_top15'
+                    ? 'bg-slate-800 text-white border border-sky-400/50 shadow-sm'
+                    : 'text-slate-400 border border-transparent hover:text-white'
+                }`}
+              >
+                🌍 역대 TOP 15
               </button>
               <button
                 type="button"
@@ -222,21 +443,23 @@ export function LegacyHubModal() {
                   setTab('achievements');
                   setSelectedEntry(null);
                   setSelectedHistorical(null);
+                  setSelectedGlobal(null);
+                  setChallengeNotice(null);
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                className={`rounded-lg px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold transition cursor-pointer whitespace-nowrap ${
                   tab === 'achievements'
                     ? 'bg-slate-800 text-white border border-amber-400/45 shadow-sm'
                     : 'text-slate-400 border border-transparent hover:text-white'
                 }`}
               >
-                🔒 히든 도전과제 ({progress.unlocked}/{progress.total})
+                🔒 업적 ({progress.unlocked}/{progress.total})
               </button>
             </div>
 
             <button
               type="button"
               onClick={() => setLegacyModalOpen(false)}
-              className="rounded-xl border border-slate-700 bg-slate-800/80 p-2 text-slate-300 hover:bg-slate-700 hover:text-white cursor-pointer"
+              className="rounded-xl border border-slate-700 bg-slate-800/80 p-2 text-slate-300 hover:bg-slate-700 hover:text-white cursor-pointer shrink-0"
               aria-label="닫기"
             >
               <X className="h-4 w-4" />
@@ -245,7 +468,7 @@ export function LegacyHubModal() {
         </div>
 
         {/* Body */}
-        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-5">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
           {tab === 'hof' && !isViewingDetail && (
             <div className="space-y-4">
               {/* Filter Tabs: All (User + Historical) | User Only | Historical Benchmark */}
@@ -311,7 +534,7 @@ export function LegacyHubModal() {
               </div>
 
               <p className="text-xs text-slate-400">
-                모든 유저 팀과 실제 축구 역사 속 최강 14팀은 완전히 동일한 공정 시즌 스코어 공식(34R/38R PPG×38 + 우승/대업/언더독/개인수상 보너스)으로 순위를 겨룹니다.
+                모든 유저 팀과 실제 축구 역사 속 최강 {HISTORICAL_BENCHMARK_TEAMS.length}팀은 동일한 공정 시즌 스코어 공식으로 순위를 겨룹니다.
               </p>
 
               {unifiedLeaderboard.length === 0 ? (
@@ -321,7 +544,7 @@ export function LegacyHubModal() {
                     아직 명예의 전당에 등재된 유저 시즌이 없습니다.
                   </p>
                   <p className="mt-1 text-xs text-slate-500">
-                    시즌을 완료하면 역대 최강 14팀과 함께 동일한 스코어보드에 등재됩니다!
+                    시즌을 완료하면 역대 최강 {HISTORICAL_BENCHMARK_TEAMS.length}팀과 함께 동일한 스코어보드에 등재됩니다!
                   </p>
                 </div>
               ) : (
@@ -537,32 +760,79 @@ export function LegacyHubModal() {
                           </div>
                         )}
 
-                        <div className="mt-3 flex items-center justify-between border-t border-slate-800/80 pt-2.5">
-                          <span className="truncate text-[11px] text-slate-400">
-                            에이스: <strong className="text-slate-200">{entry.topScorerSummary}</strong>
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setDetailSubTab('squad');
-                                setHistoryFilter('all');
-                                setSelectedEntry(entry);
-                              }}
-                              className="rounded-lg bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
-                            >
-                              상세 보기
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => removeHallOfFameEntry(entry.id)}
-                              className="rounded-lg p-1 text-slate-500 hover:bg-rose-500/15 hover:text-rose-400 cursor-pointer"
-                              title="기록 삭제"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
+                        {(() => {
+                          const entryRunId = (entry.runId ?? entry.id).trim();
+                          const globalRank = globalRankByRunId.get(entryRunId);
+                          const submitMsg = manualSubmitMsgByRunId[entryRunId];
+                          const isSubmitting = submittingRunId === entryRunId;
+                          return (
+                            <div className="mt-3 space-y-2 border-t border-slate-800/80 pt-2.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="truncate text-[11px] text-slate-400">
+                                  에이스: <strong className="text-slate-200">{entry.topScorerSummary}</strong>
+                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {isSupabaseConfigured && (
+                                    globalRank ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setTab('global_top15');
+                                          setSelectedEntry(null);
+                                          setSelectedHistorical(null);
+                                          setSelectedGlobal(null);
+                                        }}
+                                        className="inline-flex items-center gap-1 rounded-lg border border-sky-400/40 bg-sky-500/15 px-2 py-1 text-[11px] font-bold text-sky-300 hover:bg-sky-500/25 cursor-pointer"
+                                      >
+                                        <Globe className="h-3 w-3" />
+                                        <span>글로벌 #{globalRank}</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        disabled={isSubmitting}
+                                        onClick={() => void handleManualGlobalSubmit(entry)}
+                                        className="inline-flex items-center gap-1 rounded-lg border border-sky-400/35 bg-sky-500/12 px-2 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/22 disabled:opacity-50 cursor-pointer"
+                                        title="이 명예의 전당 기록을 글로벌 TOP 15 랭킹에 도전/제출합니다"
+                                      >
+                                        <Upload className="h-3 w-3" />
+                                        <span>{isSubmitting ? '제출 중...' : '글로벌 도전'}</span>
+                                      </button>
+                                    )
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setDetailSubTab('squad');
+                                      setHistoryFilter('all');
+                                      setSelectedEntry(entry);
+                                    }}
+                                    className="rounded-lg bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
+                                  >
+                                    상세 보기
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeHallOfFameEntry(entry.id)}
+                                    className="rounded-lg p-1 text-slate-500 hover:bg-rose-500/15 hover:text-rose-400 cursor-pointer"
+                                    title="기록 삭제"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                              {submitMsg && (
+                                <div
+                                  className={`text-[11px] font-semibold ${
+                                    submitMsg.ok ? 'text-emerald-300' : 'text-slate-400'
+                                  }`}
+                                >
+                                  {submitMsg.text}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -870,13 +1140,65 @@ export function LegacyHubModal() {
 
           {tab === 'hof' && selectedEntry && (
             <div className="space-y-4">
-              <button
-                type="button"
-                onClick={() => setSelectedEntry(null)}
-                className="text-xs font-bold text-emerald-400 hover:underline cursor-pointer"
-              >
-                ← 명예의 전당 목록으로 돌아가기
-              </button>
+              {(() => {
+                const entryRunId = (selectedEntry.runId ?? selectedEntry.id).trim();
+                const globalRank = globalRankByRunId.get(entryRunId);
+                const submitMsg = manualSubmitMsgByRunId[entryRunId];
+                const isSubmitting = submittingRunId === entryRunId;
+                return (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEntry(null)}
+                      className="text-xs font-bold text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      ← 명예의 전당 목록으로 돌아가기
+                    </button>
+                    {isSupabaseConfigured && (
+                      <div className="flex items-center gap-2">
+                        {submitMsg && (
+                          <span
+                            className={`text-[11px] font-semibold ${
+                              submitMsg.ok ? 'text-emerald-300' : 'text-slate-400'
+                            }`}
+                          >
+                            {submitMsg.text}
+                          </span>
+                        )}
+                        {globalRank ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTab('global_top15');
+                              setSelectedEntry(null);
+                              setSelectedHistorical(null);
+                              setSelectedGlobal(null);
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-1.5 text-xs font-black text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                          >
+                            <Globe className="h-3.5 w-3.5" />
+                            <span>글로벌 TOP 15 · #{globalRank}위</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={() => void handleManualGlobalSubmit(selectedEntry)}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-1.5 text-xs font-black text-sky-200 hover:bg-sky-500/25 disabled:opacity-50 cursor-pointer"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            <span>
+                              {isSubmitting
+                                ? '제출 중...'
+                                : '글로벌 TOP 15 도전/등록'}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-700 bg-slate-950/80 p-5">
                 <div className="flex items-center gap-4">
@@ -1291,6 +1613,589 @@ export function LegacyHubModal() {
             </div>
           )}
 
+          {tab === 'global_top15' && !selectedGlobal && (
+            <div className="space-y-4">
+              {/* Top Bar: Status + Cutoff + Refresh */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-800 bg-[#090e15] px-3.5 py-2.5">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1 rounded-md border border-sky-400/35 bg-sky-500/15 px-2 py-0.5 text-[11px] font-black text-sky-300">
+                    <Globe className="h-3.5 w-3.5" />
+                    역대 유저 TOP {GLOBAL_TOP15_LIMIT}
+                  </span>
+                  <span className="font-mono text-[11px] text-slate-300 tabular-nums">
+                    {globalEntries.length} / {GLOBAL_TOP15_LIMIT}
+                  </span>
+                  {globalEntries.length >= GLOBAL_TOP15_LIMIT &&
+                    globalCutoff !== null && (
+                      <span className="rounded bg-slate-900 border border-slate-800 px-2 py-0.5 font-mono text-[11px] text-amber-300 tabular-nums">
+                        15위 컷 {globalCutoff.toLocaleString()} PTS
+                      </span>
+                    )}
+                </div>
+                {isSupabaseConfigured && (
+                  <button
+                    type="button"
+                    disabled={globalLoading}
+                    onClick={() => void loadGlobalRankings()}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:border-sky-400/50 hover:text-white disabled:opacity-50 cursor-pointer"
+                  >
+                    <RefreshCw
+                      className={`h-3 w-3 ${globalLoading ? 'animate-spin' : ''}`}
+                    />
+                    <span>새로고침</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Missing Challenger Squad Notice */}
+              {challengeNotice && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-400/45 bg-amber-500/12 px-3.5 py-2.5 text-xs font-bold text-amber-200">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-amber-300" />
+                    <span>{challengeNotice}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setChallengeNotice(null)}
+                    className="rounded p-1 text-amber-300/80 hover:text-white cursor-pointer"
+                    aria-label="안내 닫기"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {!isSupabaseConfigured ? (
+                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-10 text-center space-y-2">
+                  <Globe className="mx-auto h-9 w-9 text-slate-600" />
+                  <p className="text-sm font-bold text-slate-300">
+                    글로벌 랭킹 서버가 연결되어 있지 않습니다.
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    로컬 명예의 전당과 싱글플레이는 정상적으로 이용할 수 있습니다.
+                  </p>
+                </div>
+              ) : globalLoading && globalEntries.length === 0 ? (
+                <div className="space-y-2.5">
+                  {Array.from({ length: 5 }, (_, idx) => (
+                    <div
+                      key={idx}
+                      className="h-20 animate-pulse rounded-2xl border border-slate-800/80 bg-slate-900/60"
+                    />
+                  ))}
+                </div>
+              ) : globalError ? (
+                <div className="rounded-2xl border border-rose-500/35 bg-rose-950/20 p-8 text-center space-y-3">
+                  <p className="text-sm font-bold text-rose-200">
+                    랭킹을 불러오지 못했습니다.
+                  </p>
+                  <p className="text-xs text-slate-400">{globalError}</p>
+                  <button
+                    type="button"
+                    onClick={() => void loadGlobalRankings()}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span>다시 시도</span>
+                  </button>
+                </div>
+              ) : globalEntries.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-10 text-center space-y-2">
+                  <Trophy className="mx-auto h-10 w-10 text-slate-600" />
+                  <p className="text-sm font-bold text-slate-300">
+                    아직 글로벌 TOP {GLOBAL_TOP15_LIMIT}에 등재된 기록이 없습니다.
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    싱글플레이 시즌을 완주해 명예의 전당에 등록하면 첫 번째 랭커가 될 수 있습니다.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {globalEntries.map((entry) => {
+                    const isMine = localRunIds.has(entry.runId);
+                    const dreamRec =
+                      legacyState.dreamMatchRecords?.[`global:${entry.runId}`];
+                    const trait = entry.managerTraitId
+                      ? MANAGER_TRAITS[entry.managerTraitId]
+                      : null;
+                    const rankBorderClass =
+                      entry.rank === 1
+                        ? 'border-amber-400/50 bg-gradient-to-r from-[#1a160c] via-[#111622] to-[#0d121a]'
+                        : entry.rank === 2
+                          ? 'border-slate-400/40 bg-gradient-to-r from-[#161a22] via-[#101621] to-[#0d121a]'
+                          : entry.rank === 3
+                            ? 'border-amber-600/45 bg-gradient-to-r from-[#19130e] via-[#101621] to-[#0d121a]'
+                            : isMine
+                              ? 'border-emerald-500/40 bg-gradient-to-r from-[#0e1b18] via-[#0f1620] to-[#0c1118]'
+                              : 'border-slate-800/90 bg-[#0d131c] hover:border-slate-700';
+
+                    return (
+                      <div
+                        key={entry.id}
+                        className={`rounded-2xl border p-3.5 sm:p-4 transition ${rankBorderClass}`}
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          {/* Left: Rank + Jersey + Avatar + Team Meta */}
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSelectedGlobal(entry)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setSelectedGlobal(entry);
+                              }
+                            }}
+                            className="flex items-start sm:items-center gap-3 min-w-0 flex-1 cursor-pointer text-left"
+                          >
+                            <div
+                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-display text-sm font-black tabular-nums ${getMedalBadgeClass(entry.rank)}`}
+                            >
+                              {entry.rank <= 3
+                                ? entry.rank === 1
+                                  ? '🥇'
+                                  : entry.rank === 2
+                                    ? '🥈'
+                                    : '🥉'
+                                : `#${entry.rank}`}
+                            </div>
+
+                            <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-700/80 bg-slate-900">
+                              <JerseySvg
+                                primaryColor={entry.clubProfile.primaryColor}
+                                secondaryColor={entry.clubProfile.secondaryColor}
+                                pattern={entry.clubProfile.pattern}
+                                label={entry.clubProfile.shortName}
+                                size={32}
+                              />
+                              {entry.rank <= 3 && (
+                                <span className="absolute -top-1.5 -left-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-slate-950 border border-amber-400/60 px-1 font-mono text-[9px] font-black text-amber-300">
+                                  {entry.rank}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="hidden sm:flex h-11 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-800 bg-slate-900/90">
+                              <PixelManagerAvatar
+                                avatar={entry.managerAvatar}
+                                clubPrimaryColor={entry.clubProfile.primaryColor}
+                                clubSecondaryColor={
+                                  entry.clubProfile.secondaryColor
+                                }
+                                size={28}
+                              />
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <h3 className="text-sm font-black text-white truncate">
+                                  {entry.clubProfile.name}
+                                </h3>
+                                <span className="text-[11px] font-semibold text-slate-300 truncate">
+                                  {entry.managerName}
+                                </span>
+                                {isMine && (
+                                  <span className="rounded bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">
+                                    MY
+                                  </span>
+                                )}
+                                {entry.isTreble && (
+                                  <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-black text-amber-300">
+                                    👑 트레블
+                                  </span>
+                                )}
+                                {dreamRec && dreamRec.wins > 0 && (
+                                  <span className="rounded bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">
+                                    ⚔️ {dreamRec.wins}승 {dreamRec.losses}패
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-400">
+                                <span className="rounded bg-slate-900 border border-slate-800 px-1.5 py-0.5 font-bold text-slate-200">
+                                  {entry.formation}
+                                </span>
+                                <span>{TACTICS[entry.defaultTactic].name}</span>
+                                <span>· OVR {entry.teamAvgOvr}</span>
+                                <span>· 케미 {entry.chemistry}</span>
+                                {trait && <span>· {trait.name}</span>}
+                                <span className="hidden md:inline">
+                                  · {formatShortDate(entry.achievedAt)}
+                                </span>
+                              </div>
+
+                              <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                                {entry.trophies.slice(0, 3).map((tr) => (
+                                  <span
+                                    key={tr}
+                                    className="rounded border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-200"
+                                  >
+                                    🏆 {tr}
+                                  </span>
+                                ))}
+                                {entry.topScorerSummary &&
+                                  entry.topScorerSummary !== '-' && (
+                                    <span className="rounded bg-slate-900/90 border border-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300 truncate max-w-[180px]">
+                                      ⭐ {entry.topScorerSummary}
+                                    </span>
+                                  )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Score + Actions */}
+                          <div className="flex items-center justify-between sm:justify-end gap-3 border-t border-slate-800/70 pt-2.5 sm:border-t-0 sm:pt-0 shrink-0">
+                            <div className="text-left sm:text-right">
+                              <div className="flex items-center sm:justify-end gap-1.5">
+                                <span className="text-[10px] font-black text-amber-400">
+                                  {entry.grade}
+                                </span>
+                                <span className="sm:hidden text-[10px] text-slate-500">
+                                  {formatShortDate(entry.achievedAt)}
+                                </span>
+                              </div>
+                              <div className="font-mono text-lg font-black text-white tabular-nums leading-tight">
+                                {entry.seasonScore.toLocaleString()}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedGlobal(entry)}
+                                className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-200 hover:border-slate-500 hover:text-white cursor-pointer whitespace-nowrap"
+                              >
+                                스쿼드
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleChallengeGlobalTeam(entry)}
+                                className="inline-flex items-center gap-1 rounded-lg bg-amber-400 px-2.5 py-1.5 text-xs font-black text-slate-950 hover:bg-amber-300 cursor-pointer whitespace-nowrap"
+                              >
+                                <Swords className="h-3.5 w-3.5" />
+                                <span>1대1 대결</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* GLOBAL TOP 15 TEAM DETAIL VIEW */}
+          {tab === 'global_top15' && selectedGlobal && (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedGlobal(null);
+                    setChallengeNotice(null);
+                  }}
+                  className="text-xs font-bold text-sky-300 hover:underline cursor-pointer"
+                >
+                  ← 역대 TOP {GLOBAL_TOP15_LIMIT} 랭킹으로 돌아가기
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChallengeGlobalTeam(selectedGlobal)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-300 cursor-pointer shadow-md"
+                >
+                  <Swords className="h-4 w-4" />
+                  <span>이 팀과 1대1 대결</span>
+                </button>
+              </div>
+
+              {challengeNotice && (
+                <div className="flex items-center justify-between gap-2 rounded-xl border border-amber-400/45 bg-amber-500/12 px-3.5 py-2.5 text-xs font-bold text-amber-200">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-amber-300" />
+                    <span>{challengeNotice}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setChallengeNotice(null)}
+                    className="rounded p-1 text-amber-300/80 hover:text-white cursor-pointer"
+                    aria-label="안내 닫기"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* Hero Card */}
+              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-sky-400/35 bg-slate-950/85 p-4 sm:p-5">
+                <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl font-display text-lg font-black tabular-nums ${getMedalBadgeClass(selectedGlobal.rank)}`}
+                  >
+                    #{selectedGlobal.rank}
+                  </div>
+                  <JerseySvg
+                    primaryColor={selectedGlobal.clubProfile.primaryColor}
+                    secondaryColor={selectedGlobal.clubProfile.secondaryColor}
+                    pattern={selectedGlobal.clubProfile.pattern}
+                    label={selectedGlobal.clubProfile.shortName}
+                    size={50}
+                  />
+                  <div className="hidden sm:flex h-15 w-13 shrink-0 items-center justify-center rounded-xl border border-slate-700 bg-slate-900">
+                    <PixelManagerAvatar
+                      avatar={selectedGlobal.managerAvatar}
+                      clubPrimaryColor={selectedGlobal.clubProfile.primaryColor}
+                      clubSecondaryColor={
+                        selectedGlobal.clubProfile.secondaryColor
+                      }
+                      size={40}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg sm:text-xl font-black text-white truncate">
+                        {selectedGlobal.clubProfile.name}
+                      </h3>
+                      <span className="rounded-md bg-slate-800 px-2 py-0.5 text-xs font-bold text-sky-300">
+                        {selectedGlobal.managerName} 감독
+                      </span>
+                      <span className="rounded-lg bg-amber-400/20 px-2 py-0.5 text-xs font-black text-amber-300 tabular-nums">
+                        {selectedGlobal.grade} (
+                        {selectedGlobal.seasonScore.toLocaleString()}점)
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-slate-300">
+                      {selectedGlobal.leagueKoreanName}{' '}
+                      {selectedGlobal.finalLeagueRank}위 (
+                      {selectedGlobal.leagueRecord} ·{' '}
+                      {selectedGlobal.leaguePoints}점) ·{' '}
+                      {selectedGlobal.cupName} {selectedGlobal.cupResultLabel} ·
+                      UCL {selectedGlobal.uclResultLabel}
+                    </p>
+                    <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {formatShortDate(selectedGlobal.achievedAt)}
+                      </span>
+                      <span>포메이션 {selectedGlobal.formation}</span>
+                      <span>
+                        전술 {TACTICS[selectedGlobal.defaultTactic].name}
+                      </span>
+                      <span>평균 OVR {selectedGlobal.teamAvgOvr}</span>
+                      <span>케미 {selectedGlobal.chemistry}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trophies */}
+              {(selectedGlobal.isTreble || selectedGlobal.trophies.length > 0) && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedGlobal.isTreble && (
+                    <span className="rounded-lg bg-amber-400 px-3 py-1 text-xs font-black text-slate-950">
+                      👑 트레블 달성
+                    </span>
+                  )}
+                  {selectedGlobal.trophies.map((tr) => (
+                    <span
+                      key={tr}
+                      className="rounded-lg border border-amber-400/35 bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-200"
+                    >
+                      🏆 {tr}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* 8-Column Score Breakdown */}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
+                {[
+                  {
+                    label: '리그 환산(PPG×38)',
+                    val: selectedGlobal.scoreBreakdown.leagueConvertedScore,
+                  },
+                  {
+                    label: '리그 순위',
+                    val: selectedGlobal.scoreBreakdown.leagueRankBonus,
+                  },
+                  {
+                    label: '자국 컵',
+                    val: selectedGlobal.scoreBreakdown.cupBonus,
+                  },
+                  {
+                    label: '챔피언스리그',
+                    val: selectedGlobal.scoreBreakdown.uclBonus,
+                  },
+                  {
+                    label: '대업·대기록',
+                    val: selectedGlobal.scoreBreakdown.honorsBonus,
+                  },
+                  {
+                    label: '스쿼드·감독 시너지',
+                    val: selectedGlobal.scoreBreakdown.squadCraftBonus ?? 0,
+                  },
+                  {
+                    label: '언더독 보너스',
+                    val: selectedGlobal.scoreBreakdown.underdogBonus,
+                  },
+                  {
+                    label: '개인 수상 보너스',
+                    val: selectedGlobal.scoreBreakdown.awardsBonus ?? 0,
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl border border-slate-800 bg-slate-950/70 p-2.5 text-center"
+                  >
+                    <div className="text-[10px] text-slate-400">
+                      {item.label}
+                    </div>
+                    <div className="mt-1 font-mono text-sm font-black text-sky-300 tabular-nums">
+                      +{item.val.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Formation PitchBoard + Manager & Bench */}
+              {globalPitchData && (
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5 sm:p-4 space-y-3.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="text-xs font-extrabold text-white">
+                        {selectedGlobal.formation} ·{' '}
+                        {TACTICS[selectedGlobal.defaultTactic].name}
+                      </h4>
+                      <span className="rounded-md border border-emerald-400/35 bg-emerald-500/12 px-2 py-0.5 font-mono text-[11px] font-black text-emerald-300 tabular-nums">
+                        실효 OVR{' '}
+                        {globalPitchData.effectiveStarterOvr.toFixed(1)}
+                      </span>
+                      <span className="rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-300 tabular-nums">
+                        기본 {selectedGlobal.teamAvgOvr.toFixed(1)} · 시너지 +
+                        {globalPitchData.avgSynBonus.toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start">
+                    <div className="lg:col-span-7 mx-auto w-full max-w-[490px]">
+                      <PitchBoard
+                        formation={selectedGlobal.formation}
+                        starters={globalPitchData.starters}
+                        bench={globalPitchData.bench}
+                        chemistry={globalPitchData.chem}
+                        managerTraitId={selectedGlobal.managerTraitId}
+                        conditionByPlayerId={{}}
+                        showBench={false}
+                        showChemBreakdown={true}
+                        compact={true}
+                        onSlotClick={(area, idx) => {
+                          const p =
+                            area === 'starter'
+                              ? globalPitchData.starters[idx]
+                              : globalPitchData.bench[idx];
+                          if (p) setInspectedPlayer(p);
+                        }}
+                        onInspectPlayer={(p) => setInspectedPlayer(p)}
+                      />
+                    </div>
+
+                    <div className="lg:col-span-5 space-y-3">
+                      <div className="rounded-xl border border-sky-400/25 bg-slate-900/75 p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-12 w-11 shrink-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-950">
+                            <PixelManagerAvatar
+                              avatar={selectedGlobal.managerAvatar}
+                              clubPrimaryColor={
+                                selectedGlobal.clubProfile.primaryColor
+                              }
+                              clubSecondaryColor={
+                                selectedGlobal.clubProfile.secondaryColor
+                              }
+                              size={34}
+                            />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate text-xs font-black text-white">
+                                {selectedGlobal.managerName}
+                              </span>
+                              <span className="rounded bg-amber-500/20 px-1.5 py-0.5 font-mono text-[11px] font-black text-amber-300 tabular-nums shrink-0">
+                                OVR {selectedGlobal.managerRating}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                              {selectedGlobal.managerTraitId && (
+                                <span className="rounded bg-slate-800 px-1.5 py-0.5 font-bold text-emerald-300">
+                                  {
+                                    MANAGER_TRAITS[
+                                      selectedGlobal.managerTraitId
+                                    ]?.name
+                                  }
+                                </span>
+                              )}
+                              <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono font-bold text-slate-300 tabular-nums">
+                                케미 {globalPitchData.chem.total}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {globalPitchData.bench.length > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            벤치 스쿼드 ({globalPitchData.bench.length})
+                          </div>
+                          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-1">
+                            {globalPitchData.bench.map((p) => {
+                              const st = globalPitchData.statsById.get(p.id);
+                              return (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => setInspectedPlayer(p)}
+                                  className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-slate-900/60 px-2.5 py-1.5 text-left text-xs transition hover:border-sky-400/50 hover:bg-slate-800/75 cursor-pointer touch-manipulation"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="w-8 shrink-0 rounded bg-slate-800 py-0.5 text-center font-mono text-[10px] font-bold text-slate-400">
+                                      {p.mainPositions[0]}
+                                    </span>
+                                    <CountryFlagSvg
+                                      code={p.nationalityCode}
+                                      nationality={p.nationality}
+                                      size="sm"
+                                    />
+                                    <span className="truncate font-bold text-slate-200">
+                                      {p.name}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {st &&
+                                      ((st.goals ?? 0) > 0 ||
+                                        (st.assists ?? 0) > 0) && (
+                                        <span className="font-mono text-[10px] text-slate-400 tabular-nums">
+                                          {st.goals ?? 0}G {st.assists ?? 0}A
+                                        </span>
+                                      )}
+                                    <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[10px] font-black text-amber-300 tabular-nums">
+                                      {p.ovr}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {tab === 'achievements' && (
             <div className="space-y-4">
               {/* Progress Bar & Filters */}
@@ -1418,12 +2323,14 @@ export function LegacyHubModal() {
             Object.values(
               historicalPitchData?.chem.slotSynergies ??
                 userEntryPitchData?.chem.slotSynergies ??
+                globalPitchData?.chem.slotSynergies ??
                 {},
             ).find((s) => s.playerId === inspectedPlayer.id) ?? null
           }
           managerTraitId={
             selectedHistorical?.managerTraitId ??
             selectedEntry?.managerTraitId ??
+            selectedGlobal?.managerTraitId ??
             null
           }
           onClose={() => setInspectedPlayer(null)}

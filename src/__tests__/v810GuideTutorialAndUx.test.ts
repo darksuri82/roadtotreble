@@ -113,7 +113,7 @@ describe('v8.10 Guidebook 100% Engine Sync, Visual Tutorial & Contextual UX', ()
     expect(TOP4_TRANSFER_LEGEND_RATE).toBe(0.04);
     expect(UCL_CHAMPION_LEGEND_RATE).toBe(0.055);
     expect(ATTEMPTS_PER_WINDOW).toBe(3);
-    expect(HOF_AUTO_INDUCTION_MIN_SCORE).toBe(5500);
+    expect(HOF_AUTO_INDUCTION_MIN_SCORE).toBe(6500);
     expect(MP_H2H_MAX_POINTS).toBe(1500);
     expect(MAX_MATCH_SUBS).toBe(5);
     expect(TACTIC_STAMINA_MULT.gegenpressing).toBe(1.35);

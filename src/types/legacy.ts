@@ -84,6 +84,7 @@ export interface HallOfFameMatchSummary {
 
 export interface HallOfFameEntry {
   id: string;
+  runId?: string;
   completedAt: string;
   userClub: UserClubProfile;
   managerName?: string;
@@ -124,6 +125,98 @@ export interface HallOfFameEntry {
   fullStarters?: Player[];
   fullBench?: Player[];
   unlockedAchievementIds: string[];
+}
+
+export interface GlobalSquadSnapshotPlayer {
+  id: string;
+  name: string;
+  ovr: number;
+  position: string;
+  mainPositions: string[];
+  isLegend: boolean;
+  goals?: number;
+  assists?: number;
+  avgRating?: number;
+  /** Optional fallback fields persisted only when player is generated or not in static DB */
+  isGenerated?: boolean;
+  club?: string;
+  leagueId?: LeagueId | 'LEGEND';
+  nationality?: string;
+  nationalityCode?: string;
+  att?: number;
+  mid?: number;
+  def?: number;
+  stamina?: number;
+  playstyles?: string[];
+}
+
+export interface GlobalSquadSnapshot {
+  starters: GlobalSquadSnapshotPlayer[];
+  bench: GlobalSquadSnapshotPlayer[];
+}
+
+export interface GlobalHofRankingEntry {
+  id: string;
+  runId: string;
+  rank: number; // 1..15
+  seasonScore: number;
+  grade: SeasonScoreBreakdown['grade'];
+  clubName: string;
+  managerName: string;
+  leagueId: LeagueId;
+  leagueKoreanName: string;
+  finalLeagueRank: number;
+  leaguePoints: number;
+  leagueTotalRounds: number;
+  leagueRecord: string;
+  cupName: string;
+  cupResultLabel: string;
+  cupWon: boolean;
+  uclResultLabel: string;
+  uclWon: boolean;
+  isLeagueChampion: boolean;
+  isTreble: boolean;
+  trophies: string[];
+  formation: FormationId;
+  defaultTactic: TacticId;
+  managerTraitId: ManagerTraitId | null;
+  managerRating: number;
+  teamAvgOvr: number;
+  chemistry: number;
+  avgSynergyOvrBonus: number;
+  managerSynergyCount: number;
+  topScorerSummary: string;
+  clubProfile: UserClubProfile;
+  managerAvatar: ManagerAvatarConfig;
+  scoreBreakdown: SeasonScoreBreakdown;
+  squadSnapshot: GlobalSquadSnapshot;
+  achievedAt: string;
+}
+
+export interface GlobalRankingSubmitResult {
+  ok: boolean;
+  entered: boolean;
+  rank: number | null;
+  alreadyExists: boolean;
+  cutoffScore: number | null;
+  totalCount: number;
+  prunedCount: number;
+  error?: string;
+}
+
+export interface GlobalTop15CelebrationPayload {
+  runId: string;
+  rank: number;
+  totalScore: number;
+  grade: SeasonScoreBreakdown['grade'];
+  clubName: string;
+  managerName: string;
+  trophies: string[];
+  isTreble: boolean;
+  uclWon: boolean;
+  isLeagueChampion: boolean;
+  cupWon: boolean;
+  prunedCount: number;
 }
 
 export interface DreamMatchRecord {

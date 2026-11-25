@@ -135,15 +135,15 @@ describe('v5.1 Polish & Rebalance (Rare Injuries, Strict Morale/Interview Risk-R
     }
   });
 
-  it('auto-inducts only historical-caliber seasons (>= 5,500 / S+ / UCL win / Treble) into Hall of Fame', () => {
-    expect(HOF_AUTO_INDUCTION_MIN_SCORE).toBe(5500);
+  it('auto-inducts only historical-caliber seasons (>= 6,500 / S+ / UCL win / Treble) into Hall of Fame', () => {
+    expect(HOF_AUTO_INDUCTION_MIN_SCORE).toBe(6500);
     const mkScore = (totalScore: number, grade: 'S+' | 'S' | 'A+' | 'A') =>
       ({
         totalScore,
         grade,
       }) as Parameters<typeof isEligibleForAutoHofInduction>[0]['seasonScore'];
 
-    // Ordinary non-title season -> manual induction only
+    // Ordinary non-title season or easy 5,500~6,499 run -> manual induction only
     expect(
       isEligibleForAutoHofInduction({
         seasonScore: mkScore(4200, 'A'),
@@ -151,10 +151,17 @@ describe('v5.1 Polish & Rebalance (Rare Injuries, Strict Morale/Interview Risk-R
         isTreble: false,
       }),
     ).toBe(false);
-    // 15-16 Leicester-level historical score -> auto inducted
     expect(
       isEligibleForAutoHofInduction({
-        seasonScore: mkScore(5684, 'S'),
+        seasonScore: mkScore(6200, 'S'),
+        wonUcl: false,
+        isTreble: false,
+      }),
+    ).toBe(false);
+    // 15-16 Leicester-level historical score (6,513) -> auto inducted
+    expect(
+      isEligibleForAutoHofInduction({
+        seasonScore: mkScore(6513, 'S'),
         wonUcl: false,
         isTreble: false,
       }),

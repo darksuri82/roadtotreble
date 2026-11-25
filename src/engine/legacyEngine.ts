@@ -743,7 +743,18 @@ export function buildCompactMatchHistory(params: {
   ];
 }
 
+export function generateSeasonRunId(): string {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return `run-${crypto.randomUUID()}`;
+  }
+  return `run-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export function archiveSeasonToHallOfFame(params: {
+  runId?: string;
   userClub: UserClubProfile;
   managerName?: string;
   managerAvatar?: ManagerAvatarConfig;
@@ -771,6 +782,7 @@ export function archiveSeasonToHallOfFame(params: {
   userClubId?: string;
 }): LegacyStorageState {
   const {
+    runId,
     userClub,
     managerName,
     managerAvatar,
@@ -843,8 +855,17 @@ export function archiveSeasonToHallOfFame(params: {
     ? awards.bestXi.filter((x) => x.stats.teamId === userClubId).length
     : undefined;
 
+  const generatedId = `hof-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+  const effectiveRunId = runId?.trim() || generatedId;
+
+  const current = loadLegacyState();
+  if (current.hallOfFame.some((e) => (e.runId ?? e.id) === effectiveRunId)) {
+    return current;
+  }
+
   const entry: HallOfFameEntry = {
-    id: `hof-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    id: generatedId,
+    runId: effectiveRunId,
     completedAt: new Date().toISOString(),
     userClub: { ...userClub },
     managerName,
@@ -891,7 +912,6 @@ export function archiveSeasonToHallOfFame(params: {
     unlockedAchievementIds,
   };
 
-  const current = loadLegacyState();
   const nextHallOfFame = [entry, ...current.hallOfFame].slice(0, 50);
   const updated: LegacyStorageState = {
     ...current,
@@ -903,10 +923,10 @@ export function archiveSeasonToHallOfFame(params: {
 
 /**
  * Minimum season score to automatically enter the Hall of Fame (comparable to
- * the lowest Historical Benchmark team: 15-16 Leicester City at 5,684 pts).
+ * the lowest Historical Benchmark team: 15-16 Leicester City at 6,513 pts, below S+ 7,200).
  * Seasons below this threshold can still be manually inducted from Season Summary.
  */
-export const HOF_AUTO_INDUCTION_MIN_SCORE = 5500;
+export const HOF_AUTO_INDUCTION_MIN_SCORE = 6500;
 
 export function isEligibleForAutoHofInduction(params: {
   seasonScore: SeasonScoreBreakdown;

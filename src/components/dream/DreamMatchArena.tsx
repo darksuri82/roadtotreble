@@ -4,6 +4,7 @@ import {
   Crown,
   Dices,
   FastForward,
+  Globe,
   Play,
   RotateCcw,
   Shield,
@@ -48,6 +49,7 @@ import {
   USER_CLUB_ID,
 } from '../../engine/matchEngine';
 import { TACTIC_LIST, TACTICS } from '../../engine/tacticEngine';
+import { buildGlobalClubForMatch } from '../../services/globalRankingService';
 import { useGame } from '../../store/GameContext';
 import type {
   DraftState,
@@ -103,6 +105,8 @@ export function DreamMatchArena() {
     state,
     legacyState,
     dreamMatchInitialOpponentId,
+    dreamMatchGlobalOpponent,
+    openLegacyModal,
     closeDreamMatch,
     recordDreamMatchOutcome,
   } = useGame();
@@ -111,8 +115,13 @@ export function DreamMatchArena() {
     ? getHistoricalTeamById(dreamMatchInitialOpponentId)
     : null;
 
+  const [useGlobalOpponent, setUseGlobalOpponent] = useState<boolean>(
+    Boolean(dreamMatchGlobalOpponent),
+  );
   const [stage, setStage] = useState<DreamStage>(
-    initialOpponent ? 'select_challenger' : 'select_opponent',
+    dreamMatchGlobalOpponent || initialOpponent
+      ? 'select_challenger'
+      : 'select_opponent',
   );
   const [selectedOpponentId, setSelectedOpponentId] = useState<string>(
     initialOpponent?.id ?? HISTORICAL_BENCHMARK_TEAMS[0].id,
@@ -177,16 +186,103 @@ export function DreamMatchArena() {
     formation: FormationId;
   } | null>(null);
 
-  const selectedOpponent: HistoricalTeamEntry = useMemo(
+  const selectedHistoricalOpponent: HistoricalTeamEntry = useMemo(
     () =>
       getHistoricalTeamById(selectedOpponentId) ?? HISTORICAL_BENCHMARK_TEAMS[0],
     [selectedOpponentId],
   );
 
-  const oppMatchBundle = useMemo(
-    () => buildHistoricalClubForMatch(selectedOpponent),
-    [selectedOpponent],
+  const activeGlobalOpponent = useGlobalOpponent ? dreamMatchGlobalOpponent : null;
+
+  const oppMatchBundle = useMemo(() => {
+    if (activeGlobalOpponent) {
+      return buildGlobalClubForMatch(activeGlobalOpponent);
+    }
+    return buildHistoricalClubForMatch(selectedHistoricalOpponent);
+  }, [activeGlobalOpponent, selectedHistoricalOpponent]);
+
+  const activeOpponent = useMemo(() => {
+    if (activeGlobalOpponent) {
+      const globalBundle = buildGlobalClubForMatch(activeGlobalOpponent);
+      const traitId: ManagerTraitId =
+        activeGlobalOpponent.managerTraitId ?? 'big_game_hunter';
+      return {
+        isGlobalRanking: true as const,
+        id: `global:${activeGlobalOpponent.runId}`,
+        rank: activeGlobalOpponent.rank,
+        seasonLabel: `TOP 15 #${activeGlobalOpponent.rank}`,
+        displayName: activeGlobalOpponent.clubProfile.name || activeGlobalOpponent.clubName,
+        nickname: `${activeGlobalOpponent.leagueKoreanName} ${activeGlobalOpponent.finalLeagueRank}위 · ${activeGlobalOpponent.seasonScore.toLocaleString()} PTS`,
+        managerName: activeGlobalOpponent.managerName,
+        managerTraitId: traitId,
+        managerRating: activeGlobalOpponent.managerRating,
+        managerAvatar: activeGlobalOpponent.managerAvatar,
+        userClub: activeGlobalOpponent.clubProfile,
+        formation: activeGlobalOpponent.formation,
+        defaultTactic: activeGlobalOpponent.defaultTactic,
+        teamAvgOvr: activeGlobalOpponent.teamAvgOvr,
+        chemistry: globalBundle.chemistryTotal,
+        avgSynergyOvrBonus: globalBundle.avgSynergyOvrBonus,
+        managerSynergyCount: globalBundle.managerSynergyCount,
+      };
+    }
+    return {
+      isGlobalRanking: false as const,
+      id: selectedHistoricalOpponent.id,
+      rank: null,
+      seasonLabel: selectedHistoricalOpponent.seasonLabel,
+      displayName: selectedHistoricalOpponent.displayName,
+      nickname: selectedHistoricalOpponent.nickname,
+      managerName: selectedHistoricalOpponent.managerName,
+      managerTraitId: selectedHistoricalOpponent.managerTraitId,
+      managerRating: selectedHistoricalOpponent.managerRating,
+      managerAvatar: selectedHistoricalOpponent.managerAvatar,
+      userClub: selectedHistoricalOpponent.userClub,
+      formation: selectedHistoricalOpponent.formation,
+      defaultTactic: selectedHistoricalOpponent.defaultTactic,
+      teamAvgOvr: selectedHistoricalOpponent.teamAvgOvr,
+      chemistry: selectedHistoricalOpponent.chemistry,
+      avgSynergyOvrBonus: selectedHistoricalOpponent.avgSynergyOvrBonus,
+      managerSynergyCount: selectedHistoricalOpponent.managerSynergyCount,
+    };
+  }, [activeGlobalOpponent, selectedHistoricalOpponent]);
+
+  const currentSeasonStarters = useMemo(
+    () => state.starters.filter((p): p is Player => p !== null),
+    [state.starters],
   );
+  const hasCurrentSeasonSquad = currentSeasonStarters.length === 11;
+  const currentSeasonSummary = useMemo(() => {
+    if (!hasCurrentSeasonSquad) return null;
+    const tactic = state.season?.defaultTactic ?? state.defaultTactic;
+    const curChem = calculateChemistry(
+      state.formation,
+      state.starters,
+      tactic,
+      state.manager.traitId,
+    );
+    const curRatings = calculateTeamRatings(
+      state.formation,
+      currentSeasonStarters,
+      curChem.total,
+      state.manager.traitId,
+      curChem.slotSynergies,
+      tactic,
+    );
+    return {
+      tactic,
+      avgOvr: curRatings.rawOvr,
+      chemistry: curChem.total,
+    };
+  }, [
+    hasCurrentSeasonSquad,
+    state.season?.defaultTactic,
+    state.defaultTactic,
+    state.formation,
+    state.starters,
+    state.manager.traitId,
+    currentSeasonStarters,
+  ]);
 
   const filledStarters = useMemo(
     () => starters.filter((p): p is Player => p !== null),
@@ -381,6 +477,28 @@ export function DreamMatchArena() {
     setChallengerSourceLabel(
       `내 명전 팀 · ${entry.userClub.name} (${entry.seasonScore.totalScore.toLocaleString()}점)`,
     );
+    setMatchResult(null);
+    setStage('tactics_room');
+  };
+
+  const handleSelectCurrentSeasonTeam = () => {
+    if (!hasCurrentSeasonSquad) return;
+    const curTactic = state.season?.defaultTactic ?? state.defaultTactic;
+    setUserClub({ ...state.userClub });
+    setManager({
+      name: state.manager.name || DEFAULT_MANAGER_NAME,
+      avatar: state.manager.avatar ?? DEFAULT_MANAGER_AVATAR,
+      traitId: state.manager.traitId,
+      rerollsRemaining: 0,
+      hasSpun: true,
+    });
+    setFormation(state.formation);
+    setDefaultTactic(curTactic);
+    setActiveTactic(curTactic);
+    setStarters([...state.starters]);
+    setBench([...state.bench]);
+    setLegacyFallbackNotice(false);
+    setChallengerSourceLabel(`현재 시즌 팀 · ${state.userClub.name}`);
     setMatchResult(null);
     setStage('tactics_room');
   };
@@ -598,12 +716,12 @@ export function DreamMatchArena() {
       }
 
       recordDreamMatchOutcome({
-        historicalTeamId: selectedOpponent.id,
+        historicalTeamId: activeOpponent.id,
         outcome,
         scoreLabel,
       });
     },
-    [recordDreamMatchOutcome, selectedOpponent.id],
+    [recordDreamMatchOutcome, activeOpponent.id],
   );
 
   const handleStartLiveDreamMatch = () => {
@@ -614,7 +732,7 @@ export function DreamMatchArena() {
     };
     setEtSubIds([]);
     const fixture: Fixture = {
-      id: `dream-${selectedOpponent.id}-${Date.now()}`,
+      id: `dream-${activeOpponent.id}-${Date.now()}`,
       round: 1,
       homeTeamId: USER_CLUB_ID,
       awayTeamId: oppMatchBundle.club.id,
@@ -631,7 +749,9 @@ export function DreamMatchArena() {
     setLiveHalftime({
       ...ht,
       competition: 'ucl',
-      competitionLabel: `드림 매치 · vs ${selectedOpponent.displayName}`,
+      competitionLabel: activeOpponent.isGlobalRanking
+        ? `TOP 15 대결 · vs ${activeOpponent.displayName}`
+        : `드림 매치 · vs ${activeOpponent.displayName}`,
       isKnockoutDecider: knockoutRules,
       phase: 'first_half',
     });
@@ -639,7 +759,7 @@ export function DreamMatchArena() {
 
   const handleSimulateInstantDreamMatch = () => {
     const fixture: Fixture = {
-      id: `dream-${selectedOpponent.id}-${Date.now()}`,
+      id: `dream-${activeOpponent.id}-${Date.now()}`,
       round: 1,
       homeTeamId: USER_CLUB_ID,
       awayTeamId: oppMatchBundle.club.id,
@@ -656,7 +776,9 @@ export function DreamMatchArena() {
     result = {
       ...result,
       competition: 'ucl',
-      competitionLabel: `드림 매치 · vs ${selectedOpponent.displayName}`,
+      competitionLabel: activeOpponent.isGlobalRanking
+        ? `TOP 15 대결 · vs ${activeOpponent.displayName}`
+        : `드림 매치 · vs ${activeOpponent.displayName}`,
     };
     if (knockoutRules && result.homeGoals === result.awayGoals) {
       result = simulateExtraTimeAndPenalties({
@@ -690,9 +812,9 @@ export function DreamMatchArena() {
       simSeed: liveHalftime.fixtureId,
       opponentRoster: oppMatchBundle?.starters ?? [],
       opponentManagerOverride: {
-        name: selectedOpponent.managerName,
-        ovr: selectedOpponent.managerRating,
-        traitId: selectedOpponent.managerTraitId,
+        name: activeOpponent.managerName,
+        ovr: activeOpponent.managerRating,
+        traitId: activeOpponent.managerTraitId,
       },
       chemistry,
       changeFormation: handleChangeFormation,
@@ -1008,6 +1130,7 @@ export function DreamMatchArena() {
     allPlayerLookup,
     userMatchClub,
     oppMatchBundle,
+    activeOpponent,
     filledStarters,
     knockoutRules,
     handleChangeFormation,
@@ -1059,31 +1182,50 @@ export function DreamMatchArena() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-base sm:text-lg font-black text-white">
-                드림 매치 · 명예의 전당 챌린지
+                {activeOpponent.isGlobalRanking
+                  ? '글로벌 TOP 15 · 1대1 도전 매치'
+                  : '드림 매치 · 명예의 전당 챌린지'}
               </h1>
               <span className="rounded bg-amber-400/20 px-2 py-0.5 text-[10px] font-black text-amber-300 border border-amber-400/35">
-                역대 최강 14팀 도전
+                {activeOpponent.isGlobalRanking
+                  ? `🌍 글로벌 #${activeOpponent.rank}위 도전`
+                  : `역대 최강 ${HISTORICAL_BENCHMARK_TEAMS.length}팀 도전`}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 truncate">
-              진행 중인 시즌 세이브는 안전하게 보존됩니다 · 내 명전 팀 또는 즉석 드래프트로 전설의 팀에 도전하세요
+              진행 중인 시즌 세이브는 안전하게 보존됩니다
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {stage !== 'select_opponent' && (
+          {activeOpponent.isGlobalRanking ? (
             <button
               type="button"
               onClick={() => {
-                setLiveHalftime(null);
-                setMatchResult(null);
-                setStage('select_opponent');
+                closeDreamMatch();
+                openLegacyModal('global_top15');
               }}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 hover:border-amber-400/50 hover:text-amber-200 cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-lg border border-sky-400/40 bg-sky-500/12 px-3 py-1.5 text-xs font-bold text-sky-200 hover:bg-sky-500/20 cursor-pointer"
             >
-              상대 변경
+              <Globe className="h-3.5 w-3.5" />
+              <span>TOP 15 목록</span>
             </button>
+          ) : (
+            stage !== 'select_opponent' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setLiveHalftime(null);
+                  setMatchResult(null);
+                  setUseGlobalOpponent(false);
+                  setStage('select_opponent');
+                }}
+                className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 hover:border-amber-400/50 hover:text-amber-200 cursor-pointer"
+              >
+                상대 변경
+              </button>
+            )
           )}
           <button
             type="button"
@@ -1097,7 +1239,7 @@ export function DreamMatchArena() {
       </div>
 
       {/* ================================================================= */}
-      {/* STEP 1: Select Historical Legend Opponent (14 Teams)              */}
+      {/* STEP 1: Select Historical Legend Opponent                         */}
       {/* ================================================================= */}
       {stage === 'select_opponent' && (
         <div className="space-y-4">
@@ -1107,7 +1249,7 @@ export function DreamMatchArena() {
                 1단계 · 도전할 역대 최강팀 선택
               </h2>
               <p className="text-xs text-slate-400">
-                모든 역대 강팀은 실제 전성기 선발 11명 + 핵심 벤치 6명(17인 풀스쿼드)과 명장 전술·세부 능력치로 구현되어 있습니다.
+                모든 역대 강팀은 실제 전성기 선발 11명 + 핵심 벤치(17인 풀스쿼드)와 명장 전술·세부 능력치로 구현되어 있습니다.
               </p>
             </div>
           </div>
@@ -1202,6 +1344,7 @@ export function DreamMatchArena() {
                     <button
                       type="button"
                       onClick={() => {
+                        setUseGlobalOpponent(false);
                         setSelectedOpponentId(team.id);
                         setStage('select_challenger');
                       }}
@@ -1219,7 +1362,7 @@ export function DreamMatchArena() {
       )}
 
       {/* ================================================================= */}
-      {/* STEP 2: Select Challenger Mode (A: My HOF Team / B: Instant Draft)*/}
+      {/* STEP 2: Select Challenger Mode (Current Season / HOF / Draft)     */}
       {/* ================================================================= */}
       {stage === 'select_challenger' && (
         <div className="space-y-4">
@@ -1227,177 +1370,237 @@ export function DreamMatchArena() {
           <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-r from-[#18140d] via-[#111723] to-[#0d121c] p-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
               <JerseySvg
-                primaryColor={selectedOpponent.userClub.primaryColor}
-                secondaryColor={selectedOpponent.userClub.secondaryColor}
-                pattern={selectedOpponent.userClub.pattern}
-                label={selectedOpponent.userClub.shortName}
+                primaryColor={activeOpponent.userClub.primaryColor}
+                secondaryColor={activeOpponent.userClub.secondaryColor}
+                pattern={activeOpponent.userClub.pattern}
+                label={activeOpponent.userClub.shortName}
                 size={48}
               />
               <div className="flex h-14 w-12 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-slate-900">
                 <PixelManagerAvatar
-                  avatar={selectedOpponent.managerAvatar}
-                  clubPrimaryColor={selectedOpponent.userClub.primaryColor}
-                  clubSecondaryColor={selectedOpponent.userClub.secondaryColor}
+                  avatar={activeOpponent.managerAvatar}
+                  clubPrimaryColor={activeOpponent.userClub.primaryColor}
+                  clubSecondaryColor={activeOpponent.userClub.secondaryColor}
                   size={36}
                 />
               </div>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-black text-amber-300">
-                    상대 역대 강팀
+                    {activeOpponent.isGlobalRanking
+                      ? `🌍 글로벌 TOP 15 · #${activeOpponent.rank}위`
+                      : '상대 역대 강팀'}
                   </span>
                   <h2 className="text-base sm:text-lg font-black text-white">
-                    {selectedOpponent.displayName}
+                    {activeOpponent.displayName}
                   </h2>
                 </div>
                 <p className="text-xs text-amber-200 mt-0.5">
-                  {selectedOpponent.managerName} 감독 (지휘력 {selectedOpponent.managerRating} ·{' '}
-                  {MANAGER_TRAITS[selectedOpponent.managerTraitId].name}) ·{' '}
-                  {selectedOpponent.formation} · {TACTICS[selectedOpponent.defaultTactic].name}
+                  {activeOpponent.managerName} 감독 (지휘력 {activeOpponent.managerRating} ·{' '}
+                  {MANAGER_TRAITS[activeOpponent.managerTraitId].name}) ·{' '}
+                  {activeOpponent.formation} · {TACTICS[activeOpponent.defaultTactic].name}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  평균 OVR {selectedOpponent.teamAvgOvr} · 팀 케미 {selectedOpponent.chemistry} · 감독 시너지{' '}
-                  {selectedOpponent.managerSynergyCount}명 (+{selectedOpponent.avgSynergyOvrBonus.toFixed(1)} OVR)
+                  평균 OVR {activeOpponent.teamAvgOvr} · 팀 케미 {activeOpponent.chemistry} · 감독 시너지{' '}
+                  {activeOpponent.managerSynergyCount}명 (+{activeOpponent.avgSynergyOvrBonus.toFixed(1)} OVR)
                 </p>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => setStage('select_opponent')}
+              onClick={() => {
+                if (activeOpponent.isGlobalRanking) {
+                  closeDreamMatch();
+                  openLegacyModal('global_top15');
+                } else {
+                  setStage('select_opponent');
+                }
+              }}
               className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
             >
-              다른 상대 고르기
+              {activeOpponent.isGlobalRanking ? 'TOP 15 목록으로' : '다른 상대 고르기'}
             </button>
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {/* Option A: Load My Hall of Fame Team */}
-            <div className="rounded-2xl border border-emerald-500/35 bg-[#0e1520] p-5 space-y-4">
+            {/* Option A: Load My Squad (Ongoing Season + Hall of Fame Teams) */}
+            <div
+              className={`rounded-2xl border border-emerald-500/35 bg-[#0e1520] p-5 space-y-4 ${
+                activeOpponent.isGlobalRanking ? 'lg:col-span-2' : ''
+              }`}
+            >
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black text-emerald-300">
-                    방식 A · 내 명예의 전당 팀
+                    {activeOpponent.isGlobalRanking
+                      ? '내 출전 스쿼드 선택'
+                      : '방식 A · 내 스쿼드 불러오기'}
                   </span>
                   <h3 className="mt-1.5 text-base font-black text-white">
-                    과거 내가 완성한 명전 팀 불러오기
+                    진행 중인 시즌 또는 내 명전 팀 선택
                   </h3>
-                  <p className="mt-0.5 text-xs text-slate-400">
-                    시즌을 마쳐 명예의 전당에 등재한 내 스쿼드·감독·전술을 그대로 불러와 역대 최강팀과 진검승부를 펼칩니다.
-                  </p>
                 </div>
                 <Crown className="h-6 w-6 text-emerald-400 shrink-0" />
               </div>
 
-              {legacyState.hallOfFame.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/60 p-6 text-center space-y-2">
-                  <Trophy className="mx-auto h-8 w-8 text-slate-600" />
-                  <p className="text-xs font-bold text-slate-300">
-                    아직 명예의 전당에 등록된 내 팀 기록이 없습니다.
-                  </p>
-                  <p className="text-[11px] text-slate-500">
-                    정규 시즌을 완주하거나, 우측의 [즉석 드림 드래프트]로 바로 도전해 보세요!
-                  </p>
-                </div>
-              ) : (
-                <div className="max-h-[340px] overflow-y-auto space-y-2.5 pr-1">
-                  {legacyState.hallOfFame.map((entry) => {
-                    const hasFull =
-                      Array.isArray(entry.fullStarters) &&
-                      entry.fullStarters.length >= 11;
-                    return (
-                      <div
-                        key={entry.id}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3 hover:border-emerald-400/55 transition"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <JerseySvg
-                            primaryColor={entry.userClub.primaryColor}
-                            secondaryColor={entry.userClub.secondaryColor}
-                            pattern={entry.userClub.pattern}
-                            label={entry.userClub.shortName}
-                            size={30}
-                          />
-                          {entry.managerAvatar && (
-                            <PixelManagerAvatar
-                              avatar={entry.managerAvatar}
-                              clubPrimaryColor={entry.userClub.primaryColor}
-                              clubSecondaryColor={entry.userClub.secondaryColor}
-                              size={26}
-                            />
-                          )}
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="truncate text-xs font-black text-white">
-                                {entry.userClub.name}
-                              </span>
-                              <span className="rounded bg-amber-500/20 px-1.5 py-0.2 font-mono text-[10px] font-black text-amber-300">
-                                {entry.seasonScore.grade} {entry.seasonScore.totalScore.toLocaleString()}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-slate-400 truncate">
-                              {entry.formation} · {TACTICS[entry.defaultTactic].name} · OVR {entry.teamAvgOvr} · 케미 {entry.chemistry}
-                              {!hasFull && ' · 구버전 자동 복원'}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleSelectHofTeam(entry)}
-                          className="shrink-0 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-slate-950 hover:bg-emerald-400 cursor-pointer"
-                        >
-                          출전
-                        </button>
+              {/* Current Ongoing Season Squad */}
+              {hasCurrentSeasonSquad && currentSeasonSummary && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-sky-400/45 bg-sky-950/25 p-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <JerseySvg
+                      primaryColor={state.userClub.primaryColor}
+                      secondaryColor={state.userClub.secondaryColor}
+                      pattern={state.userClub.pattern}
+                      label={state.userClub.shortName}
+                      size={32}
+                    />
+                    <PixelManagerAvatar
+                      avatar={state.manager.avatar}
+                      clubPrimaryColor={state.userClub.primaryColor}
+                      clubSecondaryColor={state.userClub.secondaryColor}
+                      size={26}
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded bg-sky-500/20 px-1.5 py-0.5 text-[9px] font-black text-sky-300">
+                          현재 진행 중
+                        </span>
+                        <span className="truncate text-xs font-black text-white">
+                          {state.userClub.name}
+                        </span>
                       </div>
-                    );
-                  })}
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                        {state.formation} · {TACTICS[currentSeasonSummary.tactic].name} · OVR{' '}
+                        {currentSeasonSummary.avgOvr} · 케미 {currentSeasonSummary.chemistry}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSelectCurrentSeasonTeam}
+                    className="shrink-0 rounded-lg bg-sky-400 px-3 py-1.5 text-xs font-black text-slate-950 hover:bg-sky-300 cursor-pointer"
+                  >
+                    출전
+                  </button>
+                </div>
+              )}
+
+              {legacyState.hallOfFame.length === 0 ? (
+                !hasCurrentSeasonSquad && (
+                  <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/60 p-6 text-center space-y-2">
+                    <Trophy className="mx-auto h-8 w-8 text-slate-600" />
+                    <p className="text-xs font-bold text-slate-300">
+                      먼저 시즌을 시작하거나 명전 스쿼드를 등록해 주세요.
+                    </p>
+                  </div>
+                )
+              ) : (
+                <div className="space-y-2">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    내 명예의 전당 팀 ({legacyState.hallOfFame.length})
+                  </div>
+                  <div className="space-y-2">
+                    {legacyState.hallOfFame.map((entry) => {
+                      const hasFull =
+                        Array.isArray(entry.fullStarters) &&
+                        entry.fullStarters.length >= 11;
+                      return (
+                        <div
+                          key={entry.id}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/80 p-3 hover:border-emerald-400/55 transition"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <JerseySvg
+                              primaryColor={entry.userClub.primaryColor}
+                              secondaryColor={entry.userClub.secondaryColor}
+                              pattern={entry.userClub.pattern}
+                              label={entry.userClub.shortName}
+                              size={30}
+                            />
+                            {entry.managerAvatar && (
+                              <PixelManagerAvatar
+                                avatar={entry.managerAvatar}
+                                clubPrimaryColor={entry.userClub.primaryColor}
+                                clubSecondaryColor={entry.userClub.secondaryColor}
+                                size={26}
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="truncate text-xs font-black text-white">
+                                  {entry.userClub.name}
+                                </span>
+                                <span className="rounded bg-amber-500/20 px-1.5 py-0.2 font-mono text-[10px] font-black text-amber-300">
+                                  {entry.seasonScore.grade} {entry.seasonScore.totalScore.toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 truncate">
+                                {entry.formation} · {TACTICS[entry.defaultTactic].name} · OVR {entry.teamAvgOvr} · 케미 {entry.chemistry}
+                                {!hasFull && ' · 구버전 자동 복원'}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSelectHofTeam(entry)}
+                            className="shrink-0 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-black text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                          >
+                            출전
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Option B: Instant Dream Draft */}
-            <div className="flex flex-col justify-between rounded-2xl border border-sky-500/35 bg-[#0e1520] p-5 space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-black text-sky-300">
-                      방식 B · 즉석 드림 드래프트
-                    </span>
-                    <h3 className="mt-1.5 text-base font-black text-white">
-                      지금 바로 16인 드래프트로 도전 팀 구성
-                    </h3>
-                    <p className="mt-0.5 text-xs text-slate-400">
-                      포메이션·전술·감독 강점을 고르고 16인 룰렛 드래프트로 {selectedOpponent.displayName}에 맞설 맞춤형 드림팀을 즉석 결성합니다.
-                    </p>
+            {/* Option B: Instant Dream Draft (Historical Teams Challenge) */}
+            {!activeOpponent.isGlobalRanking && (
+              <div className="flex flex-col justify-between rounded-2xl border border-sky-500/35 bg-[#0e1520] p-5 space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-black text-sky-300">
+                        방식 B · 즉석 드림 드래프트
+                      </span>
+                      <h3 className="mt-1.5 text-base font-black text-white">
+                        지금 바로 16인 드래프트로 도전 팀 구성
+                      </h3>
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        포메이션·전술·감독 강점을 고르고 16인 룰렛 드래프트로 {activeOpponent.displayName}에 맞설 맞춤형 드림팀을 즉석 결성합니다.
+                      </p>
+                    </div>
+                    <Dices className="h-6 w-6 text-sky-400 shrink-0" />
                   </div>
-                  <Dices className="h-6 w-6 text-sky-400 shrink-0" />
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-2 text-xs text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                      <span>드림 매치 전용 레전드 ICON 출현 확률 상향 (4.0%)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                      <span>임시 배치 시너지 프리뷰 · 포지션 자유 스왑 · 원클릭 자동완성 지원</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                      <span>현재 커스터마이징된 내 감독({manager.name}) 아바타 그대로 출전</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-2 text-xs text-slate-300">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                    <span>드림 매치 전용 레전드 ICON 출현 확률 상향 (4.0%)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                    <span>임시 배치 시너지 프리뷰 · 포지션 자유 스왑 · 원클릭 자동완성 지원</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-                    <span>현재 커스터마이징된 내 감독({manager.name}) 아바타 그대로 출전</span>
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setStage('draft_setup')}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 py-3 text-sm font-black text-slate-950 hover:bg-sky-400 cursor-pointer"
+                >
+                  <Dices className="h-4 w-4" />
+                  <span>즉석 드림 드래프트 설정하기</span>
+                  <ArrowRight className="h-4 w-4" />
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setStage('draft_setup')}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500 px-5 py-3 text-sm font-black text-slate-950 hover:bg-sky-400 cursor-pointer"
-              >
-                <Dices className="h-4 w-4" />
-                <span>즉석 드림 드래프트 설정하기</span>
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -1413,7 +1616,7 @@ export function DreamMatchArena() {
                 즉석 드림 드래프트 빠른 설정
               </h2>
               <p className="text-xs text-slate-400">
-                상대: <strong className="text-amber-300">{selectedOpponent.displayName}</strong> ({selectedOpponent.formation} · {TACTICS[selectedOpponent.defaultTactic].name})
+                상대: <strong className="text-amber-300">{activeOpponent.displayName}</strong> ({activeOpponent.formation} · {TACTICS[activeOpponent.defaultTactic].name})
               </p>
             </div>
             <button
@@ -1689,17 +1892,17 @@ export function DreamMatchArena() {
             </div>
           )}
 
-          {/* Opponent Legendary Manager & Match Rules Strip */}
+          {/* Opponent Manager & Match Rules Strip */}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-[#0e1520] px-4 py-3">
             <div className="flex items-center gap-3 min-w-0">
               <span className="rounded bg-emerald-500/15 border border-emerald-400/35 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
                 {challengerSourceLabel}
               </span>
               <span className="text-xs text-slate-400 truncate">
-                상대 명장:{' '}
+                상대 감독:{' '}
                 <strong className="text-amber-300">
-                  {selectedOpponent.managerName} ({selectedOpponent.managerRating} ·{' '}
-                  {MANAGER_TRAITS[selectedOpponent.managerTraitId].name})
+                  {activeOpponent.managerName} ({activeOpponent.managerRating} ·{' '}
+                  {MANAGER_TRAITS[activeOpponent.managerTraitId].name})
                 </strong>
               </span>
             </div>
@@ -1731,9 +1934,18 @@ export function DreamMatchArena() {
           <MatchDayTacticsRoom
             opponent={oppMatchBundle.club}
             opponentRoster={oppMatchBundle.fullRoster}
-            opponentSubtitle={`${selectedOpponent.managerName} 감독 (지휘력 ${selectedOpponent.managerRating}) · ${selectedOpponent.nickname}`}
+            opponentSubtitle={`${activeOpponent.managerName} 감독 (지휘력 ${activeOpponent.managerRating}) · ${activeOpponent.nickname}`}
+            opponentManagerOverride={{
+              name: activeOpponent.managerName,
+              ovr: activeOpponent.managerRating,
+              traitId: activeOpponent.managerTraitId,
+            }}
             isHome
-            headerBadge={`DREAM MATCH · vs ${selectedOpponent.seasonLabel}`}
+            headerBadge={
+              activeOpponent.isGlobalRanking
+                ? `TOP 15 MATCH · vs #${activeOpponent.rank}`
+                : `DREAM MATCH · vs ${activeOpponent.seasonLabel}`
+            }
             headerAccent="ucl"
             activeTactic={activeTactic}
             defaultTactic={defaultTactic}
@@ -1778,10 +1990,10 @@ export function DreamMatchArena() {
           <div className="rounded-2xl border border-slate-800 bg-[#0e1520] p-4 space-y-2.5">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-extrabold text-amber-300">
-                {selectedOpponent.displayName} 핵심 벤치 ({oppMatchBundle.bench.length}명 · 클릭 시 세부 능력치 열람)
+                {activeOpponent.displayName} 벤치 ({oppMatchBundle.bench.length}명)
               </h4>
               <span className="text-[11px] text-slate-400">
-                선발 11 + 벤치 {oppMatchBundle.bench.length} = 총 {oppMatchBundle.fullRoster.length}인 풀스쿼드
+                선발 11 + 벤치 {oppMatchBundle.bench.length} = 총 {oppMatchBundle.fullRoster.length}인
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -1829,17 +2041,19 @@ export function DreamMatchArena() {
                 }`}
               >
                 <div className="text-xs font-extrabold uppercase tracking-wider text-amber-300">
-                  DREAM MATCH FULL TIME
+                  {activeOpponent.isGlobalRanking
+                    ? `GLOBAL TOP 15 #${activeOpponent.rank} · FULL TIME`
+                    : 'DREAM MATCH FULL TIME'}
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-white">
                   {won
-                    ? `🏆 전설 격파! ${selectedOpponent.displayName}을(를) 꺾었습니다!`
+                    ? `🏆 격파 성공! ${activeOpponent.displayName}을(를) 꺾었습니다!`
                     : draw
-                      ? `🤝 ${selectedOpponent.displayName}과(와) 대등한 무승부!`
-                      : `⚔️ ${selectedOpponent.displayName}의 벽은 높았습니다`}
+                      ? `🤝 ${activeOpponent.displayName}과(와) 대등한 무승부!`
+                      : `⚔️ ${activeOpponent.displayName}의 벽은 높았습니다`}
                 </h2>
                 <p className="text-xs text-slate-300">
-                  {userClub.name} {ug} - {og} {selectedOpponent.displayName}
+                  {userClub.name} {ug} - {og} {activeOpponent.displayName}
                   {matchResult.extraTime?.penalties &&
                     ` (승부차기 ${matchResult.extraTime.penalties.homePenGoals}-${matchResult.extraTime.penalties.awayPenGoals})`}
                   {!matchResult.extraTime?.penalties &&
@@ -1859,28 +2073,44 @@ export function DreamMatchArena() {
                     <RotateCcw className="h-3.5 w-3.5" />
                     <span>전술 수정 후 재도전</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMatchResult(null);
-                      setStage('select_opponent');
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/45 bg-amber-500/15 px-4 py-2 text-xs font-extrabold text-amber-200 hover:bg-amber-500/25 cursor-pointer"
-                  >
-                    <Swords className="h-3.5 w-3.5" />
-                    <span>다른 역대 강팀 도전</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMatchResult(null);
-                      setStage('draft_setup');
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-4 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
-                  >
-                    <Wand2 className="h-3.5 w-3.5" />
-                    <span>새 드래프트로 도전</span>
-                  </button>
+                  {activeOpponent.isGlobalRanking ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeDreamMatch();
+                        openLegacyModal('global_top15');
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-4 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                    >
+                      <Globe className="h-3.5 w-3.5" />
+                      <span>TOP 15 랭킹으로 돌아가기</span>
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMatchResult(null);
+                          setStage('select_opponent');
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/45 bg-amber-500/15 px-4 py-2 text-xs font-extrabold text-amber-200 hover:bg-amber-500/25 cursor-pointer"
+                      >
+                        <Swords className="h-3.5 w-3.5" />
+                        <span>다른 역대 강팀 도전</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMatchResult(null);
+                          setStage('draft_setup');
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-4 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                      >
+                        <Wand2 className="h-3.5 w-3.5" />
+                        <span>새 드래프트로 도전</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             );

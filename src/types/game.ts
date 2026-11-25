@@ -416,6 +416,7 @@ export interface OtherLeagueSeasonState {
 }
 
 export interface SeasonState {
+  runId?: string;
   leagueId: LeagueId;
   replacedClubName: string;
   defaultTactic: TacticId;

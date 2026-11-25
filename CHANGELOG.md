@@ -5,6 +5,22 @@
 
 ---
 
+## v8.12 — 글로벌 역대 유저 TOP 15 점수 랭킹 · 랭킹 팀 1대1 도전 매치 · 명예의 전당 자동 등재 기준 상향(6,500+)
+
+- **Supabase 글로벌 역대 TOP 15 원자적 랭킹 & 16위 이하 자동 삭제 (`supabase/schema.sql`, `src/services/globalRankingService.ts`, `src/types/legacy.ts`, `src/types/game.ts`, `src/engine/legacyEngine.ts`)**:
+  - `public.global_hof_rankings` 테이블, 동점자 정렬 인덱스(`season_score DESC, is_treble DESC, ucl_won DESC, achieved_at ASC, id ASC`), 공개 `SELECT` 전용 RLS(클라이언트 직접 `INSERT/UPDATE/DELETE` 차단), `pg_advisory_xact_lock` + `SECURITY DEFINER` 기반 원자적 RPC `submit_global_hof_ranking(p_entry jsonb)` 추가 — 신규 기록이 TOP 15 진입 시 16위 이하 기록을 동일 트랜잭션 내에서 즉시 삭제.
+  - `SeasonState.runId` 및 `HallOfFameEntry.runId`(`generateSeasonRunId`)를 도입해 DB `UNIQUE(run_id)` 제약과 로컬·클라이언트 중복 제출 가드로 동일 시즌 중복 등재를 차단.
+  - 경량 `squad_snapshot` 직렬화(실제 현역/레전드 선수는 ID 기반 최소 메타, 생성 선수는 스탯 폴백 포함) 및 무손실 `reconstructSquadFromGlobalRanking` / `buildGlobalClubForMatch` 구현, Supabase 미연결·오프라인 시 로컬 명전과 싱글플레이 무중단 폴백 보장.
+- **명예의 전당 자동 등재 기준 상향(6,500+) & 시즌 종료 TOP 15 축하 팝업 (`src/engine/legacyEngine.ts`, `src/store/GameContext.tsx`, `src/components/legacy/GlobalTop15CelebrationModal.tsx`, `src/components/league/SeasonSummary.tsx`)**:
+  - `HOF_AUTO_INDUCTION_MIN_SCORE`를 `5,500` → `6,500`(역대 최강팀 최저 15-16 레스터 시티 6,513점 수준, S+ 7,200점 미만)으로 상향 조정.
+  - 싱글플레이 최종 종료(리그 단독 종료 및 챔스 최종 종료 모두 포함) 후 명예의 전당 등재(자동·수동) 시 `submit_global_hof_ranking` RPC를 비동기 실행하고, 신규 TOP 15 진입 시 기존 컵·정규리그 결산 모달 종료 후 순차적으로 `GlobalTop15CelebrationModal` 노출(1회 래치). 미진입 시 실패 팝업 없이 결산 스코어 카드에 현재 15위 커트라인만 간결히 참고 표시.
+- **역대 TOP 15 랭킹 보드 UI & `DreamMatchArena` 1대1 도전 연동 (`src/components/legacy/LegacyHubModal.tsx`, `src/components/dream/DreamMatchArena.tsx`, `src/components/setup/TitleScreen.tsx`, `src/components/common/HeaderNav.tsx`)**:
+  - `LegacyHubModal`에 `🌍 역대 TOP 15` 탭과 팀 상세 피치/케미/벤치/8항목 점수 미리보기, 로컬 명전 기록의 수동 `[글로벌 도전]` 버튼 추가. 타이틀 보조 바·상단 헤더에서 원클릭 진입 연결.
+  - 모든 TOP 15 팀의 `[1대1 대결]` 버튼을 기존 `DreamMatchArena`(전술실 → 2D 리얼리스틱 시뮬레이션 → 하프타임 수싸움 → 연장/PK → 결과)에 직결하고, 도전자 선택에 **현재 진행 중인 시즌 스쿼드** + **내 명예의 전당 팀** 선택 및 미보유 시 간결한 안내 메시지 가드 추가.
+- **테스트 (`src/__tests__/v812GlobalTop15Ranking.test.ts`, `src/__tests__/v51PolishAndRebalance.test.ts`, `src/__tests__/v810GuideTutorialAndUx.test.ts`)**: `HOF_AUTO_INDUCTION_MIN_SCORE = 6500`, TOP 15 상한·16위 자동 삭제·중복 `runId`·동점자 타이브레이커, 실제+생성 선수 스냅샷 직렬화/복원 및 `buildGlobalClubForMatch`, `supabase/schema.sql` RLS/RPC 검증 추가.
+
+---
+
 ## v8.11 — 리얼리스틱 2D 매치 시뮬레이션 전면 개편 (5대 전술·스탯 완전 통합 · Steering/삼자패스 AI · Fixed-Timestep 정밀 배속 · 결승전 특별 프레임)
 
 - **5대 전술·능력 요소 100% 피치 직결 (`src/engine/pitchSimTypes.ts`, `src/engine/pitchTacticalParams.ts`, `src/engine/pitchSimEngine.ts`)**:

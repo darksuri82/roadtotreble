@@ -10,7 +10,7 @@ import {
   Star,
   Trophy,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
 import { compareScoreWithHistoricalTeams } from '../../data/historicalTeams';
 import {
@@ -21,12 +21,17 @@ import {
 } from '../../engine/analyticsEngine';
 import { didUserWinCup, getUserCupResultLabel } from '../../engine/cupEngine';
 import { getLeagueById, LEAGUES } from '../../engine/dataLoader';
-import { buildCompactMatchHistory } from '../../engine/legacyEngine';
+import {
+  buildCompactMatchHistory,
+  HOF_AUTO_INDUCTION_MIN_SCORE,
+} from '../../engine/legacyEngine';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { buildFiveLeagueUclQualifiers } from '../../engine/otherLeaguesEngine';
 import { formatMainPositions } from '../../engine/positionEngine';
 import { getUserRank } from '../../engine/standingsEngine';
 import { didUserWinUcl, getUserUclResultLabel } from '../../engine/uclEngine';
+import { isSupabaseConfigured } from '../../lib/supabaseClient';
+import { fetchGlobalTop15Rankings } from '../../services/globalRankingService';
 import { useGame } from '../../store/GameContext';
 import type {
   BestXiEntry,
@@ -55,6 +60,7 @@ import {
 } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
+import { GlobalTop15CelebrationModal } from '../legacy/GlobalTop15CelebrationModal';
 import { UclBracketTree } from '../ucl/UclBracketTree';
 import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
@@ -202,6 +208,11 @@ export function SeasonSummary() {
     enterUclMode,
     skipUclToFinalSummary,
     setLegacyModalOpen,
+    openLegacyModal,
+    globalTop15Celebration,
+    dismissGlobalTop15Celebration,
+    lastGlobalSubmitResult,
+    globalRankingsVersion,
     archiveCurrentSeasonNow,
     markCupCelebrated,
     resetGame,
@@ -213,6 +224,10 @@ export function SeasonSummary() {
   const [showLeagueFinaleBanner, setShowLeagueFinaleBanner] = useState(
     () => !state.season?.ucl,
   );
+  const [globalCutoffInfo, setGlobalCutoffInfo] = useState<{
+    cutoffScore: number | null;
+    totalCount: number;
+  } | null>(null);
   const [inspectedPlayer, setInspectedPlayer] = useState<{
     playerId: string;
     fallbackStats?: PlayerSeasonStats | null;
@@ -224,6 +239,21 @@ export function SeasonSummary() {
     leagueId?: LeagueId;
   } | null>(null);
   const season = state.season;
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !season?.ucl?.completed) return;
+    let cancelled = false;
+    void fetchGlobalTop15Rankings().then((res) => {
+      if (cancelled || !res.ok) return;
+      setGlobalCutoffInfo({
+        cutoffScore: res.cutoffScore,
+        totalCount: res.entries.length,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [season?.ucl?.completed, globalRankingsVersion]);
 
   const openPlayerById = (
     playerId: string,
@@ -519,6 +549,24 @@ export function SeasonSummary() {
           />
         )}
 
+      {/* Global TOP 15 Induction Celebration Modal (sequential after cup/league finale modals) */}
+      {globalTop15Celebration &&
+        !(
+          season.cup?.completed &&
+          wonCup &&
+          !season.cupChampionCelebrated
+        ) &&
+        !showLeagueFinaleBanner && (
+          <GlobalTop15CelebrationModal
+            payload={globalTop15Celebration}
+            onViewRankings={() => {
+              dismissGlobalTop15Celebration();
+              openLegacyModal('global_top15');
+            }}
+            onClose={dismissGlobalTop15Celebration}
+          />
+        )}
+
       {/* Main Season Result Hero */}
       <section className="rounded-2xl border border-slate-800 bg-[#0e141d] p-5 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -626,7 +674,7 @@ export function SeasonSummary() {
                   id="manual-hof-register-btn"
                   type="button"
                   onClick={archiveCurrentSeasonNow}
-                  title="자동 등재 기준(5,500점 이상 · 역대 강팀급) 미만 시즌도 원하면 직접 명예의 전당에 등록할 수 있습니다"
+                  title={`자동 등재 기준(${HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}점 이상 · 역대 강팀급) 미만 시즌도 원하면 직접 명예의 전당에 등록할 수 있습니다`}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/50 bg-amber-500/15 px-4 py-2.5 text-xs font-extrabold text-amber-200 hover:bg-amber-500/25 cursor-pointer"
                 >
                   <Crown className="w-3.5 h-3.5 text-amber-300" />
@@ -806,6 +854,58 @@ export function SeasonSummary() {
                   className="shrink-0 text-[11px] font-bold text-emerald-300 hover:underline cursor-pointer"
                 >
                   역대 랭킹표 보기 →
+                </button>
+              </div>
+            );
+          })()}
+
+          {isSupabaseConfigured && uclCompleted && (() => {
+            const runSubmit =
+              lastGlobalSubmitResult &&
+              season.runId &&
+              lastGlobalSubmitResult.runId === season.runId
+                ? lastGlobalSubmitResult.result
+                : null;
+            const enteredRank =
+              runSubmit?.ok && runSubmit.entered && runSubmit.rank
+                ? runSubmit.rank
+                : null;
+            const cutoffScore =
+              runSubmit?.cutoffScore ?? globalCutoffInfo?.cutoffScore ?? null;
+            const totalCount =
+              runSubmit?.totalCount ?? globalCutoffInfo?.totalCount ?? null;
+
+            if (enteredRank === null && totalCount === null) return null;
+
+            return (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-[#090e15] px-3.5 py-2 text-xs">
+                <div className="flex flex-wrap items-center gap-2 text-slate-300">
+                  <span className="rounded bg-sky-500/15 border border-sky-400/30 px-2 py-0.5 text-[10px] font-black text-sky-300">
+                    🌍 글로벌 TOP 15
+                  </span>
+                  {enteredRank !== null ? (
+                    <span className="font-bold text-emerald-300 tabular-nums">
+                      역대 글로벌 #{enteredRank}위 등재 완료
+                    </span>
+                  ) : totalCount !== null && totalCount < 15 ? (
+                    <span className="text-slate-300 tabular-nums">
+                      현재 {totalCount}/15팀 등재 중
+                    </span>
+                  ) : cutoffScore !== null ? (
+                    <span className="text-slate-400 tabular-nums">
+                      현재 15위 커트라인{' '}
+                      <strong className="font-mono text-slate-200">
+                        {cutoffScore.toLocaleString()} PTS
+                      </strong>
+                    </span>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openLegacyModal('global_top15')}
+                  className="shrink-0 text-[11px] font-bold text-sky-300 hover:underline cursor-pointer"
+                >
+                  TOP 15 랭킹 보기 →
                 </button>
               </div>
             );
