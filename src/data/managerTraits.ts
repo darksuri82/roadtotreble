@@ -174,12 +174,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '토탈 풋볼',
     tagline: '포지션의 경계를 허무는 유연한 스위칭 전술',
     effectSummary:
-      '부포지션 페널티 0 · 동일라인 -2 · 타라인 -8 | 3포지션+ 멀티 1~6명 A·M·D 최대 +2.75 · 개인 OVR +1',
+      '부포지션 페널티 0 · 동일라인 -2 · 타라인 -8 | 3포지션+ 멀티 1~5명 A·M·D +0.55/명 (최대 +2.75) · 개인 OVR +1',
     draftGuideTip:
-      '포지션 3개 이상 소화 가능한 멀티 선수를 최대 6명까지 모으면 개인 +1과 팀 A·M·D가 함께 오릅니다.',
+      '포지션 3개 이상 소화 가능한 멀티 선수를 최대 5명까지 모으면 개인 +1과 팀 A·M·D가 함께 오릅니다.',
     badgeColor: '#06b6d4',
     category: 'specialist',
-    philosophyTarget: 6,
+    philosophyTarget: 5,
     synergyPlaystyles: [],
   },
   galactico_manager: {
@@ -187,12 +187,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '갈락티코 매니저',
     tagline: '월드클래스 스타 군단을 하나로 묶는 카리스마',
     effectSummary:
-      '선발 OVR 88+ · 레전드 1~6명 A·M·D +0.60/명 (최대 +3.6) · 개인 OVR +1',
+      '선발 OVR 90+ · 레전드 1~5명 A·M·D +0.70/명 (최대 +3.5) · 개인 OVR +1',
     draftGuideTip:
-      'OVR 88+ 슈퍼스타와 레전드를 최대 6명까지 모으면 개인 +1과 팀 A·M·D가 함께 폭발합니다.',
+      'OVR 90+ 슈퍼스타와 레전드를 최대 5명까지 모으면 개인 +1과 팀 A·M·D가 함께 폭발합니다.',
     badgeColor: '#fbbf24',
     category: 'builder',
-    philosophyTarget: 6,
+    philosophyTarget: 5,
     synergyPlaystyles: [],
   },
   direct_football: {
@@ -318,13 +318,13 @@ export function evaluateManagerPlayerSynergy(
   // Special trait-specific criteria beyond playstyles
   if (
     managerTraitId === 'galactico_manager' &&
-    (player.isLegend || player.ovr >= 88)
+    (player.isLegend || player.ovr >= 90)
   ) {
     return {
       isMatch: true,
       bonus: 1,
       badgeLabel: '감독 궁합',
-      reason: `${trait.name}: ${player.isLegend ? '레전드' : `월드클래스(OVR ${player.ovr})`} (+1 OVR)`,
+      reason: `${trait.name}: ${player.isLegend ? '레전드' : `슈퍼스타(OVR ${player.ovr})`} (+1 OVR)`,
       matchedPlaystyles,
     };
   }
@@ -574,8 +574,8 @@ export function evaluateManagerTeamEffect(
       break;
 
     case 'galactico_manager': {
-      // OVR 88+ / Legend 1..6 players (+0.60/player, max +3.60 A·M·D)
-      const lift = 3.6 * progressRatio;
+      // OVR 90+ / Legend 1..5 players (+0.70/player, max +3.50 A·M·D)
+      const lift = 3.5 * progressRatio;
       baseAttDelta += lift;
       baseMidDelta += lift;
       baseDefDelta += lift;
@@ -584,7 +584,7 @@ export function evaluateManagerTeamEffect(
 
     // ── Group C: Signature Specialists ─────────────────────────────────────
     case 'total_football': {
-      // Position penalty 0/-2/-8 in positionEngine + 3+ position multi-player bonus (1..6 players, max +2.75 A·M·D)
+      // Position penalty 0/-2/-8 in positionEngine + 3+ position multi-player bonus (1..5 players, +0.55/player, max +2.75 A·M·D)
       const lift = 2.75 * progressRatio;
       baseAttDelta += lift;
       baseMidDelta += lift;
@@ -842,8 +842,8 @@ const PER_PLAYER_STEP_LABELS: Partial<Record<ManagerTraitId, string>> = {
   direct_football: '+1명당 ATT +0.31 · xG +0.02',
   defensive_architect: '+1명당 DEF +0.30 · 상대 xG -0.01',
   midfield_maestro: '+1명당 MID +0.31 · 점유율 +0.6%',
-  galactico_manager: '+1명당 A·M·D +0.60 (최대 6명)',
-  total_football: '+1명당 A·M·D +0.46 (최대 6명)',
+  galactico_manager: '+1명당 A·M·D +0.70 (최대 5명)',
+  total_football: '+1명당 A·M·D +0.55 (최대 5명)',
   set_piece_master: '기본 xG +0.16 + 1명당 +0.013 (최대 +0.30)',
 };
 
@@ -916,7 +916,7 @@ function buildMilestoneAtCount(
       extra = `xG +${(0.18 * ratio).toFixed(2)}`;
       break;
     case 'galactico_manager': {
-      const lift = 3.6 * ratio;
+      const lift = 3.5 * ratio;
       att = lift;
       mid = lift;
       def = lift;
@@ -958,7 +958,7 @@ function getCriteriaLabels(traitId: ManagerTraitId): string[] {
   const cfg = MANAGER_TRAITS[traitId];
   if (!cfg) return [];
   if (traitId === 'galactico_manager') {
-    return ['OVR 88+ · 레전드'];
+    return ['OVR 90+ · 레전드'];
   }
   if (traitId === 'total_football') {
     return ['3포지션+ 멀티'];
@@ -1064,7 +1064,7 @@ export function evaluateManagerFitDetail(params: {
     }
   }
 
-  const milestoneCounts = totalSlots === 6 ? [2, 4, 6] : [3, 6, 9, 11];
+  const milestoneCounts = totalSlots === 5 ? [1, 3, 5] : [3, 6, 9, 11];
   const milestones: ManagerFitMilestone[] =
     scalingMode === 'progressive'
       ? milestoneCounts.map((c) =>

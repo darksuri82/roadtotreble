@@ -299,7 +299,7 @@ export function DraftScreen() {
                 ))}
                 {activeTrait.id === 'galactico_manager' && (
                   <span className="rounded border border-cyan-400/40 bg-cyan-500/15 px-1.5 py-0.5 text-[10px] font-bold text-cyan-200">
-                    OVR 88+ · 레전드
+                    OVR 90+ · 레전드
                   </span>
                 )}
                 {activeTrait.id === 'total_football' && (

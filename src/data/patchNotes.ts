@@ -12,15 +12,32 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v8.14.1';
+export const CURRENT_APP_VERSION = 'v8.14.2';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v8.14.2',
+    codename: '토탈 풋볼 · 갈락티코 최대 5명(n/5) 조정 & 갈락티코 기준 OVR 90+ 상향',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '토탈 풋볼(3포지션+ 멀티)과 갈락티코 매니저의 최대 목표 인원을 6명에서 5명(n/5, 1/3/5명 기준표)으로 조정하고, 갈락티코 매니저의 통합 궁합 기준을 OVR 90+ · 레전드로 명확히 정돈했습니다.',
+    sections: [
+      {
+        category: '감독 궁합 밸런스 세부 조정',
+        items: [
+          '토탈 풋볼: 3포지션+ 멀티 선수 1~5명(n/5) 기준, 1명당 A·M·D +0.55(5명 MAX +2.75) + 개인 OVR +1 + 부포지션 페널티 0.',
+          '갈락티코 매니저: OVR 90+ · 레전드 선수 1~5명(n/5) 기준, 1명당 A·M·D +0.70(5명 MAX +3.5) + 개인 OVR +1.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v8.14.1',
     codename:
       '토탈 풋볼 · 갈락티코 기준 100% 통일 & 최대 6명 상향 조정 · 전라인→A·M·D 표기 단순화',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'FEATURE',
     summary:
       '토탈 풋볼과 갈락티코 매니저에서 개인 ★+1 기준(플레이스타일)과 팀 상승 기준(멀티포지션/고OVR)이 달라 생겼던 혼동을 원천 해결했습니다. 두 감독 모두 플레이스타일 조건을 제거하고 고유 조건(토탈 풋볼: 3포지션+ 멀티 / 갈락티코: OVR 88+·레전드)으로 개인 ★+1과 팀 A·M·D 상승을 100% 통일했으며, 희귀도를 감안해 최대 목표를 11명에서 6명(n/6)으로 현실화했습니다. 어려운 "전라인" 용어도 직관적인 "A·M·D"로 전면 교체했습니다.',
     sections: [
