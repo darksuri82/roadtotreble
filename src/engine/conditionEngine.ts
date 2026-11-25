@@ -835,9 +835,47 @@ export function selectConditionAwareAiLineup(params: {
     }
   }
 
+  // If baseRoster carries > 11 players (e.g. traded-in additions or legacy saves),
+  // ensure higher-OVR healthy players in indices 11+ are promoted over weaker same-position starters.
+  let effectiveBase = baseRoster;
+  if (baseRoster.length > 11) {
+    const promoted = baseRoster.slice(0, 11);
+    const extras = [...baseRoster.slice(11)].sort((a, b) => b.ovr - a.ovr);
+    for (const extra of extras) {
+      const extraCond = conditionMap?.[extra.id];
+      if (isPlayerUnavailable(extraCond)) continue;
+      const extraEff =
+        extra.ovr +
+        (extraCond
+          ? getInjuryOvrPenalty(extraCond) + getMoraleOvrBonus(extraCond.morale) * 0.5
+          : 0);
+      let weakestIdx = -1;
+      let weakestScore = Number.POSITIVE_INFINITY;
+      for (let i = 0; i < promoted.length; i += 1) {
+        const inc = promoted[i];
+        if (inc.position !== extra.position) continue;
+        const incCond = conditionMap?.[inc.id];
+        const incEff = isPlayerUnavailable(incCond)
+          ? -999
+          : inc.ovr +
+            (incCond
+              ? getInjuryOvrPenalty(incCond) + getMoraleOvrBonus(incCond.morale) * 0.5
+              : 0);
+        if (incEff < weakestScore) {
+          weakestScore = incEff;
+          weakestIdx = i;
+        }
+      }
+      if (weakestIdx !== -1 && extraEff > weakestScore + 0.25) {
+        promoted[weakestIdx] = extra;
+      }
+    }
+    effectiveBase = promoted;
+  }
+
   if (!conditionMap) {
     return {
-      starters: baseRoster.slice(0, 11),
+      starters: effectiveBase.slice(0, 11),
       fullClubSquad,
       injuredPlayers,
     };
@@ -862,7 +900,7 @@ export function selectConditionAwareAiLineup(params: {
     return score;
   };
 
-  for (const basePlayer of baseRoster.slice(0, 11)) {
+  for (const basePlayer of effectiveBase.slice(0, 11)) {
     const baseCond = conditionMap[basePlayer.id];
     const baseUnavailable = isPlayerUnavailable(baseCond);
 

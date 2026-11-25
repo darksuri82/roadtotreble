@@ -13,20 +13,23 @@ import { getBestCounterTactic } from './tacticEngine';
 /**
  * AI Pre-Match Tactical Adaptation (Repeated Pattern Counter) Engine
  *
- * Tracks the user's recent 5 matches of `(formation, tactic)` usage.
- * - Repeating the exact same `(formation, tactic)` rapidly builds `exposureScore` (0..100).
- * - Varying either the formation or the tactic naturally drops exposure back to 'low'.
- * - Higher-OVR AI managers (`aiManagers.ts`) read high exposure before kickoff, adopting
- *   counter tactics and applying calibrated pattern-read matchup penalties.
+ * Tracks the user's recent 8 matches of `(formation, tactic)` usage.
+ * - Repeating the exact same `(formation, tactic)` builds `exposureScore` (0..100) gradually,
+ *   entering `'warning'` around 5 consecutive matches and reaching `'danger'` (`파훼 경계`, >= 72)
+ *   at 8 consecutive identical matches.
+ * - Varying either the formation or the tactic naturally drops exposure back to `'low'`.
+ * - Higher-OVR AI managers (`aiManagers.ts`, especially elite OVR 85+ tacticians) read high exposure
+ *   and deploy unpredicted kickoff or 1st-half counter tactics plus calibrated pattern-read penalties.
  * - `sys_tactical_mastery` assistant coach mitigates exposure buildup by 45%.
  */
-export const ADAPTATION_HISTORY_WINDOW = 5;
+export const ADAPTATION_HISTORY_WINDOW = 8;
 export const EXPOSURE_WARNING_THRESHOLD = 45;
 export const EXPOSURE_DANGER_THRESHOLD = 72;
 export const EXPOSURE_RESET_ALERT_BELOW = 35;
+export const ELITE_AI_COUNTER_OVR_THRESHOLD = 85;
 export const COACH_ADAPTATION_MITIGATION = 0.45; // -45% buildup with Tactical Mastery Coach
 
-const RECENCY_WEIGHTS = [1.2, 1.0, 0.85, 0.7, 0.55] as const;
+const RECENCY_WEIGHTS = [1.15, 1.05, 0.95, 0.88, 0.82, 0.76, 0.7, 0.64] as const;
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -68,7 +71,9 @@ export function getExposureTierLabel(tier: TacticalExposureTier): string {
 
 /**
  * Evaluates how predictable the user's upcoming `(formation, tactic)` is based on
- * the recent 5-match history.
+ * the recent 8-match history.
+ * Calibrated progression for consecutive identical `(formation, tactic)`:
+ * 1:10, 2:19, 3:27, 4:36 (low) -> 5:46, 6:57, 7:67 (warning) -> 8:76 (danger).
  */
 export function evaluateTacticalExposure(params: {
   history: readonly TacticalHistoryEntry[];
@@ -98,16 +103,16 @@ export function evaluateTacticalExposure(params: {
   // Iterate newest -> oldest
   for (let lag = 0; lag < recent.length; lag += 1) {
     const entry = recent[recent.length - 1 - lag];
-    const w = RECENCY_WEIGHTS[lag] ?? 0.5;
+    const w = RECENCY_WEIGHTS[lag] ?? 0.6;
     const sameForm = entry.formation === formation;
     const sameTac = entry.tactic === tactic;
     if (sameForm && sameTac) {
-      raw += 16 * w;
+      raw += 8.5 * w;
       exactMatchesInWindow += 1;
     } else if (sameTac) {
-      raw += 5 * w;
+      raw += 3.0 * w;
     } else if (sameForm) {
-      raw += 4 * w;
+      raw += 2.4 * w;
     }
   }
 
@@ -121,10 +126,11 @@ export function evaluateTacticalExposure(params: {
     }
   }
 
-  if (consecutiveExactStreak >= 5) raw += 32;
-  else if (consecutiveExactStreak === 4) raw += 24;
-  else if (consecutiveExactStreak === 3) raw += 13;
-  else if (consecutiveExactStreak === 2) raw += 4;
+  if (consecutiveExactStreak >= 8) raw += 17;
+  else if (consecutiveExactStreak === 7) raw += 13;
+  else if (consecutiveExactStreak === 6) raw += 9;
+  else if (consecutiveExactStreak === 5) raw += 5;
+  else if (consecutiveExactStreak === 4) raw += 2;
 
   const rawExposureScore = clamp(Math.round(raw), 0, 100);
   const exposureScore = mitigatedByCoach
@@ -150,8 +156,12 @@ export interface AiPreMatchCounterEvaluation {
   aiIntelScale: number; // 0.15 .. 1.00
   counterStrength: number; // 0 .. 1.00
   responseLevelLabel: '없음' | '제한적' | '맞춤 대응' | '정밀 파훼';
-  /** Optional counter tactic the AI manager deploys from kickoff */
+  /** Optional counter tactic the AI manager deploys against the user's predictable style */
   overrideAiTactic: TacticId | null;
+  /** Whether the counter deploys from kickoff or as a 1st-half tactical twist */
+  counterTiming: 'kickoff' | 'first_half' | null;
+  /** Minute when the counter takes effect (0 for kickoff, 18..28 for 1st-half twist) */
+  counterMinute: number;
   /** User line penalties (<= 0) */
   userAttPenalty: number;
   userMidPenalty: number;
@@ -162,9 +172,9 @@ export interface AiPreMatchCounterEvaluation {
 }
 
 /**
- * Evaluates how strongly an AI manager counters the user's repeated pattern before kickoff.
- * Scales directly with `aiManager.ovr` (from `aiManagers.ts`) so elite tacticians (OVR 88+)
- * punish rigid patterns decisively while lower-table coaches (OVR <= 79) react only mildly.
+ * Evaluates how strongly an AI manager counters the user's repeated pattern before/during the 1st half.
+ * Scales directly with `aiManager.ovr` (from `aiManagers.ts`) so elite tacticians (OVR 85+)
+ * punish rigid patterns decisively with unpredicted counter tactics while lower-table coaches (OVR <= 79) react only mildly.
  */
 export function evaluateAiPreMatchCounter(params: {
   exposure: TacticalExposureEvaluation;
@@ -186,6 +196,8 @@ export function evaluateAiPreMatchCounter(params: {
       counterStrength: 0,
       responseLevelLabel: '없음',
       overrideAiTactic: null,
+      counterTiming: null,
+      counterMinute: 0,
       userAttPenalty: 0,
       userMidPenalty: 0,
       userDefPenalty: 0,
@@ -197,21 +209,43 @@ export function evaluateAiPreMatchCounter(params: {
   const severity = clamp((exposure.exposureScore - 35) / 65, 0, 1);
   const counterStrength = round2(severity * aiIntelScale);
 
-  // Determine whether the AI switches its starting tactic to counter the user's predictable style
+  // Determine whether the AI switches its 1st-half tactic to counter the user's predictable style
   const idealCounter = getBestCounterTactic(userTactic);
   let overrideAiTactic: TacticId | null = null;
-  if (idealCounter !== aiDefaultTactic && exposure.exposureScore >= 50) {
+  let counterTiming: 'kickoff' | 'first_half' | null = null;
+  let counterMinute = 0;
+
+  if (idealCounter !== aiDefaultTactic && exposure.exposureScore >= EXPOSURE_WARNING_THRESHOLD) {
     let switchProb = 0;
     if (aiManagerOvr >= 88) {
-      switchProb = clamp(0.5 + counterStrength * 0.45, 0.5, 0.95);
+      switchProb = clamp(
+        (exposure.tier === 'danger' ? 0.78 : 0.48) + counterStrength * 0.25,
+        0.48,
+        0.96,
+      );
+    } else if (aiManagerOvr >= ELITE_AI_COUNTER_OVR_THRESHOLD) {
+      switchProb = clamp(
+        (exposure.tier === 'danger' ? 0.62 : 0.36) + counterStrength * 0.28,
+        0.36,
+        0.86,
+      );
     } else if (aiManagerOvr >= 81) {
-      switchProb = clamp(0.32 + counterStrength * 0.42, 0.32, 0.78);
+      switchProb = clamp(0.26 + counterStrength * 0.38, 0.26, 0.68);
     } else {
-      switchProb = clamp(0.08 + counterStrength * 0.22, 0.08, 0.24);
+      switchProb = clamp(0.06 + counterStrength * 0.18, 0.06, 0.22);
     }
     const roll = rng ? rng() : counterStrength >= 0.42 ? 0.2 : 0.8;
     if (roll < switchProb) {
       overrideAiTactic = idealCounter;
+      // Elite tacticians may either ambush right from kickoff OR twist mid-1st-half (18'~28')
+      const timingRoll = rng ? rng() : roll;
+      if (timingRoll < 0.62) {
+        counterTiming = 'kickoff';
+        counterMinute = 0;
+      } else {
+        counterTiming = 'first_half';
+        counterMinute = 18 + Math.floor(((timingRoll - 0.62) / 0.38) * 11);
+      }
     }
   }
 
@@ -236,6 +270,8 @@ export function evaluateAiPreMatchCounter(params: {
     counterStrength,
     responseLevelLabel,
     overrideAiTactic,
+    counterTiming,
+    counterMinute,
     userAttPenalty,
     userMidPenalty,
     userDefPenalty,
@@ -244,19 +280,16 @@ export function evaluateAiPreMatchCounter(params: {
   };
 }
 
-const TIER_RANK: Record<TacticalExposureTier, number> = {
-  low: 0,
-  warning: 1,
-  danger: 2,
-};
-
 /**
- * Records a completed user match into the 5-match rolling window and checks whether
- * a one-time non-spam warning/danger scouting alert should be queued.
+ * Records a completed user match into the 8-match rolling window and checks whether
+ * a non-spam `'danger'` (`파훼 경계`) scouting popup should be queued.
  *
- * Anti-spam rule:
- * - Fires ONCE on first crossing into `'warning'` (`>= 45`) and ONCE on first crossing into `'danger'` (`>= 72`).
- * - Resets `highestAlertedTier` back to `'low'` only when variation drops exposure below `EXPOSURE_RESET_ALERT_BELOW` (`< 35`).
+ * Popup & Anti-Spam Rules (v9.1):
+ * - `'warning'` (`45..71`) NEVER triggers a modal popup (shown subtly on tactics room badge only).
+ * - `'danger'` (`>= 72`, ~8 consecutive identical matches) triggers ONE scouting popup on entry.
+ * - While staying in `'danger'`, the popup never re-fires.
+ * - Once tactical variation drops exposure out of `'danger'`, the guard re-arms so a later
+ *   re-entry into `'danger'` will notify cleanly once again.
  */
 export function recordMatchTacticalAdaptation(params: {
   prev: TacticalAdaptationState | undefined | null;
@@ -288,33 +321,25 @@ export function recordMatchTacticalAdaptation(params: {
   let nextHighest = base.highestAlertedTier;
   let pendingAlert: TacticalAdaptationAlert | null = base.pendingAlert;
 
-  // Fire the scouting popup ONLY ONCE per season (on first entry into warning/danger)
-  // so it clearly introduces the tactical adaptation system without repeatedly interrupting auto-advance.
-  if (
-    base.highestAlertedTier === 'low' &&
-    (projected.tier === 'warning' || projected.tier === 'danger')
-  ) {
-    const streak = Math.max(1, projected.consecutiveExactStreak);
-    nextHighest = projected.tier;
-    pendingAlert = {
-      id: `adapt-${params.competition}-r${params.round}-${projected.tier}`,
-      tier: projected.tier,
-      exposureScore: projected.exposureScore,
-      repeatedFormation: params.formation,
-      repeatedTactic: params.tactic,
-      consecutiveCount: streak,
-      triggeredAtRound: params.round,
-      headline:
-        projected.tier === 'danger'
-          ? '상대 감독들이 우리 전술 패턴을 완벽히 읽어냈습니다'
-          : '상대 스카우트들이 반복 전술을 분석하기 시작했습니다',
-      detail:
-        projected.tier === 'danger'
-          ? `최근 ${streak}경기 연속 동일 패턴이 노출되어(노출도 ${projected.exposureScore}/100), 다음 경기부터 상대 AI 감독이 경기 시작 전부터 맞춤 카운터 전술과 정밀 파훼 대응을 준비할 가능성이 높습니다.`
-          : `최근 ${streak}경기 동안 유사한 포메이션·전술이 반복되어(노출도 ${projected.exposureScore}/100) 상위권 AI 감독들이 사전 대응책을 마련하고 있습니다.`,
-    };
-  } else if (TIER_RANK[projected.tier] > TIER_RANK[base.highestAlertedTier]) {
-    nextHighest = projected.tier;
+  if (projected.tier === 'danger') {
+    if (base.highestAlertedTier !== 'danger') {
+      const streak = Math.max(1, projected.consecutiveExactStreak);
+      nextHighest = 'danger';
+      pendingAlert = {
+        id: `adapt-${params.competition}-r${params.round}-danger`,
+        tier: 'danger',
+        exposureScore: projected.exposureScore,
+        repeatedFormation: params.formation,
+        repeatedTactic: params.tactic,
+        consecutiveCount: streak,
+        triggeredAtRound: params.round,
+        headline: '상대 감독들이 우리 전술 패턴을 완벽히 읽어냈습니다',
+        detail: `최근 ${streak}경기 연속 동일 패턴이 노출되어(노출도 ${projected.exposureScore}/100), 다음 경기부터 명장 AI 감독이 프리뷰와 다른 전반 카운터 전술과 정밀 파훼 대응을 가동할 가능성이 높습니다.`,
+      };
+    }
+  } else {
+    // Dropped out of 'danger' via tactical variation -> re-arm for any future 'danger' re-entry
+    nextHighest = 'low';
   }
 
   return {

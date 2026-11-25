@@ -22,6 +22,7 @@ import {
   createMpLeagueSeason,
   dismissMpLeagueAdaptationAlert,
   dismissMpLeagueAwakeningAlert,
+  dismissMpLeagueFfpOpeningNotice,
   endMpLeagueCast,
   getMpCastDurationMs,
   getMpTickerExtraPkMs,
@@ -703,6 +704,8 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
           }
         } else if (action.kind === 'coach_skip') {
           current = skipMpLeagueStaffCoach(current, human.clubId);
+        } else if (action.kind === 'ffp_notice_dismiss') {
+          current = dismissMpLeagueFfpOpeningNotice(current, human.clubId);
         } else if (action.kind === 'adaptation_dismiss') {
           current = dismissMpLeagueAdaptationAlert(current, human.clubId);
         } else if (action.kind === 'awakening_dismiss') {

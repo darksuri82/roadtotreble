@@ -152,6 +152,7 @@ export type MpLeagueActionKind =
   | 'trade_counter'
   | 'coach_hire'
   | 'coach_skip'
+  | 'ffp_notice_dismiss'
   | 'adaptation_dismiss'
   | 'awakening_dismiss';
 
@@ -262,6 +263,7 @@ export interface MpHumanSeasonState {
   tradeNote: MpTradeResultNote | null;
   lastMatch: MatchResult | null;
   budget?: import('./game').SeasonBudgetState;
+  pendingFfpOpeningNotice?: boolean;
   tacticalAdaptation?: import('./game').TacticalAdaptationState;
   staffCoach?: import('./game').StaffCoachState;
   awakenedPlayers?: Record<string, import('./player').PlayerAwakeningRecord>;
@@ -424,6 +426,7 @@ export interface MpHumanLive {
   recent: MpLiteMatch[];
   nextOpponentId: string | null;
   budget?: import('./game').SeasonBudgetState;
+  pendingFfpOpeningNotice?: boolean;
   tacticalAdaptation?: import('./game').TacticalAdaptationState;
   staffCoach?: import('./game').StaffCoachState;
   awakenedPlayers?: Record<string, import('./player').PlayerAwakeningRecord>;

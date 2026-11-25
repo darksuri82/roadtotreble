@@ -695,61 +695,85 @@ export function MatchDayTacticsRoom({
 
         {/* Compact AI Pre-Match Tactical Exposure & Hired Staff Coach Strip */}
         {(tacticalExposure || staffCoachId) && !blindOpponentStatus && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-[#090e15] px-2.5 py-1.5 text-[10.5px]">
-            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-              {tacticalExposure && (() => {
-                const score = tacticalExposure.exposureScore;
-                const isDanger = score >= EXPOSURE_DANGER_THRESHOLD;
-                const isWarn = score >= EXPOSURE_WARNING_THRESHOLD;
-                const tone = isDanger
-                  ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
-                  : isWarn
-                    ? 'border-amber-400/40 bg-amber-500/12 text-amber-200'
-                    : 'border-slate-700/80 bg-slate-900/80 text-slate-300';
-                const statusLabel = isDanger
-                  ? '파훼 경계'
-                  : isWarn
-                    ? '분석 주의'
-                    : '안전';
-                const aiLevelLabel =
-                  oppManager.ovr >= 88
-                    ? '명장 파훼 높음'
-                    : oppManager.ovr >= 80
-                      ? '표준 대응'
-                      : '제한적 대응';
-                return (
-                  <>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-bold tabular-nums whitespace-nowrap ${tone}`}
-                    >
-                      <Eye className="w-3 h-3" />
-                      전술 노출도 {score}/100 · {statusLabel}
-                    </span>
-                    <span className="text-[10px] font-semibold text-slate-400 whitespace-nowrap">
-                      {oppManager.name}({oppManager.ovr}) {aiLevelLabel}
-                    </span>
-                    <InfoHelpButton
-                      title="AI 사전 전술 파훼(노출도)"
-                      align="left"
-                      size="xs"
-                      guideTab="tactics"
-                      items={[
-                        '최근 5경기에서 같은 포메이션+전술을 반복하면 상대 AI 감독이 경기 시작 전부터 맞춤 대응을 준비합니다.',
-                        `노출도 ${EXPOSURE_WARNING_THRESHOLD} 이상 시 주의, ${EXPOSURE_DANGER_THRESHOLD} 이상 시 파훼 경계 구간에 진입합니다.`,
-                        '포메이션이나 전술 스타일을 1경기라도 변주하면 노출도가 즉시 낮아집니다.',
-                      ]}
-                    />
-                  </>
-                );
-              })()}
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-[#090e15] px-2.5 py-1.5 text-[10.5px]">
+              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                {tacticalExposure && (() => {
+                  const score = tacticalExposure.exposureScore;
+                  const isDanger = score >= EXPOSURE_DANGER_THRESHOLD;
+                  const isWarn = score >= EXPOSURE_WARNING_THRESHOLD;
+                  const tone = isDanger
+                    ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
+                    : isWarn
+                      ? 'border-amber-400/40 bg-amber-500/12 text-amber-200'
+                      : 'border-slate-700/80 bg-slate-900/80 text-slate-300';
+                  const statusLabel = isDanger
+                    ? '파훼 경계'
+                    : isWarn
+                      ? '분석 주의'
+                      : '안전';
+                  const aiLevelLabel =
+                    oppManager.ovr >= 88
+                      ? '명장 파훼 높음'
+                      : oppManager.ovr >= 85
+                        ? '명장 파훼 경계'
+                        : oppManager.ovr >= 80
+                          ? '표준 대응'
+                          : '제한적 대응';
+                  return (
+                    <>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-bold tabular-nums whitespace-nowrap ${tone}`}
+                      >
+                        <Eye className="w-3 h-3" />
+                        전술 노출도 {score}/100 · {statusLabel}
+                      </span>
+                      <span className="text-[10px] font-semibold text-slate-400 whitespace-nowrap">
+                        {oppManager.name}({oppManager.ovr}) {aiLevelLabel}
+                      </span>
+                      <InfoHelpButton
+                        title="AI 사전 전술 파훼(노출도)"
+                        align="left"
+                        size="xs"
+                        guideTab="tactics"
+                        items={[
+                          '최근 8경기에서 같은 포메이션+전술을 반복하면 노출도가 완만하게 누적됩니다(약 8경기 연속 시 파훼 경계 도달).',
+                          `노출도 ${EXPOSURE_WARNING_THRESHOLD} 이상 시 주의(배지 표시), ${EXPOSURE_DANGER_THRESHOLD} 이상 시 파훼 경계(스카우팅 팝업 1회 알림) 구간에 진입합니다.`,
+                          'OVR 85+ 명장 AI는 높은 노출도에서 프리뷰와 다른 전반 카운터 전술을 킥오프 또는 전반 중반에 기습 가동할 수 있습니다.',
+                          '포메이션이나 전술 스타일을 1경기라도 변주하면 노출도가 즉시 낮아집니다.',
+                        ]}
+                      />
+                    </>
+                  );
+                })()}
+              </div>
+              {staffCoachId && (
+                <StaffCoachBadge
+                  coachId={staffCoachId}
+                  activeTactic={activeTactic}
+                  compact
+                />
+              )}
             </div>
-            {staffCoachId && (
-              <StaffCoachBadge
-                coachId={staffCoachId}
-                activeTactic={activeTactic}
-                compact
-              />
-            )}
+
+            {tacticalExposure &&
+              tacticalExposure.exposureScore >= EXPOSURE_WARNING_THRESHOLD &&
+              oppManager.ovr >= 85 && (
+                <div
+                  className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-[10.5px] ${
+                    tacticalExposure.exposureScore >= EXPOSURE_DANGER_THRESHOLD
+                      ? 'border-rose-500/45 bg-rose-950/35 text-rose-200'
+                      : 'border-amber-500/35 bg-amber-950/25 text-amber-200'
+                  }`}
+                >
+                  <span className="font-bold break-keep">
+                    명장 AI 파훼 위험 ({oppManager.name} OVR {oppManager.ovr}): 프리뷰({TACTICS[opponent.defaultTactic].shortName})와 다른 전반 카운터 전술 가능
+                  </span>
+                  <span className="text-[10px] font-semibold opacity-85 whitespace-nowrap">
+                    전술·포메이션 변주 권장
+                  </span>
+                </div>
+              )}
           </div>
         )}
       </div>

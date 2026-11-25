@@ -58,6 +58,7 @@ interface MpLeagueFinalBoardProps {
   cup?: DomesticCupState | null;
   ucl?: MpUclLive | null;
   squads?: Record<string, MpSquadInput>;
+  byClub?: Record<string, import('../../../types/mpLeague').MpHumanLive>;
   onOpenPodium?: () => void;
   onLeaveRoom: () => void;
 }
@@ -383,6 +384,7 @@ export function MpLeagueFinalBoard({
   cup = null,
   ucl = null,
   squads = {},
+  byClub = {},
   onOpenPodium,
   onLeaveRoom,
 }: MpLeagueFinalBoardProps) {
@@ -603,7 +605,7 @@ export function MpLeagueFinalBoard({
             ['overview', '발롱도르 · 역대 비교', <Award key="o" className="w-3.5 h-3.5" />],
             ['league', '리그 기록 · 순위표', <Globe key="l" className="w-3.5 h-3.5" />],
             ['cups', '컵 · 챔피언스리그', <Sparkles key="c" className="w-3.5 h-3.5" />],
-            ['squads', '참가자 스쿼드', <BarChart3 key="s" className="w-3.5 h-3.5" />],
+            ['squads', '내 팀 결산 · 스쿼드', <BarChart3 key="s" className="w-3.5 h-3.5" />],
           ] as [FinalTab, string, React.ReactNode][]
         ).map(([id, label, icon]) => (
           <button
@@ -1130,24 +1132,61 @@ export function MpLeagueFinalBoard({
               );
             })}
           </div>
-          {selectedSquadHuman && (
-            <MpFriendSquadTab
-              key={selectedSquadHuman.clubId}
-              human={selectedSquadHuman}
-              rank={rankByClub[selectedSquadHuman.clubId]}
-              row={
-                rankByClub[selectedSquadHuman.clubId]
-                  ? standings[rankByClub[selectedSquadHuman.clubId] - 1]
-                  : undefined
-              }
-              stats={final.squadStats?.[selectedSquadHuman.clubId] ?? []}
-              squad={squads[selectedSquadHuman.clubId]}
-              onSelectPlayerId={openPlayerById}
-              onOpenFormation={() =>
-                setInspectedClubId(selectedSquadHuman.clubId)
-              }
-            />
-          )}
+          {selectedSquadHuman && (() => {
+            const hMeta = byClub[selectedSquadHuman.clubId];
+            const fRow = final.rows.find(
+              (r) => r.clubId === selectedSquadHuman.clubId,
+            );
+            const hRank = rankByClub[selectedSquadHuman.clubId];
+            const honors: import('../../common/TeamSeasonArchiveTab').TeamArchiveHonorBadge[] = [];
+            const wonLg = final.championClubId === selectedSquadHuman.clubId;
+            const wonCp = final.cupChampionId === selectedSquadHuman.clubId;
+            const wonUc = final.uclChampionId === selectedSquadHuman.clubId;
+            if (wonLg && wonCp && wonUc) {
+              honors.push({ label: '👑 역사적 트레블', tone: 'gold' });
+            }
+            if (wonLg) {
+              honors.push({ label: `🏆 ${leagueName} 우승`, tone: 'gold' });
+            }
+            if (wonCp && cup) {
+              honors.push({ label: `🏆 ${cup.meta.koreanName} 우승`, tone: 'gold' });
+            }
+            if (wonUc) {
+              honors.push({ label: '🏆 UEFA 챔피언스리그 우승', tone: 'sky' });
+            }
+            if (final.rows[0]?.clubId === selectedSquadHuman.clubId) {
+              honors.push({ label: '🥇 멀티 시즌 최종 1위', tone: 'emerald' });
+            }
+            return (
+              <MpFriendSquadTab
+                key={selectedSquadHuman.clubId}
+                human={selectedSquadHuman}
+                rank={hRank}
+                row={hRank ? standings[hRank - 1] : undefined}
+                stats={final.squadStats?.[selectedSquadHuman.clubId] ?? []}
+                squad={squads[selectedSquadHuman.clubId]}
+                leagueName={leagueName}
+                milestoneLabel="UCL 포함 통합 최종 스쿼드"
+                staffCoachId={hMeta?.staffCoach?.hiredCoachId ?? null}
+                budgetState={hMeta?.budget ?? null}
+                cupResultLabel={wonCp ? '우승' : cup ? '참가' : null}
+                uclResultLabel={wonUc ? '우승' : ucl ? '참가' : null}
+                seasonScore={
+                  fRow
+                    ? {
+                        totalScore: fRow.total,
+                        grade: fRow.seasonScore.grade,
+                      }
+                    : null
+                }
+                honors={honors}
+                onSelectPlayerId={openPlayerById}
+                onOpenFormation={() =>
+                  setInspectedClubId(selectedSquadHuman.clubId)
+                }
+              />
+            );
+          })()}
         </div>
       )}
 

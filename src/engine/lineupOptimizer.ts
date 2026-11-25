@@ -428,3 +428,115 @@ export function optimizeCurrentStartersForFormation(
 
   return starters;
 }
+
+/**
+ * Re-optimizes an AI club's roster array after a trade or squad mutation so that:
+ * - Indices `0..10` ALWAYS hold the optimal Best XI mapped 1:1 to `formation`'s slots
+ *   (maximizing positional Effective OVR so newly acquired starter-grade players immediately start).
+ * - Remaining bench/depth players follow at indices `11+` sorted by OVR descending.
+ */
+export function reoptimizeAiClubRoster(params: {
+  roster: readonly Player[];
+  formation: FormationId;
+  managerTraitId?: ManagerTraitId | null;
+}): Player[] {
+  const { roster, formation, managerTraitId = null } = params;
+  const deduped: Player[] = [];
+  const seen = new Set<string>();
+  for (const p of roster) {
+    if (p && !seen.has(p.id)) {
+      seen.add(p.id);
+      deduped.push(p);
+    }
+  }
+  if (deduped.length <= 1) return deduped;
+
+  const slots = (FORMATIONS[formation] ?? FORMATIONS['4-3-3']).slots;
+  const weights = deduped.map((player) =>
+    slots.map((slot) => {
+      const fit = evaluatePositionFit(
+        player,
+        slot.subPosition,
+        managerTraitId,
+        slot.alternateSubPositions,
+      );
+      const fitBonus =
+        fit.fit === 'main'
+          ? 42
+          : fit.fit === 'secondary'
+            ? 14
+            : fit.fit === 'out_of_pos'
+              ? -14
+              : -260;
+      return fit.effectiveOvr * 10 + fitBonus;
+    }),
+  );
+
+  const assignment = solveMaxWeightAssignment(weights);
+  const starters: (Player | null)[] = Array.from({ length: 11 }, () => null);
+  const used = new Set<number>();
+  for (let i = 0; i < deduped.length; i += 1) {
+    const slotIdx = assignment[i];
+    if (slotIdx >= 0 && slotIdx < 11) {
+      starters[slotIdx] = deduped[i];
+      used.add(i);
+    }
+  }
+
+  const bench: Player[] = [];
+  for (let i = 0; i < deduped.length; i += 1) {
+    if (!used.has(i)) bench.push(deduped[i]);
+  }
+  bench.sort((a, b) => b.ovr - a.ovr);
+
+  // Fill any rare unassigned starter slot from bench before returning compact array
+  const orderedStarters: Player[] = [];
+  for (let s = 0; s < 11; s += 1) {
+    const p = starters[s];
+    if (p) {
+      orderedStarters.push(p);
+    } else if (bench.length > 0) {
+      orderedStarters.push(bench.shift()!);
+    }
+  }
+
+  return [...orderedStarters, ...bench];
+}
+
+function avgLineOvr(xi: readonly Player[], positions: Player['position'][]): number {
+  const matching = xi.filter((p) => positions.includes(p.position));
+  if (matching.length === 0) {
+    return xi.length > 0 ? xi.reduce((s, p) => s + p.ovr, 0) / xi.length : 78;
+  }
+  return matching.reduce((s, p) => s + p.ovr, 0) / matching.length;
+}
+
+/**
+ * Smoothly updates an AI club's static `att / mid / def` ratings in proportion to the
+ * Best-XI line OVR shift caused by a trade so acquired superstars tangibly lift the club's
+ * match strength without distorting league baselines.
+ */
+export function adjustAiClubRatingsForRosterChange<
+  TClub extends { att: number; mid: number; def: number },
+>(club: TClub, prevRoster: readonly Player[], nextRoster: readonly Player[]): TClub {
+  const prevXi = prevRoster.slice(0, 11);
+  const nextXi = nextRoster.slice(0, 11);
+  if (prevXi.length === 0 || nextXi.length === 0) return club;
+
+  const attDelta = (avgLineOvr(nextXi, ['FW']) - avgLineOvr(prevXi, ['FW'])) * 0.75;
+  const midDelta = (avgLineOvr(nextXi, ['MF']) - avgLineOvr(prevXi, ['MF'])) * 0.75;
+  const defDelta =
+    (avgLineOvr(nextXi, ['DF', 'GK']) - avgLineOvr(prevXi, ['DF', 'GK'])) * 0.75;
+
+  const clampRating = (base: number, delta: number): number => {
+    const boundedDelta = Math.max(-5, Math.min(5, Math.round(delta)));
+    return Math.max(65, Math.min(95, base + boundedDelta));
+  };
+
+  const att = clampRating(club.att, attDelta);
+  const mid = clampRating(club.mid, midDelta);
+  const def = clampRating(club.def, defDelta);
+  if (att === club.att && mid === club.mid && def === club.def) return club;
+  return { ...club, att, mid, def };
+}
+

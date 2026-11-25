@@ -31,6 +31,7 @@ import {
   AWAKENING_SECOND_COUNT_MULT,
   AWAKENING_SUPERSTAR_MAX_GAIN,
   AWAKENING_SUPERSTAR_OVR_THRESHOLD,
+  AWAKENING_SUPERSTAR_RATE_MULT,
   AWAKENING_THIRD_PLUS_MULT,
 } from '../../engine/awakeningEngine';
 import {
@@ -43,6 +44,7 @@ import {
   computePlayerDraftCostM,
   DRAFT_BUDGET_CAP_M,
   FFP_TIER1_CHEM_PENALTY,
+  FFP_TIER1_MAX_EXCESS_RATIO,
   FFP_TIER1_MAX_OVERRUN_PCT,
   FFP_TIER1_WINDOW2_MAX_ATTEMPTS,
   FFP_TIER2_SCORE_PENALTY_PCT,
@@ -83,8 +85,8 @@ import { TACTIC_LIST, TACTICS } from '../../engine/tacticEngine';
 import {
   ADAPTATION_HISTORY_WINDOW,
   COACH_ADAPTATION_MITIGATION,
+  ELITE_AI_COUNTER_OVR_THRESHOLD,
   EXPOSURE_DANGER_THRESHOLD,
-  EXPOSURE_RESET_ALERT_BELOW,
   EXPOSURE_WARNING_THRESHOLD,
 } from '../../engine/tacticalAdaptationEngine';
 import {
@@ -93,6 +95,7 @@ import {
 } from '../../engine/transferEngine';
 import { UCL_EXTERNAL_TEAMS } from '../../engine/uclEngine';
 import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
+import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { AttributeRoutesGuideContent } from './AttributeRoutesGuideContent';
 import {
   GUIDE_TAB_LABELS,
@@ -291,8 +294,8 @@ export function SystemGuideContent({
             </ul>
           </div>
 
-          {/* 1-4. v9.0 Draft Budget (FFP Soft Cap), Legend Flat Cost & Cash Negotiation */}
-          <div className="rounded-xl border border-emerald-500/30 bg-[#0b1018] p-3.5 space-y-2.5">
+          {/* 1-4. v9.0/v9.1 Draft Budget (FFP Soft Cap), Legend Flat Cost & Cash Negotiation */}
+          <div className="rounded-xl border border-emerald-500/30 bg-[#0b1018] p-3.5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-white">
                 <Coins className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -302,38 +305,145 @@ export function SystemGuideContent({
                 레전드 전원 €{LEGEND_FLAT_DRAFT_COST_M}M 균일가
               </span>
             </div>
-            <ul className="space-y-1.5 text-[11px] text-slate-300">
-              <li>
-                • <strong className="text-slate-100">누진 몸값 곡선 &amp; 레전드 특별 균일가:</strong>{' '}
-                현역 선수는 OVR이 높을수록 몸값이 가파르게 상승합니다(OVR 85{' '}
-                <code className="text-slate-200">€{computePlayerDraftCostM({ ovr: 85, isLegend: false })}M</code> · OVR 88{' '}
-                <code className="text-slate-200">€{computePlayerDraftCostM({ ovr: 88, isLegend: false })}M</code> · OVR 89{' '}
-                <code className="text-slate-200">€{computePlayerDraftCostM({ ovr: 89, isLegend: false })}M</code> · OVR 90{' '}
-                <code className="text-amber-300">€{computePlayerDraftCostM({ ovr: 90, isLegend: false })}M</code> · OVR 91{' '}
-                <code className="text-amber-300">€{computePlayerDraftCostM({ ovr: 91, isLegend: false })}M</code> · OVR 94{' '}
-                <code className="text-rose-300">€{computePlayerDraftCostM({ ovr: 94, isLegend: false })}M</code>).
-                반면 <strong className="text-amber-300">레전드 등급은 전원 €{LEGEND_FLAT_DRAFT_COST_M}M 균일가</strong>로 책정되어
-                OVR 80 후반대와 비슷한 부담으로 영입할 수 있습니다(레전드 1~2명 + 85~87 주축 조합도 예산 내 여유 안착).
-              </li>
-              <li>
-                • <strong className="text-emerald-300">잔여 예산 100% 이월 → 이적시장 현금 얹기:</strong>{' '}
-                드래프트 후 남은 예산은 시즌 이적시장 보유 자금(€M)으로 이월됩니다.
-                일반 트레이드 시 현금을 얹으면 <strong className="text-white">€1M당 +{CASH_TO_TP_RATE} TP</strong>
-                (€{CASH_TO_TP_SOFT_CAP_M}M 초과분은 +{CASH_TO_TP_OVER_CAP_RATE} TP, 다인 통합세 면제)가 더해지고,
-                €{CASH_STAR_GUARD_RELIEF_THRESHOLD_M}M 이상 얹으면 슈퍼스타 핵심 자산 가드(OVR -7)가 1 완화됩니다.
-                레전드 FA 협상에서는 €10M당 <strong className="text-amber-300">+{CASH_LEGEND_CHANCE_PER_10M}%p(최대 +{CASH_LEGEND_CHANCE_MAX_BONUS}%p)</strong> 성공률이 상승합니다.
-              </li>
-              <li>
-                • <strong className="text-amber-300">FFP 1단계 초과 (+1% ~ +{FFP_TIER1_MAX_OVERRUN_PCT}%):</strong>{' '}
-                이월 자금 €0 · 2차 이적시장 영입 <strong className="text-white">{FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 제한</strong> · 팀 케미{' '}
-                <strong className="text-amber-200">-{FFP_TIER1_CHEM_PENALTY}</strong>.
-              </li>
-              <li>
-                • <strong className="text-rose-300">FFP 2단계 초과 (+{FFP_TIER1_MAX_OVERRUN_PCT}% 초과):</strong>{' '}
-                1단계 페널티 + <strong className="text-rose-200">2차 이적시장 선수 영입 동결</strong>(수석 코치 선임은 가능) · 패배 시 사기 하락폭 1단계 증가 · 명예의 전당/글로벌 랭킹 최종 점수{' '}
-                <strong className="text-rose-200">-{FFP_TIER2_SCORE_PENALTY_PCT}% 감점</strong>.
-              </li>
-            </ul>
+
+            {/* OVR Progressive Cost Curve vs Legend Flat Cost */}
+            <div className="rounded-lg border border-slate-800 bg-[#111822] p-2.5 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-1 text-[11px]">
+                <span className="font-bold text-slate-200">
+                  ① 누진 몸값 곡선 (현역) vs 레전드 균일가
+                </span>
+                <span className="text-[10px] text-amber-300 font-semibold">
+                  레전드는 OVR 88~89급과 유사한 €{LEGEND_FLAT_DRAFT_COST_M}M 고정 (현역 90+보다 저렴)
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-8 text-center text-[10.5px] tabular-nums">
+                {[78, 82, 85, 87, 89, 91, 94].map((ovr) => (
+                  <div
+                    key={ovr}
+                    className="rounded-md border border-slate-800 bg-[#090e15] py-1.5 px-1"
+                  >
+                    <div className="text-[9.5px] font-bold text-slate-400">OVR {ovr}</div>
+                    <div
+                      className={`font-mono font-black ${
+                        ovr >= 91
+                          ? 'text-rose-300'
+                          : ovr >= 89
+                            ? 'text-amber-300'
+                            : 'text-slate-100'
+                      }`}
+                    >
+                      €{computePlayerDraftCostM({ ovr, isLegend: false })}M
+                    </div>
+                  </div>
+                ))}
+                <div className="rounded-md border border-amber-400/55 bg-amber-950/30 py-1.5 px-1">
+                  <div className="text-[9.5px] font-black text-amber-300">👑 레전드</div>
+                  <div className="font-mono font-black text-amber-200">
+                    €{LEGEND_FLAT_DRAFT_COST_M}M
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 3-Tier FFP Comparison Table */}
+            <div className="overflow-x-auto rounded-lg border border-slate-800 bg-[#111822]">
+              <table className="w-full min-w-[520px] text-left text-[10.5px] tabular-nums">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-[#090e15] text-slate-400">
+                    <th className="py-2 px-2.5">FFP 구간</th>
+                    <th className="py-2 px-2">기준 금액</th>
+                    <th className="py-2 px-2">이월 자금</th>
+                    <th className="py-2 px-2">2차 이적시장</th>
+                    <th className="py-2 px-2">팀 케미 · 사기</th>
+                    <th className="py-2 px-2.5">최종 랭킹 점수</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/70">
+                  <tr>
+                    <td className="py-2 px-2.5 font-extrabold text-emerald-300 whitespace-nowrap">
+                      예산 준수
+                    </td>
+                    <td className="py-2 px-2 text-slate-200 whitespace-nowrap">
+                      €{DRAFT_BUDGET_CAP_M}M 이하
+                    </td>
+                    <td className="py-2 px-2 font-bold text-emerald-300 whitespace-nowrap">
+                      잔액 100% 이월
+                    </td>
+                    <td className="py-2 px-2 text-slate-200 whitespace-nowrap">
+                      정상 {ATTEMPTS_PER_WINDOW}회
+                    </td>
+                    <td className="py-2 px-2 text-slate-300 whitespace-nowrap">
+                      페널티 없음
+                    </td>
+                    <td className="py-2 px-2.5 text-slate-300 whitespace-nowrap">
+                      감점 없음 (100%)
+                    </td>
+                  </tr>
+                  <tr className="bg-amber-950/10">
+                    <td className="py-2 px-2.5 font-extrabold text-amber-300 whitespace-nowrap">
+                      FFP 1단계 주의
+                    </td>
+                    <td className="py-2 px-2 text-amber-200 whitespace-nowrap">
+                      +1~{FFP_TIER1_MAX_OVERRUN_PCT}% (€{DRAFT_BUDGET_CAP_M + 1}~{Math.floor(DRAFT_BUDGET_CAP_M * (1 + FFP_TIER1_MAX_EXCESS_RATIO))}M)
+                    </td>
+                    <td className="py-2 px-2 font-bold text-amber-200 whitespace-nowrap">
+                      €0M
+                    </td>
+                    <td className="py-2 px-2 font-bold text-amber-200 whitespace-nowrap">
+                      {FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회로 제한
+                    </td>
+                    <td className="py-2 px-2 font-bold text-amber-200 whitespace-nowrap">
+                      팀 케미 -{FFP_TIER1_CHEM_PENALTY}
+                    </td>
+                    <td className="py-2 px-2.5 text-slate-300 whitespace-nowrap">
+                      감점 없음 (100%)
+                    </td>
+                  </tr>
+                  <tr className="bg-rose-950/15">
+                    <td className="py-2 px-2.5 font-extrabold text-rose-300 whitespace-nowrap">
+                      FFP 2단계 징계
+                    </td>
+                    <td className="py-2 px-2 text-rose-200 whitespace-nowrap">
+                      +{FFP_TIER1_MAX_OVERRUN_PCT}% 초과 (€{Math.floor(DRAFT_BUDGET_CAP_M * (1 + FFP_TIER1_MAX_EXCESS_RATIO)) + 1}M+)
+                    </td>
+                    <td className="py-2 px-2 font-bold text-rose-200 whitespace-nowrap">
+                      €0M
+                    </td>
+                    <td className="py-2 px-2 font-bold text-rose-300 whitespace-nowrap">
+                      영입 동결 (0회)
+                    </td>
+                    <td className="py-2 px-2 font-bold text-rose-200 whitespace-nowrap">
+                      케미 -{FFP_TIER1_CHEM_PENALTY} · 패배 사기 -1 추가
+                    </td>
+                    <td className="py-2 px-2.5 font-black text-rose-300 whitespace-nowrap">
+                      -{FFP_TIER2_SCORE_PENALTY_PCT}% 감점
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Cash Sweetener Summary */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 text-[10.5px]">
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-950/12 p-2.5">
+                <div className="font-extrabold text-emerald-300">트레이드 현금 얹기</div>
+                <p className="mt-0.5 text-slate-300">
+                  €1M당 <strong className="text-white">+{CASH_TO_TP_RATE} TP</strong> (€{CASH_TO_TP_SOFT_CAP_M}M 초과분 +{CASH_TO_TP_OVER_CAP_RATE} TP · 통합세 면제)
+                </p>
+              </div>
+              <div className="rounded-lg border border-sky-500/25 bg-sky-950/12 p-2.5">
+                <div className="font-extrabold text-sky-300">슈퍼스타 가드 완화</div>
+                <p className="mt-0.5 text-slate-300">
+                  <strong className="text-white">€{CASH_STAR_GUARD_RELIEF_THRESHOLD_M}M+</strong> 현금 추가 시 OVR -7 핵심 자산 기준 1단계 완화
+                </p>
+              </div>
+              <div className="rounded-lg border border-amber-500/25 bg-amber-950/12 p-2.5">
+                <div className="font-extrabold text-amber-300">레전드 FA 협상</div>
+                <p className="mt-0.5 text-slate-300">
+                  €10M당 성공률 <strong className="text-white">+{CASH_LEGEND_CHANCE_PER_10M}%p</strong> (최대 +{CASH_LEGEND_CHANCE_MAX_BONUS}%p)
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -792,67 +902,130 @@ export function SystemGuideContent({
             </p>
           </div>
 
-          {/* v9.0 AI Pre-Match Tactical Adaptation */}
-          <div className="rounded-xl border border-amber-500/30 bg-[#0b1018] p-3.5 space-y-2 text-[11px] text-slate-300">
+          {/* v9.0/v9.1 AI Pre-Match Tactical Adaptation (8-Match Window, Danger-Only Popup, Elite AI 1st-Half Counter) */}
+          <div className="rounded-xl border border-amber-500/30 bg-[#0b1018] p-3.5 space-y-3 text-[11px] text-slate-300">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-amber-300 text-xs">
                 <Eye className="w-4 h-4 shrink-0" />
                 AI 사전 전술 파훼 (반복 패턴 노출도 0~100)
               </div>
               <span className="rounded bg-amber-500/15 border border-amber-400/30 px-2 py-0.5 text-[10px] font-bold text-amber-200 whitespace-nowrap">
-                최근 {ADAPTATION_HISTORY_WINDOW}경기 추적
+                최근 {ADAPTATION_HISTORY_WINDOW}경기 추적 · 위험 전용 팝업
               </span>
             </div>
-            <ul className="space-y-1.5 text-slate-300">
-              <li>
-                • <strong className="text-white">노출도 누적 &amp; 경보 단계:</strong>{' '}
-                최근 {ADAPTATION_HISTORY_WINDOW}경기에서 동일한 포메이션+전술을 반복하면 노출도가 누적됩니다.{' '}
-                <strong className="text-amber-300">주의({EXPOSURE_WARNING_THRESHOLD}+)</strong> ·{' '}
-                <strong className="text-rose-300">파훼 경계({EXPOSURE_DANGER_THRESHOLD}+)</strong> 구간 최초 진입 시 스카우팅 경고 팝업이 1회 안내되며(스팸 방지),
-                포메이션이나 전술을 변주해 노출도가 <strong className="text-emerald-300">{EXPOSURE_RESET_ALERT_BELOW} 미만</strong>으로 내려가면 안전 상태로 해소됩니다.
-              </li>
-              <li>
-                • <strong className="text-slate-100">AI 감독 OVR 차등 파훼:</strong>{' '}
-                노출도가 높아지면 상위권 AI 감독(OVR 88+)은 킥오프 전부터 카운터 전술로 전환하고 라인·xG 압박을 강하게 가하는 반면,
-                하위권 감독(OVR 79 이하)은 제한적으로만 대응합니다.
-                <strong className="text-teal-300"> 전술 완성도 수석 코치</strong> 선임 시 노출도 누적이{' '}
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 text-[10.5px]">
+              <div className="rounded-lg border border-slate-800 bg-[#111822] p-2.5 space-y-1">
+                <div className="flex items-center justify-between font-extrabold text-emerald-300">
+                  <span>안전 (0~{EXPOSURE_WARNING_THRESHOLD - 1})</span>
+                  <span className="font-mono text-[9.5px]">1~4연속</span>
+                </div>
+                <p className="text-slate-400">
+                  상대 AI가 기본 전술대로 대응합니다. 포메이션이나 전술을 1경기만 변주해도 즉시 안전 구간으로 해소됩니다.
+                </p>
+              </div>
+              <div className="rounded-lg border border-amber-500/30 bg-amber-950/15 p-2.5 space-y-1">
+                <div className="flex items-center justify-between font-extrabold text-amber-300">
+                  <span>주의 ({EXPOSURE_WARNING_THRESHOLD}~{EXPOSURE_DANGER_THRESHOLD - 1})</span>
+                  <span className="font-mono text-[9.5px]">5~7연속</span>
+                </div>
+                <p className="text-slate-300">
+                  팝업 없이 전술실 정찰 배지만 은은하게 표시됩니다. 상위권 AI 감독이 사전 대응을 준비하기 시작합니다.
+                </p>
+              </div>
+              <div className="rounded-lg border border-rose-500/40 bg-rose-950/20 p-2.5 space-y-1">
+                <div className="flex items-center justify-between font-extrabold text-rose-300">
+                  <span>파훼 경계 ({EXPOSURE_DANGER_THRESHOLD}~100)</span>
+                  <span className="font-mono text-[9.5px]">약 {ADAPTATION_HISTORY_WINDOW}연속</span>
+                </div>
+                <p className="text-slate-200">
+                  최초 진입 시 <strong>스카우팅 경고 팝업 1회</strong> 발동(변주 해제 후 재진입 시에만 재안내). 명장 AI가 전반 카운터 전술을 가동합니다.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-slate-800 bg-[#111822] p-2.5 space-y-1.5 text-[10.5px]">
+              <div className="font-bold text-slate-100">
+                명장 AI 전반 카운터 &amp; 전술 완성도 코치 완화
+              </div>
+              <p className="text-slate-300">
+                • <strong className="text-rose-200">OVR {ELITE_AI_COUNTER_OVR_THRESHOLD}+ 명장 AI</strong>는 높은 노출도에서 경기 프리뷰와 다른{' '}
+                <strong className="text-white">전반 킥오프 또는 전반 중반(18&apos;~28&apos;) 기습 카운터 전술</strong>을 가동하며,
+                중계 상단과 경기 리포트에 <code className="text-rose-300">[전술 파훼 발동]</code> 알림이 표시됩니다.
+              </p>
+              <p className="text-slate-400">
+                • <strong className="text-teal-300">전술 완성도 수석 코치</strong>를 선임하면 노출도 누적 속도가{' '}
                 <strong className="text-white">{Math.round(COACH_ADAPTATION_MITIGATION * 100)}% 완화</strong>됩니다.
-              </li>
-            </ul>
+              </p>
+            </div>
           </div>
 
-          {/* v9.0 Mid-Season Assistant Coaches (12-coach pool) */}
-          <div className="rounded-xl border border-emerald-500/30 bg-[#0b1018] p-3.5 space-y-2 text-[11px] text-slate-300">
+          {/* v9.0/v9.1 Mid-Season Assistant Coaches (Full 12-Coach Pixel Catalog) */}
+          <div className="rounded-xl border border-emerald-500/30 bg-[#0b1018] p-3.5 space-y-3 text-[11px] text-slate-300">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-emerald-300 text-xs">
                 <UserCheck className="w-4 h-4 shrink-0" />
-                반환점(2차 이적시장) 수석 코치 선임 ({STAFF_COACH_LIST.length}종 중 3명 추천 → 1명 선택)
+                반환점(2차 이적시장) 수석 코치 도감 ({STAFF_COACH_LIST.length}종 중 3명 추천 → 1명 선택)
               </div>
               <span className="rounded bg-emerald-500/15 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-bold text-emerald-200 whitespace-nowrap">
-                FFP 동결 중에도 선임 가능
+                FFP 2단계 동결 중에도 선임 가능
               </span>
             </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <div className="rounded-lg border border-sky-500/30 bg-[#111822] p-2.5 space-y-1">
-                <div className="font-extrabold text-sky-300">① 전술 특화 코치 (5종)</div>
-                <p className="text-[10.5px] text-slate-400">
-                  점유율·압박·역습·측면·밸런스 중 해당 전술 사용 시 팀 전체 A·M·D{' '}
-                  <strong className="text-white">+{STAFF_COACH_TACTIC_OVR_LIFT}</strong> 상시 상승.
-                </p>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 text-[10.5px]">
+              <div className="rounded-lg border border-sky-500/30 bg-[#111822] p-2.5">
+                <div className="font-extrabold text-sky-300">① 전술 특화 (5종)</div>
+                <div className="mt-0.5 text-slate-400">
+                  해당 전술 선택 시 팀 A·M·D <strong className="text-white">+{STAFF_COACH_TACTIC_OVR_LIFT}</strong>
+                </div>
               </div>
-              <div className="rounded-lg border border-emerald-500/30 bg-[#111822] p-2.5 space-y-1">
-                <div className="font-extrabold text-emerald-300">② 라인 강화 코치 (3종)</div>
-                <p className="text-[10.5px] text-slate-400">
-                  공격(A)·중원(M)·수비(D) 전담 코치 — 전술 무관 해당 라인 상시{' '}
-                  <strong className="text-white">+{STAFF_COACH_LINE_LIFT.toFixed(1)}</strong> 강화.
-                </p>
+              <div className="rounded-lg border border-emerald-500/30 bg-[#111822] p-2.5">
+                <div className="font-extrabold text-emerald-300">② 라인 강화 (3종)</div>
+                <div className="mt-0.5 text-slate-400">
+                  전술 무관 공격/중원/수비 상시 <strong className="text-white">+{STAFF_COACH_LINE_LIFT.toFixed(1)}</strong>
+                </div>
               </div>
-              <div className="rounded-lg border border-amber-500/30 bg-[#111822] p-2.5 space-y-1">
-                <div className="font-extrabold text-amber-300">③ 시스템 보너스 코치 (4종)</div>
-                <p className="text-[10.5px] text-slate-400">
-                  전술 완성도(파훼 -{Math.round(COACH_ADAPTATION_MITIGATION * 100)}%·상성 +{Math.round((STAFF_COACH_TACTIC_MATCHUP_MULT - 1) * 100)}%) / 라커룸(케미 +{STAFF_COACH_CHEM_LIFT}·사기 방어) / 슈퍼서브(65&apos;+ 체력 -{Math.round(STAFF_COACH_LATE_STAMINA_REDUCTION * 100)}%·교체 +{STAFF_COACH_SUB_OVR_LIFT.toFixed(1)}, 감독 합산 최대 +{STAFF_COACH_SUB_COMBINED_CAP.toFixed(1)}) / 잠재력 육성(OVR≤{STAFF_COACH_DEV_MAX_BASE_OVR} +{STAFF_COACH_DEV_OVR_LIFT}·각성 +{Math.round((STAFF_COACH_DEV_AWAKENING_MULT - 1) * 100)}%).
-                </p>
+              <div className="rounded-lg border border-amber-500/30 bg-[#111822] p-2.5">
+                <div className="font-extrabold text-amber-300">③ 시스템 보너스 (4종)</div>
+                <div className="mt-0.5 text-slate-400">
+                  파훼 -{Math.round(COACH_ADAPTATION_MITIGATION * 100)}%·상성 +{Math.round((STAFF_COACH_TACTIC_MATCHUP_MULT - 1) * 100)}% / 케미 +{STAFF_COACH_CHEM_LIFT} / 교체 +{STAFF_COACH_SUB_OVR_LIFT.toFixed(1)}(최대 +{STAFF_COACH_SUB_COMBINED_CAP.toFixed(1)})·65&apos;+ 체력 -{Math.round(STAFF_COACH_LATE_STAMINA_REDUCTION * 100)}% / OVR≤{STAFF_COACH_DEV_MAX_BASE_OVR} +{STAFF_COACH_DEV_OVR_LIFT}·각성 +{Math.round((STAFF_COACH_DEV_AWAKENING_MULT - 1) * 100)}%
+                </div>
               </div>
+            </div>
+
+            {/* Full 12 Staff Coaches Grid with Real Pixel Portraits */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {STAFF_COACH_LIST.map((coach) => (
+                <div
+                  key={coach.id}
+                  className="flex items-center gap-2.5 rounded-lg border border-slate-800 bg-[#111822] p-2"
+                >
+                  <div className="flex h-11 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-700/80 bg-[#0b1018]">
+                    <PixelManagerAvatar
+                      avatar={coach.avatar}
+                      clubPrimaryColor={coach.clubPrimaryColor}
+                      clubSecondaryColor={coach.clubSecondaryColor}
+                      size={34}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="truncate text-[11px] font-extrabold text-white">
+                        {coach.name}
+                      </span>
+                      <span className="rounded bg-slate-800 px-1.5 py-px text-[9px] font-bold text-slate-300 whitespace-nowrap shrink-0">
+                        {coach.categoryLabel}
+                      </span>
+                    </div>
+                    <div className="text-[10px] font-bold text-emerald-300 truncate">
+                      {coach.roleTitle} · {coach.shortBadge}
+                    </div>
+                    <div className="text-[9.5px] text-slate-400 leading-snug line-clamp-2">
+                      {coach.effectSummary}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -947,38 +1120,79 @@ export function SystemGuideContent({
             </ul>
           </div>
 
-          {/* v9.0 Permanent Potential Awakening */}
-          <div className="rounded-xl border border-rose-500/35 bg-[#120d12] p-3.5 space-y-2">
+          {/* v9.0/v9.1 Permanent Potential Awakening */}
+          <div className="rounded-xl border border-rose-500/35 bg-[#120d12] p-3.5 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-rose-200">
                 <Flame className="w-4 h-4 text-orange-400 shrink-0" />
                 선수 포텐 폭발 (영구 순수 OVR +{AWAKENING_MIN_GAIN} ~ +{AWAKENING_MAX_GAIN} 각성)
               </div>
               <span className="rounded bg-rose-500/15 border border-rose-400/35 px-2 py-0.5 text-[10px] font-bold text-rose-200 whitespace-nowrap">
-                레전드 불가 (0%) · 최대 OVR {AWAKENING_OVR_HARD_CAP}
+                레전드 불가 (0%) · 상한 OVR {AWAKENING_OVR_HARD_CAP}
               </span>
             </div>
-            <ul className="space-y-1.5 text-[11px] text-slate-300">
-              <li>
-                • <strong className="text-white">발동 조건 &amp; 시즌 빈도:</strong>{' '}
-                시즌 {AWAKENING_MIN_SEASON_MATCH}경기 이상 진행 · 선수 개인 {AWAKENING_MIN_APPEARANCES}경기 이상 출전 후,
-                45분+ 출전 및 평점 7.4+ 활약 시(공격포인트·무실점·인접 시너지·감독 궁합·사기·잠재력 코치 가중) 확률 판정됩니다.
-                일반 선수(기본 OVR {AWAKENING_SUPERSTAR_OVR_THRESHOLD - 1} 이하)는 시즌당 평균 0~1명 수준이며,{' '}
-                <strong className="text-emerald-300">2명째까지는 확률 급감 없음(×{AWAKENING_SECOND_COUNT_MULT.toFixed(2)})</strong>,{' '}
-                <strong className="text-amber-300">3명째부터 ×{AWAKENING_THIRD_PLUS_MULT.toFixed(2)} 급감</strong>합니다.
-              </li>
-              <li>
-                • <strong className="text-rose-200">등급별 제한:</strong>{' '}
-                <strong className="text-amber-300">레전드(ICON)는 각성 불가(0%)</strong>이며,
-                현역 OVR {AWAKENING_SUPERSTAR_OVR_THRESHOLD}+ 월드클래스·슈퍼스타는 극희박(일반 대비 1/25) 확률로만 발동하며 최대{' '}
-                <strong className="text-white">+{AWAKENING_SUPERSTAR_MAX_GAIN}</strong>(상한 {AWAKENING_OVR_HARD_CAP})까지만 성장합니다.
-              </li>
-              <li>
-                • <strong className="text-orange-300">영구 순수 성장 &amp; 크림슨 엠버:</strong>{' '}
-                임시 버프가 아닌 <strong>순수 기본 OVR과 포지션 핵심 세부 능력치</strong>가 영구 상승하며
-                카드 테두리에 붉은 불꽃(Crimson Ember) 글로우가 적용됩니다. 상승 기록은 세이브·명예의 전당·글로벌 TOP 15·1v1 대전까지 보존됩니다.
-              </li>
-            </ul>
+
+            <div className="overflow-x-auto rounded-lg border border-rose-500/25 bg-[#0b0d14]">
+              <table className="w-full min-w-[460px] text-left text-[10.5px] tabular-nums">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-[#090c12] text-slate-400">
+                    <th className="py-2 px-2.5">선수 등급 (기본 OVR)</th>
+                    <th className="py-2 px-2">발동 빈도</th>
+                    <th className="py-2 px-2.5">영구 OVR 상승폭</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/70">
+                  <tr>
+                    <td className="py-1.5 px-2.5 font-bold text-amber-300 whitespace-nowrap">
+                      👑 레전드 (ICON)
+                    </td>
+                    <td className="py-1.5 px-2 font-bold text-rose-300 whitespace-nowrap">
+                      0% (각성 불가)
+                    </td>
+                    <td className="py-1.5 px-2.5 text-slate-500">해당 없음</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 px-2.5 font-bold text-purple-300 whitespace-nowrap">
+                      슈퍼스타 · 월클 ({AWAKENING_SUPERSTAR_OVR_THRESHOLD}+)
+                    </td>
+                    <td className="py-1.5 px-2 text-slate-200 whitespace-nowrap">
+                      극희박 (×{AWAKENING_SUPERSTAR_RATE_MULT.toFixed(2)}, 1/25)
+                    </td>
+                    <td className="py-1.5 px-2.5 font-bold text-white whitespace-nowrap">
+                      최대 +{AWAKENING_SUPERSTAR_MAX_GAIN} (상한 {AWAKENING_OVR_HARD_CAP})
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 px-2.5 font-bold text-emerald-300 whitespace-nowrap">
+                      일반 핵심 · 유망주 ({AWAKENING_SUPERSTAR_OVR_THRESHOLD - 1} 이하)
+                    </td>
+                    <td className="py-1.5 px-2 text-slate-200 whitespace-nowrap">
+                      시즌당 평균 0~1명
+                    </td>
+                    <td className="py-1.5 px-2.5 text-slate-200">
+                      ≤77: <strong>+4~+7</strong> · 78~81: <strong>+3~+6</strong> · 82~84: <strong>+2~+5</strong> · 85~86: <strong>+2~+4</strong> · 87~88: <strong>+2~+3</strong>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-[10.5px]">
+              <div className="rounded-lg border border-slate-800 bg-[#0d121c] p-2.5 space-y-1">
+                <div className="font-bold text-slate-100">발동 조건 &amp; 시즌 누적 감쇠</div>
+                <p className="text-slate-300">
+                  팀 {AWAKENING_MIN_SEASON_MATCH}경기+ · 개인 {AWAKENING_MIN_APPEARANCES}경기+ · 45분+ 출전 &amp; 평점 7.4+ 활약 시 판정.{' '}
+                  <strong className="text-emerald-300">1명째 ×1.00 → 2명째 ×{AWAKENING_SECOND_COUNT_MULT.toFixed(2)}</strong>(급감 없음),{' '}
+                  <strong className="text-amber-300">3명째부터 ×{AWAKENING_THIRD_PLUS_MULT.toFixed(2)}</strong> 급감.
+                </p>
+              </div>
+              <div className="rounded-lg border border-rose-500/25 bg-rose-950/15 p-2.5 space-y-1">
+                <div className="font-bold text-orange-300">영구 순수 성장 &amp; 크림슨 엠버</div>
+                <p className="text-slate-300">
+                  임시 버프가 아닌 <strong>순수 기본 OVR + 포지션 핵심 세부 스탯</strong> 영구 상승. 붉은 불꽃(Crimson Ember) 테두리가 표시되며 세이브·명예의 전당·글로벌 랭킹·1v1 대전까지 보존됩니다.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Multiplayer (1v1 & 2~4P Multi-League) */}

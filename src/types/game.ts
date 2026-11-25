@@ -553,6 +553,7 @@ export interface SeasonState {
   injuryReturnToasts?: InjuryReturnNotification[];
   // v9.0: Budget/FFP, AI Tactical Adaptation, Mid-season Assistant Coach, Permanent Awakening
   budgetState?: SeasonBudgetState;
+  pendingFfpOpeningNotice?: boolean;
   tacticalAdaptation?: TacticalAdaptationState;
   staffCoach?: StaffCoachState;
   awakenedPlayers?: Record<string, import('./player').PlayerAwakeningRecord>;

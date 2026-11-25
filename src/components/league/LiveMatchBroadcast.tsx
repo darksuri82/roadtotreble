@@ -1382,8 +1382,31 @@ export function LiveMatchBroadcast({
 
   // Full 5-layer inputs for deterministic 2D tactical pitch simulation
   const myManagerOvr = override?.myManagerOvr ?? 86;
-  const homeTacticLive = fullResult?.homeTactic ?? halftime.homeTactic;
-  const awayTacticLive = fullResult?.awayTactic ?? halftime.awayTactic;
+  const activePreMatchCounter =
+    fullResult?.aiPreMatchCounter ?? halftime.aiPreMatchCounter ?? null;
+  const preMatchCounterRevealed = Boolean(
+    activePreMatchCounter &&
+      (phase !== 'first_half' ||
+        activePreMatchCounter.timing === 'kickoff' ||
+        minute >= activePreMatchCounter.minute),
+  );
+  const rawHomeTacticLive = fullResult?.homeTactic ?? halftime.homeTactic;
+  const rawAwayTacticLive = fullResult?.awayTactic ?? halftime.awayTactic;
+  // When an elite AI triggers a mid-1st-half twist, show & simulate the preview tactic until `counterMinute`
+  const homeTacticLive: TacticId =
+    !halftime.isUserHome &&
+    activePreMatchCounter &&
+    phase === 'first_half' &&
+    !preMatchCounterRevealed
+      ? activePreMatchCounter.originalTactic
+      : rawHomeTacticLive;
+  const awayTacticLive: TacticId =
+    halftime.isUserHome &&
+    activePreMatchCounter &&
+    phase === 'first_half' &&
+    !preMatchCounterRevealed
+      ? activePreMatchCounter.originalTactic
+      : rawAwayTacticLive;
   const aiAdjForPitch =
     phase !== 'first_half'
       ? (fullResult?.aiHalftimeAdjustment ?? halftime.aiHalftimeAdjustment ?? null)
@@ -1668,6 +1691,16 @@ export function LiveMatchBroadcast({
         <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3">
           {/* Compact Live Scoreboard & Stats Strip */}
           <div className="rounded-xl border border-slate-800 bg-[#0b1018] px-3.5 py-2.5 space-y-2">
+            {/* 1-Line AI Pre-Match / 1st-Half Tactical Counter Notification */}
+            {(phase === 'first_half' || phase === 'halftime') &&
+              activePreMatchCounter &&
+              preMatchCounterRevealed && (
+                <div className="flex items-center justify-center gap-1.5 rounded-lg border border-rose-500/40 bg-rose-950/35 px-2.5 py-1 text-[11px] font-bold text-rose-200">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                  <span className="truncate">{activePreMatchCounter.headline}</span>
+                </div>
+              )}
+
             {/* 1-Line AI Manager Halftime Counter Notification */}
             {phase === 'second_half' &&
               (fullResult?.aiHalftimeAdjustment ?? halftime.aiHalftimeAdjustment) && (
@@ -1689,8 +1722,7 @@ export function LiveMatchBroadcast({
                     {home.name}
                   </div>
                   <div className="text-[9px] sm:text-[10px] text-slate-500">
-                    {liveHomeFormation} ·{' '}
-                    {TACTICS[fullResult?.homeTactic ?? halftime.homeTactic].shortName}
+                    {liveHomeFormation} · {TACTICS[homeTacticLive].shortName}
                   </div>
                 </div>
                 <JerseySvg
@@ -1755,8 +1787,7 @@ export function LiveMatchBroadcast({
                     {away.name}
                   </div>
                   <div className="text-[9px] sm:text-[10px] text-slate-500">
-                    {liveAwayFormation} ·{' '}
-                    {TACTICS[fullResult?.awayTactic ?? halftime.awayTactic].shortName}
+                    {liveAwayFormation} · {TACTICS[awayTacticLive].shortName}
                   </div>
                 </div>
               </div>

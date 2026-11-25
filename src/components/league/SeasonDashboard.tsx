@@ -226,6 +226,11 @@ export function SeasonDashboard() {
       ? findUserCupMatch(season.cup, pendingCupStage, USER_CLUB_ID)
       : null;
 
+  const hasPendingFfpNotice = Boolean(
+    season?.pendingFfpOpeningNotice &&
+      season.budgetState &&
+      season.budgetState.ffpTier >= 1,
+  );
   const hasPendingStaffCoach = Boolean(
     season?.staffCoach?.pendingSelection &&
       season.staffCoach.offeredCoachIds.length > 0,
@@ -324,6 +329,7 @@ export function SeasonDashboard() {
 
   // Schedule next live auto-advance match (or ask resume confirmation after cup/2D/transfer/injury)
   const liveAutoBlockedByEvent =
+    hasPendingFfpNotice ||
     hasPendingStaffCoach ||
     isTransferOpen ||
     hasPendingInjury ||
@@ -509,23 +515,26 @@ export function SeasonDashboard() {
           ? '진행 선택 대기'
           : liveAutoCupPromptOpen
             ? '컵대회 일시정지'
-            : hasPendingStaffCoach
-              ? '수석 코치 선임'
-              : isTransferOpen
-                ? '이적시장 일시정지'
-                : hasPendingAwakening
-                  ? '선수 포텐 각성'
-                  : hasPendingAdaptation
-                    ? '전술 적응 경고'
-                    : hasPendingEvent
-                      ? '인터뷰 일시정지'
-                      : hasPendingInjury
-                        ? '부상 알림 일시정지'
-                        : uncelebratedCupWin
-                          ? '컵 우승 축하'
-                          : null;
+            : hasPendingFfpNotice
+              ? 'FFP 재정 통지'
+              : hasPendingStaffCoach
+                ? '수석 코치 선임'
+                : isTransferOpen
+                  ? '이적시장 일시정지'
+                  : hasPendingAwakening
+                    ? '선수 포텐 각성'
+                    : hasPendingAdaptation
+                      ? '전술 적응 경고'
+                      : hasPendingEvent
+                        ? '인터뷰 일시정지'
+                        : hasPendingInjury
+                          ? '부상 알림 일시정지'
+                          : uncelebratedCupWin
+                            ? '컵 우승 축하'
+                            : null;
 
   const controlsBlocked =
+    hasPendingFfpNotice ||
     hasPendingStaffCoach ||
     season.transferMarket.isOpen ||
     Boolean(season.liveHalftime) ||
@@ -646,27 +655,57 @@ export function SeasonDashboard() {
                 </span>
               )}
               {season.budgetState && (
-                <span
-                  title={
-                    season.budgetState.ffpTier === 2
-                      ? 'FFP 2단계 대폭 초과: 2차 이적 동결 · 패배 사기 추가 하락 · 시즌 점수 -12%'
+                <span className="inline-flex items-center gap-1">
+                  <span
+                    title={
+                      season.budgetState.ffpTier === 2
+                        ? 'FFP 2단계 대폭 초과: 이월 €0 · 2차 이적 동결 · 케미 -4 · 패배 사기 추가 하락 · 시즌 점수 -12%'
+                        : season.budgetState.ffpTier === 1
+                          ? 'FFP 1단계 경미 초과: 이월 €0 · 2차 이적 1회 제한 · 팀 케미 -4'
+                          : `이적시장 협상에 얹을 수 있는 잔여 예산 €${season.budgetState.transferCashM}M`
+                    }
+                    className={`inline-flex items-center gap-1 rounded border px-1.5 py-px text-[10px] font-bold whitespace-nowrap tabular-nums ${
+                      season.budgetState.ffpTier === 2
+                        ? 'border-rose-500/45 bg-rose-500/18 text-rose-200'
+                        : season.budgetState.ffpTier === 1
+                          ? 'border-amber-400/45 bg-amber-500/15 text-amber-200'
+                          : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                    }`}
+                  >
+                    {season.budgetState.ffpTier === 2
+                      ? 'FFP 2단계 · 2차 동결 · 케미 -4 · 점수 -12%'
                       : season.budgetState.ffpTier === 1
-                        ? 'FFP 1단계 경미 초과: 잔여 자금 €0M · 2차 이적 1회 제한 · 팀 케미 -4'
-                        : `이적시장 협상에 얹을 수 있는 잔여 예산 €${season.budgetState.transferCashM}M`
-                  }
-                  className={`inline-flex items-center gap-1 rounded border px-1.5 py-px text-[10px] font-bold whitespace-nowrap tabular-nums ${
-                    season.budgetState.ffpTier === 2
-                      ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
-                      : season.budgetState.ffpTier === 1
-                        ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
-                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                  }`}
-                >
-                  {season.budgetState.ffpTier === 2
-                    ? 'FFP 2단계'
-                    : season.budgetState.ffpTier === 1
-                      ? 'FFP 1단계'
-                      : `자금 €${season.budgetState.transferCashM}M`}
+                        ? 'FFP 1단계 · 2차 1회 · 케미 -4'
+                        : `자금 €${season.budgetState.transferCashM}M`}
+                  </span>
+                  {season.budgetState.ffpTier >= 1 && (
+                    <InfoHelpButton
+                      title={
+                        season.budgetState.ffpTier === 2
+                          ? `FFP 2단계 징계 적용 중 (+${season.budgetState.excessPct}%)`
+                          : `FFP 1단계 주의 적용 중 (+${season.budgetState.excessPct}%)`
+                      }
+                      align="right"
+                      size="xs"
+                      guideTab="basics"
+                      items={
+                        season.budgetState.ffpTier === 2
+                          ? [
+                              `초과 지출: €${season.budgetState.initialSpentM}M / 한도 €${season.budgetState.capM}M (+€${season.budgetState.excessM}M)`,
+                              '이월 현금 €0M · 팀 케미 상시 -4 적용',
+                              '2차 이적시장 신규 영입 전면 동결 (0회)',
+                              '경기 패배 시 선수단 사기 추가 하락 (-1단계)',
+                              '명예의 전당 · 글로벌 TOP 15 최종 점수 -12% 감점',
+                            ]
+                          : [
+                              `초과 지출: €${season.budgetState.initialSpentM}M / 한도 €${season.budgetState.capM}M (+€${season.budgetState.excessM}M)`,
+                              '이월 현금 €0M (트레이드 현금 얹기 불가)',
+                              '2차 이적시장 영입 시도 1회로 제한 (3회 → 1회)',
+                              '팀 케미 상시 -4 적용 (시즌 점수 감점은 없음)',
+                            ]
+                      }
+                    />
+                  )}
                 </span>
               )}
               {season.staffCoach?.hiredCoachId && (

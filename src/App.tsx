@@ -1,4 +1,5 @@
 import { AwakeningCelebrationModal } from './components/common/AwakeningCelebrationModal';
+import { FfpOpeningNoticeModal } from './components/common/FfpOpeningNoticeModal';
 import { HeaderNav } from './components/common/HeaderNav';
 import { InjuryAlertModal } from './components/common/InjuryAlertModal';
 import { InjuryReturnToast } from './components/common/InjuryReturnToast';
@@ -35,6 +36,7 @@ function GameRouter() {
     dismissInjuryReturnToast,
     hireStaffCoach,
     skipStaffCoach,
+    dismissFfpOpeningNotice,
     dismissAdaptationAlert,
     dismissAwakeningAlert,
   } = useGame();
@@ -46,19 +48,28 @@ function GameRouter() {
     !state.season?.liveHalftime &&
     (state.phase === 'season' || state.phase === 'ucl');
   const isTransferOpen = Boolean(state.season?.transferMarket.isOpen);
+  const hasPendingFfpNotice = Boolean(
+    isPlayableSeason &&
+      !isTransferOpen &&
+      state.season?.pendingFfpOpeningNotice &&
+      state.season?.budgetState &&
+      state.season.budgetState.ffpTier >= 1,
+  );
   const hasPendingStaffCoach = Boolean(
     isPlayableSeason &&
+      !hasPendingFfpNotice &&
       state.season?.staffCoach?.pendingSelection &&
       state.season.staffCoach.offeredCoachIds.length > 0,
   );
   const pendingInjuryAlerts =
-    isPlayableSeason && !hasPendingStaffCoach && !isTransferOpen
+    isPlayableSeason && !hasPendingFfpNotice && !hasPendingStaffCoach && !isTransferOpen
       ? (state.season?.pendingInjuryAlerts ?? [])
       : [];
   const injuryReturnToasts =
     isPlayableSeason ? (state.season?.injuryReturnToasts ?? []) : [];
   const pendingAwakeningAlert =
     isPlayableSeason &&
+    !hasPendingFfpNotice &&
     !hasPendingStaffCoach &&
     !isTransferOpen &&
     pendingInjuryAlerts.length === 0
@@ -66,6 +77,7 @@ function GameRouter() {
       : null;
   const pendingAdaptationAlert =
     isPlayableSeason &&
+    !hasPendingFfpNotice &&
     !hasPendingStaffCoach &&
     !isTransferOpen &&
     pendingInjuryAlerts.length === 0 &&
@@ -74,6 +86,7 @@ function GameRouter() {
       : null;
   const activeManagerEvent =
     isPlayableSeason &&
+    !hasPendingFfpNotice &&
     !hasPendingStaffCoach &&
     !isTransferOpen &&
     pendingInjuryAlerts.length === 0 &&
@@ -83,6 +96,7 @@ function GameRouter() {
       : null;
   const lastManagerResolution =
     isPlayableSeason &&
+    !hasPendingFfpNotice &&
     !hasPendingStaffCoach &&
     !isTransferOpen &&
     pendingInjuryAlerts.length === 0 &&
@@ -118,6 +132,15 @@ function GameRouter() {
         toasts={injuryReturnToasts}
         onDismiss={dismissInjuryReturnToast}
       />
+      {hasPendingFfpNotice && state.season?.budgetState && (
+        <FfpOpeningNoticeModal
+          budgetState={state.season.budgetState}
+          managerAvatar={state.manager.avatar}
+          managerName={state.manager.name}
+          userClub={state.userClub}
+          onDismiss={dismissFfpOpeningNotice}
+        />
+      )}
       {hasPendingStaffCoach && state.season?.staffCoach && (
         <StaffCoachHireModal
           offeredCoachIds={state.season.staffCoach.offeredCoachIds}

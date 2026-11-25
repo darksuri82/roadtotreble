@@ -641,6 +641,7 @@ export function MpLeagueRoot({
           cup={live.cup}
           ucl={live.ucl}
           squads={finalSquads}
+          byClub={live.byClub}
           onOpenPodium={
             live.final.rows.length >= 2 ? () => setPodiumOpen(true) : undefined
           }
@@ -773,6 +774,7 @@ export function MpLeagueRoot({
       }
       onHireStaffCoach={(coachId) => void sendAction('coach_hire', { coachId })}
       onSkipStaffCoach={() => void sendAction('coach_skip', {})}
+      onDismissFfpNotice={() => void sendAction('ffp_notice_dismiss', {})}
       onDismissAdaptationAlert={() => void sendAction('adaptation_dismiss', {})}
       onDismissAwakeningAlert={() => void sendAction('awakening_dismiss', {})}
       onSetAutoMs={host.setAutoMs}

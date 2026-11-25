@@ -21,7 +21,6 @@ import { FORMATIONS } from '../../../data/formations';
 import { computeSquadPlayerAnalytics } from '../../../engine/analyticsEngine';
 import { buildAiClubRoster, getLeagueById } from '../../../engine/dataLoader';
 import { formatMainPositions } from '../../../engine/positionEngine';
-import { TACTICS } from '../../../engine/tacticEngine';
 import type { DomesticCupState } from '../../../types/cup';
 import type {
   BestXiEntry,
@@ -51,6 +50,10 @@ import {
 } from '../../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../../common/PlayerDetailModal';
 import { PlayerNameButton } from '../../common/PlayerNameButton';
+import {
+  type TeamArchiveHonorBadge,
+  TeamSeasonArchiveTab,
+} from '../../common/TeamSeasonArchiveTab';
 import { CupBracketView } from '../../league/CupBracketView';
 import { getLeagueTrophyDisplayName } from '../../league/LeagueFinaleBannerModal';
 import { StandingsTable } from '../../league/StandingsTable';
@@ -63,6 +66,7 @@ interface MpLeagueSeasonSummaryProps {
   humans: MpLeagueHuman[];
   clubsById: Record<string, Club>;
   squads: Record<string, MpSquadInput>;
+  byClub?: Record<string, import('../../../types/mpLeague').MpHumanLive>;
   myClubId: string | null;
   cup?: DomesticCupState | null;
   uclEnabled?: boolean;
@@ -661,6 +665,14 @@ export function MpFriendSquadTab({
   row,
   stats,
   squad,
+  leagueName = '리그',
+  milestoneLabel = '정규리그 종료 시점 스쿼드',
+  staffCoachId = null,
+  budgetState = null,
+  cupResultLabel = null,
+  uclResultLabel = null,
+  seasonScore = null,
+  honors = [],
   onSelectPlayerId,
   onOpenFormation,
 }: {
@@ -669,6 +681,14 @@ export function MpFriendSquadTab({
   row: StandingRow | undefined;
   stats: PlayerSeasonStats[];
   squad: MpSquadInput | undefined;
+  leagueName?: string;
+  milestoneLabel?: string;
+  staffCoachId?: import('../../../types/game').StaffCoachId | null;
+  budgetState?: import('../../../types/game').SeasonBudgetState | null;
+  cupResultLabel?: string | null;
+  uclResultLabel?: string | null;
+  seasonScore?: { totalScore: number; grade: string } | null;
+  honors?: TeamArchiveHonorBadge[];
   onSelectPlayerId?: (playerId: string) => void;
   onOpenFormation?: () => void;
 }) {
@@ -715,22 +735,40 @@ export function MpFriendSquadTab({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-white">
-        <BarChart3 className="w-4 h-4 shrink-0 text-emerald-400" />
-        <span className="min-w-0 truncate">
-          {human.profile.name} ({human.nickname} 감독)
-        </span>
-        {squad && (
-          <>
-            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-slate-200">
-              {squad.formation}
-            </span>
-            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-bold text-slate-200">
-              {TACTICS[squad.tactic]?.name ?? squad.tactic}
-            </span>
-          </>
-        )}
-      </div>
+      {squad && (
+        <TeamSeasonArchiveTab
+          milestoneLabel={milestoneLabel}
+          club={human.profile}
+          managerName={`${human.nickname} 감독`}
+          managerAvatar={human.avatar}
+          managerTraitId={squad.managerTraitId ?? human.managerTraitId ?? null}
+          staffCoachId={staffCoachId}
+          budgetState={budgetState}
+          formation={squad.formation}
+          tactic={squad.tactic}
+          starters={squad.starters}
+          bench={squad.bench}
+          leagueName={leagueName}
+          leagueRank={rank}
+          standingRow={row ?? null}
+          cupResultLabel={cupResultLabel}
+          uclResultLabel={uclResultLabel}
+          seasonScore={seasonScore}
+          honors={honors}
+          teamStats={stats}
+          onInspectPlayer={(p) => onSelectPlayerId?.(p.id)}
+          onInspectStats={(st) => onSelectPlayerId?.(st.playerId)}
+        />
+      )}
+
+      {!squad && (
+        <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-white">
+          <BarChart3 className="w-4 h-4 shrink-0 text-emerald-400" />
+          <span className="min-w-0 truncate">
+            {human.profile.name} ({human.nickname} 감독)
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 tabular-nums">
         <div className="rounded-xl border border-slate-800 bg-[#111822] p-4">
@@ -1003,6 +1041,7 @@ export function MpLeagueSeasonSummary({
   humans,
   clubsById,
   squads,
+  byClub = {},
   myClubId,
   cup = null,
   uclEnabled = false,
@@ -1320,18 +1359,38 @@ export function MpLeagueSeasonSummary({
           </div>
         )}
 
-        {squadHuman && (
-          <MpFriendSquadTab
-            key={squadHuman.clubId}
-            human={squadHuman}
-            rank={squadRank}
-            row={squadRank ? standings[squadRank - 1] : undefined}
-            stats={summary.squadStats[squadHuman.clubId] ?? []}
-            squad={squads[squadHuman.clubId]}
-            onSelectPlayerId={openPlayerById}
-            onOpenFormation={() => setInspectedClubId(squadHuman.clubId)}
-          />
-        )}
+        {squadHuman && (() => {
+          const hMeta = byClub[squadHuman.clubId];
+          const honors: TeamArchiveHonorBadge[] = [];
+          if (squadRank === 1) {
+            honors.push({ label: `🏆 ${leagueName} 우승`, tone: 'gold' });
+          } else if (uclEnabled && uclQualifiedSet.has(squadHuman.clubId)) {
+            honors.push({ label: `UCL 진출 (리그 ${squadRank}위)`, tone: 'sky' });
+          }
+          if (cupChampionId === squadHuman.clubId && cup) {
+            honors.push({ label: `🏆 ${cup.meta.koreanName} 우승`, tone: 'gold' });
+          }
+          return (
+            <MpFriendSquadTab
+              key={squadHuman.clubId}
+              human={squadHuman}
+              rank={squadRank}
+              row={squadRank ? standings[squadRank - 1] : undefined}
+              stats={summary.squadStats[squadHuman.clubId] ?? []}
+              squad={squads[squadHuman.clubId]}
+              leagueName={leagueName}
+              milestoneLabel="정규리그 종료 시점 스쿼드"
+              staffCoachId={hMeta?.staffCoach?.hiredCoachId ?? null}
+              budgetState={hMeta?.budget ?? null}
+              cupResultLabel={
+                cupChampionId === squadHuman.clubId ? '우승' : cup ? '참가' : null
+              }
+              honors={honors}
+              onSelectPlayerId={openPlayerById}
+              onOpenFormation={() => setInspectedClubId(squadHuman.clubId)}
+            />
+          );
+        })()}
       </div>
       </div>
 

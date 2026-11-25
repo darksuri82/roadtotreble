@@ -169,18 +169,14 @@ export function TacticalAdaptationModal({
   const tacticName = TACTICS[alert.repeatedTactic]?.name ?? alert.repeatedTactic;
   const roundLabel =
     typeof alert.triggeredAtRound === 'number'
-      ? `${alert.triggeredAtRound}R 최초 안내`
-      : '최초 안내';
+      ? `${alert.triggeredAtRound}R 파훼 경계 도달`
+      : '파훼 경계 도달';
   const headline =
     alert.headline ??
-    (isDanger
-      ? '상대 감독들이 우리 전술 패턴을 완벽히 읽어냈습니다'
-      : '상대 스카우트들이 반복 전술을 분석하기 시작했습니다');
+    '상대 감독들이 우리 전술 패턴을 완벽히 읽어냈습니다';
   const detail =
     alert.detail ??
-    (isDanger
-      ? `최근 ${alert.consecutiveCount}경기 연속 동일 패턴이 노출되어(노출도 ${alert.exposureScore}/100), 다음 경기부터 상대 AI 감독이 경기 시작 전부터 맞춤 카운터 전술과 정밀 파훼 대응을 준비할 가능성이 높습니다.`
-      : `최근 ${alert.consecutiveCount}경기 동안 유사한 포메이션·전술이 반복되어(노출도 ${alert.exposureScore}/100) 상위권 AI 감독들이 사전 대응책을 마련하고 있습니다.`);
+    `최근 ${alert.consecutiveCount}경기 연속 동일 패턴이 노출되어(노출도 ${alert.exposureScore}/100), 다음 경기부터 명장 AI 감독이 프리뷰와 다른 전반 카운터 전술과 정밀 파훼 대응을 가동할 가능성이 높습니다.`;
   const accentBorder = isDanger
     ? 'border-rose-500/50 shadow-[0_0_36px_-10px_rgba(244,63,94,0.45)]'
     : 'border-amber-500/45 shadow-[0_0_36px_-10px_rgba(245,158,11,0.4)]';
@@ -225,7 +221,7 @@ export function TacticalAdaptationModal({
             <span
               className={`inline-flex rounded border px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap ${badgeStyle}`}
             >
-              {isDanger ? '전술 파훼 경계' : '전술 패턴 분석'}
+              전술 파훼 경계 (위험)
             </span>
             <span className="text-[11px] font-semibold text-slate-400 whitespace-nowrap">
               {roundLabel}
@@ -276,8 +272,8 @@ export function TacticalAdaptationModal({
           </p>
 
           <div className="rounded-lg border border-white/5 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-400 break-keep">
-            포메이션 또는 전술 스타일을 1~2경기 변주하면 상대의 사전 분석이 무력화됩니다.
-            (이 알림은 시즌 최초 1회만 표시되며, 이후 노출도는 전술실 상단 배지에서 확인할 수 있습니다.)
+            포메이션 또는 전술 스타일을 1경기라도 변주하면 노출도가 즉시 해소됩니다.
+            (위험 단계 도달 시 1회 표시되며, 전술 변주 후 다시 위험에 진입할 때만 재안내됩니다.)
           </div>
         </div>
 

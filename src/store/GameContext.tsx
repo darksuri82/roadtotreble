@@ -83,9 +83,11 @@ import {
   unlockAchievementsInStorage,
 } from '../engine/legacyEngine';
 import {
+  adjustAiClubRatingsForRosterChange,
   optimizeBestLineup,
   optimizeCurrentStartersForFormation,
   remapStartersForFormation,
+  reoptimizeAiClubRoster,
 } from '../engine/lineupOptimizer';
 import {
   resimulateRemainingSecondHalf,
@@ -1666,6 +1668,7 @@ type GameAction =
   | { type: 'TRANSFER_CLOSE_WINDOW' }
   | { type: 'HIRE_STAFF_COACH'; payload: { coachId: StaffCoachId } }
   | { type: 'SKIP_STAFF_COACH' }
+  | { type: 'DISMISS_FFP_OPENING_NOTICE' }
   | { type: 'DISMISS_ADAPTATION_ALERT' }
   | { type: 'DISMISS_AWAKENING_ALERT' }
   | { type: 'MARK_CUP_CELEBRATED' }
@@ -2271,36 +2274,77 @@ function executeBidirectionalTrade(params: {
   );
 
   // 3) 100% Bidirectional AI Club Roster Sync (0 world duplicates across 5 leagues + UCL)
+  //    Re-optimize partner club's Best XI so traded-in starter-grade players immediately start in indices 0..10.
   const nextAiRosters: Record<string, Player[]> = {};
+  let partnerPrevRoster: Player[] | null = null;
+  let partnerNextRoster: Player[] | null = null;
   for (const [cid, roster] of Object.entries(season.aiRosters)) {
     // Scrub any moved IDs from every club first to guarantee zero duplicates
     let cleaned = roster.filter(
       (p) => !incomingIds.has(p.id) && !sentIds.has(p.id),
     );
     if (partnerLeagueId === season.leagueId && cid === partnerClub.id) {
-      cleaned = [...cleaned, ...allSentForPartner];
+      partnerPrevRoster = roster;
+      cleaned = reoptimizeAiClubRoster({
+        roster: [...cleaned, ...allSentForPartner],
+        formation: partnerClub.formation,
+      });
+      partnerNextRoster = cleaned;
     }
     nextAiRosters[cid] = cleaned;
   }
+
+  const nextClubs =
+    partnerLeagueId === season.leagueId && partnerPrevRoster && partnerNextRoster
+      ? season.clubs.map((c) =>
+          c.id === partnerClub.id
+            ? adjustAiClubRatingsForRosterChange(
+                c,
+                partnerPrevRoster!,
+                partnerNextRoster!,
+              )
+            : c,
+        )
+      : season.clubs;
 
   const nextOtherLeagues: SeasonState['otherLeagues'] = {
     ...season.otherLeagues,
   };
   for (const lid of Object.keys(nextOtherLeagues) as LeagueId[]) {
-      const ol = nextOtherLeagues[lid];
-      if (!ol || !ol.aiRosters) continue;
-      const updatedOlRosters: Record<string, Player[]> = {};
-      for (const [cid, roster] of Object.entries(ol.aiRosters)) {
-        let cleaned = roster.filter(
-          (p) => !incomingIds.has(p.id) && !sentIds.has(p.id),
-        );
-        if (lid === partnerLeagueId && cid === partnerClub.id) {
-          cleaned = [...cleaned, ...allSentForPartner];
-        }
-        updatedOlRosters[cid] = cleaned;
+    const ol = nextOtherLeagues[lid];
+    if (!ol || !ol.aiRosters) continue;
+    const updatedOlRosters: Record<string, Player[]> = {};
+    let olPrevPartner: Player[] | null = null;
+    let olNextPartner: Player[] | null = null;
+    for (const [cid, roster] of Object.entries(ol.aiRosters)) {
+      let cleaned = roster.filter(
+        (p) => !incomingIds.has(p.id) && !sentIds.has(p.id),
+      );
+      if (lid === partnerLeagueId && cid === partnerClub.id) {
+        olPrevPartner = roster;
+        cleaned = reoptimizeAiClubRoster({
+          roster: [...cleaned, ...allSentForPartner],
+          formation: partnerClub.formation,
+        });
+        olNextPartner = cleaned;
       }
+      updatedOlRosters[cid] = cleaned;
+    }
+    const updatedOlClubs =
+      lid === partnerLeagueId && olPrevPartner && olNextPartner
+        ? ol.clubs.map((c) =>
+            c.id === partnerClub.id
+              ? adjustAiClubRatingsForRosterChange(
+                  c,
+                  olPrevPartner!,
+                  olNextPartner!,
+                )
+              : c,
+          )
+        : ol.clubs;
     nextOtherLeagues[lid] = {
       ...ol,
+      clubs: updatedOlClubs,
       aiRosters: updatedOlRosters,
     };
   }
@@ -2529,13 +2573,20 @@ function executeBidirectionalTrade(params: {
   let nextUcl = season.ucl;
   if (nextUcl) {
     const nextUclAiRosters: Record<string, Player[]> = {};
+    let uclPrevPartner: Player[] | null = null;
+    let uclNextPartner: Player[] | null = null;
     for (const [cid, roster] of Object.entries(nextUcl.aiRosters)) {
       if (cid === USER_CLUB_ID) continue;
       let cleaned = roster.filter(
         (p) => !incomingIds.has(p.id) && !sentIds.has(p.id),
       );
       if (cid === partnerClub.id) {
-        cleaned = [...cleaned, ...allSentForPartner];
+        uclPrevPartner = roster;
+        cleaned = reoptimizeAiClubRoster({
+          roster: [...cleaned, ...allSentForPartner],
+          formation: partnerClub.formation,
+        });
+        uclNextPartner = cleaned;
       }
       nextUclAiRosters[cid] = cleaned;
     }
@@ -2551,18 +2602,22 @@ function executeBidirectionalTrade(params: {
     nextUcl = {
       ...nextUcl,
       aiRosters: nextUclAiRosters,
-      clubs: nextUcl.clubs.map((c) =>
-        c.id === USER_CLUB_ID
-          ? {
-              ...c,
-              formation: state.formation,
-              defaultTactic: season.defaultTactic,
-              att: ratingsAfter.att,
-              mid: ratingsAfter.mid,
-              def: ratingsAfter.def,
-            }
-          : c,
-      ),
+      clubs: nextUcl.clubs.map((c) => {
+        if (c.id === USER_CLUB_ID) {
+          return {
+            ...c,
+            formation: state.formation,
+            defaultTactic: season.defaultTactic,
+            att: ratingsAfter.att,
+            mid: ratingsAfter.mid,
+            def: ratingsAfter.def,
+          };
+        }
+        if (c.id === partnerClub.id && uclPrevPartner && uclNextPartner) {
+          return adjustAiClubRatingsForRosterChange(c, uclPrevPartner, uclNextPartner);
+        }
+        return c;
+      }),
     };
   }
 
@@ -2688,6 +2743,7 @@ function executeBidirectionalTrade(params: {
     bench: nextBench,
     season: {
       ...season,
+      clubs: nextClubs,
       ...(nextBudgetState ? { budgetState: nextBudgetState } : {}),
       aiRosters: nextAiRosters,
       otherLeagues: nextOtherLeagues,
@@ -3357,6 +3413,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         managerEvents: createDefaultManagerEventsState(),
         pendingInjuryAlerts: [],
         budgetState,
+        pendingFfpOpeningNotice: budgetState.ffpTier >= 1,
         tacticalAdaptation: createInitialTacticalAdaptationState(),
         staffCoach: createInitialStaffCoachState(),
         awakenedPlayers: {},
@@ -5936,6 +5993,17 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'DISMISS_FFP_OPENING_NOTICE': {
+      if (!state.season?.pendingFfpOpeningNotice) return state;
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          pendingFfpOpeningNotice: false,
+        },
+      };
+    }
+
     case 'DISMISS_ADAPTATION_ALERT': {
       if (!state.season?.tacticalAdaptation?.pendingAlert) return state;
       return {
@@ -7359,6 +7427,7 @@ interface GameContextValue {
   transferCloseWindow: () => void;
   hireStaffCoach: (coachId: StaffCoachId) => void;
   skipStaffCoach: () => void;
+  dismissFfpOpeningNotice: () => void;
   dismissAdaptationAlert: () => void;
   dismissAwakeningAlert: () => void;
   markCupCelebrated: () => void;
@@ -7927,6 +7996,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       hireStaffCoach: (coachId) =>
         dispatch({ type: 'HIRE_STAFF_COACH', payload: { coachId } }),
       skipStaffCoach: () => dispatch({ type: 'SKIP_STAFF_COACH' }),
+      dismissFfpOpeningNotice: () =>
+        dispatch({ type: 'DISMISS_FFP_OPENING_NOTICE' }),
       dismissAdaptationAlert: () =>
         dispatch({ type: 'DISMISS_ADAPTATION_ALERT' }),
       dismissAwakeningAlert: () =>

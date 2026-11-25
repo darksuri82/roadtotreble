@@ -182,6 +182,11 @@ export function MatchDetailModal({
 
         {/* Body */}
         <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4">
+          {activeMatch.aiPreMatchCounter && (
+            <div className="rounded-xl border border-rose-500/40 bg-rose-950/30 px-3.5 py-2 text-xs font-bold text-rose-200 break-keep">
+              ⚡ {activeMatch.aiPreMatchCounter.headline}
+            </div>
+          )}
           {/* Scoreboard */}
           <div className="grid grid-cols-3 items-center gap-2 rounded-2xl border border-slate-800 bg-[#090e16] px-4 py-4">
             <div className="flex flex-col items-center text-center">

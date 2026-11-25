@@ -5,6 +5,37 @@
 
 ---
 
+## v9.1 — 전술 파훼 8경기 완화·위험 전용 팝업 · AI 트레이드 주전 기용 수정 · 명장 AI 전반 카운터 연출 · FFP 개막 감사 팝업 · 내 팀 결산 탭 · 튜토리얼·가이드북 개편
+
+- **전술 노출도 8경기 완화 & 위험(파훼 경계) 전용 팝업 (`src/engine/tacticalAdaptationEngine.ts`, `src/components/common/TacticalAdaptationModal.tsx`, `src/components/league/MatchDayTacticsRoom.tsx`)**:
+  - `ADAPTATION_HISTORY_WINDOW`를 `5` → `8`로 확장하고 가중치·연속 보너스를 재설계해 1~4연속 `안전(low)`, 5~7연속 `주의(warning, 배지 전용)`, **약 8연속 `파훼 경계(danger, 72+)`**에 도달하도록 완화.
+  - `warning` 단계 팝업을 완전 제거하고 오직 `danger` 도달 시에만 스카우팅 경고 팝업이 1회 발동하며, 전술 변주로 `danger`에서 내려간 뒤 재진입할 때만 재무장(스팸 방지 가드 유지).
+- **AI 구단 트레이드 영입 선수 주전 기용 버그 전수 진단 및 근본 수정 (`src/engine/lineupOptimizer.ts`, `src/engine/conditionEngine.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueEngine.ts`)**:
+  - **진단 결과**: 트레이드 성사 시 유저가 보낸 선수가 상대 AI 구단 `aiRosters[cid]` 끝(인덱스 11+)에 단순 append되고, `selectConditionAwareAiLineup`이 `baseRoster.slice(0, 11)`만 순회(부상 시에만 11+ 조회)하며 `club.att/mid/def`도 갱신되지 않아 고OVR 주전급 이적 선수가 AI 벤치에 방치되던 구조적 결함 확인.
+  - **수정**: `reoptimizeAiClubRoster`(헝가리안 최적 11인 `0..10` 포메이션 슬롯 배치 + `11+` 벤치 정렬) 및 `adjustAiClubRatingsForRosterChange`(라인 OVR 변화 기반 `att/mid/def` 보정)를 신설해 싱글 리그·타 리그·UCL·멀티리그 모든 트레이드 경로에 적용하고, `selectConditionAwareAiLineup`에도 `baseRoster[11+]` 고OVR 건강한 선수 자동 승격 안전망을 추가.
+- **명장 AI(OVR 85+) 전반 기습 카운터 전술 & 실시간 알림 (`src/types/league.ts`, `src/engine/tacticalAdaptationEngine.ts`, `src/engine/matchEngine.ts`, `src/components/league/MatchDayTacticsRoom.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/common/MatchDetailModal.tsx`)**:
+  - `AiPreMatchCounterInfo` 메타데이터와 `counterTiming`(`'kickoff'` / `'first_half'` 18'~28')을 도입해 높은 노출도에서 OVR 85+ 명장 AI가 프리뷰와 다른 전반 카운터 전술을 가동할 때 전술실 사전 경고 배지, 2D 중계 실시간 전술 전환 + `[전술 파훼 발동]` 상단 배너, 라이브 스코어보드 피드 및 경기 상세 리포트에 일관 노출.
+- **FFP 페널티 명시 강화 & 시즌 개막 재정 감사 위원회 도트 팝업 (`src/components/common/FfpOpeningNoticeModal.tsx`, `src/types/game.ts`, `src/types/mpLeague.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueEngine.ts`, `src/App.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/multiplayer/league/MpLeagueRoot.tsx`, `src/components/multiplayer/league/useMpLeagueHost.ts`)**:
+  - 예산 초과 구단(FFP 1·2단계) 전용 시즌 개막 1회 도트 팝업 `FfpOpeningNoticeModal`(재정 감사 위원회 도트 씬 + 유저 감독 `PixelManagerAvatar` 당황 표정·땀방울 연출 + 활성 페널티 체크리스트, 순차 모달 큐 최상위 연동, 기존 세이브 `undefined` 안전 폴백) 구현.
+  - 싱글·멀티 대시보드 헤더 및 모든 이적시장 창 헤더에 활성 FFP 단계별 구체 페널티와 `?` 상세 팝오버 명시.
+- **리그 결산 · 통합 최종 결산 [내 팀 결산 / 시즌 스쿼드] 종합 탭 (`src/components/common/TeamSeasonArchiveTab.tsx`, `src/components/league/SeasonSummary.tsx`, `src/components/multiplayer/league/MpLeagueSeasonSummary.tsx`, `src/components/multiplayer/league/MpLeagueFinalBoard.tsx`)**:
+  - 공용 `TeamSeasonArchiveTab` 신설(구단·감독·수석 코치·FFP 헤더 + 읽기 전용 `PitchBoard` 각성 크림슨 엠버/라인 OVR/케미/벤치 + 시즌 성적/득점·도움·평점 리더/각성 선수/트로피·명예 카드) 및 싱글·멀티 리그 결산·통합 최종 결산 전면 연동.
+- **실제 인게임 그래픽 6단계 튜토리얼 & 상세 도감형 가이드북 (`src/components/guide/SoloVisualTutorialModal.tsx`, `src/components/guide/SystemGuideModal.tsx`)**:
+  - 튜토리얼을 6단계로 확장해 예산 프리뷰 슬라이더·수석 코치 `PixelManagerAvatar`·`.card-awakened-ember` 각성 카드·전술 노출도/명장 파훼 배지 등 실제 인게임 UI 프리뷰를 직접 임베드.
+  - 가이드북에 OVR 누진 몸값 vs 레전드 `€95M` 표, FFP 3단계 비교표, 8경기 전술 노출도·명장 AI 전반 파훼 표, 수석 코치 12종 전체 도트 아바타 도감, 각성 등급별 상승폭·감쇠 비교표를 엔진 상수 직결로 수록.
+- **테스트 (`src/__tests__/v90SeasonDepthSystems.test.ts`, `src/__tests__/v91PolishAndFixes.test.ts`)**: 8경기 노출도·위험 전용 재무장 팝업, AI 트레이드 주전 승격·90분 출전 평점 기록, 명장 AI 전반 카운터 전술 전환·`[전술 파훼 발동]` 이벤트 검증 추가.
+
+---
+
+## v9.0 — 시즌 운영 깊이 4대 시스템 (드래프트 예산·FFP·레전드 €95M 균일가 / AI 사전 전술 파훼 / 반환점 수석 코치 12종 / 영구 포텐 각성)
+
+- **드래프트 예산 소프트 캡(€950M) · 레전드 €95M 균일가 · FFP 2단계 · 이적시장 현금 협상 (`src/engine/budgetEngine.ts`, `src/components/common/DraftBudgetBar.tsx`, `src/engine/transferEngine.ts`)**: 16인 드래프트 누진 몸값 곡선 + 레전드 전원 `€95M` 고정가 + 잔여 예산 100% 이월(`€1M = +1.25 TP`, 레전드 FA 최대 `+15%p`) + 초과 시 2단계 FFP 페널티 + 드래프트 후보 프리뷰 슬라이더 및 1·2차 경계 잔액 표기.
+- **AI 사전 전술 파훼 (`src/engine/tacticalAdaptationEngine.ts`, `src/components/common/TacticalAdaptationModal.tsx`)**: 반복 `(포메이션, 전술)` 노출도 누적·변주 해소·AI 감독 OVR 차등 대응·도트 스카우팅 분석실 알림 팝업.
+- **반환점 수석 코치 12종 (`src/engine/staffCoachEngine.ts`, `src/components/common/StaffCoachHireModal.tsx`, `src/components/common/StaffCoachBadge.tsx`)**: 전술 특화(5종)·라인 강화(3종)·시스템 보너스(4종) 중 카테고리별 1명씩 3명 제시 → 1명 선임(고유 도트 아바타, FFP 동결 중에도 선임 가능).
+- **선수 포텐 폭발 영구 각성 (`src/engine/awakeningEngine.ts`, `src/components/common/AwakeningCelebrationModal.tsx`)**: 레전드 0%, 89+ 극희박(1/25)·최대 `+2`, 일반 ≤88 시즌 0~1명(2명째 ×0.90, 3명째부터 ×0.15), 순수 기본 OVR `+2~+7` + 포지션 맞춤 스탯 영구 상승(정적 DB 무오염), Crimson Ember 테두리 글로우 및 세이브·명전·글로벌 TOP 15·1v1 보존.
+
+---
+
 ## v8.18 — 이적시장 감독 궁합·가치 지표 통일 · 멀티 참가자/정산 컴팩트 포메이션 팝업 · 2D 골문 멈춤 수정/세컨찬스/지표 동기화 · 멀티리그 전 경기 2배속 고정
 
 - **이적시장 감독 궁합 전 영역 표시 & 선수 가치/트레이드 지표 통일 (`src/engine/transferEngine.ts`, `src/components/common/PitchBoard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:

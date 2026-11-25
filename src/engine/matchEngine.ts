@@ -14,6 +14,7 @@ import type {
 } from '../types/game';
 import type {
   AiHalftimeAdjustment,
+  AiPreMatchCounterInfo,
   Club,
   ExtraTimeInfo,
   Fixture,
@@ -306,6 +307,7 @@ function resolveMatchStrengths(params: {
   awayFormation: FormationId;
   homePossession: number;
   unifiedMatchup: UnifiedTacticalMatchup | null;
+  aiPreMatchCounter: AiPreMatchCounterInfo | null;
 } {
   const {
     homeClub,
@@ -988,6 +990,57 @@ function resolveMatchStrengths(params: {
     (home.possessionBonus - away.possessionBonus);
   const homePossession = Math.round(clamp(rawPoss, 31, 69));
 
+  let aiPreMatchCounter: AiPreMatchCounterInfo | null = null;
+  if (!isSecondHalf) {
+    if (awayPreMatchCounter?.overrideAiTactic && awayManager) {
+      const orig = awayClub.defaultTactic;
+      const applied = awayPreMatchCounter.overrideAiTactic;
+      const timing = awayPreMatchCounter.counterTiming ?? 'kickoff';
+      const min = awayPreMatchCounter.counterMinute ?? 0;
+      const timingPhrase =
+        timing === 'first_half' && min > 0
+          ? `전반 ${min}' 전술 전환`
+          : '프리뷰와 다른 전반 카운터 전술';
+      aiPreMatchCounter = {
+        managerName: awayManager.name,
+        managerOvr: awayManager.ovr,
+        originalTactic: orig,
+        appliedTactic: applied,
+        timing,
+        minute: min,
+        exposureScore: awayPreMatchCounter.exposureScore,
+        responseLevelLabel:
+          awayPreMatchCounter.responseLevelLabel === '없음'
+            ? '맞춤 대응'
+            : awayPreMatchCounter.responseLevelLabel,
+        headline: `[전술 파훼 발동] ${awayManager.name} 감독이 ${timingPhrase}(${TACTICS[orig].shortName} → ${TACTICS[applied].shortName})로 대응`,
+      };
+    } else if (homePreMatchCounter?.overrideAiTactic && homeManager) {
+      const orig = homeClub.defaultTactic;
+      const applied = homePreMatchCounter.overrideAiTactic;
+      const timing = homePreMatchCounter.counterTiming ?? 'kickoff';
+      const min = homePreMatchCounter.counterMinute ?? 0;
+      const timingPhrase =
+        timing === 'first_half' && min > 0
+          ? `전반 ${min}' 전술 전환`
+          : '프리뷰와 다른 전반 카운터 전술';
+      aiPreMatchCounter = {
+        managerName: homeManager.name,
+        managerOvr: homeManager.ovr,
+        originalTactic: orig,
+        appliedTactic: applied,
+        timing,
+        minute: min,
+        exposureScore: homePreMatchCounter.exposureScore,
+        responseLevelLabel:
+          homePreMatchCounter.responseLevelLabel === '없음'
+            ? '맞춤 대응'
+            : homePreMatchCounter.responseLevelLabel,
+        headline: `[전술 파훼 발동] ${homeManager.name} 감독이 ${timingPhrase}(${TACTICS[orig].shortName} → ${TACTICS[applied].shortName})로 대응`,
+      };
+    }
+  }
+
   return {
     home,
     away,
@@ -997,6 +1050,7 @@ function resolveMatchStrengths(params: {
     awayFormation,
     homePossession,
     unifiedMatchup,
+    aiPreMatchCounter,
   };
 }
 
@@ -2101,6 +2155,24 @@ export function simulateFirstHalf(params: {
       isUserTeam: isHomeUser,
       description: `휘슬! ${homeClub.name} (${resolved.homeFormation} · ${TACTICS[resolved.homeTactic].shortName}) vs ${awayClub.name} (${resolved.awayFormation} · ${TACTICS[resolved.awayTactic].shortName}) 킥오프!`,
     },
+    ...(resolved.aiPreMatchCounter
+      ? [
+          {
+            minute:
+              resolved.aiPreMatchCounter.timing === 'first_half' &&
+              resolved.aiPreMatchCounter.minute > 0
+                ? resolved.aiPreMatchCounter.minute
+                : 1,
+            half: 1 as const,
+            type: 'sub' as const,
+            teamId: isHomeUser ? awayClub.id : homeClub.id,
+            teamShortName: isHomeUser ? awayClub.shortName : homeClub.shortName,
+            teamColor: isHomeUser ? awayClub.primaryColor : homeClub.primaryColor,
+            isUserTeam: false,
+            description: `⚡ ${resolved.aiPreMatchCounter.headline}`,
+          },
+        ]
+      : []),
     ...generateHalfGoalEvents({
       goals: homeGoals,
       half: 1,
@@ -2215,6 +2287,9 @@ export function simulateFirstHalf(params: {
     liveSubs: [],
     userTacticAtKickoff: userContext.tactic,
     userFormationAtKickoff: userContext.formation,
+    ...(resolved.aiPreMatchCounter
+      ? { aiPreMatchCounter: resolved.aiPreMatchCounter }
+      : {}),
     phase: 'first_half',
   };
 }
@@ -2642,6 +2717,9 @@ export function simulateSecondHalf(params: {
     homeTacticBonus: resolved.home.tacticBonus,
     awayTacticBonus: resolved.away.tacticBonus,
     halftimeAdjusted,
+    ...(halftime.aiPreMatchCounter
+      ? { aiPreMatchCounter: halftime.aiPreMatchCounter }
+      : {}),
     ...(aiHalftimeAdjustment ? { aiHalftimeAdjustment } : {}),
     halftimeHomeGoals: halftime.homeGoals,
     halftimeAwayGoals: halftime.awayGoals,
@@ -3083,6 +3161,22 @@ export function simulateMatch(
       isUserTeam: isHomeUser,
       description: `휘슬! ${homeClub.name} vs ${awayClub.name} 킥오프.`,
     });
+    if (resolved.aiPreMatchCounter) {
+      events.push({
+        minute:
+          resolved.aiPreMatchCounter.timing === 'first_half' &&
+          resolved.aiPreMatchCounter.minute > 0
+            ? resolved.aiPreMatchCounter.minute
+            : 1,
+        half: 1,
+        type: 'sub',
+        teamId: isHomeUser ? awayClub.id : homeClub.id,
+        teamShortName: isHomeUser ? awayClub.shortName : homeClub.shortName,
+        teamColor: isHomeUser ? awayClub.primaryColor : homeClub.primaryColor,
+        isUserTeam: false,
+        description: `⚡ ${resolved.aiPreMatchCounter.headline}`,
+      });
+    }
     const userGk = userContext.starters.find((p) => p.position === 'GK');
     events.push({
       minute: Math.floor(rng() * 35) + 20,
@@ -3178,6 +3272,9 @@ export function simulateMatch(
     awayFormation: resolved.awayFormation,
     homeTacticBonus: resolved.home.tacticBonus,
     awayTacticBonus: resolved.away.tacticBonus,
+    ...(resolved.aiPreMatchCounter
+      ? { aiPreMatchCounter: resolved.aiPreMatchCounter }
+      : {}),
     events,
     ...ratingsInfo,
   };

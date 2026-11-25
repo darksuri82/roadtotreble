@@ -9,6 +9,7 @@ import {
   Sparkles,
   Star,
   Trophy,
+  Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
@@ -60,6 +61,10 @@ import {
 } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
+import {
+  type TeamArchiveHonorBadge,
+  TeamSeasonArchiveTab,
+} from '../common/TeamSeasonArchiveTab';
 import { GlobalTop15CelebrationModal } from '../legacy/GlobalTop15CelebrationModal';
 import { UclBracketTree } from '../ucl/UclBracketTree';
 import { CupBracketView } from './CupBracketView';
@@ -71,7 +76,7 @@ import {
 import { StandingsTable } from './StandingsTable';
 import { TeamAnalyticsTab } from './TeamAnalyticsTab';
 
-type SummaryMainTab = 'overview' | 'league' | 'cup' | 'ucl' | 'history';
+type SummaryMainTab = 'overview' | 'my_team' | 'league' | 'cup' | 'ucl' | 'history';
 type AwardRankTab = 'goals' | 'assists' | 'cleanSheets' | 'rating';
 type HistoryFilter = 'all' | 'league' | 'cup' | 'ucl';
 
@@ -924,11 +929,12 @@ export function SeasonSummary() {
         </section>
       )}
 
-      {/* 5-Tab Full Competition Records Bar */}
-      <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-[#0e141d] p-1 sm:grid-cols-5">
+      {/* 6-Tab Full Competition Records Bar */}
+      <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-slate-800 bg-[#0e141d] p-1 sm:grid-cols-3 lg:grid-cols-6">
         {(
           [
             ['overview', '통합 요약 · 어워즈', <Award key="a" className="w-3.5 h-3.5" />],
+            ['my_team', '내 팀 결산', <Users key="m" className="w-3.5 h-3.5" />],
             ['league', '리그 기록', <Globe key="l" className="w-3.5 h-3.5" />],
             ['cup', season.cup?.meta.koreanName ?? '자국 컵', <Trophy key="c" className="w-3.5 h-3.5" />],
             ['ucl', '챔피언스리그', <Sparkles key="u" className="w-3.5 h-3.5" />],
@@ -951,6 +957,97 @@ export function SeasonSummary() {
           </button>
         ))}
       </div>
+
+      {/* TAB 1B: MY TEAM SEASON ARCHIVE (FORMATION PITCH + COACHING + LEADERS + AWAKENING + HONORS) */}
+      {mainTab === 'my_team' && (() => {
+        const scopeStatsMap = uclCompleted
+          ? combinedStatsMap
+          : mergePlayerStatsMaps(season.allPlayerStats, season.cupPlayerStats);
+        const myTeamStats = Object.values(scopeStatsMap).filter(
+          (st) => st.isUserTeam || st.teamId === USER_CLUB_ID,
+        );
+        const honors: TeamArchiveHonorBadge[] = [];
+        if (isTreble) honors.push({ label: '👑 역사적 트레블', tone: 'gold' });
+        if (finalRank === 1) {
+          honors.push({ label: `🏆 ${league.koreanName} 우승`, tone: 'gold' });
+          if (userRow && userRow.lost === 0) {
+            honors.push({ label: '✨ 무패 우승', tone: 'emerald' });
+          }
+        } else if (qualifiedForUcl) {
+          honors.push({ label: `UCL 진출 (리그 ${finalRank}위)`, tone: 'sky' });
+        }
+        if (wonCup && season.cup) {
+          honors.push({ label: `🏆 ${season.cup.meta.koreanName} 우승`, tone: 'gold' });
+        }
+        if (wonUcl) {
+          honors.push({ label: '🏆 UEFA 챔피언스리그 우승', tone: 'sky' });
+        }
+        if (globalAwards?.ballonDorWinner?.stats.isUserTeam) {
+          honors.push({
+            label: `발롱도르 · ${globalAwards.ballonDorWinner.stats.playerName}`,
+            tone: 'gold',
+          });
+        }
+        if (awards?.poty?.isUserTeam) {
+          honors.push({
+            label: `리그 올해의 선수 · ${awards.poty.playerName}`,
+            tone: 'gold',
+          });
+        }
+        if (awards?.topScorers[0]?.isUserTeam) {
+          honors.push({
+            label: `리그 득점왕 · ${awards.topScorers[0].playerName}`,
+            tone: 'emerald',
+          });
+        }
+        if (awards?.topCleanSheets[0]?.isUserTeam) {
+          honors.push({
+            label: `최고 GK · ${awards.topCleanSheets[0].playerName}`,
+            tone: 'sky',
+          });
+        }
+        if (season.legacyArchived) {
+          honors.push({ label: '🏛️ 명예의 전당 등재', tone: 'gold' });
+        }
+
+        return (
+          <TeamSeasonArchiveTab
+            milestoneLabel={
+              uclCompleted
+                ? 'UCL 포함 시즌 통합 최종 스쿼드'
+                : '정규리그 종료 시점 스쿼드'
+            }
+            club={state.userClub}
+            managerName={state.manager.name}
+            managerAvatar={state.manager.avatar}
+            managerTraitId={state.manager.traitId}
+            staffCoachId={season.staffCoach?.hiredCoachId ?? null}
+            budgetState={season.budgetState ?? null}
+            formation={state.formation}
+            tactic={season.defaultTactic}
+            starters={state.starters}
+            bench={state.bench}
+            leagueName={league.koreanName}
+            leagueRank={finalRank}
+            standingRow={userRow ?? null}
+            cupResultLabel={
+              season.cup ? getUserCupResultLabel(season.cup, USER_CLUB_ID) : null
+            }
+            uclResultLabel={
+              season.ucl ? getUserUclResultLabel(season.ucl, USER_CLUB_ID) : null
+            }
+            seasonScore={
+              score ? { totalScore: score.totalScore, grade: score.grade } : null
+            }
+            honors={honors}
+            teamStats={myTeamStats}
+            onInspectPlayer={(p) =>
+              openPlayerById(p.id, scopeStatsMap[p.id] ?? null)
+            }
+            onInspectStats={(st) => openPlayerById(st.playerId, st)}
+          />
+        );
+      })()}
 
       {/* TAB 1: GLOBAL AWARDS (BALLON D'OR + WORLD BEST XI) & COMBINED SUMMARY */}
       {mainTab === 'overview' && (

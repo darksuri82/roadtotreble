@@ -22,28 +22,46 @@ export function matchResultToCastMatch(
     ? result.events
     : [...result.events, ...(result.extraTime?.etEvents ?? [])];
 
-  const feed: MpFeedItem[] = allEvents
-    .filter(
-      (e) =>
-        e.type === 'goal' ||
-        e.type === 'save' ||
-        e.type === 'chance' ||
-        e.type === 'var_offside',
-    )
-    .map((e) => ({
-      minute: e.minute,
-      teamId: e.teamId,
-      kind:
-        e.type === 'goal'
-          ? ('goal' as const)
-          : e.type === 'save'
-            ? ('save' as const)
-            : e.type === 'chance'
-              ? ('chance' as const)
-              : ('var' as const),
-      text: e.description,
-    }))
-    .sort((a, b) => a.minute - b.minute);
+  const feed: MpFeedItem[] = [
+    ...allEvents
+      .filter(
+        (e) =>
+          e.type === 'goal' ||
+          e.type === 'save' ||
+          e.type === 'chance' ||
+          e.type === 'var_offside',
+      )
+      .map((e) => ({
+        minute: e.minute,
+        teamId: e.teamId,
+        kind:
+          e.type === 'goal'
+            ? ('goal' as const)
+            : e.type === 'save'
+              ? ('save' as const)
+              : e.type === 'chance'
+                ? ('chance' as const)
+                : ('var' as const),
+        text: e.description,
+      })),
+    ...(result.aiPreMatchCounter
+      ? [
+          {
+            minute:
+              result.aiPreMatchCounter.timing === 'first_half' &&
+              result.aiPreMatchCounter.minute > 0
+                ? result.aiPreMatchCounter.minute
+                : 1,
+            teamId:
+              result.homeTeamId === userClubId
+                ? result.awayTeamId
+                : result.homeTeamId,
+            kind: 'chance' as const,
+            text: `⚡ ${result.aiPreMatchCounter.headline}`,
+          },
+        ]
+      : []),
+  ].sort((a, b) => a.minute - b.minute);
 
   const goals = allEvents
     .filter((e) => e.type === 'goal')

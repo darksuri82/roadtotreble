@@ -57,6 +57,10 @@ import {
   cupNodeToFixture,
 } from './cupEngine';
 import { buildAiClubRoster, buildAiClubSquad16, getLeagueById } from './dataLoader';
+import {
+  adjustAiClubRatingsForRosterChange,
+  reoptimizeAiClubRoster,
+} from './lineupOptimizer';
 import type { UserMatchContext } from './matchEngine';
 import { simulateExtraTimeAndPenalties, simulateMatch } from './matchEngine';
 import { resolveMpH2HFullInstant } from './mpLeagueH2H';
@@ -312,7 +316,15 @@ function emptyHumanSeason(squad?: MpSquadInput): MpHumanSeasonState {
     attemptsLeft: 0,
     tradeNote: null,
     lastMatch: null,
-    budget: squad ? createSeasonBudgetState(squadPlayers(squad)) : undefined,
+    ...(squad
+      ? (() => {
+          const budget = createSeasonBudgetState(squadPlayers(squad));
+          return {
+            budget,
+            pendingFfpOpeningNotice: budget.ffpTier >= 1,
+          };
+        })()
+      : { budget: undefined, pendingFfpOpeningNotice: false }),
     tacticalAdaptation: createInitialTacticalAdaptationState(),
     staffCoach: createInitialStaffCoachState(),
     awakenedPlayers: {},
@@ -1779,30 +1791,65 @@ function executeMpTradePackage(params: {
   const scrub = (roster: Player[]) => roster.filter((p) => !moved.has(p.id));
 
   const aiRosters: Record<string, Player[]> = {};
+  let mainPrevPartner: Player[] | null = null;
+  let mainNextPartner: Player[] | null = null;
   for (const [cid, roster] of Object.entries(state.aiRosters)) {
     const cleaned = scrub(roster);
-    aiRosters[cid] =
-      offer.leagueId === state.settings.leagueId && cid === offer.club.id
-        ? [...cleaned, ...sentForPartner]
-        : cleaned;
+    if (offer.leagueId === state.settings.leagueId && cid === offer.club.id) {
+      mainPrevPartner = roster;
+      const reopt = reoptimizeAiClubRoster({
+        roster: [...cleaned, ...sentForPartner],
+        formation: offer.club.formation,
+      });
+      mainNextPartner = reopt;
+      aiRosters[cid] = reopt;
+    } else {
+      aiRosters[cid] = cleaned;
+    }
   }
+
+  const nextClubs =
+    offer.leagueId === state.settings.leagueId && mainPrevPartner && mainNextPartner
+      ? state.clubs.map((c) =>
+          c.id === offer.club.id
+            ? adjustAiClubRatingsForRosterChange(c, mainPrevPartner!, mainNextPartner!)
+            : c,
+        )
+      : state.clubs;
 
   const otherLeagues = { ...state.otherLeagues };
   for (const lid of Object.keys(otherLeagues) as LeagueId[]) {
     const ol = otherLeagues[lid];
     if (!ol?.aiRosters) continue;
     const rosters: Record<string, Player[]> = {};
+    let olPrevPartner: Player[] | null = null;
+    let olNextPartner: Player[] | null = null;
     for (const [cid, roster] of Object.entries(ol.aiRosters)) {
       const cleaned = scrub(roster);
-      rosters[cid] =
-        lid === offer.leagueId && cid === offer.club.id
-          ? [...cleaned, ...sentForPartner]
-          : cleaned;
+      if (lid === offer.leagueId && cid === offer.club.id) {
+        olPrevPartner = roster;
+        const reopt = reoptimizeAiClubRoster({
+          roster: [...cleaned, ...sentForPartner],
+          formation: offer.club.formation,
+        });
+        olNextPartner = reopt;
+        rosters[cid] = reopt;
+      } else {
+        rosters[cid] = cleaned;
+      }
     }
-    otherLeagues[lid] = { ...ol, aiRosters: rosters };
+    const olClubs =
+      lid === offer.leagueId && olPrevPartner && olNextPartner
+        ? ol.clubs.map((c) =>
+            c.id === offer.club.id
+              ? adjustAiClubRatingsForRosterChange(c, olPrevPartner!, olNextPartner!)
+              : c,
+          )
+        : ol.clubs;
+    otherLeagues[lid] = { ...ol, clubs: olClubs, aiRosters: rosters };
   }
 
-  const humanClub = state.clubs.find((c) => c.id === human.clubId);
+  const humanClub = nextClubs.find((c) => c.id === human.clubId);
   let allPlayerStats = state.allPlayerStats;
   if (humanClub) {
     for (const inc of incomingPlayers) {
@@ -1817,6 +1864,7 @@ function executeMpTradePackage(params: {
     squad: nextSquad,
     state: {
       ...state,
+      clubs: nextClubs,
       aiRosters,
       otherLeagues,
       allPlayerStats,
@@ -2160,6 +2208,25 @@ export function dismissMpLeagueAwakeningAlert(
       [clubId]: {
         ...hs,
         pendingAwakeningAlerts: hs.pendingAwakeningAlerts.slice(1),
+      },
+    },
+  };
+}
+
+export function dismissMpLeagueFfpOpeningNotice(
+  state: MpLeagueHostState,
+  clubId: string,
+): MpLeagueHostState {
+  const hs = state.perHuman[clubId];
+  if (!hs?.pendingFfpOpeningNotice) return state;
+  return {
+    ...state,
+    rev: state.rev + 1,
+    perHuman: {
+      ...state.perHuman,
+      [clubId]: {
+        ...hs,
+        pendingFfpOpeningNotice: false,
       },
     },
   };
@@ -3196,6 +3263,7 @@ export function buildMpLeagueLive(
           : nextFixture.homeTeamId
         : null,
       budget: hs.budget,
+      pendingFfpOpeningNotice: hs.pendingFfpOpeningNotice,
       tacticalAdaptation: hs.tacticalAdaptation,
       staffCoach: hs.staffCoach,
       awakenedPlayers: hs.awakenedPlayers,

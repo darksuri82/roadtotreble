@@ -295,13 +295,13 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
   });
 });
 
-describe('v9.0 AI Pre-Match Tactical Adaptation', () => {
-  it('accumulates exposure on repeated patterns, fires non-spam alerts once per tier, and resets on variation', () => {
+describe('v9.0/v9.1 AI Pre-Match Tactical Adaptation (8-Match Danger & Danger-Only Popup)', () => {
+  it('reaches danger at 8 consecutive identical matches, triggers popup ONLY on danger (never warning), prevents spam, and re-arms after variation', () => {
     let state = createInitialTacticalAdaptationState();
-    const tiersFired: string[] = [];
+    const alertsFired: { round: number; tier: string }[] = [];
 
-    // Play 6 identical matches -> intro scouting popup fires ONLY ONCE per season
-    for (let r = 1; r <= 6; r += 1) {
+    // Matches 1..7 must NEVER fire a popup (1..4 low, 5..7 warning badge only)
+    for (let r = 1; r <= 7; r += 1) {
       state = recordMatchTacticalAdaptation({
         prev: state,
         formation: '4-3-3',
@@ -309,15 +309,35 @@ describe('v9.0 AI Pre-Match Tactical Adaptation', () => {
         round: r,
         competition: 'league',
       });
-      if (state.pendingAlert) {
-        tiersFired.push(state.pendingAlert.tier);
-        expect(state.pendingAlert.headline).toBeTruthy();
-        expect(state.pendingAlert.detail).toBeTruthy();
-        expect(state.pendingAlert.triggeredAtRound).toBe(r);
-        state = { ...state, pendingAlert: null };
-      }
+      expect(state.pendingAlert).toBeNull();
     }
-    expect(tiersFired).toEqual(['warning']);
+
+    // Match 8 crosses into 'danger' (>= 72) and triggers the scouting popup ONCE
+    state = recordMatchTacticalAdaptation({
+      prev: state,
+      formation: '4-3-3',
+      tactic: 'gegenpressing',
+      round: 8,
+      competition: 'league',
+    });
+    expect(state.pendingAlert).not.toBeNull();
+    expect(state.pendingAlert?.tier).toBe('danger');
+    expect(state.pendingAlert?.triggeredAtRound).toBe(8);
+    expect(state.pendingAlert?.headline).toBeTruthy();
+    expect(state.pendingAlert?.detail).toBeTruthy();
+    alertsFired.push({ round: 8, tier: state.pendingAlert!.tier });
+    state = { ...state, pendingAlert: null };
+
+    // Staying in 'danger' on match 9 must NOT re-trigger popup (anti-spam)
+    state = recordMatchTacticalAdaptation({
+      prev: state,
+      formation: '4-3-3',
+      tactic: 'gegenpressing',
+      round: 9,
+      competition: 'league',
+    });
+    expect(state.pendingAlert).toBeNull();
+    expect(alertsFired).toEqual([{ round: 8, tier: 'danger' }]);
 
     // Varying both formation & tactic immediately lowers exposure below reset threshold
     const variedEval = evaluateTacticalExposure({
@@ -328,18 +348,20 @@ describe('v9.0 AI Pre-Match Tactical Adaptation', () => {
     expect(variedEval.exposureScore).toBeLessThan(EXPOSURE_RESET_ALERT_BELOW);
     expect(variedEval.tier).toBe('low');
 
+    // Recording the varied match drops out of danger and re-arms the guard
     state = recordMatchTacticalAdaptation({
       prev: state,
       formation: '3-5-2',
       tactic: 'counter',
-      round: 7,
+      round: 10,
       competition: 'league',
     });
     expect(state.pendingAlert).toBeNull();
+    expect(state.highestAlertedTier).toBe('low');
   });
 
   it('scales AI pre-match counter strength by AI manager OVR and mitigates buildup with Tactical Mastery Coach', () => {
-    const repeatedHistory = Array.from({ length: 5 }, (_, i) => ({
+    const repeatedHistory = Array.from({ length: 8 }, (_, i) => ({
       formation: '4-3-3' as const,
       tactic: 'possession' as const,
       round: i + 1,
@@ -716,7 +738,10 @@ describe('v9.0 Permanent Potential Awakening', () => {
     expect(guideSrc).toContain('STAFF_COACH_LIST');
     expect(guideSrc).toContain('AWAKENING_THIRD_PLUS_MULT');
     expect(budgetBarSrc).toContain('LEGEND_FLAT_DRAFT_COST_M');
-    expect(tutorialSrc).toContain('€95M');
-    expect(tutorialSrc).toContain('€950M');
+    expect(tutorialSrc).toContain('LEGEND_FLAT_DRAFT_COST_M');
+    expect(tutorialSrc).toContain('DRAFT_BUDGET_CAP_M');
+    expect(tutorialSrc).toContain('ADAPTATION_HISTORY_WINDOW');
+    expect(tutorialSrc).toContain('EXPOSURE_DANGER_THRESHOLD');
+    expect(tutorialSrc).toContain('STAFF_COACHES');
   });
 });

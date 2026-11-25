@@ -178,6 +178,18 @@ export interface ExtraTimeInfo {
   winnerTeamId: string;
 }
 
+export interface AiPreMatchCounterInfo {
+  managerName: string;
+  managerOvr: number;
+  originalTactic: TacticId;
+  appliedTactic: TacticId;
+  timing: 'kickoff' | 'first_half';
+  minute: number; // 0 for kickoff, 18..28 for 1st-half tactical shift
+  exposureScore: number;
+  responseLevelLabel: '제한적' | '맞춤 대응' | '정밀 파훼';
+  headline: string;
+}
+
 export interface AiHalftimeAdjustment {
   managerName: string;
   managerOvr: number;
@@ -218,6 +230,7 @@ export interface MatchResult {
   homeTacticBonus: number;
   awayTacticBonus: number;
   halftimeAdjusted?: boolean;
+  aiPreMatchCounter?: AiPreMatchCounterInfo;
   aiHalftimeAdjustment?: AiHalftimeAdjustment;
   halftimeHomeGoals?: number;
   halftimeAwayGoals?: number;
@@ -273,6 +286,7 @@ export interface LiveHalftimeState {
   preMatchFormation?: FormationId;
   userTacticAtKickoff: TacticId;
   userFormationAtKickoff: FormationId;
+  aiPreMatchCounter?: AiPreMatchCounterInfo;
   aiHalftimeAdjustment?: AiHalftimeAdjustment;
   phase:
     | 'first_half'

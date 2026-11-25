@@ -48,6 +48,7 @@ import type { UclKnockoutStage } from '../../../types/ucl';
 import { resolvePlayerById } from '../../../utils/playerLookup';
 import { AwakeningCelebrationModal } from '../../common/AwakeningCelebrationModal';
 import { ClubSquadModal } from '../../common/ClubSquadModal';
+import { FfpOpeningNoticeModal } from '../../common/FfpOpeningNoticeModal';
 import { InfoHelpButton } from '../../common/InfoHelpButton';
 import { InjuryAlertModal } from '../../common/InjuryAlertModal';
 import { ManagerEventModal } from '../../common/ManagerEventModal';
@@ -173,6 +174,7 @@ interface MpLeagueDashboardProps {
   onTradeCounter: (payload: MpCounterTradePayload) => void;
   onHireStaffCoach?: (coachId: StaffCoachId) => void;
   onSkipStaffCoach?: () => void;
+  onDismissFfpNotice?: () => void;
   onDismissAdaptationAlert?: () => void;
   onDismissAwakeningAlert?: () => void;
   onSetAutoMs: (ms: number) => void;
@@ -394,6 +396,7 @@ export function MpLeagueDashboard({
   onTradeCounter,
   onHireStaffCoach,
   onSkipStaffCoach,
+  onDismissFfpNotice,
   onDismissAdaptationAlert,
   onDismissAwakeningAlert,
   onSetAutoMs,
@@ -1106,20 +1109,48 @@ export function MpLeagueDashboard({
                 </span>
               )}
               {mine?.budget && (
-                <span
-                  className={`inline-flex items-center rounded border px-1.5 py-px text-[10px] font-bold whitespace-nowrap tabular-nums ${
-                    mine.budget.ffpTier === 2
-                      ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
+                <span className="inline-flex items-center gap-1">
+                  <span
+                    className={`inline-flex items-center rounded border px-1.5 py-px text-[10px] font-bold whitespace-nowrap tabular-nums ${
+                      mine.budget.ffpTier === 2
+                        ? 'border-rose-500/45 bg-rose-500/18 text-rose-200'
+                        : mine.budget.ffpTier === 1
+                          ? 'border-amber-400/45 bg-amber-500/15 text-amber-200'
+                          : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                    }`}
+                  >
+                    {mine.budget.ffpTier === 2
+                      ? 'FFP 2단계 · 2차 동결 · 케미 -4 · 점수 -12%'
                       : mine.budget.ffpTier === 1
-                        ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
-                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                  }`}
-                >
-                  {mine.budget.ffpTier === 2
-                    ? 'FFP 2단계'
-                    : mine.budget.ffpTier === 1
-                      ? 'FFP 1단계'
-                      : `자금 €${mine.budget.transferCashM}M`}
+                        ? 'FFP 1단계 · 2차 1회 · 케미 -4'
+                        : `자금 €${mine.budget.transferCashM}M`}
+                  </span>
+                  {mine.budget.ffpTier >= 1 && (
+                    <InfoHelpButton
+                      title={
+                        mine.budget.ffpTier === 2
+                          ? `FFP 2단계 징계 적용 중 (+${mine.budget.excessPct}%)`
+                          : `FFP 1단계 주의 적용 중 (+${mine.budget.excessPct}%)`
+                      }
+                      align="right"
+                      size="xs"
+                      guideTab="basics"
+                      items={
+                        mine.budget.ffpTier === 2
+                          ? [
+                              `초과 지출: €${mine.budget.initialSpentM}M / 한도 €${mine.budget.capM}M (+€${mine.budget.excessM}M)`,
+                              '이월 현금 €0M · 팀 케미 상시 -4 적용',
+                              '2차 이적시장 신규 영입 전면 동결 (0회)',
+                              '패배 시 사기 추가 하락 (-1단계) · 최종 점수 -12%',
+                            ]
+                          : [
+                              `초과 지출: €${mine.budget.initialSpentM}M / 한도 €${mine.budget.capM}M (+€${mine.budget.excessM}M)`,
+                              '이월 현금 €0M · 팀 케미 상시 -4 적용',
+                              '2차 이적시장 영입 시도 1회 제한 (3회 → 1회)',
+                            ]
+                      }
+                    />
+                  )}
                 </span>
               )}
               {hiredStaffCoachId && mySquad && (
@@ -2148,6 +2179,7 @@ export function MpLeagueDashboard({
           humans={live.humans}
           clubsById={clubsById}
           squads={publicSquads}
+          byClub={live.byClub}
           myClubId={myClubId}
           cup={live.cup}
           uclEnabled={live.uclEnabled}
@@ -2258,6 +2290,28 @@ export function MpLeagueDashboard({
         )}
 
       {mine &&
+        mine.pendingFfpOpeningNotice &&
+        mine.budget &&
+        mine.budget.ffpTier >= 1 &&
+        !tickerPlaying &&
+        !mine.staffCoach?.pendingSelection &&
+        !showTransfer &&
+        !showSummary &&
+        !showCupChampion &&
+        !cupPending &&
+        !mine.event &&
+        mine.alerts.length === 0 && (
+          <FfpOpeningNoticeModal
+            budgetState={mine.budget}
+            managerAvatar={myHuman?.avatar}
+            managerName={myHuman?.nickname}
+            userClub={myHuman?.profile}
+            onDismiss={() => onDismissFfpNotice?.()}
+          />
+        )}
+
+      {mine &&
+        !(mine.pendingFfpOpeningNotice && mine.budget && mine.budget.ffpTier >= 1) &&
         mine.pendingAwakeningAlerts &&
         mine.pendingAwakeningAlerts.length > 0 &&
         !tickerPlaying &&
@@ -2275,6 +2329,7 @@ export function MpLeagueDashboard({
         )}
 
       {mine &&
+        !(mine.pendingFfpOpeningNotice && mine.budget && mine.budget.ffpTier >= 1) &&
         mine.tacticalAdaptation?.pendingAlert &&
         !(mine.pendingAwakeningAlerts && mine.pendingAwakeningAlerts.length > 0) &&
         !tickerPlaying &&
@@ -2287,6 +2342,9 @@ export function MpLeagueDashboard({
         mine.alerts.length === 0 && (
           <TacticalAdaptationModal
             alert={mine.tacticalAdaptation.pendingAlert}
+            managerAvatar={myHuman?.avatar}
+            managerName={myHuman?.nickname}
+            userClub={myHuman?.profile}
             onDismiss={() => onDismissAdaptationAlert?.()}
             onGoToTactics={() => {
               onDismissAdaptationAlert?.();

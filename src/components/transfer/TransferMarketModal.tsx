@@ -778,13 +778,20 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
               보유 자금 €{availableCashM}M
             </span>
             {ffpEmbargoActive && (
-              <span className="rounded-md border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-[10.5px] font-black text-rose-300 whitespace-nowrap">
-                FFP 2단계 영입 동결
+              <span className="rounded-md border border-rose-500/45 bg-rose-500/18 px-2 py-0.5 text-[10.5px] font-black text-rose-200 whitespace-nowrap">
+                FFP 2단계 · 2차 이적 영입 동결 (케미 -4 · 점수 -12%)
               </span>
             )}
-            {!ffpEmbargoActive && ffpTier === 1 && tm.windowIndex === 2 && !isUclSpecial && (
-              <span className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10.5px] font-bold text-amber-300 whitespace-nowrap">
-                FFP 1단계 (1회 제한)
+            {!ffpEmbargoActive && ffpTier === 2 && (
+              <span className="rounded-md border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-[10.5px] font-bold text-rose-200 whitespace-nowrap">
+                FFP 2단계 (2차 동결 · 케미 -4 · 사기 추가↓ · 점수 -12%)
+              </span>
+            )}
+            {!ffpEmbargoActive && ffpTier === 1 && (
+              <span className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10.5px] font-bold text-amber-200 whitespace-nowrap">
+                {tm.windowIndex === 2 && !isUclSpecial
+                  ? 'FFP 1단계 · 2차 이적 1회 제한 (케미 -4 · 이월 €0)'
+                  : 'FFP 1단계 (이월 €0 · 2차 1회 제한 · 케미 -4)'}
               </span>
             )}
             {tm.legendBonusActive && (
