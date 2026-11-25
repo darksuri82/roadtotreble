@@ -16,9 +16,12 @@ import {
   XCircle,
   Zap,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { FORMATION_LIST, FORMATIONS } from '../../../data/formations';
-import { MANAGER_TRAITS } from '../../../data/managerTraits';
+import {
+  evaluateManagerPlayerSynergy,
+  MANAGER_TRAITS,
+} from '../../../data/managerTraits';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 import {
   calculateChemistry,
@@ -36,6 +39,7 @@ import { TACTIC_LIST } from '../../../engine/tacticEngine';
 import {
   analyzeClubPositionNeeds,
   buildTradeClubOfferForClub,
+  computePlayerMarketValueM,
   computePlayerTradePoints,
   evaluateTradePackage,
   selectAutoFillerPlayers,
@@ -124,6 +128,37 @@ function shortPitchName(name: string): string {
   return last.length <= 8 ? last : trimmed.slice(0, 7);
 }
 
+function renderMyManagerFitBadge(
+  player: Player,
+  managerTraitId: ManagerTraitId | null | undefined,
+  variant: 'pill' | 'short' | 'star' = 'short',
+) {
+  const syn = evaluateManagerPlayerSynergy(player, managerTraitId);
+  if (syn.bonus <= 0) return null;
+  const traitName = managerTraitId
+    ? (MANAGER_TRAITS[managerTraitId]?.name ?? '내 감독 특성')
+    : '내 감독 특성';
+  const tip = `내 감독 궁합 일치 (${traitName}) · ${syn.reason ?? '+1 OVR'}`;
+  if (variant === 'star') {
+    return (
+      <span
+        title={tip}
+        className="text-[8.5px] sm:text-[9px] font-bold text-amber-300 leading-none shrink-0 drop-shadow-[0_0_2px_rgba(251,191,36,0.45)]"
+      >
+        ★
+      </span>
+    );
+  }
+  return (
+    <span
+      title={tip}
+      className="inline-flex items-center gap-0.5 whitespace-nowrap shrink-0 rounded border border-amber-400/45 bg-amber-950/60 px-1 py-px text-[9px] font-bold text-amber-200 leading-none"
+    >
+      ★ {variant === 'pill' ? '내 감독 궁합' : '감독 궁합'}
+    </span>
+  );
+}
+
 function assignPartnerSquadToFormation(
   formationId: FormationId,
   targets: TransferTargetPlayer[],
@@ -206,18 +241,28 @@ export function MpLeagueTransferModal({
   managerTraitId = null,
 }: MpLeagueTransferModalProps) {
   useBodyScrollLock(true);
+  const scrollBodyRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<MpTransferTab>('offers');
   const [tacticsSelectedSlot, setTacticsSelectedSlot] =
     useState<SlotRef | null>(null);
   const [counterOfferId, setCounterOfferId] = useState<string | null>(null);
   const [pickerViewMode, setPickerViewMode] =
     useState<PickerViewMode>('formation');
+  const [highlightNeeds, setHighlightNeeds] = useState(false);
   const [posFilter, setPosFilter] = useState<PosFilter>('ALL');
   const [selectedAiPlayerIds, setSelectedAiPlayerIds] = useState<string[]>([]);
   const [selectedUserSlots, setSelectedUserSlots] = useState<SlotRef[]>([]);
   const [customFillerIds, setCustomFillerIds] = useState<string[] | null>(null);
   const [inspectedPlayer, setInspectedPlayer] = useState<Player | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+
+  const switchTab = (nextTab: MpTransferTab) => {
+    setTacticsSelectedSlot(null);
+    setActiveTab(nextTab);
+    if (scrollBodyRef.current) {
+      scrollBodyRef.current.scrollTop = 0;
+    }
+  };
 
   const locked = busy || done;
   const tacticsLocked = busy;
@@ -510,6 +555,16 @@ export function MpLeagueTransferModal({
     conditionMap,
   ]);
 
+  const highlightedNeedUserIds = useMemo(() => {
+    if (!highlightNeeds || !activeClubOffer?.clubNeeds) return undefined;
+    const needed = new Set(activeClubOffer.clubNeeds.neededPositions);
+    const set = new Set<string>();
+    for (const p of userSquadPlayers) {
+      if (needed.has(p.position)) set.add(p.id);
+    }
+    return set;
+  }, [highlightNeeds, activeClubOffer, userSquadPlayers]);
+
   const handleStartCounterOffer = (offer: IncomingTradeOffer) => {
     setCounterOfferId(offer.id);
     setSelectedAiPlayerIds(offer.aiOffersPlayers.map((p) => p.id));
@@ -682,8 +737,8 @@ export function MpLeagueTransferModal({
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-[#0b111c] px-4 py-2">
           <button
             type="button"
-            onClick={() => setActiveTab('offers')}
-            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+            onClick={() => switchTab('offers')}
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
               activeTab === 'offers'
                 ? 'bg-slate-800 text-white border border-sky-400/45 shadow-sm'
                 : 'bg-slate-900/70 text-slate-400 border border-slate-800 hover:bg-slate-800/80 hover:text-slate-200'
@@ -705,11 +760,8 @@ export function MpLeagueTransferModal({
             <button
               id="mp-transfer-tactics-tab"
               type="button"
-              onClick={() => {
-                setTacticsSelectedSlot(null);
-                setActiveTab('tactics');
-              }}
-              className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+              onClick={() => switchTab('tactics')}
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-1.5 text-xs font-bold transition cursor-pointer ${
                 activeTab === 'tactics'
                   ? 'bg-slate-800 text-white border border-emerald-400/45 shadow-sm'
                   : 'bg-slate-900/70 text-slate-400 border border-slate-800 hover:bg-slate-800/80 hover:text-slate-200'
@@ -725,7 +777,10 @@ export function MpLeagueTransferModal({
         </div>
 
         {/* Scrollable Body */}
-        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 space-y-4">
+        <div
+          ref={scrollBodyRef}
+          className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3.5 sm:p-5 space-y-4"
+        >
           {/* Last Negotiation Result Banner */}
           {tradeNote && activeTab === 'offers' && (
             <div
@@ -972,81 +1027,210 @@ export function MpLeagueTransferModal({
                           )}
                         </div>
 
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                          {/* AI Offers */}
-                          <div className="space-y-1">
-                            <div className="text-[10px] font-extrabold text-emerald-300">
-                              📥 받는 선수
-                            </div>
-                            {offer.aiOffersPlayers.map((p) => {
-                              const val = computePlayerTradePoints({ player: p });
-                              return (
-                                <div
-                                  key={p.id}
-                                  className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 px-2.5 py-1.5"
-                                >
-                                  <div className="flex items-center gap-1.5">
-                                    <CountryFlagSvg
-                                      code={p.nationalityCode}
-                                      nationality={p.nationality}
-                                      size="xs"
-                                    />
-                                    <PlayerNameButton
-                                      onClick={() => setInspectedPlayer(p)}
-                                      className="truncate text-xs font-extrabold text-white"
-                                    >
-                                      {p.name}
-                                    </PlayerNameButton>
-                                  </div>
-                                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-slate-300 tabular-nums">
-                                    <span>
-                                      {formatMainPositions(p)} · STA {p.stamina}
+                        <div className="space-y-2">
+                          {(() => {
+                            const aiTotalTp =
+                              Math.round(
+                                offer.aiOffersPlayers.reduce(
+                                  (sum, p) =>
+                                    sum +
+                                    computePlayerTradePoints({
+                                      player: p,
+                                      sellingClubNeeds: offer.clubNeeds,
+                                      isShockBargain: Boolean(
+                                        offer.isBlockbusterBargain,
+                                      ),
+                                      conditionMap,
+                                    }).effectiveTp,
+                                  0,
+                                ) * 10,
+                              ) / 10;
+                            const userTotalTp =
+                              Math.round(
+                                offer.userRequestedPlayers.reduce(
+                                  (sum, p) =>
+                                    sum +
+                                    computePlayerTradePoints({
+                                      player: p,
+                                      receivingClubNeeds: offer.clubNeeds,
+                                      conditionMap,
+                                    }).effectiveTp,
+                                  0,
+                                ) * 10,
+                              ) / 10;
+                            const tpDiff =
+                              Math.round((aiTotalTp - userTotalTp) * 10) / 10;
+                            const verdict =
+                              tpDiff >= 4
+                                ? {
+                                    label: `유리 +${tpDiff} TP`,
+                                    cls: 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200',
+                                  }
+                                : tpDiff <= -4
+                                  ? {
+                                      label: `불리 ${tpDiff} TP`,
+                                      cls: 'border-rose-400/45 bg-rose-500/15 text-rose-200',
+                                    }
+                                  : {
+                                      label: `균형 ${tpDiff >= 0 ? `+${tpDiff}` : tpDiff} TP`,
+                                      cls: 'border-sky-400/40 bg-sky-500/15 text-sky-200',
+                                    };
+                            return (
+                              <div className="flex flex-wrap items-center justify-between gap-1.5 rounded-lg border border-slate-800/80 bg-[#0b111c] px-2.5 py-1.5 text-[10px] tabular-nums">
+                                <div className="flex flex-wrap items-center gap-1">
+                                  {offer.clubNeeds?.neededPositions.map(
+                                    (pos, nIdx) => (
+                                      <span
+                                        key={`in-need-${offer.id}-${pos}`}
+                                        className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[9px] font-extrabold ${
+                                          nIdx === 0
+                                            ? 'bg-amber-500/20 text-amber-200 border border-amber-400/40'
+                                            : 'bg-sky-500/15 text-sky-200 border border-sky-400/35'
+                                        }`}
+                                      >
+                                        {nIdx === 0 ? '🔥 최우선' : '✨ 필요'}{' '}
+                                        {POS_BADGE_KO[pos]}
+                                      </span>
+                                    ),
+                                  )}
+                                  {offer.isBlockbusterBargain && (
+                                    <span className="whitespace-nowrap rounded bg-rose-500/20 border border-rose-400/45 px-1.5 py-0.5 text-[9px] font-black text-rose-200">
+                                      🚨 급매 -35%
                                     </span>
-                                    <span className="font-black text-emerald-300">
-                                      OVR {p.ovr} · 가치 {val.effectiveTp}
-                                    </span>
-                                  </div>
+                                  )}
                                 </div>
-                              );
-                            })}
-                          </div>
+                                <div className="flex items-center gap-1.5 ml-auto">
+                                  <span className="whitespace-nowrap text-slate-400 font-mono">
+                                    영입 {aiTotalTp} vs 방출 {userTotalTp}
+                                  </span>
+                                  <span
+                                    className={`whitespace-nowrap rounded border px-1.5 py-0.5 text-[9.5px] font-black ${verdict.cls}`}
+                                  >
+                                    {verdict.label}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()}
 
-                          {/* AI Requests */}
-                          <div className="space-y-1">
-                            <div className="text-[10px] font-extrabold text-rose-300">
-                              📤 보내는 선수
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {/* AI Offers */}
+                            <div className="space-y-1">
+                              <div className="text-[10px] font-extrabold text-emerald-300">
+                                📥 받는 선수
+                              </div>
+                              {offer.aiOffersPlayers.map((p) => {
+                                const val = computePlayerTradePoints({
+                                  player: p,
+                                  sellingClubNeeds: offer.clubNeeds,
+                                  isShockBargain: Boolean(
+                                    offer.isBlockbusterBargain,
+                                  ),
+                                  conditionMap,
+                                });
+                                const mv = computePlayerMarketValueM(p, {
+                                  isShockBargain: Boolean(
+                                    offer.isBlockbusterBargain,
+                                  ),
+                                });
+                                return (
+                                  <div
+                                    key={p.id}
+                                    className="rounded-lg border border-emerald-500/30 bg-emerald-950/20 px-2.5 py-1.5"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <CountryFlagSvg
+                                        code={p.nationalityCode}
+                                        nationality={p.nationality}
+                                        size="xs"
+                                      />
+                                      <PlayerNameButton
+                                        onClick={() => setInspectedPlayer(p)}
+                                        className="truncate text-xs font-extrabold text-white"
+                                      >
+                                        {p.name}
+                                      </PlayerNameButton>
+                                      {renderMyManagerFitBadge(
+                                        p,
+                                        managerTraitId,
+                                        'pill',
+                                      )}
+                                    </div>
+                                    <div className="mt-0.5 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-300 tabular-nums">
+                                      <span className="whitespace-nowrap">
+                                        {formatMainPositions(p)} · STA{' '}
+                                        {p.stamina}
+                                      </span>
+                                      <span className="whitespace-nowrap font-black text-emerald-300">
+                                        OVR {p.ovr} · €{mv}M · TP{' '}
+                                        {val.effectiveTp}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                            {offer.userRequestedPlayers.map((p) => {
-                              const val = computePlayerTradePoints({ player: p });
-                              return (
-                                <div
-                                  key={p.id}
-                                  className="rounded-lg border border-rose-500/30 bg-rose-950/20 px-2.5 py-1.5"
-                                >
-                                  <div className="flex items-center gap-1.5">
-                                    <CountryFlagSvg
-                                      code={p.nationalityCode}
-                                      nationality={p.nationality}
-                                      size="xs"
-                                    />
-                                    <PlayerNameButton
-                                      onClick={() => setInspectedPlayer(p)}
-                                      className="truncate text-xs font-extrabold text-white"
-                                    >
-                                      {p.name}
-                                    </PlayerNameButton>
+
+                            {/* AI Requests */}
+                            <div className="space-y-1">
+                              <div className="text-[10px] font-extrabold text-rose-300">
+                                📤 보내는 선수
+                              </div>
+                              {offer.userRequestedPlayers.map((p) => {
+                                const val = computePlayerTradePoints({
+                                  player: p,
+                                  receivingClubNeeds: offer.clubNeeds,
+                                  conditionMap,
+                                });
+                                const mv = computePlayerMarketValueM(p);
+                                return (
+                                  <div
+                                    key={p.id}
+                                    className="rounded-lg border border-rose-500/30 bg-rose-950/20 px-2.5 py-1.5"
+                                  >
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <CountryFlagSvg
+                                        code={p.nationalityCode}
+                                        nationality={p.nationality}
+                                        size="xs"
+                                      />
+                                      <PlayerNameButton
+                                        onClick={() => setInspectedPlayer(p)}
+                                        className="truncate text-xs font-extrabold text-white"
+                                      >
+                                        {p.name}
+                                      </PlayerNameButton>
+                                      {renderMyManagerFitBadge(
+                                        p,
+                                        managerTraitId,
+                                        'short',
+                                      )}
+                                      {val.needModPct >= 30 && (
+                                        <span className="whitespace-nowrap rounded bg-amber-500/20 px-1 py-px text-[9px] font-black text-amber-200">
+                                          🔥+{val.needModPct}%
+                                        </span>
+                                      )}
+                                      {val.needModPct > 0 &&
+                                        val.needModPct < 30 && (
+                                          <span className="whitespace-nowrap rounded bg-sky-500/15 px-1 py-px text-[9px] font-black text-sky-200">
+                                            ✨+{val.needModPct}%
+                                          </span>
+                                        )}
+                                    </div>
+                                    <div className="mt-0.5 flex flex-wrap items-center justify-between gap-1 text-[10px] text-slate-300 tabular-nums">
+                                      <span className="whitespace-nowrap">
+                                        {formatMainPositions(p)} · STA{' '}
+                                        {p.stamina}
+                                      </span>
+                                      <span className="whitespace-nowrap font-black text-rose-300">
+                                        OVR {p.ovr} · €{mv}M · TP{' '}
+                                        {val.effectiveTp}
+                                      </span>
+                                    </div>
                                   </div>
-                                  <div className="mt-0.5 flex items-center justify-between text-[10px] text-slate-300 tabular-nums">
-                                    <span>
-                                      {formatMainPositions(p)} · STA {p.stamina}
-                                    </span>
-                                    <span className="font-black text-rose-300">
-                                      OVR {p.ovr} · 가치 {val.effectiveTp}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
 
@@ -1092,8 +1276,11 @@ export function MpLeagueTransferModal({
             </div>
           )}
 
-          {/* VIEW B: ORIGINAL COUNTER-OFFER NEGOTIATION ROOM (Identical to TransferMarketModal.tsx) */}
-          {activeOffer && activeClubOffer && activeClubOffer.club && (
+          {/* VIEW B: ORIGINAL COUNTER-OFFER NEGOTIATION ROOM (Strictly gated to offers tab) */}
+          {activeTab === 'offers' &&
+            activeOffer &&
+            activeClubOffer &&
+            activeClubOffer.club && (
             <div className="space-y-3.5">
               {/* Partner Club Header + Position Needs + View Toggle */}
               <div className="rounded-2xl border border-slate-800 bg-[#0b111c] p-3.5 sm:p-4 space-y-3">
@@ -1150,12 +1337,24 @@ export function MpLeagueTransferModal({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setHighlightNeeds((v) => !v)}
+                      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-lg border px-2 py-1 text-[10px] font-bold transition cursor-pointer ${
+                        highlightNeeds
+                          ? 'border-amber-400/70 bg-amber-500/20 text-amber-200'
+                          : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <Sparkles className="h-3 w-3 text-amber-300" />
+                      니즈 강조
+                    </button>
                     <div className="inline-flex rounded-lg border border-slate-800 bg-slate-950 p-0.5 gap-0.5">
                       <button
                         type="button"
                         onClick={() => setPickerViewMode('formation')}
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
+                        className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
                           pickerViewMode === 'formation'
                             ? 'bg-slate-800 text-white border border-slate-600/80'
                             : 'text-slate-400 border border-transparent hover:text-slate-200'
@@ -1167,7 +1366,7 @@ export function MpLeagueTransferModal({
                       <button
                         type="button"
                         onClick={() => setPickerViewMode('list')}
-                        className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
+                        className={`inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[10px] font-bold cursor-pointer ${
                           pickerViewMode === 'list'
                             ? 'bg-slate-800 text-white border border-slate-600/80'
                             : 'text-slate-400 border border-transparent hover:text-slate-200'
@@ -1185,7 +1384,7 @@ export function MpLeagueTransferModal({
                           setSelectedUserSlots([]);
                           setCustomFillerIds(null);
                         }}
-                        className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
+                        className="whitespace-nowrap rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
                       >
                         초기화
                       </button>
@@ -1206,8 +1405,8 @@ export function MpLeagueTransferModal({
                         )
                       </span>
                       {tradeEval && (
-                        <span className="font-mono font-bold text-emerald-200 tabular-nums">
-                          요구 가치 {tradeEval.aiEffectiveTp}
+                        <span className="whitespace-nowrap font-mono font-bold text-emerald-200 tabular-nums">
+                          요구 {tradeEval.aiEffectiveTp} TP
                         </span>
                       )}
                     </div>
@@ -1221,12 +1420,15 @@ export function MpLeagueTransferModal({
                           const val = tradeEval?.aiValuations.find(
                             (v) => v.playerId === p.id,
                           );
+                          const mv = computePlayerMarketValueM(p, {
+                            isShockBargain: val?.isShockBargain,
+                          });
                           return (
                             <div
                               key={`rec-${p.id}`}
                               className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/75 px-2.5 py-1.5 text-xs"
                             >
-                              <div className="flex items-center gap-1.5 min-w-0">
+                              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                                 <CountryFlagSvg
                                   code={p.nationalityCode}
                                   nationality={p.nationality}
@@ -1238,19 +1440,24 @@ export function MpLeagueTransferModal({
                                 >
                                   {p.name}
                                 </PlayerNameButton>
-                                <span className="text-[10px] text-slate-400 shrink-0">
+                                <span className="whitespace-nowrap text-[10px] text-slate-400 shrink-0">
                                   {p.position} · {p.ovr}
                                 </span>
+                                {renderMyManagerFitBadge(
+                                  p,
+                                  managerTraitId,
+                                  'short',
+                                )}
                                 {val?.isShockBargain && (
-                                  <span className="rounded bg-rose-500/25 border border-rose-400/50 px-1 py-px text-[9px] font-black text-rose-200 shrink-0">
+                                  <span className="whitespace-nowrap rounded bg-rose-500/25 border border-rose-400/50 px-1 py-px text-[9px] font-black text-rose-200 shrink-0">
                                     🚨 급매 -35%
                                   </span>
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 {val && (
-                                  <span className="font-mono text-[10px] font-bold text-emerald-300 tabular-nums">
-                                    가치 {val.effectiveTp}
+                                  <span className="whitespace-nowrap font-mono text-[10px] font-bold text-emerald-300 tabular-nums">
+                                    €{mv}M · TP {val.effectiveTp}
                                   </span>
                                 )}
                                 <button
@@ -1271,8 +1478,8 @@ export function MpLeagueTransferModal({
                             key={`filler-${fp.id}`}
                             className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-sky-400/40 bg-sky-950/25 px-2.5 py-1.5 text-[11px]"
                           >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="rounded bg-sky-500/20 px-1 py-px text-[9px] font-black text-sky-300 shrink-0">
+                            <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                              <span className="whitespace-nowrap rounded bg-sky-500/20 px-1 py-px text-[9px] font-black text-sky-300 shrink-0">
                                 16인 백업
                               </span>
                               <PlayerNameButton
@@ -1281,9 +1488,14 @@ export function MpLeagueTransferModal({
                               >
                                 {fp.name}
                               </PlayerNameButton>
-                              <span className="text-[10px] text-slate-400 shrink-0">
+                              <span className="whitespace-nowrap text-[10px] text-slate-400 shrink-0">
                                 {fp.position} · {fp.ovr}
                               </span>
+                              {renderMyManagerFitBadge(
+                                fp,
+                                managerTraitId,
+                                'star',
+                              )}
                             </div>
                             {optionalFillerPool.length > 1 && (
                               <button
@@ -1311,8 +1523,8 @@ export function MpLeagueTransferModal({
                         📤 보내는 선수 ({selectedUserPlayers.length}/3)
                       </span>
                       {tradeEval && (
-                        <span className="font-mono font-bold text-rose-200 tabular-nums">
-                          제시 가치 {tradeEval.userEffectiveTp}
+                        <span className="whitespace-nowrap font-mono font-bold text-rose-200 tabular-nums">
+                          제시 {tradeEval.userEffectiveTp} TP
                         </span>
                       )}
                     </div>
@@ -1327,12 +1539,13 @@ export function MpLeagueTransferModal({
                             (v) => v.playerId === p.id,
                           );
                           const ref = selectedUserSlots[idx];
+                          const mv = computePlayerMarketValueM(p);
                           return (
                             <div
                               key={`send-${p.id}`}
                               className="flex items-center justify-between gap-2 rounded-lg bg-slate-950/75 px-2.5 py-1.5 text-xs"
                             >
-                              <div className="flex items-center gap-1.5 min-w-0">
+                              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                                 <CountryFlagSvg
                                   code={p.nationalityCode}
                                   nationality={p.nationality}
@@ -1344,14 +1557,29 @@ export function MpLeagueTransferModal({
                                 >
                                   {p.name}
                                 </PlayerNameButton>
-                                <span className="text-[10px] text-slate-400 shrink-0">
+                                <span className="whitespace-nowrap text-[10px] text-slate-400 shrink-0">
                                   {p.position} · {p.ovr}
                                 </span>
+                                {renderMyManagerFitBadge(
+                                  p,
+                                  managerTraitId,
+                                  'short',
+                                )}
+                                {val && val.needModPct > 0 && (
+                                  <span className="whitespace-nowrap rounded bg-emerald-500/20 px-1 py-px text-[9px] font-black text-emerald-300">
+                                    +{val.needModPct}%
+                                  </span>
+                                )}
+                                {val && val.needModPct < 0 && (
+                                  <span className="whitespace-nowrap rounded bg-rose-500/20 px-1 py-px text-[9px] font-black text-rose-300">
+                                    {val.needModPct}%
+                                  </span>
+                                )}
                               </div>
                               <div className="flex items-center gap-1.5 shrink-0">
                                 {val && (
-                                  <span className="font-mono text-[10px] font-bold text-rose-300 tabular-nums">
-                                    가치 {val.effectiveTp}
+                                  <span className="whitespace-nowrap font-mono text-[10px] font-bold text-rose-300 tabular-nums">
+                                    €{mv}M · TP {val.effectiveTp}
                                   </span>
                                 )}
                                 {ref && (
@@ -1389,68 +1617,135 @@ export function MpLeagueTransferModal({
                         </span>
                       </div>
                     ) : (
-                      <>
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                          <span className="font-bold text-slate-300">
-                            {tradeEval.gmReaction}
-                          </span>
-                          <div className="inline-flex items-center gap-1.5">
-                            <span
-                              className={`font-display text-base font-black tabular-nums ${
-                                tradeEval.acceptanceChance >= 70
-                                  ? 'text-emerald-300'
-                                  : tradeEval.acceptanceChance >= 40
-                                    ? 'text-amber-300'
-                                    : 'text-rose-300'
-                              }`}
-                            >
-                              성사 확률 {tradeEval.acceptanceChance}%
-                            </span>
-                            <InfoHelpButton
-                              title="성사 확률 · TP 가치 내역"
-                              align="right"
-                              size="xs"
-                              guideTab="basics"
-                            >
-                              <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
-                                <div className="flex justify-between">
-                                  <span className="text-slate-400">우리 제안 유효 TP</span>
-                                  <span className="font-bold text-white">
-                                    {tradeEval.userEffectiveTp} TP
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-slate-400">상대 요구 TP</span>
-                                  <span className="font-bold text-emerald-300">
-                                    {tradeEval.aiEffectiveTp} TP
-                                  </span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-slate-400">가치 비율</span>
-                                  <span className="font-bold text-sky-300">
-                                    {Math.round(tradeEval.ratio * 100)}%
-                                  </span>
-                                </div>
-                                <div className="pt-1 border-t border-slate-800 text-[10px] text-slate-400">
-                                  • 상대 니즈(🔥+32% / ✨+18%) · 다인 통합세(100/78/60%) · 급매(-35%) 반영
-                                </div>
+                      (() => {
+                        const tpDiff =
+                          Math.round(
+                            (tradeEval.userEffectiveTp -
+                              tradeEval.aiEffectiveTp) *
+                              10,
+                          ) / 10;
+                        const ratioPct = Math.round(tradeEval.ratio * 100);
+                        const guideBadge =
+                          ratioPct >= 105
+                            ? {
+                                label: '상대 우세 (성사 유력)',
+                                cls: 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200',
+                              }
+                            : ratioPct >= 92
+                              ? {
+                                  label: '균형 협상',
+                                  cls: 'border-sky-400/40 bg-sky-500/15 text-sky-200',
+                                }
+                              : {
+                                  label: '가치 부족',
+                                  cls: 'border-rose-400/45 bg-rose-500/15 text-rose-200',
+                                };
+                        return (
+                          <>
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <span className="font-bold text-slate-300">
+                                {tradeEval.gmReaction}
+                              </span>
+                              <div className="flex flex-wrap items-center gap-1.5 tabular-nums">
+                                <span
+                                  className={`whitespace-nowrap rounded border px-1.5 py-0.5 text-[10px] font-extrabold ${guideBadge.cls}`}
+                                >
+                                  {guideBadge.label}
+                                </span>
+                                <span
+                                  className={`whitespace-nowrap font-display text-base font-black ${
+                                    tradeEval.acceptanceChance >= 70
+                                      ? 'text-emerald-300'
+                                      : tradeEval.acceptanceChance >= 40
+                                        ? 'text-amber-300'
+                                        : 'text-rose-300'
+                                  }`}
+                                >
+                                  성사 확률 {tradeEval.acceptanceChance}%
+                                </span>
+                                <InfoHelpButton
+                                  title="성사 확률 · TP 가치 내역"
+                                  align="right"
+                                  size="xs"
+                                  guideTab="basics"
+                                >
+                                  <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">우리 제안 유효 TP</span>
+                                      <span className="font-bold text-white">
+                                        {tradeEval.userEffectiveTp} TP
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">상대 요구 TP</span>
+                                      <span className="font-bold text-emerald-300">
+                                        {tradeEval.aiEffectiveTp} TP
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">가치 비율</span>
+                                      <span className="font-bold text-sky-300">
+                                        {ratioPct}%
+                                      </span>
+                                    </div>
+                                    <div className="pt-1 border-t border-slate-800 text-[10px] text-slate-400">
+                                      • 상대 니즈(🔥+32% / ✨+18%) · 다인 통합세(100/78/60%) · 급매(-35%) 반영
+                                    </div>
+                                  </div>
+                                </InfoHelpButton>
                               </div>
-                            </InfoHelpButton>
-                          </div>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-900">
-                          <div
-                            className={`h-full rounded-full transition-all ${
-                              tradeEval.acceptanceChance >= 70
-                                ? 'bg-emerald-400'
-                                : tradeEval.acceptanceChance >= 40
-                                  ? 'bg-amber-400'
-                                  : 'bg-rose-400'
-                            }`}
-                            style={{ width: `${tradeEval.acceptanceChance}%` }}
-                          />
-                        </div>
-                      </>
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-[10.5px] font-mono text-slate-300 tabular-nums">
+                              <span className="whitespace-nowrap">
+                                제시{' '}
+                                <strong className="text-white">
+                                  {tradeEval.userEffectiveTp} TP
+                                </strong>
+                                {tradeEval.userRawTp > tradeEval.userEffectiveTp && (
+                                  <span className="text-amber-300">
+                                    {' '}
+                                    (원가 {tradeEval.userRawTp} · 다인세 적용)
+                                  </span>
+                                )}{' '}
+                                vs 요구{' '}
+                                <strong className="text-emerald-300">
+                                  {tradeEval.aiEffectiveTp} TP
+                                </strong>
+                              </span>
+                              <span className="whitespace-nowrap">
+                                차이{' '}
+                                <strong
+                                  className={
+                                    tpDiff >= 0
+                                      ? 'text-emerald-300'
+                                      : 'text-rose-300'
+                                  }
+                                >
+                                  {tpDiff >= 0 ? `+${tpDiff}` : tpDiff} TP
+                                </strong>{' '}
+                                · 비율{' '}
+                                <strong className="text-sky-300">
+                                  {ratioPct}%
+                                </strong>
+                              </span>
+                            </div>
+
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-900">
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  tradeEval.acceptanceChance >= 70
+                                    ? 'bg-emerald-400'
+                                    : tradeEval.acceptanceChance >= 40
+                                      ? 'bg-amber-400'
+                                      : 'bg-rose-400'
+                                }`}
+                                style={{ width: `${tradeEval.acceptanceChance}%` }}
+                              />
+                            </div>
+                          </>
+                        );
+                      })()
                     )}
                   </div>
                 )}
@@ -1466,7 +1761,7 @@ export function MpLeagueTransferModal({
                         {activeClubOffer.club.name} ({partnerFormationId})
                       </span>
                       <span className="text-[10px] text-slate-400">
-                        클릭하여 영입 대상 선택
+                        클릭 선택 · 우클릭 상세
                       </span>
                     </div>
 
@@ -1511,35 +1806,68 @@ export function MpLeagueTransferModal({
                         const selected = selectedAiPlayerIds.includes(p.id);
                         const isBargain = Boolean(t.isShockBargain);
                         const tier = getCardTier(p);
+                        const tpVal = computePlayerTradePoints({
+                          player: p,
+                          sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                          isShockBargain: isBargain,
+                          conditionMap,
+                        });
+                        const mv = computePlayerMarketValueM(p, {
+                          isShockBargain: isBargain,
+                          marketValueMOverride: t.marketValueM,
+                        });
+                        const myFit = evaluateManagerPlayerSynergy(
+                          p,
+                          managerTraitId,
+                        );
                         return (
                           <button
                             key={`p-st-${slot.index}`}
                             type="button"
                             onClick={() => handleToggleAiPlayer(p.id)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              setInspectedPlayer(p);
+                            }}
+                            title={`${p.name} (${slot.label} · OVR ${p.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)})${myFit.bonus > 0 ? ' · ★ 내 감독 궁합 일치' : ''}`}
                             style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
-                            className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center rounded-lg px-1.5 py-1 min-w-[54px] sm:min-w-[64px] max-w-[78px] text-center transition-colors cursor-pointer touch-manipulation ${
+                            className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center rounded-lg px-1.5 py-0.5 min-w-[56px] sm:min-w-[66px] max-w-[78px] text-center transition-colors cursor-pointer touch-manipulation ${
                               selected
                                 ? 'bg-emerald-950/95 border-2 border-emerald-400 ring-2 ring-emerald-400/50'
-                                : tier === 'legend'
-                                  ? 'bg-amber-950/90 border border-amber-400/80'
-                                  : tier === 'superstar'
-                                    ? 'bg-cyan-950/90 border border-cyan-400/80'
-                                    : 'bg-[#0f1621]/95 border border-slate-700/80 hover:border-emerald-400/60'
+                                : isBargain
+                                  ? 'bg-rose-950/90 border border-rose-400/80'
+                                  : myFit.bonus > 0
+                                    ? 'bg-[#0f1621]/95 border border-amber-400/60 hover:border-emerald-400/70'
+                                    : tier === 'legend'
+                                      ? 'bg-amber-950/90 border border-amber-400/80'
+                                      : tier === 'superstar'
+                                        ? 'bg-cyan-950/90 border border-cyan-400/80'
+                                        : 'bg-[#0f1621]/95 border border-slate-700/80 hover:border-emerald-400/60'
                             }`}
                           >
                             {isBargain && (
                               <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-rose-500 px-1 text-[7px] font-black text-white whitespace-nowrap">
-                                급매
+                                급매-35%
                               </span>
                             )}
-                            <span className="font-display text-[11px] font-bold text-white leading-none tabular-nums">
-                              {p.ovr}
-                            </span>
-                            <span className="mt-0.5 max-w-[68px] truncate text-[8.5px] font-semibold text-slate-200 leading-tight">
+                            <div className="flex w-full items-center justify-between gap-0.5 text-[7.5px] tabular-nums leading-none">
+                              <span className="text-slate-400 font-semibold">
+                                {slot.label}
+                              </span>
+                              <span className="inline-flex items-center gap-0.5 font-bold text-amber-300">
+                                {renderMyManagerFitBadge(
+                                  p,
+                                  managerTraitId,
+                                  'star',
+                                )}
+                                {p.ovr}
+                              </span>
+                            </div>
+                            <span className="mt-0.5 max-w-[68px] truncate text-[8.5px] font-semibold text-white leading-tight">
                               {shortPitchName(p.name)}
                             </span>
-                            <span className="text-[7.5px] text-slate-400">
-                              {slot.label}
+                            <span className="font-mono text-[7.5px] text-sky-300/90 tabular-nums leading-none">
+                              TP {Math.round(tpVal.effectiveTp)}
                             </span>
                           </button>
                         );
@@ -1551,25 +1879,57 @@ export function MpLeagueTransferModal({
                       {partnerFormationLayout.bench.slice(0, 5).map((t) => {
                         const p = t.player;
                         const selected = selectedAiPlayerIds.includes(p.id);
+                        const isBargain = Boolean(t.isShockBargain);
+                        const tpVal = computePlayerTradePoints({
+                          player: p,
+                          sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                          isShockBargain: isBargain,
+                          conditionMap,
+                        });
+                        const mv = computePlayerMarketValueM(p, {
+                          isShockBargain: isBargain,
+                          marketValueMOverride: t.marketValueM,
+                        });
+                        const myFit = evaluateManagerPlayerSynergy(
+                          p,
+                          managerTraitId,
+                        );
                         return (
                           <button
                             key={`p-bn-${p.id}`}
                             type="button"
                             onClick={() => handleToggleAiPlayer(p.id)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              setInspectedPlayer(p);
+                            }}
+                            title={`${p.name} · OVR ${p.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)}${myFit.bonus > 0 ? ' · ★ 내 감독 궁합 일치' : ''}`}
                             className={`rounded-lg border p-1.5 text-center transition-colors cursor-pointer touch-manipulation ${
                               selected
                                 ? 'border-emerald-400 bg-emerald-500/20'
-                                : 'border-slate-800 bg-[#0a0f18] hover:border-slate-600'
+                                : isBargain
+                                  ? 'border-rose-400/70 bg-rose-950/30'
+                                  : myFit.bonus > 0
+                                    ? 'border-amber-400/50 bg-[#0a0f18] hover:border-emerald-400/60'
+                                    : 'border-slate-800 bg-[#0a0f18] hover:border-slate-600'
                             }`}
                           >
                             <div className="text-[8px] font-bold text-slate-400">
                               {p.position}
                             </div>
-                            <div className="font-display text-xs font-bold text-white tabular-nums">
+                            <div className="inline-flex items-center justify-center gap-0.5 font-display text-xs font-bold text-white tabular-nums">
+                              {renderMyManagerFitBadge(
+                                p,
+                                managerTraitId,
+                                'star',
+                              )}
                               {p.ovr}
                             </div>
                             <div className="truncate text-[9px] text-slate-300">
                               {shortPitchName(p.name)}
+                            </div>
+                            <div className="font-mono text-[8px] text-sky-300/90 tabular-nums">
+                              TP {Math.round(tpVal.effectiveTp)}
                             </div>
                           </button>
                         );
@@ -1596,6 +1956,7 @@ export function MpLeagueTransferModal({
                       managerTraitId={managerTraitId}
                       tactic={myTactic}
                       conditionByPlayerId={conditionMap}
+                      highlightedPlayerIds={highlightedNeedUserIds}
                       selectedSlotKeys={selectedUserSlotKeys}
                       selectedTone="rose"
                       onSlotClick={(area, index) => {
@@ -1670,19 +2031,32 @@ export function MpLeagueTransferModal({
                       {filteredPartnerSquad.map((t) => {
                         const p = t.player;
                         const selected = selectedAiPlayerIds.includes(p.id);
+                        const isBargain = Boolean(t.isShockBargain);
+                        const tpVal = computePlayerTradePoints({
+                          player: p,
+                          sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                          isShockBargain: isBargain,
+                          conditionMap,
+                        });
+                        const mv = computePlayerMarketValueM(p, {
+                          isShockBargain: isBargain,
+                          marketValueMOverride: t.marketValueM,
+                        });
                         return (
                           <div
                             key={`lp-${p.id}`}
                             className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${
                               selected
                                 ? 'border-emerald-400 bg-emerald-500/15'
-                                : 'border-slate-800/80 bg-[#101827]'
+                                : isBargain
+                                  ? 'border-rose-400/60 bg-rose-950/25'
+                                  : 'border-slate-800/80 bg-[#101827]'
                             }`}
                           >
                             <button
                               type="button"
                               onClick={() => handleToggleAiPlayer(p.id)}
-                              className="flex flex-1 items-center gap-2 min-w-0 text-left cursor-pointer"
+                              className="flex flex-1 flex-wrap items-center gap-1.5 min-w-0 text-left cursor-pointer"
                             >
                               <span className="w-8 shrink-0 text-[10px] font-bold text-slate-400">
                                 {p.mainPositions[0] ?? p.position}
@@ -1695,11 +2069,21 @@ export function MpLeagueTransferModal({
                               <span className="truncate text-xs font-bold text-white">
                                 {p.name}
                               </span>
-                              <span className="ml-auto font-mono text-xs font-bold text-emerald-300 tabular-nums shrink-0">
+                              {renderMyManagerFitBadge(
+                                p,
+                                managerTraitId,
+                                'pill',
+                              )}
+                              {isBargain && (
+                                <span className="whitespace-nowrap rounded bg-rose-500/25 border border-rose-400/50 px-1 py-px text-[9px] font-black text-rose-200">
+                                  🚨-35%
+                                </span>
+                              )}
+                              <span className="ml-auto whitespace-nowrap font-mono text-xs font-bold text-emerald-300 tabular-nums shrink-0">
                                 {p.ovr}
                               </span>
-                              <span className="font-mono text-[10px] text-slate-400 tabular-nums shrink-0">
-                                가치 {computePlayerTradePoints({ player: p }).effectiveTp}
+                              <span className="whitespace-nowrap font-mono text-[10px] text-sky-300 tabular-nums shrink-0">
+                                €{mv}M · TP {tpVal.effectiveTp}
                               </span>
                             </button>
                             <button
@@ -1725,7 +2109,12 @@ export function MpLeagueTransferModal({
                         const selected = selectedUserSlots.some(
                           (s) => slotKey(s) === entry.key,
                         );
-                        const tp = computePlayerTradePoints({ player: p }).effectiveTp;
+                        const tpVal = computePlayerTradePoints({
+                          player: p,
+                          receivingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                          conditionMap,
+                        });
+                        const mv = computePlayerMarketValueM(p);
                         return (
                           <div
                             key={`lu-${entry.key}`}
@@ -1738,7 +2127,7 @@ export function MpLeagueTransferModal({
                             <button
                               type="button"
                               onClick={() => handleToggleUserSlot(entry.ref)}
-                              className="flex flex-1 items-center gap-2 min-w-0 text-left cursor-pointer"
+                              className="flex flex-1 flex-wrap items-center gap-1.5 min-w-0 text-left cursor-pointer"
                             >
                               <span className="w-8 shrink-0 text-[10px] font-bold text-slate-400">
                                 {entry.slotLabel}
@@ -1751,11 +2140,31 @@ export function MpLeagueTransferModal({
                               <span className="truncate text-xs font-bold text-white">
                                 {p.name}
                               </span>
-                              <span className="ml-auto font-mono text-xs font-bold text-amber-300 tabular-nums shrink-0">
+                              {renderMyManagerFitBadge(
+                                p,
+                                managerTraitId,
+                                'short',
+                              )}
+                              {tpVal.needModPct >= 30 && (
+                                <span className="whitespace-nowrap rounded bg-amber-500/20 px-1 py-px text-[9px] font-black text-amber-200">
+                                  🔥+{tpVal.needModPct}%
+                                </span>
+                              )}
+                              {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
+                                <span className="whitespace-nowrap rounded bg-sky-500/15 px-1 py-px text-[9px] font-black text-sky-200">
+                                  ✨+{tpVal.needModPct}%
+                                </span>
+                              )}
+                              {tpVal.needModPct < 0 && (
+                                <span className="whitespace-nowrap rounded bg-slate-800 px-1 py-px text-[9px] font-bold text-slate-400">
+                                  ⚠️{tpVal.needModPct}%
+                                </span>
+                              )}
+                              <span className="ml-auto whitespace-nowrap font-mono text-xs font-bold text-amber-300 tabular-nums shrink-0">
                                 {p.ovr}
                               </span>
-                              <span className="font-mono text-[10px] text-slate-400 tabular-nums shrink-0">
-                                가치 {tp}
+                              <span className="whitespace-nowrap font-mono text-[10px] text-rose-300 tabular-nums shrink-0">
+                                €{mv}M · TP {tpVal.effectiveTp}
                               </span>
                             </button>
                             <button
@@ -1843,6 +2252,7 @@ export function MpLeagueTransferModal({
       {inspectedPlayer && (
         <PlayerDetailModal
           player={inspectedPlayer}
+          managerTraitId={managerTraitId}
           onClose={() => setInspectedPlayer(null)}
         />
       )}

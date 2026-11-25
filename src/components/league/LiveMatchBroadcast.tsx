@@ -25,6 +25,7 @@ import { calculateChemistry } from '../../engine/chemistryEngine';
 import { buildAiClubRoster } from '../../engine/dataLoader';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { resolvePitchFinalTheme } from '../../engine/pitchSimEngine';
+import type { PitchSimLiveMetrics } from '../../engine/pitchSimTypes';
 import {
   computePlayerStaminaPct,
   getPlayerStaminaStat,
@@ -233,9 +234,11 @@ export function LiveMatchBroadcast({
 
   const lockedSpeed = override?.lockSpeed;
   const [speed, setSpeed] = useState<BroadcastSpeed>(lockedSpeed ?? 1);
-  useEffect(() => {
-    if (lockedSpeed !== undefined) setSpeed(lockedSpeed);
-  }, [lockedSpeed]);
+  const effectiveSpeed: BroadcastSpeed = lockedSpeed ?? speed;
+  const [simLiveMetricsState, setSimLiveMetricsState] = useState<{
+    sessionKey: string;
+    metrics: PitchSimLiveMetrics;
+  } | null>(null);
   const [minute, setMinute] = useState<number>(0);
   const [selectedTactic, setSelectedTactic] = useState<TacticId>(
     halftime?.userTacticAtKickoff ?? state.defaultTactic,
@@ -486,6 +489,13 @@ export function LiveMatchBroadcast({
     setHighlightActive(active);
   }, []);
 
+  const handleSimLiveMetricsChange = useCallback(
+    (metrics: PitchSimLiveMetrics) => {
+      setSimLiveMetricsState({ sessionKey: simSessionKey, metrics });
+    },
+    [simSessionKey],
+  );
+
   const halfCompleteTimerRef = useRef<number | null>(null);
   useEffect(() => {
     return () => {
@@ -638,8 +648,60 @@ export function LiveMatchBroadcast({
     (e) => e.type === 'goal' && e.teamId === away.id,
   ).length;
 
-  // Progressive stats interpolation matching exact HT (45') and FT (90') totals
-  const computeLiveMetric = (htVal: number, ftVal: number): number => {
+  // Official half/full-time targets fed to PitchMatch2D (never minute-by-minute interpolated!)
+  const isPostFirstHalf =
+    phase === 'second_half' ||
+    phase === 'extra_time_break' ||
+    phase === 'extra_time' ||
+    phase === 'extra_time_2' ||
+    phase === 'penalties';
+  const targetHomePoss =
+    isPostFirstHalf && fullResult
+      ? fullResult.homePossession
+      : halftime.homePossession;
+  const targetHomeShots =
+    isPostFirstHalf && fullResult ? fullResult.homeShots : halftime.homeShots;
+  const targetAwayShots =
+    isPostFirstHalf && fullResult ? fullResult.awayShots : halftime.awayShots;
+  const targetHomeSot =
+    isPostFirstHalf && fullResult
+      ? fullResult.homeShotsOnTarget
+      : halftime.homeShotsOnTarget;
+  const targetAwaySot =
+    isPostFirstHalf && fullResult
+      ? fullResult.awayShotsOnTarget
+      : halftime.awayShotsOnTarget;
+  const targetHomeXg =
+    isPostFirstHalf && fullResult ? fullResult.homeXg : halftime.homeXg;
+  const targetAwayXg =
+    isPostFirstHalf && fullResult ? fullResult.awayXg : halftime.awayXg;
+
+  const initialMetricsForPhase: Partial<PitchSimLiveMetrics> | undefined =
+    isPostFirstHalf
+      ? {
+          homePossession: halftime.homePossession,
+          homeShots: halftime.homeShots,
+          awayShots: halftime.awayShots,
+          homeShotsOnTarget: halftime.homeShotsOnTarget,
+          awayShotsOnTarget: halftime.awayShotsOnTarget,
+          homeSaves: Math.max(0, halftime.awayShotsOnTarget - halftime.awayGoals),
+          awaySaves: Math.max(0, halftime.homeShotsOnTarget - halftime.homeGoals),
+          homeXg: halftime.homeXg,
+          awayXg: halftime.awayXg,
+        }
+      : undefined;
+
+  const activeSimMetrics =
+    simLiveMetricsState?.sessionKey === simSessionKey
+      ? simLiveMetricsState.metrics
+      : null;
+  const useExactOfficialTotals =
+    phase === 'halftime' ||
+    phase === 'extra_time_break' ||
+    phase === 'penalties' ||
+    isSecondHalfDone;
+
+  const computeFallbackMetric = (htVal: number, ftVal: number): number => {
     if (phase === 'first_half') {
       return htVal * Math.min(1, minute / 45);
     }
@@ -650,71 +712,98 @@ export function LiveMatchBroadcast({
     return htVal + (ftVal - htVal) * secondProgress;
   };
 
-  const liveHomeXg = computeLiveMetric(
-    halftime.homeXg,
-    fullResult?.homeXg ?? halftime.homeXg,
-  );
-  const liveAwayXg = computeLiveMetric(
-    halftime.awayXg,
-    fullResult?.awayXg ?? halftime.awayXg,
-  );
-  const liveHomeShots = Math.max(
-    liveHomeGoals,
-    Math.round(
-      computeLiveMetric(
-        halftime.homeShots,
-        fullResult?.homeShots ?? halftime.homeShots,
-      ),
-    ),
-  );
-  const liveAwayShots = Math.max(
-    liveAwayGoals,
-    Math.round(
-      computeLiveMetric(
-        halftime.awayShots,
-        fullResult?.awayShots ?? halftime.awayShots,
-      ),
-    ),
-  );
+  const liveHomeXg = useExactOfficialTotals
+    ? targetHomeXg
+    : activeSimMetrics
+      ? activeSimMetrics.homeXg
+      : computeFallbackMetric(
+          halftime.homeXg,
+          fullResult?.homeXg ?? halftime.homeXg,
+        );
+  const liveAwayXg = useExactOfficialTotals
+    ? targetAwayXg
+    : activeSimMetrics
+      ? activeSimMetrics.awayXg
+      : computeFallbackMetric(
+          halftime.awayXg,
+          fullResult?.awayXg ?? halftime.awayXg,
+        );
+  const liveHomeShots = useExactOfficialTotals
+    ? Math.max(liveHomeGoals, targetHomeShots)
+    : activeSimMetrics
+      ? Math.max(liveHomeGoals, activeSimMetrics.homeShots)
+      : Math.max(
+          liveHomeGoals,
+          Math.round(
+            computeFallbackMetric(
+              halftime.homeShots,
+              fullResult?.homeShots ?? halftime.homeShots,
+            ),
+          ),
+        );
+  const liveAwayShots = useExactOfficialTotals
+    ? Math.max(liveAwayGoals, targetAwayShots)
+    : activeSimMetrics
+      ? Math.max(liveAwayGoals, activeSimMetrics.awayShots)
+      : Math.max(
+          liveAwayGoals,
+          Math.round(
+            computeFallbackMetric(
+              halftime.awayShots,
+              fullResult?.awayShots ?? halftime.awayShots,
+            ),
+          ),
+        );
   const liveHomeSot = Math.min(
     liveHomeShots,
-    Math.max(
-      liveHomeGoals,
-      Math.round(
-        computeLiveMetric(
-          halftime.homeShotsOnTarget,
-          fullResult?.homeShotsOnTarget ?? halftime.homeShotsOnTarget,
-        ),
-      ),
-    ),
+    useExactOfficialTotals
+      ? Math.max(liveHomeGoals, targetHomeSot)
+      : activeSimMetrics
+        ? Math.max(liveHomeGoals, activeSimMetrics.homeShotsOnTarget)
+        : Math.max(
+            liveHomeGoals,
+            Math.round(
+              computeFallbackMetric(
+                halftime.homeShotsOnTarget,
+                fullResult?.homeShotsOnTarget ?? halftime.homeShotsOnTarget,
+              ),
+            ),
+          ),
   );
   const liveAwaySot = Math.min(
     liveAwayShots,
-    Math.max(
-      liveAwayGoals,
-      Math.round(
-        computeLiveMetric(
-          halftime.awayShotsOnTarget,
-          fullResult?.awayShotsOnTarget ?? halftime.awayShotsOnTarget,
-        ),
-      ),
-    ),
+    useExactOfficialTotals
+      ? Math.max(liveAwayGoals, targetAwaySot)
+      : activeSimMetrics
+        ? Math.max(liveAwayGoals, activeSimMetrics.awayShotsOnTarget)
+        : Math.max(
+            liveAwayGoals,
+            Math.round(
+              computeFallbackMetric(
+                halftime.awayShotsOnTarget,
+                fullResult?.awayShotsOnTarget ?? halftime.awayShotsOnTarget,
+              ),
+            ),
+          ),
   );
+  const liveHomeSaves = useExactOfficialTotals
+    ? Math.max(0, liveAwaySot - liveAwayGoals)
+    : activeSimMetrics
+      ? activeSimMetrics.homeSaves
+      : Math.max(0, liveAwaySot - liveAwayGoals);
+  const liveAwaySaves = useExactOfficialTotals
+    ? Math.max(0, liveHomeSot - liveHomeGoals)
+    : activeSimMetrics
+      ? activeSimMetrics.awaySaves
+      : Math.max(0, liveHomeSot - liveHomeGoals);
 
-  const targetPoss =
-    phase === 'second_half' && fullResult
-      ? fullResult.homePossession
-      : halftime.homePossession;
-  const liveHomePoss =
-    minute === 0
-      ? 50
-      : Math.round(
-          50 +
-            (targetPoss - 50) * Math.min(1, minute / 20) +
-            (phase === 'halftime' || isSecondHalfDone
-              ? 0
-              : Math.sin(minute * 0.45) * 1.5),
-        );
+  const liveHomePoss = useExactOfficialTotals
+    ? Math.round(targetHomePoss)
+    : activeSimMetrics
+      ? activeSimMetrics.homePossession
+      : minute === 0
+        ? 50
+        : Math.round(50 + (targetHomePoss - 50) * Math.min(1, minute / 20));
 
   const myTeamId = override?.myTeamId ?? USER_CLUB_ID;
   const oppClub = halftime.isUserHome ? away : home;
@@ -1723,30 +1812,36 @@ export function LiveMatchBroadcast({
               <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-600" />
             </div>
 
-            {/* Compact Live Match Stats */}
-            <div className="grid grid-cols-4 gap-1 sm:gap-1.5 text-center tabular-nums">
-              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1.5 py-0.5 sm:px-2 sm:py-1">
-                <span className="text-[9px] sm:text-[10px] text-slate-500">점유</span>
-                <span className="font-display text-[11px] sm:text-xs font-bold text-white">
+            {/* Compact Live Match Stats (100% synced with 2D sim) */}
+            <div className="grid grid-cols-5 gap-1 sm:gap-1.5 text-center tabular-nums">
+              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1 py-0.5 sm:px-2 sm:py-1">
+                <span className="whitespace-nowrap text-[9px] sm:text-[10px] text-slate-500">점유</span>
+                <span className="whitespace-nowrap font-display text-[10.5px] sm:text-xs font-bold text-white">
                   {liveHomePoss}:{100 - liveHomePoss}
                 </span>
               </div>
-              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1.5 py-0.5 sm:px-2 sm:py-1">
-                <span className="text-[9px] sm:text-[10px] text-slate-500">xG</span>
-                <span className="font-display text-[11px] sm:text-xs font-bold text-emerald-300">
+              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1 py-0.5 sm:px-2 sm:py-1">
+                <span className="whitespace-nowrap text-[9px] sm:text-[10px] text-slate-500">xG</span>
+                <span className="whitespace-nowrap font-display text-[10.5px] sm:text-xs font-bold text-emerald-300">
                   {liveHomeXg.toFixed(1)}:{liveAwayXg.toFixed(1)}
                 </span>
               </div>
-              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1.5 py-0.5 sm:px-2 sm:py-1">
-                <span className="text-[9px] sm:text-[10px] text-slate-500">슈팅</span>
-                <span className="font-display text-[11px] sm:text-xs font-bold text-white">
+              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1 py-0.5 sm:px-2 sm:py-1">
+                <span className="whitespace-nowrap text-[9px] sm:text-[10px] text-slate-500">슈팅</span>
+                <span className="whitespace-nowrap font-display text-[10.5px] sm:text-xs font-bold text-white">
                   {liveHomeShots}:{liveAwayShots}
                 </span>
               </div>
-              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1.5 py-0.5 sm:px-2 sm:py-1">
-                <span className="text-[9px] sm:text-[10px] text-slate-500">유효</span>
-                <span className="font-display text-[11px] sm:text-xs font-bold text-sky-300">
+              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1 py-0.5 sm:px-2 sm:py-1">
+                <span className="whitespace-nowrap text-[9px] sm:text-[10px] text-slate-500">유효</span>
+                <span className="whitespace-nowrap font-display text-[10.5px] sm:text-xs font-bold text-sky-300">
                   {liveHomeSot}:{liveAwaySot}
+                </span>
+              </div>
+              <div className="flex items-center justify-center gap-1 rounded-lg bg-[#111822] px-1 py-0.5 sm:px-2 sm:py-1">
+                <span className="whitespace-nowrap text-[9px] sm:text-[10px] text-slate-500">선방</span>
+                <span className="whitespace-nowrap font-display text-[10.5px] sm:text-xs font-bold text-amber-300">
+                  {liveHomeSaves}:{liveAwaySaves}
                 </span>
               </div>
             </div>
@@ -1959,12 +2054,15 @@ export function LiveMatchBroadcast({
                   phase={pitchPhase}
                   isFullTime={isSecondHalfDone}
                   paused={liveSubOpen}
-                  speed={speed}
-                  homePossession={liveHomePoss}
-                  homeShots={liveHomeShots}
-                  awayShots={liveAwayShots}
-                  homeXg={liveHomeXg}
-                  awayXg={liveAwayXg}
+                  speed={effectiveSpeed}
+                  homePossession={targetHomePoss}
+                  homeShots={targetHomeShots}
+                  awayShots={targetAwayShots}
+                  homeShotsOnTarget={targetHomeSot}
+                  awayShotsOnTarget={targetAwaySot}
+                  homeXg={targetHomeXg}
+                  awayXg={targetAwayXg}
+                  initialLiveMetrics={initialMetricsForPhase}
                   homeGoalsSoFar={liveHomeGoals}
                   awayGoalsSoFar={liveAwayGoals}
                   isBigMatch={Boolean(halftime.isKnockoutDecider || isFinalShowcase)}
@@ -1977,6 +2075,7 @@ export function LiveMatchBroadcast({
                   onMinuteChange={handleSimMinuteChange}
                   onEventReveal={handleSimEventReveal}
                   onHighlightActiveChange={handleSimHighlightActiveChange}
+                  onLiveMetricsChange={handleSimLiveMetricsChange}
                   onHalfComplete={handleSimHalfComplete}
                 />
               </div>

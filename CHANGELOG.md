@@ -5,6 +5,29 @@
 
 ---
 
+## v8.18 — 이적시장 감독 궁합·가치 지표 통일 · 멀티 참가자/정산 컴팩트 포메이션 팝업 · 2D 골문 멈춤 수정/세컨찬스/지표 동기화 · 멀티리그 전 경기 2배속 고정
+
+- **이적시장 감독 궁합 전 영역 표시 & 선수 가치/트레이드 지표 통일 (`src/engine/transferEngine.ts`, `src/components/common/PitchBoard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:
+  - `computePlayerMarketValueM` 단일 시장가치(`€XM`) 산식을 `transferEngine.ts`에 공식 export해 싱글·멀티 이적시장이 `computePlayerTradePoints`와 동일한 체력/멀티포지션 곡선을 공유하도록 통일.
+  - `PitchBoard` 벤치 카드에도 선발과 동일한 감독 궁합 `★` 배지 및 툴팁을 추가하고, 싱글·멀티 이적시장의 내 팀(선발/벤치/리스트/트레이드 카드)·받은 제안·역제안·상대 구단/타 유저 피치·레전드 FA 후보 전부에 `evaluateManagerPlayerSynergy` 기반 `'내 감독 궁합'` 일치 배지 표시.
+  - 멀티리그 이적시장(`MpLeagueTransferModal.tsx`)에 누락되어 있던 시장가치(`€XM`), TP 점수, 트레이드 가치 비율/차이, 유불리 판정(`유리/균형/불리`), 대형 영입 통합세 안내, 구단 니즈 배지, `[✨ 니즈 강조]` 토글 및 `PlayerDetailModal` `managerTraitId` 연동을 싱글 기준으로 통일.
+- **멀티리그 이적시장 스쿼드/이적시장 탭 중첩 버그 수정 (`src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:
+  - 역제안 뷰(`VIEW B`)를 `activeTab === 'offers' && activeOffer && activeClubOffer && activeClubOffer.club` 배타 분기로 엄격히 분리하고 `switchTab` 시 스크롤 컨테이너 최상단 초기화(`scrollBodyRef`)를 적용해 스쿼드/전술 탭 하단에 이적시장이 중복 노출되는 버그 제거(싱글 `TransferMarketModal`의 거래 내역도 `activeTab !== 'tactics'` 가드 보강).
+- **멀티리그 참가자 카드 감독 특성 표시 & 싱글·멀티 공용 컴팩트 포메이션 팝업 (`src/components/common/ClubSquadModal.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/league/SeasonSummary.tsx`, `src/components/multiplayer/league/MpLeagueSeasonSummary.tsx`, `src/components/multiplayer/league/MpLeagueFinalBoard.tsx`)**:
+  - `ClubSquadModal`을 아담한 `max-w-lg sm:max-w-xl` 컴팩트 모달(`[포메이션]` 기본 ↔ `[리스트]` 전환, 읽기 전용 `PitchBoard(compact, showBench)`, `A/M/D`·케미·감독 특성·아바타/유니폼, 바깥 클릭/`ESC` 닫기)로 확장하고, 저장된 선발/포메이션 복원 및 포메이션 정보 없는 AI 구단의 빈 슬롯 없는 자동 배치 헬퍼 `buildClubSquadLineup` 추가.
+  - `MpLeagueDashboard` 참가자 카드에 다크 톤 감독 특성/궁합 1줄 배지 추가 및 카드 클릭 시 `ClubSquadModal('formation')` 오픈.
+  - 싱글 `SeasonSummary`와 멀티 `MpLeagueSeasonSummary`·`MpLeagueFinalBoard`(순위표 구단 클릭·친구 히어로 카드 클릭·친구 스쿼드 `[포메이션 보기]`) 모두 동일 공용 `ClubSquadModal`로 통합.
+- **2D 시뮬레이션 골문 앞 멈춤(Freeze) 근본 수정 · 세컨찬스/문전 혼전 골 · 지표 실시간 일치 및 렌더링 최적화 (`src/engine/pitchSimTypes.ts`, `src/engine/pitchSimEngine.ts`, `src/engine/attackChainEngine.ts`, `src/components/league/PitchMatch2D.tsx`, `src/components/league/LiveMatchBroadcast.tsx`)**:
+  - 박스 내 패스 리시브 정지·깊은 박스 옵션 공백·고아 루즈볼 멈춤 4대 원인을 수정하고, `enforcePenaltyBoxFreezeGuard`(박스 내 정체 `0.42s` 강제 해소: 즉각 슈팅/GK 개입/클리어링) 및 고아 루즈볼 해소(`0.24s`) 가드 도입.
+  - 6야드 박스 근거리 컷백·탭인(`tap_in`), 리바운드 세컨찬스(`rebound`), 문전 우당탕탕 혼전 경합(`goalmouth_scramble`) 연출과 `attackChainEngine.ts` 자막 동기화 구현.
+  - 2D 시뮬레이션 실시간 `liveMetrics`(점유율·슈팅·유효슈팅·선방·xG)를 Director 이벤트 및 오픈플레이 박스 슈팅에 동기화해 공식 전후반 수치로 부드럽게 수렴하도록 개선(`LiveMatchBroadcast`의 인위적 `Math.sin` 점유율 흔들림 제거).
+  - `PitchMatch2D` `React.memo` 래핑, 오프스크린 정적 피치 캔버스 캐싱, 구조 재구성(`syncPitchSimConfig`) vs 경량 타깃 갱신(`syncPitchSimTargetsOnly`) 분리로 매 분 22인 에이전트 재구축 제거.
+- **멀티리그 전 경기 맞대결 2배속 완전 고정 (`src/engine/mpLeagueEngine.ts`, `src/components/multiplayer/league/MpLeagueH2HView.tsx`)**:
+  - 자국 컵 결승(`speed: 2`)·UCL 결승(`speed: 2`) 포함 멀티리그 모든 H2H 경기를 참가자·관전자 전원 `lockSpeed: 2`로 완전 고정(싱글/드림매치 배속 제어 유지).
+- **테스트 (`src/__tests__/v818TransferSquadSimFix.test.ts`, `src/__tests__/v80MultiLeague.test.ts`)**: 시장가치/TP·감독 궁합·공용 포메이션 팝업 라인업 빌더·2D 골문 멈춤 해소·세컨찬스/혼전 하이라이트·실시간 지표 공식 수렴·결승전 `speed: 2` 고정 검증 추가(전체 43개 파일 186개 테스트 통과).
+
+---
+
 ## v8.17 — 드래프트 무한 리롤 악용 원천 차단 · 새로고침 과거 롤백(5MB 저장 초과/라이브 취소) 근본 해결 · 글로벌 TOP 15 무결성 검증
 
 - **드래프트 룰렛 무한 리롤 버그 원천 차단 (`src/store/GameContext.tsx`, `src/components/draft/DraftScreen.tsx`, `src/components/multiplayer/MultiplayerBlindDraft.tsx`, `src/types/multiplayer.ts`)**:

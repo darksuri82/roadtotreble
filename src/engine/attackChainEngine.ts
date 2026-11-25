@@ -636,7 +636,7 @@ export function formatAttackChainDescription(params: {
         }
         return `${jokerPrefix}골! ${assistName ? `${assistName}의 예리한 크로스! ` : '측면 크로스를 '}${scorerName}이(가) ${defLabel}와의 공중볼 경합을 이겨내고 타점 높은 헤더로 꽂아 넣습니다!${assistTag}`;
       case 'cutback_finish':
-        return `${jokerPrefix}골! 하프스페이스 엔드라인을 파고든 ${assistName ? `${assistName}의 정교한 컷백, ` : '컷백을 '}쇄도하던 ${scorerName}이(가) ${angleNote} 마무리!${assistTag}`;
+        return `${jokerPrefix}골! 엔드라인 깊숙이 파고든 ${assistName ? `${assistName}의 정교한 컷백! ` : '낮은 컷백을 '}문전 6야드 박스로 쇄도한 ${scorerName}이(가) 논스톱 근거리 슛으로 꽂아 넣습니다!${assistTag}`;
       case 'through_ball_1v1':
         if (finishType === 'chip_1v1') {
           return `${jokerPrefix}골! ${assistName ? `${assistName}의 송곳 같은 스루패스! ` : '수비 뒷공간을 허문 스루패스, '}${scorerName}이(가) 각을 좁혀 나오는 키퍼 키를 넘기는 감각적인 칩슛으로 마무리합니다!${assistTag}`;
@@ -645,7 +645,7 @@ export function formatAttackChainDescription(params: {
       case 'cut_inside_curler':
         return `${jokerPrefix}골! 측면에서 안쪽으로 치고 들어온 ${scorerName}의 환상적인 파포스트 궤적 감아차기 골!${assistTag}`;
       case 'corner_kick':
-        return `${jokerPrefix}골! ${assistName ? `${assistName}이(가) 올린 코너킥을 ` : '코너킥 문전 혼전 상황에서 '}${scorerName}이(가) 압도적인 제공권 헤더로 골망을 흔듭니다!${assistTag}`;
+        return `${jokerPrefix}골! ${assistName ? `${assistName}이(가) 올린 코너킥! ` : '코너킥 문전 혼전 상황에서 '}${scorerName}이(가) 골문 앞 경합을 이겨내고 골망을 흔듭니다!${assistTag}`;
       case 'direct_free_kick':
         return `${jokerPrefix}골! ${scorerName}의 그림 같은 직접 프리킥! 수비벽을 넘어 상단 사각지대에 정확히 꽂힙니다!`;
       case 'high_press_counter':
@@ -653,7 +653,10 @@ export function formatAttackChainDescription(params: {
       case 'u_buildup_switch':
         return `${jokerPrefix}골! 후방 U자 빌드업 후 반대편 측면으로 찔러준 대각선 전환 패스! ${scorerName}이(가) ${angleNote} 골망을 가릅니다!${assistTag}`;
       case 'rebound_finish':
-        return `${jokerPrefix}골! ${secondaryShooterName ? `${secondaryShooterName}의 슈팅이 ` : ''}${reboundSourceKr} ${scorerName}이(가) 번개처럼 쇄도해 밀어 넣습니다!`;
+        if (reboundOrigin === 'blocked') {
+          return `${jokerPrefix}골! 문전 우당탕탕 혼전! ${secondaryShooterName ? `${secondaryShooterName}의 슈팅이 ` : ''}${reboundSourceKr} 골문 바로 앞 ${scorerName}이(가) 끝까지 집념으로 밀어 넣습니다!`;
+        }
+        return `${jokerPrefix}골! 세컨찬스! ${secondaryShooterName ? `${secondaryShooterName}의 슈팅이 ` : ''}${reboundSourceKr} 6야드 박스로 번개처럼 쇄도한 ${scorerName}이(가) 밀어 넣습니다!`;
       case 'penalty_kick':
         return `${jokerPrefix}🎯 PK 골! 박스 안 돌파 과정에서 얻어낸 페널티킥을 ${scorerName}이(가) ${pkDirKr} 코스로 침착하게 꽂아 넣습니다!`;
     }
@@ -670,13 +673,13 @@ export function formatAttackChainDescription(params: {
       case 'wing_cross_header':
         return `측면 크로스에 이은 ${scorerName}의 결정적 헤더를 ${gkLabel}가 몸을 날려 쳐냅니다!`;
       case 'cutback_finish':
-        return `날카로운 컷백 후 ${scorerName}의 논스톱 슈팅! ${gkLabel}의 동물적인 반사신경 슈퍼 세이브!`;
+        return `날카로운 컷백 후 ${scorerName}의 문전 근거리 논스톱 슈팅! ${gkLabel}의 동물적인 반사신경 슈퍼 세이브!`;
       case 'through_ball_1v1':
         return `1대1 결정적 기회! ${scorerName}의 슈팅을 ${gkLabel}가 각도를 좁히며 막아냅니다!`;
       case 'cut_inside_curler':
         return `${scorerName}의 위협적인 감아차기 중거리 슛을 ${gkLabel}가 손끝으로 쳐냅니다!`;
       case 'corner_kick':
-        return `코너킥에서 이어진 ${scorerName}의 근거리 헤더를 ${gkLabel}가 극적으로 펀칭해냅니다!`;
+        return `코너킥 문전 혼전에서 이어진 ${scorerName}의 근거리 슈팅을 ${gkLabel}가 극적으로 쳐냅니다!`;
       case 'direct_free_kick':
         return `${scorerName}의 수비벽을 넘긴 프리킥! ${gkLabel}가 몸을 던져 막아냅니다!`;
       case 'high_press_counter':
@@ -684,7 +687,7 @@ export function formatAttackChainDescription(params: {
       case 'u_buildup_switch':
         return `반대전환 롱패스 후 ${scorerName}의 측면 예각 슈팅! ${gkLabel}가 니어포스트를 틀어막습니다!`;
       case 'rebound_finish':
-        return `${reboundSourceKr} 노린 ${scorerName}의 2차 슈팅까지 ${gkLabel}가 연속 슈퍼세이브로 막아냅니다!`;
+        return `문전 혼전 속 ${reboundSourceKr} 노린 ${scorerName}의 2차 세컨찬스 슈팅까지 ${gkLabel}가 연속 슈퍼세이브로 막아냅니다!`;
       case 'penalty_kick':
         return `🧤 PK 선방!! ${scorerName}의 ${pkDirKr} 페널티킥을 ${gkLabel}가 방향을 완벽히 읽고 몸을 날려 막아냅니다!`;
     }

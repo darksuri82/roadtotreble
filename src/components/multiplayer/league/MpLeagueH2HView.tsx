@@ -755,7 +755,7 @@ function MpLeagueH2HInner({
       : undefined,
     disableInstantFinish: true,
     disableLiveSub: true,
-    lockSpeed: spec.speed,
+    lockSpeed: 2,
     waitingForOpponentLabel: waitingLabel,
     commitButtonLabel: isParticipant ? '결과 확인 →' : '관전 종료 →',
     chemistry,

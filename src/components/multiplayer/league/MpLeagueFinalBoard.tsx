@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { HISTORICAL_BENCHMARK_TEAMS } from '../../../data/historicalTeams';
-import { getLeagueById } from '../../../engine/dataLoader';
+import { buildAiClubRoster, getLeagueById } from '../../../engine/dataLoader';
 import { formatMainPositions } from '../../../engine/positionEngine';
 import type { DomesticCupState } from '../../../types/cup';
 import type {
@@ -29,6 +29,7 @@ import type {
 } from '../../../types/mpLeague';
 import type { Player } from '../../../types/player';
 import { getPlayerNationalityMeta, resolvePlayerById } from '../../../utils/playerLookup';
+import { ClubSquadModal } from '../../common/ClubSquadModal';
 import { ClubTag } from '../../common/ClubTag';
 import { CountryFlagSvg } from '../../common/CountryFlagSvg';
 import { JerseySvg } from '../../common/JerseySvg';
@@ -379,6 +380,7 @@ export function MpLeagueFinalBoard({
   const [selectedSquadClubId, setSelectedSquadClubId] = useState<string>(
     myClubId ?? humans[0]?.clubId ?? '',
   );
+  const [inspectedClubId, setInspectedClubId] = useState<string | null>(null);
   const [inspected, setInspected] = useState<{
     player: Player;
     stats?: PlayerSeasonStats | null;
@@ -1045,6 +1047,7 @@ export function MpLeagueFinalBoard({
               clubsById={clubsById}
               uclSpots={leagueMeta?.uclSpots}
               relegationSpots={leagueMeta?.relegationSpots}
+              onSelectClub={(clubId) => setInspectedClubId(clubId)}
             />
           )}
         </div>
@@ -1129,10 +1132,66 @@ export function MpLeagueFinalBoard({
               stats={final.squadStats?.[selectedSquadHuman.clubId] ?? []}
               squad={squads[selectedSquadHuman.clubId]}
               onSelectPlayerId={openPlayerById}
+              onOpenFormation={() =>
+                setInspectedClubId(selectedSquadHuman.clubId)
+              }
             />
           )}
         </div>
       )}
+
+      {inspectedClubId && (() => {
+        const targetHuman = humans.find((h) => h.clubId === inspectedClubId);
+        const targetClub =
+          clubsById[inspectedClubId] ??
+          uclView?.clubsById?.[inspectedClubId] ??
+          null;
+        const targetSquad = squads[inspectedClubId];
+        const humanOwnedIds = new Set(
+          Object.values(squads).flatMap((s) => [
+            ...s.starters.map((p) => p.id),
+            ...s.bench.map((p) => p.id),
+          ]),
+        );
+        const roster = targetSquad
+          ? [...targetSquad.starters, ...targetSquad.bench]
+          : targetClub
+            ? buildAiClubRoster(targetClub, leagueId ?? 'epl', humanOwnedIds)
+            : [];
+        const clubStatsList = final.squadStats?.[inspectedClubId] ?? [];
+        const statsMap = Object.fromEntries(
+          clubStatsList.map((st) => [st.playerId, st]),
+        );
+        return (
+          <ClubSquadModal
+            club={targetClub}
+            roster={roster}
+            starters={targetSquad?.starters}
+            bench={targetSquad?.bench}
+            formation={targetSquad?.formation}
+            tactic={targetSquad?.tactic}
+            managerOverride={
+              targetHuman
+                ? {
+                    name: `${targetHuman.nickname} 감독`,
+                    traitId:
+                      targetSquad?.managerTraitId ?? targetHuman.managerTraitId,
+                    avatar: targetHuman.avatar,
+                  }
+                : null
+            }
+            defaultViewMode="formation"
+            statsMap={statsMap}
+            onSelectPlayer={(player) => {
+              setInspected({
+                player,
+                stats: statsMap[player.id] ?? null,
+              });
+            }}
+            onClose={() => setInspectedClubId(null)}
+          />
+        );
+      })()}
 
       {inspected && (
         <PlayerDetailModal

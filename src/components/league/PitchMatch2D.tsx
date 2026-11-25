@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import {
   createPitchSimState,
   FIXED_DT,
   MAX_FRAME_DELTA,
   stepPitchSim,
   syncPitchSimConfig,
+  syncPitchSimTargetsOnly,
 } from '../../engine/pitchSimEngine';
 import type {
   PitchFinalTheme,
+  PitchSimLiveMetrics,
   PitchSimState,
   PitchSimTeamInput,
   SimVec2,
@@ -64,8 +66,11 @@ export interface PitchMatch2DProps {
   homePossession: number;
   homeShots?: number;
   awayShots?: number;
+  homeShotsOnTarget?: number;
+  awayShotsOnTarget?: number;
   homeXg?: number;
   awayXg?: number;
+  initialLiveMetrics?: Partial<PitchSimLiveMetrics>;
   homeGoalsSoFar?: number;
   awayGoalsSoFar?: number;
   isBigMatch?: boolean;
@@ -78,6 +83,7 @@ export interface PitchMatch2DProps {
   onMinuteChange?: (minute: number) => void;
   onEventReveal?: (eventKey: string) => void;
   onHighlightActiveChange?: (active: boolean) => void;
+  onLiveMetricsChange?: (metrics: PitchSimLiveMetrics) => void;
   onHalfComplete?: () => void;
 }
 
@@ -131,7 +137,7 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-export function PitchMatch2D({
+export const PitchMatch2D = memo(function PitchMatch2D({
   simSessionKey,
   simSeed,
   homeClub,
@@ -162,8 +168,11 @@ export function PitchMatch2D({
   homePossession,
   homeShots = 0,
   awayShots = 0,
+  homeShotsOnTarget,
+  awayShotsOnTarget,
   homeXg = 0,
   awayXg = 0,
+  initialLiveMetrics,
   homeGoalsSoFar = 0,
   awayGoalsSoFar = 0,
   isBigMatch = false,
@@ -176,6 +185,7 @@ export function PitchMatch2D({
   onMinuteChange,
   onEventReveal,
   onHighlightActiveChange,
+  onLiveMetricsChange,
   onHalfComplete,
 }: PitchMatch2DProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -193,6 +203,7 @@ export function PitchMatch2D({
     onMinuteChange,
     onEventReveal,
     onHighlightActiveChange,
+    onLiveMetricsChange,
     onHalfComplete,
   });
   useEffect(() => {
@@ -200,9 +211,16 @@ export function PitchMatch2D({
       onMinuteChange,
       onEventReveal,
       onHighlightActiveChange,
+      onLiveMetricsChange,
       onHalfComplete,
     };
-  }, [onMinuteChange, onEventReveal, onHighlightActiveChange, onHalfComplete]);
+  }, [
+    onMinuteChange,
+    onEventReveal,
+    onHighlightActiveChange,
+    onLiveMetricsChange,
+    onHalfComplete,
+  ]);
 
   const livePropsRef = useRef({
     homeClub,
@@ -225,7 +243,57 @@ export function PitchMatch2D({
     };
   }, [homeClub, awayClub, phase, isFullTime, paused, speed, finalTheme]);
 
-  // Initialize or hot-sync the deterministic simulation state
+  const targetsRef = useRef({
+    homePossession,
+    homeShots,
+    awayShots,
+    homeShotsOnTarget,
+    awayShotsOnTarget,
+    homeXg,
+    awayXg,
+    initialLiveMetrics,
+    homeGoalsSoFar,
+    awayGoalsSoFar,
+  });
+  useEffect(() => {
+    targetsRef.current = {
+      homePossession,
+      homeShots,
+      awayShots,
+      homeShotsOnTarget,
+      awayShotsOnTarget,
+      homeXg,
+      awayXg,
+      initialLiveMetrics,
+      homeGoalsSoFar,
+      awayGoalsSoFar,
+    };
+    if (simRef.current && sessionKeyRef.current === simSessionKey) {
+      syncPitchSimTargetsOnly(simRef.current, {
+        targetHomePossession: homePossession,
+        homeShotsTarget: homeShots,
+        awayShotsTarget: awayShots,
+        homeShotsOnTargetTarget: homeShotsOnTarget,
+        awayShotsOnTargetTarget: awayShotsOnTarget,
+        homeXgTarget: homeXg,
+        awayXgTarget: awayXg,
+      });
+    }
+  }, [
+    simSessionKey,
+    homePossession,
+    homeShots,
+    awayShots,
+    homeShotsOnTarget,
+    awayShotsOnTarget,
+    homeXg,
+    awayXg,
+    initialLiveMetrics,
+    homeGoalsSoFar,
+    awayGoalsSoFar,
+  ]);
+
+  // Initialize or hot-sync structural simulation state ONLY when tactical/roster/session props change
   useEffect(() => {
     const homeTeamInput: PitchSimTeamInput = {
       formation: homeFormation,
@@ -247,6 +315,7 @@ export function PitchMatch2D({
       enteredAtMinute: awayEnteredAtMinute,
       halftimeAdjusted: awayHalftimeAdjusted,
     };
+    const t = targetsRef.current;
 
     if (sessionKeyRef.current !== simSessionKey || !simRef.current) {
       sessionKeyRef.current = simSessionKey;
@@ -260,13 +329,16 @@ export function PitchMatch2D({
         startMinute,
         endMinute,
         half,
-        targetHomePossession: homePossession,
-        homeShotsTarget: homeShots,
-        awayShotsTarget: awayShots,
-        homeXgTarget: homeXg,
-        awayXgTarget: awayXg,
-        homeGoalsSoFar,
-        awayGoalsSoFar,
+        targetHomePossession: t.homePossession,
+        homeShotsTarget: t.homeShots,
+        awayShotsTarget: t.awayShots,
+        homeShotsOnTargetTarget: t.homeShotsOnTarget,
+        awayShotsOnTargetTarget: t.awayShotsOnTarget,
+        homeXgTarget: t.homeXg,
+        awayXgTarget: t.awayXg,
+        initialLiveMetrics: t.initialLiveMetrics,
+        homeGoalsSoFar: t.homeGoalsSoFar,
+        awayGoalsSoFar: t.awayGoalsSoFar,
         isBigMatch: isBigMatch || finalTheme !== 'none',
         isKnockoutDecider,
         aggHomeBeforeMatch,
@@ -278,11 +350,13 @@ export function PitchMatch2D({
       syncPitchSimConfig(simRef.current, {
         home: homeTeamInput,
         away: awayTeamInput,
-        targetHomePossession: homePossession,
-        homeShotsTarget: homeShots,
-        awayShotsTarget: awayShots,
-        homeXgTarget: homeXg,
-        awayXgTarget: awayXg,
+        targetHomePossession: t.homePossession,
+        homeShotsTarget: t.homeShots,
+        awayShotsTarget: t.awayShots,
+        homeShotsOnTargetTarget: t.homeShotsOnTarget,
+        awayShotsOnTargetTarget: t.awayShotsOnTarget,
+        homeXgTarget: t.homeXg,
+        awayXgTarget: t.awayXg,
         events: scheduledEvents,
       });
     }
@@ -310,13 +384,6 @@ export function PitchMatch2D({
     startMinute,
     endMinute,
     half,
-    homePossession,
-    homeShots,
-    awayShots,
-    homeXg,
-    awayXg,
-    homeGoalsSoFar,
-    awayGoalsSoFar,
     isBigMatch,
     isKnockoutDecider,
     aggHomeBeforeMatch,
@@ -334,17 +401,21 @@ export function PitchMatch2D({
 
     let width = container.clientWidth || 640;
     let height = container.clientHeight || 250;
+    let currentDpr = Math.min(window.devicePixelRatio || 1, 2);
+    let pitchCacheCanvas: HTMLCanvasElement | null = null;
+    let pitchCacheKey = '';
 
     const resize = () => {
       const rect = container.getBoundingClientRect();
       width = Math.max(300, Math.round(rect.width));
       height = Math.max(190, Math.round(rect.height));
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
+      currentDpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * currentDpr);
+      canvas.height = Math.round(height * currentDpr);
+      pitchCacheKey = '';
       const ctx = canvas.getContext('2d');
       if (ctx) {
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.setTransform(currentDpr, 0, 0, currentDpr, 0, 0);
       }
     };
 
@@ -360,15 +431,16 @@ export function PitchMatch2D({
     let lastCompletedSession: string | null = null;
     let lastBadgeLabel: TacticalPhaseLabel = '후방 빌드업';
     let lastBadgeHome = true;
+    let lastMetricsSig = '';
+    let lastMetricsEmitMs = 0;
     const emittedReveals = new Set<string>();
 
-    const drawPitchSurface = (
+    const drawStaticPitchBase = (
       ctx: CanvasRenderingContext2D,
       w: number,
       h: number,
       padX: number,
       padY: number,
-      goalRipple: { side: 'left' | 'right'; intensity: number } | null,
       theme: PitchFinalTheme,
     ) => {
       const pw = w - padX * 2;
@@ -525,7 +597,43 @@ export function PitchMatch2D({
         ctx.restore();
       }
 
-      // Goals
+    };
+
+    const drawPitchSurface = (
+      ctx: CanvasRenderingContext2D,
+      w: number,
+      h: number,
+      padX: number,
+      padY: number,
+      goalRipple: { side: 'left' | 'right'; intensity: number } | null,
+      theme: PitchFinalTheme,
+    ) => {
+      const pw = w - padX * 2;
+      const ph = h - padY * 2;
+      const midY = padY + ph / 2;
+      const nextCacheKey = `${w}x${h}@${currentDpr}:${theme}`;
+
+      if (!pitchCacheCanvas || pitchCacheKey !== nextCacheKey) {
+        if (!pitchCacheCanvas) {
+          pitchCacheCanvas = document.createElement('canvas');
+        }
+        pitchCacheCanvas.width = Math.round(w * currentDpr);
+        pitchCacheCanvas.height = Math.round(h * currentDpr);
+        const cacheCtx = pitchCacheCanvas.getContext('2d');
+        if (cacheCtx) {
+          cacheCtx.setTransform(currentDpr, 0, 0, currentDpr, 0, 0);
+          drawStaticPitchBase(cacheCtx, w, h, padX, padY, theme);
+          pitchCacheKey = nextCacheKey;
+        }
+      }
+
+      if (pitchCacheCanvas && pitchCacheKey === nextCacheKey) {
+        ctx.drawImage(pitchCacheCanvas, 0, 0, w, h);
+      } else {
+        drawStaticPitchBase(ctx, w, h, padX, padY, theme);
+      }
+
+      // Dynamic Goal Nets (only animated when goalRipple fires)
       const goalH = ph * 0.2;
       const goalD = Math.max(7, padX * 0.62);
 
@@ -579,6 +687,8 @@ export function PitchMatch2D({
         activeLoopSession = sessionKeyRef.current;
         lastNotifiedMin = -1;
         lastNotifiedHighlight = false;
+        lastMetricsSig = '';
+        lastMetricsEmitMs = 0;
         emittedReveals.clear();
       }
 
@@ -603,6 +713,7 @@ export function PitchMatch2D({
 
       // Glenn Fiedler Fixed-Timestep Accumulator:
       // 1x / 2x / 4x multiplies ONLY time accumulation -> ZERO skipped physics ticks!
+      let revealedThisFrame = false;
       if (isLiveRunning && !sim.completed) {
         accumulatorRef.current += frameDelta * curSpeed;
         let safetySteps = 0;
@@ -614,6 +725,7 @@ export function PitchMatch2D({
           // Emit exact-frame event reveals (zero spoilers before impact)
           if (sim.director && sim.director.revealed && !emittedReveals.has(sim.director.key)) {
             emittedReveals.add(sim.director.key);
+            revealedThisFrame = true;
             callbacksRef.current.onEventReveal?.(sim.director.key);
           }
         }
@@ -635,6 +747,18 @@ export function PitchMatch2D({
         callbacksRef.current.onHighlightActiveChange?.(highlightActive);
       }
 
+      // Emit real-time 2D-synced match stats only when values change (throttled ≤2Hz, immediate on reveal/completion)
+      const lm = sim.liveMetrics;
+      const metricsSig = `${lm.homePossession}|${lm.homeShots}|${lm.awayShots}|${lm.homeShotsOnTarget}|${lm.awayShotsOnTarget}|${lm.homeSaves}|${lm.awaySaves}|${lm.homeXg.toFixed(2)}|${lm.awayXg.toFixed(2)}`;
+      if (
+        metricsSig !== lastMetricsSig &&
+        (revealedThisFrame || sim.completed || now - lastMetricsEmitMs >= 450)
+      ) {
+        lastMetricsSig = metricsSig;
+        lastMetricsEmitMs = now;
+        callbacksRef.current.onLiveMetricsChange?.({ ...lm });
+      }
+
       if (
         sim.tacticalLabel !== lastBadgeLabel ||
         sim.tacticalLabelTeamIsHome !== lastBadgeHome
@@ -646,6 +770,7 @@ export function PitchMatch2D({
 
       if (sim.completed && lastCompletedSession !== sessionKeyRef.current) {
         lastCompletedSession = sessionKeyRef.current;
+        callbacksRef.current.onLiveMetricsChange?.({ ...sim.liveMetrics });
         callbacksRef.current.onHalfComplete?.();
       }
 
@@ -1177,4 +1302,4 @@ export function PitchMatch2D({
       </div>
     </div>
   );
-}
+});

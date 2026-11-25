@@ -364,7 +364,7 @@ describe('v8.0 multi league — full shared season', () => {
             expect(played.spec.knockout).toBe(false);
           } else {
             seen.otherH2H += 1;
-            expect(played.spec.speed).toBe(played.spec.isFinal ? 1 : 2);
+            expect(played.spec.speed).toBe(2);
           }
           state = completeMpLeagueH2H(state, played.result);
           if (state.flow.kind === 'auto') state = runMpLeague(state, env);

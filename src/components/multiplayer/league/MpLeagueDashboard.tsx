@@ -17,6 +17,10 @@ import {
   Zap,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  evaluateManagerFitDetail,
+  MANAGER_TRAITS,
+} from '../../../data/managerTraits';
 import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemistryEngine';
 import { getMoraleLabel } from '../../../engine/conditionEngine';
 import { getLeagueById } from '../../../engine/dataLoader';
@@ -41,6 +45,7 @@ import type { MpRoomPlayerRow } from '../../../types/multiplayer';
 import type { Player } from '../../../types/player';
 import type { UclKnockoutStage } from '../../../types/ucl';
 import { resolvePlayerById } from '../../../utils/playerLookup';
+import { ClubSquadModal } from '../../common/ClubSquadModal';
 import { InfoHelpButton } from '../../common/InfoHelpButton';
 import { InjuryAlertModal } from '../../common/InjuryAlertModal';
 import { ManagerEventModal } from '../../common/ManagerEventModal';
@@ -398,6 +403,9 @@ export function MpLeagueDashboard({
     player: Player;
     stats?: PlayerSeasonStats | null;
   } | null>(null);
+  const [inspectedHumanClubId, setInspectedHumanClubId] = useState<
+    string | null
+  >(null);
 
   const isUclStage = live.stage === 'ucl' && Boolean(live.ucl);
   const tab: DashTab = useMemo(() => {
@@ -1656,17 +1664,45 @@ export function MpLeagueDashboard({
                   ? rawRecent.slice(0, Math.max(0, rawRecent.length - 1))
                   : rawRecent;
 
+              const sq = publicSquads[h.clubId] ?? (isMe ? mySquad : null);
+              const traitId = sq?.managerTraitId ?? h.managerTraitId;
+              const traitDef = traitId ? MANAGER_TRAITS[traitId] : null;
+              const fitDetail =
+                traitId && sq?.starters?.length
+                  ? evaluateManagerFitDetail({
+                      traitId,
+                      starters: sq.starters,
+                      tactic: sq.tactic,
+                    })
+                  : null;
+              const traitCompactStat =
+                fitDetail && fitDetail.scalingMode === 'progressive'
+                  ? `${fitDetail.matchedCount}/${fitDetail.totalSlots}`
+                  : traitDef
+                    ? traitDef.effectSummary.split(',')[0]?.slice(0, 12)
+                    : null;
+
               return (
                 <div
                   key={h.clubId}
-                  className={`rounded-xl border p-2.5 space-y-1.5 ${
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setInspectedHumanClubId(h.clubId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setInspectedHumanClubId(h.clubId);
+                    }
+                  }}
+                  title={`${h.nickname} (${h.profile.name}) 스쿼드 · 포메이션 보기`}
+                  className={`rounded-xl border p-2.5 space-y-1.5 cursor-pointer transition-colors select-none touch-manipulation ${
                     isMe
                       ? isUclStage
-                        ? 'border-sky-400/50 bg-[#0d192f]'
-                        : 'border-emerald-500/45 bg-[#0f1a24]'
+                        ? 'border-sky-400/50 bg-[#0d192f] hover:border-sky-300/80'
+                        : 'border-emerald-500/45 bg-[#0f1a24] hover:border-emerald-400/80'
                       : isUclStage
-                        ? 'border-sky-500/20 bg-[#0b1324]'
-                        : 'border-slate-800/90 bg-[#111822]'
+                        ? 'border-sky-500/20 bg-[#0b1324] hover:border-sky-400/55'
+                        : 'border-slate-800/90 bg-[#111822] hover:border-sky-400/55'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -1730,6 +1766,30 @@ export function MpLeagueDashboard({
                       )}
                     </div>
                   </div>
+                  {traitDef && (
+                    <div className="flex items-center justify-between gap-1 text-[9.5px] min-w-0">
+                      <span
+                        title={`${traitDef.name} · ${traitDef.effectSummary}`}
+                        className="inline-flex items-center gap-1 min-w-0 rounded border border-slate-700/80 bg-[#0b1018] px-1.5 py-0.5 font-bold text-slate-200"
+                      >
+                        <span
+                          className="h-1.5 w-1.5 rounded-full shrink-0"
+                          style={{ backgroundColor: traitDef.badgeColor }}
+                        />
+                        <span className="truncate">{traitDef.name}</span>
+                        {traitCompactStat && (
+                          <span className="whitespace-nowrap shrink-0 font-mono text-[9px] text-amber-300 tabular-nums">
+                            {traitCompactStat}
+                          </span>
+                        )}
+                      </span>
+                      {sq?.formation && (
+                        <span className="whitespace-nowrap shrink-0 font-mono text-[9px] font-bold text-slate-400">
+                          {sq.formation}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-1 text-[10px] font-bold">
                     <span className="inline-flex items-center gap-0.5 rounded border border-slate-700 bg-[#0b1018] px-1.5 py-0.5 text-amber-200 tabular-nums">
                       <Swords className="w-2.5 h-2.5 text-amber-300" />
@@ -2155,6 +2215,64 @@ export function MpLeagueDashboard({
           onClose={() => setOpenMilestoneKey(null)}
         />
       )}
+
+      {inspectedHumanClubId && (() => {
+        const targetHuman = live.humans.find(
+          (h) => h.clubId === inspectedHumanClubId,
+        );
+        const targetClub =
+          clubsById[inspectedHumanClubId] ??
+          (targetHuman
+            ? {
+                id: targetHuman.clubId,
+                name: targetHuman.profile.name,
+                shortName: targetHuman.profile.shortName,
+                primaryColor: targetHuman.profile.primaryColor,
+                secondaryColor: targetHuman.profile.secondaryColor,
+                pattern: targetHuman.profile.pattern,
+                att: 80,
+                mid: 80,
+                def: 80,
+                formation: '4-3-3' as const,
+                defaultTactic: 'balanced' as const,
+                topScorers: ['', '', ''] as [string, string, string],
+              }
+            : null);
+        const targetSquad =
+          publicSquads[inspectedHumanClubId] ??
+          (inspectedHumanClubId === myClubId ? mySquad : null);
+        const roster = targetSquad
+          ? [...targetSquad.starters, ...targetSquad.bench]
+          : [];
+        return (
+          <ClubSquadModal
+            club={targetClub}
+            roster={roster}
+            starters={targetSquad?.starters}
+            bench={targetSquad?.bench}
+            formation={targetSquad?.formation}
+            tactic={targetSquad?.tactic}
+            managerOverride={
+              targetHuman
+                ? {
+                    name: `${targetHuman.nickname} 감독`,
+                    traitId:
+                      targetSquad?.managerTraitId ?? targetHuman.managerTraitId,
+                    avatar: targetHuman.avatar,
+                  }
+                : null
+            }
+            defaultViewMode="formation"
+            conditionMap={
+              inspectedHumanClubId === myClubId ? mine?.conditions : undefined
+            }
+            onSelectPlayer={(player) => {
+              setInspected({ player, stats: null });
+            }}
+            onClose={() => setInspectedHumanClubId(null)}
+          />
+        );
+      })()}
 
       {inspected && (
         <PlayerDetailModal

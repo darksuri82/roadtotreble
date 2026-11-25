@@ -7,6 +7,7 @@ import {
   Diamond,
   Globe,
   Hourglass,
+  LayoutGrid,
   Sparkles,
   Star,
   Swords,
@@ -18,7 +19,7 @@ import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { FORMATIONS } from '../../../data/formations';
 import { computeSquadPlayerAnalytics } from '../../../engine/analyticsEngine';
-import { getLeagueById } from '../../../engine/dataLoader';
+import { buildAiClubRoster, getLeagueById } from '../../../engine/dataLoader';
 import { formatMainPositions } from '../../../engine/positionEngine';
 import { TACTICS } from '../../../engine/tacticEngine';
 import type { DomesticCupState } from '../../../types/cup';
@@ -38,6 +39,7 @@ import type {
 } from '../../../types/mpLeague';
 import type { Player } from '../../../types/player';
 import { getPlayerNationalityMeta, resolvePlayerById } from '../../../utils/playerLookup';
+import { ClubSquadModal } from '../../common/ClubSquadModal';
 import { ClubTag } from '../../common/ClubTag';
 import { CountryFlagSvg } from '../../common/CountryFlagSvg';
 import { JerseySvg } from '../../common/JerseySvg';
@@ -288,6 +290,7 @@ function FriendHeroCard({
   leagueName,
   uclStatus,
   h2h,
+  onClick,
 }: {
   human: MpLeagueHuman;
   rank: number | undefined;
@@ -297,10 +300,27 @@ function FriendHeroCard({
   leagueName: string;
   uclStatus: 'qualified' | 'missed' | 'off';
   h2h?: MpH2HRecord;
+  onClick?: () => void;
 }) {
   return (
     <div
-      className={`rounded-xl border p-3 sm:p-4 space-y-2 ${
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      title={onClick ? `${human.nickname} (${human.profile.name}) 포메이션 보기` : undefined}
+      className={`rounded-xl border p-3 sm:p-4 space-y-2 transition-colors ${
+        onClick ? 'cursor-pointer hover:border-sky-400/60' : ''
+      } ${
         isMe
           ? 'border-emerald-500/45 bg-emerald-500/10'
           : 'border-slate-800 bg-[#090e15]'
@@ -642,6 +662,7 @@ export function MpFriendSquadTab({
   stats,
   squad,
   onSelectPlayerId,
+  onOpenFormation,
 }: {
   human: MpLeagueHuman;
   rank: number | undefined;
@@ -649,6 +670,7 @@ export function MpFriendSquadTab({
   stats: PlayerSeasonStats[];
   squad: MpSquadInput | undefined;
   onSelectPlayerId?: (playerId: string) => void;
+  onOpenFormation?: () => void;
 }) {
   const [sortKey, setSortKey] = useState<SquadSortKey>('lineup');
   const squadRows = buildSquadRows(stats, squad);
@@ -792,14 +814,26 @@ export function MpFriendSquadTab({
           <h3 className="min-w-0 truncate text-sm font-extrabold text-white">
             {human.profile.name} 선수단 {squadRows.length}명 시즌 세부 기록
           </h3>
-          <button
-            type="button"
-            onClick={() => setSortKey('lineup')}
-            className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-white cursor-pointer"
-          >
-            <ArrowUpDown className="w-3 h-3" />
-            정렬: {sortKey === 'lineup' ? '라인업' : sortKey.toUpperCase()}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onOpenFormation && (
+              <button
+                type="button"
+                onClick={onOpenFormation}
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg border border-emerald-500/40 bg-emerald-500/12 px-2.5 py-1 text-[11px] font-bold text-emerald-200 hover:bg-emerald-500/20 cursor-pointer"
+              >
+                <LayoutGrid className="w-3 h-3" />
+                포메이션 보기
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSortKey('lineup')}
+              className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] text-slate-500 hover:text-white cursor-pointer"
+            >
+              <ArrowUpDown className="w-3 h-3" />
+              정렬: {sortKey === 'lineup' ? '라인업' : sortKey.toUpperCase()}
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#0b1018]">
@@ -981,6 +1015,7 @@ export function MpLeagueSeasonSummary({
   onClose,
 }: MpLeagueSeasonSummaryProps) {
   const [mainTab, setMainTab] = useState<string>('league');
+  const [inspectedClubId, setInspectedClubId] = useState<string | null>(null);
   const [inspected, setInspected] = useState<{
     player: Player;
     stats?: PlayerSeasonStats | null;
@@ -1162,6 +1197,7 @@ export function MpLeagueSeasonSummary({
                   leagueName={leagueName}
                   uclStatus={uclStatus}
                   h2h={h2hByClub?.[human.clubId]}
+                  onClick={() => setInspectedClubId(human.clubId)}
                 />
               );
             })}
@@ -1270,6 +1306,7 @@ export function MpLeagueSeasonSummary({
             clubsById={clubsById}
             uclSpots={leagueMeta?.uclSpots}
             relegationSpots={leagueMeta?.relegationSpots}
+            onSelectClub={(clubId) => setInspectedClubId(clubId)}
           />
         )}
 
@@ -1292,10 +1329,61 @@ export function MpLeagueSeasonSummary({
             stats={summary.squadStats[squadHuman.clubId] ?? []}
             squad={squads[squadHuman.clubId]}
             onSelectPlayerId={openPlayerById}
+            onOpenFormation={() => setInspectedClubId(squadHuman.clubId)}
           />
         )}
       </div>
       </div>
+
+      {inspectedClubId && (() => {
+        const targetHuman = humans.find((h) => h.clubId === inspectedClubId);
+        const targetClub = clubsById[inspectedClubId] ?? null;
+        const targetSquad = squads[inspectedClubId];
+        const humanOwnedIds = new Set(
+          Object.values(squads).flatMap((s) => [
+            ...s.starters.map((p) => p.id),
+            ...s.bench.map((p) => p.id),
+          ]),
+        );
+        const roster = targetSquad
+          ? [...targetSquad.starters, ...targetSquad.bench]
+          : targetClub
+            ? buildAiClubRoster(targetClub, leagueId ?? 'epl', humanOwnedIds)
+            : [];
+        const clubStatsList = summary.squadStats[inspectedClubId] ?? [];
+        const statsMap = Object.fromEntries(
+          clubStatsList.map((st) => [st.playerId, st]),
+        );
+        return (
+          <ClubSquadModal
+            club={targetClub}
+            roster={roster}
+            starters={targetSquad?.starters}
+            bench={targetSquad?.bench}
+            formation={targetSquad?.formation}
+            tactic={targetSquad?.tactic}
+            managerOverride={
+              targetHuman
+                ? {
+                    name: `${targetHuman.nickname} 감독`,
+                    traitId:
+                      targetSquad?.managerTraitId ?? targetHuman.managerTraitId,
+                    avatar: targetHuman.avatar,
+                  }
+                : null
+            }
+            defaultViewMode="formation"
+            statsMap={statsMap}
+            onSelectPlayer={(player) => {
+              setInspected({
+                player,
+                stats: statsMap[player.id] ?? null,
+              });
+            }}
+            onClose={() => setInspectedClubId(null)}
+          />
+        );
+      })()}
 
       {inspected && (
         <PlayerDetailModal

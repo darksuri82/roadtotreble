@@ -1,6 +1,7 @@
 import { Crown, Diamond, Info } from 'lucide-react';
 import { useState } from 'react';
 import { BENCH_SLOTS, FORMATIONS } from '../../data/formations';
+import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import {
   computeFullPlayerOvrBreakdown,
   getInjuryTooltip,
@@ -1284,10 +1285,14 @@ export function PitchBoard({
                         baseOvr: player.ovr,
                         condition: cond ?? null,
                       });
+                      const benchMgrSyn = evaluateManagerPlayerSynergy(
+                        player,
+                        managerTraitId,
+                      );
                       return (
                         <>
                           <div
-                            title={`${player.name} (${formatMainPositions(player)})\n[${benchOvrBr.summaryLine}]`}
+                            title={`${player.name} (${formatMainPositions(player)})\n[${benchOvrBr.summaryLine}]${benchMgrSyn.bonus > 0 && benchMgrSyn.reason ? `\n★ ${benchMgrSyn.reason}` : ''}`}
                             className="flex flex-wrap items-center justify-center gap-0.5 tabular-nums"
                           >
                             <span
@@ -1303,6 +1308,14 @@ export function PitchBoard({
                             >
                               {player.ovr}
                             </span>
+                            {benchMgrSyn.bonus > 0 && (
+                              <span
+                                title={benchMgrSyn.reason ?? '내 감독 궁합 (+1)'}
+                                className="text-[9px] font-bold text-amber-300 leading-none drop-shadow-[0_0_2px_rgba(251,191,36,0.45)]"
+                              >
+                                ★
+                              </span>
+                            )}
                             {benchOvrBr.moraleBonus !== 0 && (
                               <span
                                 className={`rounded px-1 py-0.5 text-[8px] font-black leading-none ${

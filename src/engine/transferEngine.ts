@@ -158,6 +158,38 @@ function computeBaseMarketValueM(player: Player): number {
 }
 
 /**
+ * Single source of truth for a player's estimated market value (€M) across Solo & Multiplayer transfer markets.
+ * Applies the same athleticism/versatility curve as computePlayerTradePoints and optional shock-bargain discount.
+ */
+export function computePlayerMarketValueM(
+  player: Player,
+  options?: { isShockBargain?: boolean; marketValueMOverride?: number },
+): number {
+  if (
+    typeof options?.marketValueMOverride === 'number' &&
+    options.marketValueMOverride > 0
+  ) {
+    const overridden = options.isShockBargain
+      ? Math.round(options.marketValueMOverride * 0.65)
+      : Math.round(options.marketValueMOverride);
+    return Math.max(3, overridden);
+  }
+  const base = computeBaseMarketValueM(player);
+  let mult = 1;
+  if (!player.isLegend) {
+    const posCoverage =
+      player.mainPositions.length + player.secondaryPositions.length;
+    if (player.stamina >= 88 && posCoverage >= 3) mult += 0.1;
+    else if (player.stamina >= 84 || posCoverage >= 3) mult += 0.05;
+    else if (player.stamina <= 70) mult -= 0.06;
+  }
+  if (options?.isShockBargain) {
+    mult *= 0.65;
+  }
+  return Math.max(3, Math.round(base * mult));
+}
+
+/**
  * Base signing probability before form, selling club rank, and user prestige adjustments.
  * Tuned so:
  * - Rotation (<=78): ~74-90%

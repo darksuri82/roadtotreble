@@ -1145,7 +1145,7 @@ function stepCupStage(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
         awayClubId: n.awayTeamId,
         round: stageNum,
         knockout: true,
-        speed: isCupFinal ? 1 : 2,
+        speed: 2,
         isFinal: isCupFinal,
       })),
     );
@@ -2475,7 +2475,7 @@ function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
       knockout: isFinal || leg === 2,
       aggHomeBefore: tf.aggHomeBefore,
       aggAwayBefore: tf.aggAwayBefore,
-      speed: isFinal ? 1 : 2,
+      speed: 2,
       isFinal,
     });
   }

@@ -24,7 +24,9 @@ export type TacticalPhaseLabel =
   | '하프스페이스 침투'
   | '전방 압박'
   | '역습 전환'
-  | '세트피스';
+  | '세트피스'
+  | '세컨찬스'
+  | '문전 혼전';
 
 export type FormationPhaseMode =
   | 'buildup'
@@ -219,6 +221,24 @@ export type DirectorStage =
   | 'shot_flight'
   | 'reveal';
 
+export type DirectorScrambleMode =
+  | 'none'
+  | 'tap_in'
+  | 'rebound'
+  | 'goalmouth_scramble';
+
+export interface PitchSimLiveMetrics {
+  homePossession: number;
+  homeShots: number;
+  awayShots: number;
+  homeShotsOnTarget: number;
+  awayShotsOnTarget: number;
+  homeSaves: number;
+  awaySaves: number;
+  homeXg: number;
+  awayXg: number;
+}
+
 export interface DirectorCueState {
   key: string;
   event: MatchEvent;
@@ -242,9 +262,13 @@ export interface DirectorCueState {
   shotEnd: SimVec2;
   revealed: boolean;
   varOffsideLineX: number;
-  /** Intermediate step inside multi-touch routes (0 = initial, 1 = pass sent, 2 = receiver driving) */
+  /** Intermediate step inside multi-touch routes (0 = initial, 1 = pass sent, 2 = scramble/drive, 3 = second-chance finish) */
   routeSubStep: number;
   reboundTriggered: boolean;
+  /** Close-range tap-in / rebound second-chance / 6-yard goalmouth scramble mode */
+  scrambleMode: DirectorScrambleMode;
+  scrambleTimer: number;
+  scrambleDuration: number;
   /** Exact locked ball coordinates during set-piece setup (PK spot / corner flag / FK spot) */
   setPieceSpot: SimVec2 | null;
   /** Minimum normalized attack depth (0..1) required before shot is permitted to fire */
@@ -294,8 +318,11 @@ export interface PitchSimInitConfig {
   targetHomePossession: number; // 31..69 from matchEngine
   homeShotsTarget: number;
   awayShotsTarget: number;
+  homeShotsOnTargetTarget?: number;
+  awayShotsOnTargetTarget?: number;
   homeXgTarget: number;
   awayXgTarget: number;
+  initialLiveMetrics?: Partial<PitchSimLiveMetrics>;
   homeGoalsSoFar: number;
   awayGoalsSoFar: number;
   isBigMatch?: boolean;
@@ -319,6 +346,8 @@ export interface PitchSimState {
   targetHomePossession: number;
   homeShotsTarget: number;
   awayShotsTarget: number;
+  homeShotsOnTargetTarget: number;
+  awayShotsOnTargetTarget: number;
   homeXgTarget: number;
   awayXgTarget: number;
   homeGoalsLive: number;
@@ -344,6 +373,15 @@ export interface PitchSimState {
   possessionStallTime: number;
   /** Active pressing trigger window (seconds) fired by opponent back-passes, touchline traps, or stalls */
   pressTriggerTimer: number;
+  /** Elapsed seconds where ball/carrier remained nearly stationary inside penalty/6-yard box */
+  boxStallTimer: number;
+  /** Elapsed seconds where an unowned loose ball remained stationary anywhere on pitch */
+  looseBallStallTimer: number;
+  /** Real-time on-pitch possession accumulation ticks for 2D-aligned possession display */
+  homePossTicks: number;
+  awayPossTicks: number;
+  /** Real-time 2D-synchronized match metrics (shots, SOT, saves, xG, possession) */
+  liveMetrics: PitchSimLiveMetrics;
   transitionTimer: number;
   transitionTeamIsHome: boolean | null;
   tacticalLabel: TacticalPhaseLabel;
@@ -375,5 +413,8 @@ export interface PitchSimState {
     maxConsecutiveStallPasses: number;
     pressingTriggersFired: number;
     positiveXtPasses: number;
+    boxFreezeGuardsFired: number;
+    openPlayBoxShots: number;
+    secondChanceScrambles: number;
   };
 }

@@ -1944,7 +1944,7 @@ export function SeasonSummary() {
         </div>
       )}
 
-      {/* Club Squad Modal */}
+      {/* Club Squad Modal (Formation default ↔ List toggle) */}
       <ClubSquadModal
         club={inspectedClub?.club ?? null}
         roster={
@@ -1959,6 +1959,30 @@ export function SeasonSummary() {
               })
             : []
         }
+        starters={
+          inspectedClub?.club.id === USER_CLUB_ID ? state.starters : undefined
+        }
+        bench={
+          inspectedClub?.club.id === USER_CLUB_ID ? state.bench : undefined
+        }
+        formation={
+          inspectedClub?.club.id === USER_CLUB_ID ? state.formation : undefined
+        }
+        tactic={
+          inspectedClub?.club.id === USER_CLUB_ID
+            ? state.defaultTactic
+            : undefined
+        }
+        managerOverride={
+          inspectedClub?.club.id === USER_CLUB_ID
+            ? {
+                name: state.manager.name || '내 감독',
+                traitId: state.manager.traitId,
+                avatar: state.manager.avatar,
+              }
+            : null
+        }
+        defaultViewMode="formation"
         statsMap={
           inspectedClub?.leagueId && inspectedClub.leagueId !== season.leagueId
             ? mergePlayerStatsMaps(
