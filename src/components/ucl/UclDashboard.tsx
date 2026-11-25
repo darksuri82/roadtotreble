@@ -1,13 +1,12 @@
 import {
   Award,
-  Check,
   FastForward,
   Play,
   Radio,
   Shield,
-  SlidersHorizontal,
   Sparkles,
   Trophy,
+  Tv,
   Users,
   X,
   Zap,
@@ -42,15 +41,20 @@ import type {
   PlayerSeasonStats,
   TacticId,
 } from '../../types/league';
+import type { MpCastLive, MpCastMatch } from '../../types/mpLeague';
 import type { Player, SubPosition } from '../../types/player';
-import type { UclKnockoutTie, UclTournamentState } from '../../types/ucl';
+import type {
+  UclKnockoutStage,
+  UclKnockoutTie,
+  UclPhaseStage,
+  UclTournamentState,
+} from '../../types/ucl';
 import {
   buildPlayerCompetitionBreakdown,
   getPlayerNationalityMeta,
   resolveClubRoster,
   resolvePlayerById,
 } from '../../utils/playerLookup';
-import { useSoloTacticEditSession } from '../../hooks/useSoloTacticEditPause';
 import { ClubSquadModal } from '../common/ClubSquadModal';
 import { CompactLiveStandings } from '../common/CompactLiveStandings';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
@@ -64,10 +68,7 @@ import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
-import {
-  matchResultToCastMatch,
-  SoloLiveScoreboard,
-} from '../common/SoloLiveScoreboard';
+import { matchResultToCastMatch } from '../common/SoloLiveScoreboard';
 import type { SoloLiveDurationMs } from '../common/SoloLiveScoreboard';
 import {
   LiveMatchBroadcast,
@@ -75,34 +76,80 @@ import {
 } from '../league/LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
-import { UclBracketTree } from './UclBracketTree';
+import { UclBracketTree, type LiveTieOverlay } from './UclBracketTree';
 import { UclLeaguePhaseFastSimModal } from './UclLeaguePhaseFastSimModal';
 import { UclLeaguePhaseStandingsModal } from './UclLeaguePhaseStandingsModal';
 import {
   UclMilestoneModal,
   type UclMilestoneStage,
 } from './UclMilestoneModal';
+import {
+  UclMulticastPopupBoard,
+  type SoloUclCastProgress,
+} from './UclMulticastPopupBoard';
 
 type UclTab = 'match' | 'standings' | 'bracket' | 'stats' | 'squad';
-type UclLiveAutoResumeReason = 'live_match' | 'transfer' | 'injury';
+type SoloUclAutoMode = 'lp' | 'ko_user' | 'ko_spectate';
 
-const UCL_LIVE_AUTO_RESUME_COPY: Record<
-  UclLiveAutoResumeReason,
-  { title: string; subtitle: string }
-> = {
-  live_match: {
-    title: '2D 경기 종료',
-    subtitle: '라이브 자동진행을 이어서 진행할까요?',
+interface SettledCastHold {
+  cast: MpCastLive;
+  mode: SoloUclAutoMode;
+  playedStage: UclPhaseStage;
+  playedLeg: 1 | 2;
+  tieId?: string;
+}
+
+interface SpectatePrevSnap {
+  stage: UclKnockoutStage;
+  knockoutLeg: 1 | 2;
+  ties: Record<UclKnockoutStage, UclKnockoutTie[]>;
+  championTeamId: string | null;
+}
+
+const LP_NEXT_ROUND_COUNTDOWN_MS = 1100;
+
+function isUclKoStage(stage: UclPhaseStage): stage is UclKnockoutStage {
+  return (
+    stage === 'playoff' ||
+    stage === 'r16' ||
+    stage === 'qf' ||
+    stage === 'sf' ||
+    stage === 'final'
+  );
+}
+
+function buildSoloCastMatch(
+  result: MatchResult,
+  label: string,
+  options?: {
+    aggHomeBefore?: number;
+    aggAwayBefore?: number;
+    tieId?: string;
+    winnerId?: string | null;
+    isKnockoutDecider?: boolean;
   },
-  transfer: {
-    title: '이적시장 종료',
-    subtitle: '스쿼드를 점검하려면 일시정지를, 바로 달리려면 이어서 진행을 선택하세요.',
-  },
-  injury: {
-    title: '부상 대응 완료',
-    subtitle: '라인업을 더 점검하려면 일시정지를, 바로 달리려면 이어서 진행을 선택하세요.',
-  },
-};
+): MpCastMatch {
+  const base = matchResultToCastMatch(result, label, USER_CLUB_ID);
+  const aggH = (options?.aggHomeBefore ?? 0) + result.homeGoals;
+  const aggA = (options?.aggAwayBefore ?? 0) + result.awayGoals;
+  let winnerId: string | null = options?.winnerId ?? base.winnerId ?? null;
+  if (!winnerId && options?.isKnockoutDecider) {
+    if (result.extraTime?.winnerTeamId) {
+      winnerId = result.extraTime.winnerTeamId;
+    } else if (aggH > aggA) {
+      winnerId = result.homeTeamId;
+    } else if (aggA > aggH) {
+      winnerId = result.awayTeamId;
+    }
+  }
+  return {
+    ...base,
+    aggHomeBefore: options?.aggHomeBefore,
+    aggAwayBefore: options?.aggAwayBefore,
+    tieId: options?.tieId,
+    winnerId,
+  };
+}
 
 export function UclDashboard() {
   const {
@@ -118,8 +165,8 @@ export function UclDashboard() {
     swapSquadPositions,
     startLiveMatch,
     startSoloStreamMatch,
-    enterLiveBroadcastFromStream,
     cancelSoloStreamMatch,
+    abortStreamAndStartLive2D,
     commitLiveMatch,
     simulateSingleMatchInstant,
     simulateUclPlayoffBye,
@@ -132,7 +179,6 @@ export function UclDashboard() {
   const [lpFastSimOpen, setLpFastSimOpen] = useState(false);
   const [lpStandingsModalOpen, setLpStandingsModalOpen] = useState(false);
   const [skipResultModalOpen, setSkipResultModalOpen] = useState(false);
-  const [knockoutAutoPopupOpen, setKnockoutAutoPopupOpen] = useState(false);
   const [pendingMilestone, setPendingMilestone] =
     useState<UclMilestoneStage | null>(null);
   const [swapPick, setSwapPick] = useState<SlotRef | null>(null);
@@ -145,14 +191,22 @@ export function UclDashboard() {
   const [inspectedTie, setInspectedTie] = useState<UclKnockoutTie | null>(null);
   const [inspectedClub, setInspectedClub] = useState<Club | null>(null);
 
-  // Solo UCL Live Scoreboard Auto-Advance (League Phase + Knockout, 5s / 7s / 9s)
-  const [liveAutoActive, setLiveAutoActive] = useState(false);
+  // Unified Solo UCL Popup Auto-Advance (League Phase + Knockout 1-leg boundary + Spectate)
+  const [autoPopupMode, setAutoPopupMode] = useState<SoloUclAutoMode | null>(null);
   const [liveAutoUserPaused, setLiveAutoUserPaused] = useState(false);
   const [liveAutoDurationMs, setLiveAutoDurationMs] =
     useState<SoloLiveDurationMs>(5000);
-  const [liveAutoResumePrompt, setLiveAutoResumePrompt] =
-    useState<UclLiveAutoResumeReason | null>(null);
-  const liveAutoNeedsPromptRef = useRef<UclLiveAutoResumeReason | null>(null);
+  const [settledCastHold, setSettledCastHold] = useState<SettledCastHold | null>(null);
+  const [lpNextRoundRemainingMs, setLpNextRoundRemainingMs] = useState<number | null>(null);
+  const [spectateCast, setSpectateCast] = useState<{
+    cast: MpCastLive;
+    prevSnap: SpectatePrevSnap;
+  } | null>(null);
+  const [spectateSettled, setSpectateSettled] = useState(false);
+  const [liveOverlays, setLiveOverlays] = useState<Record<string, LiveTieOverlay>>({});
+
+  const committedCastKeyRef = useRef<string | null>(null);
+  const pendingSpectateSnapRef = useRef<SpectatePrevSnap | null>(null);
 
   const season = state.season;
   const ucl = season?.ucl ?? null;
@@ -160,29 +214,9 @@ export function UclDashboard() {
   const streamHalftime = season?.liveHalftime?.streamAutoMode
     ? season.liveHalftime
     : null;
-  const liveTickerPlaying = Boolean(streamHalftime);
-
-  const liveAutoMatch = useMemo(() => {
-    if (!streamHalftime?.fullMatchResult) return null;
-    const label =
-      streamHalftime.competitionLabel ||
-      `UCL 리그 페이즈 ${streamHalftime.round}R`;
-    return matchResultToCastMatch(
-      streamHalftime.fullMatchResult,
-      label,
-      USER_CLUB_ID,
-    );
-  }, [streamHalftime]);
-
-  useEffect(() => {
-    setSoloTickerPlaying(liveTickerPlaying);
-  }, [liveTickerPlaying, setSoloTickerPlaying]);
-
-  useEffect(() => {
-    return () => {
-      setSoloTickerPlaying(false);
-    };
-  }, [setSoloTickerPlaying]);
+  const liveTickerPlaying = Boolean(
+    streamHalftime || (autoPopupMode === 'ko_spectate' && spectateCast && !spectateSettled),
+  );
 
   const isTransferOpen = Boolean(season?.transferMarket.isOpen);
   const hasPendingInjury = Boolean(
@@ -195,157 +229,319 @@ export function UclDashboard() {
     season?.liveHalftime && !season.liveHalftime.streamAutoMode,
   );
 
-  // Ask [이어서 자동진행 / 일시정지] after transfer window or injury alert (interviews auto-continue)
+  // Keep global soloTickerPlaying synced ONLY while a live clock is actively streaming (blocks spoilers before FT)
   useEffect(() => {
-    if (!liveAutoActive) return;
-    if (isTransferOpen) {
-      liveAutoNeedsPromptRef.current = 'transfer';
-    } else if (hasPendingInjury) {
-      liveAutoNeedsPromptRef.current = 'injury';
-    }
-  }, [liveAutoActive, isTransferOpen, hasPendingInjury]);
+    setSoloTickerPlaying(liveTickerPlaying);
+  }, [liveTickerPlaying, setSoloTickerPlaying]);
 
-  const canPlayNextUclAutoMatch = useMemo(() => {
-    if (!season || !ucl || ucl.completed || Boolean(ucl.userEliminatedAt)) {
-      return false;
-    }
-    if (ucl.stage === 'league_phase') {
-      return ucl.leaguePhaseRound < 8;
-    }
-    if (
-      ucl.stage === 'playoff' ||
-      ucl.stage === 'r16' ||
-      ucl.stage === 'qf' ||
-      ucl.stage === 'sf' ||
-      ucl.stage === 'final'
-    ) {
-      return Boolean(getUserKnockoutFixtureInfo(ucl, USER_CLUB_ID));
-    }
-    return false;
-  }, [season, ucl]);
+  // Auto-pause League Phase loop if an injury alert arrives so user confirms resume intentionally
+  useEffect(() => {
+    if (autoPopupMode !== 'lp' || !hasPendingInjury) return;
+    const t = window.setTimeout(() => setLiveAutoUserPaused(true), 0);
+    return () => window.clearTimeout(t);
+  }, [autoPopupMode, hasPendingInjury]);
 
-  const launchNextUclLiveMatch = useCallback(() => {
-    if (!canPlayNextUclAutoMatch) {
-      setLiveAutoActive(false);
-      return;
-    }
-    startSoloStreamMatch();
-  }, [canPlayNextUclAutoMatch, startSoloStreamMatch]);
+  useEffect(() => {
+    return () => {
+      setSoloTickerPlaying(false);
+    };
+  }, [setSoloTickerPlaying]);
 
-  const handleUclLiveMatchDone = useCallback(() => {
-    const wasKnockout = Boolean(
-      ucl && ucl.stage !== 'league_phase' && ucl.stage !== 'special_transfer',
+  // Build live MpCastLive from uncommitted solo stream preview
+  const streamCast = useMemo<MpCastLive | null>(() => {
+    if (!streamHalftime?.fullMatchResult) return null;
+    const label =
+      streamHalftime.competitionLabel ||
+      (ucl?.stage === 'league_phase'
+        ? `UCL 리그 페이즈 ${streamHalftime.round}R`
+        : 'UEFA 챔피언스리그');
+    const activeKoInfo =
+      ucl && isUclKoStage(ucl.stage)
+        ? getUserKnockoutFixtureInfo(ucl, USER_CLUB_ID)
+        : null;
+    const match = buildSoloCastMatch(streamHalftime.fullMatchResult, label, {
+      aggHomeBefore: streamHalftime.aggHomeBeforeMatch,
+      aggAwayBefore: streamHalftime.aggAwayBeforeMatch,
+      tieId: activeKoInfo?.tie.id,
+      isKnockoutDecider: streamHalftime.isKnockoutDecider,
+    });
+    return {
+      key: `solo-ucl-cast:${streamHalftime.fixtureId}`,
+      title: label,
+      matches: [match],
+    };
+  }, [streamHalftime, ucl]);
+
+  // Resolve spectated 1-leg knockout cast immediately after simulateSingleMatchInstant updates ucl
+  useEffect(() => {
+    const snap = pendingSpectateSnapRef.current;
+    if (!snap || !ucl) return;
+    const tiesAfter = ucl.ties[snap.stage] ?? [];
+    const prevTieById = new Map(
+      (snap.ties[snap.stage] ?? []).map((t) => [t.id, t]),
     );
-    commitLiveMatch();
-    if (wasKnockout) {
-      setKnockoutAutoPopupOpen(true);
+    const stageLabel = UCL_STAGE_LABELS[snap.stage];
+    const title =
+      snap.stage === 'final'
+        ? `UCL ${stageLabel}`
+        : `UCL ${stageLabel} ${snap.knockoutLeg}차전`;
+    const matches: MpCastMatch[] = [];
+    for (const tie of tiesAfter) {
+      const res =
+        snap.stage === 'final' || snap.knockoutLeg === 1 ? tie.leg1 : tie.leg2;
+      if (!res) continue;
+      const prev = prevTieById.get(tie.id);
+      const isDecider = snap.stage === 'final' || snap.knockoutLeg === 2;
+      matches.push(
+        buildSoloCastMatch(res, title, {
+          aggHomeBefore:
+            snap.stage !== 'final' && snap.knockoutLeg === 2
+              ? (prev?.aggTeamA ?? 0)
+              : undefined,
+          aggAwayBefore:
+            snap.stage !== 'final' && snap.knockoutLeg === 2
+              ? (prev?.aggTeamB ?? 0)
+              : undefined,
+          tieId: tie.id,
+          winnerId: isDecider ? tie.winnerId : null,
+          isKnockoutDecider: isDecider,
+        }),
+      );
     }
-  }, [ucl, commitLiveMatch]);
+    pendingSpectateSnapRef.current = null;
+    const castKey = `solo-ucl-spectate:${snap.stage}:leg${snap.knockoutLeg}:${matches.map((m) => m.key).join('|')}`;
+    const timer = window.setTimeout(() => {
+      if (matches.length === 0) {
+        setAutoPopupMode(null);
+        setSpectateCast(null);
+        setSpectateSettled(false);
+        return;
+      }
+      setSpectateCast({
+        cast: { key: castKey, title, matches },
+        prevSnap: snap,
+      });
+      setSpectateSettled(false);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [ucl]);
 
-  const handleEnterLive2DFromStream = useCallback(
-    (minute: number, inPenalties: boolean) => {
-      liveAutoNeedsPromptRef.current = 'live_match';
-      setLiveAutoUserPaused(false);
-      enterLiveBroadcastFromStream(minute, inPenalties);
-    },
-    [enterLiveBroadcastFromStream],
-  );
+  const activePopupCast: MpCastLive | null = useMemo(() => {
+    if (!autoPopupMode) return null;
+    if (autoPopupMode === 'ko_spectate') {
+      return spectateCast?.cast ?? null;
+    }
+    return streamCast ?? settledCastHold?.cast ?? null;
+  }, [autoPopupMode, spectateCast, streamCast, settledCastHold]);
 
-  const tacticSignature = `${state.formation}|${season?.defaultTactic ?? ''}|${season?.nextMatchTactic ?? ''}|${state.starters.map((p) => p?.id ?? '').join(',')}|${state.bench.map((p) => p?.id ?? '').join(',')}`;
-  const {
-    tacticEditMode,
-    tacticNoticeLabel,
-    startTacticEdit,
-    confirmTacticEdit,
-    resetTacticEdit,
-  } = useSoloTacticEditSession({
-    tacticSignature,
-    liveAutoActive,
-    matchScopeKey:
-      streamHalftime?.fixtureId ??
-      `ucl-gap:${ucl?.leaguePhaseRound ?? 0}:${ucl?.stage ?? ''}:${ucl?.knockoutLeg ?? 0}`,
-  });
-
-  const handleStartLiveTacticEdit = useCallback(() => {
-    startTacticEdit();
-    setTab('squad');
-  }, [startTacticEdit]);
-
-  const stopUclLiveAuto = useCallback(() => {
-    liveAutoNeedsPromptRef.current = null;
-    resetTacticEdit();
-    setLiveAutoActive(false);
-    setLiveAutoUserPaused(false);
-    setLiveAutoResumePrompt(null);
-    setKnockoutAutoPopupOpen(false);
-    cancelSoloStreamMatch();
-    setSoloTickerPlaying(false);
-  }, [cancelSoloStreamMatch, setSoloTickerPlaying, resetTacticEdit]);
-
-  const liveAutoBlocked =
+  const isPopupBlockedByOtherModal =
     isTransferOpen ||
-    hasActive2DBroadcast ||
     hasPendingInjury ||
     hasPendingEvent ||
-    tacticEditMode ||
-    knockoutAutoPopupOpen ||
-    lpStandingsModalOpen ||
-    pendingMilestone !== null ||
-    liveAutoResumePrompt !== null;
+    hasActive2DBroadcast ||
+    lpFastSimOpen;
 
+  const uclAutoPopupVisible = Boolean(
+    autoPopupMode && activePopupCast && !isPopupBlockedByOtherModal,
+  );
+
+  const canPlayNextUserLpMatch = Boolean(
+    season &&
+      ucl &&
+      !ucl.completed &&
+      !ucl.userEliminatedAt &&
+      ucl.stage === 'league_phase' &&
+      ucl.leaguePhaseRound < 8,
+  );
+
+  const canPlayNextUserKoMatch = Boolean(
+    season &&
+      ucl &&
+      !ucl.completed &&
+      !ucl.userEliminatedAt &&
+      isUclKoStage(ucl.stage) &&
+      getUserKnockoutFixtureInfo(ucl, USER_CLUB_ID),
+  );
+
+  const stopUclLiveAuto = useCallback(() => {
+    pendingSpectateSnapRef.current = null;
+    setAutoPopupMode(null);
+    setLiveAutoUserPaused(false);
+    setSettledCastHold(null);
+    setLpNextRoundRemainingMs(null);
+    setSpectateCast(null);
+    setSpectateSettled(false);
+    setLiveOverlays({});
+    cancelSoloStreamMatch();
+    setSoloTickerPlaying(false);
+  }, [cancelSoloStreamMatch, setSoloTickerPlaying]);
+
+  const startLpAutoSim = useCallback(() => {
+    if (!canPlayNextUserLpMatch) return;
+    setLiveAutoUserPaused(false);
+    setSettledCastHold(null);
+    setLpNextRoundRemainingMs(null);
+    setSpectateCast(null);
+    setSpectateSettled(false);
+    setAutoPopupMode('lp');
+    startSoloStreamMatch();
+  }, [canPlayNextUserLpMatch, startSoloStreamMatch]);
+
+  const startKoAutoSimSingleLeg = useCallback(() => {
+    if (!ucl || ucl.completed || !isUclKoStage(ucl.stage)) return;
+    setLiveAutoUserPaused(false);
+    setSettledCastHold(null);
+    setLpNextRoundRemainingMs(null);
+    setLiveOverlays({});
+    // User alive and playing in this knockout leg
+    if (!ucl.userEliminatedAt && getUserKnockoutFixtureInfo(ucl, USER_CLUB_ID)) {
+      setSpectateCast(null);
+      setSpectateSettled(false);
+      setAutoPopupMode('ko_user');
+      startSoloStreamMatch();
+      return;
+    }
+    // User eliminated or Top-8 Playoff bye: spectate 1 leg of the current knockout stage
+    pendingSpectateSnapRef.current = {
+      stage: ucl.stage,
+      knockoutLeg: ucl.stage === 'final' ? 1 : ucl.knockoutLeg,
+      ties: ucl.ties,
+      championTeamId: ucl.championTeamId,
+    };
+    setSpectateCast(null);
+    setSpectateSettled(false);
+    setAutoPopupMode('ko_spectate');
+    simulateSingleMatchInstant();
+  }, [ucl, startSoloStreamMatch, simulateSingleMatchInstant]);
+
+  const handleCastSettled = useCallback(
+    (castKey: string) => {
+      if (autoPopupMode === 'ko_spectate') {
+        setSpectateSettled(true);
+        return;
+      }
+      if (!ucl || !streamCast || streamCast.key !== castKey) return;
+      // Atomic idempotency guard: never double-commit the same match
+      if (committedCastKeyRef.current === castKey) return;
+      committedCastKeyRef.current = castKey;
+
+      const playedStage = ucl.stage;
+      const playedLeg: 1 | 2 =
+        playedStage === 'final' ? 1 : ucl.knockoutLeg;
+      const activeKoInfo = isUclKoStage(playedStage)
+        ? getUserKnockoutFixtureInfo(ucl, USER_CLUB_ID)
+        : null;
+      const mode: SoloUclAutoMode =
+        autoPopupMode ?? (playedStage === 'league_phase' ? 'lp' : 'ko_user');
+
+      setSettledCastHold({
+        cast: streamCast,
+        mode,
+        playedStage,
+        playedLeg,
+        tieId: activeKoInfo?.tie.id,
+      });
+
+      commitLiveMatch();
+
+      if (mode === 'lp' && playedStage === 'league_phase' && ucl.leaguePhaseRound + 1 < 8) {
+        setLpNextRoundRemainingMs(LP_NEXT_ROUND_COUNTDOWN_MS);
+      } else {
+        setLpNextRoundRemainingMs(null);
+      }
+    },
+    [autoPopupMode, ucl, streamCast, commitLiveMatch],
+  );
+
+  // League Phase round-to-round countdown (pauses cleanly when liveAutoUserPaused or popup blocked)
   useEffect(() => {
     if (
-      !season ||
-      !ucl ||
-      !liveAutoActive ||
+      autoPopupMode !== 'lp' ||
+      lpNextRoundRemainingMs === null ||
       liveAutoUserPaused ||
-      liveTickerPlaying ||
-      liveAutoBlocked
+      isPopupBlockedByOtherModal ||
+      Boolean(streamHalftime)
     ) {
       return;
     }
-    if (!canPlayNextUclAutoMatch) {
-      liveAutoNeedsPromptRef.current = null;
-      const stopT = window.setTimeout(() => setLiveAutoActive(false), 0);
-      return () => window.clearTimeout(stopT);
+    if (!canPlayNextUserLpMatch) {
+      const clearT = window.setTimeout(() => setLpNextRoundRemainingMs(null), 0);
+      return () => window.clearTimeout(clearT);
     }
-    if (liveAutoNeedsPromptRef.current !== null) {
-      const reason = liveAutoNeedsPromptRef.current;
-      liveAutoNeedsPromptRef.current = null;
-      const promptT = window.setTimeout(() => setLiveAutoResumePrompt(reason), 80);
-      return () => window.clearTimeout(promptT);
+    if (lpNextRoundRemainingMs <= 0) {
+      const launchT = window.setTimeout(() => {
+        setLpNextRoundRemainingMs(null);
+        setSettledCastHold(null);
+        startSoloStreamMatch();
+      }, 0);
+      return () => window.clearTimeout(launchT);
     }
-    const timer = window.setTimeout(() => {
-      launchNextUclLiveMatch();
-    }, 620);
-    return () => window.clearTimeout(timer);
+    const tickT = window.setTimeout(() => {
+      setLpNextRoundRemainingMs((prev) =>
+        prev === null ? null : Math.max(0, prev - 100),
+      );
+    }, 100);
+    return () => window.clearTimeout(tickT);
   }, [
-    season,
-    ucl,
-    liveAutoActive,
+    autoPopupMode,
+    lpNextRoundRemainingMs,
     liveAutoUserPaused,
-    liveTickerPlaying,
-    liveAutoBlocked,
-    canPlayNextUclAutoMatch,
-    launchNextUclLiveMatch,
+    isPopupBlockedByOtherModal,
+    streamHalftime,
+    canPlayNextUserLpMatch,
+    startSoloStreamMatch,
   ]);
 
-  const liveAutoPauseReason =
-    !liveAutoActive || liveTickerPlaying
-      ? null
-      : hasActive2DBroadcast
-        ? '2D 경기 진행 중'
-        : knockoutAutoPopupOpen
-          ? '경기 결과 확인 중'
-          : liveAutoResumePrompt !== null
-            ? '진행 선택 대기'
-            : isTransferOpen
-              ? '이적시장 일시정지'
-              : hasPendingEvent
-                ? '인터뷰 일시정지'
-                : hasPendingInjury
-                  ? '부상 알림 일시정지'
-                  : null;
+  const handleStopAndDirectPlay = useCallback(
+    (snapshot: SoloUclCastProgress) => {
+      const curKey = activePopupCast?.key ?? null;
+      const alreadyCommitted = Boolean(
+        snapshot.settled ||
+          settledCastHold !== null ||
+          (curKey && committedCastKeyRef.current === curKey),
+      );
+      pendingSpectateSnapRef.current = null;
+      setAutoPopupMode(null);
+      setLiveAutoUserPaused(false);
+      setSettledCastHold(null);
+      setLpNextRoundRemainingMs(null);
+      setSpectateCast(null);
+      setSpectateSettled(false);
+      setLiveOverlays({});
+      setPendingMilestone((prev) => (prev === 'champion' ? prev : null));
+      setSoloTickerPlaying(false);
+
+      if (!alreadyCommitted) {
+        // Atomically abort uncommitted auto-sim preview and start a clean 2D live broadcast
+        abortStreamAndStartLive2D();
+      } else if (canPlayNextUserLpMatch || canPlayNextUserKoMatch) {
+        // Previous match already committed: jump directly into the next match's 2D live broadcast
+        startLiveMatch();
+      }
+    },
+    [
+      activePopupCast,
+      settledCastHold,
+      canPlayNextUserLpMatch,
+      canPlayNextUserKoMatch,
+      abortStreamAndStartLive2D,
+      startLiveMatch,
+      setSoloTickerPlaying,
+    ],
+  );
+
+  const handleQuickSkipFromLpPopup = useCallback(() => {
+    stopUclLiveAuto();
+    setShowLpSummary(true);
+    setLpFastSimOpen(true);
+  }, [stopUclLiveAuto]);
+
+  const handleCastLiveOverlays = useCallback(
+    (overlays: Record<string, LiveTieOverlay>) => {
+      setLiveOverlays(overlays);
+    },
+    [],
+  );
 
   const prevLpRoundRef = useRef<number>(ucl?.leaguePhaseRound ?? 0);
   useEffect(() => {
@@ -354,10 +550,13 @@ export function UclDashboard() {
     const currRound = ucl.leaguePhaseRound;
     if (prevRound < 8 && currRound >= 8) {
       prevLpRoundRef.current = currRound;
-      setShowLpSummary(true);
-      // Automatically pop up the 36-team League Phase Final Standings modal when 8R completes
-      setLpStandingsModalOpen(true);
-    } else if (prevRound !== currRound) {
+      const t = window.setTimeout(() => {
+        setShowLpSummary(true);
+        setLpStandingsModalOpen(true);
+      }, 0);
+      return () => window.clearTimeout(t);
+    }
+    if (prevRound !== currRound) {
       prevLpRoundRef.current = currRound;
     }
   }, [ucl]);
@@ -372,15 +571,21 @@ export function UclDashboard() {
     if (prev !== curr) {
       prevStageRef.current = curr;
       if (!ucl.userEliminatedAt) {
+        let nextMs: UclMilestoneStage | null = null;
         if (
           curr === 'r16' ||
           curr === 'qf' ||
           curr === 'sf' ||
           curr === 'final'
         ) {
-          setPendingMilestone(curr);
+          nextMs = curr;
         } else if (curr === 'completed' && ucl.championTeamId === USER_CLUB_ID) {
-          setPendingMilestone('champion');
+          nextMs = 'champion';
+        }
+        if (nextMs) {
+          const target = nextMs;
+          const t = window.setTimeout(() => setPendingMilestone(target), 0);
+          return () => window.clearTimeout(t);
         }
       }
     }
@@ -507,6 +712,7 @@ export function UclDashboard() {
       {lpStandingsModalOpen &&
         !lpFastSimOpen &&
         !skipResultModalOpen &&
+        !uclAutoPopupVisible &&
         !liveTickerPlaying &&
         !season.liveHalftime &&
         !season.transferMarket.isOpen && (
@@ -525,6 +731,7 @@ export function UclDashboard() {
         !lpFastSimOpen &&
         !lpStandingsModalOpen &&
         !skipResultModalOpen &&
+        !uclAutoPopupVisible &&
         !liveTickerPlaying &&
         !season.liveHalftime &&
         !season.transferMarket.isOpen && (
@@ -627,8 +834,8 @@ export function UclDashboard() {
                   guideTab="season"
                   items={[
                     '리그 페이즈 8경기: 1~8위 16강 직행 · 9~24위 플레이오프 · 25~36위 탈락',
-                    '토너먼트(PO~4강): 홈·원정 2차전 합산 스코어 (1차전 후 2차전 전술 정비 · 동률 시 연장/PK)',
-                    '결승전: 단판 승부 (무승부 시 연장/PK) · 토너먼트에서도 라이브 자동진행 지원',
+                    '토너먼트(PO~4강): 홈·원정 2차전 합산 스코어 (매 차전·강 경계마다 계속 진행 확인 · 동률 시 연장/PK)',
+                    '결승전: 단판 승부 (무승부 시 연장/PK) · 자동진행 중 일시중지 및 직접 2D 전환 지원',
                   ]}
                 />
               </div>
@@ -694,134 +901,343 @@ export function UclDashboard() {
         </div>
       </div>
 
-      {/* UCL Solo Live Scoreboard + Real-Time 36-Team Compact Standings Strip */}
-      {liveAutoActive && (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 items-start">
-          <div className="lg:col-span-7">
-            <SoloLiveScoreboard
-              match={liveAutoMatch}
-              clubsById={clubsById}
-              myClubId={USER_CLUB_ID}
-              durationMs={liveAutoDurationMs}
-              onChangeDurationMs={setLiveAutoDurationMs}
-              paused={
-                liveAutoUserPaused ||
-                tacticEditMode ||
-                Boolean(liveAutoPauseReason)
-              }
-              pauseReasonLabel={
-                liveAutoPauseReason ?? (tacticEditMode ? '전술 수정 중' : null)
-              }
-              noticeLabel={tacticNoticeLabel}
-              tacticEditActive={tacticEditMode}
-              onStartTacticEdit={
-                liveAutoPauseReason ? undefined : handleStartLiveTacticEdit
-              }
-              onConfirmTacticEdit={() => {
-                confirmTacticEdit();
-                setLiveAutoUserPaused(false);
-              }}
-              onTogglePause={() => {
-                if (liveAutoPauseReason || tacticEditMode) return;
-                setLiveAutoUserPaused((p) => !p);
-              }}
-              onStop={stopUclLiveAuto}
-              onMatchDone={handleUclLiveMatchDone}
-              onEnterLiveMatch={handleEnterLive2DFromStream}
-              useUclPkVisual
-            />
-          </div>
-          <div className="lg:col-span-5">
-            {ucl.stage === 'league_phase' ? (
-              <CompactLiveStandings
-                title="UCL 리그페이즈 순위"
-                standings={ucl.standings}
-                myClubId={USER_CLUB_ID}
-                variant="ucl"
-                roundLabel={`${ucl.leaguePhaseRound}/8R`}
-                onSelectClub={(teamId) => {
-                  const c = clubsById[teamId];
-                  if (c) setInspectedClub(c);
-                }}
-                onOpenFullModal={() => setLpStandingsModalOpen(true)}
-              />
-            ) : (() => {
-              const stageKey =
-                ucl.stage === 'playoff' ||
-                ucl.stage === 'r16' ||
-                ucl.stage === 'qf' ||
-                ucl.stage === 'sf' ||
-                ucl.stage === 'final'
-                  ? ucl.stage
-                  : null;
-              const stageTies = stageKey ? (ucl.ties[stageKey] ?? []) : [];
-              return (
-                <div className="rounded-2xl border border-slate-800/90 bg-[#0d1420] p-3 space-y-2">
-                  <div className="flex items-center justify-between gap-2 px-0.5">
-                    <span className="text-xs font-extrabold text-sky-200">
-                      🏆 {UCL_STAGE_LABELS[ucl.stage]} 대진 현황
+      {/* Unified Centered UCL Auto-Advance Popup Modal (Shared Design + PK Visual + Solo Pause/Takeover + Boundary Confirmation) */}
+      {uclAutoPopupVisible &&
+        activePopupCast &&
+        (() => {
+          const isKoBoundarySettled =
+            (autoPopupMode === 'ko_user' && Boolean(settledCastHold)) ||
+            (autoPopupMode === 'ko_spectate' && spectateSettled);
+          const isLpCompletedSettled =
+            autoPopupMode === 'lp' &&
+            Boolean(settledCastHold) &&
+            ucl.leaguePhaseRound >= 8;
+
+          const canDirectTakeoverNow = Boolean(
+            !userEliminated &&
+              autoPopupMode !== 'ko_spectate' &&
+              (!settledCastHold || canPlayNextUserLpMatch || canPlayNextUserKoMatch),
+          );
+
+          const lpCountdownLabel =
+            autoPopupMode === 'lp' && lpNextRoundRemainingMs !== null
+              ? liveAutoUserPaused
+                ? `다음 라운드 일시중지 (${(lpNextRoundRemainingMs / 1000).toFixed(1)}s)`
+                : `다음 라운드 ${(lpNextRoundRemainingMs / 1000).toFixed(1)}s`
+              : null;
+
+          // Build compact footer slot inside the modal panel
+          let popupFooter: React.ReactNode = null;
+
+          if (autoPopupMode === 'lp') {
+            const uRow = ucl.standings.find((r) => r.teamId === USER_CLUB_ID);
+            const rank = ucl.userLeaguePhaseRank ?? userUclRank;
+            const zoneCls =
+              rank <= 8
+                ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200'
+                : rank <= 24
+                  ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
+                  : 'border-rose-400/40 bg-rose-500/15 text-rose-200';
+            const zoneText =
+              rank <= 8 ? '16강 직행권' : rank <= 24 ? '플레이오프권' : '탈락권';
+
+            popupFooter = (
+              <div className="border-t border-slate-800 bg-[#080f1d] px-3.5 py-2.5 sm:px-4 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="font-bold text-slate-400">
+                      리그 페이즈 {ucl.leaguePhaseRound}/8R
                     </span>
+                    <span className="font-mono font-black text-white">
+                      {rank}위 / 36팀
+                    </span>
+                    <span className={`rounded border px-1.5 py-0.5 text-[10px] font-extrabold ${zoneCls}`}>
+                      {zoneText}
+                    </span>
+                  </div>
+                  {uRow && (
+                    <span className="font-mono text-[11px] font-bold text-sky-200">
+                      {uRow.points}점 ({uRow.won}승 {uRow.drawn}무 {uRow.lost}패 · 득실{' '}
+                      {uRow.goalDifference >= 0 ? `+${uRow.goalDifference}` : uRow.goalDifference})
+                    </span>
+                  )}
+                </div>
+
+                {isLpCompletedSettled && (
+                  <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-slate-800/80">
                     <button
                       type="button"
-                      onClick={() => setTab('bracket')}
-                      className="text-[10px] font-bold text-slate-400 hover:text-white cursor-pointer"
+                      onClick={() => {
+                        setLpStandingsModalOpen(false);
+                        stopUclLiveAuto();
+                      }}
+                      className="rounded-xl border border-slate-700 bg-[#101826] px-3.5 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer touch-manipulation"
                     >
-                      전체 대진표 →
+                      대시보드로
+                    </button>
+                    <button
+                      id="solo-ucl-lp-done-standings-btn"
+                      type="button"
+                      onClick={() => {
+                        stopUclLiveAuto();
+                        setLpStandingsModalOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 cursor-pointer touch-manipulation"
+                    >
+                      <Trophy className="h-3.5 w-3.5" />
+                      36팀 최종 순위표 확인 →
                     </button>
                   </div>
-                  <div className="space-y-1.5 max-h-[250px] overflow-y-auto pr-0.5">
-                    {stageTies.map((t) => {
-                      const cA = clubsById[t.teamAId];
-                      const cB = clubsById[t.teamBId];
-                      const isMine =
-                        t.teamAId === USER_CLUB_ID || t.teamBId === USER_CLUB_ID;
-                      return (
-                        <div
-                          key={t.id}
-                          className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] tabular-nums ${
-                            isMine
-                              ? 'border-emerald-500/40 bg-emerald-950/20 text-white'
-                              : 'border-slate-800/80 bg-[#0a1019] text-slate-300'
-                          }`}
-                        >
-                          <span
-                            className={`truncate flex-1 font-bold ${
-                              t.winnerId === t.teamAId
-                                ? 'text-emerald-300'
-                                : t.teamAId === USER_CLUB_ID
-                                  ? 'text-emerald-200'
-                                  : ''
-                            }`}
-                          >
-                            {cA?.shortName ?? t.teamAId}
-                          </span>
-                          <span className="shrink-0 font-mono text-[11px] font-extrabold text-amber-300">
-                            {t.leg1 ? `${t.aggTeamA} : ${t.aggTeamB}` : 'vs'}
-                          </span>
-                          <span
-                            className={`truncate flex-1 text-right font-bold ${
-                              t.winnerId === t.teamBId
-                                ? 'text-emerald-300'
-                                : t.teamBId === USER_CLUB_ID
-                                  ? 'text-emerald-200'
-                                  : ''
-                            }`}
-                          >
-                            {cB?.shortName ?? t.teamBId}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-      )}
+                )}
+              </div>
+            );
+          } else if (isKoBoundarySettled) {
+            const playedStage: UclPhaseStage =
+              settledCastHold?.playedStage ??
+              spectateCast?.prevSnap.stage ??
+              ucl.stage;
+            const playedLeg: 1 | 2 =
+              settledCastHold?.playedLeg ??
+              spectateCast?.prevSnap.knockoutLeg ??
+              1;
+            const matchedTie =
+              settledCastHold?.tieId && isUclKoStage(playedStage)
+                ? (ucl.ties[playedStage]?.find(
+                    (t) => t.id === settledCastHold.tieId,
+                  ) ?? null)
+                : null;
+            const userInTie = Boolean(
+              matchedTie &&
+                (matchedTie.teamAId === USER_CLUB_ID ||
+                  matchedTie.teamBId === USER_CLUB_ID),
+            );
+            const userIsA = matchedTie?.teamAId === USER_CLUB_ID;
+            const userAgg = matchedTie
+              ? userIsA
+                ? matchedTie.aggTeamA
+                : matchedTie.aggTeamB
+              : 0;
+            const oppAgg = matchedTie
+              ? userIsA
+                ? matchedTie.aggTeamB
+                : matchedTie.aggTeamA
+              : 0;
+            const nextStepLabel = ucl.completed
+              ? '결승 완료'
+              : ucl.stage === 'final'
+                ? '결승전'
+                : isUclKoStage(ucl.stage)
+                  ? `${UCL_STAGE_LABELS[ucl.stage]} ${ucl.knockoutLeg}차전`
+                  : UCL_STAGE_LABELS[ucl.stage];
+            const nextOppClub = (() => {
+              if (!nextKnockoutInfo) return null;
+              const oppId =
+                nextKnockoutInfo.tie.teamAId === USER_CLUB_ID
+                  ? nextKnockoutInfo.tie.teamBId
+                  : nextKnockoutInfo.tie.teamAId;
+              return clubsById[oppId] ?? null;
+            })();
+            const isPlayoffByeWaiting = Boolean(
+              !userEliminated &&
+                !ucl.completed &&
+                ucl.stage === 'playoff' &&
+                !nextKnockoutInfo,
+            );
 
-      {/* UCL Match & Knockout Aggregate Result Popup Modal (1-Match Skip + Knockout Live Auto-Advance) */}
-      {(skipResultModalOpen || knockoutAutoPopupOpen) &&
+            let boundaryBadgeText = `${UCL_STAGE_LABELS[playedStage]} ${
+              playedStage === 'final' ? '종료' : `${playedLeg}차전 종료`
+            }`;
+            let boundaryBadgeCls =
+              'border-sky-400/40 bg-sky-500/15 text-sky-200';
+            if (ucl.completed) {
+              boundaryBadgeText = userWonUcl
+                ? '🏆 UCL 우승 확정!'
+                : `우승: ${championClub?.name ?? '확정'}`;
+              boundaryBadgeCls = userWonUcl
+                ? 'border-amber-400/55 bg-amber-500/20 text-amber-200'
+                : 'border-slate-600 bg-slate-800 text-slate-200';
+            } else if (userInTie && matchedTie) {
+              if (matchedTie.winnerId === USER_CLUB_ID) {
+                boundaryBadgeText = `다음 라운드 진출 · 합산 ${userAgg}:${oppAgg}`;
+                boundaryBadgeCls =
+                  'border-emerald-400/50 bg-emerald-500/20 text-emerald-200';
+              } else if (matchedTie.winnerId) {
+                boundaryBadgeText = `토너먼트 탈락 · 합산 ${userAgg}:${oppAgg}`;
+                boundaryBadgeCls =
+                  'border-rose-400/50 bg-rose-500/18 text-rose-200';
+              } else {
+                const diff = userAgg - oppAgg;
+                boundaryBadgeText =
+                  diff > 0
+                    ? `1차전 종료 · 합산 ${userAgg}:${oppAgg} (+${diff} 리드)`
+                    : diff < 0
+                      ? `1차전 종료 · 합산 ${userAgg}:${oppAgg} (${diff} 열세)`
+                      : `1차전 종료 · 합산 ${userAgg}:${oppAgg} (동률)`;
+              }
+            }
+
+            popupFooter = (
+              <div
+                id="solo-ucl-ko-boundary-bar"
+                className="border-t border-sky-500/30 bg-[#081020] px-3.5 py-3 sm:px-4 space-y-2.5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-extrabold tabular-nums ${boundaryBadgeCls}`}
+                  >
+                    {boundaryBadgeText}
+                  </span>
+                  {!ucl.completed && (
+                    <span className="text-[11px] font-bold text-slate-300">
+                      다음: <strong className="text-sky-200">{nextStepLabel}</strong>
+                      {nextOppClub ? ` · vs ${nextOppClub.name}` : ''}
+                    </span>
+                  )}
+                </div>
+
+                {ucl.completed ? (
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <button
+                      id="solo-ucl-ko-finish-btn"
+                      type="button"
+                      onClick={stopUclLiveAuto}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black text-slate-950 hover:bg-amber-300 cursor-pointer touch-manipulation"
+                    >
+                      <Trophy className="h-3.5 w-3.5" />
+                      우승 결과 · 대시보드 확인
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      id="solo-ucl-ko-pause-dashboard-btn"
+                      type="button"
+                      onClick={stopUclLiveAuto}
+                      className="rounded-xl border border-slate-700 bg-[#101826] px-3.5 py-2 text-xs font-bold text-slate-200 hover:border-slate-500 hover:text-white cursor-pointer touch-manipulation"
+                    >
+                      {userEliminated
+                        ? '대시보드 · 대진표로'
+                        : '잠깐 멈추기 / 전술·스쿼드 수정'}
+                    </button>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      {!userEliminated && nextKnockoutInfo && (
+                        <button
+                          id="solo-ucl-ko-direct-2d-btn"
+                          type="button"
+                          onClick={() => {
+                            setPendingMilestone((prev) =>
+                              prev === 'champion' ? prev : null,
+                            );
+                            stopUclLiveAuto();
+                            startLiveMatch();
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/50 bg-emerald-500/15 px-3.5 py-2 text-xs font-extrabold text-emerald-200 hover:bg-emerald-500/25 cursor-pointer touch-manipulation"
+                        >
+                          <Tv className="h-3.5 w-3.5" />
+                          직접 2D 중계로 치르기
+                        </button>
+                      )}
+
+                      {userEliminated && (
+                        <button
+                          id="solo-ucl-ko-skip-to-final-btn"
+                          type="button"
+                          onClick={() => {
+                            stopUclLiveAuto();
+                            simulateUclToEnd();
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3.5 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer touch-manipulation"
+                        >
+                          <FastForward className="h-3.5 w-3.5" />
+                          결승까지 빠르게 스킵
+                        </button>
+                      )}
+
+                      {isPlayoffByeWaiting && (
+                        <button
+                          id="solo-ucl-ko-bye-skip-btn"
+                          type="button"
+                          onClick={() => {
+                            stopUclLiveAuto();
+                            simulateUclPlayoffBye();
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3.5 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer touch-manipulation"
+                        >
+                          <FastForward className="h-3.5 w-3.5" />
+                          플레이오프 스킵 → 16강
+                        </button>
+                      )}
+
+                      <button
+                        id="solo-ucl-ko-continue-btn"
+                        type="button"
+                        onClick={() => {
+                          setPendingMilestone((prev) =>
+                            prev === 'champion' ? prev : null,
+                          );
+                          startKoAutoSimSingleLeg();
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 cursor-pointer touch-manipulation"
+                      >
+                        <Play className="h-3.5 w-3.5 fill-current" />
+                        {userEliminated || isPlayoffByeWaiting
+                          ? `계속 이어서 관전 (${nextStepLabel})`
+                          : `계속 이어서 진행 (${nextStepLabel})`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          const bracketTiesForCast =
+            autoPopupMode === 'ko_spectate' && spectateCast
+              ? Object.values(spectateCast.prevSnap.ties).flat()
+              : Object.values(ucl.ties).flat();
+
+          return (
+            <UclMulticastPopupBoard
+              cast={activePopupCast}
+              clubsById={clubsById}
+              myClubId={USER_CLUB_ID}
+              backdropZClass="z-[60]"
+              boardId="solo-ucl-multicast-board"
+              bracketTies={bracketTiesForCast}
+              onLiveOverlays={handleCastLiveOverlays}
+              onSettled={handleCastSettled}
+              soloControls={{
+                paused: liveAutoUserPaused,
+                onTogglePause: () => setLiveAutoUserPaused((p) => !p),
+                speedMs: liveAutoDurationMs,
+                onChangeSpeedMs: setLiveAutoDurationMs,
+                onStopAndDirectPlay: canDirectTakeoverNow
+                  ? handleStopAndDirectPlay
+                  : undefined,
+                directPlayLabel: settledCastHold
+                  ? '다음 경기 직접 2D'
+                  : '중단 · 직접 2D 진행',
+                onStopToDashboard: stopUclLiveAuto,
+                stopLabel:
+                  userEliminated || autoPopupMode === 'ko_spectate'
+                    ? '자동진행 멈추기'
+                    : '전술실로 중단',
+                onQuickSkip:
+                  autoPopupMode === 'lp' && !isLpCompletedSettled
+                    ? handleQuickSkipFromLpPopup
+                    : undefined,
+                quickSkipLabel: '빠른 스킵',
+                statusPill: lpCountdownLabel,
+                hidePlaybackControls: isKoBoundarySettled || isLpCompletedSettled,
+              }}
+              footerSlot={popupFooter}
+            />
+          );
+        })()}
+
+      {/* UCL Match & Knockout Aggregate Result Popup Modal (1-Match Skip) */}
+      {skipResultModalOpen &&
         season.userUclMatchHistory.length > 0 &&
         (() => {
           const lastMatch =
@@ -1165,59 +1581,6 @@ export function UclDashboard() {
           );
         })()}
 
-      {/* UCL Live Auto-Advance Resume Confirmation Modal (after 2D play, Transfer Market, or Injury) */}
-      {liveAutoActive &&
-        liveAutoResumePrompt !== null &&
-        !liveTickerPlaying &&
-        !hasActive2DBroadcast &&
-        !isTransferOpen &&
-        !hasPendingInjury &&
-        !hasPendingEvent && (
-          <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4">
-            <ModalBodyLock />
-            <div className="modal-panel w-full max-w-sm rounded-2xl border border-slate-700 bg-[#111822] p-5 shadow-2xl space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
-                  <Radio className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm sm:text-base font-extrabold text-white">
-                    {UCL_LIVE_AUTO_RESUME_COPY[liveAutoResumePrompt].title}
-                  </h3>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                    {UCL_LIVE_AUTO_RESUME_COPY[liveAutoResumePrompt].subtitle}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  id="ucl-live-auto-resume-pause-btn"
-                  type="button"
-                  onClick={() => {
-                    setLiveAutoResumePrompt(null);
-                    setLiveAutoUserPaused(true);
-                  }}
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
-                >
-                  일시정지
-                </button>
-                <button
-                  id="ucl-live-auto-resume-continue-btn"
-                  type="button"
-                  onClick={() => {
-                    setLiveAutoResumePrompt(null);
-                    setLiveAutoUserPaused(false);
-                  }}
-                  className="rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
-                >
-                  이어서 자동진행
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
       {/* TAB 1: MATCH & PROGRESSION */}
       {tab === 'match' && (() => {
         const isKnockoutStage =
@@ -1227,11 +1590,21 @@ export function UclDashboard() {
             nextKnockoutInfo.tie.stage !== 'final' &&
             nextKnockoutInfo.isDecider,
         );
+        const bracketUclDisplay =
+          autoPopupMode === 'ko_spectate' && spectateCast && !spectateSettled
+            ? {
+                ...ucl,
+                stage: spectateCast.prevSnap.stage,
+                knockoutLeg: spectateCast.prevSnap.knockoutLeg,
+                ties: spectateCast.prevSnap.ties,
+                championTeamId: spectateCast.prevSnap.championTeamId,
+              }
+            : ucl;
         return (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
           <div
             className={`${
-              liveAutoActive || isKnockoutStage ? 'lg:col-span-12' : 'lg:col-span-8'
+              isKnockoutStage ? 'lg:col-span-12' : 'lg:col-span-8'
             } space-y-4`}
           >
             {showLpSummary && ucl.leaguePhaseRound >= 8 && !liveTickerPlaying && (() => {
@@ -1385,48 +1758,22 @@ export function UclDashboard() {
                           startLiveMatch();
                         }}
                         disabled={liveTickerPlaying}
-                        className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 disabled:opacity-50 cursor-pointer"
+                        className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
                         <Play className="h-4 w-4 fill-current" />
                         {isLeg2Prep ? '2차전 시작 (2D 중계)' : '2D 실시간 중계 시작'}
                       </button>
-                      <button
-                        id="ucl-skip-single-match-btn"
-                        type="button"
-                        onClick={() => {
-                          stopUclLiveAuto();
-                          setSkipResultModalOpen(true);
-                          simulateSingleMatchInstant();
-                        }}
-                        disabled={liveTickerPlaying}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white disabled:opacity-50 cursor-pointer"
-                      >
-                        <FastForward className="h-4 w-4" />
-                        {isLeg2Prep ? '2차전 스킵' : '1경기 스킵'}
-                      </button>
-                      {ucl.stage === 'league_phase' && ucl.leaguePhaseRound < 8 && (
+                      {ucl.stage === 'league_phase' && ucl.leaguePhaseRound < 8 ? (
                         <>
                           <button
                             id="ucl-lp-live-auto-btn"
                             type="button"
-                            onClick={() => {
-                              if (liveAutoActive) {
-                                stopUclLiveAuto();
-                              } else {
-                                setLiveAutoActive(true);
-                                setLiveAutoUserPaused(false);
-                                if (!liveAutoBlocked) launchNextUclLiveMatch();
-                              }
-                            }}
-                            disabled={!liveAutoActive && liveTickerPlaying}
-                            className={`inline-flex items-center justify-center gap-1.5 rounded-xl border px-4 py-3 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 ${
-                              liveAutoActive
-                                ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30'
-                                : 'border-emerald-500/45 bg-emerald-500/12 text-emerald-200 hover:bg-emerald-500/22'
-                            }`}
+                            onClick={startLpAutoSim}
+                            disabled={liveTickerPlaying}
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-400/55 bg-sky-500/18 px-4 py-3 text-xs font-extrabold text-sky-100 hover:bg-sky-500/28 disabled:opacity-50 cursor-pointer touch-manipulation"
                           >
-                            <Radio className={`h-4 w-4 ${liveAutoActive ? 'animate-pulse' : ''}`} />
-                            {liveAutoActive ? '자동진행 중단' : '라이브 자동진행'}
+                            <Radio className="h-4 w-4 text-sky-300" />
+                            자동진행
                           </button>
                           <button
                             id="ucl-lp-fastsim-btn"
@@ -1437,13 +1784,42 @@ export function UclDashboard() {
                               setLpFastSimOpen(true);
                             }}
                             disabled={liveTickerPlaying}
-                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-500/45 bg-sky-500/15 px-4 py-3 text-xs font-bold text-sky-200 hover:bg-sky-500/25 disabled:opacity-50 cursor-pointer"
+                            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/85 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white disabled:opacity-50 cursor-pointer touch-manipulation"
                           >
                             <FastForward className="h-4 w-4" />
-                            리그 페이즈 고속진행
+                            리그 페이즈 스킵
                           </button>
                         </>
+                      ) : (
+                        <button
+                          id="ucl-ko-live-auto-btn"
+                          type="button"
+                          onClick={startKoAutoSimSingleLeg}
+                          disabled={liveTickerPlaying}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-400/55 bg-sky-500/18 px-4 py-3 text-xs font-extrabold text-sky-100 hover:bg-sky-500/28 disabled:opacity-50 cursor-pointer touch-manipulation"
+                        >
+                          <Radio className="h-4 w-4 text-sky-300" />
+                          {isLeg2Prep
+                            ? '2차전 자동진행'
+                            : ucl.stage === 'final'
+                              ? '결승 자동진행'
+                              : '1경기 자동진행'}
+                        </button>
                       )}
+                      <button
+                        id="ucl-skip-single-match-btn"
+                        type="button"
+                        onClick={() => {
+                          stopUclLiveAuto();
+                          setSkipResultModalOpen(true);
+                          simulateSingleMatchInstant();
+                        }}
+                        disabled={liveTickerPlaying}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white disabled:opacity-50 cursor-pointer touch-manipulation"
+                      >
+                        <FastForward className="h-4 w-4" />
+                        {isLeg2Prep ? '2차전 스킵' : '1경기 스킵'}
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -1451,9 +1827,9 @@ export function UclDashboard() {
                           simulateUclToEnd();
                         }}
                         disabled={liveTickerPlaying}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-xs font-bold text-slate-300 hover:border-amber-400/60 hover:text-amber-300 disabled:opacity-50 cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-xs font-bold text-slate-300 hover:border-amber-400/60 hover:text-amber-300 disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
-                        대회 끝까지 고속 진행
+                        대회 끝까지 스킵
                       </button>
                     </div>
                   </MatchDayTacticsRoom>
@@ -1471,12 +1847,23 @@ export function UclDashboard() {
                       {getUserUclResultLabel(ucl, USER_CLUB_ID)} 마감
                     </h3>
                     <div className="flex flex-wrap justify-center gap-2">
+                      {isUclKoStage(ucl.stage) && (
+                        <button
+                          id="ucl-ko-spectate-auto-btn"
+                          type="button"
+                          onClick={startKoAutoSimSingleLeg}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/55 bg-sky-500/20 px-4 py-2.5 text-xs sm:text-sm font-extrabold text-sky-100 hover:bg-sky-500/30 cursor-pointer touch-manipulation"
+                        >
+                          <Radio className="h-4 w-4 text-sky-300" />
+                          1경기씩 자동 관전
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={simulateUclToEnd}
                         className="rounded-xl bg-sky-400 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 hover:bg-sky-300 cursor-pointer touch-manipulation"
                       >
-                        남은 토너먼트 시뮬레이션 →
+                        결승까지 빠르게 스킵 →
                       </button>
                       <button
                         type="button"
@@ -1506,11 +1893,20 @@ export function UclDashboard() {
                         플레이오프 완료 → 16강 대진 확정
                       </button>
                       <button
+                        id="ucl-ko-bye-auto-btn"
+                        type="button"
+                        onClick={startKoAutoSimSingleLeg}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/50 bg-sky-500/18 px-4 py-2.5 text-xs font-extrabold text-sky-100 hover:bg-sky-500/28 cursor-pointer touch-manipulation"
+                      >
+                        <Radio className="h-3.5 w-3.5 text-sky-300" />
+                        {ucl.knockoutLeg}차전 자동 관전
+                      </button>
+                      <button
                         type="button"
                         onClick={simulateSingleMatchInstant}
                         className="rounded-xl border border-slate-700 bg-[#131b27] px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer touch-manipulation"
                       >
-                        {ucl.knockoutLeg}차전만 진행
+                        {ucl.knockoutLeg}차전 스킵
                       </button>
                     </div>
                   </>
@@ -1556,10 +1952,14 @@ export function UclDashboard() {
             {/* Shared Live Knockout Bracket automatically replaces League Phase standings once knockout starts */}
             {isKnockoutStage && (
               <UclBracketTree
-                ucl={ucl}
+                ucl={bracketUclDisplay}
                 clubsById={clubsById}
                 myClubId={USER_CLUB_ID}
-                hideChampion={Boolean(season.liveHalftime && ucl.stage === 'final')}
+                liveTieOverlays={liveTickerPlaying ? liveOverlays : undefined}
+                hideChampion={Boolean(
+                  (season.liveHalftime && ucl.stage === 'final') ||
+                    (autoPopupMode === 'ko_spectate' && !spectateSettled),
+                )}
                 onSelectTie={(tie) => {
                   setInspectedMatch(null);
                   setInspectedTie(tie);
@@ -1569,7 +1969,7 @@ export function UclDashboard() {
           </div>
 
           {/* Right Compact Real-Time Standings (League Phase only; knockout transitions to live bracket above) */}
-          {!liveAutoActive && !isKnockoutStage && (
+          {!isKnockoutStage && (
             <div className="lg:col-span-4">
               <CompactLiveStandings
                 title="UCL 리그페이즈 순위"
@@ -1770,59 +2170,9 @@ export function UclDashboard() {
 
       {/* TAB 5: SQUAD & TACTICS (Normalized Pitch Proportions matching Regular League SquadManagerModal) */}
       {tab === 'squad' && (() => {
-        const uclEditLocked = liveAutoActive && !tacticEditMode;
+        const uclEditLocked = false;
         return (
           <div className="space-y-3">
-            {liveAutoActive && (
-              <div
-                className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3.5 py-2 ${
-                  tacticEditMode
-                    ? 'border-amber-400/45 bg-amber-500/12'
-                    : 'border-sky-400/35 bg-sky-500/10'
-                }`}
-              >
-                <div className="min-w-0 text-[11px] font-bold">
-                  {tacticEditMode ? (
-                    <span className="text-amber-200">
-                      전술 수정 중 (일시정지) · 다음 경기부터 적용
-                    </span>
-                  ) : (
-                    <span className="text-sky-200">
-                      자동진행 중 · [전술 수정] 클릭 시 일시정지 후 수정
-                    </span>
-                  )}
-                </div>
-                {tacticEditMode ? (
-                  <button
-                    id="ucl-squad-confirm-tactic-edit-btn"
-                    type="button"
-                    onClick={() => {
-                      setSwapPick(null);
-                      confirmTacticEdit();
-                      setLiveAutoUserPaused(false);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer shrink-0"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    수정 확정
-                  </button>
-                ) : (
-                  <button
-                    id="ucl-squad-start-tactic-edit-btn"
-                    type="button"
-                    onClick={() => {
-                      setSwapPick(null);
-                      startTacticEdit();
-                    }}
-                    className="inline-flex items-center gap-1 rounded-lg bg-sky-500 px-3 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-sky-400 cursor-pointer shrink-0"
-                  >
-                    <SlidersHorizontal className="w-3.5 h-3.5" />
-                    전술 수정
-                  </button>
-                )}
-              </div>
-            )}
-
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
               {/* Left: Compact Formation Pitch (5 cols, max-w-[440px]) */}
               <div className="lg:col-span-5">

@@ -1475,6 +1475,7 @@ type GameAction =
       payload: { minute: number; inPenalties?: boolean };
     }
   | { type: 'CANCEL_SOLO_STREAM_MATCH' }
+  | { type: 'ABORT_STREAM_AND_START_LIVE_2D' }
   | { type: 'SIMULATE_SINGLE_MATCH_INSTANT' }
   | {
       type: 'SIMULATE_ONE_FAST_ROUND';
@@ -4348,6 +4349,29 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'ABORT_STREAM_AND_START_LIVE_2D': {
+      if ((state.phase !== 'season' && state.phase !== 'ucl') || !state.season) {
+        return state;
+      }
+      if (state.season.transferMarket.isOpen) return state;
+      const existing = state.season.liveHalftime;
+      // Already inside an active 2D broadcast: never double-start
+      if (existing && !existing.streamAutoMode) {
+        return state;
+      }
+      // Safely discard any uncommitted streamAutoMode preview, then launch a fresh 2D match
+      const clearedState: GameState = existing
+        ? {
+            ...state,
+            season: {
+              ...state.season,
+              liveHalftime: null,
+            },
+          }
+        : state;
+      return gameReducer(clearedState, { type: 'START_LIVE_MATCH' });
+    }
+
     case 'SIMULATE_SINGLE_MATCH_INSTANT': {
       if ((state.phase !== 'season' && state.phase !== 'ucl') || !state.season) {
         return state;
@@ -6533,6 +6557,7 @@ interface GameContextValue {
   startSoloStreamMatch: () => void;
   enterLiveBroadcastFromStream: (minute: number, inPenalties?: boolean) => void;
   cancelSoloStreamMatch: () => void;
+  abortStreamAndStartLive2D: () => void;
   simulateSingleMatchInstant: () => void;
   simulateOneFastRound: (stopAtTransfer: boolean, stopAtCup?: boolean) => void;
   simulateToNextTransfer: () => void;
@@ -7072,6 +7097,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
           payload: { minute, inPenalties },
         }),
       cancelSoloStreamMatch: () => dispatch({ type: 'CANCEL_SOLO_STREAM_MATCH' }),
+      abortStreamAndStartLive2D: () =>
+        dispatch({ type: 'ABORT_STREAM_AND_START_LIVE_2D' }),
       simulateSingleMatchInstant: () =>
         dispatch({ type: 'SIMULATE_SINGLE_MATCH_INSTANT' }),
       simulateOneFastRound: (stopAtTransfer, stopAtCup = false) =>

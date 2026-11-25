@@ -376,6 +376,8 @@ export interface MpUclLive {
   /** Real-time UCL top scorers & assisters for the Phase 2 sidebar */
   topScorers?: PlayerSeasonStats[];
   topAssisters?: PlayerSeasonStats[];
+  /** Starting 11 rosters for active UCL knockout preview matchups (populated only during knockout consent) */
+  knockoutPreviewRosters?: Record<string, Player[]>;
 }
 
 /** Lightweight Realtime Broadcast signal for instant host <-> guest wake-up (DB remains source of truth). */

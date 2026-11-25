@@ -404,14 +404,35 @@ export function MpLeagueRoot({
       mine.alerts.length > 0,
   );
 
-  // Close the tactics modal automatically if a room-wide transfer or interview opens underneath
+  const isUclKnockoutConsent = Boolean(
+    live?.stage === 'ucl' &&
+      live.flow.kind === 'consent' &&
+      live.ucl &&
+      live.ucl.stage !== 'league_phase' &&
+      live.ucl.stage !== 'special_transfer' &&
+      live.ucl.stage !== 'completed',
+  );
+
+  // Close the tactics modal automatically if a room-wide transfer, interview, summary, or UCL knockout preview opens underneath
   useEffect(() => {
     if (!editorOpen || tickerPlaying) return;
-    if (transferActiveNow || live?.flow.kind === 'event' || summaryActiveNow) {
+    if (
+      transferActiveNow ||
+      live?.flow.kind === 'event' ||
+      summaryActiveNow ||
+      isUclKnockoutConsent
+    ) {
       const t = window.setTimeout(() => setEditorOpen(false), 0);
       return () => window.clearTimeout(t);
     }
-  }, [editorOpen, tickerPlaying, transferActiveNow, live?.flow.kind, summaryActiveNow]);
+  }, [
+    editorOpen,
+    tickerPlaying,
+    transferActiveNow,
+    live?.flow.kind,
+    summaryActiveNow,
+    isUclKnockoutConsent,
+  ]);
 
   // Defensive fallback: if a player ever received 0 transfer offers, auto-ack so they never look stranded
   const emptyTransferKey =

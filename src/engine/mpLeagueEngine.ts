@@ -2860,6 +2860,43 @@ function buildUclLive(state: MpLeagueHostState): MpUclLive | null {
     .slice(0, 24);
   const topPlayerStats: Record<string, PlayerSeasonStats> = {};
   for (const s of topList) topPlayerStats[s.playerId] = s;
+  let knockoutPreviewRosters: Record<string, Player[]> | undefined;
+  if (
+    state.flow.kind === 'consent' &&
+    ucl.stage !== 'league_phase' &&
+    ucl.stage !== 'special_transfer' &&
+    ucl.stage !== 'completed'
+  ) {
+    const activeTies = (ucl.ties[ucl.stage] ?? []).filter(
+      (t) => t.winnerId === null,
+    );
+    const humanSet = new Set(state.uclHumanClubIds);
+    const previewTeamIds = new Set<string>();
+    for (const tie of activeTies) {
+      if (humanSet.has(tie.teamAId) || humanSet.has(tie.teamBId)) {
+        if (!humanSet.has(tie.teamAId)) previewTeamIds.add(tie.teamAId);
+        if (!humanSet.has(tie.teamBId)) previewTeamIds.add(tie.teamBId);
+      }
+    }
+    // Also include top featured AI-vs-AI ties for eliminated spectators / Playoff bye viewers
+    for (const tie of activeTies.slice(0, 2)) {
+      if (!humanSet.has(tie.teamAId)) previewTeamIds.add(tie.teamAId);
+      if (!humanSet.has(tie.teamBId)) previewTeamIds.add(tie.teamBId);
+    }
+    if (previewTeamIds.size > 0) {
+      const map: Record<string, Player[]> = {};
+      for (const cid of previewTeamIds) {
+        const roster = ucl.aiRosters[cid];
+        if (roster && roster.length > 0) {
+          map[cid] = roster.slice(0, 11);
+        }
+      }
+      if (Object.keys(map).length > 0) {
+        knockoutPreviewRosters = map;
+      }
+    }
+  }
+
   return {
     stage: ucl.stage,
     knockoutLeg: ucl.knockoutLeg,
@@ -2873,6 +2910,7 @@ function buildUclLive(state: MpLeagueHostState): MpUclLive | null {
     topPlayerStats,
     topScorers: topBy(state.uclPlayerStats, 'goals'),
     topAssisters: topBy(state.uclPlayerStats, 'assists'),
+    knockoutPreviewRosters,
   };
 }
 

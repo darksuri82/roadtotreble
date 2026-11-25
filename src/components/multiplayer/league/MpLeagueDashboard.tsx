@@ -67,6 +67,7 @@ import {
   isMpTickerPlayed,
   MpLiveTicker,
 } from './MpLiveTicker';
+import { MpUclMatchPreviewModal } from './MpUclMatchPreviewModal';
 import { MpUclMulticastBoard } from './MpUclMulticastBoard';
 import {
   MpCupChampionPopup,
@@ -801,7 +802,30 @@ export function MpLeagueDashboard({
       milestoneKey &&
       uclView,
   );
+  const milestonePending = Boolean(
+    canTriggerMilestone && milestoneKey && !hasMpPopupBeenSeen(milestoneKey),
+  );
   const showMilestone = Boolean(openMilestoneKey && uclView && milestone && myHuman);
+
+  const isUclKnockoutConsent = Boolean(
+    isUclStage && isUclKnockout && live.ucl && flow.kind === 'consent',
+  );
+  const hasPendingMineInjury = Boolean(mine && mine.alerts.length > 0);
+  const showKnockoutPreviewModal = Boolean(
+    isUclKnockoutConsent &&
+      !tickerPlaying &&
+      !live.cast &&
+      !showSummary &&
+      !showCupChampion &&
+      !cupPending &&
+      !showLpTable &&
+      !lpPending &&
+      !showMilestone &&
+      !milestonePending &&
+      !visibleEvent &&
+      !showResolution &&
+      !hasPendingMineInjury,
+  );
 
   // Latch domestic cup champion popup strictly once (persisted in localStorage + memory)
   useEffect(() => {
@@ -1089,20 +1113,22 @@ export function MpLeagueDashboard({
                 시즌 정산
               </button>
             )}
-            <button
-              id="mpl-open-squad-btn"
-              type="button"
-              disabled={!mySquad}
-              onClick={onOpenEditor}
-              className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-extrabold disabled:opacity-40 cursor-pointer ${
-                isUclStage
-                  ? 'border-sky-400/45 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25'
-                  : 'border-emerald-500/45 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
-              }`}
-            >
-              <Shield className="w-3 h-3" />
-              스쿼드 · 전술
-            </button>
+            {!isUclKnockoutConsent && (
+              <button
+                id="mpl-open-squad-btn"
+                type="button"
+                disabled={!mySquad}
+                onClick={onOpenEditor}
+                className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11px] font-extrabold disabled:opacity-40 cursor-pointer ${
+                  isUclStage
+                    ? 'border-sky-400/45 bg-sky-500/15 text-sky-200 hover:bg-sky-500/25'
+                    : 'border-emerald-500/45 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                }`}
+              >
+                <Shield className="w-3 h-3" />
+                스쿼드 · 전술
+              </button>
+            )}
             <button
               type="button"
               onClick={onLeaveRoom}
@@ -1202,7 +1228,7 @@ export function MpLeagueDashboard({
         </div>
       )}
 
-      {isUclStage && flow.kind === 'consent' && !tickerPlaying && !live.cast && (() => {
+      {isUclStage && !isUclKnockout && flow.kind === 'consent' && !tickerPlaying && !live.cast && (() => {
         const allEliminated = Boolean(flow.allEliminated);
         const requiredClubIds =
           flow.requiredClubIds && flow.requiredClubIds.length > 0
@@ -1959,7 +1985,7 @@ export function MpLeagueDashboard({
         </div>
       </div>
 
-      {editorOpen && mySquad && (
+      {editorOpen && mySquad && !isUclKnockoutConsent && (
         <MpLeagueSquadEditor
           squad={mySquad}
           managerTraitId={mySquad.managerTraitId}
@@ -1968,6 +1994,36 @@ export function MpLeagueDashboard({
           onClose={onCloseEditor}
         />
       )}
+
+      {showKnockoutPreviewModal && live.ucl && flow.kind === 'consent' && (() => {
+        const allEliminated = Boolean(flow.allEliminated);
+        const requiredClubIds =
+          flow.requiredClubIds && flow.requiredClubIds.length > 0
+            ? flow.requiredClubIds
+            : live.humans.map((h) => h.clubId);
+        return (
+          <MpUclMatchPreviewModal
+            key={flow.key}
+            ucl={live.ucl}
+            leagueId={live.leagueId}
+            clubsById={clubsById}
+            humans={live.humans}
+            publicSquads={publicSquads}
+            myClubId={myClubId}
+            mySquad={mySquad}
+            isHost={isHost}
+            flowKey={flow.key}
+            flowLabel={flow.label}
+            requiredClubIds={requiredClubIds}
+            allEliminated={allEliminated}
+            hasPlayerAck={hasPlayerAck}
+            iAcked={ackKeys.includes(flow.key)}
+            waitingSurvivors={pendingAckNames(flow.key, requiredClubIds)}
+            onAck={onAck}
+            onInspectPlayer={(player) => setInspected({ player })}
+          />
+        );
+      })()}
 
       {showCupChampion && live.cup && (
         <MpCupChampionPopup

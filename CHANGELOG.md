@@ -5,6 +5,26 @@
 
 ---
 
+## v8.16 — 싱글·멀티 챔스 자동진행 팝업(PK 시각화) 공용화 · 싱글 일시중지/직접진행 & 토너먼트 1경기씩 경계 확인 · 멀티 토너먼트 상대 비교 경기 프리뷰
+
+- **싱글·멀티 챔스 자동진행 중앙 팝업 & PK 시각화 완전 통일 (`src/components/ucl/UclMulticastPopupBoard.tsx`, `src/components/multiplayer/league/MpUclMulticastBoard.tsx`)**:
+  - `MpUclMulticastBoard`의 전광판 카드 레이아웃·라이브 시계·득점 실시간 반영·`FT` 전 스포일러 차단·`PenaltyShootoutVisual`(`variant="compact"`) 승부차기 시각화·`LiveTieOverlay` 연동을 공용 컴포넌트 `UclMulticastPopupBoard`로 추출해 싱글·멀티가 100% 동일한 디자인을 사용하도록 통일.
+  - `MpUclMulticastBoard`는 `soloControls` 미전달 얇은 래퍼로 정리해 멀티리그 동기화·월클럭 타이밍(`getMpCastDurationMs`)을 100% 보존.
+  - 스테이지 누적 타임라인(`regProgress`·`etBreakMs`·`etProgress`·`postMs`)으로 싱글 일시중지/재개 및 중계 중 배속(`5초/7초/9초`) 변경 시 시계 역행 없이 연속 재생 보장.
+- **싱글 전용 일시중지/재개 & 중단 후 직접 진행 원자적 전환 (`src/store/GameContext.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - 오직 싱글플레이 챔스 자동진행 팝업(`soloControls`)에만 `[일시중지/재개]`·배속·`[중단 후 2D 직접 진행]`(탈락 시 `[자동진행 멈추기 / 대시보드로]`)을 배치(멀티리그 절대 미노출).
+  - 리듀서 액션 `ABORT_STREAM_AND_START_LIVE_2D`(`abortStreamAndStartLive2D`)와 `committedCastKeyRef` 이중 가드를 신설해 미확정(`FT` 전) 자동진행 중 직접 진행 전환 시 미리보기를 원자적으로 취소하고 2D 중계(`LiveMatchBroadcast`)로 즉시 진입, 이미 확정 직후에는 중복 반영 없이 자동진행을 중단.
+  - 싱글 팝업 레이어를 `z-[60]`으로 분리하고 부상(`z-[72]`)·인터뷰(`z-[71]`)·이적시장·2D 중계 노출 시 자동 양보·일시정지해 팝업 겹침/소프트락 원천 차단.
+- **싱글 리그 페이즈 자유 선택 & 토너먼트 1경기씩 경계 확인 (`src/components/ucl/UclDashboard.tsx`)**:
+  - 리그 페이즈(1R~8R)에서 `[2D 실시간 중계 시작]`·`[자동진행]`(공용 팝업 + 라이브 36팀 요약 + 라운드 전환 카운트다운 일시정지 대응)·`[1경기 스킵]`/`[리그 페이즈 스킵]`을 자유롭게 선택 가능.
+  - 토너먼트(PO·16강·8강·4강·결승)는 1경기(1차전·2차전·결승 단판)씩 공용 팝업으로 자동진행(탈락·Top8 부전승 시 `[1경기씩 자동 관전]` 지원) 후 매 경계(1차전→2차전, PO→16강→8강→4강→결승)마다 자동 정지해 `#solo-ucl-ko-boundary-bar`에서 `[계속 이어서 진행]`·`[잠깐 멈추기 / 전술·스쿼드 수정]`·`[직접 2D 중계로 치르기]`(생존 시)·`[결승까지 빠르게 스킵]`(탈락 시) 선택 가능.
+- **멀티리그 챔스 토너먼트 매 경계 '상대 비교 경기 프리뷰' 전용 화면 (`src/types/mpLeague.ts`, `src/engine/mpLeagueEngine.ts`, `src/components/multiplayer/league/MpUclMatchPreviewModal.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/multiplayer/league/MpLeagueRoot.tsx`)**:
+  - `MpUclLive.knockoutPreviewRosters`를 `flow.kind === 'consent'` 토너먼트 구간에만 경량 생성(생존자 상대 + 관전/부전승 주요 매치 선발 11인).
+  - 모든 토너먼트 경계(LP→PO/16강, 1차전→2차전, 모든 강 전환)에서 기존 `전술 정비` 배너·`[전술 수정]`·`MpLeagueSquadEditor` 노출을 제거하고 `MpUclMatchPreviewModal`(매치업 헤더·1차전/합산 AGG·ATT/MID/DEF 비교 바·케미·전술 궁합·감독 특성·`UnifiedTacticsStrip` 5구역 비교·`핵심 TOP 3`/`선발 포메이션` 전환·생존자 전용 `[준비 완료]` `#mpl-consent-btn`·전원 탈락 시 방장 `[다음 경기 진행]`)만 순차 게이트로 노출.
+- **테스트 (`src/__tests__/v816UclUnifiedAutosimAndPreview.test.ts`)**: `ABORT_STREAM_AND_START_LIVE_2D` 원자적 전환/이중 커밋 차단, 싱글 토너먼트 1경기씩 경계 전이, 멀티 토너먼트 전 구간(PO~결승 1·2차전) `consent` + `knockoutPreviewRosters` 생성 및 정적 계약(멀티 `soloControls` 미노출·CSS `zoom` 금지·프리뷰 편집 UI 제거) 검증 4건 추가.
+
+---
+
 ## v8.15 — 상위권 AI 감독·원클럽 케미 시너지 상향 & 명예의 전당 24팀 동반 상향 (1~4위 우승 경쟁 밸런스)
 
 - **상위권 AI 구단 원클럽 케미 · 명장 코칭 · 감독 특성 배율 상향 (`src/engine/matchEngine.ts`)**:
