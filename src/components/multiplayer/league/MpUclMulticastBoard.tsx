@@ -9,7 +9,9 @@ import type {
 } from '../../../types/mpLeague';
 import type { UclKnockoutTie } from '../../../types/ucl';
 import { JerseySvg } from '../../common/JerseySvg';
+import { PenaltyShootoutVisual } from '../../common/PenaltyShootoutVisual';
 import type { LiveTieOverlay } from '../../ucl/UclBracketTree';
+import { LIVE_PK_KICK_INTERVAL_MS } from './MpLiveTicker';
 
 export interface MpUclMulticastBoardProps {
   cast: MpCastLive;
@@ -24,7 +26,7 @@ export interface MpUclMulticastBoardProps {
   onLiveOverlays?: (overlays: Record<string, LiveTieOverlay>, settled: boolean) => void;
 }
 
-type CastPhase = 'regular' | 'etBreak' | 'extra' | 'ended' | 'final';
+type CastPhase = 'regular' | 'etBreak' | 'extra' | 'penalties' | 'ended' | 'final';
 
 const REGULAR_DURATION_MS = 6800; // 0' -> 90'
 const ET_BREAK_MS = 700;
@@ -75,7 +77,9 @@ function revealMinute(
   minute: number,
   phase: CastPhase,
 ): number {
-  if (phase === 'ended' || phase === 'final') return Number.POSITIVE_INFINITY;
+  if (phase === 'penalties' || phase === 'ended' || phase === 'final') {
+    return Number.POSITIVE_INFINITY;
+  }
   if (!match.extraTime && minute >= 90) return Number.POSITIVE_INFINITY;
   return minute;
 }
@@ -159,6 +163,7 @@ function CastMatchCard({
   match,
   minute,
   phase,
+  revealedPenKicks,
   clubsById,
   nicknameByClubId,
   myClubId,
@@ -166,18 +171,27 @@ function CastMatchCard({
   match: MpCastMatch;
   minute: number;
   phase: CastPhase;
+  revealedPenKicks: number;
   clubsById: Record<string, Club>;
   nicknameByClubId: Record<string, string>;
   myClubId: string | null;
 }) {
   const { home: liveHome, away: liveAway } = computeLiveScore(match, minute, phase);
 
-  const home = clubsById[match.homeTeamId] ?? fallbackClub(match.homeTeamId);
-  const away = clubsById[match.awayTeamId] ?? fallbackClub(match.awayTeamId);
+  const homeClubObj = clubsById[match.homeTeamId] ?? null;
+  const awayClubObj = clubsById[match.awayTeamId] ?? null;
+  const home = homeClubObj ?? fallbackClub(match.homeTeamId);
+  const away = awayClubObj ?? fallbackClub(match.awayTeamId);
 
-  const clockOver = phase === 'ended' || phase === 'final';
+  const clockOver = phase === 'penalties' || phase === 'ended' || phase === 'final';
   const matchOver = clockOver || (!match.extraTime && minute >= 90);
   const hasPens = Boolean(match.penalties);
+  const pkKicks = match.penalties?.kicks ?? [];
+  const pkTotal = pkKicks.length;
+  const pkRevealed =
+    phase === 'final' ? pkTotal : Math.min(pkTotal, Math.max(0, revealedPenKicks));
+  const pkInProgress =
+    hasPens && phase === 'penalties' && pkTotal > 0 && pkRevealed < pkTotal;
   const settled = hasPens ? phase === 'final' : matchOver;
   const winnerId = settled
     ? (match.winnerId ?? match.penalties?.winnerId ?? null)
@@ -188,7 +202,10 @@ function CastMatchCard({
 
   let statusLabel: string | null = null;
   let statusClass = 'border-slate-700 bg-slate-900/80 text-slate-300';
-  if (matchOver) {
+  if (hasPens && phase === 'penalties') {
+    statusLabel = 'PK 진행';
+    statusClass = 'border-sky-400/50 bg-sky-500/18 text-sky-200 animate-pulse';
+  } else if (matchOver) {
     statusLabel = match.extraTime ? 'AET' : 'FT';
   } else if (match.extraTime && (phase === 'etBreak' || phase === 'extra')) {
     statusLabel = '연장전';
@@ -292,6 +309,23 @@ function CastMatchCard({
           winner={winnerId === match.awayTeamId}
         />
       </div>
+
+      {hasPens && match.penalties && (phase === 'penalties' || phase === 'final') && (
+        <PenaltyShootoutVisual
+          homeClub={homeClubObj}
+          awayClub={awayClubObj}
+          homeTeamId={match.homeTeamId}
+          awayTeamId={match.awayTeamId}
+          homeScore={match.penalties.home}
+          awayScore={match.penalties.away}
+          kicks={pkKicks}
+          revealedCount={pkRevealed}
+          winnerId={match.penalties.winnerId}
+          myClubId={myClubId}
+          inProgress={pkInProgress}
+          variant="compact"
+        />
+      )}
     </div>
   );
 }
@@ -305,9 +339,14 @@ function MpUclMulticastBoardInner({
   bracketTies,
   onLiveOverlays,
 }: MpUclMulticastBoardProps) {
-  const [clock, setClock] = useState<{ minute: number; phase: CastPhase }>({
+  const [clock, setClock] = useState<{
+    minute: number;
+    phase: CastPhase;
+    revealedPenKicks: number;
+  }>({
     minute: 0,
     phase: 'regular',
+    revealedPenKicks: 0,
   });
   const onLiveOverlaysRef = useRef(onLiveOverlays);
   useEffect(() => {
@@ -316,18 +355,53 @@ function MpUclMulticastBoardInner({
 
   const hasExtraTime = cast.matches.some((m) => m.extraTime);
   const hasPenalties = cast.matches.some((m) => Boolean(m.penalties));
+  const maxPkKicks = useMemo(
+    () =>
+      cast.matches.reduce(
+        (max, m) => Math.max(max, m.penalties?.kicks?.length ?? 0),
+        0,
+      ),
+    [cast.matches],
+  );
 
-  // Wall-clock + rAF timeline (smooth, background-tab resilient, zero 78ms timer chains)
+  // Wall-clock + rAF timeline (smooth, background-tab resilient, synced to getMpCastDurationMs PK cadence)
   useEffect(() => {
     const startAt = performance.now();
     let rafId = 0;
     let lastMin = -1;
     let lastPhase: CastPhase = 'regular';
+    let lastRevealedPk = -1;
 
     const evaluate = () => {
       const elapsed = performance.now() - startAt;
       let nextMin = 0;
       let nextPhase: CastPhase = 'regular';
+      let nextRevealedPk = 0;
+
+      const resolvePostMatch = (
+        afterMatchMs: number,
+      ): { phase: CastPhase; revealedPenKicks: number } => {
+        if (!hasPenalties) {
+          return { phase: 'final', revealedPenKicks: 0 };
+        }
+        if (maxPkKicks > 0) {
+          const pkTotalMs = maxPkKicks * LIVE_PK_KICK_INTERVAL_MS;
+          if (afterMatchMs < pkTotalMs) {
+            return {
+              phase: 'penalties',
+              revealedPenKicks: Math.min(
+                maxPkKicks,
+                Math.floor(afterMatchMs / LIVE_PK_KICK_INTERVAL_MS) + 1,
+              ),
+            };
+          }
+          return { phase: 'final', revealedPenKicks: maxPkKicks };
+        }
+        return {
+          phase: afterMatchMs < PENALTY_REVEAL_MS ? 'ended' : 'final',
+          revealedPenKicks: 0,
+        };
+      };
 
       if (elapsed < REGULAR_DURATION_MS) {
         nextMin = Math.min(90, Math.floor((elapsed / REGULAR_DURATION_MS) * 90));
@@ -343,19 +417,30 @@ function MpUclMulticastBoardInner({
           nextPhase = 'extra';
         } else {
           nextMin = 120;
-          const afterEt = afterReg - ET_BREAK_MS - EXTRA_DURATION_MS;
-          nextPhase = hasPenalties && afterEt < PENALTY_REVEAL_MS ? 'ended' : 'final';
+          const post = resolvePostMatch(afterReg - ET_BREAK_MS - EXTRA_DURATION_MS);
+          nextPhase = post.phase;
+          nextRevealedPk = post.revealedPenKicks;
         }
       } else {
         nextMin = 90;
-        const afterReg = elapsed - REGULAR_DURATION_MS;
-        nextPhase = hasPenalties && afterReg < PENALTY_REVEAL_MS ? 'ended' : 'final';
+        const post = resolvePostMatch(elapsed - REGULAR_DURATION_MS);
+        nextPhase = post.phase;
+        nextRevealedPk = post.revealedPenKicks;
       }
 
-      if (nextMin !== lastMin || nextPhase !== lastPhase) {
+      if (
+        nextMin !== lastMin ||
+        nextPhase !== lastPhase ||
+        nextRevealedPk !== lastRevealedPk
+      ) {
         lastMin = nextMin;
         lastPhase = nextPhase;
-        setClock({ minute: nextMin, phase: nextPhase });
+        lastRevealedPk = nextRevealedPk;
+        setClock({
+          minute: nextMin,
+          phase: nextPhase,
+          revealedPenKicks: nextRevealedPk,
+        });
       }
       return nextPhase === 'final';
     };
@@ -377,7 +462,7 @@ function MpUclMulticastBoardInner({
       window.cancelAnimationFrame(rafId);
       window.clearInterval(watchdog);
     };
-  }, [hasExtraTime, hasPenalties]);
+  }, [hasExtraTime, hasPenalties, maxPkKicks]);
 
   // Publish live overlays to the shared UclBracketTree (spoiler-free until phase === 'final')
   useEffect(() => {
@@ -400,6 +485,7 @@ function MpUclMulticastBoardInner({
       const liveGoalsA = aIsHome ? home : away;
       const liveGoalsB = aIsHome ? away : home;
       const matchOver =
+        clock.phase === 'penalties' ||
         clock.phase === 'ended' ||
         clock.phase === 'final' ||
         (!m.extraTime && clock.minute >= 90);
@@ -408,9 +494,11 @@ function MpUclMulticastBoardInner({
         ? m.extraTime
           ? 'AET'
           : 'FT'
-        : clock.phase === 'etBreak'
-          ? '연장전'
-          : `${clock.minute}'`;
+        : clock.phase === 'penalties'
+          ? 'PK'
+          : clock.phase === 'etBreak'
+            ? '연장전'
+            : `${clock.minute}'`;
 
       overlays[tie.id] = {
         liveGoalsA,
@@ -440,7 +528,7 @@ function MpUclMulticastBoardInner({
     return map;
   }, [humans]);
 
-  const { minute, phase } = clock;
+  const { minute, phase, revealedPenKicks } = clock;
 
   let latest: {
     id: string;
@@ -469,9 +557,19 @@ function MpUclMulticastBoardInner({
     teamId: string;
   } | null;
 
-  const running = phase === 'regular' || phase === 'etBreak' || phase === 'extra';
+  const running =
+    phase === 'regular' ||
+    phase === 'etBreak' ||
+    phase === 'extra' ||
+    phase === 'penalties';
   const clockLabel =
-    phase === 'etBreak' ? '연장전' : running ? `${minute}'` : '종료';
+    phase === 'penalties'
+      ? '승부차기'
+      : phase === 'etBreak'
+        ? '연장전'
+        : running
+          ? `${minute}'`
+          : '종료';
 
   const boardContent = (
     <div
@@ -479,7 +577,7 @@ function MpUclMulticastBoardInner({
       className={`overflow-hidden rounded-2xl border shadow-2xl ${
         inline
           ? 'border-sky-400/45 bg-[#0b1426]'
-          : 'modal-panel modal-scroll w-full max-w-3xl overflow-y-auto overflow-x-hidden border-slate-800 bg-[#0d131c]'
+          : 'modal-panel modal-scroll w-full max-w-3xl overflow-y-auto overflow-x-hidden border-sky-500/35 bg-[#0b1322]'
       }`}
     >
       <style>{CAST_KEYFRAMES}</style>
@@ -513,9 +611,11 @@ function MpUclMulticastBoardInner({
           </span>
           <span
             className={`min-w-[3.25rem] rounded-md border px-2 py-0.5 text-center font-display text-xs sm:text-sm font-bold tabular-nums ${
-              phase === 'etBreak' || phase === 'extra'
-                ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
-                : 'border-slate-700 bg-[#0b1018] text-slate-100'
+              phase === 'penalties'
+                ? 'border-sky-400/50 bg-sky-500/18 text-sky-200'
+                : phase === 'etBreak' || phase === 'extra'
+                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+                  : 'border-slate-700 bg-[#0b1018] text-slate-100'
             }`}
           >
             {clockLabel}
@@ -535,6 +635,7 @@ function MpUclMulticastBoardInner({
             match={match}
             minute={minute}
             phase={phase}
+            revealedPenKicks={revealedPenKicks}
             clubsById={clubsById}
             nicknameByClubId={nicknameByClubId}
             myClubId={myClubId}

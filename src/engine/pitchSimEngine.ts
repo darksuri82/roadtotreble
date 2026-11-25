@@ -25,6 +25,7 @@ import {
   computeDynamicFormationTarget,
   computeGameStateUrgency,
   getStaminaKinematicFactor,
+  sampleExpectedThreat,
 } from './pitchTacticalParams';
 
 export const FIXED_DT = 1 / 60;
@@ -583,12 +584,16 @@ function refreshLiveUrgencyDoctrines(state: PitchSimState) {
     (state.aggAwayBeforeMatch + state.awayGoalsLive);
   const awayEffDiff = -homeEffDiff;
 
+  const homeBallDepth = state.ball.x;
+  const awayBallDepth = 1 - state.ball.x;
+
   state.homeDoctrine = applyGameStateUrgencyToDoctrine(
     state.baseHomeDoctrine,
     computeGameStateUrgency({
       minute: curMin,
       scoreDiff: homeEffDiff,
       isKnockoutDecider: state.isKnockoutDecider,
+      ballDepth: homeBallDepth,
     }),
   );
   state.awayDoctrine = applyGameStateUrgencyToDoctrine(
@@ -597,6 +602,7 @@ function refreshLiveUrgencyDoctrines(state: PitchSimState) {
       minute: curMin,
       scoreDiff: awayEffDiff,
       isKnockoutDecider: state.isKnockoutDecider,
+      ballDepth: awayBallDepth,
     }),
   );
 }
@@ -753,6 +759,9 @@ export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
     carrierHoldTimer: 0,
     carrierDecisionDelay: 0.52,
     recycleCount: 0,
+    stallPassCount: 0,
+    possessionStallTime: 0,
+    pressTriggerTimer: 0,
     transitionTimer: 0,
     transitionTeamIsHome: null,
     tacticalLabel: '후방 빌드업',
@@ -779,6 +788,9 @@ export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
       dribbles: 0,
       longRangeBackpassesBlocked: 0,
       lateUrgentForwardPasses: 0,
+      maxConsecutiveStallPasses: 0,
+      pressingTriggersFired: 0,
+      positiveXtPasses: 0,
     },
   };
 
@@ -1004,16 +1016,22 @@ function tryInitiateThirdManRun(params: {
 
   // Trigger probability scales sharply with tactic, manager trait (tiki_taka / total_football / midfield_maestro / halftime_wizard), and carrier PAS
   const pasNorm = clamp((carrier.profile.attrs.pas - 65) / 32, 0, 1);
+  const stallThirdManBoost =
+    state.stallPassCount >= 1 && atkDoctrine.thirdManFreq > 0.55
+      ? Math.min(0.18, state.stallPassCount * 0.06 * atkDoctrine.thirdManFreq)
+      : 0;
   const triggerProb = clamp(
-    Math.pow(atkDoctrine.thirdManFreq, 1.65) * 0.62 + pasNorm * 0.06,
+    Math.pow(atkDoctrine.thirdManFreq, 1.65) * 0.62 + pasNorm * 0.06 + stallThirdManBoost,
     0.04,
-    0.66,
+    0.72,
   );
   if (nextSimRng(state) > triggerProb) return false;
 
   // Don't trigger from inside own 6-yard box
   const carrierDepth = carrier.isHome ? carrier.x : 1 - carrier.x;
   if (carrierDepth < 0.22 || carrierDepth > 0.80) return false;
+  const inBox = carrierDepth >= BOX_ZONE_MIN_DEPTH;
+  const inFinal3rd = carrierDepth >= FINAL_THIRD_MIN_DEPTH && !inBox;
 
   // 1) Pick wall/link player B (midfielder, CAM, or complete_forward ahead of or lateral to A)
   let bestB: PlayerAgentState | null = null;
@@ -1023,6 +1041,10 @@ function tryInitiateThirdManRun(params: {
     const b = teammates[i];
     const dist = Math.hypot(b.x - carrier.x, b.y - carrier.y);
     if (dist < 0.09 || dist > 0.34) continue;
+    const bDepth = getAttackDepth(carrier.isHome, b.x);
+    const backDist = Math.max(0, carrierDepth - bDepth);
+    if (inBox && (bDepth < 0.50 || backDist > MAX_BOX_BACKPASS_DIST)) continue;
+    if (inFinal3rd && (bDepth < 0.48 || backDist > MAX_FINAL_THIRD_BACKPASS_DIST)) continue;
     const lane = evaluatePassLaneSafety(
       { x: carrier.x, y: carrier.y },
       { x: b.x, y: b.y },
@@ -1155,12 +1177,19 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
     state.thirdMan.stage === 'b_hold'
   ) {
     const runner = teammates[state.thirdMan.cIdx];
-    const leadX = clamp(
-      runner.x + runner.vx * 0.55 + dir * 0.035,
-      0.08,
-      0.92,
-    );
-    const leadY = clamp(runner.y + runner.vy * 0.55, 0.08, 0.92);
+    const blendedX = lerp(runner.x + runner.vx * 0.45, state.thirdMan.runTarget.x, 0.55);
+    const blendedY = lerp(runner.y + runner.vy * 0.45, state.thirdMan.runTarget.y, 0.45);
+    let leadX = clamp(blendedX + dir * 0.035, 0.08, 0.92);
+    const leadY = clamp(blendedY, 0.08, 0.92);
+    if (carrierDepth >= FINAL_THIRD_MIN_DEPTH) {
+      const minDepth = Math.max(
+        carrierDepth >= BOX_ZONE_MIN_DEPTH ? 0.52 : 0.50,
+        carrierDepth - (carrierDepth >= BOX_ZONE_MIN_DEPTH ? MAX_BOX_BACKPASS_DIST : MAX_FINAL_THIRD_BACKPASS_DIST),
+      );
+      if (getAttackDepth(isHome, leadX) < minDepth) {
+        leadX = isHome ? minDepth : 1 - minDepth;
+      }
+    }
     state.thirdMan.stage = 'b_to_c';
     state.tacticalLabel = '하프스페이스 침투';
     state.tacticalLabelTeamIsHome = isHome;
@@ -1213,7 +1242,17 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
   const inBoxZone = carrierDepth >= BOX_ZONE_MIN_DEPTH;
   const inFinalThird = carrierDepth >= FINAL_THIRD_MIN_DEPTH && !inBoxZone;
 
-  // 4) Consider Dribble/Carry forward (in box zone: 1v1 penetration / cut-inside for shooting angle!)
+  // 4) Consider Dribble/Carry forward (in box zone: 1v1 penetration; when stalled: press-breaking carry!)
+  const originXT = sampleExpectedThreat(isHome, carrier.x, carrier.y);
+  const stallPassThreshold = atkDoctrine.buildUpPatience > 0.65 ? 3 : 2;
+  const stallTimeThreshold = (atkDoctrine.buildUpPatience > 0.65 ? 3.4 : 2.2) / clamp(atkDoctrine.tempo, 0.78, 1.32);
+  const stallPressure = clamp(
+    Math.max(0, state.stallPassCount - stallPassThreshold) * 0.34 +
+      Math.max(0, state.possessionStallTime - stallTimeThreshold) * 0.16,
+    0,
+    1.55,
+  );
+
   const aheadSpot: SimVec2 = inBoxZone
     ? {
         x: clamp(carrier.x + dir * 0.055, 0.06, 0.94),
@@ -1229,36 +1268,47 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
         ),
       };
   const aheadSpace = evaluateSpotClearance(aheadSpot, defenders);
+  const aheadXTDelta = sampleExpectedThreat(isHome, aheadSpot.x, aheadSpot.y) - originXT;
   const dribbleScore =
     carrierIdx === 0
       ? -1
       : carrier.profile.dribbleBias * 0.55 +
         aheadSpace * 0.45 +
+        aheadXTDelta * 4.5 +
         (carrier.profile.isStar ? atkDoctrine.starFocus * 0.20 : 0) +
         (inBoxZone ? 0.22 + carrier.profile.shootBias * 0.16 : 0) +
         (inFinalThird ? 0.08 : 0) +
-        urgency * 0.18 -
-        (underHeavyPress ? 0.20 : 0);
+        urgency * 0.20 +
+        stallPressure * 0.26 -
+        (underHeavyPress ? 0.18 : 0);
 
-  const dribbleProb = inBoxZone ? 0.44 + urgency * 0.14 : 0.34 + urgency * 0.10;
-  if (dribbleScore > (inBoxZone ? 0.62 : 0.72) && nextSimRng(state) < dribbleProb) {
+  const dribbleProb = clamp(
+    (inBoxZone ? 0.44 + urgency * 0.14 : 0.34 + urgency * 0.10) + stallPressure * 0.14,
+    0.20,
+    0.78,
+  );
+  if (dribbleScore > (inBoxZone ? 0.62 : 0.70) && nextSimRng(state) < dribbleProb) {
     carrier.targetX = aheadSpot.x;
     carrier.targetY = aheadSpot.y;
     state.carrierHoldTimer = 0;
     state.carrierDecisionDelay = clamp(
-      (0.62 * (1 - 0.24 * urgency)) / atkDoctrine.tempo,
-      0.28,
-      0.85,
+      (0.60 * (1 - 0.24 * urgency)) / atkDoctrine.tempo,
+      0.26,
+      0.82,
     );
+    if (aheadXTDelta >= 0.004) {
+      state.stallPassCount = Math.max(0, state.stallPassCount - 1);
+      state.possessionStallTime = Math.max(0, state.possessionStallTime - 1.2);
+    }
     state.stats.dribbles += 1;
-    if (carrierDepth > 0.62) {
+    if (carrierDepth > 0.58) {
       state.tacticalLabel = '하프스페이스 침투';
       state.tacticalLabelTeamIsHome = isHome;
     }
     return;
   }
 
-  // 5) Evaluate every teammate passing option with Zone-Based Backpass Caps & Urgency AI!
+  // 5) Evaluate every teammate passing option with Karun Singh xT, Stall Decay, Zone Backpass Caps & Urgency AI!
   type PassCandidate = {
     idx: number;
     score: number;
@@ -1269,6 +1319,7 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
     isSwitch: boolean;
     isBoxCross: boolean;
     forwardDelta: number;
+    deltaXT: number;
     laneSafety: number;
   };
 
@@ -1281,11 +1332,12 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
 
   for (let i = 0; i < teammates.length; i += 1) {
     if (i === carrierIdx) continue;
-    // Never pass back to GK from final third / opponent half, or without GK buildup support
+    // Never pass back to GK from final third / opponent half, when stalled, or without GK buildup support
     if (
       i === 0 &&
       (carrierDepth > 0.44 ||
-        urgency >= 0.45 ||
+        urgency >= 0.40 ||
+        state.stallPassCount >= 3 ||
         (atkDoctrine.gkBuildupSupport < 0.35 && !underHeavyPress))
     ) {
       continue;
@@ -1331,7 +1383,7 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
     const isShortLayoff = inBoxZone && dist <= 0.18 && mateDepth >= 0.72;
     const isThrough =
       forwardDelta > 0.12 &&
-      (mate.profile.runBehindBias > 0.52 || urgency >= 0.45) &&
+      (mate.profile.runBehindBias > 0.52 || urgency >= 0.40 || stallPressure >= 0.55) &&
       mateDepth > 0.54;
     const isRecycle = forwardDelta <= 0.025 && !isCutback && !isBoxCross;
 
@@ -1345,12 +1397,24 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
 
     // Predictive lead position for through balls / moving receivers
     const leadScale = isThrough ? 0.42 : isBoxCross ? 0.28 : 0.16;
-    const destX = clamp(
+    let destX = clamp(
       mate.x + mate.vx * leadScale + (isThrough ? dir * 0.032 : 0),
       0.05,
       0.95,
     );
     const destY = clamp(mate.y + mate.vy * leadScale, 0.05, 0.95);
+    if (inBoxZone || inFinalThird) {
+      const minAllowedDepth = Math.max(
+        inBoxZone ? 0.50 : 0.48,
+        carrierDepth - (inBoxZone ? MAX_BOX_BACKPASS_DIST : MAX_FINAL_THIRD_BACKPASS_DIST),
+      );
+      if (getAttackDepth(isHome, destX) < minAllowedDepth) {
+        destX = isHome ? minAllowedDepth : 1 - minAllowedDepth;
+      }
+    }
+
+    const destXT = sampleExpectedThreat(isHome, destX, destY);
+    const deltaXT = destXT - originXT;
 
     const laneSafety = evaluatePassLaneSafety(
       { x: carrier.x, y: carrier.y },
@@ -1382,41 +1446,60 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
       starBonus -
       rangePen;
 
+    // Karun Singh Expected Threat (xT) progression reward (amplified by stallPressure & urgency!)
+    if (deltaXT > 0) {
+      utility += deltaXT * (8.5 + urgency * 5.2 + stallPressure * 4.2);
+    } else if (deltaXT < 0) {
+      utility += deltaXT * (2.6 + stallPressure * 3.0 + urgency * 2.2);
+    }
+
     // Box-zone & final-third attacking priorities
     if (isCutback) {
       utility += 0.54 + urgency * 0.30;
     }
     if (isBoxCross) {
-      utility += 0.38 + croNorm * 0.24 + urgency * 0.48 + (mate.profile.attrs.aer - 75) * 0.008;
+      utility += 0.38 + croNorm * 0.24 + urgency * 0.50 + stallPressure * 0.24 + (mate.profile.attrs.aer - 75) * 0.008;
     }
     if (isShortLayoff) {
       utility += 0.32 + synBonus * 0.5;
     }
 
-    // Progression vs Patient Recycling balance (modulated by Game State Urgency!)
+    // Progression vs Patient Recycling balance (modulated by xT, Stall Decay & Game State Urgency!)
     if (forwardDelta > 0.03) {
       const progReward =
         forwardDelta *
-        (1.15 +
-          atkDoctrine.passLengthBias * 0.55 +
-          (state.transitionTimer > 0 ? 0.75 : 0) +
-          urgency * 1.15);
+        (1.18 +
+          atkDoctrine.passLengthBias * 0.72 +
+          (state.transitionTimer > 0 ? 0.78 : 0) +
+          urgency * 1.25 +
+          stallPressure * 0.72);
       utility += progReward;
+      if (atkDoctrine.passLengthBias > 0.15) {
+        utility += atkDoctrine.passLengthBias * 0.34;
+      }
+      if (forwardDelta >= 0.08 || deltaXT >= 0.008) {
+        utility += stallPressure * 0.48;
+      }
       if (isThrough) {
         utility +=
           pasNorm * 0.32 +
           atkDoctrine.counterSprintUrgency * 0.26 +
           mate.profile.runBehindBias * 0.24 +
-          urgency * 0.52;
+          urgency * 0.55 +
+          stallPressure * 0.38;
       }
       if (mateDepth >= 0.76) {
-        utility += urgency * 0.42;
+        utility += urgency * 0.45 + stallPressure * 0.22;
       }
-      // If forward lane is blocked, discourage forcing through defenders — UNLESS desperately chasing late!
+      // If forward lane is blocked, discourage forcing through defenders — UNLESS stalled or chasing late!
       if (laneSafety < 0.45) {
         const blockCaution = Math.max(
-          0.25,
-          0.9 + atkDoctrine.buildUpPatience * 0.85 - urgency * 0.80 + protect * 0.45,
+          0.18,
+          0.9 +
+            atkDoctrine.buildUpPatience * 0.85 -
+            urgency * 0.85 -
+            stallPressure * 0.45 +
+            protect * 0.45,
         );
         utility -= (0.45 - laneSafety) * blockCaution;
       }
@@ -1424,31 +1507,38 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
         utility -= protect * 0.36;
       }
     } else {
-      // Back-pass / lateral recycling: penalized sharply when trailing late or deep inside box!
-      utility += (atkDoctrine.buildUpPatience - 0.42) * 1.05;
-      if (underHeavyPress) utility += 0.26;
-      if (mate.profile.dropToLinkBias > 0.65) utility += 0.16;
-      if (state.recycleCount >= 4) utility -= 0.28;
+      // Back-pass / lateral recycling: natural for 2~3 buildup passes in possession, discouraged in direct/counter, then penalized by Stall Decay & Urgency!
+      const patienceBonus =
+        state.stallPassCount >= stallPassThreshold
+          ? Math.min(0, (atkDoctrine.buildUpPatience - 0.48) * 1.1)
+          : (atkDoctrine.buildUpPatience - 0.46) * 1.38;
+      utility += patienceBonus;
+      if (underHeavyPress && stallPressure < 0.65) utility += 0.24;
+      if (mate.profile.dropToLinkBias > 0.65 && state.stallPassCount < stallPassThreshold) utility += 0.14;
+      if (state.recycleCount >= stallPassThreshold) utility -= 0.34;
+      // Progressive Stall Decay: breaks infinite own-half/midfield recycling!
+      utility -= stallPressure * 1.15;
       // Step-by-step recycling preference: keep short 5~14m 2nd-line recycling natural, discourage deeper retreats
       if (inBoxZone && backwardDist > 0.06) {
         utility -= (backwardDist - 0.06) * 2.6;
       } else if (inFinalThird && backwardDist > 0.14) {
         utility -= (backwardDist - 0.14) * 1.6;
       }
-      // Late trailing urgency: stop recycling!
-      utility -= urgency * 0.85;
-      // Late leading protection: safe retention rewarded outside box
-      if (protect > 0.25 && !inBoxZone && laneSafety > 0.62) {
-        utility += protect * 0.28;
+      // Period-closing / trailing urgency: stop recycling!
+      utility -= urgency * 1.05;
+      // Late leading protection: safe retention rewarded outside box (unless heavily stalled)
+      if (protect > 0.25 && !inBoxZone && laneSafety > 0.62 && state.stallPassCount < 4) {
+        utility += protect * 0.26;
       }
     }
 
-    // Diagonal switch bonus for wingplay / wing_bomber / deep_playmaker / ball_playing_cb
+    // Diagonal switch bonus for wingplay / wing_bomber / deep_playmaker / ball_playing_cb + breaking stalls!
     if (isSwitch) {
       utility +=
         carrier.profile.longSwitchBias * 0.36 +
         atkDoctrine.flankBias * 0.32 +
-        (state.recycleCount >= 1 ? 0.18 : 0);
+        (state.recycleCount >= 1 ? 0.18 : 0) +
+        stallPressure * 0.58;
     }
 
     // Flank vs Central preference
@@ -1471,40 +1561,36 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
       isSwitch,
       isBoxCross,
       forwardDelta,
+      deltaXT,
       laneSafety,
     });
   }
 
   // Safe fallback if hard backpass filter left no options (isolated attacker deep in corner):
-  // always pick the closest teammate in the opponent half (never a 50m bomb behind halfway!)
+  // carry/shield briefly until a nearby teammate arrives rather than punting 40m behind halfway!
   if (options.length === 0) {
+    if (inBoxZone || inFinalThird) {
+      carrier.targetX = clamp(carrier.x + dir * 0.035, 0.06, 0.94);
+      carrier.targetY = clamp(lerp(carrier.y, 0.5, 0.35), 0.14, 0.86);
+      state.carrierHoldTimer = 0;
+      state.carrierDecisionDelay = 0.34;
+      state.stats.dribbles += 1;
+      return;
+    }
     let bestMateIdx = -1;
     let bestMateDist = 999;
     for (let i = 1; i < teammates.length; i += 1) {
       if (i === carrierIdx) continue;
-      const m = teammates[i];
-      const mDepth = getAttackDepth(isHome, m.x);
-      if (inBoxZone && mDepth < 0.50) continue;
-      const d = Math.hypot(m.x - carrier.x, m.y - carrier.y);
+      const d = Math.hypot(teammates[i].x - carrier.x, teammates[i].y - carrier.y);
       if (d < bestMateDist) {
         bestMateDist = d;
         bestMateIdx = i;
       }
     }
-    if (bestMateIdx < 0) {
-      // Absolute last resort: nearest outfielder regardless of depth
-      for (let i = 1; i < teammates.length; i += 1) {
-        if (i === carrierIdx) continue;
-        const d = Math.hypot(teammates[i].x - carrier.x, teammates[i].y - carrier.y);
-        if (d < bestMateDist) {
-          bestMateDist = d;
-          bestMateIdx = i;
-        }
-      }
-    }
     if (bestMateIdx >= 0) {
       const m = teammates[bestMateIdx];
       const fbForward = (m.x - carrier.x) * dir;
+      const fbDeltaXT = sampleExpectedThreat(isHome, m.x, m.y) - originXT;
       options.push({
         idx: bestMateIdx,
         score: 0.1,
@@ -1515,6 +1601,7 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
         isSwitch: false,
         isBoxCross: false,
         forwardDelta: fbForward,
+        deltaXT: fbDeltaXT,
         laneSafety: 0.65,
       });
     }
@@ -1522,16 +1609,18 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
 
   options.sort((a, b) => b.score - a.score);
 
-  // If all forward lanes are tight & team has patience (and is NOT chasing urgently late!), favor safe recycling
+  // If all forward lanes are tight & team has patience (and is NOT stalled or chasing late!), favor safe recycling
   let chosen = options[0];
   if (
     chosen &&
     !chosen.isRecycle &&
     !inBoxZone &&
-    urgency < 0.45 &&
+    urgency < 0.35 &&
+    stallPressure < 0.45 &&
+    state.stallPassCount < 3 &&
     maxForwardSafety < 0.44 &&
     atkDoctrine.buildUpPatience > 0.55 &&
-    state.recycleCount < 4
+    state.recycleCount < 3
   ) {
     const safeRecycle = options.find((o) => (o.isRecycle || o.isSwitch) && o.laneSafety > 0.58);
     if (safeRecycle) {
@@ -1541,11 +1630,41 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
 
   if (!chosen) return;
 
-  if (urgency >= 0.45 && (chosen.forwardDelta > 0.03 || chosen.isBoxCross)) {
+  if (urgency >= 0.35 && (chosen.forwardDelta > 0.03 || chosen.isBoxCross || chosen.deltaXT >= 0.008)) {
     state.stats.lateUrgentForwardPasses += 1;
   }
 
-  // Update recycling counter & tactical phase badge
+  // Update stall progression, pressing triggers, recycling counter & tactical phase badge
+  const isMeaningfulProgression =
+    chosen.isBoxCross || chosen.deltaXT >= 0.008 || chosen.forwardDelta >= 0.08;
+
+  if (isMeaningfulProgression) {
+    state.stallPassCount = 0;
+    state.possessionStallTime = 0;
+    if (chosen.deltaXT > 0.002) {
+      state.stats.positiveXtPasses += 1;
+    }
+  } else if (chosen.isSwitch) {
+    state.stallPassCount = Math.max(0, state.stallPassCount - 1);
+    state.possessionStallTime *= 0.5;
+  } else {
+    state.stallPassCount += 1;
+    if (state.stallPassCount > state.stats.maxConsecutiveStallPasses) {
+      state.stats.maxConsecutiveStallPasses = state.stallPassCount;
+    }
+    const isBackPass = chosen.forwardDelta < -0.02;
+    const isTouchlineTrap = Math.abs(chosen.destY - 0.5) > 0.34;
+    if (isBackPass || isTouchlineTrap || state.stallPassCount >= 2) {
+      if (state.pressTriggerTimer <= 0.15) {
+        state.stats.pressingTriggersFired += 1;
+      }
+      state.pressTriggerTimer = Math.max(
+        state.pressTriggerTimer,
+        state.stallPassCount >= 3 ? 2.8 : 2.1,
+      );
+    }
+  }
+
   if (chosen.isBoxCross) {
     state.recycleCount = 0;
     state.tacticalLabel = '측면 전환';
@@ -1558,7 +1677,9 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
     state.stats.recycles += 1;
     state.tacticalLabel = carrierDepth < 0.38 ? '후방 빌드업' : '볼 순환';
   } else {
-    state.recycleCount = 0;
+    if (isMeaningfulProgression) {
+      state.recycleCount = 0;
+    }
     if (state.transitionTimer > 0 && state.transitionTeamIsHome === isHome) {
       state.tacticalLabel = '역습 전환';
     } else if (chosen.flightType === 'through_ball') {
@@ -1590,9 +1711,10 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
   let targetIdx: number = chosen.idx;
 
   if (nextSimRng(state) < interceptProb && !state.director) {
-    // Nearest defender to pass segment steps in to intercept cleanly
-    let bestDef = defenders[5] ?? defenders[2];
+    // Nearest defender to pass segment steps in to intercept cleanly along the pass line
+    let bestDef: PlayerAgentState | null = null;
     let bestDist = 999;
+    let bestProj = 0.5;
     for (let d = 1; d < defenders.length; d += 1) {
       const { dist, proj } = pointToSegmentDistance(
         defenders[d].x,
@@ -1605,11 +1727,14 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
       if (proj > 0.15 && proj < 0.90 && dist < bestDist) {
         bestDist = dist;
         bestDef = defenders[d];
+        bestProj = proj;
       }
     }
     if (bestDef && bestDist < 0.22) {
-      passDestX = lerp(bestDef.x, (carrier.x + chosen.destX) * 0.5, 0.35);
-      passDestY = lerp(bestDef.y, (carrier.y + chosen.destY) * 0.5, 0.35);
+      const segX = lerp(carrier.x, chosen.destX, bestProj);
+      const segY = lerp(carrier.y, chosen.destY, bestProj);
+      passDestX = lerp(segX, bestDef.x, 0.25);
+      passDestY = lerp(segY, bestDef.y, 0.25);
       targetTeamIsHome = !isHome;
       targetIdx = bestDef.slotIndex;
       state.stats.interceptions += 1;
@@ -2710,6 +2835,9 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
       }
       state.carrierHoldTimer = 0;
       state.recycleCount = 0;
+      state.stallPassCount = 0;
+      state.possessionStallTime = 0;
+      state.pressTriggerTimer = 0;
     }
   }
 }
@@ -2892,6 +3020,9 @@ function stepBallPhysics(state: PitchSimState, dt: number) {
         // Turnover / interception!
         state.possessionIsHome = newTeam;
         state.recycleCount = 0;
+        state.stallPassCount = 0;
+        state.possessionStallTime = 0;
+        state.pressTriggerTimer = 0;
         state.thirdMan = null;
         state.transitionTimer = 3.2;
         state.transitionTeamIsHome = newTeam;
@@ -3025,10 +3156,24 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
     }
   }
 
-  // Update transition window
+  // Update transition window & active pressing trigger timer
   if (state.transitionTimer > 0) {
     state.transitionTimer = Math.max(0, state.transitionTimer - effDt);
     if (state.transitionTimer === 0) state.transitionTeamIsHome = null;
+  }
+  if (state.pressTriggerTimer > 0) {
+    state.pressTriggerTimer = Math.max(0, state.pressTriggerTimer - effDt);
+  }
+
+  // Track open-play possession stall duration (only when stalling without progression or dwelling on the ball)
+  if (!state.director && state.ball.ownerTeamIsHome !== null && state.ball.ownerIdx !== null) {
+    if (state.stallPassCount >= 1 || state.carrierHoldTimer > 0.65) {
+      state.possessionStallTime += effDt;
+    }
+    if (state.possessionStallTime >= 3.0 && state.pressTriggerTimer <= 0.1) {
+      state.pressTriggerTimer = 2.0;
+      state.stats.pressingTriggersFired += 1;
+    }
   }
 
   // Update Third-Man Run timeout safety
@@ -3068,7 +3213,12 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
       }
     }
 
-    if (closestDef && closestDefDist < 0.036 && carrier.slotIndex !== 0 && state.carrierHoldTimer > 0.28) {
+    const activePressBoost =
+      (state.pressTriggerTimer > 0 ? 0.28 : 0) +
+      Math.max(0, state.stallPassCount - 1) * 0.14;
+    const tackleReach = state.pressTriggerTimer > 0 ? 0.042 : 0.036;
+
+    if (closestDef && closestDefDist < tackleReach && carrier.slotIndex !== 0 && state.carrierHoldTimer > 0.24) {
       const targetPoss = carrierIsHome
         ? state.targetHomePossession / 100
         : 1 - state.targetHomePossession / 100;
@@ -3078,11 +3228,12 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
         0.55 +
           (defSkill - atkSkill) * 0.015 +
           defDoc.zonePressEdge * 0.25 +
-          defDoc.attackUrgency * 0.22 -
+          defDoc.attackUrgency * 0.25 +
+          activePressBoost -
           atkDoc.composure * 0.22 +
           (0.55 - targetPoss) * 0.45,
         0.15,
-        1.55,
+        1.85,
       );
       if (nextSimRng(state) < stealProbPerSec * effDt) {
         state.ball.ownerTeamIsHome = !carrierIsHome;
@@ -3094,6 +3245,9 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
         state.carrierHoldTimer = 0;
         state.carrierDecisionDelay = Math.max(0.24, (0.48 - defDoc.attackUrgency * 0.14) / defDoc.tempo);
         state.recycleCount = 0;
+        state.stallPassCount = 0;
+        state.possessionStallTime = 0;
+        state.pressTriggerTimer = 0;
         state.thirdMan = null;
         state.transitionTimer = 3.2;
         state.transitionTeamIsHome = !carrierIsHome;
@@ -3148,24 +3302,73 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
       mode = 'defend';
     }
 
-    // Identify defending pressers (1..3 nearest / highest pressEagerness within pressTriggerRadius)
+    // Active Pressing Triggers: fire immediately on opponent backpasses, touchline traps, or possession stalls
+    const pressTriggered =
+      !hasBall &&
+      !state.director &&
+      (state.pressTriggerTimer > 0 ||
+        state.stallPassCount >= 2 ||
+        state.possessionStallTime >= 2.8 ||
+        Math.abs(state.ball.y - 0.5) > 0.34);
+
+    const effectivePressRadius = pressTriggered
+      ? clamp(
+          doctrine.pressTriggerRadius + (state.stallPassCount >= 3 ? 0.16 : 0.10),
+          0.22,
+          0.52,
+        )
+      : doctrine.pressTriggerRadius;
+    const effectivePressersCount = pressTriggered
+      ? Math.min(4, doctrine.pressersCount + 1)
+      : doctrine.pressersCount;
+
+    // Identify defending pressers (1..4 nearest / highest pressEagerness within effectivePressRadius)
     const presserIndices = new Set<number>();
+    let primaryPresserIdx = -1;
+    let coverShadowOutlet: SimVec2 | null = null;
     if (!hasBall && !state.director) {
       const pressScores: { idx: number; score: number }[] = [];
       for (let i = 1; i < 11; i += 1) {
         const d = Math.hypot(agents[i].x - state.ball.x, agents[i].y - state.ball.y);
-        if (d <= doctrine.pressTriggerRadius) {
+        if (d <= effectivePressRadius) {
           const score =
-            (doctrine.pressTriggerRadius - d) * 3.0 +
+            (effectivePressRadius - d) * 3.0 +
             agents[i].profile.pressEagerness * 0.45 +
-            doctrine.attackUrgency * 0.35 -
+            doctrine.attackUrgency * 0.35 +
+            (pressTriggered ? 0.30 : 0) -
             (agents[i].profile.subPosition === 'CB' ? 0.35 : 0);
           pressScores.push({ idx: i, score });
         }
       }
       pressScores.sort((a, b) => b.score - a.score);
-      for (let k = 0; k < Math.min(doctrine.pressersCount, pressScores.length); k += 1) {
+      for (let k = 0; k < Math.min(effectivePressersCount, pressScores.length); k += 1) {
         presserIndices.add(pressScores[k].idx);
+      }
+      if (pressScores.length > 0) {
+        primaryPresserIdx = pressScores[0].idx;
+      }
+
+      // Compute Cover Shadow target: find the attacking carrier's nearest safe back/lateral outlet
+      if (
+        primaryPresserIdx >= 0 &&
+        state.ball.ownerTeamIsHome === !isHome &&
+        state.ball.ownerIdx !== null
+      ) {
+        const oppCarrierIdx = state.ball.ownerIdx;
+        const oppCarrier = oppAgents[oppCarrierIdx];
+        const oppDir = !isHome ? 1 : -1;
+        let bestOutletDist = 999;
+        for (let j = 1; j < oppAgents.length; j += 1) {
+          if (j === oppCarrierIdx) continue;
+          const m = oppAgents[j];
+          const fwd = (m.x - oppCarrier.x) * oppDir;
+          if (fwd > 0.06) continue; // block backward / lateral safe recycling outlets
+          const d = Math.hypot(m.x - oppCarrier.x, m.y - oppCarrier.y);
+          if (d > 0.06 && d < 0.32 && d < bestOutletDist) {
+            bestOutletDist = d;
+            coverShadowOutlet = { x: m.x, y: m.y };
+          }
+        }
       }
     }
 
@@ -3282,17 +3485,29 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
         continue;
       }
 
-      // Defending presser pursues ball carrier with cover-shadow angle
+      // Defending presser pursues ball carrier with Cover Shadow angle on nearest safe outlet!
       if (presserIndices.has(i)) {
         agent.roleAction = 'press';
         const leadT = 0.22;
-        const pursueX = clamp(state.ball.x + state.ball.vx * leadT, 0.05, 0.95);
-        const pursueY = clamp(state.ball.y + state.ball.vy * leadT, 0.06, 0.94);
+        let pursueX = clamp(state.ball.x + state.ball.vx * leadT, 0.05, 0.95);
+        let pursueY = clamp(state.ball.y + state.ball.vy * leadT, 0.06, 0.94);
+
+        if (i === primaryPresserIdx && coverShadowOutlet) {
+          // Curve pursuit into the passing lane between carrier and safest outlet (Cover Shadow)
+          const shadowBias = pressTriggered ? 0.24 : 0.16;
+          pursueX = clamp(lerp(pursueX, coverShadowOutlet.x, shadowBias), 0.05, 0.95);
+          pursueY = clamp(lerp(pursueY, coverShadowOutlet.y, shadowBias), 0.06, 0.94);
+        } else if (i !== primaryPresserIdx && coverShadowOutlet && pressTriggered) {
+          // Secondary presser screens the outlet lane closely to force long ball or turnover
+          pursueX = clamp(lerp(pursueX, coverShadowOutlet.x, 0.42), 0.05, 0.95);
+          pursueY = clamp(lerp(pursueY, coverShadowOutlet.y, 0.42), 0.06, 0.94);
+        }
+
         applyAgentSteering({
           agent,
           targetX: pursueX,
           targetY: pursueY,
-          sprintDemand: 0.92,
+          sprintDemand: pressTriggered ? 1.0 : 0.92,
           teammates: agents,
           doctrine,
           dt: effDt,

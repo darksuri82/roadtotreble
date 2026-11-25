@@ -103,6 +103,8 @@ interface SoloLiveScoreboardProps {
   onMatchDone: (matchKey: string) => void;
   /** Called when user pauses mid-stream and chooses to jump straight into this match's 2D broadcast. */
   onEnterLiveMatch?: (minute: number, inPenalties: boolean) => void;
+  /** When true (UCL only), render broadcast SVG penalty shootout visual instead of plain O/X board. */
+  useUclPkVisual?: boolean;
 }
 
 export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
@@ -122,6 +124,7 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
     onStop,
     onMatchDone,
     onEnterLiveMatch,
+    useUclPkVisual = false,
   } = props;
 
   const progressStateRef = useRef<{ minute: number; inPenalties: boolean; finished: boolean }>({
@@ -280,6 +283,7 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
           myClubId={myClubId}
           durationMs={durationMs}
           paused={paused}
+          useUclPkVisual={useUclPkVisual}
           onProgress={(minute, inPenalties, finished) => {
             progressStateRef.current = { minute, inPenalties, finished };
           }}
@@ -300,6 +304,7 @@ function SoloScoreboardMatchRunner({
   myClubId,
   durationMs,
   paused,
+  useUclPkVisual,
   onProgress,
   onDone,
 }: {
@@ -308,6 +313,7 @@ function SoloScoreboardMatchRunner({
   myClubId: string;
   durationMs: SoloLiveDurationMs;
   paused: boolean;
+  useUclPkVisual: boolean;
   onProgress: (minute: number, inPenalties: boolean, finished: boolean) => void;
   onDone: (key: string) => void;
 }) {
@@ -424,6 +430,7 @@ function SoloScoreboardMatchRunner({
       clubsById={clubsById}
       myClubId={myClubId}
       alwaysShowFeed
+      useUclPkVisual={useUclPkVisual}
       initialRatio={0}
       barRef={(el) => {
         barElRef.current = el;

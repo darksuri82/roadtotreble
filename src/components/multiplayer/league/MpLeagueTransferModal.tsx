@@ -220,11 +220,12 @@ export function MpLeagueTransferModal({
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
 
   const locked = busy || done;
+  const tacticsLocked = busy;
   const noAttempts = attemptsLeft <= 0;
   const pendingCount = offers.filter((o) => o.status === 'pending').length;
 
   const saveTacticSquad = (patch: Partial<MpSquadInput>) => {
-    if (!onSaveSquad || locked) return;
+    if (!onSaveSquad || tacticsLocked) return;
     onSaveSquad({
       formation: patch.formation ?? myFormation,
       tactic: patch.tactic ?? myTactic,
@@ -235,7 +236,7 @@ export function MpLeagueTransferModal({
   };
 
   const handleTacticsSwap = (from: SlotRef, to: SlotRef) => {
-    if (!onSaveSquad || locked) return;
+    if (!onSaveSquad || tacticsLocked) return;
     if (from.area === to.area && from.index === to.index) return;
     const nextS = [...myStarters];
     const nextB = [...myBench];
@@ -255,7 +256,7 @@ export function MpLeagueTransferModal({
   };
 
   const handleTacticsSlotClick = (area: 'starter' | 'bench', index: number) => {
-    if (!onSaveSquad || locked) return;
+    if (!onSaveSquad || tacticsLocked) return;
     if (!tacticsSelectedSlot) {
       setTacticsSelectedSlot({ area, index });
       return;
@@ -271,7 +272,7 @@ export function MpLeagueTransferModal({
   };
 
   const handleTacticsAutoOptimize = () => {
-    if (!onSaveSquad || locked) return;
+    if (!onSaveSquad || tacticsLocked) return;
     const opt = optimizeBestLineup(
       myStarters,
       myBench,
@@ -765,7 +766,7 @@ export function MpLeagueTransferModal({
                     </span>
                     <button
                       type="button"
-                      disabled={locked}
+                      disabled={tacticsLocked}
                       onClick={handleTacticsAutoOptimize}
                       className="inline-flex items-center gap-1 rounded-lg border border-sky-500/35 bg-sky-500/12 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/20 disabled:opacity-45 transition-colors cursor-pointer"
                     >
@@ -779,7 +780,7 @@ export function MpLeagueTransferModal({
                       <button
                         key={f.id}
                         type="button"
-                        disabled={locked}
+                        disabled={tacticsLocked}
                         onClick={() => {
                           setTacticsSelectedSlot(null);
                           const remapped = remapStartersForFormation(
@@ -823,7 +824,7 @@ export function MpLeagueTransferModal({
                           <button
                             key={t.id}
                             type="button"
-                            disabled={locked}
+                            disabled={tacticsLocked}
                             title={
                               isMgrPreferred
                                 ? `${t.name} · 감독 추천 전술`
@@ -881,10 +882,10 @@ export function MpLeagueTransferModal({
                 <div className="flex items-center justify-between text-xs px-0.5">
                   <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300">
                     <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
-                    {locked
-                      ? '이적시장 완료 · 다른 감독 대기 중'
-                      : tacticsSelectedSlot
-                        ? '교체할 선수를 클릭하세요'
+                    {tacticsSelectedSlot
+                      ? '교체할 선수를 클릭하세요'
+                      : done
+                        ? '대기 중 · 포메이션·선발·전술 수정 가능'
                         : '클릭·드래그 교환 / 우클릭·ⓘ 상세'}
                   </span>
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 tabular-nums">

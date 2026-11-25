@@ -438,12 +438,15 @@ describe('v8.0 multi league — full shared season', () => {
           seen.consents.push(flow.key);
           const stageBefore = state.ucl?.stage;
           const legBefore = state.ucl?.knockoutLeg;
-          // Without every friend agreeing, the knockout stage must NOT move
+          const roundBefore = state.round;
+          // Without every friend agreeing, neither league Round 1 nor knockout stage must move
           const stuck = runMpLeague(state, env);
+          expect(stuck.round).toBe(roundBefore);
           expect(stuck.ucl?.stage).toBe(stageBefore);
           expect(stuck.ucl?.knockoutLeg).toBe(legBefore);
           expect(stuck.flow.kind).toBe('consent');
           state = grantMpLeagueConsent(state);
+          if (state.stage === 'league') pacedCalls += 1;
           state = runMpLeague(state, env);
           continue;
         }

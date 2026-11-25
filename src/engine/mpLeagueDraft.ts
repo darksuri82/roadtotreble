@@ -179,6 +179,37 @@ export function chooseSlotForPlayer(
 }
 
 /**
+ * Dynamically resolves the target sub-position & label shown on the Multiplayer Draft Roulette
+ * both before the round's spin (never stuck on hardcoded 'CM') and while previewing/picking.
+ */
+export function resolveMpRouletteTargetDisplay(params: {
+  previewSlot: { subPosition: SubPosition; label: string } | null;
+  roll: { subPosition: SubPosition; label: string } | null;
+  myNextOpenSlot: { subPosition: SubPosition; label: string } | null;
+  spinnerNextOpenSlot: { subPosition: SubPosition; label: string } | null;
+  iAmSpinner: boolean;
+}): { subPosition: SubPosition; label: string | null } {
+  const { previewSlot, roll, myNextOpenSlot, spinnerNextOpenSlot, iAmSpinner } = params;
+  if (previewSlot) {
+    return { subPosition: previewSlot.subPosition, label: previewSlot.label };
+  }
+  if (roll) {
+    const active = myNextOpenSlot ?? null;
+    return {
+      subPosition: active?.subPosition ?? roll.subPosition,
+      label: roll.label || active?.label || null,
+    };
+  }
+  const preSpinTarget = iAmSpinner
+    ? (myNextOpenSlot ?? spinnerNextOpenSlot)
+    : (spinnerNextOpenSlot ?? myNextOpenSlot);
+  if (preSpinTarget) {
+    return { subPosition: preSpinTarget.subPosition, label: preSpinTarget.label };
+  }
+  return { subPosition: 'CM', label: null };
+}
+
+/**
  * One shared roulette per round: spun for the first picker's next open slot,
  * guaranteed to hold at least one free candidate per manager.
  * Uses 4 clubs when 3+ managers participate (keeps 3 clubs for 2 or fewer).

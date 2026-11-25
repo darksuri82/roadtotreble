@@ -5,6 +5,26 @@
 
 ---
 
+## v8.13 — 2D xT·정체 감점·능동 압박/커버 섀도우·전반/연장 막판 긴박도 · UCL 전용 승부차기 시각화 · 멀티 챔스 팝업 복원 · 멀티 개막/이적시장 전술 UX · 룰렛 포지션 동적 수정
+
+- **2D 축구 시뮬레이션 무한 공돌리기 방지 & 현대 전술 엔진 고도화 (`src/engine/pitchSimTypes.ts`, `src/engine/pitchTacticalParams.ts`, `src/engine/pitchSimEngine.ts`)**:
+  - Karun Singh 12×8 Expected Threat(`XT_GRID_12X8`, `sampleExpectedThreat`)를 도입해 `ΔxT` 기반 전진·하프스페이스·박스 침투 보상을 추가하고, 비전진 패스 누적(`stallPassCount`) 및 점유 정체 타이머(`possessionStallTime`) 기반 **정체 페널티(Stall Decay)**로 안전 패스 감점·`safeRecycle` 강제 오버라이드 해제·전진/스루/전환/탈압박 드리블 가중치 단계적 상승 구현(점유율·티키타카의 2~3회 빌드업 및 삼자 연계 정체성 보존).
+  - **능동적 수비 압박 트리거 & 커버 섀도우**: 백패스·측면 터치라인 트랩(`|y - 0.5| > 0.34`)·정체 누적 시 `pressTriggerTimer`를 발동해 압박 반경 확대(`+0.10~0.16`), 압박 인원 `+1명` 증원(최대 4명), 1·2차 압박자의 안전 백패스 각도 차단(Cover Shadow) 및 근접 탈취 압박 강화.
+  - **전반·후반·연장 전후반 막판 긴박도 전면 확장 (`computeGameStateUrgency`)**: 정규 후반 막판(`75'~90'+`, `82'+` 극대화)에 더해 **전반 막판(`40'~45'+`)**, **연장 전반 막판(`100'~105'+`)**, **연장 후반 막판(`112'~120'+`, `115'+` 극대화)** 구간까지 공 돌리기를 중단하고 마지막 공격·합산 열세 총공세로 전환.
+  - 보너스 보강: `tryInitiateThirdManRun` 및 `B→C` 스루패스에도 박스/파이널 서드 백패스 제한 및 전방 `runTarget` 보간을 적용하고, 고립 상황은 백패스 대신 짧은 드리블·실드 폴백으로 처리.
+- **챔피언스리그 전용 브로드캐스트 승부차기(PK) 시각화 (`src/components/common/PenaltyShootoutVisual.tsx`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/multiplayer/league/MpLiveTicker.tsx`, `src/components/multiplayer/league/MpUclMulticastBoard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/league/LiveMatchBroadcast.tsx`)**:
+  - 다크 스타디움 골대·그물·페널티 스팟·다이빙 골키퍼·슈팅 궤적·`GOAL`/`SAVED`/`POST` 미니멀 배지·키커별 `●`/`✕` 스코어보드를 갖춘 `PenaltyShootoutVisual`(`compact`/`broadcast` 2종)을 신설.
+  - **UCL 전용 적용**: 싱글 UCL 라이브 자동진행(`SoloLiveScoreboard` `useUclPkVisual`)·UCL 결과 팝업, 멀티 UCL 토너먼트 멀티캐스트(`MpUclMulticastBoard` `penalties` 순차 연출, 방장 `getMpCastDurationMs` 동기화)·멀티 UCL 라이브 티커, **UCL 2D 직접 경기(`LiveMatchBroadcast`)**에 통합. 국내 리그·자국 컵대회 등 타 대회는 기존의 깔끔한 `O`/`X` UI를 유지.
+- **멀티리그 챔스 팝업 모달 복원 · 8R 결과 정리 · 개막 전술 정비 팝업 · 이적시장 완료 후 전술 편집 허용 (`src/engine/mpLeagueEngine.ts`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:
+  - `MpLeagueDashboard`에서 `MpUclMulticastBoard` `inline` 프롭을 제거해 중앙 팝업 모달로 복원하고, UCL 리그 페이즈 라이브 재생 중에도 중앙 팝업 모달로 진행 후 종료 시 자동 닫힘 처리. `stepUclKnockoutLeg`·토너먼트 `grantMpLeagueConsent` 시 잔존하던 `UCL 리그 페이즈 8R` `ticker`를 `null`로 정리하고, 완료된 리그 페이즈 직전 라운드는 `[지난 라운드 기록 보기]` 접기 토글로 정리.
+  - `createMpLeagueSeason` 초기 `flow`를 `consent`(`league-start:${seasonKey}`)로 설정하고 `MpLeagueDashboard`에 개막 전 중앙 팝업(`[전술 수정]` / `[준비 완료]` + 전원 준비 현황)을 신설해 전원 준비 완료 시 1R이 시작되도록 개선(`grantMpLeagueConsent` 리그 단계 지원).
+  - `MpLeagueTransferModal`에서 `tacticsLocked = busy`를 트레이드 잠금(`locked = busy || done`)과 분리해 `[이적시장 끝내기]` 클릭 후 다른 감독 대기 중에도 포메이션·전술·선수 교체·빠른 선발을 자유롭게 수정 가능하도록 개선.
+- **멀티리그 드래프트 룰렛 `CM` 고정 표시 버그 수정 (`src/engine/mpLeagueDraft.ts`, `src/components/multiplayer/league/MpLeagueDraftBoard.tsx`)**:
+  - `resolveMpRouletteTargetDisplay` 헬퍼를 신설하고 `myNextOpenSlot`·`spinnerNextOpenSlot`을 실시간 계산해, 스핀 전·후 모든 라운드(선발 11자리 + 벤치 5자리)의 실제 대상 포지션(`GK`·`CB`·`LB`·`RB`·`CDM`·`CM`·`CAM`·`LW`·`RW`·`ST`)이 룰렛 버튼과 라운드 헤더에 동적으로 바인딩되도록 수정.
+- **테스트 (`src/__tests__/v813SimUclRouletteFix.test.ts`, `src/__tests__/v80MultiLeague.test.ts`)**: xT 공간 단조성, 전반/후반/연장 전후반 막판 긴박도, 정체 감점 & 능동 압박 트리거, 멀티리그 개막 준비 팝업 게이트, 멀티 드래프트 룰렛 동적 포지션 바인딩 검증 5건 추가.
+
+---
+
 ## v8.12.1 — 2D 매치 시뮬레이션 4대 핵심 버그 근본 수정 (슈팅 사거리·세트피스/역습 연출 일치 · 구역별 백패스 제한 · 막판 긴박도 AI · 단일 공 렌더링 보장)
 
 - **하프라인 뒤 슛 차단 & 이벤트 유형별 2D 사전 연출(Staging) 일치화 (`src/engine/pitchSimEngine.ts`, `src/engine/pitchSimTypes.ts`, `src/components/league/PitchMatch2D.tsx`)**:

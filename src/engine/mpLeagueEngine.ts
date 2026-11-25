@@ -373,7 +373,12 @@ export function createMpLeagueSeason(params: {
     settings,
     draftLeaguePool,
     stage: 'league',
-    flow: { kind: 'auto' },
+    flow: {
+      kind: 'consent',
+      key: `league-start:${seasonKey}`,
+      label: `${league.koreanName} 개막 전술 정비`,
+      requiredClubIds: humans.map((h) => h.clubId),
+    },
     todo: [{ t: 'league_round' }],
     humans,
     replacedClubNames: weakest.map((c) => c.name),
@@ -2598,6 +2603,7 @@ function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
     ucl: advanced.ucl,
     uclPlayerStats: advanced.uclPlayerStats,
     h2hResults: nextH2HResults,
+    ticker: null,
     uclLastScores: humanOutcomes
       .filter((o, idx, arr) => arr.findIndex((x) => x.result === o.result) === idx)
       .map((o) => toLiteMatch(o.result, 'ucl', label, o.isH2H)),
@@ -2653,7 +2659,10 @@ export function endMpLeagueCast(state: MpLeagueHostState): MpLeagueHostState {
 }
 
 export function grantMpLeagueConsent(state: MpLeagueHostState): MpLeagueHostState {
-  if (state.flow.kind !== 'consent' || !state.ucl) return state;
+  if (state.flow.kind !== 'consent') return state;
+  if (state.stage === 'league' || !state.ucl) {
+    return { ...state, flow: { kind: 'auto' } };
+  }
   if (state.flow.allEliminated) {
     const done = simulateUclToCompletion({
       ucl: state.ucl,
@@ -2663,13 +2672,16 @@ export function grantMpLeagueConsent(state: MpLeagueHostState): MpLeagueHostStat
       ...state,
       ucl: stripUclResults(done.ucl),
       uclPlayerStats: done.uclPlayerStats,
+      ticker: null,
       todo: [{ t: 'finalize' }],
       flow: { kind: 'auto' },
     };
   }
   const leg: 1 | 2 = state.ucl.stage === 'final' ? 1 : state.ucl.knockoutLeg;
+  const clearLpTicker = state.ucl.stage !== 'league_phase';
   return {
     ...state,
+    ticker: clearLpTicker ? null : state.ticker,
     uclConsentedStage: uclConsentToken(state.ucl.stage, leg),
     flow: { kind: 'auto' },
   };

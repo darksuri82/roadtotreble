@@ -61,6 +61,7 @@ import type {
 import type { Player, SubPosition } from '../../types/player';
 import { ClubTag } from '../common/ClubTag';
 import { JerseySvg } from '../common/JerseySvg';
+import { PenaltyShootoutVisual } from '../common/PenaltyShootoutVisual';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
@@ -1752,131 +1753,157 @@ export function LiveMatchBroadcast({
           </div>
 
           {/* PENALTY SHOOTOUT INTERACTIVE PANEL */}
-          {phase === 'penalties' && penaltiesData && (
-            <div className="rounded-2xl border border-purple-500/40 bg-gradient-to-b from-purple-950/30 via-[#0b1018] to-[#0b1018] p-5 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h3 className="text-base font-black text-purple-200">
-                    🎯 운명의 승부차기 (Penalty Shootout)
-                  </h3>
-                  <p className="text-xs text-slate-400">
-                    키커의 결정력과 골키퍼 선방 능력에 따라 매 킥의 승부가 갈립니다.
-                  </p>
-                </div>
-                {isPenaltiesDone && (
-                  <div className="rounded-xl border border-emerald-400/50 bg-emerald-500/20 px-3.5 py-1.5 text-sm font-black text-emerald-300">
-                    🏆{' '}
-                    {penaltiesData.winnerTeamId === home.id
-                      ? home.name
-                      : away.name}{' '}
-                    승부차기 승리 ({penaltiesData.homePenGoals} -{' '}
-                    {penaltiesData.awayPenGoals})!
+          {phase === 'penalties' && penaltiesData && (() => {
+            const isUclBroadcast =
+              halftime.competition === 'ucl' ||
+              (halftime.competitionLabel ?? '').toUpperCase().includes('UCL') ||
+              (halftime.competitionLabel ?? '').includes('챔피언스');
+
+            if (isUclBroadcast) {
+              return (
+                <PenaltyShootoutVisual
+                  homeClub={home}
+                  awayClub={away}
+                  homeTeamId={home.id}
+                  awayTeamId={away.id}
+                  homeScore={penaltiesData.homePenGoals}
+                  awayScore={penaltiesData.awayPenGoals}
+                  kicks={penaltiesData.kicks}
+                  revealedCount={revealedPenKicks}
+                  winnerId={penaltiesData.winnerTeamId}
+                  myClubId={home.isUser ? home.id : away.isUser ? away.id : null}
+                  inProgress={!isPenaltiesDone}
+                  variant="broadcast"
+                />
+              );
+            }
+
+            return (
+              <div className="rounded-2xl border border-purple-500/40 bg-gradient-to-b from-purple-950/30 via-[#0b1018] to-[#0b1018] p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-base font-black text-purple-200">
+                      🎯 운명의 승부차기 (Penalty Shootout)
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      키커의 결정력과 골키퍼 선방 능력에 따라 매 킥의 승부가 갈립니다.
+                    </p>
                   </div>
-                )}
-              </div>
-
-              {/* Team-by-team Kick Circles */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {[
-                  { club: home, kicks: homePenKicks, score: livePenHomeScore },
-                  { club: away, kicks: awayPenKicks, score: livePenAwayScore },
-                ].map(({ club, kicks, score }) => (
-                  <div
-                    key={club.id}
-                    className={`rounded-xl border p-3.5 ${
-                      club.isUser
-                        ? 'border-emerald-500/50 bg-emerald-950/20'
-                        : 'border-slate-800 bg-slate-900/70'
-                    }`}
-                  >
-                    <div className="mb-2.5 flex items-center justify-between">
-                      <span className="text-sm font-extrabold text-white">
-                        {club.name}
-                      </span>
-                      <span className="font-display text-2xl font-black text-white tabular-nums">
-                        {score}
-                      </span>
+                  {isPenaltiesDone && (
+                    <div className="rounded-xl border border-emerald-400/50 bg-emerald-500/20 px-3.5 py-1.5 text-sm font-black text-emerald-300">
+                      🏆{' '}
+                      {penaltiesData.winnerTeamId === home.id
+                        ? home.name
+                        : away.name}{' '}
+                      승부차기 승리 ({penaltiesData.homePenGoals} -{' '}
+                      {penaltiesData.awayPenGoals})!
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {Array.from(
-                        { length: Math.max(5, kicks.length) },
-                        (_, idx) => {
-                          const k = kicks[idx];
-                          if (!k) {
-                            return (
-                              <div
-                                key={`${club.id}-slot-${idx}`}
-                                className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-950 text-xs font-bold text-slate-600"
-                              >
-                                {idx + 1}
-                              </div>
-                            );
-                          }
-                          return (
-                            <div
-                              key={`${club.id}-kick-${idx}`}
-                              title={`${k.round}번 키커 ${k.kickerName}: ${k.scored ? '성공' : '실축'}`}
-                              className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-black shadow ${
-                                k.scored
-                                  ? 'border-emerald-400 bg-emerald-500/25 text-emerald-300'
-                                  : 'border-rose-400 bg-rose-500/25 text-rose-300'
-                              }`}
-                            >
-                              {k.scored ? '⚽' : '❌'}
-                            </div>
-                          );
-                        },
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Latest Kicker Broadcast Ticker */}
-              {latestPenKick && (
-                <div
-                  className={`rounded-xl border px-4 py-3 text-center text-sm font-bold ${
-                    latestPenKick.scored
-                      ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-200'
-                      : 'border-rose-500/40 bg-rose-950/30 text-rose-200'
-                  }`}
-                >
-                  [{latestPenKick.round}라운드 · {latestPenKick.teamShortName}]{' '}
-                  <span className="text-white">{latestPenKick.kickerName}</span> —{' '}
-                  {latestPenKick.scored
-                    ? '⚽ 침착하게 골망을 흔듭니다!'
-                    : '❌ 실축! 골키퍼가 막아냅니다!'}
+                  )}
                 </div>
-              )}
 
-              {/* Scrollable Kick Log */}
-              <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60 p-2.5 text-xs space-y-1">
-                {[...revealedKicks].reverse().map((k, idx) => (
-                  <div
-                    key={`pk-log-${k.round}-${k.teamId}-${idx}`}
-                    className="flex items-center justify-between border-b border-slate-800/50 pb-1 last:border-0"
-                  >
-                    <span className="text-slate-300">
-                      <span className="font-mono text-slate-500 mr-1.5">
-                        #{k.round}
-                      </span>
-                      <span className="font-bold text-slate-200">
-                        [{k.teamShortName}] {k.kickerName}
-                      </span>
-                    </span>
-                    <span
-                      className={`font-bold ${
-                        k.scored ? 'text-emerald-400' : 'text-rose-400'
+                {/* Team-by-team Kick Circles */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {[
+                    { club: home, kicks: homePenKicks, score: livePenHomeScore },
+                    { club: away, kicks: awayPenKicks, score: livePenAwayScore },
+                  ].map(({ club, kicks, score }) => (
+                    <div
+                      key={club.id}
+                      className={`rounded-xl border p-3.5 ${
+                        club.isUser
+                          ? 'border-emerald-500/50 bg-emerald-950/20'
+                          : 'border-slate-800 bg-slate-900/70'
                       }`}
                     >
-                      {k.scored ? '⚽ 성공' : '❌ 실축'} ({k.homeScoreAfter}-
-                      {k.awayScoreAfter})
-                    </span>
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <span className="text-sm font-extrabold text-white">
+                          {club.name}
+                        </span>
+                        <span className="font-display text-2xl font-black text-white tabular-nums">
+                          {score}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {Array.from(
+                          { length: Math.max(5, kicks.length) },
+                          (_, idx) => {
+                            const k = kicks[idx];
+                            if (!k) {
+                              return (
+                                <div
+                                  key={`${club.id}-slot-${idx}`}
+                                  className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-950 text-xs font-bold text-slate-600"
+                                >
+                                  {idx + 1}
+                                </div>
+                              );
+                            }
+                            return (
+                              <div
+                                key={`${club.id}-kick-${idx}`}
+                                title={`${k.round}번 키커 ${k.kickerName}: ${k.scored ? '성공' : '실축'}`}
+                                className={`flex h-9 w-9 items-center justify-center rounded-full border text-sm font-black shadow ${
+                                  k.scored
+                                    ? 'border-emerald-400 bg-emerald-500/25 text-emerald-300'
+                                    : 'border-rose-400 bg-rose-500/25 text-rose-300'
+                                }`}
+                              >
+                                {k.scored ? '⚽' : '❌'}
+                              </div>
+                            );
+                          },
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Latest Kicker Broadcast Ticker */}
+                {latestPenKick && (
+                  <div
+                    className={`rounded-xl border px-4 py-3 text-center text-sm font-bold ${
+                      latestPenKick.scored
+                        ? 'border-emerald-500/40 bg-emerald-950/30 text-emerald-200'
+                        : 'border-rose-500/40 bg-rose-950/30 text-rose-200'
+                    }`}
+                  >
+                    [{latestPenKick.round}라운드 · {latestPenKick.teamShortName}]{' '}
+                    <span className="text-white">{latestPenKick.kickerName}</span> —{' '}
+                    {latestPenKick.scored
+                      ? '⚽ 침착하게 골망을 흔듭니다!'
+                      : '❌ 실축! 골키퍼가 막아냅니다!'}
                   </div>
-                ))}
+                )}
+
+                {/* Scrollable Kick Log */}
+                <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/60 p-2.5 text-xs space-y-1">
+                  {[...revealedKicks].reverse().map((k, idx) => (
+                    <div
+                      key={`pk-log-${k.round}-${k.teamId}-${idx}`}
+                      className="flex items-center justify-between border-b border-slate-800/50 pb-1 last:border-0"
+                    >
+                      <span className="text-slate-300">
+                        <span className="font-mono text-slate-500 mr-1.5">
+                          #{k.round}
+                        </span>
+                        <span className="font-bold text-slate-200">
+                          [{k.teamShortName}] {k.kickerName}
+                        </span>
+                      </span>
+                      <span
+                        className={`font-bold ${
+                          k.scored ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        {k.scored ? '⚽ 성공' : '❌ 실축'} ({k.homeScoreAfter}-
+                        {k.awayScoreAfter})
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* FULL-TIME MOM BANNER */}
           {isSecondHalfDone && fullResult && (

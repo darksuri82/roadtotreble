@@ -21,6 +21,7 @@ import {
   draftRoundOf,
   findNextOpenDraftSlot,
   rebuildSquadFromPicks,
+  resolveMpRouletteTargetDisplay,
   rollCandidates,
   roundOrderIds,
   roundSpinnerId,
@@ -351,6 +352,28 @@ export function MpLeagueDraftBoard({
         ? chooseSlotForPlayer(formation, board.starters, board.bench, activePreview)
         : null,
     [activePreview, formation, board],
+  );
+
+  const myNextOpenSlot = useMemo(
+    () => findNextOpenDraftSlot(formation, board.starters, board.bench),
+    [formation, board],
+  );
+  const spinnerNextOpenSlot = useMemo(() => {
+    if (!spinnerRow || spinnerRow.player_id === playerId) return myNextOpenSlot;
+    const spFormation: FormationId = spinnerRow.league_payload?.formation ?? '4-3-3';
+    const spBoard = rebuildSquadFromPicks(picks, spinnerRow.player_id);
+    return findNextOpenDraftSlot(spFormation, spBoard.starters, spBoard.bench);
+  }, [spinnerRow, playerId, myNextOpenSlot, picks]);
+  const rouletteTargetDisplay = useMemo(
+    () =>
+      resolveMpRouletteTargetDisplay({
+        previewSlot,
+        roll,
+        myNextOpenSlot,
+        spinnerNextOpenSlot,
+        iAmSpinner,
+      }),
+    [previewSlot, roll, myNextOpenSlot, spinnerNextOpenSlot, iAmSpinner],
   );
 
   const handleSelectPreview = useCallback(
@@ -776,9 +799,9 @@ export function MpLeagueDraftBoard({
                 >
                   {Math.min(round + 1, 16)}라운드
                 </span>
-                {roll?.label && (
+                {(roll?.label || rouletteTargetDisplay.label) && (
                   <span className="text-[11px] font-bold text-slate-300">
-                    {roll.label} 룰렛
+                    {roll?.label ?? rouletteTargetDisplay.label} 룰렛
                   </span>
                 )}
                 {allAuto && !draftFinished && (
@@ -807,7 +830,7 @@ export function MpLeagueDraftBoard({
               reels={roll?.reels ?? []}
               reelCount={rouletteClubCount}
               legendRatePercent={Number((DEFAULT_ROULETTE_LEGEND_RATE * 100).toFixed(1))}
-              targetSubPosition={previewSlot?.subPosition ?? roll?.subPosition ?? 'CM'}
+              targetSubPosition={rouletteTargetDisplay.subPosition}
               managerTraitId={managerTraitId}
               allowedLeagueIds={draftPool}
               previewCandidate={activePreview}

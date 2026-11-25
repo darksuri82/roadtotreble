@@ -55,6 +55,44 @@ export function getStaminaKinematicFactor(staminaPct: number): number {
   return clamp(0.74 + ((staminaPct - 15) / 25) * 0.1, 0.72, 0.84);
 }
 
+/**
+ * Karun Singh-style 12x8 Expected Threat (xT) spatial grid (rows = width 0..7, cols = attacking depth 0..11).
+ * Measures probability of scoring within the next few actions from each pitch zone.
+ */
+export const XT_GRID_12X8: readonly (readonly number[])[] = [
+  [0.0063, 0.0078, 0.0094, 0.0112, 0.0138, 0.0169, 0.0208, 0.0257, 0.0321, 0.0406, 0.0528, 0.0645],
+  [0.0074, 0.0090, 0.0108, 0.0128, 0.0156, 0.0191, 0.0236, 0.0298, 0.0384, 0.0524, 0.0752, 0.0985],
+  [0.0084, 0.0102, 0.0121, 0.0144, 0.0176, 0.0216, 0.0272, 0.0352, 0.0478, 0.0715, 0.1180, 0.1780],
+  [0.0090, 0.0109, 0.0129, 0.0154, 0.0189, 0.0233, 0.0295, 0.0392, 0.0558, 0.0885, 0.1650, 0.2580],
+  [0.0090, 0.0109, 0.0129, 0.0154, 0.0189, 0.0233, 0.0295, 0.0392, 0.0558, 0.0885, 0.1650, 0.2580],
+  [0.0084, 0.0102, 0.0121, 0.0144, 0.0176, 0.0216, 0.0272, 0.0352, 0.0478, 0.0715, 0.1180, 0.1780],
+  [0.0074, 0.0090, 0.0108, 0.0128, 0.0156, 0.0191, 0.0236, 0.0298, 0.0384, 0.0524, 0.0752, 0.0985],
+  [0.0063, 0.0078, 0.0094, 0.0112, 0.0138, 0.0169, 0.0208, 0.0257, 0.0321, 0.0406, 0.0528, 0.0645],
+];
+
+/**
+ * Bilinearly samples Expected Threat (xT) in attacking coordinates for any normalized pitch coordinate.
+ */
+export function sampleExpectedThreat(isHome: boolean, x: number, y: number): number {
+  const depth = clamp(isHome ? x : 1 - x, 0, 0.9999);
+  const width = clamp(y, 0, 0.9999);
+  const fx = depth * 11;
+  const fy = width * 7;
+  const x0 = Math.floor(fx);
+  const y0 = Math.floor(fy);
+  const x1 = Math.min(11, x0 + 1);
+  const y1 = Math.min(7, y0 + 1);
+  const tx = fx - x0;
+  const ty = fy - y0;
+  const v00 = XT_GRID_12X8[y0][x0];
+  const v10 = XT_GRID_12X8[y0][x1];
+  const v01 = XT_GRID_12X8[y1][x0];
+  const v11 = XT_GRID_12X8[y1][x1];
+  const top = v00 + (v10 - v00) * tx;
+  const bot = v01 + (v11 - v01) * tx;
+  return top + (bot - top) * ty;
+}
+
 export interface GameStateUrgency {
   timeFactor: number;
   effectiveDiff: number;
@@ -65,33 +103,58 @@ export interface GameStateUrgency {
 
 /**
  * Continuous Game State Urgency curve (remaining time x effective goal difference).
- * Supports regular time (0..90'), extra time (91..120'), and 2-legged knockout aggregate scores.
+ * Covers end-of-1st-half (40'~45'+), end-of-2nd-half (75'~90'+, max 82'+),
+ * end-of-ET1 (100'~105'+), end-of-ET2 (112'~120'+, max 115'+), and 2-legged knockout aggregates.
  */
 export function computeGameStateUrgency(params: {
   minute: number;
   scoreDiff: number;
   isKnockoutDecider?: boolean;
+  ballDepth?: number;
 }): GameStateUrgency {
-  const { minute, scoreDiff, isKnockoutDecider = false } = params;
+  const { minute, scoreDiff, isKnockoutDecider = false, ballDepth = 0.5 } = params;
 
   let timeFactor = 0;
+  let periodPushFloor = 0;
+
   if (minute > 90) {
-    // Extra time (91..120')
-    if (minute < 105) {
-      timeFactor = 0.35 + ((minute - 91) / 14) * 0.30;
+    // Extra Time: ET1 closing push (100'~105'+) & ET2 all-out climax (112'~120'+, max 115'+)
+    if (minute <= 105.5) {
+      const baseEt1 = 0.36 + ((minute - 91) / 14) * 0.24;
+      const et1CloseBoost =
+        minute >= 100 ? clamp((minute - 99.5) / 5.5, 0, 1) * 0.28 : 0;
+      timeFactor = clamp(baseEt1 + et1CloseBoost, 0, 0.88);
+      if (minute >= 100 && (scoreDiff <= 0 || ballDepth >= 0.50)) {
+        periodPushFloor = clamp((minute - 99.5) / 5.5, 0, 1) * (scoreDiff < 0 ? 0.68 : 0.42);
+      }
     } else if (minute < 112) {
-      timeFactor = 0.65 + ((minute - 105) / 7) * 0.35;
+      timeFactor = 0.66 + ((minute - 105.5) / 6.5) * 0.22;
+    } else if (minute < 115) {
+      timeFactor = 0.88 + ((minute - 112) / 3) * 0.12;
+      periodPushFloor = scoreDiff <= 0 ? 0.55 : 0;
     } else {
       timeFactor = 1.0;
+      periodPushFloor = scoreDiff < 0 ? 0.95 : scoreDiff === 0 ? 0.64 : 0;
+    }
+  } else if (minute >= 39.5 && minute <= 46.5) {
+    // End of 1st half (40'~45'+): stop sterile recycling and attempt a final attacking thrust
+    const fhWindow = clamp((minute - 39.5) / 5.0, 0, 1);
+    timeFactor = fhWindow * 0.60;
+    if (scoreDiff < 0) {
+      periodPushFloor = 0.26 + fhWindow * 0.34; // 0.26..0.60
+    } else if (scoreDiff === 0 && ballDepth >= 0.48) {
+      periodPushFloor = 0.20 + fhWindow * 0.24; // 0.20..0.44
+    } else if (ballDepth >= 0.60) {
+      periodPushFloor = 0.18 + fhWindow * 0.18;
     }
   } else if (minute >= 88) {
     timeFactor = 1.0;
   } else if (minute >= 82) {
-    timeFactor = 0.70 + ((minute - 82) / 6) * 0.30;
+    timeFactor = 0.78 + ((minute - 82) / 6) * 0.22;
   } else if (minute >= 75) {
-    timeFactor = 0.30 + ((minute - 75) / 7) * 0.40;
+    timeFactor = 0.42 + ((minute - 75) / 7) * 0.36;
   } else if (minute >= 65) {
-    timeFactor = ((minute - 65) / 10) * 0.30;
+    timeFactor = ((minute - 65) / 10) * 0.42;
   }
   timeFactor = clamp(timeFactor, 0, 1);
 
@@ -100,19 +163,29 @@ export function computeGameStateUrgency(params: {
 
   if (scoreDiff < 0) {
     const deficitMult =
-      scoreDiff === -1 ? 1.0 : scoreDiff === -2 ? 0.90 : 0.72;
-    attackUrgency = clamp(timeFactor * deficitMult, 0, 1);
+      scoreDiff === -1 ? 1.0 : scoreDiff === -2 ? 0.92 : 0.76;
+    attackUrgency = clamp(Math.max(timeFactor * deficitMult, periodPushFloor), 0, 1);
   } else if (scoreDiff > 0) {
-    const leadMult = scoreDiff === 1 ? 1.0 : 0.75;
-    protectUrgency = clamp(timeFactor * leadMult, 0, 1);
-  } else if (isKnockoutDecider && minute >= 82) {
-    // Tied knockout late: measured push for a winner without reckless collapse
-    attackUrgency = clamp(timeFactor * 0.28, 0, 0.28);
+    const isEndOfFirstHalf = minute >= 39.5 && minute <= 46.5;
+    if (isEndOfFirstHalf && periodPushFloor > 0) {
+      // Attacking half late in 1st half: finish the move rather than turning back to own half
+      attackUrgency = clamp(periodPushFloor, 0, 0.36);
+    } else if (!isEndOfFirstHalf) {
+      const leadMult = scoreDiff === 1 ? 1.0 : 0.75;
+      protectUrgency = clamp(timeFactor * leadMult, 0, 1);
+    }
+  } else {
+    // Tied score: push at end of 1H (if in opp half), late 2H knockout, and ET1/ET2 closing windows
+    if (periodPushFloor > 0) {
+      attackUrgency = clamp(periodPushFloor, 0, isKnockoutDecider ? 0.68 : 0.46);
+    } else if (isKnockoutDecider && minute >= 80) {
+      attackUrgency = clamp(timeFactor * 0.42, 0, 0.42);
+    }
   }
 
   const cbBoxJoin =
     scoreDiff === -1 &&
-    ((minute >= 85 && minute <= 90) || minute >= 115);
+    ((minute >= 85 && minute <= 90.5) || minute >= 115);
 
   return {
     timeFactor,

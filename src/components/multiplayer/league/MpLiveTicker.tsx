@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { Club, PenaltyKickLog } from '../../../types/league';
 import type { MpCastLive, MpCastMatch, MpLeagueHuman } from '../../../types/mpLeague';
 import { JerseySvg } from '../../common/JerseySvg';
+import { PenaltyShootoutVisual } from '../../common/PenaltyShootoutVisual';
 
 /** Scoreboards that already finished replaying in this tab (never replay after a remount). */
 const playedKeys = new Set<string>();
@@ -26,6 +27,8 @@ interface MpLiveTickerProps {
   /** Real time for 0' → 90' */
   durationMs: number;
   onDone: (key: string) => void;
+  /** When true (UCL only), render broadcast SVG penalty shootout visual instead of plain O/X board. */
+  useUclPkVisual?: boolean;
 }
 
 const FEED_TONE: Record<string, string> = {
@@ -68,6 +71,8 @@ export interface LiveTickerMatchCardProps {
   initialRatio?: number;
   /** When true, always render feed & stats (solo mode) even without humanClubIds. */
   alwaysShowFeed?: boolean;
+  /** When true (UCL only), render broadcast SVG penalty shootout visual instead of plain O/X board. */
+  useUclPkVisual?: boolean;
 }
 
 export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
@@ -81,6 +86,7 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
   barRef,
   initialRatio,
   alwaysShowFeed = false,
+  useUclPkVisual = false,
 }: LiveTickerMatchCardProps) {
   const maxMin = endMinuteOfCastMatch(match);
   const pkKicks: PenaltyKickLog[] = match.penalties?.kicks ?? [];
@@ -308,6 +314,22 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
 
       {/* Live Penalty Shootout Kicker Board (runs as extra phase after 120') */}
       {showPkBox && match.penalties && (
+        useUclPkVisual ? (
+          <PenaltyShootoutVisual
+            homeClub={home}
+            awayClub={away}
+            homeTeamId={match.homeTeamId}
+            awayTeamId={match.awayTeamId}
+            homeScore={match.penalties.home}
+            awayScore={match.penalties.away}
+            kicks={pkKicks}
+            revealedCount={effectiveRevealedKicks}
+            winnerId={match.penalties.winnerId}
+            myClubId={myClubId}
+            inProgress={pkInProgress}
+            variant="compact"
+          />
+        ) : (
         <div className="mt-2 rounded-lg border border-amber-400/30 bg-[#0b1018]/90 px-2 py-1.5 space-y-1.5">
           <div className="flex items-center justify-between gap-2 text-[9px] font-extrabold">
             <span className="flex items-center gap-1 text-amber-200">
@@ -420,6 +442,7 @@ export const LiveTickerMatchCard = memo(function LiveTickerMatchCard({
             </div>
           )}
         </div>
+        )
       )}
 
       {feedItem && (
@@ -475,6 +498,7 @@ const TickerInner = memo(function TickerInner({
   myClubId,
   durationMs,
   onDone,
+  useUclPkVisual = false,
 }: MpLiveTickerProps) {
   const alreadyPlayed = playedKeys.has(ticker.key);
   const needsReplay = ticker.matches.some((m) => !m.instant);
@@ -684,6 +708,7 @@ const TickerInner = memo(function TickerInner({
           clubsById={clubsById}
           humanByClub={humanByClub}
           myClubId={myClubId}
+          useUclPkVisual={useUclPkVisual}
           barRef={(el) => {
             if (el) barElsRef.current.set(m.key, el);
             else barElsRef.current.delete(m.key);

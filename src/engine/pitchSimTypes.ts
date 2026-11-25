@@ -338,6 +338,12 @@ export interface PitchSimState {
   carrierHoldTimer: number;
   carrierDecisionDelay: number;
   recycleCount: number;
+  /** Consecutive passes without meaningful forward / xT threat progression */
+  stallPassCount: number;
+  /** Elapsed simulation seconds in current possession without meaningful xT progression */
+  possessionStallTime: number;
+  /** Active pressing trigger window (seconds) fired by opponent back-passes, touchline traps, or stalls */
+  pressTriggerTimer: number;
   transitionTimer: number;
   transitionTeamIsHome: boolean | null;
   tacticalLabel: TacticalPhaseLabel;
@@ -366,5 +372,8 @@ export interface PitchSimState {
     dribbles: number;
     longRangeBackpassesBlocked: number;
     lateUrgentForwardPasses: number;
+    maxConsecutiveStallPasses: number;
+    pressingTriggersFired: number;
+    positiveXtPasses: number;
   };
 }

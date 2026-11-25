@@ -1,12 +1,15 @@
 import {
   Calendar,
   Check,
+  ChevronDown,
+  ChevronUp,
   ClipboardList,
   FastForward,
   Loader2,
   LogOut,
   Pause,
   Shield,
+  Star,
   Swords,
   Trophy,
   Wifi,
@@ -19,6 +22,7 @@ import { getMoraleLabel } from '../../../engine/conditionEngine';
 import { getLeagueById } from '../../../engine/dataLoader';
 import { getNextTransferWindowRound } from '../../../engine/transferEngine';
 import { UCL_STAGE_LABELS } from '../../../engine/uclEngine';
+import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
 import type { DomesticCupState } from '../../../types/cup';
 import type { Club, LeagueId, PlayerSeasonStats, StandingRow } from '../../../types/league';
 import type {
@@ -383,6 +387,7 @@ export function MpLeagueDashboard({
   const [openLpPopupKey, setOpenLpPopupKey] = useState<string | null>(null);
   const [openMilestoneKey, setOpenMilestoneKey] = useState<string | null>(null);
   const [summaryReviewOpen, setSummaryReviewOpen] = useState(false);
+  const [showPastUclRound, setShowPastUclRound] = useState(false);
   const [castLive, setCastLive] = useState<{
     castKey: string;
     overlays: Record<string, LiveTieOverlay>;
@@ -1197,7 +1202,7 @@ export function MpLeagueDashboard({
         </div>
       )}
 
-      {flow.kind === 'consent' && !tickerPlaying && !live.cast && (() => {
+      {isUclStage && flow.kind === 'consent' && !tickerPlaying && !live.cast && (() => {
         const allEliminated = Boolean(flow.allEliminated);
         const requiredClubIds =
           flow.requiredClubIds && flow.requiredClubIds.length > 0
@@ -1310,14 +1315,156 @@ export function MpLeagueDashboard({
         );
       })()}
 
-      {/* Inline UCL Knockout Live Multicast Board — streams right above the live shared bracket */}
+      {/* Pre-Season Match 1 Readiness Popup Modal (before Round 1 auto-progress starts) */}
+      {!isUclStage && flow.kind === 'consent' && !editorOpen && !tickerPlaying && !live.cast && (() => {
+        const requiredClubIds =
+          flow.requiredClubIds && flow.requiredClubIds.length > 0
+            ? flow.requiredClubIds
+            : live.humans.map((h) => h.clubId);
+        const participants = live.humans.filter((h) => requiredClubIds.includes(h.clubId));
+        const readyCount = participants.filter((h) => hasPlayerAck(h, flow.key)).length;
+        const iAcked = ackKeys.includes(flow.key);
+        const waitingList = pendingAckNames(flow.key, requiredClubIds);
+
+        return (
+          <div
+            id="mp-league-start-consent-modal"
+            className="modal-backdrop fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
+          >
+            <ModalBodyLock />
+            <div className="modal-panel w-full max-w-md overflow-hidden rounded-2xl border border-emerald-500/35 bg-[#0d1420] shadow-2xl">
+              <div className="border-b border-slate-800 bg-[#090e17] px-4 py-3.5 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Trophy className="h-4 w-4 shrink-0 text-emerald-400" />
+                  <h2 className="truncate text-sm font-black text-white">
+                    {flow.label}
+                  </h2>
+                </div>
+                <span className="shrink-0 rounded-md border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-black tabular-nums text-emerald-300">
+                  준비 {readyCount}/{participants.length}
+                </span>
+              </div>
+
+              <div className="p-4 space-y-3.5">
+                <div className="text-xs font-semibold text-slate-300">
+                  첫 경기 개막 전 전술·라인업을 정비하세요. 전원 준비 완료 시 1R이 시작됩니다.
+                </div>
+
+                <div className="space-y-1.5">
+                  {participants.map((h) => {
+                    const ok = hasPlayerAck(h, flow.key);
+                    const isMe = h.playerId === playerId;
+                    return (
+                      <div
+                        key={h.clubId}
+                        className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs ${
+                          ok
+                            ? 'border-emerald-500/35 bg-emerald-500/10'
+                            : 'border-slate-800 bg-[#0a1019]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <PixelManagerAvatar
+                            avatar={h.avatar}
+                            clubPrimaryColor={h.profile.primaryColor}
+                            clubSecondaryColor={h.profile.secondaryColor}
+                            size={24}
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1 truncate font-extrabold text-white">
+                              <span className="truncate">{h.nickname}</span>
+                              {isMe && (
+                                <span className="rounded bg-emerald-400 px-1 py-px text-[8px] font-black text-slate-950">
+                                  MY
+                                </span>
+                              )}
+                            </div>
+                            <div className="truncate text-[10px] text-slate-400">
+                              {h.profile.name}
+                            </div>
+                          </div>
+                        </div>
+                        <span
+                          className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-extrabold ${
+                            ok
+                              ? 'border-emerald-400/45 bg-emerald-500/18 text-emerald-200'
+                              : 'border-slate-700 bg-slate-900 text-slate-400'
+                          }`}
+                        >
+                          {ok ? (
+                            <>
+                              <Check className="h-3 w-3" />
+                              준비 완료
+                            </>
+                          ) : (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              대기 중
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {iAcked ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center gap-1.5 rounded-xl border border-emerald-500/35 bg-emerald-500/12 px-3 py-2.5 text-xs font-bold text-emerald-200">
+                      <Check className="h-3.5 w-3.5" />
+                      준비 완료됨
+                      {waitingList.length > 0 && (
+                        <span className="text-slate-400 font-semibold">
+                          · {waitingList.join(', ')} 대기 중
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!mySquad}
+                      onClick={onOpenEditor}
+                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-[#0b1018] px-3 py-2 text-xs font-bold text-slate-200 hover:border-sky-400/50 hover:text-sky-200 disabled:opacity-40 cursor-pointer"
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                      대기 중 전술 수정
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      id="mpl-start-tactics-btn"
+                      type="button"
+                      disabled={!mySquad}
+                      onClick={onOpenEditor}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-2.5 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 disabled:opacity-40 cursor-pointer"
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                      전술 수정
+                    </button>
+                    <button
+                      id="mpl-consent-btn"
+                      type="button"
+                      onClick={() => onAck(flow.key)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      준비 완료
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Centered Popup Modal — UCL Knockout Live Multicast Board */}
       {live.cast && (
         <MpUclMulticastBoard
           cast={live.cast}
           clubsById={clubsById}
           humans={live.humans}
           myClubId={myClubId}
-          inline
           bracketTies={
             bracketUcl
               ? Object.values(bracketUcl.ties).flat()
@@ -1327,16 +1474,80 @@ export function MpLeagueDashboard({
         />
       )}
 
-      {/* Live scoreboard: the friends' matches of the round that was just simulated */}
+      {/* Live Scoreboard: Centered Popup Modal during UCL League Phase playback; collapsible past results when settled; inline during domestic league */}
       {live.ticker && live.ticker.matches.length > 0 && (
-        <MpLiveTicker
-          ticker={live.ticker}
-          clubsById={clubsById}
-          humans={live.humans}
-          myClubId={myClubId}
-          durationMs={Math.max(3600, Math.min(8200, live.autoMs - 900))}
-          onDone={handleTickerDone}
-        />
+        isUclStage ? (
+          tickerPlaying ? (
+            <div
+              id="mp-ucl-lp-cast-modal"
+              className="modal-backdrop fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/86 p-3 sm:p-4"
+            >
+              <ModalBodyLock />
+              <div className="modal-panel modal-scroll w-full max-w-3xl overflow-y-auto overflow-x-hidden rounded-2xl border border-sky-500/35 bg-[#0b1322] shadow-2xl">
+                <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Star className="h-4 w-4 shrink-0 fill-current text-sky-300" />
+                    <h2 className="truncate font-display text-sm sm:text-base font-bold tracking-wide text-white">
+                      {live.ticker.title}
+                    </h2>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] font-black tracking-widest text-rose-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse" />
+                    LIVE
+                  </span>
+                </div>
+                <div className="p-3 sm:p-4">
+                  <MpLiveTicker
+                    ticker={live.ticker}
+                    clubsById={clubsById}
+                    humans={live.humans}
+                    myClubId={myClubId}
+                    durationMs={Math.max(3600, Math.min(8200, live.autoMs - 900))}
+                    onDone={handleTickerDone}
+                    useUclPkVisual
+                  />
+                </div>
+              </div>
+            </div>
+          ) : !isUclKnockout ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPastUclRound((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/25 bg-[#0b1324] px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:border-sky-400/50 cursor-pointer"
+                >
+                  {showPastUclRound ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                  지난 라운드 기록 보기 ({live.ticker.title})
+                </button>
+              </div>
+              {showPastUclRound && (
+                <MpLiveTicker
+                  ticker={live.ticker}
+                  clubsById={clubsById}
+                  humans={live.humans}
+                  myClubId={myClubId}
+                  durationMs={Math.max(3600, Math.min(8200, live.autoMs - 900))}
+                  onDone={handleTickerDone}
+                  useUclPkVisual
+                />
+              )}
+            </div>
+          ) : null
+        ) : (
+          <MpLiveTicker
+            ticker={live.ticker}
+            clubsById={clubsById}
+            humans={live.humans}
+            myClubId={myClubId}
+            durationMs={Math.max(3600, Math.min(8200, live.autoMs - 900))}
+            onDone={handleTickerDone}
+          />
+        )
       )}
 
       {/* Mobile (<lg) Compact Section Switcher — eliminates long vertical scroll between main & sidebar */}

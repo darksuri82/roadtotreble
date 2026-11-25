@@ -58,6 +58,7 @@ import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
 import { ManagerTraitBadgeCard } from '../common/ManagerTraitBadgeCard';
 import { MatchDetailModal } from '../common/MatchDetailModal';
+import { PenaltyShootoutVisual } from '../common/PenaltyShootoutVisual';
 import { PitchBoard, type SlotRef } from '../common/PitchBoard';
 import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
@@ -727,6 +728,7 @@ export function UclDashboard() {
               onStop={stopUclLiveAuto}
               onMatchDone={handleUclLiveMatchDone}
               onEnterLiveMatch={handleEnterLive2DFromStream}
+              useUclPkVisual
             />
           </div>
           <div className="lg:col-span-5">
@@ -1013,6 +1015,23 @@ export function UclDashboard() {
                       </span>
                     </div>
                   </div>
+
+                  {pk && (
+                    <PenaltyShootoutVisual
+                      homeClub={homeClub}
+                      awayClub={awayClub}
+                      homeTeamId={lastMatch.homeTeamId}
+                      awayTeamId={lastMatch.awayTeamId}
+                      homeScore={pk.homePenGoals}
+                      awayScore={pk.awayPenGoals}
+                      kicks={pk.kicks}
+                      revealedCount={pk.kicks.length}
+                      winnerId={pk.winnerTeamId}
+                      myClubId={USER_CLUB_ID}
+                      inProgress={false}
+                      variant="compact"
+                    />
+                  )}
 
                   {/* Prominent Knockout 1st-Leg + Aggregate Score Box */}
                   {matchedTie && (isLeg1OfTwoLeg || isLeg2OfTwoLeg || matchedTie.stage === 'final') && (() => {
