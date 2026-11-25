@@ -75,6 +75,7 @@ function makeSampleHofEntry(overrides?: Partial<HallOfFameEntry>): HallOfFameEnt
   return {
     id: 'hof-test-1',
     runId: 'run-test-1',
+    ruleEra: 'v9.0',
     completedAt: '2026-11-24T12:00:00.000Z',
     userClub: {
       name: 'FC 테스트 유나이티드',
@@ -151,6 +152,7 @@ function makeRankingEntry(
   return {
     id: `uuid-${String(idx).padStart(2, '0')}`,
     runId: `run-${idx}`,
+    ruleEra: 'v9.0',
     rank: idx,
     seasonScore: score,
     grade: hof.seasonScore.grade,
@@ -307,6 +309,7 @@ describe('v8.12 Global TOP 15 Ranking, Auto-Prune & 1v1 Challenge', () => {
     expect(schemaSql).toContain('security definer');
     expect(schemaSql).toContain('pg_advisory_xact_lock');
     expect(schemaSql).toContain('limit 15');
+    expect(schemaSql).toContain('rule_era');
     expect(schemaSql).toContain('delete from public.global_hof_rankings');
   });
 });

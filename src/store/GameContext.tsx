@@ -33,6 +33,7 @@ import {
   createDefaultSeasonBudgetState,
   createSeasonBudgetState,
   deductTransferCash,
+  getFfpWindowMaxAttempts,
 } from '../engine/budgetEngine';
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
 import {
@@ -713,6 +714,7 @@ function applyPostUserMatchConditionAndEvents(params: {
   const awakeningResult = evaluatePostMatchAwakening({
     starters,
     bench,
+    formation,
     matchPlayedNumber: totalUserMatchesPlayed,
     round: matchRound,
     competition,
@@ -2120,11 +2122,12 @@ function openTransferWindowWithIncomingOffers(params: {
     allowedLeagueIds,
     options,
   } = params;
-  const isWindow2 = windowIndex === 2 && !options?.isUclSpecial;
+  const isRegularWindow = !options?.isUclSpecial;
+  const isWindow2 = windowIndex === 2 && isRegularWindow;
   const ffpTier = season.budgetState?.ffpTier ?? 0;
   const ffpEmbargoActive = isWindow2 && ffpTier === 2;
-  const maxAttemptsOverride = isWindow2
-    ? (season.budgetState?.window2MaxAttempts ?? 3)
+  const maxAttemptsOverride = isRegularWindow
+    ? getFfpWindowMaxAttempts(season.budgetState, windowIndex, 3)
     : undefined;
 
   const incomingOffers = ffpEmbargoActive

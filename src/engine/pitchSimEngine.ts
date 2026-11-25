@@ -612,6 +612,66 @@ function refreshLiveUrgencyDoctrines(state: PitchSimState) {
 /**
  * Creates a fresh deterministic PitchSimState for a match half / ET half.
  */
+function applyTacticalCounterToDoctrinePair(
+  homeDoc: TeamTacticalDoctrine,
+  awayDoc: TeamTacticalDoctrine,
+  homeCounteredSeverity = 0,
+  awayCounteredSeverity = 0,
+): { home: TeamTacticalDoctrine; away: TeamTacticalDoctrine } {
+  const hSev = clamp(homeCounteredSeverity, 0, 1);
+  const aSev = clamp(awayCounteredSeverity, 0, 1);
+  if (hSev <= 0.001 && aSev <= 0.001) {
+    return { home: homeDoc, away: awayDoc };
+  }
+
+  const applyOne = (
+    countered: TeamTacticalDoctrine,
+    countering: TeamTacticalDoctrine,
+    sev: number,
+  ): { countered: TeamTacticalDoctrine; countering: TeamTacticalDoctrine } => {
+    if (sev <= 0.001) return { countered, countering };
+    const nextCountered: TeamTacticalDoctrine = {
+      ...countered,
+      tacticalFit: clamp(Math.round(countered.tacticalFit - sev * 16), 40, 99),
+      composure: clamp(countered.composure - sev * 0.22, 0.12, 1),
+      thirdManFreq: clamp(countered.thirdManFreq - sev * 0.16, 0.05, 1),
+      lineDiscipline: clamp(countered.lineDiscipline - sev * 0.14, 0.15, 1),
+      zoneMidEdge: clamp(countered.zoneMidEdge - sev * 0.35, -1, 1),
+      zoneFlankEdge: clamp(countered.zoneFlankEdge - sev * 0.3, -1, 1),
+      zoneTransitionEdge: clamp(countered.zoneTransitionEdge - sev * 0.32, -1, 1),
+      zonePressEdge: clamp(countered.zonePressEdge - sev * 0.35, -1, 1),
+    };
+    const nextCountering: TeamTacticalDoctrine = {
+      ...countering,
+      pressTriggerRadius: clamp(countering.pressTriggerRadius + sev * 0.055, 0.14, 0.38),
+      pressersCount:
+        sev >= 0.6 ? Math.min(3, countering.pressersCount + 1) : countering.pressersCount,
+      lineDiscipline: clamp(countering.lineDiscipline + sev * 0.2, 0.15, 1),
+      counterSprintUrgency: clamp(countering.counterSprintUrgency + sev * 0.18, 0.1, 1),
+      defensiveCompactness: clamp(countering.defensiveCompactness - sev * 0.07, 0.7, 1.12),
+      zoneMidEdge: clamp(countering.zoneMidEdge + sev * 0.35, -1, 1),
+      zoneFlankEdge: clamp(countering.zoneFlankEdge + sev * 0.3, -1, 1),
+      zoneTransitionEdge: clamp(countering.zoneTransitionEdge + sev * 0.32, -1, 1),
+      zonePressEdge: clamp(countering.zonePressEdge + sev * 0.35, -1, 1),
+    };
+    return { countered: nextCountered, countering: nextCountering };
+  };
+
+  let nextHome = homeDoc;
+  let nextAway = awayDoc;
+  if (hSev > 0.001) {
+    const res = applyOne(nextHome, nextAway, hSev);
+    nextHome = res.countered;
+    nextAway = res.countering;
+  }
+  if (aSev > 0.001) {
+    const res = applyOne(nextAway, nextHome, aSev);
+    nextAway = res.countered;
+    nextHome = res.countering;
+  }
+  return { home: nextHome, away: nextAway };
+}
+
 export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
   const rngState = hashSeedString(
     `${config.seed}|h${config.half}|s${config.startMinute}`,
@@ -628,7 +688,7 @@ export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
   const homeEffDiff =
     aggHomeBefore + config.homeGoalsSoFar - (aggAwayBefore + config.awayGoalsSoFar);
 
-  const baseHomeDoctrine = buildTeamTacticalDoctrine({
+  const rawHomeDoctrine = buildTeamTacticalDoctrine({
     my: config.home,
     opp: config.away,
     minute: config.startMinute,
@@ -637,7 +697,7 @@ export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
     isKnockoutDecider: isKoDecider,
     applyUrgency: false,
   });
-  const baseAwayDoctrine = buildTeamTacticalDoctrine({
+  const rawAwayDoctrine = buildTeamTacticalDoctrine({
     my: config.away,
     opp: config.home,
     minute: config.startMinute,
@@ -646,6 +706,13 @@ export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
     isKnockoutDecider: isKoDecider,
     applyUrgency: false,
   });
+  const { home: baseHomeDoctrine, away: baseAwayDoctrine } =
+    applyTacticalCounterToDoctrinePair(
+      rawHomeDoctrine,
+      rawAwayDoctrine,
+      config.home.tacticalCounterSeverity ?? 0,
+      config.away.tacticalCounterSeverity ?? 0,
+    );
 
   const homeDoctrine = applyGameStateUrgencyToDoctrine(
     baseHomeDoctrine,
@@ -904,7 +971,7 @@ export function syncPitchSimConfig(
     state.homeGoalsLive -
     (state.aggAwayBeforeMatch + state.awayGoalsLive);
 
-  state.baseHomeDoctrine = buildTeamTacticalDoctrine({
+  const rawHomeDoctrine = buildTeamTacticalDoctrine({
     my: params.home,
     opp: params.away,
     minute: curMin,
@@ -913,7 +980,7 @@ export function syncPitchSimConfig(
     isKnockoutDecider: state.isKnockoutDecider,
     applyUrgency: false,
   });
-  state.baseAwayDoctrine = buildTeamTacticalDoctrine({
+  const rawAwayDoctrine = buildTeamTacticalDoctrine({
     my: params.away,
     opp: params.home,
     minute: curMin,
@@ -922,6 +989,14 @@ export function syncPitchSimConfig(
     isKnockoutDecider: state.isKnockoutDecider,
     applyUrgency: false,
   });
+  const adjustedDoctrines = applyTacticalCounterToDoctrinePair(
+    rawHomeDoctrine,
+    rawAwayDoctrine,
+    params.home.tacticalCounterSeverity ?? 0,
+    params.away.tacticalCounterSeverity ?? 0,
+  );
+  state.baseHomeDoctrine = adjustedDoctrines.home;
+  state.baseAwayDoctrine = adjustedDoctrines.away;
   refreshLiveUrgencyDoctrines(state);
 
   const nextHomeProfiles = buildTeamAgentProfiles(params.home, curMin);

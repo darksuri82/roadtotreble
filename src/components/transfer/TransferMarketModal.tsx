@@ -27,6 +27,7 @@ import {
   MANAGER_TRAITS,
 } from '../../data/managerTraits';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { formatFfpBadgeSummary } from '../../engine/budgetEngine';
 import { calculateTeamRatings } from '../../engine/chemistryEngine';
 import {
   getInjuryTooltip,
@@ -777,21 +778,20 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
             <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-200 tabular-nums whitespace-nowrap">
               보유 자금 €{availableCashM}M
             </span>
-            {ffpEmbargoActive && (
-              <span className="rounded-md border border-rose-500/45 bg-rose-500/18 px-2 py-0.5 text-[10.5px] font-black text-rose-200 whitespace-nowrap">
-                FFP 2단계 · 2차 이적 영입 동결 (케미 -4 · 점수 -12%)
-              </span>
-            )}
-            {!ffpEmbargoActive && ffpTier === 2 && (
-              <span className="rounded-md border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-[10.5px] font-bold text-rose-200 whitespace-nowrap">
-                FFP 2단계 (2차 동결 · 케미 -4 · 사기 추가↓ · 점수 -12%)
-              </span>
-            )}
-            {!ffpEmbargoActive && ffpTier === 1 && (
-              <span className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10.5px] font-bold text-amber-200 whitespace-nowrap">
-                {tm.windowIndex === 2 && !isUclSpecial
-                  ? 'FFP 1단계 · 2차 이적 1회 제한 (케미 -4 · 이월 €0)'
-                  : 'FFP 1단계 (이월 €0 · 2차 1회 제한 · 케미 -4)'}
+            {ffpTier >= 1 && (
+              <span
+                className={`rounded-md border px-2 py-0.5 text-[10.5px] whitespace-nowrap ${
+                  ffpTier === 2
+                    ? ffpEmbargoActive
+                      ? 'border-rose-500/45 bg-rose-500/18 font-black text-rose-200'
+                      : 'border-rose-500/40 bg-rose-500/15 font-bold text-rose-200'
+                    : 'border-amber-500/40 bg-amber-500/15 font-bold text-amber-200'
+                }`}
+              >
+                {formatFfpBadgeSummary(ffpTier, {
+                  isWindow2: tm.windowIndex === 2 && !isUclSpecial,
+                  isEmbargo: ffpEmbargoActive,
+                })}
               </span>
             )}
             {tm.legendBonusActive && (
@@ -802,7 +802,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
             <InfoHelpButton
               title="트레이드 규칙 · 가치(TP)"
               align="left"
-              guideTab="basics"
+              guideTab="transfer"
               items={[
                 '1:1 · 2:1 · 3:1 패키지 트레이드 (로스터 16인 · GK 최소 1명 유지)',
                 '상대 최우선 니즈(🔥 +32% · +8%p) / 보강 니즈(✨ +18% · +4%p) / 포화(-25% · -10%p)',
@@ -2043,7 +2043,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       title="성사 확률 · TP 가치 내역"
                                       align="left"
                                       size="xs"
-                                      guideTab="basics"
+                                      guideTab="transfer"
                                     >
                                       <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
                                         <div className="flex justify-between">

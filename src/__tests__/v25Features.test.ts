@@ -360,6 +360,7 @@ describe('v2.5 Core Requirements Verification', () => {
         hallOfFame: [
           {
             id: 'legacy-zero-test',
+            ruleEra: 'v9.0',
             completedAt: new Date().toISOString(),
             userClub: {
               name: '테스트 FC',

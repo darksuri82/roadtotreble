@@ -324,7 +324,7 @@ export function PitchBoard({
             title={`팀 케미 ${chemistry.total} · 연결선 내역`}
             align="left"
             size="xs"
-            guideTab="chemistry"
+            guideTab="squad"
           >
             <div className="space-y-2 text-[11px] text-slate-300 tabular-nums">
               <div className="grid grid-cols-4 gap-1 text-center text-[10px]">
@@ -413,7 +413,7 @@ export function PitchBoard({
               label="내역"
               size="xs"
               align="right"
-              guideTab="condition"
+              guideTab="match"
             >
               <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
                 <div className="flex justify-between">
@@ -1051,7 +1051,7 @@ export function PitchBoard({
                           label="내역"
                           size="xs"
                           align="right"
-                          guideTab="condition"
+                          guideTab="match"
                         >
                           <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
                             <div className="flex justify-between">

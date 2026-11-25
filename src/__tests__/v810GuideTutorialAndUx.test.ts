@@ -150,15 +150,15 @@ describe('v8.10 Guidebook 100% Engine Sync, Visual Tutorial & Contextual UX', ()
     expect(SOLO_TUTORIAL_STORAGE_KEY).toBe('rtt_solo_tutorial_dismissed_v1');
     expect(isSoloTutorialDismissed()).toBe(false);
     expect(() => setSoloTutorialDismissed(true)).not.toThrow();
-    expect(() => openSystemGuide('chemistry')).not.toThrow();
+    expect(() => openSystemGuide('squad')).not.toThrow();
     expect(() => openSoloTutorial()).not.toThrow();
     expect(Object.keys(GUIDE_TAB_LABELS)).toEqual([
-      'basics',
-      'chemistry',
+      'budget',
       'tactics',
-      'season',
-      'condition',
-      'attributes',
+      'squad',
+      'transfer',
+      'match',
+      'legacy',
     ]);
   });
 });

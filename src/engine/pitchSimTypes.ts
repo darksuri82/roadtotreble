@@ -304,6 +304,8 @@ export interface PitchSimTeamInput {
   managerOvr: number;
   enteredAtMinute?: Record<string, number>;
   halftimeAdjusted?: boolean;
+  /** 0..1 intensity of opponent's pre-match tactical read countering this team's repeated pattern */
+  tacticalCounterSeverity?: number;
 }
 
 export interface PitchSimInitConfig {

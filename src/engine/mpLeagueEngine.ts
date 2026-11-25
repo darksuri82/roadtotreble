@@ -39,7 +39,11 @@ import {
   evaluatePostMatchAwakening,
 } from './awakeningEngine';
 import { computeSeasonAwards } from './awardsEngine';
-import { createSeasonBudgetState, deductTransferCash } from './budgetEngine';
+import {
+  createSeasonBudgetState,
+  deductTransferCash,
+  getFfpWindowMaxAttempts,
+} from './budgetEngine';
 import { calculateChemistry, calculateTeamRatings } from './chemistryEngine';
 import {
   applyConditionToPlayers,
@@ -640,6 +644,7 @@ function applyPostHumanMatch(params: {
   const awakeningResult = evaluatePostMatchAwakening({
     starters: setup.rawStarters,
     bench: setup.rawBench,
+    formation: squad.formation,
     matchPlayedNumber: prev.history.length + 1,
     round,
     competition,
@@ -1641,9 +1646,11 @@ function stepTransfer(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
     const isWindow2 = trigger.windowIndex === 2;
     const ffpTier = hs.budget?.ffpTier ?? 0;
     const ffpEmbargo = isWindow2 && ffpTier === 2;
-    const attemptsLeft = isWindow2
-      ? (hs.budget?.window2MaxAttempts ?? ATTEMPTS_PER_WINDOW)
-      : ATTEMPTS_PER_WINDOW;
+    const attemptsLeft = getFfpWindowMaxAttempts(
+      hs.budget,
+      trigger.windowIndex,
+      ATTEMPTS_PER_WINDOW,
+    );
 
     let nextStaffCoach = hs.staffCoach;
     if (

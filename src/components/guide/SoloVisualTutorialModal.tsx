@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  CASH_TO_TP_RATE,
   DRAFT_BUDGET_CAP_M,
   FFP_TIER1_MAX_EXCESS_RATIO,
   LEGEND_FLAT_DRAFT_COST_M,
@@ -196,6 +195,10 @@ function Step3Visual() {
   const tier2CapM = Math.floor(
     DRAFT_BUDGET_CAP_M * (1 + FFP_TIER1_MAX_EXCESS_RATIO),
   );
+  const sampleBaseM = 745;
+  const sampleProjectedM = sampleBaseM + LEGEND_FLAT_DRAFT_COST_M;
+  const sampleLeftTier1M = Math.max(0, DRAFT_BUDGET_CAP_M - sampleProjectedM);
+  const sampleLeftTier2M = Math.max(0, tier2CapM - sampleProjectedM);
   return (
     <div className="rounded-xl border border-slate-800/90 bg-[#080d16] p-3.5 sm:p-4 space-y-3">
       {/* Real-Styled In-Game Draft Budget Slider Preview */}
@@ -205,26 +208,26 @@ function Step3Visual() {
             <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
             <span className="font-extrabold text-white">드래프트 예산</span>
             <span className="font-black text-white">
-              €785M <span className="text-slate-400 font-bold">/ €{DRAFT_BUDGET_CAP_M}M</span>
+              €{sampleBaseM}M <span className="text-slate-400 font-bold">/ €{DRAFT_BUDGET_CAP_M}M</span>
             </span>
             <span className="rounded border border-sky-400/55 bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-black text-sky-200 whitespace-nowrap">
-              프리뷰 레전드 +€{LEGEND_FLAT_DRAFT_COST_M}M → €880M
+              프리뷰 레전드 +€{LEGEND_FLAT_DRAFT_COST_M}M → €{sampleProjectedM}M
             </span>
           </div>
           <span className="inline-flex items-center gap-1 rounded border border-emerald-400/40 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-200 whitespace-nowrap">
             <Coins className="w-3 h-3 text-emerald-300" />
-            이월 €70M
+            이월 €{sampleLeftTier1M}M
           </span>
         </div>
         {/* Track with base + sky preview segment + 100% amber & 115% rose markers */}
         <div className="relative h-3 w-full rounded-full bg-slate-900 border border-slate-700/80 overflow-hidden">
           <div
             className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-300"
-            style={{ width: '64%' }}
+            style={{ width: '61%' }}
           />
           <div
             className="absolute inset-y-0 bg-gradient-to-r from-sky-400 to-cyan-300 animate-pulse"
-            style={{ left: '64%', width: '8%' }}
+            style={{ left: '61%', width: '11%' }}
           />
           <div
             className="absolute inset-y-0 w-0.5 bg-amber-300"
@@ -238,10 +241,10 @@ function Step3Visual() {
         <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10px] tabular-nums">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="rounded border border-amber-400/35 bg-amber-500/12 px-1.5 py-0.5 font-bold text-amber-200 whitespace-nowrap">
-              1차 경계(€{DRAFT_BUDGET_CAP_M}M): €70M 남음
+              1차 경계(€{DRAFT_BUDGET_CAP_M}M): €{sampleLeftTier1M}M 남음
             </span>
             <span className="rounded border border-slate-600/60 bg-slate-800/90 px-1.5 py-0.5 font-bold text-slate-200 whitespace-nowrap">
-              2차 경계(€{tier2CapM}M): €212M 남음
+              2차 경계(€{tier2CapM}M): €{sampleLeftTier2M}M 남음
             </span>
           </div>
           <span className="inline-flex items-center gap-1 font-bold text-amber-300 whitespace-nowrap">
@@ -396,9 +399,9 @@ function Step5Visual() {
             </div>
           </div>
           <div className="flex items-center justify-between text-[10px] rounded-lg border border-emerald-500/25 bg-emerald-950/20 px-2.5 py-1.5">
-            <span className="font-bold text-emerald-200">이월 자금 현금 트레이드</span>
-            <span className="font-mono font-black text-emerald-300">
-              €1M = +{CASH_TO_TP_RATE} TP
+            <span className="font-bold text-emerald-200">이월 자금 현금 협상</span>
+            <span className="font-bold text-emerald-300">
+              트레이드·FA 성사율 상승
             </span>
           </div>
         </div>
@@ -449,7 +452,7 @@ function Step5Visual() {
           </div>
 
           <div className="text-[10px] text-slate-400 break-keep">
-            임시 버프가 아닌 <strong className="text-rose-200">순수 OVR 영구 상승</strong> · 세이브·명예의 전당 보존
+            잘 활용하고 활약한 선수의 <strong className="text-rose-200">순수 OVR 영구 상승</strong>
           </div>
         </div>
       </div>
@@ -504,7 +507,7 @@ const TUTORIAL_STEPS: TutorialStepSpec[] = [
     headline: '드래프트부터 트레블까지, 한 시즌 축구 감독 시뮬레이션',
     bullets: [
       '나만의 16인 스쿼드로 5대 리그 · 자국 컵 · 36팀 챔피언스리그 3관왕(트레블)에 도전합니다.',
-      '시즌 종료 후 역대 전설 24팀과 동일 공식으로 점수를 겨루고 명예의 전당에 기록됩니다.',
+      '시즌 종료 후 역대 전설 24팀과 동일 기준으로 점수를 겨루고 명예의 전당에 기록됩니다.',
     ],
     visual: <Step1Visual />,
   },
@@ -513,47 +516,47 @@ const TUTORIAL_STEPS: TutorialStepSpec[] = [
     shortLabel: '2. 감독',
     headline: '14종 감독 특성으로 팀의 축구 철학을 결정',
     bullets: [
-      '구단·포메이션 설정 후 14종 감독 특성 중 원하는 능력을 직접 선택하거나 랜덤으로 배정받습니다.',
-      '감독 궁합 선수는 개인 ★+1 OVR을 받고, 모을수록 팀 A/M/D와 2D 경기 색깔이 뚜렷해집니다.',
+      '구단·포메이션 설정 후 14종 감독 특성 중 원하는 능력을 선택하거나 랜덤 배정받습니다.',
+      '감독 궁합 선수는 ★ 보너스를 받고, 모을수록 팀 전력과 2D 경기 색깔이 뚜렷해집니다.',
     ],
     visual: <Step2Visual />,
   },
   {
     id: 'draft',
-    shortLabel: '3. 예산·드래프트',
-    headline: `3구단 룰렛 · 예산 €${DRAFT_BUDGET_CAP_M}M · 레전드 €${LEGEND_FLAT_DRAFT_COST_M}M 균일가`,
+    shortLabel: '3. 예산·FFP',
+    headline: `예산 €${DRAFT_BUDGET_CAP_M}M · 레전드 €${LEGEND_FLAT_DRAFT_COST_M}M · FFP 주의`,
     bullets: [
-      `후보를 클릭하면 예산 슬라이더에 추가 금액과 1차·2차 경계까지 남은 한도가 실시간 프리뷰됩니다. 남은 예산은 이적시장 현금으로 100% 이월!`,
-      '예산 초과 시 1단계(이월 €0 · 2차 이적 1회 · 케미 -4) / 2단계(+2차 동결 · 패배 사기 추가↓ · 점수 -12%) FFP 페널티가 적용됩니다.',
+      `후보를 클릭하면 예산 바와 남은 한도를 실시간 확인할 수 있으며, 아낀 예산은 시즌 이적 자금으로 이월됩니다.`,
+      '레전드·슈퍼스타를 과도하게 모아 예산을 초과하면 FFP 1·2단계 제재(케미·사기·이적 제한·점수 감점)가 적용되니 균형 있게 구성하세요.',
     ],
     visual: <Step3Visual />,
   },
   {
     id: 'tactics',
     shortLabel: '4. 전술·파훼',
-    headline: `5구역 수싸움 & 최근 ${ADAPTATION_HISTORY_WINDOW}경기 AI 사전 전술 파훼`,
+    headline: `5구역 수싸움 & ${ADAPTATION_HISTORY_WINDOW}경기 반복 시 전술 파훼 타격`,
     bullets: [
-      `동일 포메이션·전술을 약 ${ADAPTATION_HISTORY_WINDOW}경기 연속 반복하면 파훼 경계(${EXPOSURE_DANGER_THRESHOLD}+)에 도달해 스카우팅 팝업이 뜨고, 명장 AI가 프리뷰와 다른 전반 카운터 전술로 대응합니다.`,
-      '포메이션이나 전술 스타일을 1경기라도 변주하면 노출도가 즉시 해소됩니다.',
+      `같은 포메이션·전술을 약 ${ADAPTATION_HISTORY_WINDOW}경기 연속 반복하면 파훼 경계(${EXPOSURE_DANGER_THRESHOLD}+)에 도달해 상위권·명장 AI에게 큰 경기 타격을 입습니다.`,
+      '상대 스타일에 맞춰 포메이션이나 전술을 한 번만 변주해도 노출도가 즉시 해소됩니다.',
     ],
     visual: <Step4Visual />,
   },
   {
     id: 'growth',
     shortLabel: '5. 코치·각성',
-    headline: '반환점 수석 코치 · 현금 트레이드 · 영구 포텐 각성',
+    headline: '반환점 수석 코치 & 잘 살려 쓴 선수의 포텐 각성',
     bullets: [
-      '2차 이적시장 진입 시 12종 수석 코치 중 3명이 추천되며 1명을 선임해 즉시 팀 전력·시스템 보너스를 얻습니다(FFP 동결 중에도 선임 가능).',
-      '실전 활약 선수(레전드 제외)는 영구 순수 OVR +2~+7 각성이 발동하며, 이월된 현금(€M)을 트레이드에 얹어 성사율을 높일 수 있습니다.',
+      '2차 이적시장 진입 시 추천 수석 코치 3명 중 1명을 선임해 후반기 전력을 보강할 수 있습니다(FFP 동결 중에도 선임 가능).',
+      '실전 활약과 시너지·감독 궁합·컨디션·제 포지션 기용을 잘 챙긴 선수(레전드 제외)는 영구 포텐 각성이 발동합니다.',
     ],
     visual: <Step5Visual />,
   },
   {
     id: 'ready',
     shortLabel: '6. 시작',
-    headline: '준비 완료! 상세 공식은 상단 가이드북과 ? 버튼에',
+    headline: '준비 완료! 세부 수치는 상단 가이드북과 ? 버튼에',
     bullets: [
-      '플레이 중 세부 수치가 궁금할 땐 언제든 우상단 [가이드] 또는 화면 곳곳의 ? 아이콘을 눌러 확인하세요.',
+      '플레이 중 정확한 수치가 궁금할 땐 언제든 우상단 [가이드] 또는 화면 곳곳의 ? 아이콘을 눌러 확인하세요.',
       '아래 버튼으로 구단·포메이션 설정을 시작해 트레블을 향해 달려보세요!',
     ],
     visual: <Step6Visual />,
@@ -647,7 +650,7 @@ export function SoloVisualTutorialModal({
         onClick={(e) => e.stopPropagation()}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="modal-panel flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-700/90 bg-[#0e1522] shadow-2xl break-keep"
+        className="modal-panel flex w-full max-w-2xl max-h-[90dvh] flex-col overflow-hidden rounded-2xl border border-slate-700/90 bg-[#0e1522] shadow-2xl break-keep"
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-[#090e16] px-4 sm:px-5 py-3">
@@ -682,9 +685,9 @@ export function SoloVisualTutorialModal({
           </div>
         </div>
 
-        {/* Clickable 5-Step Indicator Bar */}
+        {/* Clickable 6-Step Indicator Bar */}
         <div className="shrink-0 border-b border-slate-800/80 bg-[#0a1019] px-3 sm:px-5 py-2">
-          <div className="grid grid-cols-5 gap-1">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
             {TUTORIAL_STEPS.map((st, idx) => {
               const active = idx === stepIndex;
               const passed = idx < stepIndex;
@@ -709,7 +712,7 @@ export function SoloVisualTutorialModal({
         </div>
 
         {/* Slide Body */}
-        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y px-4 sm:px-6 py-4 sm:py-5 space-y-4">
           <div className="text-center space-y-1">
             <h3 className="text-base sm:text-lg font-black text-white">
               {current.headline}
@@ -753,7 +756,7 @@ export function SoloVisualTutorialModal({
                 type="button"
                 onClick={() => {
                   finishAndExit(false);
-                  openSystemGuide('basics');
+                  openSystemGuide('budget');
                 }}
                 className="hidden sm:inline-flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300 hover:border-sky-400/50 hover:text-sky-200 transition-colors cursor-pointer whitespace-nowrap"
               >

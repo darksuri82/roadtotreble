@@ -5,6 +5,29 @@
 
 ---
 
+## v9.2 — 레전드 €135M 인상 · FFP 1·2단계 강화 · 전술 파훼 타격 상향 · 종합 활용도 각성 · 가이드북 6탭 IA · 모바일 스크롤 수정 · v9.0 이전 기록 전면 초기화
+
+- **레전드 드래프트 가격 인상 & FFP 1·2단계 페널티 강화 (`src/engine/budgetEngine.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueEngine.ts`, `src/components/common/DraftBudgetBar.tsx`, `src/components/common/FfpOpeningNoticeModal.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:
+  - `LEGEND_FLAT_DRAFT_COST_M`을 `€95M` → `€135M`(슈퍼스타 하위권 수준, OVR 90 `€118M` 상회 / OVR 91 `€136M` 동급)으로 인상해 레전드 1명+알짜 주전은 예산 내 가능하되 다수 수집 시 FFP 압박이 확실히 걸리도록 조정.
+  - **FFP 1단계(+1~15%)**: 팀 케미 `-4` → `-8`, 패배 사기 추가 하락 `0` → `-1`, 1차 이적 최대 `3회` → `2회` / 2차 이적 최대 `1회`, 최종 점수 `×1.00(0%)` → `×0.94(-6%)`.
+  - **FFP 2단계(+15%↑)**: 팀 케미 `-4` → `-14`, 패배 사기 추가 하락 `-1` → `-2`, 1차 이적 최대 `3회` → `1회` / 2차 이적 동결(`0회`), 최종 점수 `×0.88(-12%)` → `×0.80(-20%)`.
+  - `getFfpWindowMaxAttempts`·`formatFfpBadgeSummary`·`buildFfpPenaltyHelpItems`를 통해 드래프트 예산 바·FFP 개막 도트 팝업·싱글/멀티 대시보드·이적시장 헤더 표기를 엔진 상수와 100% 일치.
+- **전술 파훼 타격 강화 (`src/engine/tacticalAdaptationEngine.ts`, `src/engine/matchEngine.ts`, `src/engine/pitchSimTypes.ts`, `src/engine/pitchSimEngine.ts`, `src/components/league/PitchMatch2D.tsx`, `src/components/league/LiveMatchBroadcast.tsx`)**:
+  - 8경기 연속 노출도 템포·`위험` 전용 재무장 팝업·AI 감독 OVR 등급별 차등은 유지하면서 노출도 심각도 정규화 기준을 `EXPOSURE_DANGER_THRESHOLD(72)`에 맞춰 보정하고, 최대 타격을 실효 전력 `ATT -2.4 / MID -2.6 / DEF -2.2`, 상성 OVR `-1.4`, xG `+0.28 / -0.24 / -0.14`, 점유율 `-4.0%p` 및 2D 독트린(`tacticalCounterSeverity`)까지 연동 상향(38R × 20시즌 EPL 검증: 고정 `54.9점` vs 변주 `71.0점`, `+16.1점` 격차).
+- **포텐 각성 확률식 고도화 — 종합 활용도 반영 (`src/engine/awakeningEngine.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueEngine.ts`)**:
+  - `computeAwakeningCandidateProbability` 신설: 실제 활약(경기·시즌 평점, 골·도움·클린시트, 출전시간) + 기용 완성도(인접 시너지, 감독 궁합, 사기, 로테이션 혹사·부상 관리, 포메이션 기준 주포지션 적합도)를 종합 반영.
+  - 시즌당 0~2명 중심(`AWAKENING_SECOND_COUNT_MULT = 0.65`, `AWAKENING_THIRD_PLUS_MULT = 0.04`), 레전드 0%, OVR 89+ `×0.04`·`+2` 상한 유지(50시즌 시뮬 검증: `0명 18% / 1명 42% / 2명 38% / 3명+ 2%`, 평균 `1.24명/시즌`, 고활용 `61명` vs 저활용 `1명`).
+- **가이드북 IA 6탭 개편 & 튜토리얼 간결 동기화 (`src/components/guide/guideNavigation.ts`, `src/components/guide/SystemGuideModal.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`, 전역 `?` 도움말 딥링크)**:
+  - 플레이 흐름 기준 6탭(`예산·FFP / 전술·파훼 / 스쿼드·각성 / 이적·코치 / 경기·컨디션 / 명전·멀티`) + 탭 상단 빠른 섹션 점프 칩(`#바로가기`) 도입, 카드·표·배지 중심으로 재구성 및 v9.2 엔진 상수 100% 동기화. 튜토리얼은 세부 공식을 제거하고 초보자 핵심 포인트 위주로 간결 동기화.
+- **수석 코치 모달 & v9.0 모달 모바일 스크롤 오류 근본 수정 (`src/index.css`, `src/components/common/StaffCoachHireModal.tsx`, `src/components/common/TacticalAdaptationModal.tsx`, `src/components/common/AwakeningCelebrationModal.tsx`, `src/components/common/FfpOpeningNoticeModal.tsx`)**:
+  - `.modal-backdrop`의 `touch-action: none` 및 고정 `100dvh` 제거, `.modal-scroll`에 `overflow-y: auto` 부여, 패널 `max-h-[90dvh]` + `shrink-0` header/footer + `flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y` 단일 스크롤 구조로 정비.
+- **v9.0 이전 명전·글로벌 TOP 15 전면 초기화 (`src/types/legacy.ts`, `src/engine/legacyEngine.ts`, `src/services/globalRankingService.ts`, `supabase/schema.sql`, `src/components/legacy/LegacyHubModal.tsx`)**:
+  - 로컬 명전: `loadLegacyState()` 1회성 마이그레이션으로 pre-v9.0 기록 자동 삭제(v9.0+ 마커 보존) 및 `hofSummaryCache` 재계산.
+  - 글로벌 TOP 15: `rule_era` 및 JSON `ruleEra` 스탬프, 조회·컷오프·`submit_global_hof_ranking` RPC에서 pre-v9.0 원천 제외, 운영 DB 일괄 정리용 `DELETE` SQL 수록, 명전·글로벌 탭 상단 1줄 안내 배너 추가.
+- **테스트 (`src/__tests__/v92BalanceAndReset.test.ts` 및 기존 테스트 동기화)**: 레전드 `€135M`·FFP 1/2단계, 38R 전술 파훼 승점 차·2D 독트린, 50시즌 각성 분포·활용도 격차, 모바일 스크롤/가이드북 IA 구조, v9.0 로컬 마이그레이션·글로벌 구버전 차단 전수 검증.
+
+---
+
 ## v9.1 — 전술 파훼 8경기 완화·위험 전용 팝업 · AI 트레이드 주전 기용 수정 · 명장 AI 전반 카운터 연출 · FFP 개막 감사 팝업 · 내 팀 결산 탭 · 튜토리얼·가이드북 개편
 
 - **전술 노출도 8경기 완화 & 위험(파훼 경계) 전용 팝업 (`src/engine/tacticalAdaptationEngine.ts`, `src/components/common/TacticalAdaptationModal.tsx`, `src/components/league/MatchDayTacticsRoom.tsx`)**:

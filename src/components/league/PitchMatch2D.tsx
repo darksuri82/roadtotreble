@@ -56,6 +56,8 @@ export interface PitchMatch2DProps {
   awayEnteredAtMinute?: Record<string, number>;
   homeHalftimeAdjusted?: boolean;
   awayHalftimeAdjusted?: boolean;
+  homeTacticalCounterSeverity?: number;
+  awayTacticalCounterSeverity?: number;
   startMinute: number;
   endMinute: number;
   half: 1 | 2;
@@ -158,6 +160,8 @@ export const PitchMatch2D = memo(function PitchMatch2D({
   awayEnteredAtMinute,
   homeHalftimeAdjusted = false,
   awayHalftimeAdjusted = false,
+  homeTacticalCounterSeverity = 0,
+  awayTacticalCounterSeverity = 0,
   startMinute,
   endMinute,
   half,
@@ -304,6 +308,7 @@ export const PitchMatch2D = memo(function PitchMatch2D({
       managerOvr: homeManagerOvr,
       enteredAtMinute: homeEnteredAtMinute,
       halftimeAdjusted: homeHalftimeAdjusted,
+      tacticalCounterSeverity: homeTacticalCounterSeverity,
     };
     const awayTeamInput: PitchSimTeamInput = {
       formation: awayFormation,
@@ -314,6 +319,7 @@ export const PitchMatch2D = memo(function PitchMatch2D({
       managerOvr: awayManagerOvr,
       enteredAtMinute: awayEnteredAtMinute,
       halftimeAdjusted: awayHalftimeAdjusted,
+      tacticalCounterSeverity: awayTacticalCounterSeverity,
     };
     const t = targetsRef.current;
 
@@ -381,6 +387,8 @@ export const PitchMatch2D = memo(function PitchMatch2D({
     awayEnteredAtMinute,
     homeHalftimeAdjusted,
     awayHalftimeAdjusted,
+    homeTacticalCounterSeverity,
+    awayTacticalCounterSeverity,
     startMinute,
     endMinute,
     half,

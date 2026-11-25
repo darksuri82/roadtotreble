@@ -193,7 +193,7 @@ export function TacticalAdaptationModal({
       onClick={onDismiss}
     >
       <div
-        className={`modal-panel flex w-full max-w-md flex-col rounded-2xl border ${accentBorder} bg-[#0d131c] overflow-hidden`}
+        className={`modal-panel flex w-full max-w-md max-h-[90dvh] flex-col rounded-2xl border ${accentBorder} bg-[#0d131c] overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Pixel-Art Scouting Room Banner */}
@@ -233,7 +233,7 @@ export function TacticalAdaptationModal({
         </div>
 
         {/* Body */}
-        <div className="modal-scroll p-4 space-y-3.5">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y p-4 space-y-3.5">
           {/* Repeated pattern card */}
           <div className="rounded-xl border border-white/10 bg-[#111822]/90 p-3 space-y-2.5">
             <div className="flex items-center justify-between gap-2 text-xs">

@@ -24,11 +24,16 @@ import {
   DRAFT_BUDGET_CAP_M,
   evaluateSquadBudget,
   FFP_TIER1_CHEM_PENALTY,
+  FFP_TIER1_LOSS_MORALE_EXTRA,
   FFP_TIER1_MAX_OVERRUN_PCT,
+  FFP_TIER1_SCORE_MULTIPLIER,
+  FFP_TIER1_WINDOW1_MAX_ATTEMPTS,
   FFP_TIER1_WINDOW2_MAX_ATTEMPTS,
+  FFP_TIER2_CHEM_PENALTY,
   FFP_TIER2_LOSS_MORALE_EXTRA,
   FFP_TIER2_SCORE_MULTIPLIER,
   FFP_TIER2_SCORE_PENALTY_PCT,
+  FFP_TIER2_WINDOW1_MAX_ATTEMPTS,
   FFP_TIER2_WINDOW2_MAX_ATTEMPTS,
   LEGEND_FLAT_DRAFT_COST_M,
 } from '../engine/budgetEngine';
@@ -85,25 +90,23 @@ function createSeededRng(seed: number): () => number {
 }
 
 describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
-  it('assigns every Legend player the exact unified flat cost (€95M), cheaper than active 90+ superstars', () => {
-    expect(LEGEND_FLAT_DRAFT_COST_M).toBe(95);
+  it('assigns every Legend player the exact unified flat cost (€135M), lower-Superstar tier', () => {
+    expect(LEGEND_FLAT_DRAFT_COST_M).toBe(135);
     expect(LEGEND_PLAYERS.length).toBeGreaterThan(20);
 
     for (const legend of LEGEND_PLAYERS) {
       expect(computePlayerDraftCostM(legend)).toBe(LEGEND_FLAT_DRAFT_COST_M);
     }
 
-    const ovr88Cost = computePlayerDraftCostM({ ovr: 88, isLegend: false });
-    const ovr89Cost = computePlayerDraftCostM({ ovr: 89, isLegend: false });
     const ovr90Cost = computePlayerDraftCostM({ ovr: 90, isLegend: false });
     const ovr91Cost = computePlayerDraftCostM({ ovr: 91, isLegend: false });
+    const ovr92Cost = computePlayerDraftCostM({ ovr: 92, isLegend: false });
     const ovr94Cost = computePlayerDraftCostM({ ovr: 94, isLegend: false });
 
-    // Legend flat cost sits cleanly alongside upper-80s stars and strictly below 90+ superstars
-    expect(LEGEND_FLAT_DRAFT_COST_M).toBeGreaterThanOrEqual(ovr88Cost);
-    expect(LEGEND_FLAT_DRAFT_COST_M).toBeLessThanOrEqual(ovr89Cost);
-    expect(LEGEND_FLAT_DRAFT_COST_M).toBeLessThan(ovr90Cost);
-    expect(LEGEND_FLAT_DRAFT_COST_M).toBeLessThan(ovr91Cost);
+    // Legend flat cost sits at lower-Superstar tier (above OVR 90, ~OVR 91, below OVR 92+)
+    expect(LEGEND_FLAT_DRAFT_COST_M).toBeGreaterThan(ovr90Cost);
+    expect(LEGEND_FLAT_DRAFT_COST_M).toBeLessThanOrEqual(ovr91Cost);
+    expect(LEGEND_FLAT_DRAFT_COST_M).toBeLessThan(ovr92Cost);
     expect(ovr91Cost).toBeLessThan(ovr94Cost);
   });
 
@@ -116,8 +119,8 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
     }
   });
 
-  it('allows a realistic title-contender squad (2 Legends + 85~87 core + bench) to fit under €950M cap', () => {
-    const legends = LEGEND_PLAYERS.slice(0, 2); // 2 * 95 = 190
+  it('allows a realistic title-contender squad (1 Legend + 84~87 core + bench) to fit under €950M cap', () => {
+    const legends = LEGEND_PLAYERS.slice(0, 1); // 1 * 135 = 135
     const makeActive = (id: string, ovr: number): Player => ({
       ...ACTIVE_PLAYERS[0],
       id,
@@ -125,7 +128,7 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
       isLegend: false,
     });
     const squad: Player[] = [
-      ...legends, // 190
+      ...legends, // 135
       makeActive('a1', 87), // 77
       makeActive('a2', 87), // 77
       makeActive('a3', 86), // 66
@@ -135,6 +138,7 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
       makeActive('a7', 85), // 56
       makeActive('a8', 85), // 56
       makeActive('a9', 84), // 49
+      makeActive('a10', 84), // 49
       // 5 value bench picks (79..82)
       makeActive('b1', 82), // 36
       makeActive('b2', 81), // 32
@@ -148,6 +152,7 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
     expect(ev.ffpTier).toBe(0);
     expect(ev.remainingM).toBeGreaterThan(0);
     expect(ev.chemPenalty).toBe(0);
+    expect(ev.window1MaxAttempts).toBe(3);
     expect(ev.window2MaxAttempts).toBe(3);
     expect(ev.scoreMultiplier).toBe(1.0);
     expect(ev.extraLossMoraleDrop).toBe(0);
@@ -172,7 +177,8 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
     const tier2Eval = evaluateSquadBudget(highSuperstars);
     expect(tier2Eval.ffpTier).toBe(2);
     expect(tier2Eval.remainingM).toBe(0);
-    expect(tier2Eval.chemPenalty).toBe(-FFP_TIER1_CHEM_PENALTY);
+    expect(tier2Eval.chemPenalty).toBe(-FFP_TIER2_CHEM_PENALTY);
+    expect(tier2Eval.window1MaxAttempts).toBe(FFP_TIER2_WINDOW1_MAX_ATTEMPTS);
     expect(tier2Eval.window2MaxAttempts).toBe(FFP_TIER2_WINDOW2_MAX_ATTEMPTS);
     expect(tier2Eval.scoreMultiplier).toBe(FFP_TIER2_SCORE_MULTIPLIER);
     expect(tier2Eval.extraLossMoraleDrop).toBe(FFP_TIER2_LOSS_MORALE_EXTRA);
@@ -187,8 +193,10 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
     expect(tier1Eval.ffpTier).toBe(1);
     expect(tier1Eval.remainingM).toBe(0);
     expect(tier1Eval.chemPenalty).toBe(-FFP_TIER1_CHEM_PENALTY);
+    expect(tier1Eval.window1MaxAttempts).toBe(FFP_TIER1_WINDOW1_MAX_ATTEMPTS);
     expect(tier1Eval.window2MaxAttempts).toBe(FFP_TIER1_WINDOW2_MAX_ATTEMPTS);
-    expect(tier1Eval.scoreMultiplier).toBe(1.0);
+    expect(tier1Eval.extraLossMoraleDrop).toBe(FFP_TIER1_LOSS_MORALE_EXTRA);
+    expect(tier1Eval.scoreMultiplier).toBe(FFP_TIER1_SCORE_MULTIPLIER);
 
     // Verify FFP Tier 2 -12% penalty applies cleanly in computeSeasonScore
     const baseScoreInput = {
@@ -670,9 +678,9 @@ describe('v9.0 Permanent Potential Awakening', () => {
     expect(JSON.stringify(dbPlayer.attrs ?? null)).toBe(origAttrsJson);
   });
 
-  it('keeps 2nd awakening rate close to 1st (x0.90) and sharply attenuates 3rd+ (x0.15)', () => {
-    expect(AWAKENING_SECOND_COUNT_MULT).toBe(0.9);
-    expect(AWAKENING_THIRD_PLUS_MULT).toBe(0.15);
+  it('keeps 2nd awakening accessible (x0.65) and sharply attenuates 3rd+ (x0.04)', () => {
+    expect(AWAKENING_SECOND_COUNT_MULT).toBe(0.65);
+    expect(AWAKENING_THIRD_PLUS_MULT).toBe(0.04);
 
     const candidate = ACTIVE_PLAYERS.find(
       (p) => !p.isLegend && p.ovr >= 78 && p.ovr <= 84,
@@ -717,13 +725,14 @@ describe('v9.0 Permanent Potential Awakening', () => {
     const hits3rd = runTrials(2);
 
     expect(hits1st).toBeGreaterThan(20);
-    // 2nd should be roughly 0.90x of 1st (no steep drop)
-    expect(hits2nd / hits1st).toBeGreaterThan(0.65);
-    // 3rd+ should be sharply attenuated (~0.15x)
-    expect(hits3rd / hits1st).toBeLessThan(0.32);
+    // 2nd should be roughly 0.65x of 1st
+    expect(hits2nd / hits1st).toBeGreaterThan(0.45);
+    expect(hits2nd / hits1st).toBeLessThan(0.85);
+    // 3rd+ should be near-zero (~0.04x)
+    expect(hits3rd / hits1st).toBeLessThan(0.15);
   });
 
-  it('verifies SystemGuideModal and DraftBudgetBar stay 100% synced with v9.0 constants including Legend flat €95M', async () => {
+  it('verifies SystemGuideModal and DraftBudgetBar stay 100% synced with v9.2 constants including Legend flat €135M', async () => {
     const [{ default: guideSrc }, { default: budgetBarSrc }, { default: tutorialSrc }] =
       await Promise.all([
         import('../components/guide/SystemGuideModal.tsx?raw'),

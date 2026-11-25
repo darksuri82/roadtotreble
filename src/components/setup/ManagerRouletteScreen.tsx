@@ -346,7 +346,7 @@ export function ManagerRouletteScreen() {
                 <InfoHelpButton
                   title="감독 특성 · 궁합 규칙"
                   align="left"
-                  guideTab="chemistry"
+                  guideTab="squad"
                   items={[
                     '빌드업·전술형(8종): 궁합 선수 1~11명 수에 따라 팀 A/M/D 점진 강화 + ★추천 전술 시 추가 보너스',
                     '스페셜리스트(6종): 포지션 유연성·하프타임 전환·후반 조커·빅매치·언더독·세트피스 특화',

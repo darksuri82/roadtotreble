@@ -54,9 +54,11 @@ export interface SeasonScoreBreakdown {
   squadCraftDetails?: string[];
   awardsBonus?: number; // Ballon d'Or, World Best XI, League MVP, League Best XI
   awardsBonusDetails?: string[];
-  /** FFP Tier 2 overspend score reduction (e.g. 12 for -12%) */
+  /** FFP overspend score reduction (e.g. 6 for Tier 1 -6%, 20 for Tier 2 -20%) */
   ffpPenaltyPct?: number;
   ffpPenaltyPoints?: number;
+  /** Rule era marker (e.g. 'v9.0') for post-rebalance ranking eligibility */
+  ruleEra?: string;
   totalScore: number;
   grade: 'S+' | 'S' | 'A+' | 'A' | 'B+' | 'B' | 'C';
 }
@@ -89,6 +91,8 @@ export interface HallOfFameMatchSummary {
 export interface HallOfFameEntry {
   id: string;
   runId?: string;
+  /** Balance rule era marker ('v9.0'+ entries preserved across v9.0 reset migration) */
+  ruleEra?: string;
   completedAt: string;
   userClub: UserClubProfile;
   managerName?: string;
@@ -156,6 +160,7 @@ export interface GlobalSquadSnapshotPlayer {
 }
 
 export interface GlobalSquadSnapshot {
+  ruleEra?: string;
   starters: GlobalSquadSnapshotPlayer[];
   bench: GlobalSquadSnapshotPlayer[];
 }
@@ -163,6 +168,7 @@ export interface GlobalSquadSnapshot {
 export interface GlobalHofRankingEntry {
   id: string;
   runId: string;
+  ruleEra?: string;
   rank: number; // 1..15
   seasonScore: number;
   grade: SeasonScoreBreakdown['grade'];
@@ -233,8 +239,18 @@ export interface DreamMatchRecord {
   lastPlayedAt: string;
 }
 
+export interface LegacyHofSummaryCache {
+  count: number;
+  bestScore: number;
+  trebleCount: number;
+  uclWins: number;
+}
+
 export interface LegacyStorageState {
   version: 1;
+  /** Tracks one-time HOF era migration completion (e.g. 'v9.0') */
+  hofMigrationEra?: string;
+  hofSummaryCache?: LegacyHofSummaryCache;
   hallOfFame: HallOfFameEntry[];
   unlockedAchievements: Record<string, UnlockedAchievementRecord>;
   dreamMatchRecords?: Record<string, DreamMatchRecord>;

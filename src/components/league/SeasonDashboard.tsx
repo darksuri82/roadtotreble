@@ -16,6 +16,10 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
 import {
+  buildFfpPenaltyHelpItems,
+  formatFfpBadgeSummary,
+} from '../../engine/budgetEngine';
+import {
   getMoraleLabel,
   getMoraleTier,
   isPlayerActivelyInjured,
@@ -658,11 +662,9 @@ export function SeasonDashboard() {
                 <span className="inline-flex items-center gap-1">
                   <span
                     title={
-                      season.budgetState.ffpTier === 2
-                        ? 'FFP 2단계 대폭 초과: 이월 €0 · 2차 이적 동결 · 케미 -4 · 패배 사기 추가 하락 · 시즌 점수 -12%'
-                        : season.budgetState.ffpTier === 1
-                          ? 'FFP 1단계 경미 초과: 이월 €0 · 2차 이적 1회 제한 · 팀 케미 -4'
-                          : `이적시장 협상에 얹을 수 있는 잔여 예산 €${season.budgetState.transferCashM}M`
+                      season.budgetState.ffpTier >= 1
+                        ? buildFfpPenaltyHelpItems(season.budgetState).join(' · ')
+                        : `이적시장 협상에 얹을 수 있는 잔여 예산 €${season.budgetState.transferCashM}M`
                     }
                     className={`inline-flex items-center gap-1 rounded border px-1.5 py-px text-[10px] font-bold whitespace-nowrap tabular-nums ${
                       season.budgetState.ffpTier === 2
@@ -672,11 +674,9 @@ export function SeasonDashboard() {
                           : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                     }`}
                   >
-                    {season.budgetState.ffpTier === 2
-                      ? 'FFP 2단계 · 2차 동결 · 케미 -4 · 점수 -12%'
-                      : season.budgetState.ffpTier === 1
-                        ? 'FFP 1단계 · 2차 1회 · 케미 -4'
-                        : `자금 €${season.budgetState.transferCashM}M`}
+                    {season.budgetState.ffpTier >= 1
+                      ? formatFfpBadgeSummary(season.budgetState.ffpTier)
+                      : `자금 €${season.budgetState.transferCashM}M`}
                   </span>
                   {season.budgetState.ffpTier >= 1 && (
                     <InfoHelpButton
@@ -687,23 +687,8 @@ export function SeasonDashboard() {
                       }
                       align="right"
                       size="xs"
-                      guideTab="basics"
-                      items={
-                        season.budgetState.ffpTier === 2
-                          ? [
-                              `초과 지출: €${season.budgetState.initialSpentM}M / 한도 €${season.budgetState.capM}M (+€${season.budgetState.excessM}M)`,
-                              '이월 현금 €0M · 팀 케미 상시 -4 적용',
-                              '2차 이적시장 신규 영입 전면 동결 (0회)',
-                              '경기 패배 시 선수단 사기 추가 하락 (-1단계)',
-                              '명예의 전당 · 글로벌 TOP 15 최종 점수 -12% 감점',
-                            ]
-                          : [
-                              `초과 지출: €${season.budgetState.initialSpentM}M / 한도 €${season.budgetState.capM}M (+€${season.budgetState.excessM}M)`,
-                              '이월 현금 €0M (트레이드 현금 얹기 불가)',
-                              '2차 이적시장 영입 시도 1회로 제한 (3회 → 1회)',
-                              '팀 케미 상시 -4 적용 (시즌 점수 감점은 없음)',
-                            ]
-                      }
+                      guideTab="budget"
+                      items={buildFfpPenaltyHelpItems(season.budgetState)}
                     />
                   )}
                 </span>
@@ -719,7 +704,7 @@ export function SeasonDashboard() {
                 title="시즌 진행 · 자동진행 · 스킵 안내"
                 align="right"
                 size="xs"
-                guideTab="season"
+                guideTab="legacy"
                 items={[
                   '2D 중계: 직접 경기를 관전하며 하프타임(45\') 전술 수싸움 및 최대 5명 교체 지휘',
                   '라이브 자동진행(5/7/9초): 일시정지 후 [2D 경기 중계 입장]으로 멈춘 분 그대로 난입 가능',

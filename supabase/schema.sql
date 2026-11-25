@@ -227,9 +227,13 @@ create table if not exists public.global_hof_rankings (
   manager_avatar jsonb not null default '{}'::jsonb,
   score_breakdown jsonb not null default '{}'::jsonb,
   squad_snapshot jsonb not null default '{}'::jsonb,
+  rule_era text not null default 'v9.0',
   achieved_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
+
+alter table public.global_hof_rankings
+  add column if not exists rule_era text;
 
 create index if not exists idx_global_hof_rankings_order
   on public.global_hof_rankings (
@@ -256,6 +260,7 @@ set search_path = public
 as $$
 declare
   v_run_id text;
+  v_rule_era text;
   v_score int;
   v_is_treble boolean;
   v_ucl_won boolean;
@@ -274,6 +279,12 @@ declare
   v_team_avg_ovr numeric(4,1);
 begin
   v_run_id := trim(coalesce(p_entry->>'run_id', ''));
+  v_rule_era := coalesce(
+    nullif(trim(coalesce(p_entry->>'rule_era', '')), ''),
+    nullif(trim(coalesce(p_entry->'score_breakdown'->>'ruleEra', '')), ''),
+    nullif(trim(coalesce(p_entry->'squad_snapshot'->>'ruleEra', '')), ''),
+    ''
+  );
   v_score := coalesce((p_entry->>'season_score')::int, -1);
   v_is_treble := coalesce((p_entry->>'is_treble')::boolean, false);
   v_ucl_won := coalesce((p_entry->>'ucl_won')::boolean, false);
@@ -282,6 +293,9 @@ begin
 
   if v_run_id = '' or length(v_run_id) > 120 then
     raise exception 'Invalid run_id';
+  end if;
+  if lower(v_rule_era) !~ '^v(9|[1-9][0-9]+)(\.|$)' then
+    raise exception 'Pre-v9.0 records are not eligible for global rankings';
   end if;
   if v_score < 0 or v_score > 15000 then
     raise exception 'Invalid season_score';
@@ -328,7 +342,18 @@ begin
   -- Serialize concurrent submissions to eliminate Top-15 race conditions
   perform pg_advisory_xact_lock(hashtext('global_hof_rankings_top15'));
 
-  -- 1) Duplicate run_id guard
+  -- 0) Auto-purge any residual pre-v9.0 rows so cutoff and Top-15 remain strictly v9.0+
+  delete from public.global_hof_rankings
+  where lower(
+    coalesce(
+      nullif(trim(rule_era), ''),
+      nullif(trim(score_breakdown->>'ruleEra'), ''),
+      nullif(trim(squad_snapshot->>'ruleEra'), ''),
+      ''
+    )
+  ) !~ '^v(9|[1-9][0-9]+)(\.|$)';
+
+  -- 1) Duplicate run_id guard (v9.0+ scope)
   select ranked.rk into v_existing_rank
   from (
     select run_id,
@@ -353,7 +378,7 @@ begin
     );
   end if;
 
-  -- 2) Pre-check against 15th cutoff when table already has 15+ entries
+  -- 2) Pre-check against 15th cutoff when table already has 15+ v9.0+ entries
   select count(*) into v_total_before from public.global_hof_rankings;
   if v_total_before >= 15 then
     select season_score, is_treble, ucl_won, achieved_at
@@ -379,7 +404,7 @@ begin
     end if;
   end if;
 
-  -- 3) Insert qualifying record
+  -- 3) Insert qualifying v9.0+ record
   insert into public.global_hof_rankings (
     run_id, season_score, grade, club_name, manager_name,
     league_id, league_korean_name, final_league_rank, league_points, league_total_rounds,
@@ -387,7 +412,7 @@ begin
     is_league_champion, is_treble, trophies, formation, default_tactic,
     manager_trait_id, manager_rating, team_avg_ovr, chemistry,
     avg_synergy_ovr_bonus, manager_synergy_count, top_scorer_summary,
-    club_profile, manager_avatar, score_breakdown, squad_snapshot, achieved_at
+    club_profile, manager_avatar, score_breakdown, squad_snapshot, rule_era, achieved_at
   ) values (
     v_run_id,
     v_score,
@@ -421,6 +446,7 @@ begin
     coalesce(p_entry->'manager_avatar', '{}'::jsonb),
     coalesce(p_entry->'score_breakdown', '{}'::jsonb),
     p_entry->'squad_snapshot',
+    v_rule_era,
     v_achieved_at
   );
 
@@ -462,9 +488,17 @@ $$;
 
 grant execute on function public.submit_global_hof_ranking(jsonb) to anon, authenticated;
 
--- Optional one-time cleanup for legacy exploit rows (>5 starter legends or >6 total legends):
+-- =============================================================================
+-- v9.2 Production One-Time Cleanup SQL (Run in Supabase SQL Editor)
+-- Permanently deletes all pre-v9.0 legacy rows lacking a v9.0+ rule_era marker:
+-- =============================================================================
+-- alter table public.global_hof_rankings add column if not exists rule_era text;
 -- delete from public.global_hof_rankings
--- where (
---   select count(*) from jsonb_array_elements(squad_snapshot->'starters') e
---   where e->>'isLegend' = 'true'
--- ) > 5;
+-- where lower(
+--   coalesce(
+--     nullif(trim(rule_era), ''),
+--     nullif(trim(score_breakdown->>'ruleEra'), ''),
+--     nullif(trim(squad_snapshot->>'ruleEra'), ''),
+--     ''
+--   )
+-- ) !~ '^v(9|[1-9][0-9]+)(\.|$)';

@@ -149,11 +149,20 @@ export function evaluateTacticalExposure(params: {
   };
 }
 
+export const ADAPTATION_MAX_ATT_PENALTY = 2.4;
+export const ADAPTATION_MAX_MID_PENALTY = 2.6;
+export const ADAPTATION_MAX_DEF_PENALTY = 2.2;
+export const ADAPTATION_MAX_AI_XG_BONUS = 0.28;
+export const ADAPTATION_MAX_USER_XG_PENALTY = 0.24;
+export const ADAPTATION_MAX_AI_OPP_XG_PENALTY = 0.14;
+export const ADAPTATION_MAX_POSSESSION_PENALTY = 4.0;
+export const ADAPTATION_MAX_MATCHUP_OVR_PENALTY = 1.4;
+
 export interface AiPreMatchCounterEvaluation {
   exposureScore: number;
   tier: TacticalExposureTier;
   aiManagerOvr: number;
-  aiIntelScale: number; // 0.15 .. 1.00
+  aiIntelScale: number; // 0.14 .. 1.00
   counterStrength: number; // 0 .. 1.00
   responseLevelLabel: '없음' | '제한적' | '맞춤 대응' | '정밀 파훼';
   /** Optional counter tactic the AI manager deploys against the user's predictable style */
@@ -166,15 +175,42 @@ export interface AiPreMatchCounterEvaluation {
   userAttPenalty: number;
   userMidPenalty: number;
   userDefPenalty: number;
-  /** Opponent xG boost & user xG suppression */
+  /** Opponent xG boost, user xG suppression & opponent defensive organization bonus */
   aiXgBonus: number;
   userXgPenalty: number;
+  aiOppXgPenalty: number;
+  /** Possession loss (%) & tactical matchup OVR shift applied against the user */
+  possessionPenalty: number;
+  matchupOvrPenalty: number;
+}
+
+/**
+ * Derives a normalized 0..1 counter severity for 2D pitch simulation doctrine adjustments.
+ */
+export function computePitchCounterSeverity(
+  exposureScore: number,
+  aiManagerOvr: number,
+): number {
+  if (exposureScore < EXPOSURE_WARNING_THRESHOLD) return 0;
+  const aiIntelScale = clamp((aiManagerOvr - 72) / 18, 0.14, 1.0);
+  const severity = clamp(
+    (exposureScore - 36) / (EXPOSURE_DANGER_THRESHOLD - 36),
+    0,
+    1.0,
+  );
+  const eliteDangerBoost =
+    exposureScore >= EXPOSURE_DANGER_THRESHOLD &&
+    aiManagerOvr >= ELITE_AI_COUNTER_OVR_THRESHOLD
+      ? 1.15
+      : 1.0;
+  return round2(clamp(severity * aiIntelScale * eliteDangerBoost, 0, 1.0));
 }
 
 /**
  * Evaluates how strongly an AI manager counters the user's repeated pattern before/during the 1st half.
  * Scales directly with `aiManager.ovr` (from `aiManagers.ts`) so elite tacticians (OVR 85+)
- * punish rigid patterns decisively with unpredicted counter tactics while lower-table coaches (OVR <= 79) react only mildly.
+ * punish rigid patterns decisively with unpredicted counter tactics and steep match penalties,
+ * while lower-table coaches (OVR <= 79) react only mildly.
  */
 export function evaluateAiPreMatchCounter(params: {
   exposure: TacticalExposureEvaluation;
@@ -185,7 +221,7 @@ export function evaluateAiPreMatchCounter(params: {
 }): AiPreMatchCounterEvaluation {
   const { exposure, userTactic, aiDefaultTactic, aiManager, rng } = params;
   const aiManagerOvr = aiManager.ovr;
-  const aiIntelScale = round2(clamp((aiManagerOvr - 71) / 21, 0.15, 1.0));
+  const aiIntelScale = round2(clamp((aiManagerOvr - 72) / 18, 0.14, 1.0));
 
   if (exposure.exposureScore < EXPOSURE_WARNING_THRESHOLD) {
     return {
@@ -203,11 +239,28 @@ export function evaluateAiPreMatchCounter(params: {
       userDefPenalty: 0,
       aiXgBonus: 0,
       userXgPenalty: 0,
+      aiOppXgPenalty: 0,
+      possessionPenalty: 0,
+      matchupOvrPenalty: 0,
     };
   }
 
-  const severity = clamp((exposure.exposureScore - 35) / 65, 0, 1);
-  const counterStrength = round2(severity * aiIntelScale);
+  // Normalize against the real 8-match danger threshold (72) so 8 consecutive matches hits full severity
+  const baseSeverity = clamp(
+    (exposure.exposureScore - 36) / (EXPOSURE_DANGER_THRESHOLD - 36),
+    0,
+    1.0,
+  );
+  // Elite tacticians (OVR 85+) apply an extra sharp tactical-read multiplier once pattern enters 'danger'
+  const eliteDangerMult =
+    exposure.tier === 'danger' && aiManagerOvr >= ELITE_AI_COUNTER_OVR_THRESHOLD
+      ? 1.15
+      : exposure.tier === 'danger' && aiManagerOvr >= 81
+        ? 1.06
+        : 1.0;
+  const counterStrength = round2(
+    clamp(baseSeverity * aiIntelScale * eliteDangerMult, 0, 1.0),
+  );
 
   // Determine whether the AI switches its 1st-half tactic to counter the user's predictable style
   const idealCounter = getBestCounterTactic(userTactic);
@@ -219,20 +272,20 @@ export function evaluateAiPreMatchCounter(params: {
     let switchProb = 0;
     if (aiManagerOvr >= 88) {
       switchProb = clamp(
-        (exposure.tier === 'danger' ? 0.78 : 0.48) + counterStrength * 0.25,
-        0.48,
-        0.96,
+        (exposure.tier === 'danger' ? 0.86 : 0.52) + counterStrength * 0.14,
+        0.52,
+        0.98,
       );
     } else if (aiManagerOvr >= ELITE_AI_COUNTER_OVR_THRESHOLD) {
       switchProb = clamp(
-        (exposure.tier === 'danger' ? 0.62 : 0.36) + counterStrength * 0.28,
-        0.36,
-        0.86,
+        (exposure.tier === 'danger' ? 0.72 : 0.40) + counterStrength * 0.20,
+        0.40,
+        0.92,
       );
     } else if (aiManagerOvr >= 81) {
-      switchProb = clamp(0.26 + counterStrength * 0.38, 0.26, 0.68);
+      switchProb = clamp(0.28 + counterStrength * 0.44, 0.28, 0.74);
     } else {
-      switchProb = clamp(0.06 + counterStrength * 0.18, 0.06, 0.22);
+      switchProb = clamp(0.06 + counterStrength * 0.18, 0.06, 0.24);
     }
     const roll = rng ? rng() : counterStrength >= 0.42 ? 0.2 : 0.8;
     if (roll < switchProb) {
@@ -249,11 +302,14 @@ export function evaluateAiPreMatchCounter(params: {
     }
   }
 
-  const userAttPenalty = -round2(counterStrength * 1.35);
-  const userMidPenalty = -round2(counterStrength * 1.35);
-  const userDefPenalty = -round2(counterStrength * 1.15);
-  const aiXgBonus = round2(counterStrength * 0.14);
-  const userXgPenalty = round2(counterStrength * 0.12);
+  const userAttPenalty = -round2(counterStrength * ADAPTATION_MAX_ATT_PENALTY);
+  const userMidPenalty = -round2(counterStrength * ADAPTATION_MAX_MID_PENALTY);
+  const userDefPenalty = -round2(counterStrength * ADAPTATION_MAX_DEF_PENALTY);
+  const aiXgBonus = round2(counterStrength * ADAPTATION_MAX_AI_XG_BONUS);
+  const userXgPenalty = round2(counterStrength * ADAPTATION_MAX_USER_XG_PENALTY);
+  const aiOppXgPenalty = round2(counterStrength * ADAPTATION_MAX_AI_OPP_XG_PENALTY);
+  const possessionPenalty = round2(counterStrength * ADAPTATION_MAX_POSSESSION_PENALTY);
+  const matchupOvrPenalty = round2(counterStrength * ADAPTATION_MAX_MATCHUP_OVR_PENALTY);
 
   const responseLevelLabel: AiPreMatchCounterEvaluation['responseLevelLabel'] =
     counterStrength >= 0.62
@@ -277,6 +333,9 @@ export function evaluateAiPreMatchCounter(params: {
     userDefPenalty,
     aiXgBonus,
     userXgPenalty,
+    aiOppXgPenalty,
+    possessionPenalty,
+    matchupOvrPenalty,
   };
 }
 

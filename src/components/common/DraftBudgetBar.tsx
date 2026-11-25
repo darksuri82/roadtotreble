@@ -4,9 +4,16 @@ import {
   DRAFT_BUDGET_CAP_M,
   evaluateSquadBudget,
   FFP_TIER1_CHEM_PENALTY,
+  FFP_TIER1_LOSS_MORALE_EXTRA,
   FFP_TIER1_MAX_EXCESS_RATIO,
   FFP_TIER1_MAX_OVERRUN_PCT,
+  FFP_TIER1_SCORE_PENALTY_PCT,
+  FFP_TIER1_WINDOW1_MAX_ATTEMPTS,
+  FFP_TIER1_WINDOW2_MAX_ATTEMPTS,
+  FFP_TIER2_CHEM_PENALTY,
+  FFP_TIER2_LOSS_MORALE_EXTRA,
   FFP_TIER2_SCORE_PENALTY_PCT,
+  FFP_TIER2_WINDOW1_MAX_ATTEMPTS,
   LEGEND_FLAT_DRAFT_COST_M,
 } from '../../engine/budgetEngine';
 import type { Player } from '../../types/player';
@@ -146,12 +153,12 @@ export function DraftBudgetBar({
           <InfoHelpButton
             title="드래프트 예산 & FFP 소프트 캡"
             align="right"
-            guideTab="basics"
+            guideTab="budget"
             items={[
               `16인 총 예산 상한은 €${DRAFT_BUDGET_CAP_M}M입니다. 남은 예산은 시즌 이적시장 현금 협상 자금으로 100% 이월됩니다.`,
-              `레전드는 전원 €${LEGEND_FLAT_DRAFT_COST_M}M 균일가이며, 현역 90+ 슈퍼스타는 누진 몸값이 적용됩니다.`,
-              `1단계 초과 (+1%~+${FFP_TIER1_MAX_OVERRUN_PCT}%): 이월 자금 €0, 2차 이적시장 영입 1회 제한, 팀 케미 -${FFP_TIER1_CHEM_PENALTY}.`,
-              `2단계 초과 (+${FFP_TIER1_MAX_OVERRUN_PCT}% 초과): 1단계 페널티 + 2차 이적시장 선수 영입 동결, 패배 시 사기 하락 증가, 시즌 최종 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}% 감점.`,
+              `레전드는 전원 €${LEGEND_FLAT_DRAFT_COST_M}M 균일가(슈퍼스타 하위권 수준)이며, 다수 수집 시 FFP 압박이 커집니다.`,
+              `1단계 초과 (+1%~+${FFP_TIER1_MAX_OVERRUN_PCT}%): 이월 €0 · 1차 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회/2차 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 제한 · 팀 케미 -${FFP_TIER1_CHEM_PENALTY} · 패배 사기 -${FFP_TIER1_LOSS_MORALE_EXTRA} 추가 · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%.`,
+              `2단계 초과 (+${FFP_TIER1_MAX_OVERRUN_PCT}% 초과): 이월 €0 · 1차 ${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회/2차 동결 · 팀 케미 -${FFP_TIER2_CHEM_PENALTY} · 패배 사기 -${FFP_TIER2_LOSS_MORALE_EXTRA} 추가 · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%.`,
             ]}
           />
         </div>
@@ -217,8 +224,8 @@ export function DraftBudgetBar({
           {activeTier > 0 && (
             <span className="text-[11px] font-bold text-rose-300 break-keep">
               {activeTier === 1
-                ? `FFP 1단계: 이월 €0 · 2차 이적 1회 제한 · 팀 케미 -${FFP_TIER1_CHEM_PENALTY}`
-                : `FFP 2단계: 2차 이적 동결 · 패배 사기 추가 하락 · 랭킹 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%`}
+                ? `FFP 1단계: 1차 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회/2차 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 · 케미 -${FFP_TIER1_CHEM_PENALTY} · 사기 -${FFP_TIER1_LOSS_MORALE_EXTRA} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%`
+                : `FFP 2단계: 1차 ${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회/2차 동결 · 케미 -${FFP_TIER2_CHEM_PENALTY} · 사기 -${FFP_TIER2_LOSS_MORALE_EXTRA} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%`}
             </span>
           )}
         </div>

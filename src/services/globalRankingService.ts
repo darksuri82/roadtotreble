@@ -4,7 +4,12 @@ import { getPlayerAttributes } from '../engine/attributeEngine';
 import { applyAwakeningToPlayer, isValidAwakeningRecord } from '../engine/awakeningEngine';
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
 import { ACTIVE_PLAYERS, LEGEND_PLAYERS } from '../engine/dataLoader';
-import { reconstructHallOfFameSquad } from '../engine/legacyEngine';
+import {
+  HOF_RULE_ERA_V9,
+  isV9EraHofEntry,
+  isV9PlusRuleEra,
+  reconstructHallOfFameSquad,
+} from '../engine/legacyEngine';
 import { TACTICS } from '../engine/tacticEngine';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabaseClient';
 import type {
@@ -26,7 +31,22 @@ import type {
 import type { Player, PlaystyleId, Position, SubPosition } from '../types/player';
 
 export const GLOBAL_TOP15_LIMIT = 15;
+export const GLOBAL_RANKING_RULE_ERA = HOF_RULE_ERA_V9;
 const CELEBRATED_RUNS_STORAGE_KEY = 'rtt_global_top15_celebrated_v1';
+
+export function isV9EraGlobalEntry(
+  entry:
+    | Pick<GlobalHofRankingEntry, 'ruleEra' | 'scoreBreakdown' | 'squadSnapshot'>
+    | null
+    | undefined,
+): boolean {
+  if (!entry) return false;
+  return (
+    isV9PlusRuleEra(entry.ruleEra) ||
+    isV9PlusRuleEra(entry.scoreBreakdown?.ruleEra) ||
+    isV9PlusRuleEra(entry.squadSnapshot?.ruleEra)
+  );
+}
 
 const REAL_PLAYERS_BY_ID: Map<string, Player> = (() => {
   const map = new Map<string, Player>();
@@ -126,7 +146,8 @@ export function sortGlobalRankingEntries<
 
 /**
  * Pure mirror of the PostgreSQL `submit_global_hof_ranking` Top-15 cap & auto-prune rules.
- * Keeps at most 15 entries, prevents duplicate `runId`, and prunes rank 16+.
+ * Excludes all pre-v9.0 entries from ranking & cutoff, keeps at most 15 v9.0+ entries,
+ * prevents duplicate `runId`, and prunes rank 16+.
  */
 export function applyTop15RankingLogic(
   existing: readonly GlobalHofRankingEntry[],
@@ -135,15 +156,33 @@ export function applyTop15RankingLogic(
   nextEntries: GlobalHofRankingEntry[];
   result: GlobalRankingSubmitResult;
 } {
-  const orderedExisting = sortGlobalRankingEntries(existing);
+  const validExisting = existing.filter((e) => isV9EraGlobalEntry(e));
+  const orderedExisting = sortGlobalRankingEntries(validExisting);
+  const existingCutoff =
+    orderedExisting.length >= GLOBAL_TOP15_LIMIT
+      ? orderedExisting[GLOBAL_TOP15_LIMIT - 1].seasonScore
+      : orderedExisting.length > 0
+        ? orderedExisting[orderedExisting.length - 1].seasonScore
+        : null;
+
+  if (!isV9EraGlobalEntry(candidate)) {
+    return {
+      nextEntries: orderedExisting,
+      result: {
+        ok: false,
+        entered: false,
+        rank: null,
+        alreadyExists: false,
+        cutoffScore: existingCutoff,
+        totalCount: orderedExisting.length,
+        prunedCount: 0,
+        error: 'v9.0 이전 구버전 기록은 글로벌 TOP 15에 등록할 수 없습니다.',
+      },
+    };
+  }
+
   const existingFound = orderedExisting.find((e) => e.runId === candidate.runId);
   if (existingFound) {
-    const cutoff =
-      orderedExisting.length >= GLOBAL_TOP15_LIMIT
-        ? orderedExisting[GLOBAL_TOP15_LIMIT - 1].seasonScore
-        : orderedExisting.length > 0
-          ? orderedExisting[orderedExisting.length - 1].seasonScore
-          : null;
     return {
       nextEntries: orderedExisting,
       result: {
@@ -151,7 +190,7 @@ export function applyTop15RankingLogic(
         entered: existingFound.rank <= GLOBAL_TOP15_LIMIT,
         rank: existingFound.rank,
         alreadyExists: true,
-        cutoffScore: cutoff,
+        cutoffScore: existingCutoff,
         totalCount: orderedExisting.length,
         prunedCount: 0,
       },
@@ -240,7 +279,13 @@ export function buildSquadSnapshotFromHofEntry(
     .slice(0, 5)
     .map((p) => serializePlayerForSnapshot(p, statsById.get(p.id)));
 
-  return { starters, bench };
+  const ruleEra = isV9PlusRuleEra(entry.ruleEra)
+    ? entry.ruleEra
+    : isV9PlusRuleEra(entry.seasonScore?.ruleEra)
+      ? entry.seasonScore.ruleEra
+      : GLOBAL_RANKING_RULE_ERA;
+
+  return { ruleEra, starters, bench };
 }
 
 function rebuildPlayerFromSnapshot(
@@ -461,9 +506,15 @@ export function buildGlobalClubForMatch(
 export function buildGlobalSubmissionPayload(entry: HallOfFameEntry) {
   const runId = (entry.runId ?? entry.id).trim();
   const squadSnapshot = buildSquadSnapshotFromHofEntry(entry);
+  const ruleEra = isV9PlusRuleEra(entry.ruleEra)
+    ? entry.ruleEra!
+    : isV9PlusRuleEra(entry.seasonScore?.ruleEra)
+      ? entry.seasonScore.ruleEra!
+      : GLOBAL_RANKING_RULE_ERA;
 
   return {
     run_id: runId,
+    rule_era: ruleEra,
     season_score: Math.round(entry.seasonScore.totalScore),
     grade: entry.seasonScore.grade,
     club_name: entry.userClub.name,
@@ -493,15 +544,16 @@ export function buildGlobalSubmissionPayload(entry: HallOfFameEntry) {
     top_scorer_summary: entry.topScorerSummary || '-',
     club_profile: entry.userClub,
     manager_avatar: entry.managerAvatar ?? DEFAULT_MANAGER_AVATAR,
-    score_breakdown: entry.seasonScore,
-    squad_snapshot: squadSnapshot,
+    score_breakdown: { ...entry.seasonScore, ruleEra },
+    squad_snapshot: { ...squadSnapshot, ruleEra },
     achieved_at: entry.completedAt,
   };
 }
 
-interface RawGlobalRankingRow {
+export interface RawGlobalRankingRow {
   id: string;
   run_id: string;
+  rule_era?: string | null;
   season_score: number;
   grade: string;
   club_name: string;
@@ -606,9 +658,37 @@ function sanitizeScoreBreakdown(
     awardsBonusDetails: Array.isArray(obj.awardsBonusDetails)
       ? obj.awardsBonusDetails.map(String)
       : [],
+    ...(typeof obj.ffpPenaltyPct === 'number' && obj.ffpPenaltyPct > 0
+      ? {
+          ffpPenaltyPct: obj.ffpPenaltyPct,
+          ffpPenaltyPoints: Number(obj.ffpPenaltyPoints) || 0,
+        }
+      : {}),
+    ...(typeof obj.ruleEra === 'string' ? { ruleEra: obj.ruleEra } : {}),
     totalScore: Number(obj.totalScore) || fallbackScore,
     grade: (obj.grade as SeasonScoreBreakdown['grade']) ?? fallbackGrade,
   };
+}
+
+function extractRawRowRuleEra(row: RawGlobalRankingRow): string | undefined {
+  if (typeof row.rule_era === 'string' && row.rule_era.trim()) {
+    return row.rule_era.trim();
+  }
+  const sb =
+    row.score_breakdown && typeof row.score_breakdown === 'object'
+      ? (row.score_breakdown as { ruleEra?: unknown })
+      : null;
+  if (sb && typeof sb.ruleEra === 'string' && sb.ruleEra.trim()) {
+    return sb.ruleEra.trim();
+  }
+  const snap =
+    row.squad_snapshot && typeof row.squad_snapshot === 'object'
+      ? (row.squad_snapshot as { ruleEra?: unknown })
+      : null;
+  if (snap && typeof snap.ruleEra === 'string' && snap.ruleEra.trim()) {
+    return snap.ruleEra.trim();
+  }
+  return undefined;
 }
 
 function mapRawRowToEntry(
@@ -624,9 +704,11 @@ function mapRawRowToEntry(
     row.squad_snapshot && typeof row.squad_snapshot === 'object'
       ? (row.squad_snapshot as Partial<GlobalSquadSnapshot>)
       : {};
+  const ruleEra = extractRawRowRuleEra(row);
   return {
     id: row.id,
     runId: row.run_id,
+    ...(ruleEra ? { ruleEra } : {}),
     rank,
     seasonScore: Number(row.season_score) || 0,
     grade,
@@ -668,11 +750,33 @@ function mapRawRowToEntry(
       grade,
     ),
     squadSnapshot: {
+      ...(typeof rawSnap.ruleEra === 'string' ? { ruleEra: rawSnap.ruleEra } : {}),
       starters: Array.isArray(rawSnap.starters) ? rawSnap.starters : [],
       bench: Array.isArray(rawSnap.bench) ? rawSnap.bench : [],
     },
     achievedAt: row.achieved_at || new Date().toISOString(),
   };
+}
+
+/**
+ * Filters raw Supabase rows to ONLY v9.0+ rule-era entries, sorts deterministically,
+ * caps at TOP 15, and computes cutoffScore excluding any pre-v9.0 rows.
+ */
+export function filterAndRankV9GlobalRows(rows: readonly RawGlobalRankingRow[]): {
+  entries: GlobalHofRankingEntry[];
+  cutoffScore: number | null;
+} {
+  const mappedValid = rows
+    .filter((row) => isV9PlusRuleEra(extractRawRowRuleEra(row)))
+    .map((row, idx) => mapRawRowToEntry(row, idx + 1));
+  const entries = sortGlobalRankingEntries(mappedValid);
+  const cutoffScore =
+    entries.length >= GLOBAL_TOP15_LIMIT
+      ? entries[GLOBAL_TOP15_LIMIT - 1].seasonScore
+      : entries.length > 0
+        ? entries[entries.length - 1].seasonScore
+        : null;
+  return { entries, cutoffScore };
 }
 
 export interface FetchGlobalTop15Result {
@@ -713,7 +817,7 @@ export async function fetchGlobalTop15Rankings(): Promise<FetchGlobalTop15Result
       .order('ucl_won', { ascending: false })
       .order('achieved_at', { ascending: true })
       .order('id', { ascending: true })
-      .limit(GLOBAL_TOP15_LIMIT);
+      .limit(50);
 
     if (error) {
       return {
@@ -726,13 +830,7 @@ export async function fetchGlobalTop15Rankings(): Promise<FetchGlobalTop15Result
     }
 
     const rows = (data ?? []) as RawGlobalRankingRow[];
-    const entries = rows.map((row, idx) => mapRawRowToEntry(row, idx + 1));
-    const cutoffScore =
-      entries.length >= GLOBAL_TOP15_LIMIT
-        ? entries[GLOBAL_TOP15_LIMIT - 1].seasonScore
-        : entries.length > 0
-          ? entries[entries.length - 1].seasonScore
-          : null;
+    const { entries, cutoffScore } = filterAndRankV9GlobalRows(rows);
 
     return {
       ok: true,
@@ -756,13 +854,19 @@ export const MAX_GLOBAL_HOF_TOTAL_LEGENDS = 6;
 export const MAX_GLOBAL_HOF_TEAM_AVG_OVR = 96.5;
 
 /**
- * Validates that a Hall of Fame squad snapshot is free of duplicate players,
+ * Validates that a Hall of Fame squad snapshot is v9.0+ eligible and free of duplicate players,
  * tampered OVR, or impossible Legend-spam rosters before global TOP 15 submission.
  */
 export function validateGlobalHofEntryIntegrity(entry: HallOfFameEntry): {
   valid: boolean;
   reason?: string;
 } {
+  if (!isV9EraHofEntry(entry)) {
+    return {
+      valid: false,
+      reason: 'v9.0 이전 구버전 기록은 글로벌 TOP 15에 등록할 수 없습니다.',
+    };
+  }
   const payload = buildGlobalSubmissionPayload(entry);
   const starters = payload.squad_snapshot.starters;
   const bench = payload.squad_snapshot.bench;

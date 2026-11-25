@@ -8,9 +8,16 @@ import {
 import { useEffect } from 'react';
 import {
   FFP_TIER1_CHEM_PENALTY,
+  FFP_TIER1_LOSS_MORALE_EXTRA,
   FFP_TIER1_MAX_OVERRUN_PCT,
+  FFP_TIER1_SCORE_PENALTY_PCT,
+  FFP_TIER1_WINDOW1_MAX_ATTEMPTS,
   FFP_TIER1_WINDOW2_MAX_ATTEMPTS,
+  FFP_TIER2_CHEM_PENALTY,
+  FFP_TIER2_LOSS_MORALE_EXTRA,
   FFP_TIER2_SCORE_PENALTY_PCT,
+  FFP_TIER2_WINDOW1_MAX_ATTEMPTS,
+  FFP_TIER2_WINDOW2_MAX_ATTEMPTS,
 } from '../../engine/budgetEngine';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type {
@@ -206,17 +213,18 @@ export function FfpOpeningNoticeModal({
           detail: '잔여 예산 없음 — 트레이드 현금 얹기 불가',
         },
         {
-          label: `팀 케미 상시 -${FFP_TIER1_CHEM_PENALTY}`,
-          detail: '시즌 내내 구단 재정 압박으로 팀 케미스트리 감점',
-        },
-        {
-          label: '2차 이적시장 영입 전면 동결',
-          detail: '시즌 반환점(2차 이적시장) 신규 선수 영입 시도 0회 제한',
+          label: `팀 케미 상시 -${FFP_TIER2_CHEM_PENALTY}`,
+          detail: '시즌 내내 구단 재정 징계로 팀 케미스트리 대폭 감점',
           severe: true,
         },
         {
-          label: '패배 시 사기 추가 하락 (-1단계)',
-          detail: '경기 패배 시 선수단 사기 하락폭이 일반 구단보다 크게 적용',
+          label: `1차 이적 ${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회 제한 · 2차 영입 전면 동결 (${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회)`,
+          detail: '1차 이적시장 시도 축소 및 반환점 2차 이적시장 신규 영입 전면 금지',
+          severe: true,
+        },
+        {
+          label: `패배 시 사기 추가 하락 (-${FFP_TIER2_LOSS_MORALE_EXTRA}단계)`,
+          detail: '경기 패배 시 선수단 사기 하락폭이 크게 가중 적용',
           severe: true,
         },
         {
@@ -231,12 +239,20 @@ export function FfpOpeningNoticeModal({
           detail: '잔여 예산 없음 — 트레이드 현금 얹기 불가',
         },
         {
-          label: `2차 이적시장 영입 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 제한`,
-          detail: '시즌 반환점(2차 이적시장) 영입 시도 횟수 3회 → 1회 축소',
+          label: `팀 케미 상시 -${FFP_TIER1_CHEM_PENALTY}`,
+          detail: `시즌 내내 팀 케미스트리 -${FFP_TIER1_CHEM_PENALTY} 페널티 적용`,
         },
         {
-          label: `팀 케미 상시 -${FFP_TIER1_CHEM_PENALTY}`,
-          detail: '시즌 내내 팀 케미스트리 -4 페널티 적용 (점수 감점은 없음)',
+          label: `1차 이적 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 2차 이적 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 제한`,
+          detail: `1차 이적시장 3회→${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회, 2차 이적시장 3회→${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 축소`,
+        },
+        {
+          label: `패배 시 사기 추가 하락 (-${FFP_TIER1_LOSS_MORALE_EXTRA}단계)`,
+          detail: '경기 패배 시 선수단 사기 하락폭 추가 적용',
+        },
+        {
+          label: `명예의 전당 · 글로벌 랭킹 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%`,
+          detail: '시즌 최종 점수 정산 시 FFP 1단계 초과 감점 반영',
         },
       ];
 
@@ -246,7 +262,7 @@ export function FfpOpeningNoticeModal({
       onClick={onDismiss}
     >
       <div
-        className={`modal-panel flex w-full max-w-md flex-col rounded-2xl border ${accentBorder} bg-[#0d131c] overflow-hidden`}
+        className={`modal-panel flex w-full max-w-md max-h-[90dvh] flex-col rounded-2xl border ${accentBorder} bg-[#0d131c] overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Pixel-Art Audit Committee Banner */}
@@ -291,7 +307,7 @@ export function FfpOpeningNoticeModal({
         </div>
 
         {/* Scrollable Body */}
-        <div className="modal-scroll p-4 space-y-3.5">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y p-4 space-y-3.5">
           {/* Spend Summary Box */}
           <div className="rounded-xl border border-white/10 bg-[#111822]/90 p-3 space-y-2 tabular-nums">
             <div className="flex items-center justify-between text-xs">

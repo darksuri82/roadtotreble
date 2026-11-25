@@ -54,7 +54,7 @@ export function HeaderNav() {
   useEffect(() => {
     const handleOpenGuide = (e: Event) => {
       const custom = e as CustomEvent<{ tab?: GuideTabId }>;
-      setGuideModalTab(custom.detail?.tab ?? 'basics');
+      setGuideModalTab(custom.detail?.tab ?? 'budget');
     };
     const handleOpenTutorial = () => {
       setGuideModalTab(null);
@@ -221,7 +221,7 @@ export function HeaderNav() {
                 <button
                   id="open-guide-btn"
                   type="button"
-                  onClick={() => setGuideModalTab('basics')}
+                  onClick={() => setGuideModalTab('budget')}
                   className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
                   title="게임 시스템 & 부상·사기 가이드 열기"
                 >

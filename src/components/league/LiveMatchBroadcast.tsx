@@ -38,6 +38,7 @@ import {
   TACTIC_LIST,
   TACTICS,
 } from '../../engine/tacticEngine';
+import { computePitchCounterSeverity } from '../../engine/tacticalAdaptationEngine';
 import {
   evaluateTeamTacticalProfile,
   evaluateUnifiedTacticalMatchup,
@@ -2079,6 +2080,22 @@ export function LiveMatchBroadcast({
                   awayEnteredAtMinute={awayEnteredAtForPitch}
                   homeHalftimeAdjusted={homeHalftimeAdjustedForPitch}
                   awayHalftimeAdjusted={awayHalftimeAdjustedForPitch}
+                  homeTacticalCounterSeverity={
+                    halftime.isUserHome && preMatchCounterRevealed && activePreMatchCounter
+                      ? computePitchCounterSeverity(
+                          activePreMatchCounter.exposureScore,
+                          activePreMatchCounter.managerOvr,
+                        )
+                      : 0
+                  }
+                  awayTacticalCounterSeverity={
+                    !halftime.isUserHome && preMatchCounterRevealed && activePreMatchCounter
+                      ? computePitchCounterSeverity(
+                          activePreMatchCounter.exposureScore,
+                          activePreMatchCounter.managerOvr,
+                        )
+                      : 0
+                  }
                   startMinute={phaseClockBounds.startMinute}
                   endMinute={phaseClockBounds.endMinute}
                   half={phaseClockBounds.half}

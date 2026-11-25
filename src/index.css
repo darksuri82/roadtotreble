@@ -42,14 +42,12 @@ body {
 }
 
 .modal-backdrop {
-  height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
-  touch-action: none;
 }
 
 .modal-panel {
-  max-height: calc(100dvh - 1rem);
+  max-height: 90dvh;
   touch-action: auto;
 }
 
@@ -60,6 +58,7 @@ body {
 }
 
 .modal-scroll {
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;

@@ -37,9 +37,9 @@ export function StaffCoachHireModal({
 
   return (
     <div className="modal-backdrop fixed inset-0 z-[72] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
-      <div className="modal-panel flex w-full max-w-3xl flex-col rounded-2xl border border-white/15 bg-[#0d131c] shadow-2xl overflow-hidden">
+      <div className="modal-panel flex w-full max-w-3xl max-h-[90dvh] flex-col rounded-2xl border border-white/15 bg-[#0d131c] shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-[#111822] px-4 py-3.5 sm:px-5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-[#111822] px-4 py-3 sm:px-5 sm:py-3.5">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-500/35 bg-emerald-500/12 text-emerald-300">
               <UserCheck className="w-4 h-4" />
@@ -61,7 +61,7 @@ export function StaffCoachHireModal({
           <InfoHelpButton
             title="수석 코치 영입 규칙"
             align="right"
-            guideTab="tactics"
+            guideTab="transfer"
             items={[
               '2차 이적시장(시즌 중반)에 전술 특화 / 라인 강화 / 시스템 유틸 3개 분야에서 각 1명씩 총 3명이 추천됩니다.',
               'FFP 2단계 선수 영입 동결 상태에서도 수석 코치 1명은 정상 선임할 수 있습니다.',
@@ -70,9 +70,9 @@ export function StaffCoachHireModal({
           />
         </div>
 
-        {/* Body */}
-        <div className="modal-scroll p-4 sm:p-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        {/* Body (Single Scroll Container) */}
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y p-3.5 sm:p-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-3.5 pb-1">
             {coaches.map((coach) => {
               const isTacticMatched =
                 coach.category === 'tactic' &&
@@ -92,7 +92,7 @@ export function StaffCoachHireModal({
                 >
                   <div>
                     {/* Category & Match pill */}
-                    <div className="flex items-center justify-between gap-1.5 mb-3">
+                    <div className="flex items-center justify-between gap-1.5 mb-2.5 sm:mb-3">
                       <span
                         className={`inline-flex rounded-md border px-2 py-0.5 text-[10px] font-bold whitespace-nowrap ${
                           CATEGORY_BADGE_CLASS[coach.category]
@@ -109,7 +109,7 @@ export function StaffCoachHireModal({
                     </div>
 
                     {/* Portrait + Name */}
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-3 mb-2.5 sm:mb-3">
                       <div className="flex h-16 w-14 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#090d13] overflow-hidden">
                         <PixelManagerAvatar
                           avatar={coach.avatar}
@@ -160,7 +160,7 @@ export function StaffCoachHireModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-2 border-t border-white/10 bg-[#0b1018] px-4 py-3 sm:px-5">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/10 bg-[#0b1018] px-4 py-3 sm:px-5">
           <span className="text-[11px] text-slate-400 break-keep">
             현재 기본 전술:{' '}
             <strong className="text-slate-200">

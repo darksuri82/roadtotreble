@@ -37,10 +37,54 @@ import { getUserRank } from './standingsEngine';
 import { didUserWinUcl, getUserUclResultLabel } from './uclEngine';
 
 export const LEGACY_STORAGE_KEY = 'pitch_manager_legacy_v1';
+export const HOF_RULE_ERA_V9 = 'v9.0';
+export const HOF_RESET_NOTICE_TEXT =
+  'v9.0 밸런스 개편(예산·FFP·전술 파훼·각성) 기준에 맞춰 v9.0 이전 구버전 기록은 초기화되었습니다.';
+
+const CELEBRATED_RUNS_STORAGE_KEY = 'rtt_global_top15_celebrated_v1';
+
+export function isV9PlusRuleEra(era: unknown): boolean {
+  if (typeof era !== 'string') return false;
+  const m = /^v(\d+)(?:\.|$)/.exec(era.trim().toLowerCase());
+  if (!m) return false;
+  return Number(m[1]) >= 9;
+}
+
+export function isV9EraHofEntry(
+  entry: Pick<HallOfFameEntry, 'ruleEra' | 'seasonScore'> | null | undefined,
+): boolean {
+  if (!entry) return false;
+  return (
+    isV9PlusRuleEra(entry.ruleEra) ||
+    isV9PlusRuleEra(entry.seasonScore?.ruleEra)
+  );
+}
+
+export function computeLegacyHofSummaryCache(
+  hallOfFame: readonly HallOfFameEntry[],
+): NonNullable<LegacyStorageState['hofSummaryCache']> {
+  let bestScore = 0;
+  let trebleCount = 0;
+  let uclWins = 0;
+  for (const e of hallOfFame) {
+    const sc = e.seasonScore?.totalScore ?? 0;
+    if (sc > bestScore) bestScore = sc;
+    if (e.isTreble) trebleCount += 1;
+    if (e.uclWon) uclWins += 1;
+  }
+  return {
+    count: hallOfFame.length,
+    bestScore,
+    trebleCount,
+    uclWins,
+  };
+}
 
 export function createEmptyLegacyState(): LegacyStorageState {
   return {
     version: 1,
+    hofMigrationEra: HOF_RULE_ERA_V9,
+    hofSummaryCache: { count: 0, bestScore: 0, trebleCount: 0, uclWins: 0 },
     hallOfFame: [],
     unlockedAchievements: {},
     dreamMatchRecords: {},
@@ -53,7 +97,7 @@ export function loadLegacyState(): LegacyStorageState {
     const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return createEmptyLegacyState();
     const parsed = JSON.parse(raw) as Partial<LegacyStorageState>;
-    const hallOfFame = Array.isArray(parsed.hallOfFame)
+    const rawEntries: HallOfFameEntry[] = Array.isArray(parsed.hallOfFame)
       ? parsed.hallOfFame.map((entry) => ({
           ...entry,
           finalLeagueRank:
@@ -63,8 +107,17 @@ export function loadLegacyState(): LegacyStorageState {
               : 1,
         }))
       : [];
-    return {
+
+    const needsV9ResetMigration = !isV9PlusRuleEra(parsed.hofMigrationEra);
+    const hallOfFame = needsV9ResetMigration
+      ? rawEntries.filter((entry) => isV9EraHofEntry(entry))
+      : rawEntries;
+    const hofSummaryCache = computeLegacyHofSummaryCache(hallOfFame);
+
+    const nextState: LegacyStorageState = {
       version: 1,
+      hofMigrationEra: HOF_RULE_ERA_V9,
+      hofSummaryCache,
       hallOfFame,
       unlockedAchievements:
         parsed.unlockedAchievements &&
@@ -77,6 +130,34 @@ export function loadLegacyState(): LegacyStorageState {
           ? parsed.dreamMatchRecords
           : {},
     };
+
+    if (needsV9ResetMigration) {
+      saveLegacyState(nextState);
+      // Clean up pre-v9.0 celebrated global run IDs so only surviving v9.0+ local runs remain cached
+      try {
+        const survivingRunIds = new Set(
+          hallOfFame.map((e) => e.runId ?? e.id),
+        );
+        const celebRaw = window.localStorage.getItem(CELEBRATED_RUNS_STORAGE_KEY);
+        if (celebRaw) {
+          const parsedCeleb = JSON.parse(celebRaw) as unknown;
+          if (Array.isArray(parsedCeleb)) {
+            const filtered = parsedCeleb.filter(
+              (id): id is string =>
+                typeof id === 'string' && survivingRunIds.has(id),
+            );
+            window.localStorage.setItem(
+              CELEBRATED_RUNS_STORAGE_KEY,
+              JSON.stringify(filtered),
+            );
+          }
+        }
+      } catch {
+        // Ignore storage errors
+      }
+    }
+
+    return nextState;
   } catch {
     return createEmptyLegacyState();
   }
@@ -85,7 +166,12 @@ export function loadLegacyState(): LegacyStorageState {
 export function saveLegacyState(state: LegacyStorageState): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(state));
+    const normalized: LegacyStorageState = {
+      ...state,
+      hofMigrationEra: state.hofMigrationEra ?? HOF_RULE_ERA_V9,
+      hofSummaryCache: computeLegacyHofSummaryCache(state.hallOfFame),
+    };
+    window.localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(normalized));
   } catch {
     // Ignore storage quota errors
   }
@@ -881,6 +967,7 @@ export function archiveSeasonToHallOfFame(params: {
   const entry: HallOfFameEntry = {
     id: generatedId,
     runId: effectiveRunId,
+    ruleEra: HOF_RULE_ERA_V9,
     completedAt: new Date().toISOString(),
     userClub: { ...userClub },
     managerName,
@@ -909,7 +996,7 @@ export function archiveSeasonToHallOfFame(params: {
         ? Math.round(avgSynergyOvrBonus * 100) / 100
         : undefined,
     managerSynergyCount,
-    seasonScore,
+    seasonScore: { ...seasonScore, ruleEra: HOF_RULE_ERA_V9 },
     trophies,
     topScorerSummary: topScorer
       ? `${topScorer.name} (${topScorer.goals}골 ${topScorer.assists}도움)`

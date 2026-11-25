@@ -425,10 +425,11 @@ export interface SeasonBudgetState {
   excessPct: number; // 0..100+
   ffpTier: FfpTier;
   transferCashM: number; // Remaining cash (€M) available for transfer negotiations
-  chemPenalty: number; // 0 or -4
+  chemPenalty: number; // 0 (tier 0), -8 (tier 1), -14 (tier 2)
+  window1MaxAttempts?: number; // 3 (tier 0), 2 (tier 1), 1 (tier 2)
   window2MaxAttempts: number; // 3 (tier 0), 1 (tier 1), 0 (tier 2)
-  scoreMultiplier: number; // 1.0 (tier 0/1) or 0.88 (tier 2)
-  extraLossMoraleDrop: number; // 0 (tier 0/1) or 1 (tier 2)
+  scoreMultiplier: number; // 1.0 (tier 0), 0.94 (tier 1), 0.80 (tier 2)
+  extraLossMoraleDrop: number; // 0 (tier 0), 1 (tier 1), 2 (tier 2)
 }
 
 export type TacticalExposureTier = 'low' | 'warning' | 'danger';

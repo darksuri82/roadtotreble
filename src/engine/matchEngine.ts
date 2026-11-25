@@ -884,6 +884,10 @@ function resolveMatchStrengths(params: {
   const awayAdaptMidPenalty = homePreMatchCounter?.userMidPenalty ?? 0;
   const awayAdaptDefPenalty = homePreMatchCounter?.userDefPenalty ?? 0;
 
+  const homeMatchupAdaptDelta =
+    (homePreMatchCounter ? homePreMatchCounter.matchupOvrPenalty : 0) -
+    (awayPreMatchCounter ? awayPreMatchCounter.matchupOvrPenalty : 0);
+
   const home: EffectiveTeamStrength = {
     att:
       homeBase.att +
@@ -911,7 +915,12 @@ function resolveMatchStrengths(params: {
       homeAiDefDelta +
       (homeStaminaMod ? homeStaminaMod.defDelta : 0) +
       homeAdaptDefPenalty,
-    tacticBonus: Math.round((unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
+    tacticBonus:
+      Math.round(
+        ((unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) +
+          homeMatchupAdaptDelta) *
+          10,
+      ) / 10,
     xgBonus:
       (homeHumanTraitMod ? homeHumanTraitMod.xgBonus : 0) +
       (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.xgBonus * homeAiScale : 0) +
@@ -925,11 +934,14 @@ function resolveMatchStrengths(params: {
       (homeHumanTraitMod ? homeHumanTraitMod.oppXgPenalty : 0) +
       (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.oppXgPenalty * homeAiScale : 0) +
       (unifiedMatchup ? unifiedMatchup.oppXgPenalty : 0) +
-      (homeIndiv ? homeIndiv.gkSaveMod * 0.28 : 0),
+      (homeIndiv ? homeIndiv.gkSaveMod * 0.28 : 0) +
+      (homePreMatchCounter ? homePreMatchCounter.aiOppXgPenalty : 0),
     possessionBonus:
       (homeHumanTraitMod ? homeHumanTraitMod.possessionBonus : 0) +
       (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.possessionBonus * homeAiScale : 0) +
-      homeSubMod.possessionDelta,
+      homeSubMod.possessionDelta +
+      (homePreMatchCounter ? homePreMatchCounter.possessionPenalty * 0.5 : 0) -
+      (awayPreMatchCounter ? awayPreMatchCounter.possessionPenalty * 0.5 : 0),
   };
 
   const away: EffectiveTeamStrength = {
@@ -959,7 +971,12 @@ function resolveMatchStrengths(params: {
       awayAiDefDelta +
       (awayStaminaMod ? awayStaminaMod.defDelta : 0) +
       awayAdaptDefPenalty,
-    tacticBonus: Math.round(-(unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
+    tacticBonus:
+      Math.round(
+        (-(unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) -
+          homeMatchupAdaptDelta) *
+          10,
+      ) / 10,
     xgBonus:
       (awayHumanTraitMod ? awayHumanTraitMod.xgBonus : 0) +
       (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.xgBonus * awayAiScale : 0) +
@@ -973,11 +990,14 @@ function resolveMatchStrengths(params: {
       (awayHumanTraitMod ? awayHumanTraitMod.oppXgPenalty : 0) +
       (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.oppXgPenalty * awayAiScale : 0) +
       (unifiedMatchup ? unifiedMatchup.awayOppXgPenalty : 0) +
-      (awayIndiv ? awayIndiv.gkSaveMod * 0.28 : 0),
+      (awayIndiv ? awayIndiv.gkSaveMod * 0.28 : 0) +
+      (awayPreMatchCounter ? awayPreMatchCounter.aiOppXgPenalty : 0),
     possessionBonus:
       (awayHumanTraitMod ? awayHumanTraitMod.possessionBonus : 0) +
       (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.possessionBonus * awayAiScale : 0) +
-      awaySubMod.possessionDelta,
+      awaySubMod.possessionDelta +
+      (awayPreMatchCounter ? awayPreMatchCounter.possessionPenalty * 0.5 : 0) -
+      (homePreMatchCounter ? homePreMatchCounter.possessionPenalty * 0.5 : 0),
   };
 
   const rawPoss =

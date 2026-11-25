@@ -24,6 +24,7 @@ import { calculateChemistry } from '../../engine/chemistryEngine';
 import {
   getAchievementProgress,
   HOF_AUTO_INDUCTION_MIN_SCORE,
+  HOF_RESET_NOTICE_TEXT,
   reconstructHallOfFameSquad,
 } from '../../engine/legacyEngine';
 import { TACTICS } from '../../engine/tacticEngine';
@@ -382,7 +383,7 @@ function LegacyHubModalContent({
                 <InfoHelpButton
                   title="명예의 전당 & 글로벌 TOP 15 기준"
                   align="left"
-                  guideTab="season"
+                  guideTab="legacy"
                   items={[
                     `자동 등재: 시즌 스코어 ${HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}+ (역대 강팀급) · S+ 등급 · UCL 우승 · 트레블 달성 시`,
                     '수동 등재: 기준 미만 시즌도 시즌 결산 화면의 [수동 등록] 버튼으로 직접 등재 가능',
@@ -471,6 +472,9 @@ function LegacyHubModalContent({
         <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
           {tab === 'hof' && !isViewingDetail && (
             <div className="space-y-4">
+              <div className="rounded-lg border border-slate-800/90 bg-[#0b1018] px-3 py-1.5 text-[11px] text-slate-400 break-keep">
+                {HOF_RESET_NOTICE_TEXT}
+              </div>
               {/* Filter Tabs: All (User + Historical) | User Only | Historical Benchmark */}
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-800 bg-slate-950/70 p-1">
@@ -1627,6 +1631,9 @@ function LegacyHubModalContent({
 
           {tab === 'global_top15' && !selectedGlobal && (
             <div className="space-y-4">
+              <div className="rounded-lg border border-slate-800/90 bg-[#0b1018] px-3 py-1.5 text-[11px] text-slate-400 break-keep">
+                {HOF_RESET_NOTICE_TEXT}
+              </div>
               {/* Top Bar: Status + Cutoff + Refresh */}
               <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-800 bg-[#090e15] px-3.5 py-2.5">
                 <div className="flex flex-wrap items-center gap-2 text-xs">

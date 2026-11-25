@@ -21,6 +21,10 @@ import {
   evaluateManagerFitDetail,
   MANAGER_TRAITS,
 } from '../../../data/managerTraits';
+import {
+  buildFfpPenaltyHelpItems,
+  formatFfpBadgeSummary,
+} from '../../../engine/budgetEngine';
 import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemistryEngine';
 import { getMoraleLabel } from '../../../engine/conditionEngine';
 import { getLeagueById } from '../../../engine/dataLoader';
@@ -1023,7 +1027,7 @@ export function MpLeagueDashboard({
                   title="멀티 챔스 · 생존자 규칙"
                   align="left"
                   size="xs"
-                  guideTab="season"
+                  guideTab="legacy"
                   items={[
                     '리그 페이즈 8경기(1~8위 직행 · 9~24위 PO · 25~36위 탈락) 후 토너먼트 진입',
                     '토너먼트 단계 및 1↔2차전 전환 시 현재 생존자 전원 [준비 완료] 후 즉시 진행 (탈락자는 관전)',
@@ -1072,7 +1076,7 @@ export function MpLeagueDashboard({
                   title="멀티 리그 진행 규칙"
                   align="left"
                   size="xs"
-                  guideTab="season"
+                  guideTab="legacy"
                   items={[
                     '누군가 스쿼드·전술 수정, 인터뷰, 부상 대응 중이면 방 전체가 안전하게 일시정지됩니다',
                     '친구 맞대결은 2D 중계(4인 리그 맞대결은 2차전 2D · 1차전 라이브 중계), 비당사자는 읽기 전용 관전',
@@ -1119,11 +1123,9 @@ export function MpLeagueDashboard({
                           : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
                     }`}
                   >
-                    {mine.budget.ffpTier === 2
-                      ? 'FFP 2단계 · 2차 동결 · 케미 -4 · 점수 -12%'
-                      : mine.budget.ffpTier === 1
-                        ? 'FFP 1단계 · 2차 1회 · 케미 -4'
-                        : `자금 €${mine.budget.transferCashM}M`}
+                    {mine.budget.ffpTier >= 1
+                      ? formatFfpBadgeSummary(mine.budget.ffpTier)
+                      : `자금 €${mine.budget.transferCashM}M`}
                   </span>
                   {mine.budget.ffpTier >= 1 && (
                     <InfoHelpButton
@@ -1134,21 +1136,8 @@ export function MpLeagueDashboard({
                       }
                       align="right"
                       size="xs"
-                      guideTab="basics"
-                      items={
-                        mine.budget.ffpTier === 2
-                          ? [
-                              `초과 지출: €${mine.budget.initialSpentM}M / 한도 €${mine.budget.capM}M (+€${mine.budget.excessM}M)`,
-                              '이월 현금 €0M · 팀 케미 상시 -4 적용',
-                              '2차 이적시장 신규 영입 전면 동결 (0회)',
-                              '패배 시 사기 추가 하락 (-1단계) · 최종 점수 -12%',
-                            ]
-                          : [
-                              `초과 지출: €${mine.budget.initialSpentM}M / 한도 €${mine.budget.capM}M (+€${mine.budget.excessM}M)`,
-                              '이월 현금 €0M · 팀 케미 상시 -4 적용',
-                              '2차 이적시장 영입 시도 1회 제한 (3회 → 1회)',
-                            ]
-                      }
+                      guideTab="budget"
+                      items={buildFfpPenaltyHelpItems(mine.budget)}
                     />
                   )}
                 </span>

@@ -845,7 +845,7 @@ export function UclDashboard() {
                 <InfoHelpButton
                   title="챔피언스리그 진행 방식"
                   align="left"
-                  guideTab="season"
+                  guideTab="legacy"
                   items={[
                     '리그 페이즈 8경기: 1~8위 16강 직행 · 9~24위 플레이오프 · 25~36위 탈락',
                     '토너먼트(PO~4강): 홈·원정 2차전 합산 스코어 (매 차전·강 경계마다 계속 진행 확인 · 동률 시 연장/PK)',

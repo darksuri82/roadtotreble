@@ -5,25 +5,35 @@ import type { Player } from '../types/player';
  * Draft Budget Soft Cap & 2-Tier FFP System (€M)
  *
  * Philosophy:
- * - Prevents 90+ superstar spam from effortlessly breaking records while keeping
- *   the cap generous enough for normal title contenders (1~2 Legends + 85~88 core
- *   + value/manager-fit picks) to stay cleanly under budget and carry over cash.
- * - Legends use a unified flat price (`LEGEND_FLAT_DRAFT_COST_M = 95`, comparable
- *   to upper-80s stars and cheaper than active 90+ superstars) so hitting a rare
- *   2.5% Legend roulette slot feels exciting and rewarding.
+ * - Prevents 90+ superstar & multi-Legend spam from effortlessly breaking records while
+ *   keeping the cap comfortable for 1 Legend + smart value/manager-fit core to stay cleanly
+ *   under budget and carry over transfer cash.
+ * - Legends use a unified flat price (`LEGEND_FLAT_DRAFT_COST_M = 135`, matching lower-tier
+ *   active Superstars like OVR 91 `€136M`, above OVR 90 `€118M` and below OVR 92..94 `€154M~€190M`).
+ *   Drafting 1 Legend fits comfortably under cap; stacking 2~3+ Legends creates real FFP pressure.
  */
 export const DRAFT_BUDGET_CAP_M = 950;
-export const LEGEND_FLAT_DRAFT_COST_M = 95;
+export const LEGEND_FLAT_DRAFT_COST_M = 135;
 export const FFP_TIER1_MAX_EXCESS_RATIO = 0.15; // +1% .. +15%
 export const FFP_TIER1_MAX_OVERRUN_PCT = Math.round(
   FFP_TIER1_MAX_EXCESS_RATIO * 100,
 ); // 15
-export const FFP_TIER1_CHEM_PENALTY = 4; // -4 team chemistry
+
+/** FFP Tier 1 (Mild Overrun: +1% .. +15%) */
+export const FFP_TIER1_CHEM_PENALTY = 8; // -8 team chemistry
+export const FFP_TIER1_LOSS_MORALE_EXTRA = 1; // +1 extra morale drop on losses
+export const FFP_TIER1_WINDOW1_MAX_ATTEMPTS = 2; // 3 -> 2 attempts in Window 1
 export const FFP_TIER1_WINDOW2_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 2
+export const FFP_TIER1_SCORE_MULTIPLIER = 0.94; // -6% HOF / Global TOP 15 score
+export const FFP_TIER1_SCORE_PENALTY_PCT = 6;
+
+/** FFP Tier 2 (Severe Overrun: > +15%) */
+export const FFP_TIER2_CHEM_PENALTY = 14; // -14 team chemistry
+export const FFP_TIER2_LOSS_MORALE_EXTRA = 2; // +2 extra morale drop on losses
+export const FFP_TIER2_WINDOW1_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 1
 export const FFP_TIER2_WINDOW2_MAX_ATTEMPTS = 0; // Window 2 signings frozen
-export const FFP_TIER2_SCORE_MULTIPLIER = 0.88; // -12% HOF / Global TOP 15 score
-export const FFP_TIER2_SCORE_PENALTY_PCT = 12;
-export const FFP_TIER2_LOSS_MORALE_EXTRA = 1; // +1 extra morale drop on losses
+export const FFP_TIER2_SCORE_MULTIPLIER = 0.8; // -20% HOF / Global TOP 15 score
+export const FFP_TIER2_SCORE_PENALTY_PCT = 20;
 
 /** Transfer Cash-Sweetener conversion rates */
 export const CASH_TO_TP_RATE = 1.25; // €1M -> +1.25 TP up to €100M
@@ -42,16 +52,17 @@ export interface SquadBudgetEvaluation {
   usagePct: number; // 0..999
   ffpTier: FfpTier;
   tierLabel: string;
-  chemPenalty: number; // 0 or -4
+  chemPenalty: number; // 0, -8, or -14
+  window1MaxAttempts: number; // 3, 2, or 1
   window2MaxAttempts: number; // 3, 1, or 0
-  scoreMultiplier: number; // 1.0 or 0.88
-  extraLossMoraleDrop: number; // 0 or 1
+  scoreMultiplier: number; // 1.0, 0.94, or 0.80
+  extraLossMoraleDrop: number; // 0, 1, or 2
   previewDeltaM?: number;
 }
 
 /**
  * Computes a player's non-linear progressive draft cost (€M).
- * - All Legends share a unified flat cost (`LEGEND_FLAT_DRAFT_COST_M = €95M`).
+ * - All Legends share a unified flat cost (`LEGEND_FLAT_DRAFT_COST_M = €135M`).
  * - Active players scale smoothly at 68..84 and steeply from 87..94.
  */
 export function computePlayerDraftCostM(
@@ -119,8 +130,43 @@ export function evaluateSquadBudget(
     ffpTier === 0
       ? '예산 준수'
       : ffpTier === 1
-        ? '1단계 주의 (+1~15%)'
-        : '2단계 FFP 초과 (+15%↑)';
+        ? `1단계 주의 (+1~${FFP_TIER1_MAX_OVERRUN_PCT}%)`
+        : `2단계 FFP 초과 (+${FFP_TIER1_MAX_OVERRUN_PCT}%↑)`;
+
+  const chemPenalty =
+    ffpTier === 2
+      ? -FFP_TIER2_CHEM_PENALTY
+      : ffpTier === 1
+        ? -FFP_TIER1_CHEM_PENALTY
+        : 0;
+
+  const window1MaxAttempts =
+    ffpTier === 2
+      ? FFP_TIER2_WINDOW1_MAX_ATTEMPTS
+      : ffpTier === 1
+        ? FFP_TIER1_WINDOW1_MAX_ATTEMPTS
+        : 3;
+
+  const window2MaxAttempts =
+    ffpTier === 2
+      ? FFP_TIER2_WINDOW2_MAX_ATTEMPTS
+      : ffpTier === 1
+        ? FFP_TIER1_WINDOW2_MAX_ATTEMPTS
+        : 3;
+
+  const scoreMultiplier =
+    ffpTier === 2
+      ? FFP_TIER2_SCORE_MULTIPLIER
+      : ffpTier === 1
+        ? FFP_TIER1_SCORE_MULTIPLIER
+        : 1.0;
+
+  const extraLossMoraleDrop =
+    ffpTier === 2
+      ? FFP_TIER2_LOSS_MORALE_EXTRA
+      : ffpTier === 1
+        ? FFP_TIER1_LOSS_MORALE_EXTRA
+        : 0;
 
   return {
     capM,
@@ -131,17 +177,37 @@ export function evaluateSquadBudget(
     usagePct,
     ffpTier,
     tierLabel,
-    chemPenalty: ffpTier >= 1 ? -FFP_TIER1_CHEM_PENALTY : 0,
-    window2MaxAttempts:
-      ffpTier === 2
-        ? FFP_TIER2_WINDOW2_MAX_ATTEMPTS
-        : ffpTier === 1
-          ? FFP_TIER1_WINDOW2_MAX_ATTEMPTS
-          : 3,
-    scoreMultiplier: ffpTier === 2 ? FFP_TIER2_SCORE_MULTIPLIER : 1.0,
-    extraLossMoraleDrop: ffpTier === 2 ? FFP_TIER2_LOSS_MORALE_EXTRA : 0,
+    chemPenalty,
+    window1MaxAttempts,
+    window2MaxAttempts,
+    scoreMultiplier,
+    extraLossMoraleDrop,
     ...(previewPlayer ? { previewDeltaM } : {}),
   };
+}
+
+/**
+ * Resolves the FFP-adjusted transfer attempt limit for Window 1 or Window 2.
+ * Falls back cleanly from `ffpTier` for older saves missing `window1MaxAttempts`.
+ */
+export function getFfpWindowMaxAttempts(
+  budget: SeasonBudgetState | undefined | null,
+  windowIndex: number,
+  defaultAttempts = 3,
+): number {
+  if (!budget || budget.ffpTier === 0) return defaultAttempts;
+  if (windowIndex === 1) {
+    if (typeof budget.window1MaxAttempts === 'number') {
+      return budget.window1MaxAttempts;
+    }
+    return budget.ffpTier === 2
+      ? FFP_TIER2_WINDOW1_MAX_ATTEMPTS
+      : FFP_TIER1_WINDOW1_MAX_ATTEMPTS;
+  }
+  if (windowIndex === 2) {
+    return budget.window2MaxAttempts;
+  }
+  return defaultAttempts;
 }
 
 /**
@@ -160,6 +226,7 @@ export function createSeasonBudgetState(
     ffpTier: ev.ffpTier,
     transferCashM: ev.remainingM,
     chemPenalty: ev.chemPenalty,
+    window1MaxAttempts: ev.window1MaxAttempts,
     window2MaxAttempts: ev.window2MaxAttempts,
     scoreMultiplier: ev.scoreMultiplier,
     extraLossMoraleDrop: ev.extraLossMoraleDrop,
@@ -176,6 +243,7 @@ export function createDefaultSeasonBudgetState(): SeasonBudgetState {
     ffpTier: 0,
     transferCashM: 0,
     chemPenalty: 0,
+    window1MaxAttempts: 3,
     window2MaxAttempts: 3,
     scoreMultiplier: 1.0,
     extraLossMoraleDrop: 0,
@@ -216,4 +284,54 @@ export function deductTransferCash(
     ...budget,
     transferCashM: Math.max(0, budget.transferCashM - safeSpend),
   };
+}
+
+/**
+ * Single-source-of-truth concise badge label for dashboard & transfer market headers.
+ */
+export function formatFfpBadgeSummary(
+  ffpTier: FfpTier,
+  options?: { isWindow2?: boolean; isEmbargo?: boolean },
+): string {
+  if (ffpTier === 2) {
+    if (options?.isEmbargo) {
+      return `FFP 2단계 · 2차 영입 동결 (케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%)`;
+    }
+    return `FFP 2단계 · 1차 ${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회/2차 동결 · 케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%`;
+  }
+  if (ffpTier === 1) {
+    if (options?.isWindow2) {
+      return `FFP 1단계 · 2차 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 제한 (케미 -${FFP_TIER1_CHEM_PENALTY} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%)`;
+    }
+    return `FFP 1단계 · 1차 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회/2차 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 · 케미 -${FFP_TIER1_CHEM_PENALTY} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%`;
+  }
+  return '예산 준수';
+}
+
+/**
+ * Single-source-of-truth detailed `?` popover items for active FFP sanctions.
+ */
+export function buildFfpPenaltyHelpItems(budget: SeasonBudgetState): string[] {
+  const spendLine = `초과 지출: €${budget.initialSpentM}M / 한도 €${budget.capM}M (+€${budget.excessM}M, +${budget.excessPct}%)`;
+  if (budget.ffpTier === 2) {
+    return [
+      spendLine,
+      `이월 현금 €0M · 팀 케미 상시 -${FFP_TIER2_CHEM_PENALTY} 적용`,
+      `1차 이적시장 ${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회 제한 · 2차 이적시장 신규 영입 전면 동결 (${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회)`,
+      `경기 패배 시 선수단 사기 추가 하락 (-${FFP_TIER2_LOSS_MORALE_EXTRA}단계)`,
+      `명예의 전당 · 글로벌 TOP 15 최종 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}% 감점`,
+    ];
+  }
+  if (budget.ffpTier === 1) {
+    return [
+      spendLine,
+      `이월 현금 €0M · 팀 케미 상시 -${FFP_TIER1_CHEM_PENALTY} 적용`,
+      `1차 이적시장 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 2차 이적시장 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 제한`,
+      `경기 패배 시 선수단 사기 추가 하락 (-${FFP_TIER1_LOSS_MORALE_EXTRA}단계)`,
+      `명예의 전당 · 글로벌 TOP 15 최종 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}% 감점`,
+    ];
+  }
+  return [
+    `예산 준수 · 잔여 이월 현금 €${budget.transferCashM}M`,
+  ];
 }

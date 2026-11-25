@@ -305,7 +305,7 @@ export function DraftScreen() {
               label="감독 팁"
               size="xs"
               align="right"
-              guideTab="chemistry"
+              guideTab="squad"
             >
               <p className="text-[11px] leading-relaxed text-slate-300 mb-2">
                 {activeTrait.draftGuideTip}
@@ -343,7 +343,7 @@ export function DraftScreen() {
             label="공식"
             size="xs"
             align="right"
-            guideTab="chemistry"
+            guideTab="squad"
             items={[
               '🟢 구단·전소속 / 🔵 국적 / 🟡 스타일 / 🟣 엘리트 88+ — 모든 연결선 1선 = 1점 통일',
               '개인 인접 시너지: 2선(+1) · 4선(+2) · 8선(+3)',
@@ -369,7 +369,7 @@ export function DraftScreen() {
             <InfoHelpButton
               title="드래프트 조작"
               align="left"
-              guideTab="basics"
+              guideTab="budget"
               items={[
                 '후보 1회 클릭: 포메이션 임시 배치(시너지·팀 케미 실시간 프리뷰)',
                 '카드 우측 [🔗 N선] 배지: 현재 슬롯 배치 시 바로 생기는 연결선 수',

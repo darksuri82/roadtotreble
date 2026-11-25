@@ -21,9 +21,9 @@ export function AwakeningCelebrationModal({
 
   return (
     <div className="modal-backdrop fixed inset-0 z-[74] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
-      <div className="modal-panel flex w-full max-w-md flex-col rounded-2xl border border-rose-500/50 bg-[#0e0c11] shadow-[0_0_40px_-10px_rgba(220,38,38,0.55)] overflow-hidden">
+      <div className="modal-panel flex w-full max-w-md max-h-[90dvh] flex-col rounded-2xl border border-rose-500/50 bg-[#0e0c11] shadow-[0_0_40px_-10px_rgba(220,38,38,0.55)] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 border-b border-rose-500/20 bg-gradient-to-r from-[#241014] via-[#150e14] to-[#1e100d] px-4 py-3.5">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-rose-500/20 bg-gradient-to-r from-[#241014] via-[#150e14] to-[#1e100d] px-4 py-3.5">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-500/45 bg-rose-500/15 text-rose-400">
               <Flame className="w-4 h-4" />
@@ -53,7 +53,7 @@ export function AwakeningCelebrationModal({
         </div>
 
         {/* Body */}
-        <div className="modal-scroll p-4 space-y-4">
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y p-4 space-y-4">
           {/* OVR Jump Showcase */}
           <div className="card-awakened-ember rounded-xl p-4 flex items-center justify-between gap-3">
             <div>
@@ -120,7 +120,7 @@ export function AwakeningCelebrationModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end border-t border-rose-500/20 bg-[#0b0a0e] px-4 py-3">
+        <div className="flex shrink-0 justify-end border-t border-rose-500/20 bg-[#0b0a0e] px-4 py-3">
           <button
             type="button"
             onClick={onDismiss}

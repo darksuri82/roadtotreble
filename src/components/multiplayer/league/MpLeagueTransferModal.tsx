@@ -23,6 +23,7 @@ import {
   MANAGER_TRAITS,
 } from '../../../data/managerTraits';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
+import { formatFfpBadgeSummary } from '../../../engine/budgetEngine';
 import {
   calculateChemistry,
   calculateTeamRatings,
@@ -706,21 +707,20 @@ export function MpLeagueTransferModal({
               <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-200 tabular-nums whitespace-nowrap">
                 보유 €{availableCashM}M
               </span>
-              {ffpEmbargoActive && (
-                <span className="rounded-md border border-rose-500/45 bg-rose-500/18 px-2 py-0.5 text-[10.5px] font-black text-rose-200 whitespace-nowrap">
-                  FFP 2단계 · 2차 영입 동결 (케미 -4 · 점수 -12%)
-                </span>
-              )}
-              {!ffpEmbargoActive && ffpTier === 2 && (
-                <span className="rounded-md border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-[10.5px] font-bold text-rose-200 whitespace-nowrap">
-                  FFP 2단계 (케미 -4 · 사기 추가↓ · 점수 -12%)
-                </span>
-              )}
-              {!ffpEmbargoActive && ffpTier === 1 && (
-                <span className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10.5px] font-bold text-amber-200 whitespace-nowrap">
-                  {windowIndex === 2
-                    ? 'FFP 1단계 · 2차 1회 제한 (케미 -4)'
-                    : 'FFP 1단계 (이월 €0 · 2차 1회 · 케미 -4)'}
+              {ffpTier >= 1 && (
+                <span
+                  className={`rounded-md border px-2 py-0.5 text-[10.5px] whitespace-nowrap ${
+                    ffpTier === 2
+                      ? ffpEmbargoActive
+                        ? 'border-rose-500/45 bg-rose-500/18 font-black text-rose-200'
+                        : 'border-rose-500/40 bg-rose-500/15 font-bold text-rose-200'
+                      : 'border-amber-500/40 bg-amber-500/15 font-bold text-amber-200'
+                  }`}
+                >
+                  {formatFfpBadgeSummary(ffpTier, {
+                    isWindow2: windowIndex === 2,
+                    isEmbargo: ffpEmbargoActive,
+                  })}
                 </span>
               )}
             </div>
@@ -1703,7 +1703,7 @@ export function MpLeagueTransferModal({
                                   title="성사 확률 · TP 가치 내역"
                                   align="right"
                                   size="xs"
-                                  guideTab="basics"
+                                  guideTab="transfer"
                                 >
                                   <div className="space-y-1 text-[10.5px] text-slate-300 tabular-nums">
                                     <div className="flex justify-between">

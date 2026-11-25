@@ -1,7 +1,9 @@
+import { FORMATIONS } from '../data/formations';
 import { evaluateManagerPlayerSynergy } from '../data/managerTraits';
 import type { PlayerConditionMap } from '../types/condition';
 import type {
   AwakeningAlertItem,
+  FormationId,
   ManagerTraitId,
   PlayerSlotSynergy,
   StaffCoachId,
@@ -20,6 +22,7 @@ import {
   getPrimarySubPosition,
   GK_ATTR_META,
 } from './attributeEngine';
+import { evaluatePositionFit } from './positionEngine';
 import { STAFF_COACH_DEV_AWAKENING_MULT } from './staffCoachEngine';
 
 /**
@@ -28,8 +31,11 @@ import { STAFF_COACH_DEV_AWAKENING_MULT } from './staffCoachEngine';
  * Strict Balance & Integrity Rules:
  * - Legends (`isLegend === true`): 0% (NEVER awaken).
  * - Superstars / Worldclass (`baseOvr >= 89`): ultra-rare (`x0.04` = 1/25), fixed `+2` OVR cap (max 96).
- * - Core / Prospects (`baseOvr <= 88`): ~1 player per season average;
- *   1st awakening x1.00, 2nd awakening x0.90 (no cliff), 3rd+ awakening x0.15 sharp attenuation.
+ * - Comprehensive Performance + Utilization Model:
+ *   Rewards players who deliver strong match/season output (rating, goals, assists, clean sheets,
+ *   appearances/minutes) AND are utilized effectively by the manager (neighbor synergy, manager fit,
+ *   morale, condition/rotation care without overload/injury, natural position fit).
+ * - Season Target Distribution: 0~2 players/season (1st x1.00, 2nd x0.65, 3rd+ x0.04 near-zero attenuation).
  * - Permanent pure OVR +2..+7 growth + position-tailored sub-attribute growth applied ONLY to
  *   freshly cloned player instances — static DB is NEVER mutated.
  */
@@ -41,10 +47,11 @@ export const AWAKENING_SUPERSTAR_RATE_MULT = 0.04; // 1/25th of normal rate
 export const AWAKENING_OVR_HARD_CAP = 96;
 export const AWAKENING_MIN_SEASON_MATCH = 6;
 export const AWAKENING_MIN_APPEARANCES = 4;
-export const AWAKENING_SECOND_COUNT_MULT = 0.9;
-export const AWAKENING_THIRD_PLUS_MULT = 0.15;
+export const AWAKENING_SECOND_COUNT_MULT = 0.65;
+export const AWAKENING_THIRD_PLUS_MULT = 0.04;
 export const AWAKENING_MAX_VALID_PER_TEAM = 4;
-export const AWAKENING_BASE_ELIGIBLE_PROB = 0.0145;
+export const AWAKENING_BASE_ELIGIBLE_PROB = 0.0026;
+export const AWAKENING_MAX_CANDIDATE_PROB = 0.028;
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -310,6 +317,7 @@ export function applyAwakeningToPlayer(
 export interface CheckPostMatchAwakeningParams {
   starters: (Player | null)[];
   bench: (Player | null)[];
+  formation?: FormationId;
   matchPlayedNumber: number; // total user matches played so far in season
   round: number;
   competition: 'league' | 'cup' | 'ucl';
@@ -327,6 +335,16 @@ export interface CheckPostMatchAwakeningParams {
   rng?: () => number;
 }
 
+export interface AwakeningCandidateEvaluation {
+  perfMult: number;
+  utilMult: number;
+  positionPenalty: number;
+  teamCountMult: number;
+  coachMult: number;
+  tierMult: number;
+  finalProb: number;
+}
+
 export interface PostMatchAwakeningResult {
   triggered: boolean;
   awakenedPlayer: Player | null;
@@ -335,9 +353,176 @@ export interface PostMatchAwakeningResult {
 }
 
 /**
+ * Pure probability breakdown for a single eligible candidate combining:
+ * 1) Real match & season performance (rating, goals, assists, clean sheet, minutes, season stats)
+ * 2) Manager utilization quality (neighbor synergy, manager fit, morale, stamina/condition, position fit)
+ * 3) Team season-count attenuation, potential coach bonus, and OVR 89+ tier rarity.
+ */
+export function computeAwakeningCandidateProbability(params: {
+  player: Player;
+  rating: number;
+  goals: number;
+  assists: number;
+  minutes: number;
+  cleanSheet: boolean;
+  seasonStats?: PlayerSeasonStats;
+  synergy?: PlayerSlotSynergy;
+  hasSynergyContext: boolean;
+  condition?: PlayerConditionMap[string];
+  managerTraitId: ManagerTraitId | null;
+  positionPenalty?: number;
+  teamCountMult: number;
+  coachMult: number;
+}): AwakeningCandidateEvaluation {
+  const {
+    player,
+    rating,
+    goals,
+    assists,
+    minutes,
+    cleanSheet,
+    seasonStats: st,
+    synergy: syn,
+    hasSynergyContext,
+    condition: cond,
+    managerTraitId,
+    positionPenalty = 0,
+    teamCountMult,
+    coachMult,
+  } = params;
+
+  if (player.isLegend || player.ovr >= AWAKENING_OVR_HARD_CAP) {
+    return {
+      perfMult: 0,
+      utilMult: 0,
+      positionPenalty,
+      teamCountMult,
+      coachMult,
+      tierMult: 0,
+      finalProb: 0,
+    };
+  }
+
+  // 1) Actual match + season performance multiplier
+  let perfMult = 0.88;
+  if (rating >= 8.5) perfMult = 2.25;
+  else if (rating >= 8.1) perfMult = 1.75;
+  else if (rating >= 7.8) perfMult = 1.4;
+  else if (rating >= 7.6) perfMult = 1.15;
+
+  const isDefensiveCleanSheet =
+    cleanSheet && (player.position === 'GK' || player.position === 'DF') && rating >= 7.5;
+  const directGA = goals + assists;
+  if (directGA >= 2) {
+    perfMult *= 1.42;
+  } else if (directGA === 1 || isDefensiveCleanSheet) {
+    perfMult *= 1.24;
+  } else {
+    perfMult *= 0.86;
+  }
+
+  if (minutes >= 80) perfMult *= 1.12;
+  else if (minutes < 60) perfMult *= 0.82;
+
+  if (st && st.appearances >= AWAKENING_MIN_APPEARANCES) {
+    if (st.appearances >= 8 && st.avgRating >= 7.4) perfMult *= 1.32;
+    else if (st.avgRating >= 7.15) perfMult *= 1.15;
+    else if (st.avgRating < 6.85) perfMult *= 0.58;
+
+    const gaPerApp = (st.goals + st.assists) / Math.max(1, st.appearances);
+    const csRate = st.cleanSheets / Math.max(1, st.appearances);
+    if ((player.position === 'FW' || player.position === 'MF') && gaPerApp >= 0.65) {
+      perfMult *= 1.18;
+    } else if ((player.position === 'GK' || player.position === 'DF') && csRate >= 0.4) {
+      perfMult *= 1.15;
+    }
+  }
+
+  // 2) Comprehensive manager utilization multiplier
+  let utilMult = 1.0;
+
+  // 2a. Neighbor synergy links
+  if (syn) {
+    if (syn.neighborBonus >= 3) utilMult *= 1.42;
+    else if (syn.neighborBonus >= 2) utilMult *= 1.2;
+    else if (syn.neighborBonus === 1) utilMult *= 0.96;
+    else utilMult *= 0.55;
+  } else if (hasSynergyContext) {
+    utilMult *= 0.55;
+  }
+
+  // 2b. Manager trait compatibility
+  const mgrFit = evaluateManagerPlayerSynergy(player, managerTraitId);
+  if (mgrFit.isMatch) {
+    utilMult *= 1.36;
+  } else if (managerTraitId !== null) {
+    utilMult *= 0.78;
+  }
+
+  // 2c. Morale
+  const morale = cond?.morale ?? 0;
+  if (morale >= 4) utilMult *= 1.32;
+  else if (morale >= 2) utilMult *= 1.15;
+  else if (morale >= 0) utilMult *= 0.96;
+  else if (morale >= -2) utilMult *= 0.55;
+  else utilMult *= 0.25;
+
+  // 2d. Physical condition / rotation workload care & injury check
+  if (cond?.injury) {
+    utilMult *= 0.25;
+  } else if (cond) {
+    if (cond.consecutiveMatchesPlayed <= 5) {
+      utilMult *= 1.18;
+    } else if (cond.consecutiveMatchesPlayed >= 12) {
+      utilMult *= 0.45;
+    } else if (cond.consecutiveMatchesPlayed >= 8) {
+      utilMult *= 0.62;
+    }
+  }
+
+  // 2e. Position fit (natural role vs forced out-of-position)
+  if (positionPenalty === 0) {
+    utilMult *= 1.2;
+  } else if (positionPenalty >= -3) {
+    utilMult *= 0.85;
+  } else if (positionPenalty >= -8) {
+    utilMult *= 0.38;
+  } else {
+    utilMult *= 0.14;
+  }
+
+  // 3) Tier rarity (OVR 89+ ultra-rare <= 1/25)
+  const tierMult =
+    player.ovr >= AWAKENING_SUPERSTAR_OVR_THRESHOLD
+      ? AWAKENING_SUPERSTAR_RATE_MULT
+      : 1.0;
+
+  const finalProb = clamp(
+    AWAKENING_BASE_ELIGIBLE_PROB *
+      perfMult *
+      utilMult *
+      teamCountMult *
+      coachMult *
+      tierMult,
+    0,
+    AWAKENING_MAX_CANDIDATE_PROB,
+  );
+
+  return {
+    perfMult,
+    utilMult,
+    positionPenalty,
+    teamCountMult,
+    coachMult,
+    tierMult,
+    finalProb,
+  };
+}
+
+/**
  * Evaluates post-match awakening eligibility and rolls at most 1 breakthrough per match.
- * Combines real match performance (rating, goals/assists/CS) + manager utilization
- * (synergy, manager fit, morale, potential coach).
+ * Combines real match/season performance + comprehensive utilization (synergy, manager fit,
+ * morale, stamina/condition, position fit, potential coach).
  */
 export function evaluatePostMatchAwakening(
   params: CheckPostMatchAwakeningParams,
@@ -345,6 +530,7 @@ export function evaluatePostMatchAwakening(
   const {
     starters,
     bench,
+    formation,
     matchPlayedNumber,
     round,
     competition,
@@ -374,7 +560,7 @@ export function evaluatePostMatchAwakening(
   const alreadyCount = Object.keys(existingAwakenedPlayers).length;
   if (alreadyCount >= AWAKENING_MAX_VALID_PER_TEAM) return none;
 
-  // Team-level count scaling: 1st x1.00, 2nd x0.90 (no steep drop), 3rd+ x0.15
+  // Team-level count scaling: 1st x1.00, 2nd x0.75, 3rd+ x0.06 near-zero attenuation
   const teamCountMult =
     alreadyCount === 0
       ? 1.0
@@ -385,10 +571,29 @@ export function evaluatePostMatchAwakening(
   const coachMult =
     staffCoachId === 'sys_potential_dev' ? STAFF_COACH_DEV_AWAKENING_MULT : 1.0;
 
+  const hasSynergyContext = Boolean(slotSynergies && Object.keys(slotSynergies).length > 0);
   const synergyByPlayerId = new Map<string, PlayerSlotSynergy>();
   if (slotSynergies) {
     for (const s of Object.values(slotSynergies)) {
       synergyByPlayerId.set(s.playerId, s);
+    }
+  }
+
+  // Precompute starter position-fit penalty when formation is available
+  const positionPenaltyByPlayerId = new Map<string, number>();
+  if (formation && FORMATIONS[formation]) {
+    const slots = FORMATIONS[formation].slots;
+    for (let i = 0; i < starters.length && i < slots.length; i += 1) {
+      const p = starters[i];
+      if (!p) continue;
+      const slot = slots[i];
+      const fit = evaluatePositionFit(
+        p,
+        slot.subPosition,
+        managerTraitId,
+        slot.alternateSubPositions,
+      );
+      positionPenaltyByPlayerId.set(p.id, fit.penalty);
     }
   }
 
@@ -418,56 +623,31 @@ export function evaluatePostMatchAwakening(
     const rating = ratingsByPlayerId[player.id] ?? 7.4;
     const goals = goalsByPlayerId[player.id] ?? 0;
     const assists = assistsByPlayerId[player.id] ?? 0;
+    const minutes = minutesByPlayerId[player.id] ?? 90;
     const st = allPlayerStats[player.id];
     const syn = synergyByPlayerId.get(player.id);
     const cond = conditionMap?.[player.id];
     const mgrFit = evaluateManagerPlayerSynergy(player, managerTraitId);
+    const positionPenalty = positionPenaltyByPlayerId.get(player.id) ?? 0;
 
-    // Performance multiplier
-    let perfMult = 1.0;
-    if (rating >= 8.3) perfMult = 2.2;
-    else if (rating >= 7.8) perfMult = 1.55;
-    else if (rating >= 7.5) perfMult = 1.15;
+    const evalRes = computeAwakeningCandidateProbability({
+      player,
+      rating,
+      goals,
+      assists,
+      minutes,
+      cleanSheet,
+      seasonStats: st,
+      synergy: syn,
+      hasSynergyContext,
+      condition: cond,
+      managerTraitId,
+      positionPenalty,
+      teamCountMult,
+      coachMult,
+    });
 
-    const hadKeyOutput =
-      goals >= 1 ||
-      assists >= 1 ||
-      (cleanSheet && (player.position === 'GK' || player.position === 'DF') && rating >= 7.5);
-    if (hadKeyOutput) perfMult *= 1.35;
-    if (st && st.appearances >= 4 && st.avgRating >= 7.3) {
-      perfMult *= 1.25;
-    }
-
-    // Manager utilization & cohesion multiplier
-    let utilMult = 1.0;
-    if (syn) {
-      if (syn.neighborBonus >= 3) utilMult *= 1.35;
-      else if (syn.neighborBonus >= 2) utilMult *= 1.2;
-    }
-    if (mgrFit.isMatch) utilMult *= 1.3;
-    const morale = cond?.morale ?? 0;
-    if (morale >= 5) utilMult *= 1.35;
-    else if (morale >= 3) utilMult *= 1.2;
-    else if (morale <= -2) utilMult *= 0.3;
-
-    // Tier rarity multiplier (89+ ultra-rare <= 1/25)
-    const tierMult =
-      player.ovr >= AWAKENING_SUPERSTAR_OVR_THRESHOLD
-        ? AWAKENING_SUPERSTAR_RATE_MULT
-        : 1.0;
-
-    const prob = clamp(
-      AWAKENING_BASE_ELIGIBLE_PROB *
-        perfMult *
-        utilMult *
-        teamCountMult *
-        coachMult *
-        tierMult,
-      0,
-      0.065,
-    );
-
-    if (rng() < prob) {
+    if (rng() < evalRes.finalProb) {
       const ovrGain = rollAwakeningOvrGain(player.ovr, rng);
       if (ovrGain < AWAKENING_MIN_GAIN) continue;
       const draftRecord: PlayerAwakeningRecord = {
@@ -490,6 +670,14 @@ export function evaluatePostMatchAwakening(
       if (rating >= 8.0) reasonParts.push(`평점 ${rating.toFixed(1)}`);
       if (mgrFit.isMatch) reasonParts.push('감독 전술과의 완벽한 호흡');
       else if (syn && syn.neighborBonus >= 2) reasonParts.push('팀 동료들과의 끈끈한 시너지');
+      else if (
+        formation &&
+        positionPenalty === 0 &&
+        !cond?.injury &&
+        (cond?.consecutiveMatchesPlayed ?? 0) <= 5
+      ) {
+        reasonParts.push('최적 포지션·컨디션 기용');
+      }
       if (staffCoachId === 'sys_potential_dev') reasonParts.push('잠재력 육성 코치의 집중 지도');
       const reasonLead =
         reasonParts.length > 0
