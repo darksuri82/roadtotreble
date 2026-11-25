@@ -11,7 +11,7 @@ import {
   Wifi,
   WifiOff,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { BENCH_SLOTS, FORMATION_LIST, FORMATIONS } from '../../data/formations';
 import {
   MANAGER_TRAIT_LIST,
@@ -87,7 +87,7 @@ export function MultiplayerBlindDraft({
       ? room.settings.draftLeaguePool
       : DEFAULT_MP_LEAGUE_POOL;
 
-  // Restore local draft state on refresh so picks are never lost or leaked
+  // Restore local draft state on refresh so picks and spun reels are never lost or rerolled
   const restored = useMemo(
     () => loadLocalMpDraft(room.code, playerId, draftGeneration),
     [room.code, playerId, draftGeneration],
@@ -137,6 +137,22 @@ export function MultiplayerBlindDraft({
         completed: true,
       };
     }
+    // Restore active spun reels if saved slot is still empty (prevents refresh re-roll exploit)
+    if (
+      restored?.draft &&
+      !restored.draft.completed &&
+      restored.draft.hasSpun &&
+      Array.isArray(restored.draft.reels) &&
+      restored.draft.reels.length > 0
+    ) {
+      const savedSlotEmpty =
+        restored.draft.currentSlotType === 'starter'
+          ? starters[restored.draft.currentSlotIndex] === null
+          : bench[restored.draft.currentSlotIndex] === null;
+      if (savedSlotEmpty) {
+        return restored.draft;
+      }
+    }
     return {
       currentSlotType: next.currentSlotType,
       currentSlotIndex: next.currentSlotIndex,
@@ -165,8 +181,8 @@ export function MultiplayerBlindDraft({
   const myFilledCount = filledStarters.length + filledBench.length;
   const isCompleted = Boolean(meRow?.draft_completed || (draft.completed && myFilledCount === 16));
 
-  // Persist local private draft state whenever anything changes
-  useEffect(() => {
+  // Persist local private draft state synchronously before paint (including spun reels)
+  useLayoutEffect(() => {
     saveLocalMpDraft({
       roomCode: room.code,
       playerId,
@@ -179,6 +195,7 @@ export function MultiplayerBlindDraft({
       defaultTactic,
       starters,
       bench,
+      draft,
       completed: isCompleted,
     });
   }, [
@@ -191,6 +208,7 @@ export function MultiplayerBlindDraft({
     defaultTactic,
     starters,
     bench,
+    draft,
     isCompleted,
   ]);
 
@@ -408,6 +426,11 @@ export function MultiplayerBlindDraft({
   const handleSwapSlots = (from: SlotRef, to: SlotRef) => {
     if (isCompleted) return;
     if (from.area === to.area && from.index === to.index) return;
+    if (!draft.completed && draft.hasSpun) {
+      const isActive = (loc: SlotRef) =>
+        loc.area === draft.currentSlotType && loc.index === draft.currentSlotIndex;
+      if (isActive(from) || isActive(to)) return;
+    }
     const nextStarters = [...starters];
     const nextBench = [...bench];
     const pA =

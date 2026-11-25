@@ -743,6 +743,62 @@ export async function fetchGlobalTop15Rankings(): Promise<FetchGlobalTop15Result
   }
 }
 
+export const MAX_GLOBAL_HOF_STARTER_LEGENDS = 5;
+export const MAX_GLOBAL_HOF_TOTAL_LEGENDS = 6;
+export const MAX_GLOBAL_HOF_TEAM_AVG_OVR = 96.5;
+
+/**
+ * Validates that a Hall of Fame squad snapshot is free of duplicate players,
+ * tampered OVR, or impossible Legend-spam rosters before global TOP 15 submission.
+ */
+export function validateGlobalHofEntryIntegrity(entry: HallOfFameEntry): {
+  valid: boolean;
+  reason?: string;
+} {
+  const payload = buildGlobalSubmissionPayload(entry);
+  const starters = payload.squad_snapshot.starters;
+  const bench = payload.squad_snapshot.bench;
+  if (starters.length < 11) {
+    return { valid: false, reason: '선발 11명 스쿼드 정보가 부족합니다.' };
+  }
+  const seenIds = new Set<string>();
+  let starterLegends = 0;
+  let totalLegends = 0;
+  for (const p of starters) {
+    if (!p.id || seenIds.has(p.id)) {
+      return { valid: false, reason: '중복된 선수가 포함된 스쿼드는 등록할 수 없습니다.' };
+    }
+    seenIds.add(p.id);
+    if (p.isLegend) {
+      starterLegends += 1;
+      totalLegends += 1;
+    }
+  }
+  for (const p of bench) {
+    if (!p.id || seenIds.has(p.id)) {
+      return { valid: false, reason: '중복된 선수가 포함된 스쿼드는 등록할 수 없습니다.' };
+    }
+    seenIds.add(p.id);
+    if (p.isLegend) totalLegends += 1;
+  }
+  if (
+    starterLegends > MAX_GLOBAL_HOF_STARTER_LEGENDS ||
+    totalLegends > MAX_GLOBAL_HOF_TOTAL_LEGENDS
+  ) {
+    return {
+      valid: false,
+      reason: '비정상적인 레전드 편성 스쿼드는 글로벌 랭킹에 등록할 수 없습니다.',
+    };
+  }
+  if (payload.team_avg_ovr > MAX_GLOBAL_HOF_TEAM_AVG_OVR) {
+    return {
+      valid: false,
+      reason: '비정상적인 팀 능력치 스쿼드는 글로벌 랭킹에 등록할 수 없습니다.',
+    };
+  }
+  return { valid: true };
+}
+
 export async function submitGlobalHofRanking(
   entry: HallOfFameEntry,
 ): Promise<GlobalRankingSubmitResult> {
@@ -773,8 +829,8 @@ export async function submitGlobalHofRanking(
   }
 
   try {
-    const payload = buildGlobalSubmissionPayload(entry);
-    if (payload.squad_snapshot.starters.length < 11) {
+    const integrity = validateGlobalHofEntryIntegrity(entry);
+    if (!integrity.valid) {
       return {
         ok: false,
         entered: false,
@@ -783,9 +839,11 @@ export async function submitGlobalHofRanking(
         cutoffScore: null,
         totalCount: 0,
         prunedCount: 0,
-        error: '선발 11명 스쿼드 정보가 부족합니다.',
+        error: integrity.reason ?? '스쿼드 무결성 검증에 실패했습니다.',
       };
     }
+
+    const payload = buildGlobalSubmissionPayload(entry);
 
     const { data, error } = await client.rpc('submit_global_hof_ranking', {
       p_entry: payload,

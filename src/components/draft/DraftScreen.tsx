@@ -211,6 +211,12 @@ export function DraftScreen() {
     state.manager.traitId,
   ]);
 
+  const isActiveDraftSlot = (area: 'starter' | 'bench', index: number) =>
+    !draft.completed &&
+    draft.hasSpun &&
+    area === draft.currentSlotType &&
+    index === draft.currentSlotIndex;
+
   const handleSlotClick = (area: 'starter' | 'bench', index: number) => {
     const clickedPlayer =
       area === 'starter' ? displayedStarters[index] : displayedBench[index];
@@ -233,6 +239,14 @@ export function DraftScreen() {
       return;
     }
 
+    if (
+      isActiveDraftSlot(selectedSlot.area, selectedSlot.index) ||
+      isActiveDraftSlot(area, index)
+    ) {
+      setSelectedSlot(null);
+      return;
+    }
+
     swapSquadPositions(selectedSlot, { area, index });
     setSelectedSlot(null);
   };
@@ -240,6 +254,13 @@ export function DraftScreen() {
   const handleSlotSwap = (from: SlotRef, to: SlotRef) => {
     if (previewCandidate) {
       setPreviewSwaps((prev) => [...prev, [from, to]]);
+      setSelectedSlot(null);
+      return;
+    }
+    if (
+      isActiveDraftSlot(from.area, from.index) ||
+      isActiveDraftSlot(to.area, to.index)
+    ) {
       setSelectedSlot(null);
       return;
     }
@@ -549,14 +570,24 @@ export function DraftScreen() {
               {completedCount >= 2 && (
                 <button
                   type="button"
+                  disabled={draft.hasSpun}
                   onClick={() => {
+                    if (draft.hasSpun) return;
                     setPreviewCandidate(null);
                     setPreviewSwaps([]);
                     setSelectedSlot(null);
                     autoOptimizeLineup();
                   }}
-                  title="현재 보유 선수들의 실효 OVR과 케미를 자동 최적화합니다"
-                  className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10.5px] font-bold text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
+                  title={
+                    draft.hasSpun
+                      ? '현재 룰렛 영입 확정 후 사용할 수 있습니다'
+                      : '현재 보유 선수들의 실효 OVR과 케미를 자동 최적화합니다'
+                  }
+                  className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10.5px] font-bold transition-colors ${
+                    draft.hasSpun
+                      ? 'border-slate-700/70 bg-slate-900/60 text-slate-500 cursor-not-allowed'
+                      : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 cursor-pointer'
+                  }`}
                 >
                   <Wand2 className="w-3 h-3" />
                   빠른 선발

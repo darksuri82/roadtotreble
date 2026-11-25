@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
@@ -19,6 +20,7 @@ import {
   MANAGER_TRAIT_LIST,
 } from '../data/managerTraits';
 import { mergePlayerStatsMaps } from '../engine/analyticsEngine';
+import { getPlayerAttributes } from '../engine/attributeEngine';
 import { computeGlobalSeasonAwards, computeSeasonAwards } from '../engine/awardsEngine';
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
 import {
@@ -42,11 +44,13 @@ import {
   findUserCupMatch,
 } from '../engine/cupEngine';
 import {
+  ACTIVE_PLAYERS,
   buildAiClubRoster,
   buildAiClubSquad16,
   getClubRealDepthPool,
   getLeagueById,
   getWeakestClub,
+  LEGEND_PLAYERS,
   pickReplacementForAiClub,
 } from '../engine/dataLoader';
 import {
@@ -125,6 +129,7 @@ import {
   simulateUclLeaguePhaseRound,
   simulateUclLeaguePhaseToEnd,
   simulateUclToCompletion,
+  UCL_EXTERNAL_TEAMS,
 } from '../engine/uclEngine';
 import type {
   InjuryAlertItem,
@@ -2642,6 +2647,10 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     case 'CHANGE_FORMATION': {
       const nextFormation = action.payload.formation;
       if (nextFormation === state.formation) return state;
+      // Anti-exploit: never allow formation switch to reset an already-spun draft roulette
+      if (state.phase === 'draft' && !state.draft.completed && state.draft.hasSpun) {
+        return state;
+      }
 
       const remappedStarters = remapStartersForFormation(
         state.starters,
@@ -2650,20 +2659,15 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         state.manager.traitId,
       );
 
-      // Re-sync draft active slot if switching formation mid-draft
+      // Re-sync draft active slot if switching formation mid-draft (only before spinning)
       let nextDraft = state.draft;
-      if (state.phase === 'draft' && !state.draft.completed) {
+      if (state.phase === 'draft' && !state.draft.completed && !state.draft.hasSpun) {
         const nextEmpty = findNextEmptyDraftSlot(remappedStarters, state.bench);
         if (nextEmpty) {
-          const targetChanged =
-            nextEmpty.currentSlotType !== state.draft.currentSlotType ||
-            nextEmpty.currentSlotIndex !== state.draft.currentSlotIndex;
           nextDraft = {
             ...state.draft,
             currentSlotType: nextEmpty.currentSlotType,
             currentSlotIndex: nextEmpty.currentSlotIndex,
-            hasSpun: targetChanged ? false : state.draft.hasSpun,
-            reels: targetChanged ? [] : state.draft.reels,
           };
         }
       }
@@ -2685,6 +2689,10 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'AUTO_OPTIMIZE_LINEUP': {
+      // Anti-exploit: never allow quick lineup optimize to reset an already-spun draft roulette
+      if (state.phase === 'draft' && !state.draft.completed && state.draft.hasSpun) {
+        return state;
+      }
       const currentTactic =
         state.season?.nextMatchTactic ??
         state.season?.defaultTactic ??
@@ -2698,18 +2706,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       );
 
       let nextDraft = state.draft;
-      if (state.phase === 'draft' && !state.draft.completed) {
+      if (state.phase === 'draft' && !state.draft.completed && !state.draft.hasSpun) {
         const nextEmpty = findNextEmptyDraftSlot(optStarters, optBench);
         if (nextEmpty) {
-          const targetChanged =
-            nextEmpty.currentSlotType !== state.draft.currentSlotType ||
-            nextEmpty.currentSlotIndex !== state.draft.currentSlotIndex;
           nextDraft = {
             ...state.draft,
             currentSlotType: nextEmpty.currentSlotType,
             currentSlotIndex: nextEmpty.currentSlotIndex,
-            hasSpun: targetChanged ? false : state.draft.hasSpun,
-            reels: targetChanged ? [] : state.draft.reels,
           };
         }
       }
@@ -2806,16 +2809,30 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'PICK_DRAFT_PLAYER': {
-      if (state.phase !== 'draft' || state.draft.completed) return state;
-      const { player } = action.payload;
+      if (
+        state.phase !== 'draft' ||
+        state.draft.completed ||
+        !state.draft.hasSpun ||
+        state.draft.reels.length === 0
+      ) {
+        return state;
+      }
+      const requested = action.payload.player;
+      const canonicalCandidate = state.draft.reels
+        .flatMap((r) => r.candidates)
+        .find((c) => c.id === requested.id);
+      if (!canonicalCandidate) return state;
+
+      const ownedIds = getAllSquadIds(state.starters, state.bench);
+      if (ownedIds.has(canonicalCandidate.id)) return state;
 
       const nextStarters = [...state.starters];
       const nextBench = [...state.bench];
 
       if (state.draft.currentSlotType === 'starter') {
-        nextStarters[state.draft.currentSlotIndex] = player;
+        nextStarters[state.draft.currentSlotIndex] = canonicalCandidate;
       } else {
-        nextBench[state.draft.currentSlotIndex] = player;
+        nextBench[state.draft.currentSlotIndex] = canonicalCandidate;
       }
 
       const nextEmpty = findNextEmptyDraftSlot(nextStarters, nextBench);
@@ -2923,6 +2940,17 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const { from, to } = action.payload;
       if (from.area === to.area && from.index === to.index) return state;
 
+      // Anti-exploit: once roulette is spun in draft, block swapping into the active empty slot
+      // so users cannot force-reset draft.hasSpun / draft.reels for infinite re-rolls!
+      if (state.phase === 'draft' && !state.draft.completed && state.draft.hasSpun) {
+        const isActiveSlot = (loc: { area: 'starter' | 'bench'; index: number }) =>
+          loc.area === state.draft.currentSlotType &&
+          loc.index === state.draft.currentSlotIndex;
+        if (isActiveSlot(from) || isActiveSlot(to)) {
+          return state;
+        }
+      }
+
       const nextStarters = [...state.starters];
       const nextBench = [...state.bench];
 
@@ -2949,28 +2977,16 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       setP(from, pTo);
       setP(to, pFrom);
 
-      // Re-sync next empty draft slot if swapping during draft
+      // Re-sync next empty draft slot ONLY before roulette has been spun (never clear spun reels)
       let nextDraft = state.draft;
-      if (state.phase === 'draft' && !state.draft.completed) {
-        const currentTargetNowFilled =
-          state.draft.currentSlotType === 'starter'
-            ? nextStarters[state.draft.currentSlotIndex] !== null
-            : nextBench[state.draft.currentSlotIndex] !== null;
-
-        if (!state.draft.hasSpun || currentTargetNowFilled) {
-          const nextEmpty = findNextEmptyDraftSlot(nextStarters, nextBench);
-          if (nextEmpty) {
-            const targetChanged =
-              nextEmpty.currentSlotType !== state.draft.currentSlotType ||
-              nextEmpty.currentSlotIndex !== state.draft.currentSlotIndex;
-            nextDraft = {
-              ...state.draft,
-              currentSlotType: nextEmpty.currentSlotType,
-              currentSlotIndex: nextEmpty.currentSlotIndex,
-              hasSpun: targetChanged ? false : state.draft.hasSpun,
-              reels: targetChanged ? [] : state.draft.reels,
-            };
-          }
+      if (state.phase === 'draft' && !state.draft.completed && !state.draft.hasSpun) {
+        const nextEmpty = findNextEmptyDraftSlot(nextStarters, nextBench);
+        if (nextEmpty) {
+          nextDraft = {
+            ...state.draft,
+            currentSlotType: nextEmpty.currentSlotType,
+            currentSlotIndex: nextEmpty.currentSlotIndex,
+          };
         }
       }
 
@@ -6372,7 +6388,332 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   };
 }
 
-function loadSavedGameState(): GameState {
+const CANONICAL_PLAYERS_BY_ID: Map<string, Player> = (() => {
+  const map = new Map<string, Player>();
+  for (const p of LEGEND_PLAYERS) map.set(p.id, p);
+  for (const p of ACTIVE_PLAYERS) {
+    if (!map.has(p.id)) map.set(p.id, p);
+  }
+  for (const ext of UCL_EXTERNAL_TEAMS) {
+    for (const p of ext.roster) {
+      if (!map.has(p.id)) map.set(p.id, p);
+    }
+  }
+  return map;
+})();
+
+function compactPlayerForStorage(player: Player): Player | { id: string; _ref: 1 } {
+  if (!player.isGenerated && CANONICAL_PLAYERS_BY_ID.has(player.id)) {
+    return { id: player.id, _ref: 1 };
+  }
+  return {
+    id: player.id,
+    name: player.name,
+    position: player.position,
+    mainPositions: player.mainPositions,
+    secondaryPositions: player.secondaryPositions,
+    ovr: player.ovr,
+    nationality: player.nationality,
+    nationalityCode: player.nationalityCode,
+    leagueId: player.leagueId,
+    club: player.club,
+    att: player.att,
+    mid: player.mid,
+    def: player.def,
+    stamina: player.stamina,
+    playstyles: player.playstyles,
+    scoutNote: '',
+    isLegend: player.isLegend,
+    ...(player.isGenerated ? { isGenerated: true } : {}),
+  };
+}
+
+function hydratePlayerFromCatalog(
+  raw: Player | { id: string; _ref?: 1 },
+): Player | null {
+  if (!raw || typeof raw.id !== 'string') return null;
+  if ('_ref' in raw && raw._ref === 1) {
+    return CANONICAL_PLAYERS_BY_ID.get(raw.id) ?? null;
+  }
+  const player = raw as Player;
+  if (!player.isGenerated) {
+    const canonical = CANONICAL_PLAYERS_BY_ID.get(player.id);
+    if (canonical) return canonical;
+  }
+  if (!player.attrs) {
+    return { ...player, attrs: getPlayerAttributes(player) };
+  }
+  return player;
+}
+
+function compactRosterMapForStorage(
+  rosters: Record<string, Player[]> | undefined,
+): Record<string, Player[]> {
+  if (!rosters) return {};
+  const out: Record<string, (Player | { id: string; _ref: 1 })[]> = {};
+  for (const [clubId, list] of Object.entries(rosters)) {
+    out[clubId] = list.map(compactPlayerForStorage);
+  }
+  return out as unknown as Record<string, Player[]>;
+}
+
+function hydrateRosterMapFromCatalog(
+  rosters: Record<string, Player[]> | undefined,
+): Record<string, Player[]> {
+  if (!rosters) return {};
+  const out: Record<string, Player[]> = {};
+  for (const [clubId, list] of Object.entries(rosters)) {
+    out[clubId] = (list as (Player | { id: string; _ref?: 1 })[])
+      .map(hydratePlayerFromCatalog)
+      .filter((p): p is Player => p !== null);
+  }
+  return out;
+}
+
+function compactPlayerStatsMapForStorage(
+  map: Record<string, PlayerSeasonStats> | undefined,
+  pruneZeroContributionAi = false,
+): Record<string, PlayerSeasonStats> {
+  if (!map) return {};
+  const out: Record<string, PlayerSeasonStats> = {};
+  for (const [id, st] of Object.entries(map)) {
+    if (st.isUserTeam) {
+      out[id] = st;
+      continue;
+    }
+    if (
+      st.appearances <= 0 &&
+      st.goals <= 0 &&
+      st.assists <= 0 &&
+      st.cleanSheets <= 0
+    ) {
+      continue;
+    }
+    if (
+      pruneZeroContributionAi &&
+      st.goals <= 0 &&
+      st.assists <= 0 &&
+      st.cleanSheets <= 0 &&
+      st.avgRating < 7.2
+    ) {
+      continue;
+    }
+    out[id] = st;
+  }
+  return out;
+}
+
+function compactConditionsForLocalStorage(
+  map: PlayerConditionMap | undefined,
+  userSquadIds: Set<string>,
+): PlayerConditionMap {
+  const base = compactConditionMapForStorage(map);
+  const out: PlayerConditionMap = {};
+  for (const [id, c] of Object.entries(base)) {
+    // Preserve full condition state for user squad; for AI players only persist active injury or non-neutral morale
+    if (userSquadIds.has(id) || c.injury !== null || c.morale !== 0) {
+      out[id] = c;
+    }
+  }
+  return out;
+}
+
+function compactMatchResultForStorage(
+  result: MatchResult,
+  options?: { keepGoalEventsOnly?: boolean; keepPlayerRatings?: boolean },
+): MatchResult {
+  const keepGoalEventsOnly = Boolean(options?.keepGoalEventsOnly);
+  const keepPlayerRatings = Boolean(options?.keepPlayerRatings);
+  return {
+    ...result,
+    events: keepGoalEventsOnly
+      ? result.events.filter((e) => e.type === 'goal')
+      : [],
+    playerRatings: keepPlayerRatings ? result.playerRatings : [],
+    extraTime: result.extraTime
+      ? {
+          ...result.extraTime,
+          etEvents: keepGoalEventsOnly
+            ? result.extraTime.etEvents.filter((e) => e.type === 'goal')
+            : [],
+        }
+      : undefined,
+  };
+}
+
+function compactCupForLocalStorage(
+  cup: SeasonState['cup'],
+): SeasonState['cup'] {
+  if (!cup) return cup;
+  const compactNodes = (nodes: typeof cup.rounds.r16) =>
+    nodes.map((node) => {
+      if (!node.result) return node;
+      const isUserNode =
+        node.homeTeamId === USER_CLUB_ID || node.awayTeamId === USER_CLUB_ID;
+      if (isUserNode) return node;
+      return {
+        ...node,
+        result: compactMatchResultForStorage(node.result),
+      };
+    });
+  return {
+    ...cup,
+    rounds: {
+      r16: compactNodes(cup.rounds.r16),
+      qf: compactNodes(cup.rounds.qf),
+      sf: compactNodes(cup.rounds.sf),
+      final: compactNodes(cup.rounds.final),
+    },
+  };
+}
+
+function compactUclForLocalStorage(
+  ucl: SeasonState['ucl'],
+): SeasonState['ucl'] {
+  if (!ucl) return ucl;
+  const compactTies = (ties: typeof ucl.ties.r16) =>
+    ties.map((tie) => {
+      const isUserTie =
+        tie.teamAId === USER_CLUB_ID || tie.teamBId === USER_CLUB_ID;
+      if (isUserTie) return tie;
+      return {
+        ...tie,
+        ...(tie.leg1 ? { leg1: compactMatchResultForStorage(tie.leg1) } : {}),
+        ...(tie.leg2 ? { leg2: compactMatchResultForStorage(tie.leg2) } : {}),
+      };
+    });
+  return {
+    ...ucl,
+    aiRosters: compactRosterMapForStorage(ucl.aiRosters),
+    leaguePhaseFixtures: ucl.leaguePhaseFixtures.map((f) =>
+      f.played && f.result
+        ? {
+            id: f.id,
+            round: f.round,
+            homeTeamId: f.homeTeamId,
+            awayTeamId: f.awayTeamId,
+            played: true,
+          }
+        : f,
+    ),
+    ties: {
+      playoff: compactTies(ucl.ties.playoff),
+      r16: compactTies(ucl.ties.r16),
+      qf: compactTies(ucl.ties.qf),
+      sf: compactTies(ucl.ties.sf),
+      final: compactTies(ucl.ties.final),
+    },
+  };
+}
+
+function compactOtherLeaguesForLocalStorage(
+  otherLeagues: SeasonState['otherLeagues'],
+): SeasonState['otherLeagues'] {
+  if (!otherLeagues) return otherLeagues;
+  const out: SeasonState['otherLeagues'] = {};
+  for (const [lid, lg] of Object.entries(otherLeagues) as [
+    LeagueId,
+    SeasonState['otherLeagues'][LeagueId],
+  ][]) {
+    if (!lg) continue;
+    out[lid] = {
+      ...lg,
+      aiRosters: compactRosterMapForStorage(lg.aiRosters),
+      fixtures: lg.fixtures.filter((f) => !f.played),
+      playerStats: compactPlayerStatsMapForStorage(lg.playerStats, true),
+      cupPlayerStats: compactPlayerStatsMapForStorage(lg.cupPlayerStats, true),
+    };
+  }
+  return out;
+}
+
+/**
+ * Compacts GameState for localStorage persistence so a full 38R + 4-league + Cup + UCL
+ * season stays well under the 5MB browser quota (preventing silent QuotaExceededError
+ * save failures that previously rolled users back to earlier rounds on refresh).
+ * Deliberately preserves in-progress `liveHalftime` (including `streamAutoMode`) so
+ * refreshing mid-match can NEVER cancel a losing match.
+ */
+export function compactGameStateForStorage(
+  state: GameState,
+  options?: { aggressive?: boolean },
+): GameState {
+  if (!state.season) return state;
+  const aggressive = Boolean(options?.aggressive);
+  const season = state.season;
+  const userSquadIds = getAllSquadIds(state.starters, state.bench);
+
+  const compactUserHistory = (history: MatchResult[]) => {
+    const keepFullCount = aggressive ? 2 : 6;
+    if (history.length <= keepFullCount) return history;
+    const cutoff = history.length - keepFullCount;
+    return history.map((m, idx) =>
+      idx < cutoff
+        ? compactMatchResultForStorage(m, {
+            keepGoalEventsOnly: true,
+            keepPlayerRatings: false,
+          })
+        : m,
+    );
+  };
+
+  const sanitizedSeason: SeasonState = {
+    ...season,
+    aiRosters: compactRosterMapForStorage(season.aiRosters),
+    fixtures: season.fixtures.map((f) =>
+      f.played && f.result
+        ? {
+            id: f.id,
+            round: f.round,
+            homeTeamId: f.homeTeamId,
+            awayTeamId: f.awayTeamId,
+            played: true,
+          }
+        : f,
+    ),
+    otherLeagues: compactOtherLeaguesForLocalStorage(season.otherLeagues),
+    allPlayerStats: compactPlayerStatsMapForStorage(season.allPlayerStats, aggressive),
+    cup: compactCupForLocalStorage(season.cup),
+    cupPlayerStats: compactPlayerStatsMapForStorage(season.cupPlayerStats, true),
+    ucl: compactUclForLocalStorage(season.ucl),
+    uclPlayerStats: compactPlayerStatsMapForStorage(season.uclPlayerStats, true),
+    userMatchHistory: compactUserHistory(season.userMatchHistory),
+    userCupMatchHistory: compactUserHistory(season.userCupMatchHistory),
+    userUclMatchHistory: compactUserHistory(season.userUclMatchHistory),
+    ...(season.playerConditions
+      ? {
+          playerConditions: compactConditionsForLocalStorage(
+            season.playerConditions,
+            userSquadIds,
+          ),
+        }
+      : {}),
+  };
+
+  return {
+    ...state,
+    season: sanitizedSeason,
+  };
+}
+
+export function persistGameStateToStorage(state: GameState): boolean {
+  if (typeof window === 'undefined' || !window.localStorage) return false;
+  try {
+    const compact = compactGameStateForStorage(state);
+    window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(compact));
+    return true;
+  } catch {
+    try {
+      const aggressive = compactGameStateForStorage(state, { aggressive: true });
+      window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(aggressive));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export function loadSavedGameState(): GameState {
   try {
     if (typeof window === 'undefined' || !window.localStorage) {
       return createInitialState();
@@ -6397,7 +6738,25 @@ function loadSavedGameState(): GameState {
       ) {
         parsed.draftLeaguePool = [...ALL_LEAGUE_IDS];
       }
+
+      // Re-canonicalize squad players against static catalog & reject duplicate player IDs
+      const seenSquadIds = new Set<string>();
+      const sanitizeSquadSlot = (p: Player | null): Player | null => {
+        if (!p) return null;
+        const hydrated = hydratePlayerFromCatalog(p);
+        if (!hydrated || seenSquadIds.has(hydrated.id)) return null;
+        seenSquadIds.add(hydrated.id);
+        return hydrated;
+      };
+      parsed.starters = parsed.starters.map(sanitizeSquadSlot);
+      if (Array.isArray(parsed.bench)) {
+        parsed.bench = parsed.bench.map(sanitizeSquadSlot);
+      }
+
       if (parsed.season) {
+        parsed.season.aiRosters = hydrateRosterMapFromCatalog(
+          parsed.season.aiRosters,
+        );
         if (!parsed.season.otherLeagues) {
           const initOther = createOtherLeaguesState(parsed.season.leagueId);
           parsed.season.otherLeagues = advanceOtherLeaguesToProgress(
@@ -6405,6 +6764,12 @@ function loadSavedGameState(): GameState {
             parsed.season.currentRound,
             parsed.season.totalRounds,
           );
+        } else {
+          for (const lg of Object.values(parsed.season.otherLeagues)) {
+            if (lg && lg.aiRosters) {
+              lg.aiRosters = hydrateRosterMapFromCatalog(lg.aiRosters);
+            }
+          }
         }
         // Backfill Phase 2 fields for older v5 saves
         if (parsed.season.cup === undefined) parsed.season.cup = null;
@@ -6412,7 +6777,13 @@ function loadSavedGameState(): GameState {
         if (!Array.isArray(parsed.season.userCupMatchHistory)) {
           parsed.season.userCupMatchHistory = [];
         }
-        if (parsed.season.ucl === undefined) parsed.season.ucl = null;
+        if (parsed.season.ucl === undefined) {
+          parsed.season.ucl = null;
+        } else if (parsed.season.ucl) {
+          parsed.season.ucl.aiRosters = hydrateRosterMapFromCatalog(
+            parsed.season.ucl.aiRosters,
+          );
+        }
         if (!parsed.season.uclPlayerStats) parsed.season.uclPlayerStats = {};
         if (!Array.isArray(parsed.season.userUclMatchHistory)) {
           parsed.season.userUclMatchHistory = [];
@@ -6439,6 +6810,14 @@ function loadSavedGameState(): GameState {
         parsed.season.uclPlayerStats = normalizeLegacyPlayerStatsMap(
           parsed.season.uclPlayerStats,
         );
+
+        // Anti-save-scum: if user refreshed during an in-progress live auto-sim match
+        // (`streamAutoMode === true`), immediately commit that match instead of rewinding!
+        if (parsed.season.liveHalftime?.streamAutoMode) {
+          const committed = gameReducer(parsed, { type: 'COMMIT_LIVE_MATCH' });
+          persistGameStateToStorage(committed);
+          return committed;
+        }
       }
       return parsed;
     }
@@ -6633,33 +7012,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [soloTickerPlaying, setSoloTickerPlaying] = useState(false);
   const [recentUnlocks, setRecentUnlocks] = useState<string[]>([]);
 
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const sanitizedSeason = state.season
-          ? {
-              ...state.season,
-              liveHalftime: state.season.liveHalftime?.streamAutoMode
-                ? null
-                : state.season.liveHalftime,
-              ...(state.season.playerConditions
-                ? {
-                    playerConditions: compactConditionMapForStorage(
-                      state.season.playerConditions,
-                    ),
-                  }
-                : {}),
-            }
-          : state.season;
-        const toSave: GameState = state.season
-          ? { ...state, season: sanitizedSeason }
-          : state;
-        window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(toSave));
-      }
-    } catch {
-      // Ignore storage quota errors
-    }
+  const latestStateRef = useRef<GameState>(state);
+
+  // Persist synchronously right after React commits (before browser paint) so a quick refresh
+  // after spinning roulette, transferring, or finishing a match can NEVER roll back to the past.
+  useLayoutEffect(() => {
+    latestStateRef.current = state;
+    persistGameStateToStorage(state);
   }, [state]);
+
+  // Safety flush on tab close / mobile browser refresh / backgrounding
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const flushNow = () => {
+      persistGameStateToStorage(latestStateRef.current);
+    };
+    window.addEventListener('pagehide', flushNow);
+    window.addEventListener('beforeunload', flushNow);
+    return () => {
+      window.removeEventListener('pagehide', flushNow);
+      window.removeEventListener('beforeunload', flushNow);
+    };
+  }, []);
 
   const activeTactic: TacticId =
     state.season?.nextMatchTactic ??

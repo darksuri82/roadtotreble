@@ -1,4 +1,5 @@
 import type {
+  DraftState,
   FormationId,
   ManagerAvatarConfig,
   ManagerTraitId,
@@ -201,5 +202,6 @@ export interface LocalBlindDraftCache {
   defaultTactic: TacticId;
   starters: (Player | null)[];
   bench: (Player | null)[];
+  draft?: DraftState;
   completed: boolean;
 }

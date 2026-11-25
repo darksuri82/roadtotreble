@@ -267,22 +267,62 @@ declare
   v_pruned_count int := 0;
   v_cutoff_score int;
   v_total_after int;
+  v_starter_legends int := 0;
+  v_total_legends int := 0;
+  v_total_players int := 0;
+  v_distinct_players int := 0;
+  v_team_avg_ovr numeric(4,1);
 begin
   v_run_id := trim(coalesce(p_entry->>'run_id', ''));
   v_score := coalesce((p_entry->>'season_score')::int, -1);
   v_is_treble := coalesce((p_entry->>'is_treble')::boolean, false);
   v_ucl_won := coalesce((p_entry->>'ucl_won')::boolean, false);
   v_achieved_at := coalesce((p_entry->>'achieved_at')::timestamptz, now());
+  v_team_avg_ovr := coalesce((p_entry->>'team_avg_ovr')::numeric(4,1), 80.0);
 
   if v_run_id = '' or length(v_run_id) > 120 then
     raise exception 'Invalid run_id';
   end if;
-  if v_score < 0 or v_score > 30000 then
+  if v_score < 0 or v_score > 15000 then
     raise exception 'Invalid season_score';
+  end if;
+  if v_team_avg_ovr > 96.5 then
+    raise exception 'Invalid team_avg_ovr';
   end if;
   if jsonb_typeof(p_entry->'squad_snapshot'->'starters') <> 'array'
      or jsonb_array_length(p_entry->'squad_snapshot'->'starters') < 11 then
     raise exception 'Invalid squad_snapshot starters';
+  end if;
+
+  -- v8.17 Anti-exploit server validation: reject duplicate player IDs and impossible Legend-spam squads
+  select
+    count(*) filter (where elem->>'isLegend' = 'true')
+    into v_starter_legends
+  from jsonb_array_elements(p_entry->'squad_snapshot'->'starters') as elem;
+
+  with all_squad as (
+    select elem from jsonb_array_elements(p_entry->'squad_snapshot'->'starters') as elem
+    union all
+    select elem from jsonb_array_elements(
+      case
+        when jsonb_typeof(p_entry->'squad_snapshot'->'bench') = 'array'
+        then p_entry->'squad_snapshot'->'bench'
+        else '[]'::jsonb
+      end
+    ) as elem
+  )
+  select
+    count(*),
+    count(distinct nullif(trim(coalesce(elem->>'id', '')), '')),
+    count(*) filter (where elem->>'isLegend' = 'true')
+    into v_total_players, v_distinct_players, v_total_legends
+  from all_squad;
+
+  if v_distinct_players < v_total_players then
+    raise exception 'Duplicate players in squad_snapshot';
+  end if;
+  if v_starter_legends > 5 or v_total_legends > 6 then
+    raise exception 'Invalid legend count in squad_snapshot';
   end if;
 
   -- Serialize concurrent submissions to eliminate Top-15 race conditions
@@ -422,3 +462,9 @@ $$;
 
 grant execute on function public.submit_global_hof_ranking(jsonb) to anon, authenticated;
 
+-- Optional one-time cleanup for legacy exploit rows (>5 starter legends or >6 total legends):
+-- delete from public.global_hof_rankings
+-- where (
+--   select count(*) from jsonb_array_elements(squad_snapshot->'starters') e
+--   where e->>'isLegend' = 'true'
+-- ) > 5;

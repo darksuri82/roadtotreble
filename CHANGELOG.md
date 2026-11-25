@@ -5,6 +5,22 @@
 
 ---
 
+## v8.17 — 드래프트 무한 리롤 악용 원천 차단 · 새로고침 과거 롤백(5MB 저장 초과/라이브 취소) 근본 해결 · 글로벌 TOP 15 무결성 검증
+
+- **드래프트 룰렛 무한 리롤 버그 원천 차단 (`src/store/GameContext.tsx`, `src/components/draft/DraftScreen.tsx`, `src/components/multiplayer/MultiplayerBlindDraft.tsx`, `src/types/multiplayer.ts`)**:
+  - 드래프트 중 `hasSpun === true` 상태에서 이미 뽑은 선수를 활성 빈 슬롯과 교환(`SWAP_SQUAD_POSITIONS`)하거나 `[빠른 선발]`(`AUTO_OPTIMIZE_LINEUP`)·포메이션 변경(`CHANGE_FORMATION`)으로 빈 슬롯이 이동할 때 `hasSpun: false`·`reels: []`로 초기화되어 원하는 선수·레전드 11명 전원 도배가 가능하던 치명적 버그를 완전 차단.
+  - `PICK_DRAFT_PLAYER`에 `hasSpun` 확인, 현재 `draft.reels` 후보 목록 대조(원본 객체 강제 사용), 중복 보유 차단 검증 추가.
+  - 1v1 멀티 블라인드 드래프트(`LocalBlindDraftCache`)에도 `draft`(`hasSpun`·`reels`)를 `useLayoutEffect`로 동기 저장·복원하고 스핀 중 활성 슬롯 교환을 차단해 새로고침 리롤 방지.
+- **새로고침 과거 롤백 및 세이브 조작 근본 해결 (`src/store/GameContext.tsx`)**:
+  - 38라운드 진행 시 `JSON.stringify(state)`가 10R부터 5MB UTF-16 브라우저 쿼터(R38 기준 9.4MB)를 초과해 `localStorage.setItem`이 조용히 실패하며 새로고침 시 과거 라운드로 되돌아가던 원인을 근본 해결(`compactGameStateForStorage`: 종료 AI 경기 `result` 제거, 카탈로그 AI 선수 `{ id, _ref: 1 }` 참조 압축 및 로드 시 원본 복원, 0출전/저기여 타 리그 스탯·AI 피로 항목 경량화, `QuotaExceededError` 시 공격적 폴백 재저장).
+  - 저장 훅을 비동기 `useEffect`에서 페인트 전 동기 `useLayoutEffect` + `pagehide`/`beforeunload` 플러시로 전환.
+  - 라이브 자동진행(`streamAutoMode`) 중 저장 시 `liveHalftime`을 지우지 않고 보존하며, 새로고침 복원(`loadSavedGameState`) 시 진행 중 경기를 즉시 `COMMIT_LIVE_MATCH`로 확정해 패배 직전 새로고침 취소 조작 차단. 실존 선수 로컬 변조(OVR 조작/중복)도 로드 시 카탈로그 원본으로 자동 정규화.
+- **글로벌 TOP 15 무결성 검증 (`src/services/globalRankingService.ts`, `supabase/schema.sql`)**:
+  - `validateGlobalHofEntryIntegrity` 및 Supabase `submit_global_hof_ranking` RPC 양측에 중복 선수 차단, 레전드 편성 상한(선발 최대 5명·총합 최대 6명), `team_avg_ovr <= 96.5`, `season_score <= 15000` 서버 검증을 추가(`supabase/schema.sql`에 기존 악용 기록 정리용 SQL 주석 포함).
+- **테스트 (`src/__tests__/v817AntiExploitAndPersistence.test.ts`)**: 드래프트 스왑/포메이션/최적화/주입 리롤 차단, 38R 압축 용량(<3.5MB UTF-16), 자동진행 중 새로고침 자동 확정 및 OVR 변조 정규화, 11레전드 도배 글로벌 등록 차단 검증 4건 추가.
+
+---
+
 ## v8.16 — 싱글·멀티 챔스 자동진행 팝업(PK 시각화) 공용화 · 싱글 일시중지/직접진행 & 토너먼트 1경기씩 경계 확인 · 멀티 토너먼트 상대 비교 경기 프리뷰
 
 - **싱글·멀티 챔스 자동진행 중앙 팝업 & PK 시각화 완전 통일 (`src/components/ucl/UclMulticastPopupBoard.tsx`, `src/components/multiplayer/league/MpUclMulticastBoard.tsx`)**:
