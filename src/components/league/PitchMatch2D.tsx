@@ -69,6 +69,9 @@ export interface PitchMatch2DProps {
   homeGoalsSoFar?: number;
   awayGoalsSoFar?: number;
   isBigMatch?: boolean;
+  isKnockoutDecider?: boolean;
+  aggHomeBeforeMatch?: number;
+  aggAwayBeforeMatch?: number;
   finalTheme?: PitchFinalTheme;
   scheduledEvents: { key: string; event: MatchEvent }[];
   preHandledKeys?: string[];
@@ -164,6 +167,9 @@ export function PitchMatch2D({
   homeGoalsSoFar = 0,
   awayGoalsSoFar = 0,
   isBigMatch = false,
+  isKnockoutDecider = false,
+  aggHomeBeforeMatch = 0,
+  aggAwayBeforeMatch = 0,
   finalTheme = 'none',
   scheduledEvents,
   preHandledKeys = [],
@@ -262,6 +268,9 @@ export function PitchMatch2D({
         homeGoalsSoFar,
         awayGoalsSoFar,
         isBigMatch: isBigMatch || finalTheme !== 'none',
+        isKnockoutDecider,
+        aggHomeBeforeMatch,
+        aggAwayBeforeMatch,
         events: scheduledEvents,
         preHandledKeys,
       });
@@ -309,6 +318,9 @@ export function PitchMatch2D({
     homeGoalsSoFar,
     awayGoalsSoFar,
     isBigMatch,
+    isKnockoutDecider,
+    aggHomeBeforeMatch,
+    aggAwayBeforeMatch,
     finalTheme,
     scheduledEvents,
     preHandledKeys,
@@ -838,46 +850,71 @@ export function PitchMatch2D({
         drawPlayer(i, false, awayFill, awayStroke);
       }
 
-      // Thin, restrained ball pass trail
-      for (let i = 0; i < sim.ball.trail.length; i += 1) {
-        const entry = sim.ball.trail[i];
-        const tp = toPx(entry);
-        const tAlpha = ((i + 1) / sim.ball.trail.length) * (inShotFlight ? 0.36 : 0.20);
-        ctx.fillStyle = inShotFlight
-          ? `rgba(254, 240, 138, ${tAlpha})`
-          : `rgba(248, 250, 252, ${tAlpha})`;
-        ctx.beginPath();
-        ctx.arc(
-          tp.x,
-          tp.y - entry.z * 12,
-          (inShotFlight ? 2.6 : 2.1) * (1 + entry.z * 0.35),
-          0,
-          Math.PI * 2,
-        );
-        ctx.fill();
-      }
-
-      // Ball with aerial height & detached ground shadow
+      // Single Source of Truth ball coordinates (interpolated cleanly between physics ticks)
+      const BALL_Z_LIFT_PX = 9;
       const bx = lerp(sim.ball.prevX, sim.ball.x, alpha);
       const by = lerp(sim.ball.prevY, sim.ball.y, alpha);
       const bz = lerp(sim.ball.prevZ, sim.ball.z, alpha);
       const bp = toPx({ x: bx, y: by });
-      const liftOffsetPx = bz * 14;
-      const ballRadius = (inShotFlight ? 4.7 : 4.2) * (1 + bz * 0.55);
+      const liftOffsetPx = bz * BALL_Z_LIFT_PX;
+      const ballRadius = (inShotFlight ? 4.5 : 4.1) * (1 + bz * 0.28);
 
-      ctx.fillStyle = `rgba(0,0,0,${Math.max(0.16, 0.40 - bz * 0.16)})`;
+      // Subtle tapering motion streak ONLY when ball is genuinely in flight (never overlapping white dots!)
+      if (sim.ball.ownerIdx === null && sim.ball.trail.length >= 2) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        const pts = sim.ball.trail;
+        for (let i = 1; i < pts.length; i += 1) {
+          const prevPt = pts[i - 1];
+          const curPt = pts[i];
+          // Safety discontinuity guard: never draw streak across a scene/set-piece reset
+          if (Math.hypot(curPt.x - prevPt.x, curPt.y - prevPt.y) > 0.14) {
+            continue;
+          }
+          const p0 = toPx(prevPt);
+          const p1 = toPx(curPt);
+          const frac = i / pts.length;
+          const tAlpha = frac * (inShotFlight ? 0.34 : 0.18);
+          ctx.strokeStyle = inShotFlight
+            ? `rgba(254, 240, 138, ${tAlpha})`
+            : `rgba(248, 250, 252, ${tAlpha})`;
+          ctx.lineWidth = (inShotFlight ? 2.8 : 2.0) * frac;
+          ctx.beginPath();
+          ctx.moveTo(p0.x, p0.y - prevPt.z * BALL_Z_LIFT_PX);
+          ctx.lineTo(p1.x, p1.y - curPt.z * BALL_Z_LIFT_PX);
+          ctx.stroke();
+        }
+        // Connect last trail sample smoothly to interpolated ball center
+        const lastPt = pts[pts.length - 1];
+        if (Math.hypot(bx - lastPt.x, by - lastPt.y) <= 0.14) {
+          const lp = toPx(lastPt);
+          ctx.strokeStyle = inShotFlight
+            ? 'rgba(254, 240, 138, 0.36)'
+            : 'rgba(248, 250, 252, 0.20)';
+          ctx.lineWidth = inShotFlight ? 2.8 : 2.0;
+          ctx.beginPath();
+          ctx.moveTo(lp.x, lp.y - lastPt.z * BALL_Z_LIFT_PX);
+          ctx.lineTo(bp.x, bp.y - liftOffsetPx);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // Grounded shadow (distinct soft ellipse below ball so it never reads as a second ball)
+      ctx.fillStyle = `rgba(0,0,0,${Math.max(0.12, 0.30 - bz * 0.14)})`;
       ctx.beginPath();
       ctx.ellipse(
         bp.x,
-        bp.y + 4.2,
-        4.4 + bz * 2.0,
-        2.1 + bz * 0.7,
+        bp.y + 3.2,
+        3.8 + bz * 1.1,
+        1.7 + bz * 0.4,
         0,
         0,
         Math.PI * 2,
       );
       ctx.fill();
 
+      // Strictly ONE crisp football entity
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = '#0f172a';
       ctx.lineWidth = 1.35;
@@ -1036,21 +1073,24 @@ export function PitchMatch2D({
             ctx.fillText(pillText, width / 2, bTop + bh / 2 + 0.5);
             ctx.restore();
           }
-        } else if (dirCue.stage === 'shot_flight') {
+        } else if (dirCue.stage === 'set_piece_setup' || dirCue.stage === 'shot_flight') {
           ctx.save();
           const bw = Math.min(width * 0.76, 250);
           const bh = 24;
           const bLeft = (width - bw) / 2;
           const bTop = padY + 7;
           ctx.fillStyle = 'rgba(11, 16, 24, 0.88)';
-          ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+          ctx.strokeStyle =
+            dirCue.stage === 'set_piece_setup'
+              ? 'rgba(56, 189, 248, 0.72)'
+              : 'rgba(251, 191, 36, 0.75)';
           ctx.lineWidth = 1.3;
           ctx.beginPath();
           ctx.roundRect(bLeft, bTop, bw, bh, 999);
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = '#fef08a';
+          ctx.fillStyle = dirCue.stage === 'set_piece_setup' ? '#bae6fd' : '#fef08a';
           ctx.font = '700 10.5px system-ui, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';

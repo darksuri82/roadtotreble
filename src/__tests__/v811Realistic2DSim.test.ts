@@ -5,10 +5,17 @@ import { PLAYSTYLES } from '../data/playstyles';
 import { calculateChemistry } from '../engine/chemistryEngine';
 import { ALL_PLAYERS } from '../engine/dataLoader';
 import {
+  BOX_ZONE_MIN_DEPTH,
   createPitchSimState,
   evaluatePassLaneSafety,
+  FINAL_THIRD_MIN_DEPTH,
   FIXED_DT,
+  getAttackDepth,
+  MAX_BOX_BACKPASS_DIST,
+  MAX_FINAL_THIRD_BACKPASS_DIST,
   MAX_FRAME_DELTA,
+  MIN_DIRECT_FK_SHOT_DEPTH,
+  MIN_OPEN_PLAY_SHOT_DEPTH,
   resolvePitchFinalTheme,
   SIM_SECONDS_PER_MATCH_MINUTE,
   stepPitchSim,
@@ -21,6 +28,7 @@ import {
   buildTeamTacticalDoctrine,
   computeAgentLiveStamina,
   computeDynamicFormationTarget,
+  computeGameStateUrgency,
   getStaminaKinematicFactor,
 } from '../engine/pitchTacticalParams';
 import { TACTIC_LIST } from '../engine/tacticEngine';
@@ -749,5 +757,433 @@ describe('v8.11 Realistic 2D Tactical Pitch Simulation Engine', () => {
     expect(poss.recycles + poss.thirdManRuns).toBeGreaterThan(
       counter.recycles + counter.thirdManRuns,
     );
+  });
+
+  it('11. Bug 1 Regression: Zero behind-halfway shots & 100% authentic PK/Corner/FK/Counter staging (incl. duplicate GK save guard)', () => {
+    const homeStarters = makeSquadForFormation('4-3-3', 0);
+    // Deliberately share the exact same GK on both sides (1v1 blind draft edge case!)
+    const awayStarters = makeSquadForFormation('4-2-3-1', 1).map((p, idx) =>
+      idx === 0 ? homeStarters[0] : p,
+    );
+
+    const testEvents: { key: string; event: MatchEvent }[] = [
+      {
+        key: 'pk-home',
+        event: {
+          minute: 6,
+          half: 1,
+          type: 'goal',
+          teamId: 'home',
+          scorerId: homeStarters[9].id,
+          scorerName: homeStarters[9].name,
+          description: `${homeStarters[9].name} 페널티킥 성공!`,
+          highlightPattern: 'penalty_kick',
+          attackRoute: 'penalty_kick',
+          isPenalty: true,
+        },
+      },
+      {
+        key: 'corner-away',
+        event: {
+          minute: 13,
+          half: 1,
+          type: 'goal',
+          teamId: 'away',
+          scorerId: awayStarters[2].id,
+          scorerName: awayStarters[2].name,
+          assistId: awayStarters[7].id,
+          assistName: awayStarters[7].name,
+          description: `${awayStarters[2].name} 코너킥 헤더 골!`,
+          highlightPattern: 'corner_kick',
+          attackRoute: 'corner_header',
+        },
+      },
+      {
+        key: 'fk-home',
+        event: {
+          minute: 20,
+          half: 1,
+          type: 'chance',
+          teamId: 'home',
+          scorerId: homeStarters[7].id,
+          scorerName: homeStarters[7].name,
+          description: `${homeStarters[7].name} 직접 프리킥 골대 강타!`,
+          highlightPattern: 'direct_free_kick',
+          attackRoute: 'direct_fk',
+          highlightOutcome: 'woodwork',
+        },
+      },
+      {
+        key: 'counter-away',
+        event: {
+          minute: 27,
+          half: 1,
+          type: 'goal',
+          teamId: 'away',
+          scorerId: awayStarters[9].id,
+          scorerName: awayStarters[9].name,
+          assistId: awayStarters[6].id,
+          assistName: awayStarters[6].name,
+          description: `${awayStarters[9].name} 선수비 후역습 마무리!`,
+          highlightPattern: 'high_press_counter',
+          attackRoute: 'low_block_counter',
+        },
+      },
+      {
+        key: 'dup-gk-save',
+        event: {
+          minute: 35,
+          half: 1,
+          type: 'save',
+          teamId: 'away', // away defends -> home attacks
+          scorerId: awayStarters[0].id, // matches homeStarters[0].id in blind draft!
+          scorerName: homeStarters[10].name,
+          description: `${homeStarters[10].name} 감아차기, 골키퍼 슈퍼 세이브!`,
+          highlightPattern: 'cut_inside_curler',
+          attackRoute: 'cut_inside_curler',
+          highlightOutcome: 'save',
+        },
+      },
+      {
+        key: 'rebound-home',
+        event: {
+          minute: 41,
+          half: 1,
+          type: 'goal',
+          teamId: 'home',
+          scorerId: homeStarters[9].id,
+          scorerName: homeStarters[9].name,
+          description: `${homeStarters[9].name} 세컨볼 마무리!`,
+          highlightPattern: 'rebound_finish',
+          attackRoute: 'rebound_poach',
+        },
+      },
+    ];
+
+    const sim = createPitchSimState({
+      seed: 'bug1-staging-and-range-verification',
+      homeTeamId: 'home',
+      awayTeamId: 'away',
+      home: makeTeamInput('4-3-3', 'possession', 'tiki_taka', homeStarters),
+      away: makeTeamInput('4-2-3-1', 'counter', 'catenaccio', awayStarters),
+      startMinute: 0,
+      endMinute: 45,
+      half: 1,
+      targetHomePossession: 52,
+      homeShotsTarget: 7,
+      awayShotsTarget: 6,
+      homeXgTarget: 1.3,
+      awayXgTarget: 1.1,
+      homeGoalsSoFar: 0,
+      awayGoalsSoFar: 0,
+      events: testEvents,
+    });
+
+    const shotDepthByKey = new Map<string, number>();
+    let pkSetupVerified = false;
+    let cornerSetupVerified = false;
+    let fkSetupVerified = false;
+    let dupGkShooterIdx = -1;
+
+    for (let tick = 0; tick < 8000 && !sim.completed; tick += 1) {
+      stepPitchSim(sim, FIXED_DT);
+      const cue = sim.director;
+      if (!cue) continue;
+
+      // Verify exact set-piece ball placement & player staging
+      if (cue.key === 'pk-home' && cue.stage === 'set_piece_setup' && !pkSetupVerified) {
+        pkSetupVerified = true;
+        expect(sim.ball.x).toBeCloseTo(0.885, 3);
+        expect(sim.ball.y).toBeCloseTo(0.50, 3);
+        expect(sim.ball.ownerIdx).toBeNull();
+        // Every other outfielder outside penalty box (x <= 0.82)
+        for (let k = 1; k < 11; k += 1) {
+          if (k !== cue.scorerIdx) {
+            expect(sim.homeAgents[k].x).toBeLessThanOrEqual(0.82);
+          }
+          expect(sim.awayAgents[k].x).toBeLessThanOrEqual(0.82);
+        }
+      }
+
+      if (cue.key === 'corner-away' && cue.stage === 'set_piece_setup' && !cornerSetupVerified) {
+        cornerSetupVerified = true;
+        expect(getAttackDepth(false, sim.ball.x)).toBeGreaterThanOrEqual(0.97);
+        expect(sim.ball.y <= 0.05 || sim.ball.y >= 0.95).toBe(true);
+        // Box packed with attackers & defenders (depth >= 0.78)
+        const boxAttackers = sim.awayAgents.filter(
+          (a) => a.slotIndex !== 0 && getAttackDepth(false, a.x) >= 0.78,
+        ).length;
+        expect(boxAttackers).toBeGreaterThanOrEqual(5);
+      }
+
+      if (cue.key === 'fk-home' && cue.stage === 'set_piece_setup' && !fkSetupVerified) {
+        fkSetupVerified = true;
+        expect(getAttackDepth(true, sim.ball.x)).toBeCloseTo(0.745, 2);
+        // 4-man wall lined up cleanly ahead of ball
+        for (const wIdx of [4, 5, 6, 7]) {
+          expect(sim.awayAgents[wIdx].x).toBeCloseTo(0.835, 2);
+        }
+      }
+
+      if (cue.key === 'dup-gk-save') {
+        dupGkShooterIdx = cue.scorerIdx;
+      }
+
+      // Record exact shot launch depth on shot_flight entry
+      if (cue.stage === 'shot_flight' && !shotDepthByKey.has(cue.key)) {
+        const launchDepth = getAttackDepth(cue.isHomeAttack, cue.shotOrigin.x);
+        shotDepthByKey.set(cue.key, launchDepth);
+      }
+    }
+
+    expect(sim.completed).toBe(true);
+    expect(pkSetupVerified).toBe(true);
+    expect(cornerSetupVerified).toBe(true);
+    expect(fkSetupVerified).toBe(true);
+    // Attacking GK (slot 0) MUST NEVER be chosen as shooter even when both teams share GK ID!
+    expect(dupGkShooterIdx).toBeGreaterThan(0);
+
+    // Every single shot fired strictly inside realistic shooting range (ZERO behind-halfway shots!)
+    expect(shotDepthByKey.size).toBe(testEvents.length);
+    expect(shotDepthByKey.get('pk-home')!).toBeCloseTo(0.885, 2);
+    expect(shotDepthByKey.get('corner-away')!).toBeGreaterThanOrEqual(0.78);
+    expect(shotDepthByKey.get('fk-home')!).toBeGreaterThanOrEqual(MIN_DIRECT_FK_SHOT_DEPTH);
+    expect(shotDepthByKey.get('counter-away')!).toBeGreaterThanOrEqual(MIN_OPEN_PLAY_SHOT_DEPTH);
+    expect(shotDepthByKey.get('dup-gk-save')!).toBeGreaterThanOrEqual(MIN_OPEN_PLAY_SHOT_DEPTH);
+    expect(shotDepthByKey.get('rebound-home')!).toBeGreaterThanOrEqual(0.78);
+  });
+
+  it('12. Bug 2 Regression: Box & Final-Third Zone Rules block 40~50m backpasses behind halfway', () => {
+    const homeStarters = makeSquadForFormation('4-3-3', 0);
+    const awayStarters = makeSquadForFormation('4-2-3-1', 1);
+
+    let observedZonePasses = 0;
+    let illegalBackpasses = 0;
+    let totalBlocked = 0;
+
+    for (const seed of ['bug2-s1', 'bug2-s2', 'bug2-s3', 'bug2-s4']) {
+      const sim = createPitchSimState({
+        seed,
+        homeTeamId: 'home',
+        awayTeamId: 'away',
+        home: makeTeamInput('4-3-3', 'possession', 'tiki_taka', homeStarters),
+        away: makeTeamInput('4-2-3-1', 'counter', 'catenaccio', awayStarters),
+        startMinute: 0,
+        endMinute: 45,
+        half: 1,
+        targetHomePossession: 64,
+        homeShotsTarget: 10,
+        awayShotsTarget: 3,
+        homeXgTarget: 1.6,
+        awayXgTarget: 0.4,
+        homeGoalsSoFar: 0,
+        awayGoalsSoFar: 0,
+        events: [],
+      });
+
+      // Place home attacker right in front of opponent goal (box zone) with CBs wide open behind halfway!
+      const testCarrierIdx = 9;
+      sim.homeAgents[testCarrierIdx].x = 0.87;
+      sim.homeAgents[testCarrierIdx].y = 0.24;
+      sim.homeAgents[7].x = 0.74; // 2nd-line CM nearby (within 0.18 backpass cap)
+      sim.homeAgents[7].y = 0.42;
+      sim.homeAgents[8].x = 0.84; // box teammate for cutback/layoff
+      sim.homeAgents[8].y = 0.52;
+      sim.homeAgents[2].x = 0.34; // wide open CB behind halfway!
+      sim.homeAgents[2].y = 0.72;
+      sim.homeAgents[3].x = 0.36;
+      sim.homeAgents[3].y = 0.28;
+      sim.possessionIsHome = true;
+      sim.ball.ownerTeamIsHome = true;
+      sim.ball.ownerIdx = testCarrierIdx;
+      sim.ball.x = 0.87;
+      sim.ball.y = 0.24;
+      sim.carrierHoldTimer = sim.carrierDecisionDelay;
+
+      let prevPassCount = 0;
+      for (let tick = 0; tick < 2400 && !sim.completed; tick += 1) {
+        stepPitchSim(sim, FIXED_DT);
+        if (sim.stats.passesAttempted > prevPassCount) {
+          prevPassCount = sim.stats.passesAttempted;
+          const b = sim.ball;
+          const isHomePass = b.lastTouchTeamIsHome;
+          const fromDepth = getAttackDepth(isHomePass, b.originX);
+          const toDepth = getAttackDepth(isHomePass, b.destX);
+          const backDist = Math.max(0, fromDepth - toDepth);
+
+          if (fromDepth >= BOX_ZONE_MIN_DEPTH) {
+            observedZonePasses += 1;
+            if (toDepth < 0.48 || backDist > MAX_BOX_BACKPASS_DIST + 0.08) {
+              illegalBackpasses += 1;
+            }
+          } else if (fromDepth >= FINAL_THIRD_MIN_DEPTH) {
+            observedZonePasses += 1;
+            if (toDepth < 0.46 || backDist > MAX_FINAL_THIRD_BACKPASS_DIST + 0.08) {
+              illegalBackpasses += 1;
+            }
+          }
+        }
+      }
+      totalBlocked += sim.stats.longRangeBackpassesBlocked;
+    }
+
+    expect(observedZonePasses).toBeGreaterThan(0);
+    expect(illegalBackpasses).toBe(0);
+    expect(totalBlocked).toBeGreaterThan(0);
+  });
+
+  it('13. Bug 3 Regression: Late-Game Urgency AI shifts trailing team (incl. 2nd-leg agg) to all-out attack & CB box join', () => {
+    const homeStarters = makeSquadForFormation('4-3-3', 0);
+    const awayStarters = makeSquadForFormation('4-2-3-1', 1);
+
+    // 1) Formula checks across minutes & deficits
+    const u50 = computeGameStateUrgency({ minute: 50, scoreDiff: -1 });
+    const u78 = computeGameStateUrgency({ minute: 78, scoreDiff: -1 });
+    const u86 = computeGameStateUrgency({ minute: 86, scoreDiff: -1 });
+    const uLead86 = computeGameStateUrgency({ minute: 86, scoreDiff: 1 });
+
+    expect(u50.attackUrgency).toBe(0);
+    expect(u78.attackUrgency).toBeGreaterThan(0.4);
+    expect(u86.attackUrgency).toBeGreaterThan(0.85);
+    expect(u86.cbBoxJoin).toBe(true);
+    expect(uLead86.protectUrgency).toBeGreaterThan(0.85);
+    expect(uLead86.attackUrgency).toBe(0);
+
+    // 2) 2nd-leg knockout aggregate deficit: home leads 1-0 tonight, but lost 1st leg 0-2 -> agg 1-2 (trailing -1!)
+    const trailingSim = createPitchSimState({
+      seed: 'bug3-late-urgency-agg-trailing',
+      homeTeamId: 'home',
+      awayTeamId: 'away',
+      home: makeTeamInput('4-3-3', 'possession', 'tiki_taka', homeStarters),
+      away: makeTeamInput('4-2-3-1', 'counter', 'catenaccio', awayStarters),
+      startMinute: 74,
+      endMinute: 90,
+      half: 2,
+      targetHomePossession: 58,
+      homeShotsTarget: 10,
+      awayShotsTarget: 4,
+      homeXgTarget: 1.5,
+      awayXgTarget: 0.5,
+      homeGoalsSoFar: 1,
+      awayGoalsSoFar: 0,
+      isKnockoutDecider: true,
+      aggHomeBeforeMatch: 0,
+      aggAwayBeforeMatch: 2,
+      events: [],
+    });
+
+    const initialPatience = trailingSim.homeDoctrine.buildUpPatience;
+    const initialLine = trailingSim.homeDoctrine.defensiveLineOffset;
+
+    for (let tick = 0; tick < 1800 && !trailingSim.completed; tick += 1) {
+      stepPitchSim(trailingSim, FIXED_DT);
+    }
+
+    // By 88'+, trailing home team dynamically slashed patience, raised defensive line, activated 3-man press & CB box join!
+    expect(trailingSim.homeDoctrine.attackUrgency).toBeGreaterThan(0.9);
+    expect(trailingSim.homeDoctrine.buildUpPatience).toBeLessThan(initialPatience - 0.25);
+    expect(trailingSim.homeDoctrine.defensiveLineOffset).toBeGreaterThan(initialLine + 0.03);
+    expect(trailingSim.homeDoctrine.pressersCount).toBe(3);
+    expect(trailingSim.homeDoctrine.cbBoxJoin).toBe(true);
+    // Leading on aggregate, away team shifted into late lead protection
+    expect(trailingSim.awayDoctrine.protectUrgency).toBeGreaterThan(0.9);
+    expect(trailingSim.awayDoctrine.defensiveLineOffset).toBeLessThan(
+      trailingSim.baseAwayDoctrine.defensiveLineOffset,
+    );
+
+    // Verify CB (slot 2) joins opponent penalty box when cbBoxJoin is active in progression
+    const homeBase = buildBaseFormationCoords('4-3-3', true);
+    const cbTarget = computeDynamicFormationTarget({
+      slotIndex: 2,
+      base: homeBase[2],
+      isHome: true,
+      mode: 'progression',
+      ball: { x: 0.72, y: 0.45 },
+      doctrine: trailingSim.homeDoctrine,
+      profile: trailingSim.homeAgents[2].profile,
+      territorialShiftX: 0.08,
+      simTime: 20,
+    });
+    expect(cbTarget.x).toBeGreaterThanOrEqual(0.84);
+  });
+
+  it('14. Bug 4 Regression: Single-ball invariant guarantees zero ghost trail while carried & zero discontinuity jumps', () => {
+    const homeStarters = makeSquadForFormation('4-3-3', 0);
+    const awayStarters = makeSquadForFormation('4-2-3-1', 1);
+
+    const events: { key: string; event: MatchEvent }[] = [
+      {
+        key: 'goal-1',
+        event: {
+          minute: 12,
+          half: 1,
+          type: 'goal',
+          teamId: 'home',
+          scorerId: homeStarters[9].id,
+          scorerName: homeStarters[9].name,
+          description: '페널티킥 성공!',
+          highlightPattern: 'penalty_kick',
+        },
+      },
+      {
+        key: 'goal-2',
+        event: {
+          minute: 28,
+          half: 1,
+          type: 'goal',
+          teamId: 'away',
+          scorerId: awayStarters[9].id,
+          scorerName: awayStarters[9].name,
+          description: '코너킥 헤더 골!',
+          highlightPattern: 'corner_kick',
+        },
+      },
+    ];
+
+    const sim = createPitchSimState({
+      seed: 'bug4-single-ball-integrity',
+      homeTeamId: 'home',
+      awayTeamId: 'away',
+      home: makeTeamInput('4-3-3', 'wingplay', 'wing_bomber', homeStarters),
+      away: makeTeamInput('4-2-3-1', 'gegenpressing', 'gegenpress_guru', awayStarters),
+      startMinute: 0,
+      endMinute: 45,
+      half: 1,
+      targetHomePossession: 50,
+      homeShotsTarget: 6,
+      awayShotsTarget: 6,
+      homeXgTarget: 1.0,
+      awayXgTarget: 1.0,
+      homeGoalsSoFar: 0,
+      awayGoalsSoFar: 0,
+      events,
+    });
+
+    for (let tick = 0; tick < 6000 && !sim.completed; tick += 1) {
+      stepPitchSim(sim, FIXED_DT);
+
+      // Owned ball MUST NEVER carry stale trail dots behind carrier
+      if (sim.ball.ownerIdx !== null) {
+        expect(sim.ball.trail.length).toBe(0);
+      }
+
+      // During set-piece setup, ball is locked cleanly with zero prev/current split & zero trail
+      if (sim.director?.stage === 'set_piece_setup') {
+        expect(sim.ball.trail.length).toBe(0);
+        expect(sim.ball.prevX).toBe(sim.ball.x);
+        expect(sim.ball.prevY).toBe(sim.ball.y);
+      }
+
+      // No discontinuous teleport jump inside any trail segment
+      for (let i = 1; i < sim.ball.trail.length; i += 1) {
+        const jump = Math.hypot(
+          sim.ball.trail[i].x - sim.ball.trail[i - 1].x,
+          sim.ball.trail[i].y - sim.ball.trail[i - 1].y,
+        );
+        expect(jump).toBeLessThan(0.14);
+      }
+    }
+
+    expect(sim.completed).toBe(true);
   });
 });

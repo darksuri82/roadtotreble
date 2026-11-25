@@ -1941,6 +1941,9 @@ export function LiveMatchBroadcast({
                   homeGoalsSoFar={liveHomeGoals}
                   awayGoalsSoFar={liveAwayGoals}
                   isBigMatch={Boolean(halftime.isKnockoutDecider || isFinalShowcase)}
+                  isKnockoutDecider={Boolean(halftime.isKnockoutDecider)}
+                  aggHomeBeforeMatch={halftime.aggHomeBeforeMatch ?? 0}
+                  aggAwayBeforeMatch={halftime.aggAwayBeforeMatch ?? 0}
                   finalTheme={finalTheme}
                   scheduledEvents={scheduledEventsForPitch}
                   preHandledKeys={preHandledKeysForPhase}

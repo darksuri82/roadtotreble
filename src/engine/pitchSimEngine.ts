@@ -17,11 +17,13 @@ import type {
   TeamTacticalDoctrine,
 } from './pitchSimTypes';
 import {
+  applyGameStateUrgencyToDoctrine,
   buildBaseFormationCoords,
   buildTeamAgentProfiles,
   buildTeamTacticalDoctrine,
   computeAgentLiveStamina,
   computeDynamicFormationTarget,
+  computeGameStateUrgency,
   getStaminaKinematicFactor,
 } from './pitchTacticalParams';
 
@@ -29,6 +31,18 @@ export const FIXED_DT = 1 / 60;
 export const MAX_FRAME_DELTA = 0.05;
 /** A-Option: 1.20 sim seconds per match minute -> 1x ~2m05s (90m), 2x ~1m02s, 4x ~31s */
 export const SIM_SECONDS_PER_MATCH_MINUTE = 1.2;
+
+/** Shooting range invariants (normalized 0 = own goal line, 1 = opp goal line; pitch ~105m) */
+export const MIN_OPEN_PLAY_SHOT_DEPTH = 0.72; // ~29m from opponent goal
+export const MIN_LONG_RANGE_SHOT_DEPTH = 0.68; // ~33m long-range cannon
+export const MIN_DIRECT_FK_SHOT_DEPTH = 0.66; // ~35m direct free kick max range
+export const MIN_BOX_FINISH_SHOT_DEPTH = 0.78; // ~23m penalty-box / edge finish
+
+/** Zone-based backpass caps (prevent absurd box -> own-half 50m backpasses) */
+export const BOX_ZONE_MIN_DEPTH = 0.78;
+export const FINAL_THIRD_MIN_DEPTH = 0.66;
+export const MAX_BOX_BACKPASS_DIST = 0.18;
+export const MAX_FINAL_THIRD_BACKPASS_DIST = 0.22;
 
 const ALL_PATTERNS: HighlightPatternId[] = [
   'wing_cross_header',
@@ -61,6 +75,36 @@ function quadBezier(p0: SimVec2, p1: SimVec2, p2: SimVec2, t: number): SimVec2 {
 
 function atkX(isHome: boolean, homeX: number): number {
   return isHome ? homeX : 1 - homeX;
+}
+
+export function getAttackDepth(isHome: boolean, x: number): number {
+  return isHome ? x : 1 - x;
+}
+
+export function getMinShotDepthForCue(
+  pattern: HighlightPatternId,
+  route: AttackRouteId,
+): number {
+  if (pattern === 'penalty_kick') return 0.86;
+  if (pattern === 'direct_free_kick') return MIN_DIRECT_FK_SHOT_DEPTH;
+  if (route === 'long_range_cannon') return MIN_LONG_RANGE_SHOT_DEPTH;
+  if (
+    pattern === 'corner_kick' ||
+    pattern === 'wing_cross_header' ||
+    pattern === 'cutback_finish' ||
+    pattern === 'rebound_finish'
+  ) {
+    return MIN_BOX_FINISH_SHOT_DEPTH;
+  }
+  return MIN_OPEN_PLAY_SHOT_DEPTH;
+}
+
+export function isWithinShootingZone(
+  isHome: boolean,
+  x: number,
+  minDepth: number = MIN_OPEN_PLAY_SHOT_DEPTH,
+): boolean {
+  return getAttackDepth(isHome, x) >= minDepth;
 }
 
 /** Deterministic FNV-1a 32-bit string hash for PRNG seeding */
@@ -186,6 +230,7 @@ function applyAgentSteering(params: {
   doctrine: TeamTacticalDoctrine;
   dt: number;
   skipSeparation?: boolean;
+  speedBoost?: number;
 }) {
   const {
     agent,
@@ -196,6 +241,7 @@ function applyAgentSteering(params: {
     doctrine,
     dt,
     skipSeparation = false,
+    speedBoost = 1.0,
   } = params;
 
   agent.prevX = agent.x;
@@ -212,12 +258,14 @@ function applyAgentSteering(params: {
     agent.profile.baseMaxSpeed *
     stamFactor *
     freshMult *
-    (0.76 + 0.34 * sprintDemand);
+    (0.76 + 0.34 * sprintDemand) *
+    speedBoost;
   const maxAccel =
     agent.profile.baseMaxAccel *
     stamFactor *
     freshMult *
-    (0.80 + 0.30 * sprintDemand);
+    (0.80 + 0.30 * sprintDemand) *
+    (0.5 + 0.5 * speedBoost);
 
   // 1) Arrive steering vector
   const toX = targetX - agent.x;
@@ -296,6 +344,67 @@ function applyAgentSteering(params: {
 }
 
 /**
+ * Atomically resets the single ball entity to an exact coordinate, wiping interpolation & trail buffers
+ * so set-pieces, kickoffs, restarts, and scene cuts NEVER leave a ghost/duplicate ball behind.
+ */
+function resetBallToSpot(
+  state: PitchSimState,
+  x: number,
+  y: number,
+  ownerTeamIsHome: boolean | null = null,
+  ownerIdx: number | null = null,
+) {
+  const b = state.ball;
+  b.x = x;
+  b.y = y;
+  b.z = 0;
+  b.prevX = x;
+  b.prevY = y;
+  b.prevZ = 0;
+  b.vx = 0;
+  b.vy = 0;
+  b.flightType = ownerIdx !== null ? 'carry' : 'loose';
+  b.ownerTeamIsHome = ownerTeamIsHome;
+  b.ownerIdx = ownerIdx;
+  b.passTargetTeamIsHome = null;
+  b.passTargetIdx = null;
+  b.originX = x;
+  b.originY = y;
+  b.destX = x;
+  b.destY = y;
+  b.ctrlX = x;
+  b.ctrlY = y;
+  b.flightProgress = 1;
+  b.flightDuration = 0.3;
+  b.maxArcZ = 0;
+  b.trail = [];
+  state.passArc = null;
+}
+
+/**
+ * Cleanly positions an agent during a whistle/broadcast set-piece cut with synchronized prevX/prevY.
+ */
+function placeAgentForSetPiece(
+  agent: PlayerAgentState,
+  x: number,
+  y: number,
+  heading: number,
+) {
+  const cx = clamp(x, 0.025, 0.975);
+  const cy = clamp(y, 0.03, 0.97);
+  agent.x = cx;
+  agent.y = cy;
+  agent.prevX = cx;
+  agent.prevY = cy;
+  agent.vx = 0;
+  agent.vy = 0;
+  agent.targetX = cx;
+  agent.targetY = cy;
+  agent.heading = heading;
+  agent.roleAction = agent.slotIndex === 0 ? 'keeper' : 'set_piece';
+}
+
+/**
  * Launches a physical ball flight (ground pass, through ball, aerial switch, cross, or shot).
  */
 function launchBallFlight(params: {
@@ -350,14 +459,27 @@ function launchBallFlight(params: {
   const arcZ =
     maxArcZ ??
     (flightType === 'long_switch'
-      ? clamp(dist * 1.45, 0.45, 1.15)
+      ? clamp(dist * 1.35, 0.40, 1.0)
       : flightType === 'cross'
-        ? clamp(dist * 1.5, 0.45, 1.05)
+        ? clamp(dist * 1.4, 0.40, 0.95)
         : flightType === 'shot'
           ? 0.24
           : 0);
 
   const ball = state.ball;
+  // Single-ball integrity: if launch origin differs from previous ball coords, snap cleanly & wipe stale trail
+  if (Math.hypot(ball.x - fromX, ball.y - fromY) > 0.035) {
+    ball.x = fromX;
+    ball.y = fromY;
+    ball.z = 0;
+    ball.prevX = fromX;
+    ball.prevY = fromY;
+    ball.prevZ = 0;
+    ball.trail = [];
+  } else {
+    ball.trail = [];
+  }
+
   ball.flightType = flightType;
   ball.ownerTeamIsHome = null;
   ball.ownerIdx = null;
@@ -395,7 +517,8 @@ function launchBallFlight(params: {
 }
 
 /**
- * Finds the best matching slot index (0..10) on a team for a MatchEvent scorer/assister/defender.
+ * Finds the best matching slot index (1..10 outfield by default) on a team for a MatchEvent actor.
+ * Excludes slot 0 (GK) by default so a defending GK ID on save events can NEVER match the attacking GK.
  */
 function findAgentSlotByIdentity(
   agents: PlayerAgentState[],
@@ -403,13 +526,15 @@ function findAgentSlotByIdentity(
   playerName?: string,
   fallbackPool: number[] = [8, 9, 10],
   rngVal = 0.5,
+  excludeGk = true,
 ): number {
+  const candidates = excludeGk ? agents.filter((a) => a.slotIndex !== 0) : agents;
   if (playerId) {
-    const exact = agents.find((a) => a.profile.playerId === playerId);
+    const exact = candidates.find((a) => a.profile.playerId === playerId);
     if (exact) return exact.slotIndex;
   }
   if (playerName) {
-    const byName = agents.find((a) => a.profile.name === playerName);
+    const byName = candidates.find((a) => a.profile.name === playerName);
     if (byName) return byName.slotIndex;
   }
   return fallbackPool[Math.floor(rngVal * fallbackPool.length) % fallbackPool.length] ?? 9;
@@ -447,6 +572,36 @@ function resolveRouteForEvent(ev: MatchEvent): AttackRouteId {
 }
 
 /**
+ * Re-applies real-time Game State Urgency (remaining time x effective aggregate score diff)
+ * cleanly on top of unmodified base doctrines without cumulative drift.
+ */
+function refreshLiveUrgencyDoctrines(state: PitchSimState) {
+  const curMin = state.matchMinuteFloat;
+  const homeEffDiff =
+    state.aggHomeBeforeMatch +
+    state.homeGoalsLive -
+    (state.aggAwayBeforeMatch + state.awayGoalsLive);
+  const awayEffDiff = -homeEffDiff;
+
+  state.homeDoctrine = applyGameStateUrgencyToDoctrine(
+    state.baseHomeDoctrine,
+    computeGameStateUrgency({
+      minute: curMin,
+      scoreDiff: homeEffDiff,
+      isKnockoutDecider: state.isKnockoutDecider,
+    }),
+  );
+  state.awayDoctrine = applyGameStateUrgencyToDoctrine(
+    state.baseAwayDoctrine,
+    computeGameStateUrgency({
+      minute: curMin,
+      scoreDiff: awayEffDiff,
+      isKnockoutDecider: state.isKnockoutDecider,
+    }),
+  );
+}
+
+/**
  * Creates a fresh deterministic PitchSimState for a match half / ET half.
  */
 export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
@@ -459,20 +614,47 @@ export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
   const homeProfiles = buildTeamAgentProfiles(config.home, config.startMinute);
   const awayProfiles = buildTeamAgentProfiles(config.away, config.startMinute);
 
-  const homeDoctrine = buildTeamTacticalDoctrine({
+  const aggHomeBefore = config.aggHomeBeforeMatch ?? 0;
+  const aggAwayBefore = config.aggAwayBeforeMatch ?? 0;
+  const isKoDecider = Boolean(config.isKnockoutDecider);
+  const homeEffDiff =
+    aggHomeBefore + config.homeGoalsSoFar - (aggAwayBefore + config.awayGoalsSoFar);
+
+  const baseHomeDoctrine = buildTeamTacticalDoctrine({
     my: config.home,
     opp: config.away,
     minute: config.startMinute,
-    scoreDiff: config.homeGoalsSoFar - config.awayGoalsSoFar,
+    scoreDiff: homeEffDiff,
     isBigMatch: Boolean(config.isBigMatch),
+    isKnockoutDecider: isKoDecider,
+    applyUrgency: false,
   });
-  const awayDoctrine = buildTeamTacticalDoctrine({
+  const baseAwayDoctrine = buildTeamTacticalDoctrine({
     my: config.away,
     opp: config.home,
     minute: config.startMinute,
-    scoreDiff: config.awayGoalsSoFar - config.homeGoalsSoFar,
+    scoreDiff: -homeEffDiff,
     isBigMatch: Boolean(config.isBigMatch),
+    isKnockoutDecider: isKoDecider,
+    applyUrgency: false,
   });
+
+  const homeDoctrine = applyGameStateUrgencyToDoctrine(
+    baseHomeDoctrine,
+    computeGameStateUrgency({
+      minute: config.startMinute,
+      scoreDiff: homeEffDiff,
+      isKnockoutDecider: isKoDecider,
+    }),
+  );
+  const awayDoctrine = applyGameStateUrgencyToDoctrine(
+    baseAwayDoctrine,
+    computeGameStateUrgency({
+      minute: config.startMinute,
+      scoreDiff: -homeEffDiff,
+      isKnockoutDecider: isKoDecider,
+    }),
+  );
 
   const makeAgent = (
     base: SimVec2,
@@ -531,6 +713,11 @@ export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
     homeGoalsLive: config.homeGoalsSoFar,
     awayGoalsLive: config.awayGoalsSoFar,
     isBigMatch: Boolean(config.isBigMatch),
+    isKnockoutDecider: isKoDecider,
+    aggHomeBeforeMatch: aggHomeBefore,
+    aggAwayBeforeMatch: aggAwayBefore,
+    baseHomeDoctrine,
+    baseAwayDoctrine,
     homeDoctrine,
     awayDoctrine,
     homeAgents,
@@ -590,6 +777,8 @@ export function createPitchSimState(config: PitchSimInitConfig): PitchSimState {
       thirdManRuns: 0,
       interceptions: 0,
       dribbles: 0,
+      longRangeBackpassesBlocked: 0,
+      lateUrgentForwardPasses: 0,
     },
   };
 
@@ -621,20 +810,30 @@ export function syncPitchSimConfig(
   state.awayXgTarget = params.awayXgTarget;
   state.scheduledEvents = [...params.events];
 
-  state.homeDoctrine = buildTeamTacticalDoctrine({
+  const homeEffDiff =
+    state.aggHomeBeforeMatch +
+    state.homeGoalsLive -
+    (state.aggAwayBeforeMatch + state.awayGoalsLive);
+
+  state.baseHomeDoctrine = buildTeamTacticalDoctrine({
     my: params.home,
     opp: params.away,
     minute: curMin,
-    scoreDiff: state.homeGoalsLive - state.awayGoalsLive,
+    scoreDiff: homeEffDiff,
     isBigMatch: state.isBigMatch,
+    isKnockoutDecider: state.isKnockoutDecider,
+    applyUrgency: false,
   });
-  state.awayDoctrine = buildTeamTacticalDoctrine({
+  state.baseAwayDoctrine = buildTeamTacticalDoctrine({
     my: params.away,
     opp: params.home,
     minute: curMin,
-    scoreDiff: state.awayGoalsLive - state.homeGoalsLive,
+    scoreDiff: -homeEffDiff,
     isBigMatch: state.isBigMatch,
+    isKnockoutDecider: state.isKnockoutDecider,
+    applyUrgency: false,
   });
+  refreshLiveUrgencyDoctrines(state);
 
   const nextHomeProfiles = buildTeamAgentProfiles(params.home, curMin);
   const nextAwayProfiles = buildTeamAgentProfiles(params.away, curMin);
@@ -806,9 +1005,9 @@ function tryInitiateThirdManRun(params: {
   // Trigger probability scales sharply with tactic, manager trait (tiki_taka / total_football / midfield_maestro / halftime_wizard), and carrier PAS
   const pasNorm = clamp((carrier.profile.attrs.pas - 65) / 32, 0, 1);
   const triggerProb = clamp(
-    0.04 + atkDoctrine.thirdManFreq * 0.44 + pasNorm * 0.10,
-    0.06,
-    0.60,
+    Math.pow(atkDoctrine.thirdManFreq, 1.65) * 0.62 + pasNorm * 0.06,
+    0.04,
+    0.66,
   );
   if (nextSimRng(state) > triggerProb) return false;
 
@@ -1009,31 +1208,48 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
   }
   const underHeavyPress = nearestDefDist < 0.075;
 
-  // 4) Consider Dribble/Carry forward if open space & strong DRI
-  const aheadSpot: SimVec2 = {
-    x: clamp(carrier.x + dir * 0.095, 0.07, 0.93),
-    y: clamp(
-      carrier.y +
-        (carrier.profile.cutInsideBias > 0.6 ? (carrier.y < 0.5 ? 0.055 : -0.055) : 0),
-      0.08,
-      0.92,
-    ),
-  };
+  const urgency = atkDoctrine.attackUrgency;
+  const protect = atkDoctrine.protectUrgency;
+  const inBoxZone = carrierDepth >= BOX_ZONE_MIN_DEPTH;
+  const inFinalThird = carrierDepth >= FINAL_THIRD_MIN_DEPTH && !inBoxZone;
+
+  // 4) Consider Dribble/Carry forward (in box zone: 1v1 penetration / cut-inside for shooting angle!)
+  const aheadSpot: SimVec2 = inBoxZone
+    ? {
+        x: clamp(carrier.x + dir * 0.055, 0.06, 0.94),
+        y: clamp(lerp(carrier.y, 0.5, 0.34), 0.16, 0.84),
+      }
+    : {
+        x: clamp(carrier.x + dir * 0.095, 0.07, 0.93),
+        y: clamp(
+          carrier.y +
+            (carrier.profile.cutInsideBias > 0.6 ? (carrier.y < 0.5 ? 0.055 : -0.055) : 0),
+          0.08,
+          0.92,
+        ),
+      };
   const aheadSpace = evaluateSpotClearance(aheadSpot, defenders);
   const dribbleScore =
     carrierIdx === 0
       ? -1
       : carrier.profile.dribbleBias * 0.55 +
         aheadSpace * 0.45 +
-        (carrier.profile.isStar ? atkDoctrine.starFocus * 0.20 : 0) -
-        (underHeavyPress ? 0.22 : 0) -
-        (carrierDepth > 0.80 ? 0.25 : 0);
+        (carrier.profile.isStar ? atkDoctrine.starFocus * 0.20 : 0) +
+        (inBoxZone ? 0.22 + carrier.profile.shootBias * 0.16 : 0) +
+        (inFinalThird ? 0.08 : 0) +
+        urgency * 0.18 -
+        (underHeavyPress ? 0.20 : 0);
 
-  if (dribbleScore > 0.72 && nextSimRng(state) < 0.34) {
+  const dribbleProb = inBoxZone ? 0.44 + urgency * 0.14 : 0.34 + urgency * 0.10;
+  if (dribbleScore > (inBoxZone ? 0.62 : 0.72) && nextSimRng(state) < dribbleProb) {
     carrier.targetX = aheadSpot.x;
     carrier.targetY = aheadSpot.y;
     state.carrierHoldTimer = 0;
-    state.carrierDecisionDelay = clamp(0.62 / atkDoctrine.tempo, 0.35, 0.85);
+    state.carrierDecisionDelay = clamp(
+      (0.62 * (1 - 0.24 * urgency)) / atkDoctrine.tempo,
+      0.28,
+      0.85,
+    );
     state.stats.dribbles += 1;
     if (carrierDepth > 0.62) {
       state.tacticalLabel = '하프스페이스 침투';
@@ -1042,7 +1258,7 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
     return;
   }
 
-  // 5) Evaluate every teammate passing option (including Recycling & Diagonal Switch!)
+  // 5) Evaluate every teammate passing option with Zone-Based Backpass Caps & Urgency AI!
   type PassCandidate = {
     idx: number;
     score: number;
@@ -1051,6 +1267,8 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
     destY: number;
     isRecycle: boolean;
     isSwitch: boolean;
+    isBoxCross: boolean;
+    forwardDelta: number;
     laneSafety: number;
   };
 
@@ -1063,10 +1281,11 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
 
   for (let i = 0; i < teammates.length; i += 1) {
     if (i === carrierIdx) continue;
-    // Only pass back to GK if GK buildup support or under heavy pressure in own half
+    // Never pass back to GK from final third / opponent half, or without GK buildup support
     if (
       i === 0 &&
-      (carrierDepth > 0.46 ||
+      (carrierDepth > 0.44 ||
+        urgency >= 0.45 ||
         (atkDoctrine.gkBuildupSupport < 0.35 && !underHeavyPress))
     ) {
       continue;
@@ -1074,25 +1293,58 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
 
     const mate = teammates[i];
     const dist = Math.hypot(mate.x - carrier.x, mate.y - carrier.y);
-    if (dist < 0.055) continue;
+    if (dist < 0.052) continue;
 
+    const mateDepth = getAttackDepth(isHome, mate.x);
     const forwardDelta = (mate.x - carrier.x) * dir;
+    const backwardDist = Math.max(0, -forwardDelta);
     const lateralDelta = Math.abs(mate.y - carrier.y);
-    const isSwitch = lateralDelta > 0.34 && dist > 0.30;
-    const isThrough =
-      forwardDelta > 0.13 &&
-      mate.profile.runBehindBias > 0.55 &&
-      (isHome ? mate.x : 1 - mate.x) > 0.54;
-    const isRecycle = forwardDelta <= 0.025;
 
-    const flightType: BallFlightType = isSwitch
-      ? 'long_switch'
-      : isThrough
-        ? 'through_ball'
-        : 'ground_pass';
+    // ── Zone-based Hard Backpass Filter (eliminates box -> own-half 40~50m backpasses!) ──
+    if (inBoxZone) {
+      if (mateDepth < 0.50 || backwardDist > MAX_BOX_BACKPASS_DIST) {
+        state.stats.longRangeBackpassesBlocked += 1;
+        continue;
+      }
+    } else if (inFinalThird) {
+      if (mateDepth < 0.48 || backwardDist > MAX_FINAL_THIRD_BACKPASS_DIST) {
+        state.stats.longRangeBackpassesBlocked += 1;
+        continue;
+      }
+    } else if (backwardDist > 0.32 && !(i === 0 && carrierDepth <= 0.36)) {
+      state.stats.longRangeBackpassesBlocked += 1;
+      continue;
+    }
+
+    // Diagonal switch MUST be lateral or progressive (never a deep backward bomb!)
+    const isSwitch = lateralDelta > 0.34 && dist > 0.30 && forwardDelta >= -0.10;
+    const isBoxCross =
+      carrierDepth >= 0.68 &&
+      Math.abs(carrier.y - 0.5) > 0.26 &&
+      mateDepth >= 0.78 &&
+      Math.abs(mate.y - 0.5) < 0.26;
+    const isCutback =
+      inBoxZone &&
+      Math.abs(carrier.y - 0.5) > 0.20 &&
+      mateDepth >= 0.75 &&
+      Math.abs(mate.y - 0.5) < 0.24;
+    const isShortLayoff = inBoxZone && dist <= 0.18 && mateDepth >= 0.72;
+    const isThrough =
+      forwardDelta > 0.12 &&
+      (mate.profile.runBehindBias > 0.52 || urgency >= 0.45) &&
+      mateDepth > 0.54;
+    const isRecycle = forwardDelta <= 0.025 && !isCutback && !isBoxCross;
+
+    const flightType: BallFlightType = isBoxCross
+      ? 'cross'
+      : isSwitch
+        ? 'long_switch'
+        : isThrough
+          ? 'through_ball'
+          : 'ground_pass';
 
     // Predictive lead position for through balls / moving receivers
-    const leadScale = isThrough ? 0.42 : 0.16;
+    const leadScale = isThrough ? 0.42 : isBoxCross ? 0.28 : 0.16;
     const destX = clamp(
       mate.x + mate.vx * leadScale + (isThrough ? dir * 0.032 : 0),
       0.05,
@@ -1105,7 +1357,7 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
       { x: destX, y: destY },
       defenders,
       defDoctrine,
-      isSwitch,
+      isSwitch || isBoxCross,
     );
     if (forwardDelta > 0.06 && laneSafety > maxForwardSafety) {
       maxForwardSafety = laneSafety;
@@ -1120,7 +1372,7 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
     const visionRange =
       carrierIdx === 0
         ? 0.28 + kicNorm * 0.32
-        : 0.28 + pasNorm * 0.28 + (isSwitch ? croNorm * 0.14 : 0);
+        : 0.28 + pasNorm * 0.28 + (isSwitch || isBoxCross ? croNorm * 0.14 : 0);
     const rangePen = dist > visionRange ? (dist - visionRange) * 1.9 : 0;
 
     let utility =
@@ -1130,28 +1382,65 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
       starBonus -
       rangePen;
 
-    // Progression vs Patient Recycling balance
+    // Box-zone & final-third attacking priorities
+    if (isCutback) {
+      utility += 0.54 + urgency * 0.30;
+    }
+    if (isBoxCross) {
+      utility += 0.38 + croNorm * 0.24 + urgency * 0.48 + (mate.profile.attrs.aer - 75) * 0.008;
+    }
+    if (isShortLayoff) {
+      utility += 0.32 + synBonus * 0.5;
+    }
+
+    // Progression vs Patient Recycling balance (modulated by Game State Urgency!)
     if (forwardDelta > 0.03) {
       const progReward =
         forwardDelta *
-        (1.15 + atkDoctrine.passLengthBias * 0.55 + (state.transitionTimer > 0 ? 0.75 : 0));
+        (1.15 +
+          atkDoctrine.passLengthBias * 0.55 +
+          (state.transitionTimer > 0 ? 0.75 : 0) +
+          urgency * 1.15);
       utility += progReward;
       if (isThrough) {
         utility +=
           pasNorm * 0.32 +
           atkDoctrine.counterSprintUrgency * 0.26 +
-          mate.profile.runBehindBias * 0.24;
+          mate.profile.runBehindBias * 0.24 +
+          urgency * 0.52;
       }
-      // If forward lane is blocked, strongly discourage forcing through defenders!
+      if (mateDepth >= 0.76) {
+        utility += urgency * 0.42;
+      }
+      // If forward lane is blocked, discourage forcing through defenders — UNLESS desperately chasing late!
       if (laneSafety < 0.45) {
-        utility -= (0.45 - laneSafety) * (0.9 + atkDoctrine.buildUpPatience * 0.85);
+        const blockCaution = Math.max(
+          0.25,
+          0.9 + atkDoctrine.buildUpPatience * 0.85 - urgency * 0.80 + protect * 0.45,
+        );
+        utility -= (0.45 - laneSafety) * blockCaution;
+      }
+      if (protect > 0.25 && laneSafety < 0.55) {
+        utility -= protect * 0.36;
       }
     } else {
-      // Back-pass / lateral recycling: high-patience possession teams recycle eagerly, direct/counter teams avoid backward passes unless pressed
-      utility += (atkDoctrine.buildUpPatience - 0.35) * 0.72;
-      if (underHeavyPress) utility += 0.28;
+      // Back-pass / lateral recycling: penalized sharply when trailing late or deep inside box!
+      utility += (atkDoctrine.buildUpPatience - 0.42) * 1.05;
+      if (underHeavyPress) utility += 0.26;
       if (mate.profile.dropToLinkBias > 0.65) utility += 0.16;
-      if (state.recycleCount >= 4) utility -= 0.28; // eventually progress after patient recycling
+      if (state.recycleCount >= 4) utility -= 0.28;
+      // Step-by-step recycling preference: keep short 5~14m 2nd-line recycling natural, discourage deeper retreats
+      if (inBoxZone && backwardDist > 0.06) {
+        utility -= (backwardDist - 0.06) * 2.6;
+      } else if (inFinalThird && backwardDist > 0.14) {
+        utility -= (backwardDist - 0.14) * 1.6;
+      }
+      // Late trailing urgency: stop recycling!
+      utility -= urgency * 0.85;
+      // Late leading protection: safe retention rewarded outside box
+      if (protect > 0.25 && !inBoxZone && laneSafety > 0.62) {
+        utility += protect * 0.28;
+      }
     }
 
     // Diagonal switch bonus for wingplay / wing_bomber / deep_playmaker / ball_playing_cb
@@ -1180,17 +1469,66 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
       destY,
       isRecycle,
       isSwitch,
+      isBoxCross,
+      forwardDelta,
       laneSafety,
     });
   }
 
+  // Safe fallback if hard backpass filter left no options (isolated attacker deep in corner):
+  // always pick the closest teammate in the opponent half (never a 50m bomb behind halfway!)
+  if (options.length === 0) {
+    let bestMateIdx = -1;
+    let bestMateDist = 999;
+    for (let i = 1; i < teammates.length; i += 1) {
+      if (i === carrierIdx) continue;
+      const m = teammates[i];
+      const mDepth = getAttackDepth(isHome, m.x);
+      if (inBoxZone && mDepth < 0.50) continue;
+      const d = Math.hypot(m.x - carrier.x, m.y - carrier.y);
+      if (d < bestMateDist) {
+        bestMateDist = d;
+        bestMateIdx = i;
+      }
+    }
+    if (bestMateIdx < 0) {
+      // Absolute last resort: nearest outfielder regardless of depth
+      for (let i = 1; i < teammates.length; i += 1) {
+        if (i === carrierIdx) continue;
+        const d = Math.hypot(teammates[i].x - carrier.x, teammates[i].y - carrier.y);
+        if (d < bestMateDist) {
+          bestMateDist = d;
+          bestMateIdx = i;
+        }
+      }
+    }
+    if (bestMateIdx >= 0) {
+      const m = teammates[bestMateIdx];
+      const fbForward = (m.x - carrier.x) * dir;
+      options.push({
+        idx: bestMateIdx,
+        score: 0.1,
+        flightType: 'ground_pass',
+        destX: m.x,
+        destY: m.y,
+        isRecycle: fbForward <= 0.025,
+        isSwitch: false,
+        isBoxCross: false,
+        forwardDelta: fbForward,
+        laneSafety: 0.65,
+      });
+    }
+  }
+
   options.sort((a, b) => b.score - a.score);
 
-  // If all forward lanes are tight & team has patience, favor safe recycling option explicitly
+  // If all forward lanes are tight & team has patience (and is NOT chasing urgently late!), favor safe recycling
   let chosen = options[0];
   if (
     chosen &&
     !chosen.isRecycle &&
+    !inBoxZone &&
+    urgency < 0.45 &&
     maxForwardSafety < 0.44 &&
     atkDoctrine.buildUpPatience > 0.55 &&
     state.recycleCount < 4
@@ -1203,8 +1541,15 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
 
   if (!chosen) return;
 
+  if (urgency >= 0.45 && (chosen.forwardDelta > 0.03 || chosen.isBoxCross)) {
+    state.stats.lateUrgentForwardPasses += 1;
+  }
+
   // Update recycling counter & tactical phase badge
-  if (chosen.isSwitch) {
+  if (chosen.isBoxCross) {
+    state.recycleCount = 0;
+    state.tacticalLabel = '측면 전환';
+  } else if (chosen.isSwitch) {
     state.stats.switches += 1;
     state.recycleCount = Math.max(0, state.recycleCount - 1);
     state.tacticalLabel = '측면 전환';
@@ -1295,8 +1640,163 @@ function executeCarrierUtilityDecision(state: PitchSimState) {
 }
 
 /**
+ * Stages all 22 players cleanly into realistic formation for a set-piece whistle cut
+ * (Penalty Kick, Corner Kick, or Direct Free Kick) and locks the single ball on the spot.
+ */
+function stageSetPieceFormation(
+  state: PitchSimState,
+  dirCue: DirectorCueState,
+  spot: SimVec2,
+) {
+  const isH = dirCue.isHomeAttack;
+  const fl = dirCue.flankSide;
+  const atkAgents = isH ? state.homeAgents : state.awayAgents;
+  const defAgents = isH ? state.awayAgents : state.homeAgents;
+  const scorer = atkAgents[dirCue.scorerIdx];
+  const assister = atkAgents[dirCue.assisterIdx];
+  const atkHeading = isH ? 0 : Math.PI;
+  const defHeading = isH ? Math.PI : 0;
+
+  // Lock the single ball cleanly at the set-piece spot (wipes trail & interpolation buffer!)
+  state.possessionIsHome = isH;
+  resetBallToSpot(state, spot.x, spot.y, null, null);
+  dirCue.staged = true;
+
+  // Attacking GK stays back in own box
+  placeAgentForSetPiece(atkAgents[0], atkX(isH, 0.08), 0.50, atkHeading);
+
+  if (dirCue.pattern === 'penalty_kick') {
+    // Kicker at run-up behind penalty spot, GK on goal line, all other 19 outfielders outside penalty box & arc
+    placeAgentForSetPiece(scorer, atkX(isH, 0.838), 0.50, atkHeading);
+    placeAgentForSetPiece(defAgents[0], atkX(isH, 0.962), 0.50, defHeading);
+
+    const atkArcYs = [0.22, 0.28, 0.34, 0.40, 0.60, 0.66, 0.72, 0.78, 0.50];
+    let atkSlot = 0;
+    for (let k = 1; k < 11; k += 1) {
+      if (k === scorer.slotIndex) continue;
+      const ay = atkArcYs[atkSlot % atkArcYs.length];
+      const ax = atkSlot === 8 ? atkX(isH, 0.72) : atkX(isH, 0.775 - (atkSlot % 2) * 0.018);
+      placeAgentForSetPiece(atkAgents[k], ax, ay, atkHeading);
+      atkSlot += 1;
+    }
+
+    const defArcYs = [0.20, 0.26, 0.32, 0.38, 0.44, 0.56, 0.62, 0.68, 0.74, 0.80];
+    for (let k = 1; k < 11; k += 1) {
+      const dy = defArcYs[(k - 1) % defArcYs.length];
+      // Outside the penalty box (box starts at 0.845) and outside the D-arc (arc edge ~0.79)
+      const dx = Math.abs(dy - 0.5) < 0.14 ? atkX(isH, 0.765) : atkX(isH, 0.805);
+      placeAgentForSetPiece(defAgents[k], dx, dy, defHeading);
+    }
+    return;
+  }
+
+  if (dirCue.pattern === 'corner_kick') {
+    // Corner taker right at the corner flag; attackers & defenders packed in penalty box!
+    const takerY = fl < 0 ? 0.025 : 0.975;
+    placeAgentForSetPiece(assister, atkX(isH, 0.985), takerY, Math.atan2(0.5 - takerY, atkX(isH, 0.88) - spot.x));
+    placeAgentForSetPiece(defAgents[0], atkX(isH, 0.962), 0.50 + fl * 0.03, defHeading);
+    // Scorer starts slightly off target spot to make an explosive attacking run onto the cross
+    placeAgentForSetPiece(
+      scorer,
+      atkX(isH, 0.845),
+      clamp(dirCue.targetY - fl * 0.07, 0.28, 0.72),
+      atkHeading,
+    );
+
+    const boxAtkSpots: SimVec2[] = [
+      { x: atkX(isH, 0.915), y: 0.42 },
+      { x: atkX(isH, 0.915), y: 0.58 },
+      { x: atkX(isH, 0.875), y: 0.36 },
+      { x: atkX(isH, 0.875), y: 0.64 },
+      { x: atkX(isH, 0.795), y: 0.44 },
+      { x: atkX(isH, 0.795), y: 0.56 },
+      { x: atkX(isH, 0.60), y: 0.40 },
+      { x: atkX(isH, 0.58), y: 0.60 },
+    ];
+    let aPtr = 0;
+    for (let k = 1; k < 11; k += 1) {
+      if (k === assister.slotIndex || k === scorer.slotIndex) continue;
+      const p = boxAtkSpots[aPtr % boxAtkSpots.length];
+      placeAgentForSetPiece(atkAgents[k], p.x, p.y, atkHeading);
+      aPtr += 1;
+    }
+
+    const boxDefSpots: SimVec2[] = [
+      { x: atkX(isH, 0.945), y: 0.44 },
+      { x: atkX(isH, 0.945), y: 0.56 },
+      { x: atkX(isH, 0.905), y: 0.38 },
+      { x: atkX(isH, 0.905), y: 0.50 },
+      { x: atkX(isH, 0.905), y: 0.62 },
+      { x: atkX(isH, 0.865), y: 0.34 },
+      { x: atkX(isH, 0.865), y: 0.66 },
+      { x: atkX(isH, 0.825), y: 0.48 },
+      { x: atkX(isH, 0.72), y: 0.38 },
+      { x: atkX(isH, 0.68), y: 0.62 },
+    ];
+    for (let k = 1; k < 11; k += 1) {
+      const p = boxDefSpots[(k - 1) % boxDefSpots.length];
+      placeAgentForSetPiece(defAgents[k], p.x, p.y, defHeading);
+    }
+    return;
+  }
+
+  // Direct Free Kick: foul spot in attacking third, 4-man wall, GK offset to far post, box runners ready
+  placeAgentForSetPiece(scorer, atkX(isH, 0.708), spot.y, atkHeading);
+  placeAgentForSetPiece(
+    defAgents[0],
+    atkX(isH, 0.960),
+    fl < 0 ? 0.54 : 0.46,
+    defHeading,
+  );
+
+  // 4-man defensive wall (slots 4..7)
+  const wallX = atkX(isH, 0.835);
+  const wallY = lerp(spot.y, 0.5, 0.36);
+  const wallIds = new Set([4, 5, 6, 7]);
+  [4, 5, 6, 7].forEach((wIdx, idx) => {
+    placeAgentForSetPiece(defAgents[wIdx], wallX, wallY + (idx - 1.5) * 0.03, defHeading);
+  });
+
+  const defEdgeSpots: SimVec2[] = [
+    { x: atkX(isH, 0.865), y: 0.32 },
+    { x: atkX(isH, 0.865), y: 0.45 },
+    { x: atkX(isH, 0.865), y: 0.58 },
+    { x: atkX(isH, 0.865), y: 0.68 },
+    { x: atkX(isH, 0.78), y: fl < 0 ? 0.68 : 0.32 },
+    { x: atkX(isH, 0.72), y: 0.50 },
+  ];
+  let dPtr = 0;
+  for (let k = 1; k < 11; k += 1) {
+    if (wallIds.has(k)) continue;
+    const p = defEdgeSpots[dPtr % defEdgeSpots.length];
+    placeAgentForSetPiece(defAgents[k], p.x, p.y, defHeading);
+    dPtr += 1;
+  }
+
+  const atkEdgeSpots: SimVec2[] = [
+    { x: atkX(isH, 0.845), y: 0.34 },
+    { x: atkX(isH, 0.845), y: 0.48 },
+    { x: atkX(isH, 0.845), y: 0.62 },
+    { x: atkX(isH, 0.81), y: 0.25 },
+    { x: atkX(isH, 0.81), y: 0.75 },
+    { x: atkX(isH, 0.72), y: fl < 0 ? 0.24 : 0.76 },
+    { x: atkX(isH, 0.64), y: 0.42 },
+    { x: atkX(isH, 0.58), y: 0.58 },
+    { x: atkX(isH, 0.52), y: 0.48 },
+  ];
+  let aPtr = 0;
+  for (let k = 1; k < 11; k += 1) {
+    if (k === scorer.slotIndex) continue;
+    const p = atkEdgeSpots[aPtr % atkEdgeSpots.length];
+    placeAgentForSetPiece(atkAgents[k], p.x, p.y, atkHeading);
+    aPtr += 1;
+  }
+}
+
+/**
  * Initiates a DirectorCueState cleanly ahead of an upcoming matchEngine highlight event.
- * Never teleports players — transitions smoothly via normal Steering + ball passes!
+ * Set-pieces transition cleanly into whistle-staged formations; open play & counters
+ * genuinely advance into realistic shooting range before any shot can fire!
  */
 function activateDirectorCue(
   state: PitchSimState,
@@ -1327,12 +1827,14 @@ function activateDirectorCue(
   const atkAgents = isHomeAttack ? state.homeAgents : state.awayAgents;
   const defAgents = isHomeAttack ? state.awayAgents : state.homeAgents;
 
+  // On `save` events, matchEngine stores defending GK's id in `scorerId` and attacker's name in `scorerName`!
   const scorerIdx = findAgentSlotByIdentity(
     atkAgents,
-    ev.scorerId,
+    ev.type === 'save' ? undefined : ev.scorerId,
     ev.scorerName,
     [8, 9, 10],
     nextSimRng(state),
+    true,
   );
   let assisterIdx = findAgentSlotByIdentity(
     atkAgents,
@@ -1340,6 +1842,7 @@ function activateDirectorCue(
     ev.assistName,
     [5, 6, 7, 8],
     nextSimRng(state),
+    true,
   );
   if (assisterIdx === scorerIdx) {
     assisterIdx = scorerIdx === 9 ? 7 : 6;
@@ -1350,6 +1853,7 @@ function activateDirectorCue(
     ev.contestDefenderName,
     [2, 3],
     nextSimRng(state),
+    true,
   );
 
   // Choose flank side coherently with current ball Y so movement is natural
@@ -1391,10 +1895,27 @@ function activateDirectorCue(
     pattern === 'direct_free_kick' ||
     pattern === 'penalty_kick';
 
+  let setPieceSpot: SimVec2 | null = null;
+  if (pattern === 'penalty_kick') {
+    setPieceSpot = { x: atkX(isHomeAttack, 0.885), y: 0.50 };
+  } else if (pattern === 'corner_kick') {
+    setPieceSpot = {
+      x: atkX(isHomeAttack, 0.982),
+      y: flankSide < 0 ? 0.036 : 0.964,
+    };
+  } else if (pattern === 'direct_free_kick') {
+    setPieceSpot = {
+      x: atkX(isHomeAttack, 0.745),
+      y: flankSide < 0 ? 0.36 : 0.64,
+    };
+  }
+
+  const minShotDepth = getMinShotDepthForCue(pattern, attackRoute);
+
   state.thirdMan = null;
   state.handledEventKeys.add(entry.key);
 
-  state.director = {
+  const cue: DirectorCueState = {
     key: entry.key,
     event: ev,
     isHomeAttack,
@@ -1411,15 +1932,25 @@ function activateDirectorCue(
     targetY,
     stage: isSetPiece ? 'set_piece_setup' : 'approach',
     stageTimer: 0,
-    stageDuration: isSetPiece ? 1.05 : 0.85,
-    shotOrigin: { x: atkX(isHomeAttack, 0.84), y: targetY },
+    stageDuration: isSetPiece ? 0.88 : 0.95,
+    shotOrigin: setPieceSpot ?? { x: atkX(isHomeAttack, 0.84), y: targetY },
     shotControl: { x: atkX(isHomeAttack, 0.90), y: targetY },
     shotEnd: { x: atkX(isHomeAttack, 0.985), y: targetY },
     revealed: false,
     varOffsideLineX: atkX(isHomeAttack, 0.83),
     routeSubStep: 0,
     reboundTriggered: false,
+    setPieceSpot,
+    minShotDepth,
+    staged: false,
   };
+
+  state.director = cue;
+
+  // Immediately stage whistle set-pieces so broadcast text & 2D pitch align 100%!
+  if (isSetPiece && setPieceSpot) {
+    stageSetPieceFormation(state, cue, setPieceSpot);
+  }
 
   state.tacticalLabel = isSetPiece
     ? '세트피스'
@@ -1435,6 +1966,7 @@ function activateDirectorCue(
 
 /**
  * Steps the Director state machine seamlessly alongside Steering physics & ball flight.
+ * Enforces authentic set-piece staging, genuine counterattack runs, and strict shooting range!
  */
 function stepDirectorCue(state: PitchSimState, dt: number) {
   const dirCue = state.director;
@@ -1445,6 +1977,8 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
   const fl = dirCue.flankSide;
   const atkAgents = isH ? state.homeAgents : state.awayAgents;
   const defAgents = isH ? state.awayAgents : state.homeAgents;
+  const atkDoctrine = isH ? state.homeDoctrine : state.awayDoctrine;
+  const defDoctrine = isH ? state.awayDoctrine : state.homeDoctrine;
   const scorer = atkAgents[dirCue.scorerIdx];
   const assister = atkAgents[dirCue.assisterIdx];
   const defender = defAgents[dirCue.defenderIdx];
@@ -1453,142 +1987,102 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
   const flankY = fl < 0 ? 0.12 : 0.88;
   const halfSpaceY = fl < 0 ? 0.28 : 0.72;
 
-  // Compute route-specific anchor positions for smooth steering (NO instant teleport!)
+  // Route-specific realistic launch & finishing targets (ALL finishing spots strictly inside minShotDepth!)
   let passerDest: SimVec2 = { x: atkX(isH, 0.66), y: halfSpaceY };
   let scorerDest: SimVec2 = { x: atkX(isH, 0.84), y: dirCue.targetY };
   let passFlightType: BallFlightType = 'through_ball';
+  let passerMinLaunchDepth = 0.52;
 
   if (dirCue.pattern === 'corner_kick') {
-    passerDest = { x: atkX(isH, 0.97), y: fl < 0 ? 0.05 : 0.95 };
-    scorerDest = { x: atkX(isH, 0.89), y: dirCue.targetY };
+    passerDest = dirCue.setPieceSpot ?? { x: atkX(isH, 0.982), y: fl < 0 ? 0.036 : 0.964 };
+    scorerDest = { x: atkX(isH, 0.895), y: dirCue.targetY };
     passFlightType = 'cross';
+    passerMinLaunchDepth = 0.95;
   } else if (dirCue.pattern === 'direct_free_kick') {
-    passerDest = { x: atkX(isH, 0.74), y: fl < 0 ? 0.37 : 0.63 };
-    scorerDest = { x: atkX(isH, 0.755), y: fl < 0 ? 0.37 : 0.63 };
+    passerDest = dirCue.setPieceSpot ?? { x: atkX(isH, 0.745), y: fl < 0 ? 0.36 : 0.64 };
+    scorerDest = passerDest;
   } else if (dirCue.pattern === 'penalty_kick') {
-    passerDest = { x: atkX(isH, 0.855), y: 0.50 };
-    scorerDest = { x: atkX(isH, 0.885), y: 0.50 };
+    passerDest = dirCue.setPieceSpot ?? { x: atkX(isH, 0.885), y: 0.50 };
+    scorerDest = passerDest;
   } else if (dirCue.attackRoute === 'early_cross') {
-    passerDest = { x: atkX(isH, 0.82), y: flankY };
+    passerDest = { x: atkX(isH, 0.80), y: flankY };
     scorerDest = { x: atkX(isH, 0.89), y: dirCue.targetY };
     passFlightType = 'cross';
+    passerMinLaunchDepth = 0.68;
   } else if (dirCue.attackRoute === 'cutback') {
-    passerDest = { x: atkX(isH, 0.945), y: fl < 0 ? 0.18 : 0.82 };
+    passerDest = { x: atkX(isH, 0.935), y: fl < 0 ? 0.17 : 0.83 };
     scorerDest = { x: atkX(isH, 0.855), y: 0.50 + fl * 0.04 };
     passFlightType = 'ground_pass';
+    passerMinLaunchDepth = 0.82;
   } else if (dirCue.attackRoute === 'solo_dribble') {
-    passerDest = { x: atkX(isH, 0.55), y: halfSpaceY };
-    scorerDest = { x: atkX(isH, 0.86), y: fl < 0 ? 0.42 : 0.58 };
+    passerDest = { x: atkX(isH, 0.58), y: halfSpaceY };
+    scorerDest = { x: atkX(isH, 0.855), y: fl < 0 ? 0.42 : 0.58 };
     passFlightType = 'ground_pass';
   } else if (dirCue.attackRoute === 'cut_inside_curler') {
-    passerDest = { x: atkX(isH, 0.62), y: flankY };
-    scorerDest = { x: atkX(isH, 0.79), y: halfSpaceY };
+    passerDest = { x: atkX(isH, 0.66), y: flankY };
+    scorerDest = { x: atkX(isH, 0.80), y: halfSpaceY };
     passFlightType = 'ground_pass';
+    passerMinLaunchDepth = 0.58;
   } else if (dirCue.attackRoute === 'long_range_cannon') {
-    passerDest = { x: atkX(isH, 0.78), y: halfSpaceY };
-    scorerDest = { x: atkX(isH, 0.70), y: 0.50 + fl * 0.06 };
+    passerDest = { x: atkX(isH, 0.77), y: halfSpaceY };
+    scorerDest = { x: atkX(isH, 0.73), y: 0.50 + fl * 0.06 };
     passFlightType = 'ground_pass';
+    passerMinLaunchDepth = 0.60;
   } else if (dirCue.attackRoute === 'u_buildup_switch') {
-    passerDest = { x: atkX(isH, 0.52), y: fl < 0 ? 0.72 : 0.28 };
-    scorerDest = { x: atkX(isH, 0.83), y: fl < 0 ? 0.24 : 0.76 };
+    passerDest = { x: atkX(isH, 0.56), y: fl < 0 ? 0.72 : 0.28 };
+    scorerDest = { x: atkX(isH, 0.835), y: fl < 0 ? 0.24 : 0.76 };
     passFlightType = 'long_switch';
+    passerMinLaunchDepth = 0.48;
   } else if (dirCue.attackRoute === 'low_block_counter') {
-    passerDest = { x: atkX(isH, 0.42), y: 0.50 };
-    scorerDest = { x: atkX(isH, 0.855), y: dirCue.targetY };
-    passFlightType = 'long_switch';
-  } else if (dirCue.attackRoute === 'tiki_taka_triangle') {
-    passerDest = { x: atkX(isH, 0.73), y: halfSpaceY };
-    scorerDest = { x: atkX(isH, 0.845), y: 0.50 + fl * 0.03 };
+    // Authentic counter: win/launch from own half or halfway -> sprint into box before finishing!
+    passerDest = { x: atkX(isH, 0.46), y: 0.50 };
+    scorerDest = { x: atkX(isH, 0.845), y: dirCue.targetY };
     passFlightType = 'through_ball';
+    passerMinLaunchDepth = 0.34;
+  } else if (dirCue.attackRoute === 'gegenpress_steal') {
+    passerDest = { x: atkX(isH, 0.62), y: halfSpaceY };
+    scorerDest = { x: atkX(isH, 0.845), y: dirCue.targetY };
+    passFlightType = 'through_ball';
+    passerMinLaunchDepth = 0.52;
+  } else if (dirCue.attackRoute === 'tiki_taka_triangle') {
+    passerDest = { x: atkX(isH, 0.74), y: halfSpaceY };
+    scorerDest = { x: atkX(isH, 0.85), y: 0.50 + fl * 0.03 };
+    passFlightType = 'through_ball';
+    passerMinLaunchDepth = 0.62;
   } else {
-    passerDest = { x: atkX(isH, 0.62), y: 0.50 + fl * 0.08 };
+    passerDest = { x: atkX(isH, 0.65), y: 0.50 + fl * 0.08 };
     scorerDest = { x: atkX(isH, 0.85), y: dirCue.targetY };
     passFlightType = 'through_ball';
+    passerMinLaunchDepth = 0.54;
   }
 
-  // Guide key actors smoothly via Steering
+  // ── STAGE 1A: SET-PIECE SETUP (Ball locked cleanly on spot, zero tug-of-war!) ──
   if (dirCue.stage === 'set_piece_setup') {
+    const spot = dirCue.setPieceSpot ?? passerDest;
     state.possessionIsHome = isH;
-    state.ball.ownerTeamIsHome = isH;
-    const taker =
-      dirCue.pattern === 'corner_kick' ? assister : scorer;
-    state.ball.ownerIdx = taker.slotIndex;
-    state.ball.flightType = 'carry';
-    state.ball.z = 0;
-
-    // Steer kicker & box players cleanly into set-piece positions
-    const spot = dirCue.pattern === 'corner_kick' ? passerDest : scorerDest;
-    applyAgentSteering({
-      agent: taker,
-      targetX: spot.x,
-      targetY: spot.y,
-      sprintDemand: 0.95,
-      teammates: atkAgents,
-      doctrine: isH ? state.homeDoctrine : state.awayDoctrine,
-      dt,
-      skipSeparation: true,
-    });
-    state.ball.x = lerp(state.ball.x, spot.x, clamp(dt * 8, 0, 1));
-    state.ball.y = lerp(state.ball.y, spot.y, clamp(dt * 8, 0, 1));
+    // Keep ball strictly locked on the set-piece spot (ownerIdx = null prevents stepBallPhysics pulling it!)
+    resetBallToSpot(state, spot.x, spot.y, null, null);
 
     if (dirCue.pattern === 'corner_kick') {
+      // Subtle pre-kick jostling inside box while taker stands ready at corner flag
       applyAgentSteering({
         agent: scorer,
-        targetX: atkX(isH, 0.86),
-        targetY: dirCue.targetY,
-        sprintDemand: 0.85,
+        targetX: atkX(isH, 0.855),
+        targetY: clamp(dirCue.targetY - fl * 0.04, 0.28, 0.72),
+        sprintDemand: 0.45,
         teammates: atkAgents,
-        doctrine: isH ? state.homeDoctrine : state.awayDoctrine,
+        doctrine: atkDoctrine,
         dt,
       });
-    } else if (dirCue.pattern === 'direct_free_kick') {
-      // 4-man wall cleanly lines up
-      const wallX = atkX(isH, 0.835);
-      const wallY = lerp(spot.y, 0.5, 0.35);
-      const wallIds = [4, 5, 6, 7];
-      wallIds.forEach((wIdx, k) => {
-        applyAgentSteering({
-          agent: defAgents[wIdx],
-          targetX: wallX,
-          targetY: wallY + (k - 1.5) * 0.032,
-          sprintDemand: 0.9,
-          teammates: defAgents,
-          doctrine: isH ? state.awayDoctrine : state.homeDoctrine,
-          dt,
-          skipSeparation: true,
-        });
-      });
     } else if (dirCue.pattern === 'penalty_kick') {
-      // Everyone else steps outside the penalty arc
-      for (let k = 1; k < 11; k += 1) {
-        if (k !== scorer.slotIndex) {
-          applyAgentSteering({
-            agent: atkAgents[k],
-            targetX: atkX(isH, 0.785 - (k % 3) * 0.02),
-            targetY: 0.24 + ((k * 7) % 10) * 0.055,
-            sprintDemand: 0.85,
-            teammates: atkAgents,
-            doctrine: isH ? state.homeDoctrine : state.awayDoctrine,
-            dt,
-          });
-        }
-        applyAgentSteering({
-          agent: defAgents[k],
-          targetX: atkX(isH, 0.795 - (k % 2) * 0.02),
-          targetY: 0.22 + ((k * 5) % 10) * 0.058,
-          sprintDemand: 0.85,
-          teammates: defAgents,
-          doctrine: isH ? state.awayDoctrine : state.homeDoctrine,
-          dt,
-        });
-      }
+      // GK bounces subtly on goal line; kicker poised at run-up
       applyAgentSteering({
         agent: defGk,
-        targetX: atkX(isH, 0.96),
-        targetY: 0.5,
-        sprintDemand: 0.9,
+        targetX: atkX(isH, 0.962),
+        targetY: 0.5 + Math.sin(dirCue.stageTimer * 7) * 0.014,
+        sprintDemand: 0.4,
         teammates: defAgents,
-        doctrine: isH ? state.awayDoctrine : state.homeDoctrine,
+        doctrine: defDoctrine,
         dt,
         skipSeparation: true,
       });
@@ -1600,17 +2094,21 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
       dirCue.stageDuration =
         dirCue.pattern === 'penalty_kick' || dirCue.pattern === 'direct_free_kick'
           ? 0.52
-          : 0.92;
+          : 1.05;
       dirCue.routeSubStep = 0;
     }
     return;
   }
 
+  // ── STAGE 1B: OPEN-PLAY / COUNTER APPROACH ──
   if (dirCue.stage === 'approach') {
-    // Smoothly channel possession to attacking team & assister/scorer via genuine pass
     const receiverIdx =
       dirCue.attackRoute === 'solo_dribble' ? dirCue.scorerIdx : dirCue.assisterIdx;
     const receiver = atkAgents[receiverIdx];
+    const receiverTarget =
+      dirCue.attackRoute === 'solo_dribble'
+        ? { x: atkX(isH, 0.64), y: halfSpaceY }
+        : passerDest;
 
     if (dirCue.routeSubStep === 0) {
       dirCue.routeSubStep = 1;
@@ -1622,13 +2120,13 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
         flightType: 'ground_pass',
         fromX,
         fromY,
-        toX: lerp(receiver.x, passerDest.x, 0.55),
-        toY: lerp(receiver.y, passerDest.y, 0.55),
+        toX: lerp(receiver.x, receiverTarget.x, 0.42),
+        toY: lerp(receiver.y, receiverTarget.y, 0.42),
         targetTeamIsHome: isH,
         targetIdx: receiverIdx,
         passerIsHome: isH,
         passerIdx: state.ball.ownerIdx ?? 5,
-        speedOverride: 0.46,
+        speedOverride: 0.52,
       });
     }
 
@@ -1636,115 +2134,240 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
       agent: assister,
       targetX: passerDest.x,
       targetY: passerDest.y,
-      sprintDemand: 0.95,
+      sprintDemand: 1.0,
       teammates: atkAgents,
-      doctrine: isH ? state.homeDoctrine : state.awayDoctrine,
+      doctrine: atkDoctrine,
       dt,
+      speedBoost: 1.75,
     });
     applyAgentSteering({
       agent: scorer,
-      targetX: lerp(scorer.x, scorerDest.x, 0.55),
-      targetY: lerp(scorer.y, scorerDest.y, 0.55),
-      sprintDemand: 0.92,
+      targetX: lerp(scorer.x, scorerDest.x, 0.65),
+      targetY: lerp(scorer.y, scorerDest.y, 0.65),
+      sprintDemand: 1.0,
       teammates: atkAgents,
-      doctrine: isH ? state.homeDoctrine : state.awayDoctrine,
+      doctrine: atkDoctrine,
       dt,
+      speedBoost: 1.75,
     });
 
-    if (
-      dirCue.stageTimer >= dirCue.stageDuration ||
-      (state.ball.ownerTeamIsHome === isH && state.ball.ownerIdx === receiverIdx)
-    ) {
+    const receivedByActor =
+      state.ball.ownerTeamIsHome === isH && state.ball.ownerIdx === receiverIdx;
+    if (receivedByActor || dirCue.stageTimer >= dirCue.stageDuration) {
+      // Ensure the actor genuinely holds the ball when entering execute_route
+      if (!receivedByActor && state.ball.flightProgress >= 0.95) {
+        state.ball.ownerTeamIsHome = isH;
+        state.ball.ownerIdx = receiverIdx;
+        state.ball.flightType = 'carry';
+      }
       dirCue.stage = 'execute_route';
       dirCue.stageTimer = 0;
       dirCue.stageDuration =
         dirCue.attackRoute === 'solo_dribble'
-          ? 1.15
+          ? 2.2
           : dirCue.pattern === 'rebound_finish'
-            ? 1.25
-            : 1.0;
+            ? 2.4
+            : dirCue.attackRoute === 'low_block_counter'
+              ? 2.4
+              : 2.0;
       dirCue.routeSubStep = 0;
     }
     return;
   }
 
+  // ── STAGE 2: EXECUTE ROUTE (NEVER SHOOTS OUTSIDE REALISTIC SHOOTING RANGE!) ──
   if (dirCue.stage === 'execute_route') {
-    // 1) Direct FK & PK: brief run-up then fire shot
+    // 1) Direct FK & PK: crisp run-up straight to exact setPieceSpot, then shoot from spot!
     if (dirCue.pattern === 'penalty_kick' || dirCue.pattern === 'direct_free_kick') {
+      const spot = dirCue.setPieceSpot ?? scorerDest;
+      // Keep ball locked on the spot until foot strikes it!
+      resetBallToSpot(state, spot.x, spot.y, null, null);
       applyAgentSteering({
         agent: scorer,
-        targetX: scorerDest.x,
-        targetY: scorerDest.y,
-        sprintDemand: 0.85,
+        targetX: spot.x,
+        targetY: spot.y,
+        sprintDemand: 0.95,
         teammates: atkAgents,
-        doctrine: isH ? state.homeDoctrine : state.awayDoctrine,
+        doctrine: atkDoctrine,
         dt,
         skipSeparation: true,
+        speedBoost: 1.45,
       });
-      if (dirCue.stageTimer >= dirCue.stageDuration) {
+      const distToSpot = Math.hypot(scorer.x - spot.x, scorer.y - spot.y);
+      if (distToSpot < 0.022 || dirCue.stageTimer >= dirCue.stageDuration) {
         triggerDirectorShot(state, dirCue, scorer);
       }
       return;
     }
 
-    // 2) Solo dribble: scorer weaves smoothly past defender
-    if (dirCue.attackRoute === 'solo_dribble') {
-      const prog = clamp(dirCue.stageTimer / dirCue.stageDuration, 0, 1);
-      const zig = Math.sin(prog * Math.PI * 2.5) * 0.055 * fl;
+    // 2) Corner Kick: cross from EXACT corner flag into penalty box -> header/volley!
+    if (dirCue.pattern === 'corner_kick') {
+      const cornerSpot = dirCue.setPieceSpot ?? passerDest;
+      if (dirCue.routeSubStep === 0) {
+        dirCue.routeSubStep = 1;
+        const ctrl: SimVec2 = {
+          x: atkX(isH, 0.93),
+          y: lerp(cornerSpot.y, scorerDest.y, 0.42),
+        };
+        launchBallFlight({
+          state,
+          flightType: 'cross',
+          fromX: cornerSpot.x,
+          fromY: cornerSpot.y,
+          toX: scorerDest.x,
+          toY: scorerDest.y,
+          ctrlX: ctrl.x,
+          ctrlY: ctrl.y,
+          targetTeamIsHome: isH,
+          targetIdx: scorer.slotIndex,
+          passerIsHome: isH,
+          passerIdx: assister.slotIndex,
+          speedOverride: 0.44,
+          maxArcZ: 0.85,
+          arcColor: '#bae6fd',
+        });
+        state.runIndicators.push({
+          from: { x: scorer.x, y: scorer.y },
+          to: scorerDest,
+          color: '#34d399',
+          alpha: 0.72,
+          isThirdMan: false,
+        });
+      }
+
       applyAgentSteering({
         agent: scorer,
         targetX: scorerDest.x,
-        targetY: clamp(scorerDest.y + zig, 0.12, 0.88),
+        targetY: scorerDest.y,
         sprintDemand: 1.0,
         teammates: atkAgents,
-        doctrine: isH ? state.homeDoctrine : state.awayDoctrine,
+        doctrine: atkDoctrine,
         dt,
         skipSeparation: true,
+        speedBoost: 1.6,
+      });
+      if (defender) {
+        applyAgentSteering({
+          agent: defender,
+          targetX: lerp(defender.x, scorerDest.x + (isH ? 0.015 : -0.015), 0.7),
+          targetY: lerp(defender.y, scorerDest.y + fl * 0.025, 0.7),
+          sprintDemand: 0.92,
+          teammates: defAgents,
+          doctrine: defDoctrine,
+          dt,
+        });
+      }
+
+      const crossArrived =
+        (state.ball.ownerTeamIsHome === isH && state.ball.ownerIdx === scorer.slotIndex) ||
+        state.ball.flightProgress >= 0.95;
+      if (
+        (crossArrived && isWithinShootingZone(isH, scorer.x, dirCue.minShotDepth)) ||
+        dirCue.stageTimer >= dirCue.stageDuration
+      ) {
+        triggerDirectorShot(state, dirCue, scorer);
+      }
+      return;
+    }
+
+    // 3) Solo dribble: scorer carries & weaves past defender UNTIL inside shooting range!
+    if (dirCue.attackRoute === 'solo_dribble') {
+      state.ball.ownerTeamIsHome = isH;
+      state.ball.ownerIdx = scorer.slotIndex;
+      state.ball.flightType = 'carry';
+      const prog = clamp(dirCue.stageTimer / 1.15, 0, 1);
+      const zig = Math.sin(prog * Math.PI * 2.5) * 0.05 * fl;
+      applyAgentSteering({
+        agent: scorer,
+        targetX: scorerDest.x,
+        targetY: clamp(scorerDest.y + zig, 0.14, 0.86),
+        sprintDemand: 1.0,
+        teammates: atkAgents,
+        doctrine: atkDoctrine,
+        dt,
+        skipSeparation: true,
+        speedBoost: 1.85,
       });
       if (defender) {
         applyAgentSteering({
           agent: defender,
           targetX: scorer.x + (isH ? -0.025 : 0.025),
           targetY: scorer.y + fl * 0.05,
-          sprintDemand: 0.78,
+          sprintDemand: 0.82,
           teammates: defAgents,
-          doctrine: isH ? state.awayDoctrine : state.homeDoctrine,
+          doctrine: defDoctrine,
           dt,
         });
       }
-      if (dirCue.stageTimer >= dirCue.stageDuration) {
+      const inRange = isWithinShootingZone(isH, scorer.x, dirCue.minShotDepth);
+      const nearDest = Math.hypot(scorer.x - scorerDest.x, scorer.y - scorerDest.y) < 0.055;
+      if ((inRange && (nearDest || dirCue.stageTimer >= 0.95)) || dirCue.stageTimer >= dirCue.stageDuration) {
         triggerDirectorShot(state, dirCue, scorer);
       }
       return;
     }
 
-    // 3) Rebound finish: 1st shot parried/post/blocked -> loose ball to scorer
+    // 4) Rebound finish: 1st shooter enters shooting range -> 1st shot parried/post/blocked -> scorer finishes inside box!
     if (dirCue.pattern === 'rebound_finish') {
+      const firstShooterTarget: SimVec2 = { x: atkX(isH, 0.77), y: halfSpaceY };
       if (dirCue.routeSubStep === 0) {
-        dirCue.routeSubStep = 1;
-        const deflectSpot: SimVec2 =
-          dirCue.reboundOrigin === 'woodwork'
-            ? { x: atkX(isH, 0.975), y: fl < 0 ? 0.42 : 0.58 }
-            : dirCue.reboundOrigin === 'blocked'
-              ? { x: atkX(isH, 0.865), y: 0.50 + fl * 0.05 }
-              : { x: atkX(isH, 0.94), y: 0.50 + fl * 0.04 };
-        launchBallFlight({
-          state,
-          flightType: 'shot',
-          fromX: assister.x,
-          fromY: assister.y,
-          toX: deflectSpot.x,
-          toY: deflectSpot.y,
-          targetTeamIsHome: null,
-          targetIdx: null,
-          passerIsHome: isH,
-          passerIdx: assister.slotIndex,
-          speedOverride: 0.56,
+        state.ball.ownerTeamIsHome = isH;
+        state.ball.ownerIdx = assister.slotIndex;
+        state.ball.flightType = 'carry';
+        applyAgentSteering({
+          agent: assister,
+          targetX: firstShooterTarget.x,
+          targetY: firstShooterTarget.y,
+          sprintDemand: 1.0,
+          teammates: atkAgents,
+          doctrine: atkDoctrine,
+          dt,
+          skipSeparation: true,
+          speedBoost: 1.9,
         });
-      } else if (
-        dirCue.routeSubStep === 1 &&
-        state.ball.flightProgress >= 0.96
-      ) {
+        applyAgentSteering({
+          agent: scorer,
+          targetX: scorerDest.x,
+          targetY: scorerDest.y,
+          sprintDemand: 1.0,
+          teammates: atkAgents,
+          doctrine: atkDoctrine,
+          dt,
+          skipSeparation: true,
+          speedBoost: 1.85,
+        });
+        if (
+          isWithinShootingZone(isH, assister.x, 0.70) ||
+          dirCue.stageTimer >= 0.95
+        ) {
+          dirCue.routeSubStep = 1;
+          const deflectSpot: SimVec2 =
+            dirCue.reboundOrigin === 'woodwork'
+              ? { x: atkX(isH, 0.975), y: fl < 0 ? 0.42 : 0.58 }
+              : dirCue.reboundOrigin === 'blocked'
+                ? { x: atkX(isH, 0.865), y: 0.50 + fl * 0.05 }
+                : { x: atkX(isH, 0.94), y: 0.50 + fl * 0.04 };
+          const launchX = isWithinShootingZone(isH, assister.x, 0.70)
+            ? assister.x
+            : atkX(isH, 0.74);
+          launchBallFlight({
+            state,
+            flightType: 'shot',
+            fromX: launchX,
+            fromY: assister.y,
+            toX: deflectSpot.x,
+            toY: deflectSpot.y,
+            targetTeamIsHome: null,
+            targetIdx: null,
+            passerIsHome: isH,
+            passerIdx: assister.slotIndex,
+            speedOverride: 0.58,
+          });
+        }
+        return;
+      }
+
+      if (dirCue.routeSubStep === 1 && state.ball.flightProgress >= 0.95) {
         dirCue.routeSubStep = 2;
         state.impactRing = {
           x: state.ball.x,
@@ -1768,8 +2391,8 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
           targetIdx: scorer.slotIndex,
           passerIsHome: !isH,
           passerIdx: 0,
-          speedOverride: 0.34,
-          maxArcZ: 0.42,
+          speedOverride: 0.36,
+          maxArcZ: 0.38,
         });
       }
 
@@ -1779,69 +2402,117 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
         targetY: scorerDest.y,
         sprintDemand: 1.0,
         teammates: atkAgents,
-        doctrine: isH ? state.homeDoctrine : state.awayDoctrine,
+        doctrine: atkDoctrine,
         dt,
         skipSeparation: true,
+        speedBoost: 1.9,
       });
 
-      if (
+      const reboundReady =
         dirCue.routeSubStep === 2 &&
-        (state.ball.ownerIdx === scorer.slotIndex ||
-          dirCue.stageTimer >= dirCue.stageDuration)
+        ((state.ball.ownerTeamIsHome === isH && state.ball.ownerIdx === scorer.slotIndex) ||
+          state.ball.flightProgress >= 0.95);
+      if (
+        (reboundReady && isWithinShootingZone(isH, scorer.x, dirCue.minShotDepth)) ||
+        dirCue.stageTimer >= dirCue.stageDuration
       ) {
         triggerDirectorShot(state, dirCue, scorer);
       }
       return;
     }
 
-    // 4) Standard assisted routes (cross, cutback, through_ball, tiki_taka_triangle, switch, counter, cannon)
+    // 5) Standard open-play & counterattack assisted routes:
+    //    Sub-step 0: Assister carries/reaches route launch depth, then delivers pass/cross/through-ball.
+    //    Sub-step 1: Pass flies ahead while scorer sprints to scorerDest.
+    //    Sub-step 2: If scorer collected pass before minShotDepth (e.g. counterattack!), scorer drives into shooting zone first!
     if (dirCue.routeSubStep === 0) {
-      dirCue.routeSubStep = 1;
-      const ctrl: SimVec2 =
-        passFlightType === 'cross'
-          ? { x: atkX(isH, 0.87), y: lerp(assister.y, scorerDest.y, 0.45) }
-          : passFlightType === 'long_switch'
-            ? { x: (assister.x + scorerDest.x) * 0.5, y: 0.5 }
-            : { x: (assister.x + scorerDest.x) * 0.5, y: (assister.y + scorerDest.y) * 0.5 };
-      launchBallFlight({
-        state,
-        flightType: passFlightType,
-        fromX: assister.x,
-        fromY: assister.y,
-        toX: scorerDest.x,
-        toY: scorerDest.y,
-        ctrlX: ctrl.x,
-        ctrlY: ctrl.y,
-        targetTeamIsHome: isH,
-        targetIdx: scorer.slotIndex,
-        passerIsHome: isH,
-        passerIdx: assister.slotIndex,
-        speedOverride: passFlightType === 'cross' ? 0.42 : 0.46,
-        arcColor:
+      state.ball.ownerTeamIsHome = isH;
+      state.ball.ownerIdx = assister.slotIndex;
+      state.ball.flightType = 'carry';
+      applyAgentSteering({
+        agent: assister,
+        targetX: passerDest.x,
+        targetY: passerDest.y,
+        sprintDemand: 1.0,
+        teammates: atkAgents,
+        doctrine: atkDoctrine,
+        dt,
+        speedBoost: 1.85,
+      });
+      applyAgentSteering({
+        agent: scorer,
+        targetX: lerp(scorer.x, scorerDest.x, 0.72),
+        targetY: lerp(scorer.y, scorerDest.y, 0.72),
+        sprintDemand: 1.0,
+        teammates: atkAgents,
+        doctrine: atkDoctrine,
+        dt,
+        skipSeparation: true,
+        speedBoost: 1.85,
+      });
+
+      const assisterInLaunchZone =
+        getAttackDepth(isH, assister.x) >= passerMinLaunchDepth;
+      if (assisterInLaunchZone || dirCue.stageTimer >= 0.78) {
+        dirCue.routeSubStep = 1;
+        // For fast counters, lead the pass into space ahead of scorer so scorer drives cleanly into box!
+        const passTarget: SimVec2 =
+          dirCue.attackRoute === 'low_block_counter' &&
+          getAttackDepth(isH, scorer.x) < 0.62
+            ? {
+                x: atkX(isH, Math.min(0.84, getAttackDepth(isH, scorer.x) + 0.22)),
+                y: lerp(scorer.y, scorerDest.y, 0.65),
+              }
+            : scorerDest;
+        const ctrl: SimVec2 =
           passFlightType === 'cross'
-            ? '#bae6fd'
+            ? { x: atkX(isH, 0.87), y: lerp(assister.y, passTarget.y, 0.45) }
             : passFlightType === 'long_switch'
-              ? '#38bdf8'
-              : '#34d399',
-      });
-      state.runIndicators.push({
-        from: { x: scorer.x, y: scorer.y },
-        to: scorerDest,
-        color: '#34d399',
-        alpha: 0.72,
-        isThirdMan: dirCue.attackRoute === 'tiki_taka_triangle',
-      });
+              ? { x: (assister.x + passTarget.x) * 0.5, y: 0.5 }
+              : { x: (assister.x + passTarget.x) * 0.5, y: (assister.y + passTarget.y) * 0.5 };
+        launchBallFlight({
+          state,
+          flightType: passFlightType,
+          fromX: assister.x,
+          fromY: assister.y,
+          toX: passTarget.x,
+          toY: passTarget.y,
+          ctrlX: ctrl.x,
+          ctrlY: ctrl.y,
+          targetTeamIsHome: isH,
+          targetIdx: scorer.slotIndex,
+          passerIsHome: isH,
+          passerIdx: assister.slotIndex,
+          speedOverride: passFlightType === 'cross' ? 0.44 : 0.50,
+          arcColor:
+            passFlightType === 'cross'
+              ? '#bae6fd'
+              : passFlightType === 'long_switch'
+                ? '#38bdf8'
+                : '#34d399',
+        });
+        state.runIndicators.push({
+          from: { x: scorer.x, y: scorer.y },
+          to: scorerDest,
+          color: '#34d399',
+          alpha: 0.72,
+          isThirdMan: dirCue.attackRoute === 'tiki_taka_triangle',
+        });
+      }
+      return;
     }
 
+    // Sub-step 1 (pass in flight) & Sub-step 2 (scorer carrying into shooting zone)
     applyAgentSteering({
       agent: scorer,
       targetX: scorerDest.x,
       targetY: scorerDest.y,
       sprintDemand: 1.0,
       teammates: atkAgents,
-      doctrine: isH ? state.homeDoctrine : state.awayDoctrine,
+      doctrine: atkDoctrine,
       dt,
       skipSeparation: true,
+      speedBoost: 1.9,
     });
     if (defender) {
       applyAgentSteering({
@@ -1850,14 +2521,28 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
         targetY: lerp(defender.y, scorerDest.y + fl * 0.03, 0.7),
         sprintDemand: 0.92,
         teammates: defAgents,
-        doctrine: isH ? state.awayDoctrine : state.homeDoctrine,
+        doctrine: defDoctrine,
         dt,
       });
     }
 
-    const arrivedAtScorer =
+    const ballWithScorer =
       state.ball.ownerTeamIsHome === isH && state.ball.ownerIdx === scorer.slotIndex;
-    if (arrivedAtScorer || dirCue.stageTimer >= dirCue.stageDuration) {
+    const passDone = ballWithScorer || state.ball.flightProgress >= 0.96;
+
+    if (passDone && dirCue.routeSubStep === 1) {
+      // Transition cleanly to sub-step 2: scorer carries ball into shooting range if not there yet!
+      dirCue.routeSubStep = 2;
+      state.ball.ownerTeamIsHome = isH;
+      state.ball.ownerIdx = scorer.slotIndex;
+      state.ball.flightType = 'carry';
+    }
+
+    const inShootingZone = isWithinShootingZone(isH, scorer.x, dirCue.minShotDepth);
+    if (
+      (dirCue.routeSubStep === 2 && inShootingZone) ||
+      dirCue.stageTimer >= dirCue.stageDuration
+    ) {
       triggerDirectorShot(state, dirCue, scorer);
     }
     return;
@@ -1879,7 +2564,7 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
       targetY: gkDiveY,
       sprintDemand: 1.0,
       teammates: defAgents,
-      doctrine: isH ? state.awayDoctrine : state.homeDoctrine,
+      doctrine: defDoctrine,
       dt,
       skipSeparation: true,
     });
@@ -1891,7 +2576,7 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
         targetY: dirCue.shotEnd.y,
         sprintDemand: 1.0,
         teammates: defAgents,
-        doctrine: isH ? state.awayDoctrine : state.homeDoctrine,
+        doctrine: defDoctrine,
         dt,
         skipSeparation: true,
       });
@@ -1909,17 +2594,14 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
       if (dirCue.outcome === 'goal') {
         if (isH) state.homeGoalsLive += 1;
         else state.awayGoalsLive += 1;
+        // Immediately update late-game Game State Urgency when score changes!
+        refreshLiveUrgencyDoctrines(state);
         state.goalRipple = { side: isH ? 'right' : 'left', intensity: 1.0 };
         state.pitchFlashAlpha = 0.22;
-        state.ball.x = atkX(isH, 0.996);
-        state.ball.y = dirCue.targetY;
-        state.ball.z = 0;
-        state.ball.ownerTeamIsHome = null;
-        state.ball.ownerIdx = null;
+        resetBallToSpot(state, atkX(isH, 0.996), dirCue.targetY, null, null);
       } else if (dirCue.outcome === 'var_offside') {
         state.goalRipple = { side: isH ? 'right' : 'left', intensity: 0.75 };
-        state.ball.x = atkX(isH, 0.994);
-        state.ball.y = dirCue.targetY;
+        resetBallToSpot(state, atkX(isH, 0.994), dirCue.targetY, null, null);
       } else if (dirCue.outcome === 'save') {
         state.impactRing = {
           x: dirCue.shotEnd.x,
@@ -2016,16 +2698,8 @@ function stepDirectorCue(state: PitchSimState, dt: number) {
         const restartAgents = restartHome ? state.homeAgents : state.awayAgents;
         const mid = restartAgents[6] ?? restartAgents[5];
         state.possessionIsHome = restartHome;
-        state.ball.x = 0.5;
-        state.ball.y = 0.5;
-        state.ball.z = 0;
-        state.ball.prevX = 0.5;
-        state.ball.prevY = 0.5;
-        state.ball.prevZ = 0;
-        state.ball.flightType = 'carry';
-        state.ball.ownerTeamIsHome = restartHome;
-        state.ball.ownerIdx = mid.slotIndex;
-        state.ball.trail = [];
+        placeAgentForSetPiece(mid, 0.5, 0.5, restartHome ? 0 : Math.PI);
+        resetBallToSpot(state, 0.5, 0.5, restartHome, mid.slotIndex);
         state.tacticalLabel = '후방 빌드업';
         state.tacticalLabelTeamIsHome = restartHome;
       } else {
@@ -2047,7 +2721,27 @@ function triggerDirectorShot(
 ) {
   const isH = dirCue.isHomeAttack;
   const fl = dirCue.flankSide;
-  const origin: SimVec2 = { x: scorer.x, y: scorer.y };
+
+  // Enforce hard physical shooting-zone invariant:
+  // 1) PK & Direct FK ALWAYS strike from exact setPieceSpot.
+  // 2) Open play & Corner ALWAYS strike from within realistic shooting range (>= minShotDepth, never behind halfway!).
+  let origin: SimVec2;
+  if (
+    (dirCue.pattern === 'penalty_kick' || dirCue.pattern === 'direct_free_kick') &&
+    dirCue.setPieceSpot
+  ) {
+    origin = { x: dirCue.setPieceSpot.x, y: dirCue.setPieceSpot.y };
+  } else {
+    const rawDepth = getAttackDepth(isH, scorer.x);
+    if (rawDepth < dirCue.minShotDepth) {
+      // Safety fallback (only if timeout fired before arrival): clamp cleanly into shooting zone
+      const safeX = atkX(isH, dirCue.minShotDepth);
+      scorer.x = safeX;
+      scorer.prevX = safeX;
+    }
+    origin = { x: scorer.x, y: scorer.y };
+  }
+
   const endX =
     dirCue.outcome === 'blocked'
       ? atkX(isH, 0.885)
@@ -2081,17 +2775,17 @@ function triggerDirectorShot(
     dirCue.pattern === 'direct_free_kick' ||
     dirCue.attackRoute === 'long_range_cannon' ||
     dirCue.pattern === 'cut_inside_curler'
-      ? 0.78
+      ? 0.65
       : dirCue.pattern === 'wing_cross_header' || dirCue.pattern === 'corner_kick'
-        ? 0.45
-        : 0.22;
+        ? 0.40
+        : 0.20;
 
   dirCue.shotOrigin = origin;
   dirCue.shotControl = ctrl;
   dirCue.shotEnd = end;
   dirCue.stage = 'shot_flight';
   dirCue.stageTimer = 0;
-  dirCue.stageDuration = 0.88;
+  dirCue.stageDuration = 0.86;
   state.localPaceMult = 0.78; // Subtle suspenseful shot flight inside fixed-timestep!
 
   launchBallFlight({
@@ -2107,7 +2801,7 @@ function triggerDirectorShot(
     targetIdx: null,
     passerIsHome: isH,
     passerIdx: scorer.slotIndex,
-    speedOverride: Math.max(0.24, Math.hypot(end.x - origin.x, end.y - origin.y) / 0.86),
+    speedOverride: Math.max(0.24, Math.hypot(end.x - origin.x, end.y - origin.y) / 0.84),
     maxArcZ: arcZ,
     arcColor: '#fef08a',
   });
@@ -2118,6 +2812,28 @@ function triggerDirectorShot(
  */
 function stepBallPhysics(state: PitchSimState, dt: number) {
   const ball = state.ball;
+
+  // Hard single-ball lock during set-piece spot staging & PK/FK run-up (zero tug-of-war or ghost trail!)
+  if (
+    state.director?.setPieceSpot &&
+    (state.director.stage === 'set_piece_setup' ||
+      (state.director.stage === 'execute_route' &&
+        (state.director.pattern === 'penalty_kick' ||
+          state.director.pattern === 'direct_free_kick')))
+  ) {
+    const spot = state.director.setPieceSpot;
+    ball.x = spot.x;
+    ball.y = spot.y;
+    ball.z = 0;
+    ball.prevX = spot.x;
+    ball.prevY = spot.y;
+    ball.prevZ = 0;
+    ball.vx = 0;
+    ball.vy = 0;
+    ball.trail = [];
+    return;
+  }
+
   ball.prevX = ball.x;
   ball.prevY = ball.y;
   ball.prevZ = ball.z;
@@ -2137,6 +2853,11 @@ function stepBallPhysics(state: PitchSimState, dt: number) {
       ball.vx = owner.vx;
       ball.vy = owner.vy;
     }
+    // Owned ball never leaves floating trail dots that can look like a second ball
+    if (ball.trail.length > 0) {
+      ball.trail = [];
+    }
+    return;
   } else if (ball.flightProgress < 1) {
     ball.flightProgress = Math.min(1, ball.flightProgress + dt / Math.max(0.15, ball.flightDuration));
     // Ground passes & through balls gently decelerate due to grass friction (ease-out curve)
@@ -2165,6 +2886,7 @@ function stepBallPhysics(state: PitchSimState, dt: number) {
       ball.ownerIdx = ball.passTargetIdx;
       ball.flightType = 'carry';
       ball.z = 0;
+      ball.trail = [];
 
       if (newTeam !== prevTeam) {
         // Turnover / interception!
@@ -2195,7 +2917,7 @@ function stepBallPhysics(state: PitchSimState, dt: number) {
         }
       }
 
-      // Compute realistic first-touch hold time (scaled by tempo, DRI, and chemistry)
+      // Compute realistic first-touch hold time (scaled by tempo, urgency, DRI, and chemistry)
       const receiver = (newTeam ? state.homeAgents : state.awayAgents)[ball.ownerIdx];
       const doc = newTeam ? state.homeDoctrine : state.awayDoctrine;
       const driQuick = receiver ? clamp((receiver.profile.attrs.dri - 65) / 35, 0, 1) * 0.14 : 0;
@@ -2203,20 +2925,28 @@ function stepBallPhysics(state: PitchSimState, dt: number) {
         receiver && newTeam === prevTeam
           ? receiver.profile.synergyWithSlot[ball.lastTouchIdx] * 0.035
           : 0;
+      const urgencyQuick = doc.attackUrgency * 0.18;
+      const minHold = doc.attackUrgency >= 0.25 ? 0.24 : 0.34;
       state.carrierHoldTimer = 0;
       state.carrierDecisionDelay = clamp(
-        (0.76 - driQuick - synQuick + (nextSimRng(state) - 0.5) * 0.22) / doc.tempo,
-        0.34,
+        (0.76 - driQuick - synQuick - urgencyQuick + (nextSimRng(state) - 0.5) * 0.22) / doc.tempo,
+        minHold,
         1.08,
       );
+      return;
     }
-  }
 
-  // Record restrained ball trail
-  ball.trail.push({ x: ball.x, y: ball.y, z: ball.z, flightType: ball.flightType });
-  const maxTrail = state.director?.stage === 'shot_flight' ? 14 : 9;
-  while (ball.trail.length > maxTrail) {
-    ball.trail.shift();
+    // Record motion trail ONLY while ball is genuinely moving in flight
+    if (Math.hypot(ball.x - ball.prevX, ball.y - ball.prevY) > 0.0015) {
+      ball.trail.push({ x: ball.x, y: ball.y, z: ball.z, flightType: ball.flightType });
+      const maxTrail = state.director?.stage === 'shot_flight' ? 10 : 7;
+      while (ball.trail.length > maxTrail) {
+        ball.trail.shift();
+      }
+    }
+  } else if (ball.trail.length > 0) {
+    // Stationary loose ball clears trail cleanly
+    ball.trail = [];
   }
 }
 
@@ -2258,10 +2988,11 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
     state.matchMinuteFloat + dt * clockRate,
   );
 
-  // Periodically refresh live player stamina every integer match minute
+  // Periodically refresh live stamina AND late-game urgency doctrines every integer match minute
   const intMin = Math.floor(state.matchMinuteFloat);
   if (intMin > state.lastStaminaSyncMinute) {
     state.lastStaminaSyncMinute = intMin;
+    refreshLiveUrgencyDoctrines(state);
     for (let i = 0; i < 11; i += 1) {
       state.homeAgents[i].staminaPct = computeAgentLiveStamina(
         state.homeAgents[i].profile,
@@ -2276,7 +3007,7 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
     }
   }
 
-  // Trigger upcoming matchEngine highlight smoothly ~1.25 minutes ahead (zero teleport!)
+  // Trigger upcoming matchEngine highlight smoothly ~1.25 minutes ahead
   if (!state.director) {
     const upcoming = state.scheduledEvents.find(
       ({ key, event }) =>
@@ -2346,26 +3077,28 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
       const stealProbPerSec = clamp(
         0.55 +
           (defSkill - atkSkill) * 0.015 +
-          defDoc.zonePressEdge * 0.25 -
+          defDoc.zonePressEdge * 0.25 +
+          defDoc.attackUrgency * 0.22 -
           atkDoc.composure * 0.22 +
           (0.55 - targetPoss) * 0.45,
         0.15,
-        1.45,
+        1.55,
       );
       if (nextSimRng(state) < stealProbPerSec * effDt) {
         state.ball.ownerTeamIsHome = !carrierIsHome;
         state.ball.ownerIdx = closestDef.slotIndex;
         state.ball.lastTouchTeamIsHome = !carrierIsHome;
         state.ball.lastTouchIdx = closestDef.slotIndex;
+        state.ball.trail = [];
         state.possessionIsHome = !carrierIsHome;
         state.carrierHoldTimer = 0;
-        state.carrierDecisionDelay = 0.48 / defDoc.tempo;
+        state.carrierDecisionDelay = Math.max(0.24, (0.48 - defDoc.attackUrgency * 0.14) / defDoc.tempo);
         state.recycleCount = 0;
         state.thirdMan = null;
         state.transitionTimer = 3.2;
         state.transitionTeamIsHome = !carrierIsHome;
         state.tacticalLabel =
-          defDoc.tactic === 'gegenpressing' || defDoc.managerTraitId === 'gegenpress_guru'
+          defDoc.tactic === 'gegenpressing' || defDoc.managerTraitId === 'gegenpress_guru' || defDoc.attackUrgency >= 0.55
             ? '전방 압박'
             : '역습 전환';
         state.tacticalLabelTeamIsHome = !carrierIsHome;
@@ -2424,7 +3157,8 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
         if (d <= doctrine.pressTriggerRadius) {
           const score =
             (doctrine.pressTriggerRadius - d) * 3.0 +
-            agents[i].profile.pressEagerness * 0.45 -
+            agents[i].profile.pressEagerness * 0.45 +
+            doctrine.attackUrgency * 0.35 -
             (agents[i].profile.subPosition === 'CB' ? 0.35 : 0);
           pressScores.push({ idx: i, score });
         }
@@ -2444,26 +3178,34 @@ export function stepPitchSim(state: PitchSimState, dt: number = FIXED_DT) {
     for (let i = 0; i < 11; i += 1) {
       const agent = agents[i];
 
-      // Skip actors explicitly steered by Director during set-piece/shot execution
-      if (
-        state.director &&
-        (state.director.stage === 'set_piece_setup' ||
-          state.director.stage === 'execute_route' ||
-          state.director.stage === 'shot_flight')
-      ) {
-        const isDirAtk = state.director.isHomeAttack === isHome;
-        if (
-          (isDirAtk &&
-            (i === state.director.scorerIdx ||
-              i === state.director.assisterIdx ||
-              state.director.pattern === 'penalty_kick')) ||
-          (!isDirAtk &&
-            (i === 0 ||
-              i === state.director.defenderIdx ||
-              state.director.pattern === 'penalty_kick' ||
-              (state.director.pattern === 'direct_free_kick' && i >= 4 && i <= 7)))
-        ) {
+      // Preserve staged set-piece formations & Director-controlled actors cleanly!
+      if (state.director) {
+        const dStage = state.director.stage;
+        const dPat = state.director.pattern;
+        const isSetPieceCue =
+          dPat === 'penalty_kick' ||
+          dPat === 'corner_kick' ||
+          dPat === 'direct_free_kick';
+
+        // During set-piece setup & execution, keep all 22 players in their staged set-piece formation
+        if (isSetPieceCue && (dStage === 'set_piece_setup' || dStage === 'execute_route')) {
           continue;
+        }
+        if (dStage === 'execute_route' || dStage === 'shot_flight') {
+          const isDirAtk = state.director.isHomeAttack === isHome;
+          if (
+            (isDirAtk &&
+              (i === state.director.scorerIdx ||
+                i === state.director.assisterIdx ||
+                dPat === 'penalty_kick')) ||
+            (!isDirAtk &&
+              (i === 0 ||
+                i === state.director.defenderIdx ||
+                dPat === 'penalty_kick' ||
+                (dPat === 'direct_free_kick' && i >= 4 && i <= 7)))
+          ) {
+            continue;
+          }
         }
       }
 

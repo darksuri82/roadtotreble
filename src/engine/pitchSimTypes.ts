@@ -104,6 +104,11 @@ export interface TeamTacticalDoctrine {
   zoneTransitionEdge: number;
   zoneBoxEdge: number;
   zonePressEdge: number;
+  /** Late-game trailing urgency (0..1) and lead protection urgency (0..1) */
+  attackUrgency: number;
+  protectUrgency: number;
+  /** True when minute >= 85 (or ET >= 115) and trailing by 1 goal: high-AER CB joins box */
+  cbBoxJoin: boolean;
 }
 
 export interface PlayerAgentProfile {
@@ -240,6 +245,12 @@ export interface DirectorCueState {
   /** Intermediate step inside multi-touch routes (0 = initial, 1 = pass sent, 2 = receiver driving) */
   routeSubStep: number;
   reboundTriggered: boolean;
+  /** Exact locked ball coordinates during set-piece setup (PK spot / corner flag / FK spot) */
+  setPieceSpot: SimVec2 | null;
+  /** Minimum normalized attack depth (0..1) required before shot is permitted to fire */
+  minShotDepth: number;
+  /** True once set-piece players have been smoothly staged around the ball */
+  staged: boolean;
 }
 
 export interface PassArcVisual {
@@ -288,6 +299,9 @@ export interface PitchSimInitConfig {
   homeGoalsSoFar: number;
   awayGoalsSoFar: number;
   isBigMatch?: boolean;
+  isKnockoutDecider?: boolean;
+  aggHomeBeforeMatch?: number;
+  aggAwayBeforeMatch?: number;
   events: { key: string; event: MatchEvent }[];
   preHandledKeys?: string[];
 }
@@ -310,6 +324,11 @@ export interface PitchSimState {
   homeGoalsLive: number;
   awayGoalsLive: number;
   isBigMatch: boolean;
+  isKnockoutDecider: boolean;
+  aggHomeBeforeMatch: number;
+  aggAwayBeforeMatch: number;
+  baseHomeDoctrine: TeamTacticalDoctrine;
+  baseAwayDoctrine: TeamTacticalDoctrine;
   homeDoctrine: TeamTacticalDoctrine;
   awayDoctrine: TeamTacticalDoctrine;
   homeAgents: PlayerAgentState[];
@@ -345,5 +364,7 @@ export interface PitchSimState {
     thirdManRuns: number;
     interceptions: number;
     dribbles: number;
+    longRangeBackpassesBlocked: number;
+    lateUrgentForwardPasses: number;
   };
 }

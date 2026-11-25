@@ -5,6 +5,25 @@
 
 ---
 
+## v8.12.1 — 2D 매치 시뮬레이션 4대 핵심 버그 근본 수정 (슈팅 사거리·세트피스/역습 연출 일치 · 구역별 백패스 제한 · 막판 긴박도 AI · 단일 공 렌더링 보장)
+
+- **하프라인 뒤 슛 차단 & 이벤트 유형별 2D 사전 연출(Staging) 일치화 (`src/engine/pitchSimEngine.ts`, `src/engine/pitchSimTypes.ts`, `src/components/league/PitchMatch2D.tsx`)**:
+  - `MIN_OPEN_PLAY_SHOT_DEPTH = 0.72`(~29m), `MIN_LONG_RANGE_SHOT_DEPTH = 0.68`, `MIN_DIRECT_FK_SHOT_DEPTH = 0.66`, `MIN_BOX_FINISH_SHOT_DEPTH = 0.78` 및 `getMinShotDepthForCue`/`isWithinShootingZone` 물리·AI 가드를 강제해 하프라인 뒤 초장거리 슈팅을 원천 차단.
+  - `stageSetPieceFormation`으로 휘슬/장면 전환 시 공을 정확한 위치에 고정 배치하고 22명 포진을 정렬: **PK**(페널티 스팟 `0.885, 0.50` · 키커/GK 1대1 · 나머지 20명 박스 밖), **코너킥**(코너 플래그 · 공격/수비수 박스 내 포진 → 크로스/헤더), **프리킥**(상대 진영 파울 위치 · 4인 수비벽 → 감아차기). 역습(`low_block_counter`/`gegenpress_steal`)은 전방 침투 패스·드리블로 실제 박스 근처(`≥ 0.72`)까지 전진한 뒤 슈팅.
+  - `findAgentSlotByIdentity`에 외야수 전용 가드(`excludeGk = true`)와 `save` 이벤트 `scorerId` 우회를 적용해 동명 GK(1대1/드림매치) 환경에서 공격팀 GK가 슈터로 매칭되는 버그 차단.
+- **구역별(Zone-based) 패스 판단 & 골대 앞 초장거리 백패스 차단 (`src/engine/pitchSimEngine.ts`)**:
+  - 페널티 박스 근접(`carrierDepth ≥ 0.78`)에서 하프라인 뒤(`mateDepth < 0.50`) 및 후진 거리 `> 0.18` 백패스를 하드 필터로 제외하고 컷백·박스 크로스·단거리 레이오프·1대1 컷인 돌파 가중치를 최우선화.
+  - 파이널 서드(`0.66..0.78`)에서 하프라인 뒤(`mateDepth < 0.48`) 직행 백패스를 금지하고 최대 `0.22` 이내 2선 단계적 순환만 허용, `isSwitch`에 `forwardDelta ≥ -0.10` 조건을 추가해 깊은 백패스 오분류 제거.
+- **경기 막판 시간·스코어 긴박도(Game State Urgency) AI (`src/engine/pitchTacticalParams.ts`, `src/engine/pitchSimEngine.ts`, `src/components/league/PitchMatch2D.tsx`, `src/components/league/LiveMatchBroadcast.tsx`)**:
+  - `computeGameStateUrgency` / `applyGameStateUrgencyToDoctrine` 및 `refreshLiveUrgencyDoctrines`(매 분·득점 즉시 재계산, 토너먼트 2차전 `aggHomeBeforeMatch`/`aggAwayBeforeMatch`·`isKnockoutDecider` 연동)를 도입.
+  - 75분+(82분+ 강화) 열세 시 `buildUpPatience` 대폭 축소(`safeRecycle` 강제 오버라이드 해제), 전진 스루패스·얼리 크로스·박스 침투·라인 전진·3인 즉각 압박 강화, 85분+ 1골 차 열세 시 CB(슬롯 2)·CM 박스 가담(`cbBoxJoin`) 활성화. 리드 팀은 볼 간수·컴팩트 로우 블록으로 자연 대비.
+- **공 2개 분리 렌더링 오류 완전 제거 (`src/engine/pitchSimEngine.ts`, `src/components/league/PitchMatch2D.tsx`)**:
+  - 원자적 `resetBallToSpot` 헬퍼 및 `set_piece_setup` 공 잠금(`ownerIdx = null`)으로 `stepDirectorCue`↔`stepBallPhysics` 줄다리기 충돌과 킥오프/세트피스/리스타트 시 잔상·보간 불일치를 원천 제거.
+  - `ball.trail`을 비행 중에만 기록하고 `PitchMatch2D.tsx`에서 원형 도트 대신 공 뒤로 가늘어지는 단일 모션 트레일 선(점프 단절 가드 포함)과 통일된 높이 계수(`BALL_Z_LIFT_PX = 9`)를 적용해 4대 화면(싱글·멀티리그·1대1·드림매치) 전원 단일 공 렌더링 보장.
+- **테스트 (`src/__tests__/v811Realistic2DSim.test.ts`)**: 4대 버그 회귀 검증 4건 추가(총 14건: PK/코너/FK/역습 스테이징·사거리·동명 GK 가드, 박스/파이널서드 백패스 차단, 토너먼트 합산 열세 긴박도·CB 박스 가담, 단일 공 잔상/보간 무결성).
+
+---
+
 ## v8.12 — 글로벌 역대 유저 TOP 15 점수 랭킹 · 랭킹 팀 1대1 도전 매치 · 명예의 전당 자동 등재 기준 상향(6,500+)
 
 - **Supabase 글로벌 역대 TOP 15 원자적 랭킹 & 16위 이하 자동 삭제 (`supabase/schema.sql`, `src/services/globalRankingService.ts`, `src/types/legacy.ts`, `src/types/game.ts`, `src/engine/legacyEngine.ts`)**:

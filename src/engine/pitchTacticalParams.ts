@@ -55,19 +55,171 @@ export function getStaminaKinematicFactor(staminaPct: number): number {
   return clamp(0.74 + ((staminaPct - 15) / 25) * 0.1, 0.72, 0.84);
 }
 
+export interface GameStateUrgency {
+  timeFactor: number;
+  effectiveDiff: number;
+  attackUrgency: number;
+  protectUrgency: number;
+  cbBoxJoin: boolean;
+}
+
+/**
+ * Continuous Game State Urgency curve (remaining time x effective goal difference).
+ * Supports regular time (0..90'), extra time (91..120'), and 2-legged knockout aggregate scores.
+ */
+export function computeGameStateUrgency(params: {
+  minute: number;
+  scoreDiff: number;
+  isKnockoutDecider?: boolean;
+}): GameStateUrgency {
+  const { minute, scoreDiff, isKnockoutDecider = false } = params;
+
+  let timeFactor = 0;
+  if (minute > 90) {
+    // Extra time (91..120')
+    if (minute < 105) {
+      timeFactor = 0.35 + ((minute - 91) / 14) * 0.30;
+    } else if (minute < 112) {
+      timeFactor = 0.65 + ((minute - 105) / 7) * 0.35;
+    } else {
+      timeFactor = 1.0;
+    }
+  } else if (minute >= 88) {
+    timeFactor = 1.0;
+  } else if (minute >= 82) {
+    timeFactor = 0.70 + ((minute - 82) / 6) * 0.30;
+  } else if (minute >= 75) {
+    timeFactor = 0.30 + ((minute - 75) / 7) * 0.40;
+  } else if (minute >= 65) {
+    timeFactor = ((minute - 65) / 10) * 0.30;
+  }
+  timeFactor = clamp(timeFactor, 0, 1);
+
+  let attackUrgency = 0;
+  let protectUrgency = 0;
+
+  if (scoreDiff < 0) {
+    const deficitMult =
+      scoreDiff === -1 ? 1.0 : scoreDiff === -2 ? 0.90 : 0.72;
+    attackUrgency = clamp(timeFactor * deficitMult, 0, 1);
+  } else if (scoreDiff > 0) {
+    const leadMult = scoreDiff === 1 ? 1.0 : 0.75;
+    protectUrgency = clamp(timeFactor * leadMult, 0, 1);
+  } else if (isKnockoutDecider && minute >= 82) {
+    // Tied knockout late: measured push for a winner without reckless collapse
+    attackUrgency = clamp(timeFactor * 0.28, 0, 0.28);
+  }
+
+  const cbBoxJoin =
+    scoreDiff === -1 &&
+    ((minute >= 85 && minute <= 90) || minute >= 115);
+
+  return {
+    timeFactor,
+    effectiveDiff: scoreDiff,
+    attackUrgency,
+    protectUrgency,
+    cbBoxJoin,
+  };
+}
+
+/**
+ * Applies live GameStateUrgency onto an unmodified base TeamTacticalDoctrine so
+ * trailing teams stop recycling and push all-out late, while leading teams manage the game.
+ */
+export function applyGameStateUrgencyToDoctrine(
+  base: TeamTacticalDoctrine,
+  urgency: GameStateUrgency,
+): TeamTacticalDoctrine {
+  const { attackUrgency, protectUrgency, cbBoxJoin } = urgency;
+  if (attackUrgency <= 0.001 && protectUrgency <= 0.001 && !cbBoxJoin) {
+    return {
+      ...base,
+      attackUrgency: 0,
+      protectUrgency: 0,
+      cbBoxJoin: false,
+    };
+  }
+
+  let buildUpPatience = base.buildUpPatience;
+  let tempo = base.tempo;
+  let passLengthBias = base.passLengthBias;
+  let defensiveLineOffset = base.defensiveLineOffset;
+  let pressTriggerRadius = base.pressTriggerRadius;
+  let pressersCount = base.pressersCount;
+  let defensiveCompactness = base.defensiveCompactness;
+  let counterSprintUrgency = base.counterSprintUrgency;
+  let flankBias = base.flankBias;
+
+  if (attackUrgency > 0) {
+    // Late trailing push: slash back/lateral recycling, raise line & press immediately
+    buildUpPatience -= 0.62 * attackUrgency;
+    tempo += 0.30 * attackUrgency;
+    passLengthBias += 0.55 * attackUrgency;
+    defensiveLineOffset += 0.085 * attackUrgency;
+    pressTriggerRadius += 0.10 * attackUrgency;
+    if (attackUrgency >= 0.55) {
+      pressersCount = 3;
+    }
+    counterSprintUrgency += 0.35 * attackUrgency;
+    flankBias += 0.12 * attackUrgency;
+  } else if (protectUrgency > 0) {
+    // Late lead management: control-oriented teams retain ball; direct/press teams drop into compact low block
+    const isControlStyle =
+      base.tactic === 'possession' || base.tactic === 'balanced';
+    if (isControlStyle) {
+      buildUpPatience += 0.20 * protectUrgency;
+      tempo -= 0.12 * protectUrgency;
+      defensiveLineOffset -= 0.045 * protectUrgency;
+      defensiveCompactness -= 0.06 * protectUrgency;
+    } else {
+      buildUpPatience += 0.08 * protectUrgency;
+      defensiveLineOffset -= 0.075 * protectUrgency;
+      defensiveCompactness -= 0.10 * protectUrgency;
+      pressTriggerRadius -= 0.04 * protectUrgency;
+    }
+  }
+
+  return {
+    ...base,
+    buildUpPatience: clamp(buildUpPatience, 0.08, 0.98),
+    tempo: clamp(tempo, 0.68, 1.55),
+    passLengthBias: clamp(passLengthBias, -0.95, 0.98),
+    defensiveLineOffset: clamp(defensiveLineOffset, -0.14, 0.16),
+    pressTriggerRadius: clamp(pressTriggerRadius, 0.12, 0.44),
+    pressersCount: Math.max(1, Math.min(3, pressersCount)),
+    defensiveCompactness: clamp(defensiveCompactness, 0.64, 1.08),
+    counterSprintUrgency: clamp(counterSprintUrgency, 0.18, 0.99),
+    flankBias: clamp(flankBias, 0.18, 0.96),
+    attackUrgency,
+    protectUrgency,
+    cbBoxJoin,
+  };
+}
+
 /**
  * Synthesizes complete TeamTacticalDoctrine from:
  *  Layer 1 (Formation structure) + Layer 2 (Team Tactic & 5-Zone Matchup) +
- *  Layer 3 (Manager OVR & all 14 Manager Traits) + Layer 5 (Team Chemistry).
+ *  Layer 3 (Manager OVR & all 14 Manager Traits) + Layer 5 (Team Chemistry & Live Urgency).
  */
 export function buildTeamTacticalDoctrine(params: {
   my: PitchSimTeamInput;
   opp: PitchSimTeamInput;
   minute: number;
-  scoreDiff: number; // myGoals - oppGoals
+  scoreDiff: number; // myGoals - oppGoals (including aggregate in 2nd-leg KO)
   isBigMatch: boolean;
+  isKnockoutDecider?: boolean;
+  applyUrgency?: boolean;
 }): TeamTacticalDoctrine {
-  const { my, opp, minute, scoreDiff, isBigMatch } = params;
+  const {
+    my,
+    opp,
+    minute,
+    scoreDiff,
+    isBigMatch,
+    isKnockoutDecider = false,
+    applyUrgency = true,
+  } = params;
   const fProf = FORMATION_PROFILES[my.formation] ?? FORMATION_PROFILES['4-3-3'];
   const myFilled = my.starters.filter((p): p is Player => p !== null);
   const oppFilled = opp.starters.filter((p): p is Player => p !== null);
@@ -335,19 +487,7 @@ export function buildTeamTacticalDoctrine(params: {
   lineDiscipline += (chemNorm - 0.5) * 0.14;
   composure += (chemNorm - 0.5) * 0.14;
 
-  // Late-game score state adjustment (trailing pushes higher & faster, leading stays more compact)
-  if (minute >= 60 && scoreDiff < 0) {
-    defensiveLineOffset += 0.032;
-    tempo += 0.10;
-    counterSprintUrgency += 0.12;
-    buildUpPatience -= 0.10;
-  } else if (minute >= 70 && scoreDiff > 0) {
-    defensiveLineOffset -= 0.028;
-    defensiveCompactness -= 0.05;
-    buildUpPatience += 0.08;
-  }
-
-  return {
+  const baseDoctrine: TeamTacticalDoctrine = {
     formation: my.formation,
     tactic: my.tactic,
     managerTraitId: my.managerTraitId,
@@ -378,7 +518,19 @@ export function buildTeamTacticalDoctrine(params: {
     zoneTransitionEdge: zoneMap.get('transition') ?? 0,
     zoneBoxEdge: zoneMap.get('box') ?? 0,
     zonePressEdge: zoneMap.get('pressing') ?? 0,
+    attackUrgency: 0,
+    protectUrgency: 0,
+    cbBoxJoin: false,
   };
+
+  if (!applyUrgency) {
+    return baseDoctrine;
+  }
+
+  return applyGameStateUrgencyToDoctrine(
+    baseDoctrine,
+    computeGameStateUrgency({ minute, scoreDiff, isKnockoutDecider }),
+  );
 }
 
 /**
@@ -878,6 +1030,36 @@ export function computeDynamicFormationTarget(params: {
       x += dir * Math.sin(simTime * 0.75 + slotIndex * 1.4) * 0.032 * doctrine.positionSwitching;
       y += Math.cos(simTime * 0.65 + slotIndex * 1.1) * 0.055 * doctrine.positionSwitching;
     }
+
+    // Late-game trailing urgency: push team block forward & crash the box!
+    if (doctrine.attackUrgency > 0.15) {
+      const urg = doctrine.attackUrgency;
+      if (isST || isWinger || isCAM) {
+        x += dir * (0.04 + 0.06 * urg);
+        if (!isDeep && (isWinger || isCAM)) {
+          y += (0.5 - y) * 0.18 * urg;
+        }
+      } else if (isCM || isFB) {
+        x += dir * (0.045 + 0.075 * urg);
+        if (isCM && !isDeep && urg >= 0.6) {
+          y += (0.5 - y) * 0.28 * urg;
+        }
+      } else if (isCDM) {
+        x += dir * (0.035 + 0.055 * urg);
+      } else if (isCB) {
+        x += dir * (0.03 + 0.05 * urg);
+      }
+      // 85'+ 1-goal deficit power play: send 1 CB (slot 2) & CMs into opponent penalty box
+      if (doctrine.cbBoxJoin && !isDeep) {
+        if (isCB && slotIndex === 2) {
+          x = isHome ? Math.max(x, 0.85) : Math.min(x, 0.15);
+          y = 0.46;
+        } else if (isCM) {
+          x += dir * 0.06;
+          y += (0.5 - y) * 0.25;
+        }
+      }
+    }
   } else {
     // ── Out-of-Possession Defensive Block & Recovery Transition ──
     const isTransDef = mode === 'transition_defend';
@@ -910,6 +1092,13 @@ export function computeDynamicFormationTarget(params: {
       x += dir * 0.055;
     } else {
       x += -dir * (isTransDef ? 0.04 : 0.025);
+    }
+
+    // Late-game trailing: high urgent press block; Late-game leading: compact protective block
+    if (doctrine.attackUrgency > 0.25) {
+      x += dir * (0.045 + 0.065 * doctrine.attackUrgency);
+    } else if (doctrine.protectUrgency > 0.25) {
+      x -= dir * (0.03 + 0.05 * doctrine.protectUrgency);
     }
 
     // Defensive compactness pulls far-side players toward ball corridor
