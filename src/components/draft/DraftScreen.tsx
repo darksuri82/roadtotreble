@@ -271,11 +271,6 @@ export function DraftScreen() {
 
   return (
     <div className="mx-auto max-w-6xl px-2.5 sm:px-4 py-2.5 sm:py-5 space-y-2.5 sm:space-y-3.5">
-      <DraftBudgetBar
-        players={[...starters, ...bench]}
-        previewPlayer={previewCandidate}
-        compact
-      />
       {/* Compact Manager Strip + ? Help Popovers */}
       <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl border border-slate-800/90 bg-[#0e141d] px-2.5 py-1.5 sm:px-3.5 sm:py-2.5">
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
@@ -410,6 +405,12 @@ export function DraftScreen() {
           </div>
         </div>
       </div>
+
+      {/* Prominent Sticky-Ready Draft Budget Slider right above Roulette & Pitch */}
+      <DraftBudgetBar
+        players={[...starters, ...bench]}
+        previewPlayer={previewCandidate}
+      />
 
       {/* Main 2-Column Layout */}
       <div className="grid grid-cols-1 gap-2.5 sm:gap-3.5 lg:grid-cols-12 items-start">

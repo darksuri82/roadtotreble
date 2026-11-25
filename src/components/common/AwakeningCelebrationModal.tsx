@@ -20,8 +20,8 @@ export function AwakeningCelebrationModal({
   useBodyScrollLock(true);
 
   return (
-    <div className="modal-backdrop z-[74]">
-      <div className="modal-panel w-full max-w-md rounded-2xl border border-rose-500/50 bg-[#0e0c11] shadow-[0_0_40px_-10px_rgba(220,38,38,0.55)] overflow-hidden">
+    <div className="modal-backdrop fixed inset-0 z-[74] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
+      <div className="modal-panel flex w-full max-w-md flex-col rounded-2xl border border-rose-500/50 bg-[#0e0c11] shadow-[0_0_40px_-10px_rgba(220,38,38,0.55)] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-rose-500/20 bg-gradient-to-r from-[#241014] via-[#150e14] to-[#1e100d] px-4 py-3.5">
           <div className="flex items-center gap-2.5 min-w-0">

@@ -147,6 +147,9 @@ function GameRouter() {
       {pendingAdaptationAlert && (
         <TacticalAdaptationModal
           alert={pendingAdaptationAlert}
+          managerAvatar={state.manager.avatar}
+          managerName={state.manager.name}
+          userClub={state.userClub}
           onDismiss={dismissAdaptationAlert}
           onGoToTactics={() => {
             if (typeof window !== 'undefined') {

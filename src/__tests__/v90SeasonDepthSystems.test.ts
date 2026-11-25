@@ -300,7 +300,7 @@ describe('v9.0 AI Pre-Match Tactical Adaptation', () => {
     let state = createInitialTacticalAdaptationState();
     const tiersFired: string[] = [];
 
-    // Play 5 identical matches -> warning fires once, danger fires once, no duplicates
+    // Play 6 identical matches -> intro scouting popup fires ONLY ONCE per season
     for (let r = 1; r <= 6; r += 1) {
       state = recordMatchTacticalAdaptation({
         prev: state,
@@ -317,7 +317,7 @@ describe('v9.0 AI Pre-Match Tactical Adaptation', () => {
         state = { ...state, pendingAlert: null };
       }
     }
-    expect(tiersFired).toEqual(['warning', 'danger']);
+    expect(tiersFired).toEqual(['warning']);
 
     // Varying both formation & tactic immediately lowers exposure below reset threshold
     const variedEval = evaluateTacticalExposure({
@@ -335,7 +335,6 @@ describe('v9.0 AI Pre-Match Tactical Adaptation', () => {
       round: 7,
       competition: 'league',
     });
-    expect(state.highestAlertedTier).toBe('low');
     expect(state.pendingAlert).toBeNull();
   });
 

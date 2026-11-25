@@ -36,8 +36,8 @@ export function StaffCoachHireModal({
     .filter((c): c is NonNullable<typeof c> => c !== null);
 
   return (
-    <div className="modal-backdrop z-[72]">
-      <div className="modal-panel w-full max-w-3xl rounded-2xl border border-white/15 bg-[#0d131c] shadow-2xl overflow-hidden">
+    <div className="modal-backdrop fixed inset-0 z-[72] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4">
+      <div className="modal-panel flex w-full max-w-3xl flex-col rounded-2xl border border-white/15 bg-[#0d131c] shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-[#111822] px-4 py-3.5 sm:px-5">
           <div className="flex items-center gap-2.5 min-w-0">

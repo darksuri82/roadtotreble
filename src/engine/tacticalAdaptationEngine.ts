@@ -288,11 +288,11 @@ export function recordMatchTacticalAdaptation(params: {
   let nextHighest = base.highestAlertedTier;
   let pendingAlert: TacticalAdaptationAlert | null = base.pendingAlert;
 
-  if (projected.exposureScore < EXPOSURE_RESET_ALERT_BELOW) {
-    nextHighest = 'low';
-  } else if (
-    (projected.tier === 'warning' || projected.tier === 'danger') &&
-    TIER_RANK[projected.tier] > TIER_RANK[base.highestAlertedTier]
+  // Fire the scouting popup ONLY ONCE per season (on first entry into warning/danger)
+  // so it clearly introduces the tactical adaptation system without repeatedly interrupting auto-advance.
+  if (
+    base.highestAlertedTier === 'low' &&
+    (projected.tier === 'warning' || projected.tier === 'danger')
   ) {
     const streak = Math.max(1, projected.consecutiveExactStreak);
     nextHighest = projected.tier;
@@ -313,6 +313,8 @@ export function recordMatchTacticalAdaptation(params: {
           ? `최근 ${streak}경기 연속 동일 패턴이 노출되어(노출도 ${projected.exposureScore}/100), 다음 경기부터 상대 AI 감독이 경기 시작 전부터 맞춤 카운터 전술과 정밀 파훼 대응을 준비할 가능성이 높습니다.`
           : `최근 ${streak}경기 동안 유사한 포메이션·전술이 반복되어(노출도 ${projected.exposureScore}/100) 상위권 AI 감독들이 사전 대응책을 마련하고 있습니다.`,
     };
+  } else if (TIER_RANK[projected.tier] > TIER_RANK[base.highestAlertedTier]) {
+    nextHighest = projected.tier;
   }
 
   return {
