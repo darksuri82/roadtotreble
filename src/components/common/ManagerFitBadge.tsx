@@ -57,7 +57,9 @@ function renderPopoverBody(
                   : 'border-sky-400/35 bg-sky-500/12 text-sky-200'
               }`}
             >
-              {isProgressive ? '1~11명 비례 상승' : '팀 효과 인원 무관'}
+              {isProgressive
+                ? `1~${detail.totalSlots}명 비례 상승`
+                : '팀 효과 인원 무관'}
             </span>
           </div>
           <p className="mt-0.5 text-[10px] text-slate-400">
@@ -71,7 +73,7 @@ function renderPopoverBody(
           </div>
           <div className="font-display text-sm font-black text-amber-300 leading-tight">
             {detail.matchedCount}
-            <span className="text-slate-500">/11</span>
+            <span className="text-slate-500">/{detail.totalSlots}</span>
           </div>
         </div>
       </div>
@@ -156,13 +158,6 @@ function renderPopoverBody(
                 )}
             </div>
 
-            {detail.hasSeparatePersonalCriteria && (
-              <p className="text-[10px] text-slate-400 leading-snug">
-                팀 상승 기준 {detail.teamScalingMatchedCount}/11 · 개인 ★+1 적용{' '}
-                {detail.personalMatchedCount}/11
-              </p>
-            )}
-
             {detail.tacticSynergyBonusLabel && detail.synergyTacticLabel && (
               <div
                 className={`flex items-center justify-between gap-2 rounded-md border px-2 py-1 text-[10px] ${
@@ -179,7 +174,7 @@ function renderPopoverBody(
             )}
           </div>
 
-          {/* 1..11 scaling milestones */}
+          {/* Scaling milestones */}
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-2 text-[10px]">
               <span className="font-bold text-slate-400">인원별 상승 (1명씩 연속 적용)</span>
@@ -189,13 +184,17 @@ function renderPopoverBody(
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-1 tabular-nums">
+            <div
+              className={`grid gap-1 tabular-nums ${
+                detail.milestones.length === 3 ? 'grid-cols-3' : 'grid-cols-2'
+              }`}
+            >
               {detail.milestones.map((ms) => {
                 const isNext = detail.nextMilestone?.targetCount === ms.count;
                 return (
                   <div
                     key={ms.count}
-                    className={`flex items-center justify-between gap-1.5 rounded-md border px-2 py-1 text-[10px] ${
+                    className={`flex items-center justify-between gap-1 rounded-md border px-2 py-1 text-[10px] ${
                       ms.reached
                         ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
                         : isNext
@@ -204,17 +203,21 @@ function renderPopoverBody(
                     }`}
                   >
                     <span className="font-extrabold whitespace-nowrap">
-                      {ms.count}/11
+                      {ms.count}/{detail.totalSlots}
                     </span>
                     <span className="truncate font-semibold">{ms.summary}</span>
                   </div>
                 );
               })}
             </div>
-            {detail.nextMilestone && (
+            {detail.nextMilestone ? (
               <div className="text-[10px] text-amber-200/90 tabular-nums">
-                다음 기준({detail.nextMilestone.targetCount}/11)까지{' '}
+                다음 기준({detail.nextMilestone.targetCount}/{detail.totalSlots})까지{' '}
                 <strong>{detail.nextMilestone.remaining}명</strong> 남음
+              </div>
+            ) : (
+              <div className="text-[10px] font-bold text-emerald-300 tabular-nums">
+                최대 효과({detail.totalSlots}/{detail.totalSlots} MAX) 달성!
               </div>
             )}
           </div>
@@ -403,10 +406,13 @@ export function ManagerFitBadge({
         ? 'left-1/2 -translate-x-1/2'
         : 'right-0';
 
+  const isMaxReached = isProgressive && detail.matchedCount >= detail.totalSlots;
   const countText =
     countDelta !== 0 && baselineDetail
-      ? `${baselineDetail.matchedCount}→${detail.matchedCount}/11`
-      : `${detail.matchedCount}/11`;
+      ? `${baselineDetail.matchedCount}→${detail.matchedCount}/${detail.totalSlots}`
+      : isMaxReached
+        ? `${detail.matchedCount}/${detail.totalSlots} MAX`
+        : `${detail.matchedCount}/${detail.totalSlots}`;
 
   const primaryChip = detail.activeBoostChips[0] ?? null;
   const secondaryChip = detail.activeBoostChips[1] ?? null;

@@ -58,9 +58,9 @@ export function ManagerTraitBadgeCard({
 
   const isProgressive = detail.scalingMode === 'progressive';
   const gaugePct = isProgressive
-    ? Math.min(100, Math.round((detail.matchedCount / 11) * 100))
+    ? Math.min(100, Math.round((detail.matchedCount / detail.totalSlots) * 100))
     : 0;
-  const isMax = isProgressive && detail.matchedCount >= 11;
+  const isMax = isProgressive && detail.matchedCount >= detail.totalSlots;
 
   return (
     <div
@@ -131,7 +131,7 @@ export function ManagerTraitBadgeCard({
         )}
       </div>
 
-      {/* Live Progressive 1..11 Bar OR Situational Non-Scaling Strip */}
+      {/* Live Progressive Bar OR Situational Non-Scaling Strip */}
       {isProgressive ? (
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-[10px] tabular-nums">
@@ -144,7 +144,7 @@ export function ManagerTraitBadgeCard({
                     : 'text-white font-bold'
                 }
               >
-                {detail.matchedCount}/11
+                {detail.matchedCount}/{detail.totalSlots}
               </span>
             </span>
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-900 border border-slate-800">

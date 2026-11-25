@@ -52,7 +52,7 @@ describe('v8.14 Manager Fit Detail (Single Source of Truth across all 14 traits)
     'super_sub',
   ];
 
-  it('covers all 14 manager traits cleanly with fixed /11 denominator even mid-draft', () => {
+  it('covers all 14 manager traits cleanly with expected denominator (6 for rare criteria, 11 for others) even mid-draft', () => {
     expect(PROGRESSIVE_TRAITS.length + SITUATIONAL_TRAITS.length).toBe(
       MANAGER_TRAIT_LIST.length,
     );
@@ -78,8 +78,13 @@ describe('v8.14 Manager Fit Detail (Single Source of Truth across all 14 traits)
         tactic: 'balanced',
       });
       expect(detail).not.toBeNull();
-      expect(detail!.totalSlots).toBe(11);
+      const expectedTarget =
+        trait.id === 'galactico_manager' || trait.id === 'total_football'
+          ? 6
+          : 11;
+      expect(detail!.totalSlots).toBe(expectedTarget);
       expect(detail!.filledCount).toBe(3);
+      expect(detail!.hasSeparatePersonalCriteria).toBe(false);
 
       const directEffect = evaluateManagerTeamEffect({
         traitId: trait.id,
@@ -157,22 +162,24 @@ describe('v8.14 Manager Fit Detail (Single Source of Truth across all 14 traits)
     expect(possession.totalOvrDelta).toBeGreaterThan(balanced.totalOvrDelta);
   });
 
-  it('distinguishes team scaling criteria vs personal +1 criteria for galactico_manager and total_football', () => {
+  it('unifies personal +1 and team scaling criteria (max 6) for galactico_manager (OVR 88+/Legend) and total_football (3+ positions)', () => {
     const galacticoStarters: (Player | null)[] = [
-      makePlayer({ id: 'g1', ovr: 92, playstyles: ['poacher'] }), // team + personal
-      makePlayer({ id: 'g2', ovr: 89, playstyles: ['poacher'] }), // personal only (88+)
-      makePlayer({ id: 'g3', ovr: 84, playstyles: ['complete_forward'] }), // personal only (style)
-      makePlayer({ id: 'g4', ovr: 82, playstyles: ['stopper_cb'] }), // neither
+      makePlayer({ id: 'g1', ovr: 92, playstyles: ['poacher'] }), // match (88+)
+      makePlayer({ id: 'g2', ovr: 88, playstyles: ['stopper_cb'] }), // match (88+)
+      makePlayer({ id: 'g3', ovr: 84, playstyles: ['complete_forward'] }), // NO match (playstyle no longer misleads)
+      makePlayer({ id: 'g4', ovr: 85, isLegend: true, playstyles: ['stopper_cb'] }), // match (legend)
     ];
     const gDetail = evaluateManagerFitDetail({
       traitId: 'galactico_manager',
       starters: galacticoStarters,
     })!;
-    expect(gDetail.hasSeparatePersonalCriteria).toBe(true);
-    expect(gDetail.teamScalingMatchedCount).toBe(1);
-    expect(gDetail.matchedCount).toBe(1);
+    expect(gDetail.totalSlots).toBe(6);
+    expect(gDetail.milestones.map((m) => m.count)).toEqual([2, 4, 6]);
+    expect(gDetail.hasSeparatePersonalCriteria).toBe(false);
+    expect(gDetail.teamScalingMatchedCount).toBe(3);
     expect(gDetail.personalMatchedCount).toBe(3);
-    expect(gDetail.effect.baseAttDelta).toBeCloseTo(0.35, 2);
+    expect(gDetail.matchedCount).toBe(3);
+    expect(gDetail.effect.baseAttDelta).toBeCloseTo(1.8, 2); // 3/6 * 3.6 = 1.8
 
     const totalStarters: (Player | null)[] = [
       makePlayer({
@@ -180,23 +187,25 @@ describe('v8.14 Manager Fit Detail (Single Source of Truth across all 14 traits)
         mainPositions: ['CM', 'CAM'],
         secondaryPositions: ['LW'],
         playstyles: ['poacher'],
-      }), // 3 positions -> team + personal
+      }), // 3 positions -> match (both personal & team)
       makePlayer({
         id: 't2',
-        mainPositions: ['CM'],
+        mainPositions: ['CB'],
         secondaryPositions: [],
-        playstyles: ['box_to_box'],
-      }), // style only -> personal only
+        playstyles: ['ball_playing_cb'],
+      }), // 1 position -> NO match (playstyle no longer misleads)
     ];
     const tDetail = evaluateManagerFitDetail({
       traitId: 'total_football',
       starters: totalStarters,
     })!;
-    expect(tDetail.hasSeparatePersonalCriteria).toBe(true);
+    expect(tDetail.totalSlots).toBe(6);
+    expect(tDetail.milestones.map((m) => m.count)).toEqual([2, 4, 6]);
+    expect(tDetail.hasSeparatePersonalCriteria).toBe(false);
     expect(tDetail.teamScalingMatchedCount).toBe(1);
+    expect(tDetail.personalMatchedCount).toBe(1);
     expect(tDetail.matchedCount).toBe(1);
-    expect(tDetail.personalMatchedCount).toBe(2);
-    expect(tDetail.effect.baseAttDelta).toBeCloseTo(0.25, 2);
+    expect(tDetail.effect.baseAttDelta).toBeCloseTo(2.75 / 6, 2);
   });
 
   it('updates matchedCount immediately on starter swap / candidate preview', () => {

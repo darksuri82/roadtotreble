@@ -5,6 +5,18 @@
 
 ---
 
+## v8.14.1 — 토탈 풋볼·갈락티코 기준 100% 통일 & 최대 6명(`n/6`) 조정 · `전라인` → `A·M·D` 표기 직관화
+
+- **토탈 풋볼 & 갈락티코 개인 `★+1` · 팀 상승 기준 100% 통일 및 최대 6명 현실화 (`src/data/managerTraits.ts`)**:
+  - **토탈 풋볼 (`total_football`)**: 기존 플레이스타일(`box_to_box`·`complete_forward`·`ball_playing_cb`) 혼동을 제거(`synergyPlaystyles: []`)하고, 오직 **`3포지션+ 멀티`** 선수만 개인 `★+1 OVR`과 팀 `A·M·D` 상승을 동시에 적용. 희귀도(GK·전문 CB 제외)를 반영해 `philosophyTarget`을 `11` → **`6`**(`1~6명` 비례, `+0.46/명`, 6명 최대 `+2.75`)으로 현실화.
+  - **갈락티코 매니저 (`galactico_manager`)**: 기존 플레이스타일 및 `88+`/`91+` 이원화를 제거(`synergyPlaystyles: []`)하고, 오직 **`OVR 88+ · 레전드`** 선수만 개인 `★+1 OVR`과 팀 `A·M·D` 상승을 동시에 적용. `philosophyTarget`을 `11` → **`6`**(`1~6명` 비례, `+0.60/명`, 6명 최대 `+3.60`)으로 현실화.
+  - `evaluateManagerTeamEffect`의 `matchedCount`를 14종 전원 `evaluateManagerPlayerSynergy` 단일 기준으로 통합해, 비례형 10종에서 `★궁합+1` 표시 선수를 영입하면 예외 없이 카운트가 `+1` 상승하도록 보장.
+- **UI 용어 단순화 & 동적 최대치 표시 (`ManagerFitBadge.tsx`, `ManagerTraitBadgeCard.tsx`, `ManagerRouletteScreen.tsx`, `MultiplayerBlindDraft.tsx`, `MpLeagueSnakeDraft.tsx`)**:
+  - `전라인` → **`A·M·D`**로 전면 교체, `n/6`(`2/4/6` 마일스톤 + `MAX` 표시) 및 `1~6명 비례` / `1~11명 비례` 동적 표시 적용.
+- **테스트 (`src/__tests__/v814ManagerFitUi.test.ts`)**: 토탈 풋볼(`3포지션+`, `n/6`)·갈락티코(`OVR 88+·레전드`, `n/6`) 기준 통일 및 비일치 스타일 선수 오탐 차단 검증 갱신.
+
+---
+
 ## v8.14 — 싱글·멀티 전 드래프트/스쿼드 화면 감독 궁합 `n/11` · 실시간 팀 능력치 상승 표시 · 상황 특화형 인원 무관 명확화
 
 - **엔진 단일 원본(Single Source of Truth) 상세 계산 헬퍼 (`src/data/managerTraits.ts`)**:

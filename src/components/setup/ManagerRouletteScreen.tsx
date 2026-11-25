@@ -433,7 +433,7 @@ export function ManagerRouletteScreen() {
                       </div>
                       {synTactic ? (
                         <span className="shrink-0 rounded bg-slate-800/90 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300 whitespace-nowrap">
-                          ★ {synTactic.shortName} · 1~11명
+                          ★ {synTactic.shortName} · 1~{t.philosophyTarget}명
                         </span>
                       ) : (
                         <span
@@ -443,7 +443,9 @@ export function ManagerRouletteScreen() {
                               : 'border-sky-400/30 bg-sky-500/10 text-sky-200'
                           }`}
                         >
-                          {t.philosophyTarget > 0 ? '1~11명 비례' : '팀 효과 인원 무관'}
+                          {t.philosophyTarget > 0
+                            ? `1~${t.philosophyTarget}명 비례`
+                            : '팀 효과 인원 무관'}
                         </span>
                       )}
                     </div>
