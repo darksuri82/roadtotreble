@@ -216,6 +216,7 @@ export function SquadManagerModal({
           traitId={state.manager.traitId}
           starters={state.starters}
           tactic={state.defaultTactic}
+          formation={state.formation}
           compact
         />
         <div
@@ -325,6 +326,7 @@ export function SquadManagerModal({
           bench={state.bench}
           chemistry={chemistry}
           managerTraitId={state.manager.traitId}
+          tactic={state.defaultTactic}
           selectedSlot={editLocked ? null : selectedSlot}
           onSlotClick={editLocked ? undefined : handleSlotClick}
           onSlotSwap={

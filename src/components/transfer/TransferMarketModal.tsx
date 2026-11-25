@@ -1010,6 +1010,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                 bench={state.bench}
                 chemistry={chemistry}
                 managerTraitId={state.manager.traitId}
+                tactic={state.defaultTactic}
                 conditionByPlayerId={season.playerConditions}
                 selectedSlot={tacticsSelectedSlot}
                 onSlotClick={(area: 'starter' | 'bench', index: number) => {
@@ -1517,6 +1518,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                             bench={state.bench}
                             chemistry={chemistry}
                             managerTraitId={state.manager.traitId}
+                            tactic={state.defaultTactic}
                             conditionByPlayerId={season.playerConditions}
                             selectedSlot={legendOutSlot}
                             selectedTone="rose"
@@ -2185,6 +2187,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                 bench={state.bench}
                                 chemistry={chemistry}
                                 managerTraitId={state.manager.traitId}
+                                tactic={state.defaultTactic}
                                 conditionByPlayerId={season.playerConditions}
                                 selectedSlotKeys={selectedUserSlotKeys}
                                 selectedTone="rose"

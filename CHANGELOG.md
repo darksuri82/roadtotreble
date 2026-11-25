@@ -5,6 +5,20 @@
 
 ---
 
+## v8.14 — 싱글·멀티 전 드래프트/스쿼드 화면 감독 궁합 `n/11` · 실시간 팀 능력치 상승 표시 · 상황 특화형 인원 무관 명확화
+
+- **엔진 단일 원본(Single Source of Truth) 상세 계산 헬퍼 (`src/data/managerTraits.ts`)**:
+  - 기존 `evaluateManagerTeamEffect`·`evaluateManagerPlayerSynergy` 밸런스 수식은 100% 무변경으로 유지하고, 이를 래핑하는 순수 함수 `evaluateManagerFitDetail`을 신설해 `n/11`(드래프트 중 11명 미만이어도 분모 `/11` 고정), 팀 라인 `A/M/D`·`팀 OVR` 상승치, `xG`/`상대 xG`/`점유율`, 추천 전술 시너지 상태, `3/6/9/11명` 기준표, 매칭 선발 목록을 일관 산출.
+  - 상황 특화형 4종(`big_game_hunter`·`underdog_killer`·`halftime_wizard`·`super_sub`)은 `scalingMode: 'situational'`로 분리해 `팀 효과 인원 무관` 배지와 발동 조건을 명시하고, 비례 게이지·마일스톤 표를 노출하지 않아 "안 모아도 되는 감독을 꼭 모아야 오른다"고 오해하지 않도록 설계. `galactico_manager`(`91+·레전드`)·`total_football`(`3포지션+`)의 팀 기준과 개인 `★+1` 기준 차이도 팝오버에 투명 표기.
+- **공용 컴포넌트 & 후보 카드 정돈 (`src/components/common/ManagerFitBadge.tsx`, `src/components/common/ManagerTraitBadgeCard.tsx`, `src/components/common/PitchBoard.tsx`, `src/components/common/PlayerCard.tsx`)**:
+  - 다크 톤 공용 `ManagerFitBadge`(`strip`/`pill` 2변형 + 뷰포트 자동 클램프 클릭 상세 팝오버, `whitespace-nowrap`·`break-keep`, 이중 스크롤/CSS `zoom` 없음) 신설 및 `PitchBoard` 상단 스트립·`ManagerTraitBadgeCard`에 통합.
+  - `PlayerCard` 밀집 드래프트 카드의 감독 궁합 배지를 `★궁합+1`(`whitespace-nowrap`)로 정돈하고, 감독 선택 카드(`ManagerRouletteScreen`, `MultiplayerBlindDraft`, `MpLeagueSnakeDraft`)에도 `궁합 1~11명 비례` vs `팀 효과 인원 무관` 태그 추가.
+- **싱글 · 멀티 1대1 · 멀티리그 · 드림매치 전 화면 실시간 연동 (`DraftScreen.tsx`, `SquadManagerModal.tsx`, `MatchDayTacticsRoom.tsx`, `TransferMarketModal.tsx`, `UclDashboard.tsx`, `MultiplayerBlindDraft.tsx`, `MpLeagueDraftBoard.tsx`, `MpLeagueSquadEditor.tsx`, `MpLeagueTransferModal.tsx`, `DreamMatchArena.tsx`)**:
+  - 모든 드래프트 상단 바(PC·모바일 공통) 및 `PitchBoard`에 활성 `tactic`과 후보 프리뷰 기준선(`baselineStarters`)을 연결해 후보 클릭 시 `n→m/11` 실시간 변화와 팀 능력치 상승치를 즉시 표시.
+- **테스트 (`src/__tests__/v814ManagerFitUi.test.ts`)**: 14종 전수 `evaluateManagerFitDetail`↔`evaluateManagerTeamEffect` 일치성, 드래프트 중 `/11` 분모 고정, 상황 특화형 4종 비례 제외/`팀 효과 인원 무관` 검증, 전술 시너지 토글, `galactico_manager`·`total_football` 이중 기준, 후보 프리뷰/스왑 즉시 반영 검증 5건 추가.
+
+---
+
 ## v8.13 — 2D xT·정체 감점·능동 압박/커버 섀도우·전반/연장 막판 긴박도 · UCL 전용 승부차기 시각화 · 멀티 챔스 팝업 복원 · 멀티 개막/이적시장 전술 UX · 룰렛 포지션 동적 수정
 
 - **2D 축구 시뮬레이션 무한 공돌리기 방지 & 현대 전술 엔진 고도화 (`src/engine/pitchSimTypes.ts`, `src/engine/pitchTacticalParams.ts`, `src/engine/pitchSimEngine.ts`)**:

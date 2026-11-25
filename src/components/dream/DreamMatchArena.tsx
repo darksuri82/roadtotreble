@@ -1818,6 +1818,8 @@ export function DreamMatchArena() {
                 bench={draftDisplayedBench}
                 chemistry={draftPreviewChem}
                 managerTraitId={manager.traitId}
+                tactic={activeTactic}
+                baselineStarters={previewCandidate ? starters : null}
                 activeSlot={
                   draftCurrentSlot
                     ? {

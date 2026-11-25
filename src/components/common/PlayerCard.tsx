@@ -331,11 +331,11 @@ export function PlayerCard({
             </h3>
             {mgrSynergy.isMatch && (
               <span
-                title={mgrSynergy.reason}
-                className="inline-flex shrink-0 items-center gap-0.5 rounded border border-amber-400/45 bg-amber-400/15 px-1 py-px text-[8.5px] font-extrabold text-amber-200 leading-none"
+                title={`감독 궁합 일치 (${mgrSynergy.reason}) · 개인 ★+1 OVR`}
+                className="inline-flex shrink-0 items-center gap-0.5 rounded border border-amber-400/50 bg-amber-400/18 px-1 py-px text-[8.5px] font-extrabold text-amber-200 leading-none whitespace-nowrap"
               >
-                <Star className="w-2 h-2 fill-amber-300 text-amber-300" />
-                +1
+                <Star className="w-2 h-2 fill-amber-300 text-amber-300 shrink-0" />
+                궁합+1
               </span>
             )}
             {typeof expectedLinkCount === 'number' && expectedLinkCount > 0 && (

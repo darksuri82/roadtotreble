@@ -753,3 +753,394 @@ export function evaluateManagerTeamEffect(
     situationalBadge,
   };
 }
+
+export type ManagerFitScalingMode = 'progressive' | 'situational';
+
+export interface ManagerFitStarterEntry {
+  slotIndex: number;
+  player: Player;
+  /** True if this starter increments the 1..11 team-level scaling (always false for situational specialists) */
+  countsForTeamEffect: boolean;
+  /** True if this starter receives individual ★+1 OVR manager synergy */
+  hasPersonalSynergy: boolean;
+  reason: string;
+}
+
+export interface ManagerFitMilestone {
+  count: number;
+  attDelta: number;
+  midDelta: number;
+  defDelta: number;
+  ovrDelta: number;
+  summary: string;
+  reached: boolean;
+}
+
+export interface ManagerFitSituationalRule {
+  shortTrigger: string;
+  triggerLabel: string;
+  effectLabel: string;
+  note: string;
+}
+
+export interface ManagerFitDetail {
+  traitId: ManagerTraitId;
+  config: ManagerTraitConfig;
+  scalingMode: ManagerFitScalingMode;
+  /** Headline numerator out of 11 (team-scaling count for progressive traits; personal ★+1 count for situational traits) */
+  matchedCount: number;
+  totalSlots: 11;
+  filledCount: number;
+  /** Starters receiving individual ★+1 OVR */
+  personalMatchedCount: number;
+  /** Starters scaling team stats (0 for situational traits whose team effect does not depend on count) */
+  teamScalingMatchedCount: number;
+  /** True for galactico_manager / total_football where team-scaling criteria is stricter than personal ★+1 criteria */
+  hasSeparatePersonalCriteria: boolean;
+  effect: ManagerTeamEffectResult;
+  /** Team OVR lift from baseAtt/Mid/Def deltas = (ΔA + ΔM + ΔD) / 3 */
+  teamLineOvrDelta: number;
+  /** Average OVR lift across 11 starters from personal ★+1 bonuses */
+  personalAvgOvrDelta: number;
+  /** Combined visible team OVR lift */
+  totalOvrDelta: number;
+  /** Short active effect chips for 1-line UI display */
+  activeBoostChips: string[];
+  /** Criteria labels for matching players */
+  criteriaLabels: string[];
+  /** Korean tactic label if this manager has a recommended synergy tactic */
+  synergyTacticLabel: string | null;
+  /** Recommended tactic bonus description (for Group A managers) */
+  tacticSynergyBonusLabel: string | null;
+  /** Per-player scaling step description for progressive traits (null for situational) */
+  perPlayerStepLabel: string | null;
+  /** Next milestone (3/6/9/11) for progressive traits */
+  nextMilestone: {
+    targetCount: number;
+    remaining: number;
+    summary: string;
+  } | null;
+  /** 3/6/9/11 milestone reference table (empty for situational traits so players never think count scales team effect) */
+  milestones: ManagerFitMilestone[];
+  /** Explicit trigger & non-scaling note for the 4 situational specialists */
+  situationalRule: ManagerFitSituationalRule | null;
+  /** Matched starters (team-scaling and/or personal ★+1) */
+  matchedStarters: ManagerFitStarterEntry[];
+  /** Filled starters that do not match this manager */
+  unmatchedStarters: { slotIndex: number; player: Player }[];
+}
+
+const SYNERGY_TACTIC_LABELS: Record<TacticId, string> = {
+  balanced: '밸런스',
+  possession: '점유율',
+  gegenpressing: '압박',
+  counter: '역습',
+  wingplay: '측면',
+};
+
+const TACTIC_SYNERGY_BONUS_LABELS: Partial<Record<ManagerTraitId, string>> = {
+  tiki_taka: '점유율 전술 시 ATT +0.9 · MID +0.9 추가',
+  gegenpress_guru: '압박 전술 시 ATT +0.7 · DEF +0.7 · 체력 소모 완화',
+  catenaccio: '역습 전술 시 DEF +1.1 · 상대 xG -0.12 추가',
+  wing_bomber: '측면 전술 시 ATT +1.1 · xG +0.12 추가',
+};
+
+const PER_PLAYER_STEP_LABELS: Partial<Record<ManagerTraitId, string>> = {
+  tiki_taka: '+1명당 MID +0.27 · 점유율 +0.5%',
+  gegenpress_guru: '+1명당 ATT +0.18 · MID +0.15',
+  catenaccio: '+1명당 DEF +0.27',
+  wing_bomber: '+1명당 ATT +0.25',
+  direct_football: '+1명당 ATT +0.31 · xG +0.02',
+  defensive_architect: '+1명당 DEF +0.30 · 상대 xG -0.01',
+  midfield_maestro: '+1명당 MID +0.31 · 점유율 +0.6%',
+  galactico_manager: '+1명당 전라인(A/M/D) +0.35',
+  total_football: '+1명당 전라인(A/M/D) +0.25',
+  set_piece_master: '기본 xG +0.16 + 1명당 +0.013 (최대 +0.30)',
+};
+
+const SITUATIONAL_RULES: Partial<
+  Record<ManagerTraitId, ManagerFitSituationalRule>
+> = {
+  big_game_hunter: {
+    shortTrigger: '강팀·빅매치 +2.6',
+    triggerLabel: '상위 6팀 · OVR 84+ · 컵 4강/결승 · UCL 토너먼트',
+    effectLabel: '전라인 +2.6 · xG +0.14',
+    note: '팀 특수 효과는 궁합 인원(n/11)과 무관하게 조건 충족 시 100% 발동합니다. 궁합이 맞는 선발 선수에게는 개인 ★+1 OVR만 별도 적용됩니다.',
+  },
+  underdog_killer: {
+    shortTrigger: '동급↑ 상대 +1.8~3.5',
+    triggerLabel: '상대 팀 평균 OVR ≥ 우리 팀 평균 OVR',
+    effectLabel: '격차별 전라인 +1.8 / +2.6 / +3.5 · xG/수비 보정',
+    note: '팀 특수 효과는 궁합 인원(n/11)과 무관하게 상대 전력 조건 충족 시 100% 발동합니다. 궁합이 맞는 선발 선수에게는 개인 ★+1 OVR만 별도 적용됩니다.',
+  },
+  halftime_wizard: {
+    shortTrigger: '하프타임 전환 1.8배',
+    triggerLabel: '하프타임 전술 또는 포메이션 변경 시',
+    effectLabel: '후반 스윙 1.8배 · A/M/D +1.6/+1.4/+1.2 · xG +0.20 (열세 시 추가)',
+    note: '팀 특수 효과는 궁합 인원(n/11)과 무관하게 하프타임 조정 시 100% 발동합니다. 궁합이 맞는 선발 선수에게는 개인 ★+1 OVR만 별도 적용됩니다.',
+  },
+  super_sub: {
+    shortTrigger: '후반 조커 +3.0',
+    triggerLabel: '후반 벤치 선수 교체 투입 시',
+    effectLabel: '조커 OVR +3.0 · A/M/D +2.0/+1.5/+1.2 · 교체당 xG +0.11',
+    note: '팀 특수 효과는 궁합 인원(n/11)과 무관하게 후반 교체 시 100% 발동합니다. 궁합이 맞는 선발 선수에게는 개인 ★+1 OVR만 별도 적용됩니다.',
+  },
+};
+
+function isPlayerCountingForTeamScaling(
+  player: Player,
+  traitId: ManagerTraitId,
+): boolean {
+  const cfg = MANAGER_TRAITS[traitId];
+  if (!cfg || cfg.philosophyTarget <= 0) return false;
+  if (traitId === 'galactico_manager') {
+    return Boolean(player.isLegend) || player.ovr >= 91;
+  }
+  if (traitId === 'total_football') {
+    return player.mainPositions.length + player.secondaryPositions.length >= 3;
+  }
+  return evaluateManagerPlayerSynergy(player, traitId).isMatch;
+}
+
+function buildMilestoneAtCount(
+  traitId: ManagerTraitId,
+  count: number,
+  currentCount: number,
+): ManagerFitMilestone {
+  const ratio = Math.min(1, count / 11);
+  let att = 0;
+  let mid = 0;
+  let def = 0;
+  let extra = '';
+
+  switch (traitId) {
+    case 'tiki_taka':
+      mid = 3.0 * ratio;
+      extra = `점유 +${(6 * ratio).toFixed(1)}%`;
+      break;
+    case 'gegenpress_guru':
+      att = 2.0 * ratio;
+      mid = 1.6 * ratio;
+      break;
+    case 'catenaccio':
+      def = 3.0 * ratio;
+      break;
+    case 'wing_bomber':
+      att = 2.8 * ratio;
+      break;
+    case 'defensive_architect':
+      def = 3.3 * ratio;
+      extra = `상대 xG -${(0.16 * ratio).toFixed(2)}`;
+      break;
+    case 'midfield_maestro':
+      mid = 3.4 * ratio;
+      extra = `점유 +${(7 * ratio).toFixed(1)}%`;
+      break;
+    case 'direct_football':
+      att = 3.4 * ratio;
+      extra = `xG +${(0.18 * ratio).toFixed(2)}`;
+      break;
+    case 'galactico_manager': {
+      const lift = Math.min(3.85, count * 0.35);
+      att = lift;
+      mid = lift;
+      def = lift;
+      break;
+    }
+    case 'total_football': {
+      const lift = Math.min(2.75, count * 0.25);
+      att = lift;
+      mid = lift;
+      def = lift;
+      break;
+    }
+    case 'set_piece_master':
+      extra = `세트피스 xG +${(0.16 + 0.14 * ratio).toFixed(2)}`;
+      break;
+    default:
+      break;
+  }
+
+  const attDelta = round2(att);
+  const midDelta = round2(mid);
+  const defDelta = round2(def);
+  const ovrDelta = round2((attDelta + midDelta + defDelta) / 3);
+  const statStr = formatStatDeltaParts(attDelta, midDelta, defDelta);
+  const summary = [statStr, extra].filter(Boolean).join(' · ');
+
+  return {
+    count,
+    attDelta,
+    midDelta,
+    defDelta,
+    ovrDelta,
+    summary,
+    reached: currentCount >= count,
+  };
+}
+
+function getCriteriaLabels(traitId: ManagerTraitId): string[] {
+  const cfg = MANAGER_TRAITS[traitId];
+  if (!cfg) return [];
+  if (traitId === 'galactico_manager') {
+    return ['OVR 91+ · 레전드 (팀 상승)', '88+ · 핵심 공격 스타일 (개인 +1)'];
+  }
+  if (traitId === 'total_football') {
+    return ['3포지션+ 멀티 (팀 상승)', '박투박·완성형FW·빌드업CB (개인 +1)'];
+  }
+  const styleNames = cfg.synergyPlaystyles.map(
+    (ps) => PLAYSTYLES[ps]?.shortName ?? PLAYSTYLES[ps]?.name ?? ps,
+  );
+  if (traitId === 'super_sub') {
+    return ['체력 86+', ...styleNames];
+  }
+  return styleNames;
+}
+
+/**
+ * Single Source of Truth detail evaluator for Manager Fit UI across all Draft & Squad screens.
+ * Strictly mirrors `evaluateManagerTeamEffect` and `evaluateManagerPlayerSynergy` without duplicating formulas.
+ */
+export function evaluateManagerFitDetail(params: {
+  traitId: ManagerTraitId | null | undefined;
+  starters: (Player | null)[];
+  tactic?: TacticId;
+}): ManagerFitDetail | null {
+  const { traitId, starters, tactic = 'balanced' } = params;
+  if (!traitId) return null;
+  const cfg = MANAGER_TRAITS[traitId];
+  if (!cfg) return null;
+
+  const effect = evaluateManagerTeamEffect({ traitId, starters, tactic });
+  const scalingMode: ManagerFitScalingMode =
+    cfg.philosophyTarget > 0 ? 'progressive' : 'situational';
+  const hasSeparatePersonalCriteria =
+    traitId === 'galactico_manager' || traitId === 'total_football';
+
+  const matchedStarters: ManagerFitStarterEntry[] = [];
+  const unmatchedStarters: { slotIndex: number; player: Player }[] = [];
+  let filledCount = 0;
+  let personalMatchedCount = 0;
+  let teamScalingMatchedCount = 0;
+
+  starters.forEach((player, slotIndex) => {
+    if (!player) return;
+    filledCount += 1;
+    const personal = evaluateManagerPlayerSynergy(player, traitId);
+    const countsForTeam = isPlayerCountingForTeamScaling(player, traitId);
+    if (personal.isMatch) personalMatchedCount += 1;
+    if (countsForTeam) teamScalingMatchedCount += 1;
+
+    if (countsForTeam || personal.isMatch) {
+      let reason = personal.reason;
+      if (!reason && countsForTeam) {
+        reason =
+          traitId === 'galactico_manager'
+            ? 'OVR 91+ · 레전드'
+            : traitId === 'total_football'
+              ? '3포지션+ 멀티'
+              : cfg.name;
+      }
+      matchedStarters.push({
+        slotIndex,
+        player,
+        countsForTeamEffect: countsForTeam,
+        hasPersonalSynergy: personal.isMatch,
+        reason,
+      });
+    } else {
+      unmatchedStarters.push({ slotIndex, player });
+    }
+  });
+
+  const matchedCount =
+    scalingMode === 'progressive'
+      ? teamScalingMatchedCount
+      : personalMatchedCount;
+
+  const teamLineOvrDelta = round2(
+    (effect.baseAttDelta + effect.baseMidDelta + effect.baseDefDelta) / 3,
+  );
+  const personalAvgOvrDelta = round2(personalMatchedCount / 11);
+  const totalOvrDelta = round2(teamLineOvrDelta + personalAvgOvrDelta);
+
+  const activeBoostChips: string[] = [];
+  const situationalRule =
+    scalingMode === 'situational' ? (SITUATIONAL_RULES[traitId] ?? null) : null;
+
+  if (scalingMode === 'situational' && situationalRule) {
+    activeBoostChips.push('팀 효과 인원 무관');
+    activeBoostChips.push(situationalRule.shortTrigger);
+  } else {
+    const statPart = formatStatDeltaParts(
+      effect.baseAttDelta,
+      effect.baseMidDelta,
+      effect.baseDefDelta,
+    );
+    if (statPart) {
+      activeBoostChips.push(statPart);
+    }
+    if (traitId === 'set_piece_master') {
+      activeBoostChips.push(`세트피스 xG +${effect.xgBonus.toFixed(2)}`);
+      activeBoostChips.push(`상대 xG -${effect.oppXgPenalty.toFixed(2)}`);
+    } else {
+      if (effect.possessionBonus > 0) {
+        activeBoostChips.push(`점유 +${effect.possessionBonus.toFixed(1)}%`);
+      }
+      if (effect.xgBonus > 0) {
+        activeBoostChips.push(`xG +${effect.xgBonus.toFixed(2)}`);
+      }
+      if (effect.oppXgPenalty > 0) {
+        activeBoostChips.push(`상대 xG -${effect.oppXgPenalty.toFixed(2)}`);
+      }
+      if (traitId === 'total_football') {
+        activeBoostChips.push('부포 페널티 0');
+      }
+      if (traitId === 'gegenpress_guru' && effect.isTacticSynergyActive) {
+        activeBoostChips.push('체력소모↓');
+      }
+    }
+  }
+
+  const milestones: ManagerFitMilestone[] =
+    scalingMode === 'progressive'
+      ? [3, 6, 9, 11].map((c) => buildMilestoneAtCount(traitId, c, matchedCount))
+      : [];
+
+  const nextMs = milestones.find((m) => m.count > matchedCount) ?? null;
+  const nextMilestone = nextMs
+    ? {
+        targetCount: nextMs.count,
+        remaining: nextMs.count - matchedCount,
+        summary: nextMs.summary,
+      }
+    : null;
+
+  return {
+    traitId,
+    config: cfg,
+    scalingMode,
+    matchedCount,
+    totalSlots: 11,
+    filledCount,
+    personalMatchedCount,
+    teamScalingMatchedCount,
+    hasSeparatePersonalCriteria,
+    effect,
+    teamLineOvrDelta,
+    personalAvgOvrDelta,
+    totalOvrDelta,
+    activeBoostChips,
+    criteriaLabels: getCriteriaLabels(traitId),
+    synergyTacticLabel: cfg.synergyTactic
+      ? SYNERGY_TACTIC_LABELS[cfg.synergyTactic]
+      : null,
+    tacticSynergyBonusLabel: TACTIC_SYNERGY_BONUS_LABELS[traitId] ?? null,
+    perPlayerStepLabel: PER_PLAYER_STEP_LABELS[traitId] ?? null,
+    nextMilestone,
+    milestones,
+    situationalRule,
+    matchedStarters,
+    unmatchedStarters,
+  };
+}

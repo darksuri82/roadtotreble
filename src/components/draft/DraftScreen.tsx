@@ -13,11 +13,11 @@ import {
   calculateTeamRatings,
   evaluatePairLink,
 } from '../../engine/chemistryEngine';
-import { TACTICS } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
 import { POSITION_LABELS } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
 import { InfoHelpButton } from '../common/InfoHelpButton';
+import { ManagerFitBadge } from '../common/ManagerFitBadge';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
@@ -263,29 +263,16 @@ export function DraftScreen() {
           <span className="truncate text-[11px] sm:text-xs font-extrabold text-white">
             {state.manager.name}
           </span>
-          {activeTrait && (
-            <span
-              title={activeTrait.effectSummary}
-              className="rounded-md border border-amber-400/30 bg-amber-500/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-amber-200"
-            >
-              {activeTrait.name}
-            </span>
-          )}
-          {(displayedRatings.managerTargetCount ?? 0) > 0 && (
-            <span className="rounded-md border border-slate-700/80 bg-[#090e15] px-1.5 py-0.5 text-[10px] font-bold text-slate-200 tabular-nums">
-              <span className="text-amber-300 mr-0.5">★</span>
-              {displayedRatings.managerMatchedCount ?? 0}/{displayedRatings.managerTargetCount}
-            </span>
-          )}
-          {displayedRatings.managerEffectSummary && (
-            <span className="hidden md:inline-flex text-[10px] font-semibold text-emerald-300/90 tabular-nums">
-              {displayedRatings.managerEffectSummary}
-            </span>
-          )}
-          {activeTrait?.synergyTactic && (
-            <span className="hidden sm:inline-flex rounded-md border border-slate-800 bg-[#090e15] px-2 py-0.5 text-[10px] font-semibold text-slate-300">
-              추천 <span className="text-emerald-300 ml-1">{TACTICS[activeTrait.synergyTactic].shortName}</span>
-            </span>
+          {state.manager.traitId && (
+            <ManagerFitBadge
+              traitId={state.manager.traitId}
+              starters={displayedStarters}
+              baselineStarters={previewCandidate ? state.starters : null}
+              tactic={state.defaultTactic}
+              formation={formation}
+              variant="pill"
+              align="left"
+            />
           )}
         </div>
 
@@ -584,6 +571,8 @@ export function DraftScreen() {
             bench={displayedBench}
             chemistry={displayedChemistry}
             managerTraitId={state.manager.traitId}
+            tactic={state.defaultTactic}
+            baselineStarters={previewCandidate ? state.starters : null}
             activeSlot={{
               area: draft.currentSlotType,
               index: draft.currentSlotIndex,

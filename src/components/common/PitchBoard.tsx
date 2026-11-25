@@ -20,10 +20,12 @@ import type {
   FormationId,
   ManagerTraitId,
 } from '../../types/game';
+import type { TacticId } from '../../types/league';
 import { getCardTier } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
 import { CountryFlagSvg } from './CountryFlagSvg';
 import { InfoHelpButton } from './InfoHelpButton';
+import { ManagerFitBadge } from './ManagerFitBadge';
 import { PixelStatusIcon } from './PixelStatusIcon';
 
 export interface SlotRef {
@@ -37,6 +39,12 @@ interface PitchBoardProps {
   bench: (Player | null)[];
   chemistry: ChemistryResult;
   managerTraitId?: ManagerTraitId | null;
+  /** Current team tactic used to evaluate manager tactic synergy accurately */
+  tactic?: TacticId;
+  /** Optional baseline starters (before draft candidate preview) for live delta feedback */
+  baselineStarters?: (Player | null)[] | null;
+  /** Show compact Manager Fit n/11 strip under the pitch header (defaults to true when managerTraitId is provided) */
+  showManagerFitStrip?: boolean;
   activeSlot?: SlotRef | null;
   selectedSlot?: SlotRef | null;
   /** Optional multi-select slot keys ("starter:0", "bench:2") used in Transfer Market package picker */
@@ -119,6 +127,9 @@ export function PitchBoard({
   bench,
   chemistry,
   managerTraitId = null,
+  tactic,
+  baselineStarters = null,
+  showManagerFitStrip = true,
   activeSlot = null,
   selectedSlot = null,
   selectedSlotKeys,
@@ -143,6 +154,11 @@ export function PitchBoard({
   const { state: gameState } = useGame();
   const conditionByPlayerId =
     conditionProp ?? gameState.season?.playerConditions;
+  const effectiveTactic: TacticId =
+    tactic ??
+    gameState.season?.nextMatchTactic ??
+    gameState.season?.defaultTactic ??
+    gameState.defaultTactic;
   const config = FORMATIONS[formation];
   const [draggingFrom, setDraggingFrom] = useState<SlotRef | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<SlotRef | null>(null);
@@ -337,6 +353,19 @@ export function PitchBoard({
         </div>
         {headerRight && <div className="shrink-0">{headerRight}</div>}
       </div>
+
+      {/* Compact Manager Compatibility Strip (n/11 + live team boost + click detail popover) */}
+      {managerTraitId && showManagerFitStrip && (
+        <ManagerFitBadge
+          traitId={managerTraitId}
+          starters={starters}
+          baselineStarters={baselineStarters}
+          tactic={effectiveTactic}
+          formation={formation}
+          variant="strip"
+          align="left"
+        />
+      )}
 
       {/* Tap-safe Mobile Inspect Bar: appears only when a player is selected so tapping pitch cards NEVER opens detail modal by mistake */}
       {selectedPlayer && selectedOvrBr && (

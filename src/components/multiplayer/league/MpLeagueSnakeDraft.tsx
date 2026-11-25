@@ -158,6 +158,17 @@ export function MpLeagueSnakeDraft(props: MpLeagueSnakeDraftProps) {
                 <div className="text-[10px] text-slate-400 line-clamp-2 leading-snug">
                   {trait.tagline}
                 </div>
+                <div>
+                  <span
+                    className={`inline-block rounded border px-1.5 py-px text-[9px] font-bold whitespace-nowrap ${
+                      trait.philosophyTarget > 0
+                        ? 'border-amber-400/30 bg-amber-500/10 text-amber-200'
+                        : 'border-sky-400/30 bg-sky-500/10 text-sky-200'
+                    }`}
+                  >
+                    {trait.philosophyTarget > 0 ? '궁합 1~11명 비례' : '팀 효과 인원 무관'}
+                  </span>
+                </div>
               </button>
             );
           })}

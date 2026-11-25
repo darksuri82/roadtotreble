@@ -1833,6 +1833,7 @@ export function UclDashboard() {
                     bench={state.bench}
                     chemistry={chemistry}
                     managerTraitId={state.manager.traitId}
+                    tactic={season.defaultTactic}
                     conditionByPlayerId={season.playerConditions}
                     selectedSlot={uclEditLocked ? null : swapPick}
                     onSlotClick={uclEditLocked ? undefined : handleSquadSlotClick}
@@ -1949,6 +1950,7 @@ export function UclDashboard() {
               traitId={state.manager.traitId}
               starters={state.starters}
               tactic={season.defaultTactic}
+              formation={state.formation}
               compact
             />
 

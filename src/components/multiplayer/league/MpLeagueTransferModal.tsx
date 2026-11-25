@@ -755,6 +755,7 @@ export function MpLeagueTransferModal({
                     traitId={managerTraitId}
                     starters={myStarters}
                     tactic={myTactic}
+                    formation={myFormation}
                     compact
                   />
                 )}
@@ -900,6 +901,7 @@ export function MpLeagueTransferModal({
                   bench={myBench}
                   chemistry={myChemistry}
                   managerTraitId={managerTraitId}
+                  tactic={myTactic}
                   conditionByPlayerId={conditionMap}
                   selectedSlot={tacticsSelectedSlot}
                   onSlotClick={handleTacticsSlotClick}
@@ -1592,6 +1594,7 @@ export function MpLeagueTransferModal({
                       bench={myBench}
                       chemistry={myChemistry}
                       managerTraitId={managerTraitId}
+                      tactic={myTactic}
                       conditionByPlayerId={conditionMap}
                       selectedSlotKeys={selectedUserSlotKeys}
                       selectedTone="rose"

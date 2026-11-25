@@ -41,6 +41,7 @@ import type {
   MpRoomSnapshot,
 } from '../../types/multiplayer';
 import type { Player, SubPosition } from '../../types/player';
+import { ManagerFitBadge } from '../common/ManagerFitBadge';
 import { PitchBoard } from '../common/PitchBoard';
 import type { SlotRef } from '../common/PitchBoard';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
@@ -552,6 +553,17 @@ export function MultiplayerBlindDraft({
                   <div className="text-[10px] text-slate-400 line-clamp-2 leading-snug">
                     {trait.tagline}
                   </div>
+                  <div>
+                    <span
+                      className={`inline-block rounded border px-1.5 py-px text-[9px] font-bold whitespace-nowrap ${
+                        trait.philosophyTarget > 0
+                          ? 'border-amber-400/30 bg-amber-500/10 text-amber-200'
+                          : 'border-sky-400/30 bg-sky-500/10 text-sky-200'
+                      }`}
+                    >
+                      {trait.philosophyTarget > 0 ? '궁합 1~11명 비례' : '팀 효과 인원 무관'}
+                    </span>
+                  </div>
                 </button>
               );
             })}
@@ -661,7 +673,7 @@ export function MultiplayerBlindDraft({
             ) : (
               <div className="rounded-xl sm:rounded-2xl border border-slate-800/90 bg-[#0d131c] p-2 sm:p-2.5 space-y-2">
                 <div className="flex flex-wrap items-center justify-between gap-1.5">
-                  <div className="flex items-center gap-1.5 text-xs">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 font-extrabold text-emerald-300">
                       {draft.currentSlotType === 'starter'
                         ? `선발 ${draft.currentSlotIndex + 1}/11`
@@ -670,9 +682,15 @@ export function MultiplayerBlindDraft({
                     <span className="font-bold text-white">
                       {currentSlot?.label ?? ''}
                     </span>
-                    <span className="text-[11px] text-slate-400">
-                      ({MANAGER_TRAITS[managerTraitId]?.name})
-                    </span>
+                    <ManagerFitBadge
+                      traitId={managerTraitId}
+                      starters={previewStarters}
+                      baselineStarters={previewCandidate ? starters : null}
+                      tactic={defaultTactic}
+                      formation={formation}
+                      variant="pill"
+                      align="left"
+                    />
                   </div>
 
                   <button
@@ -735,6 +753,8 @@ export function MultiplayerBlindDraft({
               bench={previewBench}
               chemistry={displayChemistry}
               managerTraitId={managerTraitId}
+              tactic={defaultTactic}
+              baselineStarters={previewCandidate ? starters : null}
               activeSlot={
                 !isCompleted
                   ? {

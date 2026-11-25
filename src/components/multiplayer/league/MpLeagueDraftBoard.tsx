@@ -40,6 +40,7 @@ import type {
 } from '../../../types/mpLeague';
 import type { MpRoomPlayerRow, MpRoomRow } from '../../../types/multiplayer';
 import type { Player, SubPosition } from '../../../types/player';
+import { ManagerFitBadge } from '../../common/ManagerFitBadge';
 import { PitchBoard } from '../../common/PitchBoard';
 import type { SlotRef } from '../../common/PitchBoard';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
@@ -647,9 +648,15 @@ export function MpLeagueDraftBoard({
             <span className="text-xs font-bold text-white tabular-nums">
               {Math.min(round + 1, 16)}/16R · {Math.min(pickNo, totalPicks)}/{totalPicks}
             </span>
-            <span className="hidden sm:inline text-[11px] text-slate-400">
-              ({MANAGER_TRAITS[managerTraitId]?.name})
-            </span>
+            <ManagerFitBadge
+              traitId={managerTraitId}
+              starters={previewStarters}
+              baselineStarters={activePreview ? board.starters : null}
+              tactic={tactic}
+              formation={formation}
+              variant="pill"
+              align="left"
+            />
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
@@ -960,6 +967,10 @@ export function MpLeagueDraftBoard({
                 bench={activeView.bench}
                 chemistry={activeView.chemistry}
                 managerTraitId={activeView.traitId}
+                tactic={activeView.tactic}
+                baselineStarters={
+                  activeView.isMe && activePreview ? board.starters : null
+                }
                 conditionByPlayerId={{}}
                 activeSlot={
                   activeView.isMe && previewSlot

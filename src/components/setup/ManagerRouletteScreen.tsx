@@ -433,11 +433,17 @@ export function ManagerRouletteScreen() {
                       </div>
                       {synTactic ? (
                         <span className="shrink-0 rounded bg-slate-800/90 px-1.5 py-0.5 text-[10px] font-semibold text-sky-300 whitespace-nowrap">
-                          ★ {synTactic.shortName}
+                          ★ {synTactic.shortName} · 1~11명
                         </span>
                       ) : (
-                        <span className="shrink-0 rounded bg-slate-800/80 px-1.5 py-0.5 text-[9.5px] font-semibold text-slate-400 whitespace-nowrap">
-                          {t.category === 'builder' ? '상시형' : '특화형'}
+                        <span
+                          className={`shrink-0 rounded border px-1.5 py-0.5 text-[9.5px] font-semibold whitespace-nowrap ${
+                            t.philosophyTarget > 0
+                              ? 'border-amber-400/30 bg-amber-500/10 text-amber-200'
+                              : 'border-sky-400/30 bg-sky-500/10 text-sky-200'
+                          }`}
+                        >
+                          {t.philosophyTarget > 0 ? '1~11명 비례' : '팀 효과 인원 무관'}
                         </span>
                       )}
                     </div>

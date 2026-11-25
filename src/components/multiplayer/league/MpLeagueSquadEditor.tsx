@@ -146,6 +146,7 @@ export function MpLeagueSquadEditor({
             traitId={managerTraitId}
             starters={starters}
             tactic={tactic}
+            formation={formation}
             compact
           />
 
@@ -239,6 +240,7 @@ export function MpLeagueSquadEditor({
             bench={bench}
             chemistry={chemistry}
             managerTraitId={managerTraitId}
+            tactic={tactic}
             conditionByPlayerId={conditions}
             selectedSlot={selected}
             onSlotClick={handleSlotClick}

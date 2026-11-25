@@ -936,6 +936,7 @@ export function MatchDayTacticsRoom({
               bench={bench}
               chemistry={chemistry}
               managerTraitId={managerTraitId}
+              tactic={activeTactic}
               selectedSlot={locked ? null : selectedSlot}
               onSlotClick={locked ? undefined : handleSlotClick}
               onSlotSwap={
@@ -963,6 +964,7 @@ export function MatchDayTacticsRoom({
                 bench={bench}
                 chemistry={chemistry}
                 managerTraitId={managerTraitId}
+                tactic={activeTactic}
                 selectedSlot={locked ? null : selectedSlot}
                 onSlotClick={locked ? undefined : handleSlotClick}
                 onSlotSwap={
