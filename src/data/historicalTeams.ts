@@ -1610,6 +1610,10 @@ export function buildHistoricalClubForMatch(team: HistoricalTeamEntry): {
     .slice(0, 3)
     .map((p) => p.name);
 
+  // Legendary era prestige lift (+1.4 base + up to +0.7 for 91..99 iconic managers)
+  // keeps all 24 Historical HOF squads clearly above buffed current top-4 league AI (87.2~89.1).
+  const eraPrestigeLift =
+    1.4 + Math.min(0.7, Math.max(0, (team.managerRating - 90) * 0.09));
   const club: Club = {
     id: team.id,
     name: team.displayName,
@@ -1619,9 +1623,9 @@ export function buildHistoricalClubForMatch(team: HistoricalTeamEntry): {
     pattern: team.userClub.pattern,
     formation: team.formation,
     defaultTactic: team.defaultTactic,
-    att: Math.round(effRatings.effectiveAtt),
-    mid: Math.round(effRatings.effectiveMid),
-    def: Math.round(effRatings.effectiveDef),
+    att: Math.min(99, Math.round(effRatings.effectiveAtt + eraPrestigeLift)),
+    mid: Math.min(99, Math.round(effRatings.effectiveMid + eraPrestigeLift)),
+    def: Math.min(99, Math.round(effRatings.effectiveDef + eraPrestigeLift)),
     topScorers: [
       topAttackers[0] ?? team.starters[10]?.name ?? '에이스',
       topAttackers[1] ?? team.starters[9]?.name ?? '공격수',

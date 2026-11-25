@@ -414,18 +414,26 @@ function resolveMatchStrengths(params: {
     const chemOrgBonus =
       chem.chemistryOvrBonus < 0
         ? chem.chemistryOvrBonus * 0.45
-        : Math.min(0.3, Math.max(0, chem.chemistryOvrBonus - avgSynBonus * 0.75));
+        : Math.min(0.5, Math.max(0, chem.chemistryOvrBonus - avgSynBonus * 0.75));
 
-    // Center AI synergy + manager OVR lift around league baseline (avgSyn ~2.55, manager OVR ~85)
-    // so elite cohesive clubs & world-class managers (90+) keep realistic parity without inflating mid-table AI
-    const relativeSynLift = clamp((avgSynBonus - 2.55) * 0.14, -0.25, 0.22);
-    const mgrCoachingBonus = clamp((manager.ovr - 85) * 0.018, -0.15, 0.18);
+    // Scale genuine one-club cohesion & elite manager coaching by club caliber so top 1-4 AI contenders
+    // reach authentic 87.2~89.1 effective OVR (tight 1~4 title race) without inflating mid/bottom clubs
+    // or mismatched zero-synergy synthetic teams.
+    const clubBaseAvg = (club.att + club.mid + club.def) / 3;
+    const contenderScale = clamp((clubBaseAvg - 79) / 7.5, 0, 1);
+    const hasRealCohesion = avgSynBonus >= 1.85 && chem.total >= 88;
+    const cohesionSynLift = hasRealCohesion
+      ? (clamp((avgSynBonus - 1.75) * 0.65, 0, 0.75) + (chem.total >= 95 ? 0.35 : 0.15)) *
+        contenderScale
+      : clamp((avgSynBonus - 2.3) * 0.12, -0.2, 0);
+    const mgrCoachingBonus =
+      clamp((manager.ovr - 81) * 0.085, -0.15, 1.15) * (0.2 + 0.8 * contenderScale);
     const uclPrestigeBonus =
-      userContext?.competition === 'ucl' && (club.att + club.mid + club.def) / 3 >= 82
-        ? 0.4
+      userContext?.competition === 'ucl' && clubBaseAvg >= 82
+        ? 0.45
         : 0;
     const totalAiLift =
-      relativeSynLift + chemOrgBonus * 0.15 + mgrCoachingBonus + uclPrestigeBonus;
+      cohesionSynLift + chemOrgBonus * 0.22 + mgrCoachingBonus + uclPrestigeBonus;
 
     if (aiClubSynergyLiftCache.size >= MAX_AI_SYNERGY_CACHE) {
       aiClubSynergyLiftCache.clear();
@@ -598,9 +606,9 @@ function resolveMatchStrengths(params: {
       })
     : null;
 
-  // AI Manager tactical trait modifiers (7%..17% scaled by manager OVR: keeps base league tables accurate while preserving clear coach identity)
+  // AI Manager tactical trait modifiers (14%..42% scaled by manager OVR: gives top AI managers authentic tactical identity & title-race tension)
   const computeAiTraitScale = (mgrOvr: number) =>
-    clamp(0.07 + ((mgrOvr - 74) / 20) * 0.1, 0.07, 0.17);
+    clamp(0.14 + ((mgrOvr - 75) / 19) * 0.28, 0.14, 0.42);
 
   const homeAiTraitMod =
     !homeIsHuman && homeManager && effectiveHomeRoster.length > 0
@@ -613,6 +621,7 @@ function resolveMatchStrengths(params: {
           halftimeAdjusted: isAwayUser && aiHalftimeAdjusted,
           isSecondHalf,
           trailingAtHalftime: isSecondHalf && scoreDiffHome < 0,
+          isFullMatchQuickSim,
         })
       : null;
   const awayAiTraitMod =
@@ -626,6 +635,7 @@ function resolveMatchStrengths(params: {
           halftimeAdjusted: isHomeUser && aiHalftimeAdjusted,
           isSecondHalf,
           trailingAtHalftime: isSecondHalf && scoreDiffHome > 0,
+          isFullMatchQuickSim,
         })
       : null;
 

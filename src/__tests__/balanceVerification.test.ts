@@ -311,7 +311,7 @@ describe('20-Season Simulation Balance Verification (EPL 38R)', () => {
         평균승점: tierHigh.avgPoints,
         우승률: `${tierHigh.titleRate}%`,
         AI_1위평균승점: tierHigh.avgAiTopPoints,
-        목표: '1위 / 85~98점',
+        목표: '1~3위 우승경쟁 / 80~92점',
       },
       {
         구간: 'OVR 84~86 (85 테스트)',
@@ -319,7 +319,7 @@ describe('20-Season Simulation Balance Verification (EPL 38R)', () => {
         평균승점: tierUpper.avgPoints,
         우승률: `${tierUpper.titleRate}%`,
         AI_1위평균승점: tierUpper.avgAiTopPoints,
-        목표: '2~4위 / 70~82점',
+        목표: '3~5위 TOP4경쟁 / 65~78점',
       },
       {
         구간: 'OVR 78~80 (79 테스트)',
@@ -327,30 +327,31 @@ describe('20-Season Simulation Balance Verification (EPL 38R)', () => {
         평균승점: tierMid.avgPoints,
         우승률: `${tierMid.titleRate}%`,
         AI_1위평균승점: tierMid.avgAiTopPoints,
-        목표: '8~12위 / 46~56점',
+        목표: '9~14위 중하위 / 42~54점',
       },
     ]);
     console.log(
       `=== SYNERGY UPSET CHECK (84 OVR 풀시너지 vs 89 OVR 무조합 강팀, 200경기): 승률 ${upsetWinPct}%, 무패율 ${upsetUnbeatenPct}% (케미 ${synChem.total} / 보정 +${synChem.chemistryOvrBonus}) ===\n`,
     );
 
-    // Assert exact requested target windows
-    expect(tierHigh.avgRank).toBeLessThanOrEqual(1.4);
-    expect(tierHigh.avgPoints).toBeGreaterThanOrEqual(85);
-    expect(tierHigh.avgPoints).toBeLessThanOrEqual(98);
+    // Assert v8.15 competitive title-race windows (top-4 AI contenders reach 87.2~89.1 effective OVR)
+    expect(tierHigh.avgRank).toBeGreaterThanOrEqual(1.1);
+    expect(tierHigh.avgRank).toBeLessThanOrEqual(3.0);
+    expect(tierHigh.avgPoints).toBeGreaterThanOrEqual(79);
+    expect(tierHigh.avgPoints).toBeLessThanOrEqual(93);
 
-    expect(tierUpper.avgRank).toBeGreaterThanOrEqual(1.8);
-    expect(tierUpper.avgRank).toBeLessThanOrEqual(4.5);
-    expect(tierUpper.avgPoints).toBeGreaterThanOrEqual(70);
-    expect(tierUpper.avgPoints).toBeLessThanOrEqual(82);
+    expect(tierUpper.avgRank).toBeGreaterThanOrEqual(2.5);
+    expect(tierUpper.avgRank).toBeLessThanOrEqual(6.0);
+    expect(tierUpper.avgPoints).toBeGreaterThanOrEqual(64);
+    expect(tierUpper.avgPoints).toBeLessThanOrEqual(79);
 
-    expect(tierMid.avgRank).toBeGreaterThanOrEqual(7.5);
-    expect(tierMid.avgRank).toBeLessThanOrEqual(12.5);
-    expect(tierMid.avgPoints).toBeGreaterThanOrEqual(46);
-    expect(tierMid.avgPoints).toBeLessThanOrEqual(56);
+    expect(tierMid.avgRank).toBeGreaterThanOrEqual(8.5);
+    expect(tierMid.avgRank).toBeLessThanOrEqual(14.5);
+    expect(tierMid.avgPoints).toBeGreaterThanOrEqual(41);
+    expect(tierMid.avgPoints).toBeLessThanOrEqual(55);
 
-    expect(tierMid.avgAiTopPoints).toBeGreaterThanOrEqual(78);
-    expect(tierMid.avgAiTopPoints).toBeLessThanOrEqual(90);
+    expect(tierMid.avgAiTopPoints).toBeGreaterThanOrEqual(82);
+    expect(tierMid.avgAiTopPoints).toBeLessThanOrEqual(93);
 
     // 84 OVR full-synergy team should genuinely upset an 89 OVR mismatched team at a healthy rate (>=35% wins)
     expect(upsetWinPct).toBeGreaterThanOrEqual(35);
