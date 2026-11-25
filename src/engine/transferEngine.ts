@@ -27,6 +27,10 @@ import {
   LEGEND_PLAYERS,
 } from './dataLoader';
 import {
+  CASH_STAR_GUARD_RELIEF_THRESHOLD_M,
+  computeCashOfferTp,
+} from './budgetEngine';
+import {
   DEFAULT_ROULETTE_LEGEND_RATE,
   TOP4_TRANSFER_LEGEND_RATE,
 } from './draftEngine';
@@ -116,16 +120,22 @@ export function createOpenTransferState(
     isUclSpecial?: boolean;
     championBonusActive?: boolean;
     incomingOffers?: IncomingTradeOffer[];
+    maxAttemptsOverride?: number;
+    ffpEmbargoActive?: boolean;
   },
 ): TransferMarketState {
   const isUclSpecial = Boolean(options?.isUclSpecial);
   const championBonusActive = Boolean(options?.championBonusActive);
+  const maxAttempts =
+    typeof options?.maxAttemptsOverride === 'number'
+      ? Math.max(0, options.maxAttemptsOverride)
+      : ATTEMPTS_PER_WINDOW;
   return {
     isOpen: true,
     windowIndex,
     triggerRound,
-    attemptsRemaining: ATTEMPTS_PER_WINDOW,
-    maxAttempts: ATTEMPTS_PER_WINDOW,
+    attemptsRemaining: maxAttempts,
+    maxAttempts,
     legendBonusActive: userRank <= 4 || isUclSpecial,
     isUclSpecial,
     championBonusActive,
@@ -139,6 +149,7 @@ export function createOpenTransferState(
     history: prev.history,
     tradeHistory: prev.tradeHistory ?? [],
     completedWindows: prev.completedWindows,
+    ffpEmbargoActive: Boolean(options?.ffpEmbargoActive),
   };
 }
 
@@ -1114,12 +1125,15 @@ export interface EvaluateTradePackageParams {
   conditionMap?: PlayerConditionMap;
   championBonusActive?: boolean;
   shockBargainIds?: Set<string>;
+  /** Optional cash sweetener (€M) from remaining draft budget */
+  cashOfferM?: number;
 }
 
 /**
  * Evaluates an NBA-style 1:1 / 2:1 / 3:1 / multi-player trade package with:
  * - Exponential trade value curve
  * - Multi-player Consolidation Tax (100% / 78% / 60%, +15% relief on needy positions)
+ * - Optional cash sweetener (€M -> TP, exempt from consolidation tax)
  * - Star Min Quality Guard (87+ target requires maxUserOvr >= targetOvr - 7, waived on Shock Bargains)
  * - Boosted positional need bonuses (+32% / +18% / -25% + direct probability boost)
  * - Rare "Dončić-style" Shock Bargain (-35% demand discount & +12%p acceptance boost)
@@ -1144,7 +1158,11 @@ export function evaluateTradePackage(
     conditionMap,
     championBonusActive = false,
     shockBargainIds,
+    cashOfferM = 0,
   } = params;
+
+  const safeCashOfferM = Math.max(0, Math.round(cashOfferM));
+  const cashTp = computeCashOfferTp(safeCashOfferM);
 
   const requiredAutoFillers = Math.max(
     0,
@@ -1190,8 +1208,8 @@ export function evaluateTradePackage(
     const needRelief = idx > 0 && val.needModPct > 0 ? 0.15 : 0;
     userEffectiveTp += val.effectiveTp * Math.min(1, baseMult + needRelief);
   });
-  userRawTp = Math.round(userRawTp * 10) / 10;
-  userEffectiveTp = Math.round(userEffectiveTp * 10) / 10;
+  userRawTp = Math.round((userRawTp + cashTp) * 10) / 10;
+  userEffectiveTp = Math.round((userEffectiveTp + cashTp) * 10) / 10;
 
   // Fillers are rotation throw-ins (valued at 65% value so 2:1 / 3:1 deals stay realistic)
   const fillerIds = new Set(aiFillerPlayers.map((p) => p.id));
@@ -1219,6 +1237,8 @@ export function evaluateTradePackage(
     aiValuations,
     requiredAutoFillers,
     requiredUserReleaseCount,
+    cashOfferM: safeCashOfferM,
+    cashTp,
   });
 
   if (userSentPlayers.length === 0 || aiTargetPlayers.length === 0) {
@@ -1263,13 +1283,15 @@ export function evaluateTradePackage(
     Boolean(shockBargainIds?.has(p.id)),
   );
 
-  // Anti-Cheese Star Quality Penalty (waived when targeting a Shock Bargain fire-sale player!)
+  // Anti-Cheese Star Quality Penalty (waived on Shock Bargains; large €80M+ cash relaxes OVR-7 guard by 1)
   const maxAiTargetOvr = Math.max(...aiTargetPlayers.map((p) => p.ovr));
   const maxUserSentOvr = Math.max(...userSentPlayers.map((p) => p.ovr));
+  const starOvrGapLimit =
+    safeCashOfferM >= CASH_STAR_GUARD_RELIEF_THRESHOLD_M ? 8 : 7;
   const starQualityMismatch =
     !hasShockBargainTarget &&
     maxAiTargetOvr >= 87 &&
-    maxUserSentOvr < maxAiTargetOvr - 7;
+    maxUserSentOvr < maxAiTargetOvr - starOvrGapLimit;
 
   // Prestige & standing gentle shift
   let prestigeShift = 0;
@@ -1329,25 +1351,26 @@ export function evaluateTradePackage(
   let gmReaction: string;
   if (starQualityMismatch) {
     gmTone = 'offended';
-    gmReaction = `${aiClub.shortName} 단장: "기적이라도 바라시는 겁니까? ${topTarget.name}급 슈퍼스타를 영입하려면 OVR ${maxAiTargetOvr - 7}+ 핵심 선수가 필요합니다. (극저확률 도전은 가능)"`;
+    gmReaction = `${aiClub.shortName} 단장: "기적이라도 바라시는 겁니까? ${topTarget.name}급 슈퍼스타를 영입하려면 OVR ${maxAiTargetOvr - starOvrGapLimit}+ 핵심 선수가 필요합니다. (극저확률 도전은 가능)"`;
   } else if (hasShockBargainTarget && acceptanceChance >= 55) {
     gmTone = 'eager';
     gmReaction = `${aiClub.shortName} 단장: "🚨 보드진에서 ${topTarget.name} 긴급 처분을 지시했습니다. 솔직히 우리 손해라는 건 알지만, 구단 리빌딩을 위해 ${topSent.name} 카드만 주신다면 바로 서명하겠습니다!"`;
   } else if (acceptanceChance >= 76) {
     gmTone = 'eager';
+    const cashNote = safeCashOfferM > 0 ? ` 현금 €${safeCashOfferM}M까지 얹어주시니` : '';
     gmReaction = fillsTopNeed
-      ? `${aiClub.shortName} 단장: "딱 우리가 찾던 ${POS_LABEL_KO[topSent.position]} 최우선 보강 카드입니다! ${topSent.name} 포함 패키지라면 당장 서명하고 싶네요."`
-      : `${aiClub.shortName} 단장: "매우 매력적인 제안입니다. 이 조건이라면 이사회 승인이 거의 확실합니다!"`;
+      ? `${aiClub.shortName} 단장: "딱 우리가 찾던 ${POS_LABEL_KO[topSent.position]} 최우선 보강 카드입니다!${cashNote} ${topSent.name} 포함 패키지라면 당장 서명하고 싶네요."`
+      : `${aiClub.shortName} 단장: "${safeCashOfferM > 0 ? `현금 €${safeCashOfferM}M이 포함된 ` : ''}매우 매력적인 제안입니다. 이 조건이라면 이사회 승인이 거의 확실합니다!"`;
   } else if (acceptanceChance >= 48) {
     gmTone = 'considering';
     gmReaction = fillsTopNeed
       ? `${aiClub.shortName} 단장: "${topSent.name}이(가) 우리 취약 포지션에 잘 맞긴 한데, ${topTarget.name}을(를) 내주기엔 조금 더 고민이 필요합니다."`
-      : `${aiClub.shortName} 단장: "나쁘지 않은 테이블입니다. 다만 우리가 급한 ${POS_LABEL_KO[aiNeeds.neededPositions[0] ?? 'MF']} 자원이 포함되면 확률이 크게 올라갈 겁니다."`;
+      : `${aiClub.shortName} 단장: "나쁘지 않은 테이블입니다. 다만 우리가 급한 ${POS_LABEL_KO[aiNeeds.neededPositions[0] ?? 'MF']} 자원이나 현금이 보태지면 확률이 크게 올라갈 겁니다."`;
   } else if (acceptanceChance >= 18) {
     gmTone = 'hesitant';
     gmReaction = allSaturated
       ? `${aiClub.shortName} 단장: "${POS_LABEL_KO[topSent.position]} 자원은 이미 포화 상태입니다. 우리가 시급한 ${POS_LABEL_KO[aiNeeds.neededPositions[0] ?? 'MF']} 포지션 선수를 제시해 주세요."`
-      : `${aiClub.shortName} 단장: "${topTarget.name}의 위상을 생각하면 아직 가치가 부족합니다. 더 확실한 주전급 카드나 필요 포지션 선수를 보태주세요."`;
+      : `${aiClub.shortName} 단장: "${topTarget.name}의 위상을 생각하면 아직 가치가 부족합니다. 더 확실한 주전급 카드나 현금을 보태주세요."`;
   } else {
     gmTone = 'offended';
     gmReaction = `${aiClub.shortName} 단장: "솔직히 일방적인 조건입니다. 성사되려면 기적에 가까우니 더 진지한 패키지를 권해드립니다."`;
@@ -1366,6 +1389,8 @@ export function evaluateTradePackage(
     aiValuations,
     requiredAutoFillers,
     requiredUserReleaseCount,
+    cashOfferM: safeCashOfferM,
+    cashTp,
   };
 }
 

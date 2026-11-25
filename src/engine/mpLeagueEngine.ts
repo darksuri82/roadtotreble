@@ -2,7 +2,11 @@ import { FORMATIONS } from '../data/formations';
 import { pickNextManagerEvent, resolveManagerEventChoice } from '../data/managerEvents';
 import type { InjuryAlertItem, PlayerConditionMap } from '../types/condition';
 import type { CupStageId, DomesticCupState } from '../types/cup';
-import type { IncomingTradeOffer, TransferClubOffer } from '../types/game';
+import type {
+  IncomingTradeOffer,
+  StaffCoachId,
+  TransferClubOffer,
+} from '../types/game';
 import type {
   Club,
   Fixture,
@@ -30,7 +34,12 @@ import type {
 } from '../types/mpLeague';
 import type { Player, SubPosition } from '../types/player';
 import type { UclKnockoutStage, UclKnockoutTie, UclPhaseStage } from '../types/ucl';
+import {
+  applyAwakeningToPlayer,
+  evaluatePostMatchAwakening,
+} from './awakeningEngine';
 import { computeSeasonAwards } from './awardsEngine';
+import { createSeasonBudgetState, deductTransferCash } from './budgetEngine';
 import { calculateChemistry, calculateTeamRatings } from './chemistryEngine';
 import {
   applyConditionToPlayers,
@@ -59,10 +68,19 @@ import {
 import { evaluatePositionFit } from './positionEngine';
 import { generateDoubleRoundRobin } from './scheduleEngine';
 import {
+  createInitialStaffCoachState,
+  evaluateStaffCoachEffect,
+  rollMidSeasonStaffCoachOffers,
+} from './staffCoachEngine';
+import {
   applyRoundResults,
   createInitialPlayerStatsMap,
   createInitialStandings,
 } from './standingsEngine';
+import {
+  createInitialTacticalAdaptationState,
+  recordMatchTacticalAdaptation,
+} from './tacticalAdaptationEngine';
 import {
   analyzeClubPositionNeeds,
   ATTEMPTS_PER_WINDOW,
@@ -172,16 +190,36 @@ export function buildHumanMatchSetup(params: {
   competition: 'league' | 'cup' | 'ucl';
   opponentRank?: number;
   allowAutoSubs?: boolean;
+  humanSeason?: MpHumanSeasonState;
 }): MpHumanMatchSetup {
-  const { human, squad, conditions, teamMorale, competition, opponentRank } = params;
-  const lineup = resolveAvailableLineup(squad, conditions);
+  const { human, squad, conditions, teamMorale, competition, opponentRank, humanSeason } = params;
+  const awakenedMap = humanSeason?.awakenedPlayers;
+  const applyAwakened = (list: Player[]) =>
+    awakenedMap && Object.keys(awakenedMap).length > 0
+      ? list.map((p) => {
+          const rec = awakenedMap[p.id];
+          return rec && !p.awakening ? applyAwakeningToPlayer(p, rec) : p;
+        })
+      : list;
+  const hydratedSquad: MpSquadInput = awakenedMap
+    ? {
+        ...squad,
+        starters: applyAwakened(squad.starters),
+        bench: applyAwakened(squad.bench),
+      }
+    : squad;
+  const lineup = resolveAvailableLineup(hydratedSquad, conditions);
   const effStarters = applyConditionToPlayers(lineup.starters, conditions, teamMorale);
   const effBench = applyConditionToPlayers(lineup.bench, conditions, teamMorale);
+  const staffCoachId = humanSeason?.staffCoach?.hiredCoachId ?? null;
+  const ffpChemPenalty = humanSeason?.budget?.chemPenalty ?? 0;
   const chem = calculateChemistry(
     squad.formation,
     effStarters,
     squad.tactic,
     human.managerTraitId,
+    undefined,
+    { staffCoachId, ffpChemPenalty },
   );
   const ratings = calculateTeamRatings(
     squad.formation,
@@ -190,6 +228,7 @@ export function buildHumanMatchSetup(params: {
     human.managerTraitId,
     chem.slotSynergies,
     squad.tactic,
+    staffCoachId,
   );
   const top3 = [...effStarters]
     .sort((a, b) => b.att - a.att)
@@ -224,6 +263,8 @@ export function buildHumanMatchSetup(params: {
       ratings,
       slotSynergies: chem.slotSynergies,
       managerTraitId: human.managerTraitId,
+      staffCoachId,
+      tacticalHistory: humanSeason?.tacticalAdaptation?.history,
       competition,
       opponentRank,
       allowAutoSubs: params.allowAutoSubs ?? true,
@@ -260,7 +301,7 @@ function outcomeOf(result: MatchResult, clubId: string): 'W' | 'D' | 'L' {
   return 'D';
 }
 
-function emptyHumanSeason(): MpHumanSeasonState {
+function emptyHumanSeason(squad?: MpSquadInput): MpHumanSeasonState {
   return {
     events: createDefaultManagerEventsState(),
     alerts: [],
@@ -271,6 +312,11 @@ function emptyHumanSeason(): MpHumanSeasonState {
     attemptsLeft: 0,
     tradeNote: null,
     lastMatch: null,
+    budget: squad ? createSeasonBudgetState(squadPlayers(squad)) : undefined,
+    tacticalAdaptation: createInitialTacticalAdaptationState(),
+    staffCoach: createInitialStaffCoachState(),
+    awakenedPlayers: {},
+    pendingAwakeningAlerts: [],
   };
 }
 
@@ -315,6 +361,9 @@ export function createMpLeagueSeason(params: {
     .slice(0, humans.length);
   const replaceIds = weakest.map((c) => c.id);
 
+  const perHuman: Record<string, MpHumanSeasonState> = {};
+  for (const h of humans) perHuman[h.clubId] = emptyHumanSeason(squads[h.clubId]);
+
   const humanClubs = humans.map(
     (h) =>
       buildHumanMatchSetup({
@@ -323,6 +372,7 @@ export function createMpLeagueSeason(params: {
         conditions,
         teamMorale: 0,
         competition: 'league',
+        humanSeason: perHuman[h.clubId],
       }).club,
   );
 
@@ -362,9 +412,6 @@ export function createMpLeagueSeason(params: {
     humans[0].clubId,
   );
   cup = ensureHumansInCup(cup, humans, rng);
-
-  const perHuman: Record<string, MpHumanSeasonState> = {};
-  for (const h of humans) perHuman[h.clubId] = emptyHumanSeason();
 
   return {
     version: 1,
@@ -532,6 +579,10 @@ function applyPostHumanMatch(params: {
   const nextWinStreak = outcome === 'W' ? prev.events.recentWinStreak + 1 : 0;
   const nextLossStreak = outcome === 'L' ? prev.events.recentLossStreak + 1 : 0;
 
+  const staffCoachId = prev.staffCoach?.hiredCoachId ?? null;
+  const staffEffect = evaluateStaffCoachEffect(staffCoachId, squad.tactic);
+  const extraLossMoraleDrop = prev.budget?.extraLossMoraleDrop ?? 0;
+
   const update = updateSquadConditionsAfterMatch({
     squad: [...setup.rawStarters, ...setup.rawBench],
     starterIds,
@@ -556,9 +607,58 @@ function applyPostHumanMatch(params: {
     teamLossStreak: nextLossStreak,
     trackUserAlerts: true,
     starterSlotIndexByPlayerId,
+    extraLossMoraleDrop,
+    moraleLossDefense: staffEffect.moraleLossDefense,
     rng,
   });
   Object.assign(conditions, update.conditionMap);
+
+  const nextTacticalAdaptation = recordMatchTacticalAdaptation({
+    prev: prev.tacticalAdaptation,
+    round,
+    competition,
+    formation: squad.formation,
+    tactic: squad.tactic,
+    staffCoachId,
+  });
+
+  const prevAwakened = prev.awakenedPlayers ?? {};
+  let nextAwakenedPlayers = prevAwakened;
+  let nextPendingAwakeningAlerts = prev.pendingAwakeningAlerts ?? [];
+  const awakeningResult = evaluatePostMatchAwakening({
+    starters: setup.rawStarters,
+    bench: setup.rawBench,
+    matchPlayedNumber: prev.history.length + 1,
+    round,
+    competition,
+    ratingsByPlayerId,
+    goalsByPlayerId,
+    assistsByPlayerId,
+    minutesByPlayerId,
+    cleanSheet: ga === 0,
+    allPlayerStats: state.allPlayerStats,
+    slotSynergies: setup.ctx.slotSynergies,
+    conditionMap: conditions,
+    managerTraitId: human.managerTraitId,
+    staffCoachId,
+    existingAwakenedPlayers: prevAwakened,
+    rng,
+  });
+  if (
+    awakeningResult.triggered &&
+    awakeningResult.awakenedPlayer &&
+    awakeningResult.record &&
+    awakeningResult.alert
+  ) {
+    nextAwakenedPlayers = {
+      ...prevAwakened,
+      [awakeningResult.awakenedPlayer.id]: awakeningResult.record,
+    };
+    nextPendingAwakeningAlerts = [
+      ...nextPendingAwakeningAlerts,
+      awakeningResult.alert,
+    ];
+  }
 
   let baseMorale = prev.events.teamMorale;
   if (baseMorale >= 4 && update.teamMoraleDelta <= 0) baseMorale = 3;
@@ -587,6 +687,9 @@ function applyPostHumanMatch(params: {
     history: [...prev.history, lite],
     uclHistory: competition === 'ucl' ? [...prev.uclHistory, lite] : prev.uclHistory,
     lastMatch: result,
+    tacticalAdaptation: nextTacticalAdaptation,
+    awakenedPlayers: nextAwakenedPlayers,
+    pendingAwakeningAlerts: nextPendingAwakeningAlerts,
   };
 }
 
@@ -649,6 +752,7 @@ function simulateHumanVsAi(params: {
     teamMorale: state.perHuman[human.clubId]?.events.teamMorale ?? 0,
     competition,
     opponentRank: params.opponentRank,
+    humanSeason: state.perHuman[human.clubId],
   });
   const prep = prepareAiClubLineupForMatch({
     club: aiClub,
@@ -721,6 +825,7 @@ function buildH2HSetups(
         conditions,
         teamMorale: state.perHuman[clubId]?.events.teamMorale ?? 0,
         competition,
+        humanSeason: state.perHuman[clubId],
       }),
     });
   }
@@ -751,6 +856,7 @@ function refreshHumanClubs(
       conditions,
       teamMorale: state.perHuman[c.id]?.events.teamMorale ?? 0,
       competition: 'league',
+      humanSeason: state.perHuman[c.id],
     }).club;
   });
 }
@@ -1520,12 +1626,42 @@ function stepTransfer(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
       }
     }
 
+    const isWindow2 = trigger.windowIndex === 2;
+    const ffpTier = hs.budget?.ffpTier ?? 0;
+    const ffpEmbargo = isWindow2 && ffpTier === 2;
+    const attemptsLeft = isWindow2
+      ? (hs.budget?.window2MaxAttempts ?? ATTEMPTS_PER_WINDOW)
+      : ATTEMPTS_PER_WINDOW;
+
+    let nextStaffCoach = hs.staffCoach;
+    if (
+      isWindow2 &&
+      !hs.staffCoach?.completed &&
+      !hs.staffCoach?.pendingSelection
+    ) {
+      const offeredCoachIds = rollMidSeasonStaffCoachOffers({
+        activeTactic: env.squads[human.clubId]?.tactic ?? 'balanced',
+        rng,
+      });
+      nextStaffCoach = {
+        ...(hs.staffCoach ?? createInitialStaffCoachState()),
+        offeredCoachIds,
+        pendingSelection: true,
+      };
+    }
+
     perHuman[human.clubId] = {
       ...hs,
-      offers,
-      offerClubs,
-      attemptsLeft: ATTEMPTS_PER_WINDOW,
-      tradeNote: null,
+      offers: ffpEmbargo ? [] : offers,
+      offerClubs: ffpEmbargo ? {} : offerClubs,
+      attemptsLeft,
+      tradeNote: ffpEmbargo
+        ? {
+            success: false,
+            message: 'FFP 2단계 징계로 2차 이적시장 선수 영입이 동결되었습니다.',
+          }
+        : null,
+      ...(nextStaffCoach ? { staffCoach: nextStaffCoach } : {}),
     };
   }
 
@@ -1740,6 +1876,7 @@ export function submitMpLeagueTrade(params: {
   userSentPlayerIds?: string[];
   aiTargetPlayerIds?: string[];
   aiFillerPlayerIds?: string[];
+  cashOfferM?: number;
 }): MpTradeOutcome {
   const {
     state,
@@ -1750,6 +1887,7 @@ export function submitMpLeagueTrade(params: {
     userSentPlayerIds,
     aiTargetPlayerIds,
     aiFillerPlayerIds,
+    cashOfferM = 0,
   } = params;
   const rng = env.rng ?? Math.random;
   const human = humanById(state, clubId);
@@ -1768,6 +1906,12 @@ export function submitMpLeagueTrade(params: {
   if (!offer) return fail('이미 처리된 제안입니다.');
   if (hs.attemptsLeft <= 0) return fail('이번 이적시장의 협상 기회를 모두 사용했습니다.');
 
+  const availableCashM = hs.budget?.transferCashM ?? 0;
+  const safeCashOfferM = Math.max(
+    0,
+    Math.min(Math.round(cashOfferM), availableCashM),
+  );
+
   const mySquad = squadPlayers(squad);
   const isPackageCounter = Boolean(
     userSentPlayerIds && userSentPlayerIds.length > 0,
@@ -1777,7 +1921,7 @@ export function submitMpLeagueTrade(params: {
       sendPlayerId &&
       sendPlayerId !== offer.userRequestedPlayers[0]?.id,
   );
-  const isCounter = isPackageCounter || isLegacyCounter;
+  const isCounter = isPackageCounter || isLegacyCounter || safeCashOfferM > 0;
 
   const sentIds = isPackageCounter
     ? Array.from(new Set(userSentPlayerIds!))
@@ -1874,6 +2018,7 @@ export function submitMpLeagueTrade(params: {
               .map((t) => t.player.id),
           )
         : undefined,
+      cashOfferM: safeCashOfferM,
     });
     if (evaluation.blockedReason) return fail(evaluation.blockedReason);
     probability = evaluation.acceptanceChance;
@@ -1902,12 +2047,17 @@ export function submitMpLeagueTrade(params: {
   });
   const sentLabel = sentPlayers.map((p) => p.name).join('·');
   const inLabel = targetPlayers.map((p) => p.name).join('·');
+  const cashSuffix = safeCashOfferM > 0 ? ` + €${safeCashOfferM}M` : '';
   const note: MpTradeResultNote = {
     success: true,
     probability,
-    message: `${sentLabel} ↔ ${inLabel} 트레이드 성사 (${offer.club.name})`,
+    message: `${sentLabel}${cashSuffix} ↔ ${inLabel} 트레이드 성사 (${offer.club.name})`,
   };
   const nextHs = traded.state.perHuman[clubId];
+  const nextBudget =
+    safeCashOfferM > 0 && nextHs.budget
+      ? deductTransferCash(nextHs.budget, safeCashOfferM)
+      : nextHs.budget;
   return {
     squad: traded.squad,
     note,
@@ -1917,10 +2067,99 @@ export function submitMpLeagueTrade(params: {
         ...traded.state.perHuman,
         [clubId]: {
           ...nextHs,
+          ...(nextBudget ? { budget: nextBudget } : {}),
           offers: markOffer(nextHs, offerId, 'accepted'),
           attemptsLeft: Math.max(0, nextHs.attemptsLeft - 1),
           tradeNote: note,
         },
+      },
+    },
+  };
+}
+
+export function hireMpLeagueStaffCoach(
+  state: MpLeagueHostState,
+  clubId: string,
+  coachId: StaffCoachId,
+): MpLeagueHostState {
+  const hs = state.perHuman[clubId];
+  const sc = hs?.staffCoach;
+  if (!hs || !sc || !sc.pendingSelection || sc.completed) return state;
+  if (!sc.offeredCoachIds.includes(coachId)) return state;
+  return {
+    ...state,
+    perHuman: {
+      ...state.perHuman,
+      [clubId]: {
+        ...hs,
+        staffCoach: {
+          ...sc,
+          hiredCoachId: coachId,
+          pendingSelection: false,
+          completed: true,
+        },
+      },
+    },
+  };
+}
+
+export function skipMpLeagueStaffCoach(
+  state: MpLeagueHostState,
+  clubId: string,
+): MpLeagueHostState {
+  const hs = state.perHuman[clubId];
+  const sc = hs?.staffCoach;
+  if (!hs || !sc || !sc.pendingSelection) return state;
+  return {
+    ...state,
+    perHuman: {
+      ...state.perHuman,
+      [clubId]: {
+        ...hs,
+        staffCoach: {
+          ...sc,
+          pendingSelection: false,
+          completed: true,
+        },
+      },
+    },
+  };
+}
+
+export function dismissMpLeagueAdaptationAlert(
+  state: MpLeagueHostState,
+  clubId: string,
+): MpLeagueHostState {
+  const hs = state.perHuman[clubId];
+  if (!hs?.tacticalAdaptation?.pendingAlert) return state;
+  return {
+    ...state,
+    perHuman: {
+      ...state.perHuman,
+      [clubId]: {
+        ...hs,
+        tacticalAdaptation: {
+          ...hs.tacticalAdaptation,
+          pendingAlert: null,
+        },
+      },
+    },
+  };
+}
+
+export function dismissMpLeagueAwakeningAlert(
+  state: MpLeagueHostState,
+  clubId: string,
+): MpLeagueHostState {
+  const hs = state.perHuman[clubId];
+  if (!hs?.pendingAwakeningAlerts?.length) return state;
+  return {
+    ...state,
+    perHuman: {
+      ...state.perHuman,
+      [clubId]: {
+        ...hs,
+        pendingAwakeningAlerts: hs.pendingAwakeningAlerts.slice(1),
       },
     },
   };
@@ -2956,6 +3195,11 @@ export function buildMpLeagueLive(
           ? nextFixture.awayTeamId
           : nextFixture.homeTeamId
         : null,
+      budget: hs.budget,
+      tacticalAdaptation: hs.tacticalAdaptation,
+      staffCoach: hs.staffCoach,
+      awakenedPlayers: hs.awakenedPlayers,
+      pendingAwakeningAlerts: hs.pendingAwakeningAlerts,
     };
   }
 

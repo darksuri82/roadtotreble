@@ -16,6 +16,7 @@ import { LEAGUE_LABELS } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
+import { computePlayerDraftCostM } from '../../engine/budgetEngine';
 import { PlayerCard } from '../common/PlayerCard';
 
 interface RouletteReelsViewProps {
@@ -549,6 +550,7 @@ export function RouletteReelsView({
                           disableConfirmAction={!canPick}
                           disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
                           expectedLinkCount={expectedLinksByPlayerId?.[player.id]}
+                          draftCostM={computePlayerDraftCostM(player)}
                           onClick={() => handleCandidateCardClick(player)}
                           onConfirmAction={() => handleConfirmPick(player)}
                           actionLabel={pickActionLabel}
@@ -576,6 +578,7 @@ export function RouletteReelsView({
                             disableConfirmAction={!canPick}
                             disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
                             expectedLinkCount={expectedLinksByPlayerId?.[player.id]}
+                            draftCostM={computePlayerDraftCostM(player)}
                             onClick={() => handleCandidateCardClick(player)}
                             onConfirmAction={() => handleConfirmPick(player)}
                             actionLabel={pickActionLabel}

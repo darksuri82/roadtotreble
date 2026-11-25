@@ -28,6 +28,7 @@ import { getNextTransferWindowRound } from '../../../engine/transferEngine';
 import { UCL_STAGE_LABELS } from '../../../engine/uclEngine';
 import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
 import type { DomesticCupState } from '../../../types/cup';
+import type { StaffCoachId } from '../../../types/game';
 import type { Club, LeagueId, PlayerSeasonStats, StandingRow } from '../../../types/league';
 import type {
   MpH2HRecord,
@@ -45,6 +46,7 @@ import type { MpRoomPlayerRow } from '../../../types/multiplayer';
 import type { Player } from '../../../types/player';
 import type { UclKnockoutStage } from '../../../types/ucl';
 import { resolvePlayerById } from '../../../utils/playerLookup';
+import { AwakeningCelebrationModal } from '../../common/AwakeningCelebrationModal';
 import { ClubSquadModal } from '../../common/ClubSquadModal';
 import { InfoHelpButton } from '../../common/InfoHelpButton';
 import { InjuryAlertModal } from '../../common/InjuryAlertModal';
@@ -53,6 +55,9 @@ import type { SlotRef } from '../../common/PitchBoard';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../../common/PlayerDetailModal';
+import { StaffCoachBadge } from '../../common/StaffCoachBadge';
+import { StaffCoachHireModal } from '../../common/StaffCoachHireModal';
+import { TacticalAdaptationModal } from '../../common/TacticalAdaptationModal';
 import { CupBracketView } from '../../league/CupBracketView';
 import { LeagueLeadersSideCard } from '../../league/LeagueLeadersSideCard';
 import { StandingsTable } from '../../league/StandingsTable';
@@ -166,6 +171,10 @@ interface MpLeagueDashboardProps {
   onTradeAccept: (offerId: string) => void;
   onTradeReject: (offerId: string) => void;
   onTradeCounter: (payload: MpCounterTradePayload) => void;
+  onHireStaffCoach?: (coachId: StaffCoachId) => void;
+  onSkipStaffCoach?: () => void;
+  onDismissAdaptationAlert?: () => void;
+  onDismissAwakeningAlert?: () => void;
   onSetAutoMs: (ms: number) => void;
   onForceResume: () => void;
   onLeaveRoom: () => void;
@@ -383,6 +392,10 @@ export function MpLeagueDashboard({
   onTradeAccept,
   onTradeReject,
   onTradeCounter,
+  onHireStaffCoach,
+  onSkipStaffCoach,
+  onDismissAdaptationAlert,
+  onDismissAwakeningAlert,
   onSetAutoMs,
   onForceResume,
   onLeaveRoom,
@@ -504,6 +517,10 @@ export function MpLeagueDashboard({
 
   const mine: MpHumanLive | null = myClubId ? live.byClub[myClubId] ?? null : null;
 
+  const ffpChemPenalty =
+    mine?.budget && mine.budget.ffpTier >= 1 ? 4 : 0;
+  const hiredStaffCoachId = mine?.staffCoach?.hiredCoachId ?? null;
+
   const chemistry = useMemo(
     () =>
       mySquad
@@ -512,9 +529,10 @@ export function MpLeagueDashboard({
             mySquad.starters,
             mySquad.tactic,
             mySquad.managerTraitId,
+            ffpChemPenalty,
           )
         : null,
-    [mySquad],
+    [mySquad, ffpChemPenalty],
   );
   const ratings = useMemo(
     () =>
@@ -526,9 +544,10 @@ export function MpLeagueDashboard({
             mySquad.managerTraitId,
             chemistry.slotSynergies,
             mySquad.tactic,
+            hiredStaffCoachId,
           )
         : null,
-    [mySquad, chemistry],
+    [mySquad, chemistry, hiredStaffCoachId],
   );
 
   const publicSquads = useMemo(() => {
@@ -1081,10 +1100,34 @@ export function MpLeagueDashboard({
                 </span>
               )}
               {!isUclStage && nextTransferRound !== null && (
-                <span className="inline-flex items-center gap-0.5 text-amber-300/90">
+                <span className="inline-flex items-center gap-0.5 text-amber-300/90 whitespace-nowrap">
                   <Calendar className="w-3 h-3" />
                   이적 {nextTransferRound}R
                 </span>
+              )}
+              {mine?.budget && (
+                <span
+                  className={`inline-flex items-center rounded border px-1.5 py-px text-[10px] font-bold whitespace-nowrap tabular-nums ${
+                    mine.budget.ffpTier === 2
+                      ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
+                      : mine.budget.ffpTier === 1
+                        ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                  }`}
+                >
+                  {mine.budget.ffpTier === 2
+                    ? 'FFP 2단계'
+                    : mine.budget.ffpTier === 1
+                      ? 'FFP 1단계'
+                      : `자금 €${mine.budget.transferCashM}M`}
+                </span>
+              )}
+              {hiredStaffCoachId && mySquad && (
+                <StaffCoachBadge
+                  coachId={hiredStaffCoachId}
+                  activeTactic={mySquad.tactic}
+                  compact
+                />
               )}
             </div>
           </div>
@@ -2166,31 +2209,91 @@ export function MpLeagueDashboard({
           />
         )}
 
-      {showTransfer && mine && mySquad && flow.kind === 'transfer' && (
-        <MpLeagueTransferModal
-          windowIndex={live.transferWindowIndex ?? 1}
-          offers={mine.offers}
-          offerClubs={mine.offerClubs}
-          attemptsLeft={mine.attemptsLeft}
-          tradeNote={mine.tradeNote}
-          myStarters={mySquad.starters}
-          myBench={mySquad.bench}
-          myFormation={mySquad.formation}
-          myTactic={mySquad.tactic}
-          managerTraitId={mySquad.managerTraitId}
-          myRank={myRank}
-          leagueSize={live.standings.length || 20}
-          conditionMap={mine.conditions}
-          busy={actionBusy}
-          done={transferDone}
-          waitingNames={transferWaiting}
-          onAccept={onTradeAccept}
-          onReject={onTradeReject}
-          onCounter={onTradeCounter}
-          onSaveSquad={onSaveSquad}
-          onFinish={() => onAck(flow.key)}
-        />
-      )}
+      {mine &&
+        mine.staffCoach?.pendingSelection &&
+        mine.staffCoach.offeredCoachIds.length > 0 &&
+        mySquad &&
+        !tickerPlaying &&
+        !showSummary &&
+        !showCupChampion &&
+        !cupPending && (
+          <StaffCoachHireModal
+            offeredCoachIds={mine.staffCoach.offeredCoachIds}
+            activeTactic={mySquad.tactic}
+            onHire={(coachId) => onHireStaffCoach?.(coachId)}
+            onSkip={() => onSkipStaffCoach?.()}
+          />
+        )}
+
+      {showTransfer &&
+        mine &&
+        mySquad &&
+        flow.kind === 'transfer' &&
+        !mine.staffCoach?.pendingSelection && (
+          <MpLeagueTransferModal
+            windowIndex={live.transferWindowIndex ?? 1}
+            offers={mine.offers}
+            offerClubs={mine.offerClubs}
+            attemptsLeft={mine.attemptsLeft}
+            tradeNote={mine.tradeNote}
+            myStarters={mySquad.starters}
+            myBench={mySquad.bench}
+            myFormation={mySquad.formation}
+            myTactic={mySquad.tactic}
+            managerTraitId={mySquad.managerTraitId}
+            myRank={myRank}
+            leagueSize={live.standings.length || 20}
+            conditionMap={mine.conditions}
+            availableCashM={mine.budget?.transferCashM ?? 0}
+            ffpTier={mine.budget?.ffpTier ?? 0}
+            busy={actionBusy}
+            done={transferDone}
+            waitingNames={transferWaiting}
+            onAccept={onTradeAccept}
+            onReject={onTradeReject}
+            onCounter={onTradeCounter}
+            onSaveSquad={onSaveSquad}
+            onFinish={() => onAck(flow.key)}
+          />
+        )}
+
+      {mine &&
+        mine.pendingAwakeningAlerts &&
+        mine.pendingAwakeningAlerts.length > 0 &&
+        !tickerPlaying &&
+        !mine.staffCoach?.pendingSelection &&
+        !showTransfer &&
+        !showSummary &&
+        !showCupChampion &&
+        !cupPending &&
+        !mine.event &&
+        mine.alerts.length === 0 && (
+          <AwakeningCelebrationModal
+            alert={mine.pendingAwakeningAlerts[0]}
+            onDismiss={() => onDismissAwakeningAlert?.()}
+          />
+        )}
+
+      {mine &&
+        mine.tacticalAdaptation?.pendingAlert &&
+        !(mine.pendingAwakeningAlerts && mine.pendingAwakeningAlerts.length > 0) &&
+        !tickerPlaying &&
+        !mine.staffCoach?.pendingSelection &&
+        !showTransfer &&
+        !showSummary &&
+        !showCupChampion &&
+        !cupPending &&
+        !mine.event &&
+        mine.alerts.length === 0 && (
+          <TacticalAdaptationModal
+            alert={mine.tacticalAdaptation.pendingAlert}
+            onDismiss={() => onDismissAdaptationAlert?.()}
+            onGoToTactics={() => {
+              onDismissAdaptationAlert?.();
+              onOpenEditor();
+            }}
+          />
+        )}
 
       {showLpTable && uclView && (
         <UclLeaguePhaseStandingsModal

@@ -21,7 +21,19 @@ import {
 } from '../data/managerTraits';
 import { mergePlayerStatsMaps } from '../engine/analyticsEngine';
 import { getPlayerAttributes } from '../engine/attributeEngine';
+import {
+  applyAwakeningToPlayer,
+  AWAKENING_MAX_VALID_PER_TEAM,
+  evaluatePostMatchAwakening,
+  isValidAwakeningRecord,
+} from '../engine/awakeningEngine';
 import { computeGlobalSeasonAwards, computeSeasonAwards } from '../engine/awardsEngine';
+import {
+  computeCashLegendChanceBonus,
+  createDefaultSeasonBudgetState,
+  createSeasonBudgetState,
+  deductTransferCash,
+} from '../engine/budgetEngine';
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
 import {
   applyConditionToPlayers,
@@ -98,6 +110,11 @@ import {
 } from '../engine/phase2Bridge';
 import { evaluatePositionFit } from '../engine/positionEngine';
 import { generateDoubleRoundRobin } from '../engine/scheduleEngine';
+import {
+  createInitialStaffCoachState,
+  evaluateStaffCoachEffect,
+  rollMidSeasonStaffCoachOffers,
+} from '../engine/staffCoachEngine';
 import { MAX_MATCH_SUBS } from '../engine/staminaEngine';
 import {
   applyRoundResults,
@@ -106,6 +123,10 @@ import {
   getUserRank,
   normalizeLegacyPlayerStatsMap,
 } from '../engine/standingsEngine';
+import {
+  createInitialTacticalAdaptationState,
+  recordMatchTacticalAdaptation,
+} from '../engine/tacticalAdaptationEngine';
 import { evaluateTeamTacticalProfile } from '../engine/unifiedTacticsEngine';
 import {
   analyzeClubPositionNeeds,
@@ -140,12 +161,15 @@ import type {
 import {
   DEFAULT_MANAGER_AVATAR,
   DEFAULT_MANAGER_NAME,
+  type AwakeningAlertItem,
   type ChemistryResult,
   type FormationId,
   type GameState,
   type ManagerAvatarConfig,
   type ManagerTraitId,
   type SeasonState,
+  type StaffCoachId,
+  type TacticalAdaptationState,
   type TeamRatings,
   type TransferTargetPlayer,
   type UserClubProfile,
@@ -168,7 +192,7 @@ import {
   type LegacyStorageState,
   type SeasonAchievementTrackers,
 } from '../types/legacy';
-import type { Player } from '../types/player';
+import type { Player, PlayerAwakeningRecord } from '../types/player';
 import {
   hasCelebratedGlobalTop15,
   markGlobalTop15Celebrated,
@@ -358,11 +382,57 @@ function findNextOpponentInfo(
   return { name: '다음 상대팀', rank: 8, isCupOrUcl: false };
 }
 
+function computeUserChemAndRatings(params: {
+  formation: FormationId;
+  starters: (Player | null)[];
+  tactic: TacticId;
+  managerTraitId: ManagerTraitId | null;
+  season?: SeasonState | null;
+}) {
+  const staffCoachId = params.season?.staffCoach?.hiredCoachId ?? null;
+  const ffpChemPenalty = params.season?.budgetState?.chemPenalty ?? 0;
+  const chem = calculateChemistry(
+    params.formation,
+    params.starters,
+    params.tactic,
+    params.managerTraitId,
+    undefined,
+    { staffCoachId, ffpChemPenalty },
+  );
+  const ratings = calculateTeamRatings(
+    params.formation,
+    params.starters,
+    chem.total,
+    params.managerTraitId,
+    chem.slotSynergies,
+    params.tactic,
+    staffCoachId,
+  );
+  return { chem, ratings, staffCoachId };
+}
+
+function applyAwakenedPlayersToSlots(
+  slots: (Player | null)[],
+  awakenedMap: Record<string, PlayerAwakeningRecord> | undefined,
+): (Player | null)[] {
+  if (!awakenedMap || Object.keys(awakenedMap).length === 0) return slots;
+  let changed = false;
+  const next = slots.map((p) => {
+    if (!p) return null;
+    const rec = awakenedMap[p.id];
+    if (!rec || p.awakening) return p;
+    changed = true;
+    return applyAwakeningToPlayer(p, rec);
+  });
+  return changed ? next : slots;
+}
+
 function applyPostUserMatchConditionAndEvents(params: {
   season: SeasonState;
   workingConditions: PlayerConditionMap;
   formation: FormationId;
   tactic: TacticId;
+  managerTraitId?: ManagerTraitId | null;
   starters: (Player | null)[];
   bench: (Player | null)[];
   userMatchResult: MatchResult | null;
@@ -378,12 +448,16 @@ function applyPostUserMatchConditionAndEvents(params: {
   playerConditions: PlayerConditionMap;
   managerEvents: ManagerEventsState;
   pendingInjuryAlerts: InjuryAlertItem[];
+  tacticalAdaptation: TacticalAdaptationState;
+  awakenedPlayers: Record<string, PlayerAwakeningRecord>;
+  pendingAwakeningAlerts: AwakeningAlertItem[];
 } {
   const {
     season,
     workingConditions,
     formation,
     tactic,
+    managerTraitId = null,
     starters,
     bench,
     userMatchResult,
@@ -399,6 +473,10 @@ function applyPostUserMatchConditionAndEvents(params: {
 
   const prevEvents = season.managerEvents ?? createDefaultManagerEventsState();
   const prevAlerts = season.pendingInjuryAlerts ?? [];
+  const prevAdaptation =
+    season.tacticalAdaptation ?? createInitialTacticalAdaptationState();
+  const prevAwakened = season.awakenedPlayers ?? {};
+  const prevAwakeningAlerts = season.pendingAwakeningAlerts ?? [];
   const filledStarters = starters.filter((p): p is Player => p !== null);
   const filledBench = bench.filter((p): p is Player => p !== null);
   const fullSquad = [...filledStarters, ...filledBench];
@@ -408,6 +486,9 @@ function applyPostUserMatchConditionAndEvents(params: {
       playerConditions: workingConditions,
       managerEvents: prevEvents,
       pendingInjuryAlerts: prevAlerts,
+      tacticalAdaptation: prevAdaptation,
+      awakenedPlayers: prevAwakened,
+      pendingAwakeningAlerts: prevAwakeningAlerts,
     };
   }
 
@@ -548,6 +629,10 @@ function applyPostUserMatchConditionAndEvents(params: {
   const isBigMatch =
     competition !== 'league' || (oppStandIdx !== -1 && oppStandIdx < 4);
 
+  const staffCoachId = season.staffCoach?.hiredCoachId ?? null;
+  const staffEffect = evaluateStaffCoachEffect(staffCoachId, tactic);
+  const extraLossMoraleDrop = season.budgetState?.extraLossMoraleDrop ?? 0;
+
   const userCondUpdate = updateSquadConditionsAfterMatch({
     squad: fullSquad,
     starterIds,
@@ -572,6 +657,8 @@ function applyPostUserMatchConditionAndEvents(params: {
     teamLossStreak: nextLossStreak,
     trackUserAlerts: true,
     starterSlotIndexByPlayerId,
+    extraLossMoraleDrop,
+    moraleLossDefense: staffEffect.moraleLossDefense,
   });
 
   const mergedConditions: PlayerConditionMap = {
@@ -595,6 +682,66 @@ function applyPostUserMatchConditionAndEvents(params: {
       ? [...prevAlerts, ...userCondUpdate.newInjuries]
       : prevAlerts;
 
+  // v9.0 Record Tactical Adaptation exposure & trigger non-spam warning popup on tier entry
+  const matchRound = round ?? season.currentRound;
+  const nextTacticalAdaptation = recordMatchTacticalAdaptation({
+    prev: prevAdaptation,
+    round: matchRound,
+    competition,
+    formation,
+    tactic,
+    staffCoachId,
+  });
+
+  // v9.0 Evaluate post-match Permanent Potential Awakening
+  let nextAwakenedPlayers = prevAwakened;
+  let nextPendingAwakeningAlerts = prevAwakeningAlerts;
+  const totalUserMatchesPlayed =
+    season.userMatchHistory.length +
+    season.userCupMatchHistory.length +
+    season.userUclMatchHistory.length;
+  const chemForAwakening = calculateChemistry(
+    formation,
+    filledStarters,
+    tactic,
+    managerTraitId,
+    undefined,
+    { staffCoachId, ffpChemPenalty: season.budgetState?.chemPenalty ?? 0 },
+  );
+  const awakeningResult = evaluatePostMatchAwakening({
+    starters,
+    bench,
+    matchPlayedNumber: totalUserMatchesPlayed,
+    round: matchRound,
+    competition,
+    ratingsByPlayerId,
+    goalsByPlayerId,
+    assistsByPlayerId,
+    minutesByPlayerId,
+    cleanSheet: oppGoals === 0,
+    allPlayerStats: season.allPlayerStats,
+    slotSynergies: chemForAwakening.slotSynergies,
+    conditionMap: mergedConditions,
+    managerTraitId,
+    staffCoachId,
+    existingAwakenedPlayers: prevAwakened,
+  });
+  if (
+    awakeningResult.triggered &&
+    awakeningResult.awakenedPlayer &&
+    awakeningResult.record &&
+    awakeningResult.alert
+  ) {
+    nextAwakenedPlayers = {
+      ...prevAwakened,
+      [awakeningResult.awakenedPlayer.id]: awakeningResult.record,
+    };
+    nextPendingAwakeningAlerts = [
+      ...prevAwakeningAlerts,
+      awakeningResult.alert,
+    ];
+  }
+
   let nextEventsState: ManagerEventsState = {
     ...prevEvents,
     matchesSinceLastEvent: prevEvents.matchesSinceLastEvent + 1,
@@ -605,11 +752,13 @@ function applyPostUserMatchConditionAndEvents(params: {
     recentUnbeatenStreak: nextUnbeatenStreak,
   };
 
-  // Trigger a non-repeating press conference / locker room event if allowed & no injury alert blocks it
+  // Trigger a non-repeating press conference / locker room event if allowed & no higher-priority alert blocks it
   if (
     allowEventTrigger &&
     !nextEventsState.activeEvent &&
-    nextPendingAlerts.length === 0
+    nextPendingAlerts.length === 0 &&
+    nextPendingAwakeningAlerts.length === 0 &&
+    !nextTacticalAdaptation.pendingAlert
   ) {
     const nextOpp = findNextOpponentInfo(season, competition);
     const userRank = getUserRank(season.standings, USER_CLUB_ID);
@@ -652,6 +801,9 @@ function applyPostUserMatchConditionAndEvents(params: {
     playerConditions: mergedConditions,
     managerEvents: nextEventsState,
     pendingInjuryAlerts: nextPendingAlerts,
+    tacticalAdaptation: nextTacticalAdaptation,
+    awakenedPlayers: nextAwakenedPlayers,
+    pendingAwakeningAlerts: nextPendingAwakeningAlerts,
   };
 }
 
@@ -688,20 +840,13 @@ function simulateFullSingleRound(
     teamMorale,
   );
 
-  const chem = calculateChemistry(
+  const { chem, ratings, staffCoachId } = computeUserChemAndRatings({
     formation,
-    effectiveUserStarters,
+    starters: effectiveUserStarters,
     tactic,
     managerTraitId,
-  );
-  const ratings = calculateTeamRatings(
-    formation,
-    effectiveUserStarters,
-    chem.total,
-    managerTraitId,
-    chem.slotSynergies,
-    tactic,
-  );
+    season,
+  });
 
   const updatedClubs = season.clubs.map((c) =>
     c.id === USER_CLUB_ID
@@ -784,6 +929,8 @@ function simulateFullSingleRound(
             ratings,
             slotSynergies: chem.slotSynergies,
             managerTraitId,
+            staffCoachId,
+            tacticalHistory: season.tacticalAdaptation?.history,
             competition: 'league' as const,
             opponentRank: oppRank,
             allowAutoSubs: true,
@@ -885,6 +1032,7 @@ function simulateFullSingleRound(
     workingConditions,
     formation,
     tactic,
+    managerTraitId,
     starters: options?.rawStarters ?? starters,
     bench: options?.rawBench ?? bench,
     userMatchResult:
@@ -904,6 +1052,9 @@ function simulateFullSingleRound(
     playerConditions: postCond.playerConditions,
     managerEvents: postCond.managerEvents,
     pendingInjuryAlerts: postCond.pendingInjuryAlerts,
+    tacticalAdaptation: postCond.tacticalAdaptation,
+    awakenedPlayers: postCond.awakenedPlayers,
+    pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
   };
 }
 
@@ -1015,20 +1166,13 @@ function syncCupAfterRound(params: {
     );
 
     // Either user was already eliminated OR fast-simming -> auto-resolve this cup stage
-    const chem = calculateChemistry(
+    const { chem, ratings, staffCoachId } = computeUserChemAndRatings({
       formation,
-      effectiveUserStarters,
+      starters: effectiveUserStarters,
       tactic,
       managerTraitId,
-    );
-    const ratings = calculateTeamRatings(
-      formation,
-      effectiveUserStarters,
-      chem.total,
-      managerTraitId,
-      chem.slotSynergies,
-      tactic,
-    );
+      season: current,
+    });
     const clubsById: Record<string, Club> = Object.fromEntries(
       current.clubs.map((c) => [
         c.id,
@@ -1070,6 +1214,8 @@ function syncCupAfterRound(params: {
             ratings,
             slotSynergies: chem.slotSynergies,
             managerTraitId,
+            staffCoachId,
+            tacticalHistory: current.tacticalAdaptation?.history,
             competition: 'cup',
             allowAutoSubs: true,
           }
@@ -1096,6 +1242,7 @@ function syncCupAfterRound(params: {
         workingConditions,
         formation,
         tactic,
+        managerTraitId,
         starters: rawStarters ?? starters,
         bench: rawBench ?? bench,
         userMatchResult: res.userResult,
@@ -1111,6 +1258,9 @@ function syncCupAfterRound(params: {
         playerConditions: postCond.playerConditions,
         managerEvents: postCond.managerEvents,
         pendingInjuryAlerts: postCond.pendingInjuryAlerts,
+        tacticalAdaptation: postCond.tacticalAdaptation,
+        awakenedPlayers: postCond.awakenedPlayers,
+        pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
       };
     } else {
       current = interimCupSeason;
@@ -1123,20 +1273,13 @@ function syncCupAfterRound(params: {
 function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore'] {
   if (!state.season) return null;
   const filledStarters = state.starters.filter((p): p is Player => p !== null);
-  const chem = calculateChemistry(
-    state.formation,
-    filledStarters,
-    state.season.defaultTactic,
-    state.manager.traitId,
-  );
-  const ratings = calculateTeamRatings(
-    state.formation,
-    filledStarters,
-    chem.total,
-    state.manager.traitId,
-    chem.slotSynergies,
-    state.season.defaultTactic,
-  );
+  const { chem, ratings } = computeUserChemAndRatings({
+    formation: state.formation,
+    starters: filledStarters,
+    tactic: state.season.defaultTactic,
+    managerTraitId: state.manager.traitId,
+    season: state.season,
+  });
   const userRow = state.season.standings.find((r) => r.teamId === USER_CLUB_ID);
   const finalRank = getUserRank(state.season.standings, USER_CLUB_ID);
   const played = Math.max(1, userRow?.played ?? state.season.totalRounds);
@@ -1233,6 +1376,7 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
     tacticalFit,
     awards: state.season.awards,
     globalAwards: state.season.globalAwards ?? null,
+    ffpScoreMultiplier: state.season.budgetState?.scoreMultiplier ?? 1,
   });
 }
 
@@ -1494,6 +1638,7 @@ type GameAction =
       payload: {
         target: TransferTargetPlayer;
         outSlot: { area: 'starter' | 'bench'; index: number };
+        cashOfferM?: number;
       };
     }
   | {
@@ -1506,6 +1651,7 @@ type GameAction =
         userSentSlots: { area: 'starter' | 'bench'; index: number }[];
         aiTargetPlayers: Player[];
         aiFillerPlayers?: Player[];
+        cashOfferM?: number;
         overrideRoll?: number; // optional deterministic roll 0..100 for tests
       };
     }
@@ -1518,6 +1664,10 @@ type GameAction =
       payload: { offerId: string };
     }
   | { type: 'TRANSFER_CLOSE_WINDOW' }
+  | { type: 'HIRE_STAFF_COACH'; payload: { coachId: StaffCoachId } }
+  | { type: 'SKIP_STAFF_COACH' }
+  | { type: 'DISMISS_ADAPTATION_ALERT' }
+  | { type: 'DISMISS_AWAKENING_ALERT' }
   | { type: 'MARK_CUP_CELEBRATED' }
   | { type: 'ENTER_UCL_MODE' }
   | { type: 'SIMULATE_UCL_LEAGUE_PHASE_TO_END' }
@@ -1569,20 +1719,13 @@ function commitLiveMatchResult(
     ...(season.departedPlayerIds ?? []),
   ]);
 
-  const chem = calculateChemistry(
-    restoredFormation,
-    filledStarters,
-    activeTactic,
-    state.manager.traitId,
-  );
-  const ratings = calculateTeamRatings(
-    restoredFormation,
-    filledStarters,
-    chem.total,
-    state.manager.traitId,
-    chem.slotSynergies,
-    activeTactic,
-  );
+  const { ratings } = computeUserChemAndRatings({
+    formation: restoredFormation,
+    starters: filledStarters,
+    tactic: activeTactic,
+    managerTraitId: state.manager.traitId,
+    season,
+  });
 
   const updatedClubs = season.clubs.map((c) =>
     c.id === USER_CLUB_ID
@@ -1632,6 +1775,7 @@ function commitLiveMatchResult(
       workingConditions,
       formation: restoredFormation,
       tactic: halftime.userTacticAtKickoff,
+      managerTraitId: state.manager.traitId,
       starters: restoredStarters,
       bench: restoredBench,
       userMatchResult: finalUserCupMatch,
@@ -1648,6 +1792,9 @@ function commitLiveMatchResult(
       playerConditions: postCond.playerConditions,
       managerEvents: postCond.managerEvents,
       pendingInjuryAlerts: postCond.pendingInjuryAlerts,
+      tacticalAdaptation: postCond.tacticalAdaptation,
+      awakenedPlayers: postCond.awakenedPlayers,
+      pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
     };
     return {
       ...state,
@@ -1711,6 +1858,7 @@ function commitLiveMatchResult(
       workingConditions,
       formation: restoredFormation,
       tactic: halftime.userTacticAtKickoff,
+      managerTraitId: state.manager.traitId,
       starters: restoredStarters,
       bench: restoredBench,
       userMatchResult: finalUserUclMatch,
@@ -1727,6 +1875,9 @@ function commitLiveMatchResult(
       playerConditions: postCond.playerConditions,
       managerEvents: postCond.managerEvents,
       pendingInjuryAlerts: postCond.pendingInjuryAlerts,
+      tacticalAdaptation: postCond.tacticalAdaptation,
+      awakenedPlayers: postCond.awakenedPlayers,
+      pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
     };
     return {
       ...state,
@@ -1882,6 +2033,7 @@ function commitLiveMatchResult(
     workingConditions,
     formation: restoredFormation,
     tactic: halftime.userTacticAtKickoff,
+    managerTraitId: state.manager.traitId,
     starters: restoredStarters,
     bench: restoredBench,
     userMatchResult,
@@ -1899,6 +2051,9 @@ function commitLiveMatchResult(
     playerConditions: postCond.playerConditions,
     managerEvents: postCond.managerEvents,
     pendingInjuryAlerts: postCond.pendingInjuryAlerts,
+    tacticalAdaptation: postCond.tacticalAdaptation,
+    awakenedPlayers: postCond.awakenedPlayers,
+    pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
   };
 
   nextSeason = syncCupAfterRound({
@@ -1922,18 +2077,15 @@ function commitLiveMatchResult(
     nextSeason.transferMarket.completedWindows,
   );
   if (trigger) {
-    nextSeason = {
-      ...nextSeason,
-      transferMarket: openTransferWindowWithIncomingOffers({
-        season: nextSeason,
-        starters: restoredStarters,
-        bench: restoredBench,
-        windowIndex: trigger.windowIndex,
-        triggerRound: trigger.triggerRound,
-        userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
-        allowedLeagueIds: state.draftLeaguePool,
-      }),
-    };
+    nextSeason = openTransferAndMidSeasonCoach({
+      season: nextSeason,
+      starters: restoredStarters,
+      bench: restoredBench,
+      windowIndex: trigger.windowIndex,
+      triggerRound: trigger.triggerRound,
+      userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
+      allowedLeagueIds: state.draftLeaguePool,
+    });
   }
 
   return finalizeSeasonIfEnded({
@@ -1965,20 +2117,29 @@ function openTransferWindowWithIncomingOffers(params: {
     allowedLeagueIds,
     options,
   } = params;
-  const incomingOffers = generateIncomingTradeOffers({
-    windowIndex,
-    currentRound: season.currentRound,
-    userLeagueId: season.leagueId,
-    userStarters: starters,
-    userBench: bench,
-    standings: season.standings,
-    otherLeagues: season.otherLeagues,
-    aiRosters: season.aiRosters,
-    allPlayerStats: season.allPlayerStats,
-    conditionMap: season.playerConditions,
-    departedPlayerIds: season.departedPlayerIds ?? [],
-    allowedLeagueIds,
-  });
+  const isWindow2 = windowIndex === 2 && !options?.isUclSpecial;
+  const ffpTier = season.budgetState?.ffpTier ?? 0;
+  const ffpEmbargoActive = isWindow2 && ffpTier === 2;
+  const maxAttemptsOverride = isWindow2
+    ? (season.budgetState?.window2MaxAttempts ?? 3)
+    : undefined;
+
+  const incomingOffers = ffpEmbargoActive
+    ? []
+    : generateIncomingTradeOffers({
+        windowIndex,
+        currentRound: season.currentRound,
+        userLeagueId: season.leagueId,
+        userStarters: starters,
+        userBench: bench,
+        standings: season.standings,
+        otherLeagues: season.otherLeagues,
+        aiRosters: season.aiRosters,
+        allPlayerStats: season.allPlayerStats,
+        conditionMap: season.playerConditions,
+        departedPlayerIds: season.departedPlayerIds ?? [],
+        allowedLeagueIds,
+      });
   return createOpenTransferState(
     windowIndex,
     triggerRound,
@@ -1987,8 +2148,45 @@ function openTransferWindowWithIncomingOffers(params: {
     {
       ...options,
       incomingOffers,
+      maxAttemptsOverride,
+      ffpEmbargoActive,
     },
   );
+}
+
+function openTransferAndMidSeasonCoach(params: {
+  season: SeasonState;
+  starters: (Player | null)[];
+  bench: (Player | null)[];
+  windowIndex: number;
+  triggerRound: number;
+  userRank: number;
+  allowedLeagueIds?: LeagueId[];
+  options?: { isUclSpecial?: boolean; championBonusActive?: boolean };
+}): SeasonState {
+  const { season, windowIndex, options } = params;
+  const transferMarket = openTransferWindowWithIncomingOffers(params);
+  let nextStaffCoach = season.staffCoach;
+  if (
+    windowIndex === 2 &&
+    !options?.isUclSpecial &&
+    !season.staffCoach?.completed &&
+    !season.staffCoach?.pendingSelection
+  ) {
+    const offeredCoachIds = rollMidSeasonStaffCoachOffers({
+      activeTactic: season.defaultTactic,
+    });
+    nextStaffCoach = {
+      ...(season.staffCoach ?? createInitialStaffCoachState()),
+      offeredCoachIds,
+      pendingSelection: true,
+    };
+  }
+  return {
+    ...season,
+    transferMarket,
+    ...(nextStaffCoach ? { staffCoach: nextStaffCoach } : {}),
+  };
 }
 
 function executeBidirectionalTrade(params: {
@@ -2003,6 +2201,7 @@ function executeBidirectionalTrade(params: {
   isIncomingOffer: boolean;
   acceptedIncomingOfferId?: string;
   nextAttempts: number;
+  cashOfferM?: number;
 }): GameState {
   const {
     state,
@@ -2016,6 +2215,7 @@ function executeBidirectionalTrade(params: {
     isIncomingOffer,
     acceptedIncomingOfferId,
     nextAttempts,
+    cashOfferM = 0,
   } = params;
   const season = state.season;
   if (!season) return state;
@@ -2341,20 +2541,13 @@ function executeBidirectionalTrade(params: {
     }
     nextUclAiRosters[USER_CLUB_ID] = nextFilledStarters.slice(0, 11);
 
-    const chemAfter = calculateChemistry(
-      state.formation,
-      nextFilledStarters,
-      season.defaultTactic,
-      state.manager.traitId,
-    );
-    const ratingsAfter = calculateTeamRatings(
-      state.formation,
-      nextFilledStarters,
-      chemAfter.total,
-      state.manager.traitId,
-      chemAfter.slotSynergies,
-      season.defaultTactic,
-    );
+    const { ratings: ratingsAfter } = computeUserChemAndRatings({
+      formation: state.formation,
+      starters: nextFilledStarters,
+      tactic: season.defaultTactic,
+      managerTraitId: state.manager.traitId,
+      season,
+    });
     nextUcl = {
       ...nextUcl,
       aiRosters: nextUclAiRosters,
@@ -2440,8 +2633,18 @@ function executeBidirectionalTrade(params: {
     return off;
   });
 
+  const safeCashOfferM =
+    !isIncomingOffer && cashOfferM > 0 && season.budgetState
+      ? Math.min(Math.round(cashOfferM), season.budgetState.transferCashM)
+      : 0;
+  const nextBudgetState =
+    safeCashOfferM > 0 && season.budgetState
+      ? deductTransferCash(season.budgetState, safeCashOfferM)
+      : season.budgetState;
+
   const sentNames = userSentPlayers.map((p) => p.name).join(' + ');
   const recNames = allIncomingRaw.map((p) => p.name).join(' + ');
+  const cashTag = safeCashOfferM > 0 ? ` + €${safeCashOfferM}M` : '';
 
   const nextTradeHistory = [
     ...(tm.tradeHistory ?? []),
@@ -2451,6 +2654,7 @@ function executeBidirectionalTrade(params: {
       partnerClubName: partnerClub.name,
       sentPlayers: userSentPlayers,
       receivedPlayers: allIncomingRaw,
+      ...(safeCashOfferM > 0 ? { cashOfferM: safeCashOfferM } : {}),
       acceptanceChance,
       isIncomingOffer,
     },
@@ -2484,6 +2688,7 @@ function executeBidirectionalTrade(params: {
     bench: nextBench,
     season: {
       ...season,
+      ...(nextBudgetState ? { budgetState: nextBudgetState } : {}),
       aiRosters: nextAiRosters,
       otherLeagues: nextOtherLeagues,
       departedPlayerIds: nextDepartedPlayerIds,
@@ -2516,9 +2721,9 @@ function executeBidirectionalTrade(params: {
           sentPlayers: userSentPlayers,
           receivedPlayers: allIncomingRaw,
           probability: acceptanceChance,
-          marketValueM: 0,
+          marketValueM: safeCashOfferM,
           gmReaction,
-          message: `🔄 트레이드 성사! [${partnerClub.name}] ${recNames} 합류 ↔ ${sentNames} 이적 완료!`,
+          message: `🔄 트레이드 성사! [${partnerClub.name}] ${recNames} 합류 ↔ ${sentNames}${cashTag} 이적 완료!`,
         },
       },
     },
@@ -3056,11 +3261,18 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const filledStarters = state.starters.filter((p): p is Player => p !== null);
       const filledBench = state.bench.filter((p): p is Player => p !== null);
 
+      const budgetState = createSeasonBudgetState([
+        ...filledStarters,
+        ...filledBench,
+      ]);
+
       const chem = calculateChemistry(
         state.formation,
         filledStarters,
         state.defaultTactic,
         state.manager.traitId,
+        undefined,
+        { ffpChemPenalty: budgetState.chemPenalty },
       );
       const ratings = calculateTeamRatings(
         state.formation,
@@ -3144,6 +3356,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         playerConditions: {},
         managerEvents: createDefaultManagerEventsState(),
         pendingInjuryAlerts: [],
+        budgetState,
+        tacticalAdaptation: createInitialTacticalAdaptationState(),
+        staffCoach: createInitialStaffCoachState(),
+        awakenedPlayers: {},
+        pendingAwakeningAlerts: [],
       };
 
       return {
@@ -3184,20 +3401,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         condMap,
         teamMorale,
       );
-      const chem = calculateChemistry(
-        state.formation,
-        effectiveUserStarters,
-        activeTactic,
-        state.manager.traitId,
-      );
-      const ratings = calculateTeamRatings(
-        state.formation,
-        effectiveUserStarters,
-        chem.total,
-        state.manager.traitId,
-        chem.slotSynergies,
-        activeTactic,
-      );
+      const { chem, ratings, staffCoachId } = computeUserChemAndRatings({
+        formation: state.formation,
+        starters: effectiveUserStarters,
+        tactic: activeTactic,
+        managerTraitId: state.manager.traitId,
+        season: state.season,
+      });
 
       let userFixture: SeasonState['fixtures'][number] | null = null;
       let competition: 'league' | 'cup' | 'ucl' = 'league';
@@ -3321,6 +3531,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           ratings,
           slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          staffCoachId,
+          tacticalHistory: state.season.tacticalAdaptation?.history,
           competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
           isBigKnockout:
@@ -3379,20 +3591,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const filledBench = state.bench.filter((p): p is Player => p !== null);
       const { secondHalfTactic, subPlayerIds, firstHalfStarters } = action.payload;
 
-      const chem = calculateChemistry(
-        state.formation,
-        filledStarters,
-        secondHalfTactic,
-        state.manager.traitId,
-      );
-      const ratings = calculateTeamRatings(
-        state.formation,
-        filledStarters,
-        chem.total,
-        state.manager.traitId,
-        chem.slotSynergies,
-        secondHalfTactic,
-      );
+      const { chem, ratings, staffCoachId } = computeUserChemAndRatings({
+        formation: state.formation,
+        starters: filledStarters,
+        tactic: secondHalfTactic,
+        managerTraitId: state.manager.traitId,
+        season,
+      });
 
       const activeClubs =
         halftime.competition === 'ucl' && season.ucl
@@ -3452,6 +3657,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           ratings,
           slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          staffCoachId,
+          tacticalHistory: season.tacticalAdaptation?.history,
           competition: halftime.competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
           isBigKnockout:
@@ -3581,20 +3788,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         ? currentResult.homeTactic
         : currentResult.awayTactic;
 
-      const chem = calculateChemistry(
-        state.formation,
-        filledStarters,
-        userTactic,
-        state.manager.traitId,
-      );
-      const ratings = calculateTeamRatings(
-        state.formation,
-        filledStarters,
-        chem.total,
-        state.manager.traitId,
-        chem.slotSynergies,
-        userTactic,
-      );
+      const { chem, ratings, staffCoachId } = computeUserChemAndRatings({
+        formation: state.formation,
+        starters: filledStarters,
+        tactic: userTactic,
+        managerTraitId: state.manager.traitId,
+        season,
+      });
 
       const activeClubs =
         halftime.competition === 'ucl' && season.ucl
@@ -3653,6 +3853,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           ratings,
           slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          staffCoachId,
+          tacticalHistory: season.tacticalAdaptation?.history,
           competition: halftime.competition,
           opponentRank: oppIdx === -1 ? undefined : oppIdx + 1,
           isBigKnockout:
@@ -4432,20 +4634,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           ...(state.season.departedPlayerIds ?? []),
         ]);
 
-        const chem = calculateChemistry(
-          state.formation,
-          effectiveUserStarters,
-          activeTactic,
-          state.manager.traitId,
-        );
-        const ratings = calculateTeamRatings(
-          state.formation,
-          effectiveUserStarters,
-          chem.total,
-          state.manager.traitId,
-          chem.slotSynergies,
-          activeTactic,
-        );
+        const { chem, ratings, staffCoachId } = computeUserChemAndRatings({
+          formation: state.formation,
+          starters: effectiveUserStarters,
+          tactic: activeTactic,
+          managerTraitId: state.manager.traitId,
+          season: state.season,
+        });
         const syncedUcl = {
           ...ucl,
           clubs: ucl.clubs.map((c) =>
@@ -4471,6 +4666,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           ratings,
           slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          staffCoachId,
+          tacticalHistory: state.season.tacticalAdaptation?.history,
           competition: 'ucl' as const,
           allowAutoSubs: true,
         };
@@ -4516,6 +4713,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
               workingConditions,
               formation: state.formation,
               tactic: activeTactic,
+              managerTraitId: state.manager.traitId,
               starters: state.starters,
               bench: state.bench,
               userMatchResult: res.userResult,
@@ -4536,6 +4734,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             managerEvents: postCond?.managerEvents ?? interimSeason.managerEvents,
             pendingInjuryAlerts:
               postCond?.pendingInjuryAlerts ?? interimSeason.pendingInjuryAlerts,
+            tacticalAdaptation:
+              postCond?.tacticalAdaptation ?? interimSeason.tacticalAdaptation,
+            awakenedPlayers:
+              postCond?.awakenedPlayers ?? interimSeason.awakenedPlayers,
+            pendingAwakeningAlerts:
+              postCond?.pendingAwakeningAlerts ??
+              interimSeason.pendingAwakeningAlerts,
           },
         };
       }
@@ -4607,18 +4812,15 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       );
 
       if (trigger) {
-        nextSeason = {
-          ...nextSeason,
-          transferMarket: openTransferWindowWithIncomingOffers({
-            season: nextSeason,
-            starters: state.starters,
-            bench: state.bench,
-            windowIndex: trigger.windowIndex,
-            triggerRound: trigger.triggerRound,
-            userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
-            allowedLeagueIds: state.draftLeaguePool,
-          }),
-        };
+        nextSeason = openTransferAndMidSeasonCoach({
+          season: nextSeason,
+          starters: state.starters,
+          bench: state.bench,
+          windowIndex: trigger.windowIndex,
+          triggerRound: trigger.triggerRound,
+          userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
+          allowedLeagueIds: state.draftLeaguePool,
+        });
       }
 
       return finalizeSeasonIfEnded({
@@ -4632,7 +4834,10 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       if (
         state.season.transferMarket.isOpen ||
         state.season.liveHalftime ||
+        Boolean(state.season.staffCoach?.pendingSelection) ||
         (state.season.pendingInjuryAlerts?.length ?? 0) > 0 ||
+        (state.season.pendingAwakeningAlerts?.length ?? 0) > 0 ||
+        Boolean(state.season.tacticalAdaptation?.pendingAlert) ||
         Boolean(state.season.managerEvents?.activeEvent) ||
         Boolean(state.season.managerEvents?.lastResolution)
       ) {
@@ -4713,18 +4918,15 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
 
       if (trigger) {
         if (action.payload.stopAtTransfer) {
-          nextSeason = {
-            ...nextSeason,
-            transferMarket: openTransferWindowWithIncomingOffers({
-              season: nextSeason,
-              starters: state.starters,
-              bench: state.bench,
-              windowIndex: trigger.windowIndex,
-              triggerRound: trigger.triggerRound,
-              userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
-              allowedLeagueIds: state.draftLeaguePool,
-            }),
-          };
+          nextSeason = openTransferAndMidSeasonCoach({
+            season: nextSeason,
+            starters: state.starters,
+            bench: state.bench,
+            windowIndex: trigger.windowIndex,
+            triggerRound: trigger.triggerRound,
+            userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
+            allowedLeagueIds: state.draftLeaguePool,
+          });
         } else {
           // Skipping to season end: mark passed windows as completed without opening modal
           nextSeason = {
@@ -4766,14 +4968,15 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       if (
         state.season.transferMarket.isOpen ||
         state.season.liveHalftime ||
+        Boolean(state.season.staffCoach?.pendingSelection) ||
         Boolean(state.season.managerEvents?.activeEvent) ||
         Boolean(state.season.managerEvents?.lastResolution)
       ) {
         return state;
       }
 
-      const filledStarters = state.starters.filter((p): p is Player => p !== null);
-      const filledBench = state.bench.filter((p): p is Player => p !== null);
+      let workingStartersSlots = state.starters;
+      let workingBenchSlots = state.bench;
       let currentSeason = state.season;
 
       if (currentSeason.cup?.pendingStage) {
@@ -4782,20 +4985,42 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           formation: state.formation,
           tactic: currentSeason.defaultTactic,
           managerTraitId: state.manager.traitId,
-          starters: filledStarters,
-          bench: filledBench,
+          starters: workingStartersSlots.filter((p): p is Player => p !== null),
+          bench: workingBenchSlots.filter((p): p is Player => p !== null),
           autoResolveUserMatches: true,
         });
+        workingStartersSlots = applyAwakenedPlayersToSlots(
+          workingStartersSlots,
+          currentSeason.awakenedPlayers,
+        );
+        workingBenchSlots = applyAwakenedPlayersToSlots(
+          workingBenchSlots,
+          currentSeason.awakenedPlayers,
+        );
       }
 
       while (currentSeason.currentRound < currentSeason.totalRounds) {
+        const loopStarters = workingStartersSlots.filter(
+          (p): p is Player => p !== null,
+        );
+        const loopBench = workingBenchSlots.filter(
+          (p): p is Player => p !== null,
+        );
         currentSeason = simulateFullSingleRound(
           currentSeason,
           state.formation,
           currentSeason.defaultTactic,
           state.manager.traitId,
-          filledStarters,
-          filledBench,
+          loopStarters,
+          loopBench,
+        );
+        workingStartersSlots = applyAwakenedPlayersToSlots(
+          workingStartersSlots,
+          currentSeason.awakenedPlayers,
+        );
+        workingBenchSlots = applyAwakenedPlayersToSlots(
+          workingBenchSlots,
+          currentSeason.awakenedPlayers,
         );
 
         currentSeason = syncCupAfterRound({
@@ -4803,10 +5028,18 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           formation: state.formation,
           tactic: currentSeason.defaultTactic,
           managerTraitId: state.manager.traitId,
-          starters: filledStarters,
-          bench: filledBench,
+          starters: workingStartersSlots.filter((p): p is Player => p !== null),
+          bench: workingBenchSlots.filter((p): p is Player => p !== null),
           autoResolveUserMatches: true,
         });
+        workingStartersSlots = applyAwakenedPlayersToSlots(
+          workingStartersSlots,
+          currentSeason.awakenedPlayers,
+        );
+        workingBenchSlots = applyAwakenedPlayersToSlots(
+          workingBenchSlots,
+          currentSeason.awakenedPlayers,
+        );
 
         const trigger = checkTransferWindowTrigger(
           currentSeason.currentRound,
@@ -4815,24 +5048,23 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         );
 
         if (trigger) {
-          currentSeason = {
-            ...currentSeason,
-            transferMarket: openTransferWindowWithIncomingOffers({
-              season: currentSeason,
-              starters: state.starters,
-              bench: state.bench,
-              windowIndex: trigger.windowIndex,
-              triggerRound: trigger.triggerRound,
-              userRank: getUserRank(currentSeason.standings, USER_CLUB_ID),
-              allowedLeagueIds: state.draftLeaguePool,
-            }),
-          };
+          currentSeason = openTransferAndMidSeasonCoach({
+            season: currentSeason,
+            starters: workingStartersSlots,
+            bench: workingBenchSlots,
+            windowIndex: trigger.windowIndex,
+            triggerRound: trigger.triggerRound,
+            userRank: getUserRank(currentSeason.standings, USER_CLUB_ID),
+            allowedLeagueIds: state.draftLeaguePool,
+          });
           break;
         }
       }
 
       return finalizeSeasonIfEnded({
         ...state,
+        starters: workingStartersSlots,
+        bench: workingBenchSlots,
         season: currentSeason,
       });
     }
@@ -4846,8 +5078,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         return state;
       }
 
-      const filledStarters = state.starters.filter((p): p is Player => p !== null);
-      const filledBench = state.bench.filter((p): p is Player => p !== null);
+      let workingStartersSlots = state.starters;
+      let workingBenchSlots = state.bench;
       let currentSeason: SeasonState = {
         ...state.season,
         liveHalftime: null,
@@ -4863,10 +5095,18 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           formation: state.formation,
           tactic: currentSeason.defaultTactic,
           managerTraitId: state.manager.traitId,
-          starters: filledStarters,
-          bench: filledBench,
+          starters: workingStartersSlots.filter((p): p is Player => p !== null),
+          bench: workingBenchSlots.filter((p): p is Player => p !== null),
           autoResolveUserMatches: true,
         });
+        workingStartersSlots = applyAwakenedPlayersToSlots(
+          workingStartersSlots,
+          currentSeason.awakenedPlayers,
+        );
+        workingBenchSlots = applyAwakenedPlayersToSlots(
+          workingBenchSlots,
+          currentSeason.awakenedPlayers,
+        );
       }
 
       while (currentSeason.currentRound < currentSeason.totalRounds) {
@@ -4875,22 +5115,40 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           state.formation,
           currentSeason.defaultTactic,
           state.manager.traitId,
-          filledStarters,
-          filledBench,
+          workingStartersSlots.filter((p): p is Player => p !== null),
+          workingBenchSlots.filter((p): p is Player => p !== null),
+        );
+        workingStartersSlots = applyAwakenedPlayersToSlots(
+          workingStartersSlots,
+          currentSeason.awakenedPlayers,
+        );
+        workingBenchSlots = applyAwakenedPlayersToSlots(
+          workingBenchSlots,
+          currentSeason.awakenedPlayers,
         );
         currentSeason = syncCupAfterRound({
           season: currentSeason,
           formation: state.formation,
           tactic: currentSeason.defaultTactic,
           managerTraitId: state.manager.traitId,
-          starters: filledStarters,
-          bench: filledBench,
+          starters: workingStartersSlots.filter((p): p is Player => p !== null),
+          bench: workingBenchSlots.filter((p): p is Player => p !== null),
           autoResolveUserMatches: true,
         });
+        workingStartersSlots = applyAwakenedPlayersToSlots(
+          workingStartersSlots,
+          currentSeason.awakenedPlayers,
+        );
+        workingBenchSlots = applyAwakenedPlayersToSlots(
+          workingBenchSlots,
+          currentSeason.awakenedPlayers,
+        );
       }
 
       return finalizeSeasonIfEnded({
         ...state,
+        starters: workingStartersSlots,
+        bench: workingBenchSlots,
         season: currentSeason,
       });
     }
@@ -4937,9 +5195,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     case 'TRANSFER_SUBMIT_OFFER': {
       if (!state.season || !state.season.transferMarket.isOpen) return state;
       const tm = state.season.transferMarket;
-      if (!tm.hasSpunClubs || tm.attemptsRemaining <= 0) return state;
+      if (tm.ffpEmbargoActive || !tm.hasSpunClubs || tm.attemptsRemaining <= 0) {
+        return state;
+      }
 
-      const { target, outSlot } = action.payload;
+      const { target, outSlot, cashOfferM = 0 } = action.payload;
       // Only block players already signed in this window; failed targets can be retried!
       if (tm.signedPlayerIds.includes(target.player.id)) return state;
 
@@ -4949,8 +5209,19 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           : state.bench[outSlot.index];
       if (!outPlayer) return state;
 
+      const availableCashM = state.season.budgetState?.transferCashM ?? 0;
+      const safeCashOfferM = Math.max(
+        0,
+        Math.min(Math.round(cashOfferM), availableCashM),
+      );
+      const cashChanceBonus = computeCashLegendChanceBonus(safeCashOfferM);
+      const effectiveSuccessChance = Math.min(
+        95,
+        Math.max(5, Math.round(target.successChance + cashChanceBonus)),
+      );
+
       const roll = Math.random() * 100;
-      const success = roll < target.successChance;
+      const success = roll < effectiveSuccessChance;
       const nextAttempts = Math.max(0, tm.attemptsRemaining - 1);
       const nextAttempted = [...tm.attemptedPlayerIds, target.player.id];
 
@@ -4967,9 +5238,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
                 success: false,
                 targetPlayer: target.player,
                 outPlayer,
-                probability: target.successChance,
+                probability: effectiveSuccessChance,
                 marketValueM: target.marketValueM,
-                message: `${target.clubName} 측이 ${target.player.name} (€${target.marketValueM}M) 영입 제안을 거절했습니다. (성공률 ${target.successChance}%${nextAttempts > 0 ? ' · 남은 기회로 재도전 가능' : ''})`,
+                message: `${target.clubName} 측이 ${target.player.name} (€${target.marketValueM}M) 영입 제안을 거절했습니다. (성공률 ${effectiveSuccessChance}%${nextAttempts > 0 ? ' · 남은 기회로 재도전 가능' : ''})`,
               },
             },
           },
@@ -5241,6 +5512,12 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         };
       }
 
+      const nextBudgetState =
+        safeCashOfferM > 0 && state.season.budgetState
+          ? deductTransferCash(state.season.budgetState, safeCashOfferM)
+          : state.season.budgetState;
+      const cashNote = safeCashOfferM > 0 ? ` · 보너스 €${safeCashOfferM}M 지급` : '';
+
       const nextHistory = [
         ...tm.history,
         {
@@ -5249,7 +5526,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           outPlayer,
           inPlayer: incomingPlayer,
           marketValueM: target.marketValueM,
-          successChance: target.successChance,
+          successChance: effectiveSuccessChance,
         },
       ];
 
@@ -5258,7 +5535,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const nextTrackers: SeasonAchievementTrackers = {
         ...prevTrackers,
         signedUnder20PctSuccess:
-          prevTrackers.signedUnder20PctSuccess || target.successChance <= 20,
+          prevTrackers.signedUnder20PctSuccess || effectiveSuccessChance <= 20,
       };
 
       const nextOtherLeagues = syncTransferToOtherLeagues({
@@ -5277,6 +5554,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         bench: nextBench,
         season: {
           ...state.season,
+          ...(nextBudgetState ? { budgetState: nextBudgetState } : {}),
           aiRosters: nextAiRosters,
           otherLeagues: nextOtherLeagues,
           departedPlayerIds: nextDepartedPlayerIds,
@@ -5295,9 +5573,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
               success: true,
               targetPlayer: incomingPlayer,
               outPlayer,
-              probability: target.successChance,
+              probability: effectiveSuccessChance,
               marketValueM: target.marketValueM,
-              message: `오피셜! ${incomingPlayer.name} (OVR ${incomingPlayer.ovr} · €${target.marketValueM}M) 영입 완료!${swapSuffix}`,
+              message: `오피셜! ${incomingPlayer.name} (OVR ${incomingPlayer.ovr} · €${target.marketValueM}M) 영입 완료!${cashNote}${swapSuffix}`,
             },
           },
         },
@@ -5307,7 +5585,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     case 'TRADE_SUBMIT_PACKAGE': {
       if (!state.season || !state.season.transferMarket.isOpen) return state;
       const tm = state.season.transferMarket;
-      if (tm.attemptsRemaining <= 0) return state;
+      if (tm.ffpEmbargoActive || tm.attemptsRemaining <= 0) return state;
 
       const {
         partnerClub,
@@ -5317,8 +5595,15 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         userSentSlots,
         aiTargetPlayers,
         aiFillerPlayers: passedFillers,
+        cashOfferM = 0,
         overrideRoll,
       } = action.payload;
+
+      const availableCashM = state.season.budgetState?.transferCashM ?? 0;
+      const safeCashOfferM = Math.max(
+        0,
+        Math.min(Math.round(cashOfferM), availableCashM),
+      );
 
       if (userSentSlots.length === 0 || aiTargetPlayers.length === 0) return state;
       // Prevent targeting players already signed in this window
@@ -5415,6 +5700,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         conditionMap: state.season.playerConditions,
         championBonusActive: Boolean(tm.championBonusActive),
         shockBargainIds,
+        cashOfferM: safeCashOfferM,
       });
 
       if (evaluation.blockedReason || userSentPlayers.length !== aiTargetPlayers.length + resolvedFillers.length) {
@@ -5432,7 +5718,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
                 sentPlayers: userSentPlayers,
                 receivedPlayers: [...aiTargetPlayers, ...resolvedFillers],
                 probability: 0,
-                marketValueM: 0,
+                marketValueM: safeCashOfferM,
                 gmReaction: evaluation.gmReaction,
                 message:
                   evaluation.blockedReason ??
@@ -5467,7 +5753,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
                 sentPlayers: userSentPlayers,
                 receivedPlayers: [...aiTargetPlayers, ...resolvedFillers],
                 probability: evaluation.acceptanceChance,
-                marketValueM: 0,
+                marketValueM: safeCashOfferM,
                 gmReaction: evaluation.gmReaction,
                 message: `${partnerClub.name} 측이 트레이드 제안을 거절했습니다. (성사 확률 ${evaluation.acceptanceChance}%${nextAttempts > 0 ? ' · 조건을 보강해 재협상 가능' : ''})`,
               },
@@ -5487,6 +5773,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         gmReaction: evaluation.gmReaction,
         isIncomingOffer: false,
         nextAttempts,
+        cashOfferM: safeCashOfferM,
       });
     }
 
@@ -5613,6 +5900,67 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'HIRE_STAFF_COACH': {
+      if (!state.season) return state;
+      const sc = state.season.staffCoach;
+      if (!sc || !sc.pendingSelection || sc.completed) return state;
+      if (!sc.offeredCoachIds.includes(action.payload.coachId)) return state;
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          staffCoach: {
+            ...sc,
+            hiredCoachId: action.payload.coachId,
+            pendingSelection: false,
+            completed: true,
+          },
+        },
+      };
+    }
+
+    case 'SKIP_STAFF_COACH': {
+      if (!state.season) return state;
+      const sc = state.season.staffCoach;
+      if (!sc || !sc.pendingSelection) return state;
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          staffCoach: {
+            ...sc,
+            pendingSelection: false,
+            completed: true,
+          },
+        },
+      };
+    }
+
+    case 'DISMISS_ADAPTATION_ALERT': {
+      if (!state.season?.tacticalAdaptation?.pendingAlert) return state;
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          tacticalAdaptation: {
+            ...state.season.tacticalAdaptation,
+            pendingAlert: null,
+          },
+        },
+      };
+    }
+
+    case 'DISMISS_AWAKENING_ALERT': {
+      if (!state.season?.pendingAwakeningAlerts?.length) return state;
+      return {
+        ...state,
+        season: {
+          ...state.season,
+          pendingAwakeningAlerts: state.season.pendingAwakeningAlerts.slice(1),
+        },
+      };
+    }
+
     case 'ENTER_UCL_MODE': {
       if (!state.season || state.phase !== 'season_end') return state;
       const userRank = getUserRank(state.season.standings, USER_CLUB_ID);
@@ -5727,20 +6075,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const filledBench = state.bench.filter((p): p is Player => p !== null);
       const activeTactic =
         state.season.nextMatchTactic ?? state.season.defaultTactic;
-      const chem = calculateChemistry(
-        state.formation,
-        filledStarters,
-        activeTactic,
-        state.manager.traitId,
-      );
-      const ratings = calculateTeamRatings(
-        state.formation,
-        filledStarters,
-        chem.total,
-        state.manager.traitId,
-        chem.slotSynergies,
-        activeTactic,
-      );
+      const { chem, ratings, staffCoachId } = computeUserChemAndRatings({
+        formation: state.formation,
+        starters: filledStarters,
+        tactic: activeTactic,
+        managerTraitId: state.manager.traitId,
+        season: state.season,
+      });
       const syncedUcl = {
         ...state.season.ucl,
         clubs: state.season.ucl.clubs.map((c) =>
@@ -5785,6 +6126,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           ratings,
           slotSynergies: chem.slotSynergies,
           managerTraitId: state.manager.traitId,
+          staffCoachId,
+          tacticalHistory: state.season.tacticalAdaptation?.history,
           competition: 'ucl',
           allowAutoSubs: true,
         },
@@ -5812,6 +6155,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           workingConditions: rollingSeason.playerConditions ?? workingConditions,
           formation: state.formation,
           tactic: activeTactic,
+          managerTraitId: state.manager.traitId,
           starters: state.starters,
           bench: state.bench,
           userMatchResult: m,
@@ -5827,6 +6171,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           playerConditions: post.playerConditions,
           managerEvents: post.managerEvents,
           pendingInjuryAlerts: post.pendingInjuryAlerts,
+          tacticalAdaptation: post.tacticalAdaptation,
+          awakenedPlayers: post.awakenedPlayers,
+          pendingAwakeningAlerts: post.pendingAwakeningAlerts,
         };
       }
 
@@ -6344,7 +6691,24 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
 }
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
-  const next = coreGameReducer(state, action);
+  let next = coreGameReducer(state, action);
+  if (next.season?.awakenedPlayers) {
+    const syncedStarters = applyAwakenedPlayersToSlots(
+      next.starters,
+      next.season.awakenedPlayers,
+    );
+    const syncedBench = applyAwakenedPlayersToSlots(
+      next.bench,
+      next.season.awakenedPlayers,
+    );
+    if (syncedStarters !== next.starters || syncedBench !== next.bench) {
+      next = {
+        ...next,
+        starters: syncedStarters,
+        bench: syncedBench,
+      };
+    }
+  }
   if (
     !next.season ||
     next.season.liveHalftime ||
@@ -6739,13 +7103,32 @@ export function loadSavedGameState(): GameState {
         parsed.draftLeaguePool = [...ALL_LEAGUE_IDS];
       }
 
-      // Re-canonicalize squad players against static catalog & reject duplicate player IDs
+      // Re-canonicalize squad players against static catalog & reject duplicate player IDs.
+      // Preserve verified v9.0 permanent potential awakenings onto fresh clones (never mutating static DB).
+      const rawAwakenedMap =
+        parsed.season?.awakenedPlayers &&
+        typeof parsed.season.awakenedPlayers === 'object'
+          ? parsed.season.awakenedPlayers
+          : {};
+      const validAwakenedMap: Record<string, PlayerAwakeningRecord> = {};
+      let validAwakenedCount = 0;
+
       const seenSquadIds = new Set<string>();
       const sanitizeSquadSlot = (p: Player | null): Player | null => {
         if (!p) return null;
         const hydrated = hydratePlayerFromCatalog(p);
         if (!hydrated || seenSquadIds.has(hydrated.id)) return null;
         seenSquadIds.add(hydrated.id);
+        const rec = rawAwakenedMap[hydrated.id] ?? p.awakening;
+        if (
+          rec &&
+          validAwakenedCount < AWAKENING_MAX_VALID_PER_TEAM &&
+          isValidAwakeningRecord(hydrated, rec)
+        ) {
+          validAwakenedCount += 1;
+          validAwakenedMap[hydrated.id] = rec;
+          return applyAwakeningToPlayer(hydrated, rec);
+        }
         return hydrated;
       };
       parsed.starters = parsed.starters.map(sanitizeSquadSlot);
@@ -6799,6 +7182,20 @@ export function loadSavedGameState(): GameState {
         }
         if (!Array.isArray(parsed.season.departedPlayerIds)) {
           parsed.season.departedPlayerIds = [];
+        }
+        // Backfill v9.0 Season Depth fields for legacy saves (zero-breakage fallback)
+        if (!parsed.season.budgetState) {
+          parsed.season.budgetState = createDefaultSeasonBudgetState();
+        }
+        if (!parsed.season.tacticalAdaptation) {
+          parsed.season.tacticalAdaptation = createInitialTacticalAdaptationState();
+        }
+        if (!parsed.season.staffCoach) {
+          parsed.season.staffCoach = createInitialStaffCoachState();
+        }
+        parsed.season.awakenedPlayers = validAwakenedMap;
+        if (!Array.isArray(parsed.season.pendingAwakeningAlerts)) {
+          parsed.season.pendingAwakeningAlerts = [];
         }
         // Migrate legacy v2.4 `user::${id}` stat keys into unified single-player keys
         parsed.season.allPlayerStats = normalizeLegacyPlayerStatsMap(
@@ -6945,6 +7342,7 @@ interface GameContextValue {
   transferSubmitOffer: (
     target: TransferTargetPlayer,
     outSlot: { area: 'starter' | 'bench'; index: number },
+    cashOfferM?: number,
   ) => void;
   tradeSubmitPackage: (payload: {
     partnerClub: Club;
@@ -6954,10 +7352,15 @@ interface GameContextValue {
     userSentSlots: { area: 'starter' | 'bench'; index: number }[];
     aiTargetPlayers: Player[];
     aiFillerPlayers?: Player[];
+    cashOfferM?: number;
   }) => void;
   tradeAcceptIncoming: (offerId: string) => void;
   tradeRejectIncoming: (offerId: string) => void;
   transferCloseWindow: () => void;
+  hireStaffCoach: (coachId: StaffCoachId) => void;
+  skipStaffCoach: () => void;
+  dismissAdaptationAlert: () => void;
+  dismissAwakeningAlert: () => void;
   markCupCelebrated: () => void;
   enterUclMode: () => void;
   simulateUclLeaguePhaseToEnd: () => void;
@@ -7039,6 +7442,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     state.season?.nextMatchTactic ??
     state.season?.defaultTactic ??
     state.defaultTactic;
+  const activeStaffCoachId = state.season?.staffCoach?.hiredCoachId ?? null;
+  const activeFfpChemPenalty = state.season?.budgetState?.chemPenalty ?? 0;
 
   const chemistry = useMemo(
     () =>
@@ -7047,8 +7452,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
         state.starters,
         activeTactic,
         state.manager.traitId,
+        undefined,
+        {
+          staffCoachId: activeStaffCoachId,
+          ffpChemPenalty: activeFfpChemPenalty,
+        },
       ),
-    [state.formation, state.starters, activeTactic, state.manager.traitId],
+    [
+      state.formation,
+      state.starters,
+      activeTactic,
+      state.manager.traitId,
+      activeStaffCoachId,
+      activeFfpChemPenalty,
+    ],
   );
 
   const ratings = useMemo(
@@ -7060,6 +7477,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         state.manager.traitId,
         chemistry.slotSynergies,
         activeTactic,
+        activeStaffCoachId,
       ),
     [
       state.formation,
@@ -7068,6 +7486,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       chemistry.slotSynergies,
       state.manager.traitId,
       activeTactic,
+      activeStaffCoachId,
     ],
   );
 
@@ -7484,10 +7903,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SIMULATE_TO_NEXT_TRANSFER' }),
       skipToSeasonEnd: () => dispatch({ type: 'SKIP_TO_SEASON_END' }),
       transferSpinClubs: () => dispatch({ type: 'TRANSFER_SPIN_CLUBS' }),
-      transferSubmitOffer: (target, outSlot) =>
+      transferSubmitOffer: (target, outSlot, cashOfferM) =>
         dispatch({
           type: 'TRANSFER_SUBMIT_OFFER',
-          payload: { target, outSlot },
+          payload: { target, outSlot, cashOfferM },
         }),
       tradeSubmitPackage: (payload) =>
         dispatch({
@@ -7505,6 +7924,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
           payload: { offerId },
         }),
       transferCloseWindow: () => dispatch({ type: 'TRANSFER_CLOSE_WINDOW' }),
+      hireStaffCoach: (coachId) =>
+        dispatch({ type: 'HIRE_STAFF_COACH', payload: { coachId } }),
+      skipStaffCoach: () => dispatch({ type: 'SKIP_STAFF_COACH' }),
+      dismissAdaptationAlert: () =>
+        dispatch({ type: 'DISMISS_ADAPTATION_ALERT' }),
+      dismissAwakeningAlert: () =>
+        dispatch({ type: 'DISMISS_AWAKENING_ALERT' }),
       markCupCelebrated: () => dispatch({ type: 'MARK_CUP_CELEBRATED' }),
       enterUclMode: () => dispatch({ type: 'ENTER_UCL_MODE' }),
       simulateUclLeaguePhaseToEnd: () =>

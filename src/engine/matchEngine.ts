@@ -8,6 +8,8 @@ import type {
   FormationId,
   ManagerTraitId,
   PlayerSlotSynergy,
+  StaffCoachId,
+  TacticalHistoryEntry,
   TeamRatings,
 } from '../types/game';
 import type {
@@ -44,10 +46,15 @@ import {
   calculateChemistry,
 } from './chemistryEngine';
 import { getPrimaryPosition } from './positionEngine';
+import { STAFF_COACH_TACTIC_MATCHUP_MULT } from './staffCoachEngine';
 import {
   computeLineupStaminaImpact,
   planAutoSubstitutions,
 } from './staminaEngine';
+import {
+  evaluateAiPreMatchCounter,
+  evaluateTacticalExposure,
+} from './tacticalAdaptationEngine';
 import {
   buildHalftimeTacticalHint,
   evaluateFormationMatchup,
@@ -72,6 +79,8 @@ export interface UserMatchContext {
   ratings: TeamRatings;
   slotSynergies?: Record<number, PlayerSlotSynergy>;
   managerTraitId: ManagerTraitId | null;
+  staffCoachId?: StaffCoachId | null;
+  tacticalHistory?: readonly TacticalHistoryEntry[];
   competition?: MatchCompetitionType;
   opponentRank?: number; // 1..20 (for big_game_hunter)
   isBigKnockout?: boolean; // Cup SF/Final or UCL Knockout (for big_game_hunter)
@@ -326,16 +335,71 @@ function resolveMatchStrengths(params: {
   const homeManager = homeIsHuman ? null : getClubManager(homeClub);
   const awayManager = awayIsHuman ? null : getClubManager(awayClub);
 
+  // v9.0 AI Pre-Match Tactical Adaptation (repeated user tactical pattern counter)
+  const makeDeterministicSeed = (key: string): number => {
+    let hash = 2166136261;
+    for (let i = 0; i < key.length; i += 1) {
+      hash ^= key.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return ((hash >>> 0) % 10000) / 10000;
+  };
+
+  let homePreMatchCounter: ReturnType<typeof evaluateAiPreMatchCounter> | null =
+    null;
+  let awayPreMatchCounter: ReturnType<typeof evaluateAiPreMatchCounter> | null =
+    null;
+
+  if (homeIsHuman && !awayIsHuman && homeUserCtx && awayManager && (homeUserCtx.tacticalHistory?.length ?? 0) > 0) {
+    const exp = evaluateTacticalExposure({
+      history: homeUserCtx.tacticalHistory ?? [],
+      formation: homeUserCtx.formation,
+      tactic: homeUserCtx.tactic,
+      staffCoachId: homeUserCtx.staffCoachId,
+    });
+    const seedVal = makeDeterministicSeed(
+      `${awayClub.id}|${homeUserCtx.formation}|${homeUserCtx.tactic}|${homeUserCtx.tacticalHistory?.length ?? 0}`,
+    );
+    awayPreMatchCounter = evaluateAiPreMatchCounter({
+      exposure: exp,
+      userTactic: homeUserCtx.tactic,
+      aiManager: awayManager,
+      aiDefaultTactic: awayClub.defaultTactic,
+      rng: () => seedVal,
+    });
+  } else if (awayIsHuman && !homeIsHuman && awayUserCtx && homeManager && (awayUserCtx.tacticalHistory?.length ?? 0) > 0) {
+    const exp = evaluateTacticalExposure({
+      history: awayUserCtx.tacticalHistory ?? [],
+      formation: awayUserCtx.formation,
+      tactic: awayUserCtx.tactic,
+      staffCoachId: awayUserCtx.staffCoachId,
+    });
+    const seedVal = makeDeterministicSeed(
+      `${homeClub.id}|${awayUserCtx.formation}|${awayUserCtx.tactic}|${awayUserCtx.tacticalHistory?.length ?? 0}`,
+    );
+    homePreMatchCounter = evaluateAiPreMatchCounter({
+      exposure: exp,
+      userTactic: awayUserCtx.tactic,
+      aiManager: homeManager,
+      aiDefaultTactic: homeClub.defaultTactic,
+      rng: () => seedVal,
+    });
+  }
+
   const homeTactic = homeUserCtx
     ? homeUserCtx.tactic
     : !homeIsHuman && isAwayUser && aiOverrideTactic
       ? aiOverrideTactic
-      : homeClub.defaultTactic;
+      : !homeIsHuman && homePreMatchCounter?.overrideAiTactic
+        ? homePreMatchCounter.overrideAiTactic
+        : homeClub.defaultTactic;
   const awayTactic = awayUserCtx
     ? awayUserCtx.tactic
     : !awayIsHuman && isHomeUser && aiOverrideTactic
       ? aiOverrideTactic
-      : awayClub.defaultTactic;
+      : !awayIsHuman && awayPreMatchCounter?.overrideAiTactic
+        ? awayPreMatchCounter.overrideAiTactic
+        : awayClub.defaultTactic;
   const homeFormation = homeUserCtx
     ? homeUserCtx.formation
     : !homeIsHuman && isAwayUser && aiOverrideFormation
@@ -524,15 +588,22 @@ function resolveMatchStrengths(params: {
   const awayBakedMgrMid = awayUserCtx?.ratings.managerMidBonus ?? 0;
   const awayBakedMgrDef = awayUserCtx?.ratings.managerDefBonus ?? 0;
 
+  const homeBakedStaffAtt = homeUserCtx?.ratings.staffAttBonus ?? 0;
+  const homeBakedStaffMid = homeUserCtx?.ratings.staffMidBonus ?? 0;
+  const homeBakedStaffDef = homeUserCtx?.ratings.staffDefBonus ?? 0;
+  const awayBakedStaffAtt = awayUserCtx?.ratings.staffAttBonus ?? 0;
+  const awayBakedStaffMid = awayUserCtx?.ratings.staffMidBonus ?? 0;
+  const awayBakedStaffDef = awayUserCtx?.ratings.staffDefBonus ?? 0;
+
   const homeAvgOvr =
-    ((homeBase.att - homeBakedMgrAtt) +
-      (homeBase.mid - homeBakedMgrMid) +
-      (homeBase.def - homeBakedMgrDef)) /
+    ((homeBase.att - homeBakedMgrAtt - homeBakedStaffAtt) +
+      (homeBase.mid - homeBakedMgrMid - homeBakedStaffMid) +
+      (homeBase.def - homeBakedMgrDef - homeBakedStaffDef)) /
     3;
   const awayAvgOvr =
-    ((awayBase.att - awayBakedMgrAtt) +
-      (awayBase.mid - awayBakedMgrMid) +
-      (awayBase.def - awayBakedMgrDef)) /
+    ((awayBase.att - awayBakedMgrAtt - awayBakedStaffAtt) +
+      (awayBase.mid - awayBakedMgrMid - awayBakedStaffMid) +
+      (awayBase.def - awayBakedMgrDef - awayBakedStaffDef)) /
     3;
 
   // Unified v5.0 Tactical Matchup Engine (Manager + Formation + Tactic + Full XI Sub-Attributes & Styles)
@@ -659,6 +730,7 @@ function resolveMatchStrengths(params: {
       minute: evalMinute,
       enteredAtMinute: entryMap,
       managerTraitId: ctx.managerTraitId,
+      staffCoachId: ctx.staffCoachId,
     });
     const aiBaseline =
       evalMinute >= 60 ? (oppRawAvg >= 85 ? -0.75 : -0.95) : -0.15;
@@ -685,19 +757,28 @@ function resolveMatchStrengths(params: {
   const homeStaminaMod = computeHumanStaminaMod(homeUserCtx, awayClub, homeEntryMap);
   const awayStaminaMod = computeHumanStaminaMod(awayUserCtx, homeClub, awayEntryMap);
 
-  // Halftime tactical adaptation boost in 2nd half (both user and opponent can reap tactical swings!)
+  // Halftime tactical adaptation boost in 2nd half + v9.0 Tactical Mastery staff coach (+18% tactical zone advantage)
+  const homeMasteryMult =
+    homeUserCtx?.staffCoachId === 'sys_tactical_mastery'
+      ? STAFF_COACH_TACTIC_MATCHUP_MULT
+      : 1.0;
+  const awayMasteryMult =
+    awayUserCtx?.staffCoachId === 'sys_tactical_mastery'
+      ? STAFF_COACH_TACTIC_MATCHUP_MULT
+      : 1.0;
+
   const homeHtSwingMult =
-    isSecondHalf && homeUserCtx?.halftimeAdjusted
+    (isSecondHalf && homeUserCtx?.halftimeAdjusted
       ? 1.25 * (homeHumanTraitMod?.halftimeTacticMultiplier ?? 1.0)
       : !homeIsHuman && isAwayUser && isSecondHalf && aiHalftimeAdjusted
         ? 1.18 + ((homeManager?.ovr ?? 80) >= 88 ? 0.12 : 0)
-        : 1.0;
+        : 1.0) * homeMasteryMult;
   const awayHtSwingMult =
-    isSecondHalf && awayUserCtx?.halftimeAdjusted
+    (isSecondHalf && awayUserCtx?.halftimeAdjusted
       ? 1.25 * (awayHumanTraitMod?.halftimeTacticMultiplier ?? 1.0)
       : !awayIsHuman && isHomeUser && isSecondHalf && aiHalftimeAdjusted
         ? 1.18 + ((awayManager?.ovr ?? 80) >= 88 ? 0.12 : 0)
-        : 1.0;
+        : 1.0) * awayMasteryMult;
 
   const homeAttTac = unifiedMatchup
     ? unifiedMatchup.attDelta * 0.78 * (unifiedMatchup.attDelta > 0 ? homeHtSwingMult : 1.0)
@@ -791,6 +872,14 @@ function resolveMatchStrengths(params: {
       ? (awayIsHist ? awayAiTraitMod.situationalDefDelta : awayAiTraitMod.defDelta) * awayAiScale
       : 0;
 
+  // Pre-match AI tactical adaptation pattern-read penalties against repeated human tactics
+  const homeAdaptAttPenalty = awayPreMatchCounter?.userAttPenalty ?? 0;
+  const homeAdaptMidPenalty = awayPreMatchCounter?.userMidPenalty ?? 0;
+  const homeAdaptDefPenalty = awayPreMatchCounter?.userDefPenalty ?? 0;
+  const awayAdaptAttPenalty = homePreMatchCounter?.userAttPenalty ?? 0;
+  const awayAdaptMidPenalty = homePreMatchCounter?.userMidPenalty ?? 0;
+  const awayAdaptDefPenalty = homePreMatchCounter?.userDefPenalty ?? 0;
+
   const home: EffectiveTeamStrength = {
     att:
       homeBase.att +
@@ -799,14 +888,16 @@ function resolveMatchStrengths(params: {
       (homeIndiv ? homeIndiv.attDelta * 0.35 : 0) +
       homeHumanAttDelta +
       homeAiAttDelta +
-      (homeStaminaMod ? homeStaminaMod.attDelta : 0),
+      (homeStaminaMod ? homeStaminaMod.attDelta : 0) -
+      homeAdaptAttPenalty,
     mid:
       homeBase.mid +
       homeMidTac +
       (homeIndiv ? homeIndiv.midDelta * 0.35 : 0) +
       homeHumanMidDelta +
       homeAiMidDelta +
-      (homeStaminaMod ? homeStaminaMod.midDelta : 0),
+      (homeStaminaMod ? homeStaminaMod.midDelta : 0) -
+      homeAdaptMidPenalty,
     def:
       homeBase.def +
       homeDefTac +
@@ -814,7 +905,8 @@ function resolveMatchStrengths(params: {
       (homeIndiv ? homeIndiv.defDelta * 0.35 : 0) +
       homeHumanDefDelta +
       homeAiDefDelta +
-      (homeStaminaMod ? homeStaminaMod.defDelta : 0),
+      (homeStaminaMod ? homeStaminaMod.defDelta : 0) -
+      homeAdaptDefPenalty,
     tacticBonus: Math.round((unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
     xgBonus:
       (homeHumanTraitMod ? homeHumanTraitMod.xgBonus : 0) +
@@ -822,7 +914,9 @@ function resolveMatchStrengths(params: {
       (homeStaminaMod ? homeStaminaMod.freshSubXgBonus : 0) +
       (awayStaminaMod ? awayStaminaMod.oppXgFatigueLeak : 0) +
       (unifiedMatchup ? unifiedMatchup.xgBonus : 0) +
-      homeSubMod.xgDelta,
+      homeSubMod.xgDelta +
+      (homePreMatchCounter ? homePreMatchCounter.aiXgBonus : 0) -
+      (awayPreMatchCounter ? awayPreMatchCounter.userXgPenalty : 0),
     oppXgPenalty:
       (homeHumanTraitMod ? homeHumanTraitMod.oppXgPenalty : 0) +
       (!homeIsHuman && homeAiTraitMod ? homeAiTraitMod.oppXgPenalty * homeAiScale : 0) +
@@ -842,14 +936,16 @@ function resolveMatchStrengths(params: {
       (awayIndiv ? awayIndiv.attDelta * 0.35 : 0) +
       awayHumanAttDelta +
       awayAiAttDelta +
-      (awayStaminaMod ? awayStaminaMod.attDelta : 0),
+      (awayStaminaMod ? awayStaminaMod.attDelta : 0) -
+      awayAdaptAttPenalty,
     mid:
       awayBase.mid +
       awayMidTac +
       (awayIndiv ? awayIndiv.midDelta * 0.35 : 0) +
       awayHumanMidDelta +
       awayAiMidDelta +
-      (awayStaminaMod ? awayStaminaMod.midDelta : 0),
+      (awayStaminaMod ? awayStaminaMod.midDelta : 0) -
+      awayAdaptMidPenalty,
     def:
       awayBase.def +
       awayDefTac +
@@ -857,7 +953,8 @@ function resolveMatchStrengths(params: {
       (awayIndiv ? awayIndiv.defDelta * 0.35 : 0) +
       awayHumanDefDelta +
       awayAiDefDelta +
-      (awayStaminaMod ? awayStaminaMod.defDelta : 0),
+      (awayStaminaMod ? awayStaminaMod.defDelta : 0) -
+      awayAdaptDefPenalty,
     tacticBonus: Math.round(-(unifiedMatchup ? unifiedMatchup.netOvrEquivalent : fallbackTacticHome) * 10) / 10,
     xgBonus:
       (awayHumanTraitMod ? awayHumanTraitMod.xgBonus : 0) +
@@ -865,7 +962,9 @@ function resolveMatchStrengths(params: {
       (awayStaminaMod ? awayStaminaMod.freshSubXgBonus : 0) +
       (homeStaminaMod ? homeStaminaMod.oppXgFatigueLeak : 0) +
       (unifiedMatchup ? unifiedMatchup.awayXgBonus : 0) +
-      awaySubMod.xgDelta,
+      awaySubMod.xgDelta +
+      (awayPreMatchCounter ? awayPreMatchCounter.aiXgBonus : 0) -
+      (homePreMatchCounter ? homePreMatchCounter.userXgPenalty : 0),
     oppXgPenalty:
       (awayHumanTraitMod ? awayHumanTraitMod.oppXgPenalty : 0) +
       (!awayIsHuman && awayAiTraitMod ? awayAiTraitMod.oppXgPenalty * awayAiScale : 0) +

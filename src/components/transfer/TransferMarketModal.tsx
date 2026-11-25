@@ -64,7 +64,9 @@ import {
   type Player,
   type Position,
 } from '../../types/player';
+import { computeCashLegendChanceBonus } from '../../engine/budgetEngine';
 import { buildPlayerCompetitionBreakdown } from '../../utils/playerLookup';
+import { CashSweetenerControl } from '../common/CashSweetenerControl';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { InfoHelpButton } from '../common/InfoHelpButton';
 import { JerseySvg } from '../common/JerseySvg';
@@ -279,6 +281,12 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
   const [selectedAiPlayerIds, setSelectedAiPlayerIds] = useState<string[]>([]);
   const [selectedUserSlots, setSelectedUserSlots] = useState<SlotRef[]>([]);
   const [customFillerIds, setCustomFillerIds] = useState<string[] | null>(null);
+  const [cashOfferM, setCashOfferM] = useState<number>(0);
+
+  const availableCashM = season.budgetState?.transferCashM ?? 0;
+  const ffpTier = season.budgetState?.ffpTier ?? 0;
+  const ffpEmbargoActive = Boolean(tm.ffpEmbargoActive);
+  const clampedCashOfferM = Math.max(0, Math.min(cashOfferM, availableCashM));
 
   // Legend FA 1:1 Special Slot State
   const [legendOutSlot, setLegendOutSlot] = useState<SlotRef | null>(null);
@@ -549,6 +557,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       conditionMap: season.playerConditions,
       championBonusActive: Boolean(tm.championBonusActive),
       shockBargainIds: activeShockBargainIds,
+      cashOfferM: clampedCashOfferM,
     });
   }, [
     season,
@@ -561,6 +570,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     userSquadPlayers,
     tm.championBonusActive,
     activeShockBargainIds,
+    clampedCashOfferM,
   ]);
 
   const inspectedBreakdown = useMemo(() => {
@@ -575,6 +585,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     setSelectedAiPlayerIds([]);
     setSelectedUserSlots([]);
     setCustomFillerIds(null);
+    setCashOfferM(0);
   };
 
   const handleSelectClubReel = (idx: number) => {
@@ -586,7 +597,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
   };
 
   const handleSpin = () => {
-    if (tm.hasSpunClubs || animating) return;
+    if (tm.hasSpunClubs || animating || ffpEmbargoActive) return;
     setLockedCount(0);
     setAnimating(true);
     transferSpinClubs();
@@ -679,6 +690,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     }
     setSelectedUserSlots(preSlots);
     setCustomFillerIds(null);
+    setCashOfferM(0);
     setPosFilter('ALL');
     setActiveTab('explore');
   };
@@ -689,12 +701,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     setSelectedAiPlayerIds([]);
     setSelectedUserSlots([]);
     setCustomFillerIds(null);
+    setCashOfferM(0);
     setPosFilter('ALL');
     setActiveTab(dest);
   };
 
   const handleSubmitTrade = () => {
     if (
+      ffpEmbargoActive ||
       !activeClubOffer ||
       activeClubOffer.isLegendSlot ||
       !activeClubOffer.club ||
@@ -715,18 +729,21 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       userSentSlots: selectedUserSlots,
       aiTargetPlayers: selectedAiPlayers,
       aiFillerPlayers: autoFillerPlayers,
+      cashOfferM: clampedCashOfferM,
     });
     resetTradeBuilder();
   };
 
   const handleSubmitLegendOffer = (target: TransferTargetPlayer) => {
-    if (!legendOutSlot || tm.attemptsRemaining <= 0) return;
-    transferSubmitOffer(target, legendOutSlot);
+    if (ffpEmbargoActive || !legendOutSlot || tm.attemptsRemaining <= 0) return;
+    transferSubmitOffer(target, legendOutSlot, clampedCashOfferM);
     setLegendOutSlot(null);
+    setCashOfferM(0);
   };
 
   const canSubmitTrade = Boolean(
-    tradeEval &&
+    !ffpEmbargoActive &&
+      tradeEval &&
       !tradeEval.blockedReason &&
       tradeEval.requiredUserReleaseCount === 0 &&
       selectedAiPlayers.length > 0 &&
@@ -754,9 +771,22 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                 ? 'UCL 특별 트레이드'
                 : `제 ${tm.windowIndex}차 트레이드 (${tm.triggerRound}R)`}
             </h2>
-            <span className="rounded-md border border-emerald-400/35 bg-emerald-500/12 px-2 py-0.5 text-[11px] font-extrabold text-emerald-300 tabular-nums">
+            <span className="rounded-md border border-emerald-400/35 bg-emerald-500/12 px-2 py-0.5 text-[11px] font-extrabold text-emerald-300 tabular-nums whitespace-nowrap">
               {tm.attemptsRemaining}/{tm.maxAttempts}회
             </span>
+            <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-200 tabular-nums whitespace-nowrap">
+              보유 자금 €{availableCashM}M
+            </span>
+            {ffpEmbargoActive && (
+              <span className="rounded-md border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-[10.5px] font-black text-rose-300 whitespace-nowrap">
+                FFP 2단계 영입 동결
+              </span>
+            )}
+            {!ffpEmbargoActive && ffpTier === 1 && tm.windowIndex === 2 && !isUclSpecial && (
+              <span className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10.5px] font-bold text-amber-300 whitespace-nowrap">
+                FFP 1단계 (1회 제한)
+              </span>
+            )}
             {tm.legendBonusActive && (
               <span className="rounded-md border border-amber-400/35 bg-amber-500/12 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                 👑 {isChampBonus ? '5.5%' : '4.0%'}
@@ -1544,7 +1574,16 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   marketValueMOverride: legTarget.marketValueM,
                                 })}M · {legTarget.formSummary} · 영입 성공 확률{' '}
                                 <strong className="text-amber-300">
-                                  {legTarget.successChance}%
+                                  {Math.min(
+                                    95,
+                                    Math.round(
+                                      legTarget.successChance +
+                                        computeCashLegendChanceBonus(
+                                          clampedCashOfferM,
+                                        ),
+                                    ),
+                                  )}
+                                  %
                                 </strong>
                               </p>
                             </div>
@@ -1554,16 +1593,37 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                             disabled={
                               alreadySigned ||
                               !legendOutSlot ||
-                              tm.attemptsRemaining <= 0
+                              tm.attemptsRemaining <= 0 ||
+                              ffpEmbargoActive
                             }
                             onClick={() => handleSubmitLegendOffer(legTarget)}
-                            className="rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black text-slate-950 hover:bg-amber-300 disabled:opacity-40 cursor-pointer"
+                            className="rounded-xl bg-amber-400 px-5 py-2.5 text-xs font-black text-slate-950 hover:bg-amber-300 disabled:opacity-40 cursor-pointer whitespace-nowrap"
                           >
                             {alreadySigned
                               ? '영입 완료'
-                              : `👑 레전드 FA 영입 제안 (${legTarget.successChance}%)`}
+                              : `👑 레전드 FA 영입 제안 (${Math.min(
+                                  95,
+                                  Math.round(
+                                    legTarget.successChance +
+                                      computeCashLegendChanceBonus(
+                                        clampedCashOfferM,
+                                      ),
+                                  ),
+                                )}%)`}
                           </button>
                         </div>
+
+                        <CashSweetenerControl
+                          availableCashM={availableCashM}
+                          cashOfferM={clampedCashOfferM}
+                          onChange={setCashOfferM}
+                          mode="legend"
+                          disabled={
+                            alreadySigned ||
+                            tm.attemptsRemaining <= 0 ||
+                            ffpEmbargoActive
+                          }
+                        />
 
                         <div className="space-y-2">
                           <div className="text-xs font-bold text-slate-300">
@@ -1993,11 +2053,21 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   type="button"
                                   disabled={!canSubmitTrade}
                                   onClick={handleSubmitTrade}
-                                  className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs sm:text-sm font-black text-white shadow-lg shadow-emerald-950/40 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0 transition-colors"
+                                  className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs sm:text-sm font-black text-white shadow-lg shadow-emerald-950/40 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0 transition-colors whitespace-nowrap"
                                 >
                                   트레이드 제안 ({tradeEval.acceptanceChance}%)
                                 </button>
                               </div>
+
+                              <CashSweetenerControl
+                                availableCashM={availableCashM}
+                                cashOfferM={clampedCashOfferM}
+                                onChange={setCashOfferM}
+                                mode="trade"
+                                disabled={
+                                  tm.attemptsRemaining <= 0 || ffpEmbargoActive
+                                }
+                              />
                             </div>
                           )}
                       </div>

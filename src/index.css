@@ -177,6 +177,28 @@ textarea {
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.14);
 }
 
+/* v9.0 Permanent Potential Awakening: refined Crimson Ember border (no noisy particles) */
+@keyframes awakenedEmberGlow {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(239, 68, 68, 0.52),
+      0 0 14px -3px rgba(220, 38, 38, 0.36),
+      inset 0 0 10px -5px rgba(248, 113, 113, 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1.25px rgba(249, 115, 22, 0.72),
+      0 0 18px -2px rgba(220, 38, 38, 0.52),
+      inset 0 0 12px -4px rgba(251, 146, 60, 0.28);
+  }
+}
+
+.card-awakened-ember {
+  animation: awakenedEmberGlow 3.2s ease-in-out infinite;
+  background: linear-gradient(155deg, #251013 0%, #141016 52%, #22110e 100%);
+  border: 1.5px solid rgba(239, 68, 68, 0.82);
+}
+
 .pitch-surface {
   background:
     repeating-linear-gradient(

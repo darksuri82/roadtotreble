@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { applyAwakeningToPlayer } from '../../../engine/awakeningEngine';
 import {
   clearMyTacticBarrier,
   submitTacticBarrier,
@@ -315,20 +316,35 @@ export function MpLeagueRoot({
   const remoteRev = remotePayload?.rev ?? 0;
 
   const mySquad = useMemo<MpSquadInput | null>(() => {
-    if (optimisticSquad && optimisticSquad.rev > remoteRev) {
-      return optimisticSquad.squad;
-    }
-    if (!remotePayload || remotePayload.starters?.length !== 11 || remotePayload.bench?.length !== 5) {
-      return null;
-    }
+    const base: MpSquadInput | null =
+      optimisticSquad && optimisticSquad.rev > remoteRev
+        ? optimisticSquad.squad
+        : remotePayload &&
+            remotePayload.starters?.length === 11 &&
+            remotePayload.bench?.length === 5
+          ? {
+              managerTraitId: remotePayload.managerTraitId,
+              formation: remotePayload.formation,
+              tactic: remotePayload.tactic,
+              starters: remotePayload.starters,
+              bench: remotePayload.bench,
+            }
+          : null;
+    if (!base) return null;
+    const awakened = mine?.awakenedPlayers;
+    if (!awakened || Object.keys(awakened).length === 0) return base;
     return {
-      managerTraitId: remotePayload.managerTraitId,
-      formation: remotePayload.formation,
-      tactic: remotePayload.tactic,
-      starters: remotePayload.starters,
-      bench: remotePayload.bench,
+      ...base,
+      starters: base.starters.map((p) => {
+        const rec = awakened[p.id];
+        return rec ? applyAwakeningToPlayer(p, rec) : p;
+      }),
+      bench: base.bench.map((p) => {
+        const rec = awakened[p.id];
+        return rec ? applyAwakeningToPlayer(p, rec) : p;
+      }),
     };
-  }, [optimisticSquad, remotePayload, remoteRev]);
+  }, [optimisticSquad, remotePayload, remoteRev, mine?.awakenedPlayers]);
 
   const savePayload = useCallback(
     async (payload: MpLeagueSquadPayload) => {
@@ -435,8 +451,13 @@ export function MpLeagueRoot({
   ]);
 
   // Defensive fallback: if a player ever received 0 transfer offers, auto-ack so they never look stranded
+  // (wait if mid-season staff coach selection is still pending!)
   const emptyTransferKey =
-    !tickerPlaying && live?.flow.kind === 'transfer' && mine && mine.offers.length === 0
+    !tickerPlaying &&
+    live?.flow.kind === 'transfer' &&
+    mine &&
+    mine.offers.length === 0 &&
+    !mine.staffCoach?.pendingSelection
       ? live.flow.key
       : null;
   useEffect(() => {
@@ -747,8 +768,13 @@ export function MpLeagueRoot({
           userSentPlayerIds: payload.userSentPlayerIds,
           aiTargetPlayerIds: payload.aiTargetPlayerIds,
           aiFillerPlayerIds: payload.aiFillerPlayerIds,
+          cashOfferM: payload.cashOfferM,
         })
       }
+      onHireStaffCoach={(coachId) => void sendAction('coach_hire', { coachId })}
+      onSkipStaffCoach={() => void sendAction('coach_skip', {})}
+      onDismissAdaptationAlert={() => void sendAction('adaptation_dismiss', {})}
+      onDismissAwakeningAlert={() => void sendAction('awakening_dismiss', {})}
       onSetAutoMs={host.setAutoMs}
       onForceResume={host.forceResume}
       onLeaveRoom={onLeaveRoom}

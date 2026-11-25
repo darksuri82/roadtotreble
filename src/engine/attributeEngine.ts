@@ -43,7 +43,7 @@ export function getPrimarySubPosition(
   }
 }
 
-function getPositionWeights(
+export function getPositionWeights(
   sub: SubPosition,
 ): Record<'sho' | 'pas' | 'cro' | 'dri' | 'aer' | 'def' | 'phy', number> {
   switch (sub) {

@@ -128,6 +128,11 @@ export interface TeamRatings {
   managerTargetCount?: number;
   managerTacticActive?: boolean;
   managerEffectSummary?: string;
+  /** Assistant coach always-on / tactic-active A/M/D bonuses already included in effectiveAtt/Mid/Def */
+  staffAttBonus?: number;
+  staffMidBonus?: number;
+  staffDefBonus?: number;
+  staffCoachEffectSummary?: string;
 }
 
 export type ChemistryLinkStatus = 'none' | 'weak' | 'strong' | 'legend';
@@ -330,6 +335,8 @@ export interface TradePackageEvaluation {
   aiValuations: TradeAssetValuation[];
   requiredAutoFillers: number;
   requiredUserReleaseCount: number;
+  cashOfferM?: number;
+  cashTp?: number;
 }
 
 export interface IncomingTradeOffer {
@@ -355,6 +362,7 @@ export interface TradeHistoryRecord {
   receivedPlayers: Player[];
   acceptanceChance: number;
   isIncomingOffer?: boolean;
+  cashOfferM?: number;
 }
 
 export interface TransferClubOffer {
@@ -400,6 +408,90 @@ export interface TransferMarketState {
   history: TransferHistoryEntry[];
   tradeHistory?: TradeHistoryRecord[];
   completedWindows: number[];
+  /** FFP Tier 2 Window-2 transfer embargo note */
+  ffpEmbargoActive?: boolean;
+}
+
+// =============================================================================
+// v9.0 Season Depth Systems (Budget/FFP · AI Tactical Adaptation · Staff Coach · Awakening)
+// =============================================================================
+
+export type FfpTier = 0 | 1 | 2;
+
+export interface SeasonBudgetState {
+  capM: number;
+  initialSpentM: number;
+  excessM: number;
+  excessPct: number; // 0..100+
+  ffpTier: FfpTier;
+  transferCashM: number; // Remaining cash (€M) available for transfer negotiations
+  chemPenalty: number; // 0 or -4
+  window2MaxAttempts: number; // 3 (tier 0), 1 (tier 1), 0 (tier 2)
+  scoreMultiplier: number; // 1.0 (tier 0/1) or 0.88 (tier 2)
+  extraLossMoraleDrop: number; // 0 (tier 0/1) or 1 (tier 2)
+}
+
+export type TacticalExposureTier = 'low' | 'warning' | 'danger';
+
+export interface TacticalHistoryEntry {
+  formation: FormationId;
+  tactic: TacticId;
+  round: number;
+  competition: 'league' | 'cup' | 'ucl';
+}
+
+export interface TacticalAdaptationAlert {
+  id: string;
+  tier: 'warning' | 'danger';
+  exposureScore: number;
+  repeatedFormation: FormationId;
+  repeatedTactic: TacticId;
+  consecutiveCount: number;
+}
+
+export interface TacticalAdaptationState {
+  history: TacticalHistoryEntry[]; // up to last 5 matches
+  highestAlertedTier: TacticalExposureTier;
+  pendingAlert: TacticalAdaptationAlert | null;
+}
+
+export type StaffCoachCategory = 'tactic' | 'line' | 'system';
+
+export type StaffCoachId =
+  | 'tactic_possession'
+  | 'tactic_gegenpressing'
+  | 'tactic_counter'
+  | 'tactic_wingplay'
+  | 'tactic_balanced'
+  | 'line_attack'
+  | 'line_midfield'
+  | 'line_defense'
+  | 'sys_tactical_mastery'
+  | 'sys_locker_room'
+  | 'sys_supersub_phys'
+  | 'sys_potential_dev';
+
+export interface StaffCoachState {
+  hiredCoachId: StaffCoachId | null;
+  offeredCoachIds: StaffCoachId[];
+  pendingSelection: boolean;
+  completed: boolean;
+}
+
+export interface AwakeningAlertItem {
+  id: string;
+  playerId: string;
+  playerName: string;
+  position: Position;
+  mainPosition: SubPosition;
+  nationality: string;
+  nationalityCode: string;
+  originalOvr: number;
+  newOvr: number;
+  ovrGain: number;
+  round: number;
+  competition: 'league' | 'cup' | 'ucl';
+  statDeltas: { key: string; label: string; before: number; after: number }[];
 }
 
 export interface OtherLeagueSeasonState {
@@ -455,6 +547,12 @@ export interface SeasonState {
   pendingInjuryAlerts?: InjuryAlertItem[];
   injuryAutoReturns?: InjuryAutoReturnEntry[];
   injuryReturnToasts?: InjuryReturnNotification[];
+  // v9.0: Budget/FFP, AI Tactical Adaptation, Mid-season Assistant Coach, Permanent Awakening
+  budgetState?: SeasonBudgetState;
+  tacticalAdaptation?: TacticalAdaptationState;
+  staffCoach?: StaffCoachState;
+  awakenedPlayers?: Record<string, import('./player').PlayerAwakeningRecord>;
+  pendingAwakeningAlerts?: AwakeningAlertItem[];
 }
 
 export interface GameState {

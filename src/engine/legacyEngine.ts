@@ -29,6 +29,7 @@ import { buildHallOfFameMember } from '../types/legacy';
 import type { Player, Position, SubPosition } from '../types/player';
 import type { UclTournamentState } from '../types/ucl';
 import { getPlayerAttributes } from './attributeEngine';
+import { applyAwakeningToPlayer, isValidAwakeningRecord } from './awakeningEngine';
 import { didUserWinCup, getUserCupResultLabel } from './cupEngine';
 import { ACTIVE_PLAYERS, getLeagueById, LEGEND_PLAYERS } from './dataLoader';
 import { USER_CLUB_ID } from './matchEngine';
@@ -119,6 +120,8 @@ export interface SeasonScoreInput {
   awards?: SeasonAwards | null;
   globalAwards?: GlobalSeasonAwards | null;
   userClubId?: string;
+  /** Optional FFP Tier 2 score multiplier (e.g. 0.88 for -12% penalty). Default 1.0 */
+  ffpScoreMultiplier?: number;
 }
 
 /**
@@ -184,6 +187,7 @@ export function computeSeasonScore(
     awards = null,
     globalAwards = null,
     userClubId = USER_CLUB_ID,
+    ffpScoreMultiplier = 1,
   } = input;
 
   const safePlayed = Math.max(1, leaguePlayed);
@@ -418,7 +422,7 @@ export function computeSeasonScore(
   }
   awardsBonus = Math.min(1100, awardsBonus);
 
-  const totalScore =
+  const rawTotalScore =
     leagueConvertedScore +
     leagueRankBonus +
     cupBonus +
@@ -427,6 +431,16 @@ export function computeSeasonScore(
     underdogBonus +
     squadCraftBonus +
     awardsBonus;
+
+  const clampedFfpMult = Math.max(0.5, Math.min(1, ffpScoreMultiplier));
+  const totalScore =
+    clampedFfpMult < 1
+      ? Math.round(rawTotalScore * clampedFfpMult)
+      : rawTotalScore;
+  const ffpPenaltyPoints =
+    clampedFfpMult < 1 ? Math.max(0, rawTotalScore - totalScore) : 0;
+  const ffpPenaltyPct =
+    clampedFfpMult < 1 ? Math.round((1 - clampedFfpMult) * 100) : 0;
 
   let grade: SeasonScoreBreakdown['grade'];
   if (totalScore >= 7200) grade = 'S+';
@@ -449,6 +463,7 @@ export function computeSeasonScore(
     squadCraftDetails,
     awardsBonus,
     awardsBonusDetails,
+    ...(ffpPenaltyPct > 0 ? { ffpPenaltyPct, ffpPenaltyPoints } : {}),
     totalScore,
     grade,
   };
@@ -1004,12 +1019,18 @@ function rebuildPlayerFromLegacyMember(
     LEGEND_PLAYERS.find((p) => p.id === m.id) ??
     ACTIVE_PLAYERS.find((p) => p.id === m.id);
   if (byId) {
+    if (m.awakening && isValidAwakeningRecord(byId, m.awakening)) {
+      return applyAwakeningToPlayer(byId, m.awakening);
+    }
     return { ...byId, attrs: getPlayerAttributes(byId) };
   }
   const byName =
     LEGEND_PLAYERS.find((p) => p.name === m.name) ??
     ACTIVE_PLAYERS.find((p) => p.name === m.name);
   if (byName) {
+    if (m.awakening && isValidAwakeningRecord(byName, m.awakening)) {
+      return applyAwakeningToPlayer(byName, m.awakening);
+    }
     return { ...byName, attrs: getPlayerAttributes(byName) };
   }
 

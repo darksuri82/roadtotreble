@@ -796,6 +796,17 @@ export function SeasonSummary() {
             ))}
           </div>
 
+          {score.ffpPenaltyPoints && score.ffpPenaltyPoints > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200 tabular-nums">
+              <span className="font-bold text-rose-300">
+                FFP 2단계 예산 초과 감점 (-{score.ffpPenaltyPct ?? 12}%)
+              </span>
+              <span className="font-mono font-black text-rose-300">
+                -{score.ffpPenaltyPoints.toLocaleString()}점
+              </span>
+            </div>
+          )}
+
           {score.honorsBonusDetails && score.honorsBonusDetails.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
               <span className="font-bold text-amber-300">대업·대기록 가산점:</span>

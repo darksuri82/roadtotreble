@@ -70,6 +70,7 @@ import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
 import { matchResultToCastMatch } from '../common/SoloLiveScoreboard';
 import type { SoloLiveDurationMs } from '../common/SoloLiveScoreboard';
+import { StaffCoachBadge } from '../common/StaffCoachBadge';
 import {
   LiveMatchBroadcast,
   shouldRenderLiveMatchBroadcast,
@@ -219,8 +220,18 @@ export function UclDashboard() {
   );
 
   const isTransferOpen = Boolean(season?.transferMarket.isOpen);
+  const hasPendingStaffCoach = Boolean(
+    season?.staffCoach?.pendingSelection &&
+      season.staffCoach.offeredCoachIds.length > 0,
+  );
   const hasPendingInjury = Boolean(
     season?.pendingInjuryAlerts && season.pendingInjuryAlerts.length > 0,
+  );
+  const hasPendingAwakening = Boolean(
+    season?.pendingAwakeningAlerts && season.pendingAwakeningAlerts.length > 0,
+  );
+  const hasPendingAdaptation = Boolean(
+    season?.tacticalAdaptation?.pendingAlert,
   );
   const hasPendingEvent = Boolean(
     season?.managerEvents?.activeEvent || season?.managerEvents?.lastResolution,
@@ -335,8 +346,11 @@ export function UclDashboard() {
   }, [autoPopupMode, spectateCast, streamCast, settledCastHold]);
 
   const isPopupBlockedByOtherModal =
+    hasPendingStaffCoach ||
     isTransferOpen ||
     hasPendingInjury ||
+    hasPendingAwakening ||
+    hasPendingAdaptation ||
     hasPendingEvent ||
     hasActive2DBroadcast ||
     lpFastSimOpen;
@@ -686,7 +700,7 @@ export function UclDashboard() {
   return (
     <div className="mx-auto max-w-7xl px-3 sm:px-6 py-5 space-y-5">
       {/* UCL Special Transfer Window Modal */}
-      {season.transferMarket.isOpen && <TransferMarketModal />}
+      {season.transferMarket.isOpen && !hasPendingStaffCoach && <TransferMarketModal />}
 
       {/* Live Match Broadcast Modal (reuses full 2D pitch + Slow-Mo + Stamina + ET/PK!) */}
       {shouldRenderLiveMatchBroadcast(season.liveHalftime) && (
@@ -870,6 +884,15 @@ export function UclDashboard() {
               <div className="font-mono text-xs sm:text-sm font-black text-emerald-300">
                 {ratings.ovr} · {chemistry.total}
               </div>
+              {season.staffCoach?.hiredCoachId && (
+                <div className="mt-1">
+                  <StaffCoachBadge
+                    coachId={season.staffCoach.hiredCoachId}
+                    activeTactic={activeTactic}
+                    compact
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1740,6 +1763,8 @@ export function UclDashboard() {
                     bench={state.bench}
                     chemistry={chemistry}
                     managerTraitId={state.manager.traitId}
+                    tacticalHistory={season.tacticalAdaptation?.history}
+                    staffCoachId={season.staffCoach?.hiredCoachId ?? null}
                     onSelectTactic={(tId) => setNextMatchTactic(tId)}
                     onChangeFormation={changeFormation}
                     onSwapSquad={swapSquadPositions}

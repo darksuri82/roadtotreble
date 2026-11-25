@@ -65,6 +65,7 @@ import {
   SoloLiveScoreboard,
 } from '../common/SoloLiveScoreboard';
 import type { SoloLiveDurationMs } from '../common/SoloLiveScoreboard';
+import { StaffCoachBadge } from '../common/StaffCoachBadge';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
 import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
@@ -209,8 +210,18 @@ export function SeasonDashboard() {
       ? findUserCupMatch(season.cup, pendingCupStage, USER_CLUB_ID)
       : null;
 
+  const hasPendingStaffCoach = Boolean(
+    season?.staffCoach?.pendingSelection &&
+      season.staffCoach.offeredCoachIds.length > 0,
+  );
   const hasPendingInjury = Boolean(
     season?.pendingInjuryAlerts && season.pendingInjuryAlerts.length > 0,
+  );
+  const hasPendingAwakening = Boolean(
+    season?.pendingAwakeningAlerts && season.pendingAwakeningAlerts.length > 0,
+  );
+  const hasPendingAdaptation = Boolean(
+    season?.tacticalAdaptation?.pendingAlert,
   );
   const hasPendingEvent = Boolean(
     season?.managerEvents?.activeEvent || season?.managerEvents?.lastResolution,
@@ -228,12 +239,12 @@ export function SeasonDashboard() {
   // (Interviews intentionally do NOT set this ref — they auto-resume smoothly!)
   useEffect(() => {
     if (!liveAutoActive) return;
-    if (isTransferOpen) {
+    if (isTransferOpen || hasPendingStaffCoach) {
       liveAutoNeedsPromptRef.current = 'transfer';
     } else if (hasPendingInjury) {
       liveAutoNeedsPromptRef.current = 'injury';
     }
-  }, [liveAutoActive, isTransferOpen, hasPendingInjury]);
+  }, [liveAutoActive, isTransferOpen, hasPendingStaffCoach, hasPendingInjury]);
 
   const launchNextLiveAutoMatch = useCallback(
     (allowCup = false) => {
@@ -297,8 +308,11 @@ export function SeasonDashboard() {
 
   // Schedule next live auto-advance match (or ask resume confirmation after cup/2D/transfer/injury)
   const liveAutoBlockedByEvent =
+    hasPendingStaffCoach ||
     isTransferOpen ||
     hasPendingInjury ||
+    hasPendingAwakening ||
+    hasPendingAdaptation ||
     hasPendingEvent ||
     uncelebratedCupWin ||
     hasActive2DBroadcast ||
@@ -479,17 +493,24 @@ export function SeasonDashboard() {
           ? '진행 선택 대기'
           : liveAutoCupPromptOpen
             ? '컵대회 일시정지'
-            : isTransferOpen
-              ? '이적시장 일시정지'
-              : hasPendingEvent
-                ? '인터뷰 일시정지'
-                : hasPendingInjury
-                  ? '부상 알림 일시정지'
-                  : uncelebratedCupWin
-                    ? '컵 우승 축하'
-                    : null;
+            : hasPendingStaffCoach
+              ? '수석 코치 선임'
+              : isTransferOpen
+                ? '이적시장 일시정지'
+                : hasPendingAwakening
+                  ? '선수 포텐 각성'
+                  : hasPendingAdaptation
+                    ? '전술 적응 경고'
+                    : hasPendingEvent
+                      ? '인터뷰 일시정지'
+                      : hasPendingInjury
+                        ? '부상 알림 일시정지'
+                        : uncelebratedCupWin
+                          ? '컵 우승 축하'
+                          : null;
 
   const controlsBlocked =
+    hasPendingStaffCoach ||
     season.transferMarket.isOpen ||
     Boolean(season.liveHalftime) ||
     skipFlowState === 'running' ||
@@ -603,10 +624,41 @@ export function SeasonDashboard() {
                 );
               })()}
               {nextTransferRound !== null && (
-                <span className="inline-flex items-center gap-0.5 text-amber-300/90">
+                <span className="inline-flex items-center gap-0.5 text-amber-300/90 whitespace-nowrap">
                   <Calendar className="w-3 h-3" />
                   이적 {nextTransferRound}R
                 </span>
+              )}
+              {season.budget && (
+                <span
+                  title={
+                    season.budget.ffpTier === 2
+                      ? 'FFP 2단계 대폭 초과: 2차 이적 동결 · 패배 사기 추가 하락 · 시즌 점수 -12%'
+                      : season.budget.ffpTier === 1
+                        ? 'FFP 1단계 경미 초과: 잔여 자금 €0M · 2차 이적 1회 제한 · 팀 케미 -4'
+                        : `이적시장 협상에 얹을 수 있는 잔여 예산 €${season.budget.transferCashM}M`
+                  }
+                  className={`inline-flex items-center gap-1 rounded border px-1.5 py-px text-[10px] font-bold whitespace-nowrap tabular-nums ${
+                    season.budget.ffpTier === 2
+                      ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
+                      : season.budget.ffpTier === 1
+                        ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
+                        : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                  }`}
+                >
+                  {season.budget.ffpTier === 2
+                    ? 'FFP 2단계'
+                    : season.budget.ffpTier === 1
+                      ? 'FFP 1단계'
+                      : `자금 €${season.budget.transferCashM}M`}
+                </span>
+              )}
+              {season.staffCoach?.hiredCoachId && (
+                <StaffCoachBadge
+                  coachId={season.staffCoach.hiredCoachId}
+                  activeTactic={activeTactic}
+                  compact
+                />
               )}
               <InfoHelpButton
                 title="시즌 진행 · 자동진행 · 스킵 안내"
@@ -753,6 +805,8 @@ export function SeasonDashboard() {
                 bench={state.bench}
                 chemistry={chemistry}
                 managerTraitId={state.manager.traitId}
+                tacticalHistory={season.tacticalAdaptation?.history}
+                staffCoachId={season.staffCoach?.hiredCoachId ?? null}
                 onSelectTactic={(tId) =>
                   setNextMatchTactic(tId === season.defaultTactic ? null : tId)
                 }
@@ -1493,7 +1547,8 @@ export function SeasonDashboard() {
       {activeTab !== 'transfer' &&
         skipFlowState !== 'running' &&
         !liveTickerPlaying &&
-        !quickSkipModalOpen && <TransferMarketModal />}
+        !quickSkipModalOpen &&
+        !hasPendingStaffCoach && <TransferMarketModal />}
 
       {/* Post-Transfer Skip Resume Prompt ([계속 스킵] vs [일시중지]) */}
       {skipFlowState === 'prompt_resume' &&
@@ -1613,8 +1668,11 @@ export function SeasonDashboard() {
         liveAutoResumePrompt !== null &&
         !liveTickerPlaying &&
         !hasActive2DBroadcast &&
+        !hasPendingStaffCoach &&
         !isTransferOpen &&
         !hasPendingInjury &&
+        !hasPendingAwakening &&
+        !hasPendingAdaptation &&
         !hasPendingEvent && (
           <div className="modal-backdrop fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 p-4">
             <ModalBodyLock />

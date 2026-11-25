@@ -1,0 +1,216 @@
+import type { FfpTier, SeasonBudgetState } from '../types/game';
+import type { Player } from '../types/player';
+
+/**
+ * Draft Budget Soft Cap & 2-Tier FFP System (€M)
+ *
+ * Philosophy:
+ * - Prevents 90+ superstar spam from effortlessly breaking records while keeping
+ *   the cap generous enough for normal title contenders (1~2 Legends + 85~88 core
+ *   + value/manager-fit picks) to stay cleanly under budget and carry over cash.
+ * - Legends use a unified flat price (`LEGEND_FLAT_DRAFT_COST_M = 95`, comparable
+ *   to upper-80s stars and cheaper than active 90+ superstars) so hitting a rare
+ *   2.5% Legend roulette slot feels exciting and rewarding.
+ */
+export const DRAFT_BUDGET_CAP_M = 950;
+export const LEGEND_FLAT_DRAFT_COST_M = 95;
+export const FFP_TIER1_MAX_EXCESS_RATIO = 0.15; // +1% .. +15%
+export const FFP_TIER1_CHEM_PENALTY = 4; // -4 team chemistry
+export const FFP_TIER1_WINDOW2_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 2
+export const FFP_TIER2_WINDOW2_MAX_ATTEMPTS = 0; // Window 2 signings frozen
+export const FFP_TIER2_SCORE_MULTIPLIER = 0.88; // -12% HOF / Global TOP 15 score
+export const FFP_TIER2_SCORE_PENALTY_PCT = 12;
+export const FFP_TIER2_LOSS_MORALE_EXTRA = 1; // +1 extra morale drop on losses
+
+/** Transfer Cash-Sweetener conversion rates */
+export const CASH_TO_TP_RATE = 1.25; // €1M -> +1.25 TP up to €100M
+export const CASH_TO_TP_SOFT_CAP_M = 100;
+export const CASH_TO_TP_OVER_CAP_RATE = 0.9; // €1M -> +0.90 TP above €100M
+export const CASH_LEGEND_CHANCE_PER_10M = 1.5; // +1.5%p per €10M
+export const CASH_LEGEND_CHANCE_MAX_BONUS = 15; // max +15%p
+export const CASH_STAR_GUARD_RELIEF_THRESHOLD_M = 80; // relaxes OVR-7 guard by 1 when adding €80M+
+
+export interface SquadBudgetEvaluation {
+  capM: number;
+  spentM: number;
+  remainingM: number; // >= 0 (transfer cash carry-over when compliant)
+  excessM: number; // >= 0
+  excessPct: number; // 0..999 (rounded to 1 decimal)
+  usagePct: number; // 0..999
+  ffpTier: FfpTier;
+  tierLabel: string;
+  chemPenalty: number; // 0 or -4
+  window2MaxAttempts: number; // 3, 1, or 0
+  scoreMultiplier: number; // 1.0 or 0.88
+  extraLossMoraleDrop: number; // 0 or 1
+  previewDeltaM?: number;
+}
+
+/**
+ * Computes a player's non-linear progressive draft cost (€M).
+ * - All Legends share a unified flat cost (`LEGEND_FLAT_DRAFT_COST_M = €95M`).
+ * - Active players scale smoothly at 68..84 and steeply from 87..94.
+ */
+export function computePlayerDraftCostM(
+  player: Pick<Player, 'ovr' | 'isLegend'>,
+): number {
+  if (player.isLegend) {
+    return LEGEND_FLAT_DRAFT_COST_M;
+  }
+  const ovr = Math.max(60, Math.min(99, Math.round(player.ovr)));
+  let raw: number;
+  if (ovr <= 73) {
+    raw = Math.max(4, 4 + Math.max(0, ovr - 68) * 1.0); // 68:4 .. 73:9
+  } else if (ovr <= 78) {
+    raw = 9 + (ovr - 73) * 2.2; // 74:11 .. 78:20
+  } else if (ovr <= 82) {
+    raw = 20 + (ovr - 78) * 4.0; // 79:24 .. 82:36
+  } else if (ovr <= 85) {
+    raw = 36 + (ovr - 82) * 6.5; // 83:43, 84:49, 85:56
+  } else if (ovr <= 88) {
+    raw = 56 + (ovr - 85) * 10.5; // 86:66, 87:77, 88:88
+  } else if (ovr <= 90) {
+    raw = 88 + (ovr - 88) * 15.0; // 89:103, 90:118
+  } else {
+    raw = 118 + (ovr - 90) * 18.0; // 91:136, 92:154, 93:172, 94:190
+  }
+  return Math.max(4, Math.round(raw));
+}
+
+export function classifyFfpTier(
+  spentM: number,
+  capM = DRAFT_BUDGET_CAP_M,
+): FfpTier {
+  if (spentM <= capM) return 0;
+  const excessRatio = (spentM - capM) / Math.max(1, capM);
+  if (excessRatio <= FFP_TIER1_MAX_EXCESS_RATIO + 1e-9) return 1;
+  return 2;
+}
+
+export function evaluateSquadBudget(
+  squad: (Player | null)[],
+  options?: {
+    capM?: number;
+    previewPlayer?: Player | null;
+  },
+): SquadBudgetEvaluation {
+  const capM = options?.capM ?? DRAFT_BUDGET_CAP_M;
+  const previewPlayer = options?.previewPlayer ?? null;
+
+  const baseSpentM = squad.reduce(
+    (sum, p) => (p ? sum + computePlayerDraftCostM(p) : sum),
+    0,
+  );
+  const previewDeltaM = previewPlayer
+    ? computePlayerDraftCostM(previewPlayer)
+    : 0;
+  const spentM = baseSpentM + previewDeltaM;
+  const remainingM = Math.max(0, capM - spentM);
+  const excessM = Math.max(0, spentM - capM);
+  const excessPct =
+    excessM > 0 ? Math.round((excessM / Math.max(1, capM)) * 1000) / 10 : 0;
+  const usagePct = Math.round((spentM / Math.max(1, capM)) * 1000) / 10;
+  const ffpTier = classifyFfpTier(spentM, capM);
+
+  const tierLabel =
+    ffpTier === 0
+      ? '예산 준수'
+      : ffpTier === 1
+        ? '1단계 주의 (+1~15%)'
+        : '2단계 FFP 초과 (+15%↑)';
+
+  return {
+    capM,
+    spentM,
+    remainingM,
+    excessM,
+    excessPct,
+    usagePct,
+    ffpTier,
+    tierLabel,
+    chemPenalty: ffpTier >= 1 ? -FFP_TIER1_CHEM_PENALTY : 0,
+    window2MaxAttempts:
+      ffpTier === 2
+        ? FFP_TIER2_WINDOW2_MAX_ATTEMPTS
+        : ffpTier === 1
+          ? FFP_TIER1_WINDOW2_MAX_ATTEMPTS
+          : 3,
+    scoreMultiplier: ffpTier === 2 ? FFP_TIER2_SCORE_MULTIPLIER : 1.0,
+    extraLossMoraleDrop: ffpTier === 2 ? FFP_TIER2_LOSS_MORALE_EXTRA : 0,
+    ...(previewPlayer ? { previewDeltaM } : {}),
+  };
+}
+
+/**
+ * Locks a drafted 16-player squad's initial budget evaluation into a persistent SeasonBudgetState.
+ */
+export function createSeasonBudgetState(
+  squad: (Player | null)[],
+  capM = DRAFT_BUDGET_CAP_M,
+): SeasonBudgetState {
+  const ev = evaluateSquadBudget(squad, { capM });
+  return {
+    capM: ev.capM,
+    initialSpentM: ev.spentM,
+    excessM: ev.excessM,
+    excessPct: ev.excessPct,
+    ffpTier: ev.ffpTier,
+    transferCashM: ev.remainingM,
+    chemPenalty: ev.chemPenalty,
+    window2MaxAttempts: ev.window2MaxAttempts,
+    scoreMultiplier: ev.scoreMultiplier,
+    extraLossMoraleDrop: ev.extraLossMoraleDrop,
+  };
+}
+
+/** Safe fallback for legacy saves without `budgetState`. */
+export function createDefaultSeasonBudgetState(): SeasonBudgetState {
+  return {
+    capM: DRAFT_BUDGET_CAP_M,
+    initialSpentM: 0,
+    excessM: 0,
+    excessPct: 0,
+    ffpTier: 0,
+    transferCashM: 0,
+    chemPenalty: 0,
+    window2MaxAttempts: 3,
+    scoreMultiplier: 1.0,
+    extraLossMoraleDrop: 0,
+  };
+}
+
+/**
+ * Converts cash (€M) attached to a trade package into Trade Points (TP).
+ * Exempt from multi-player consolidation tax so cash smoothly bridges valuation gaps.
+ */
+export function computeCashOfferTp(cashOfferM: number): number {
+  const safeCash = Math.max(0, Math.round(cashOfferM));
+  if (safeCash <= 0) return 0;
+  const firstTier = Math.min(safeCash, CASH_TO_TP_SOFT_CAP_M);
+  const overflow = Math.max(0, safeCash - CASH_TO_TP_SOFT_CAP_M);
+  const raw = firstTier * CASH_TO_TP_RATE + overflow * CASH_TO_TP_OVER_CAP_RATE;
+  return Math.round(raw * 10) / 10;
+}
+
+/**
+ * Converts cash (€M) attached to a Legend FA negotiation into signing probability boost (%p).
+ */
+export function computeCashLegendChanceBonus(cashOfferM: number): number {
+  const safeCash = Math.max(0, Math.round(cashOfferM));
+  if (safeCash <= 0) return 0;
+  const bonus = (safeCash / 10) * CASH_LEGEND_CHANCE_PER_10M;
+  return Math.min(CASH_LEGEND_CHANCE_MAX_BONUS, Math.round(bonus));
+}
+
+export function deductTransferCash(
+  budget: SeasonBudgetState | undefined | null,
+  spentM: number,
+): SeasonBudgetState | undefined {
+  if (!budget) return undefined;
+  const safeSpend = Math.max(0, Math.round(spentM));
+  if (safeSpend <= 0) return budget;
+  return {
+    ...budget,
+    transferCashM: Math.max(0, budget.transferCashM - safeSpend),
+  };
+}

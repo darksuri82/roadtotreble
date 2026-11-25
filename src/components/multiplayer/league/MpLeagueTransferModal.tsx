@@ -60,6 +60,7 @@ import {
   type Player,
   type Position,
 } from '../../../types/player';
+import { CashSweetenerControl } from '../../common/CashSweetenerControl';
 import { CountryFlagSvg } from '../../common/CountryFlagSvg';
 import { InfoHelpButton } from '../../common/InfoHelpButton';
 import { JerseySvg } from '../../common/JerseySvg';
@@ -74,6 +75,7 @@ export interface MpCounterTradePayload {
   userSentPlayerIds: string[];
   aiTargetPlayerIds: string[];
   aiFillerPlayerIds: string[];
+  cashOfferM?: number;
 }
 
 export interface MpLeagueTransferModalProps {
@@ -98,6 +100,8 @@ export interface MpLeagueTransferModalProps {
   myFormation?: FormationId;
   myTactic?: TacticId;
   managerTraitId?: ManagerTraitId | null;
+  availableCashM?: number;
+  ffpTier?: 0 | 1 | 2;
 }
 
 type MpTransferTab = 'offers' | 'tactics';
@@ -239,6 +243,8 @@ export function MpLeagueTransferModal({
   myFormation = '4-3-3',
   myTactic = 'balanced',
   managerTraitId = null,
+  availableCashM = 0,
+  ffpTier = 0,
 }: MpLeagueTransferModalProps) {
   useBodyScrollLock(true);
   const scrollBodyRef = useRef<HTMLDivElement | null>(null);
@@ -253,8 +259,12 @@ export function MpLeagueTransferModal({
   const [selectedAiPlayerIds, setSelectedAiPlayerIds] = useState<string[]>([]);
   const [selectedUserSlots, setSelectedUserSlots] = useState<SlotRef[]>([]);
   const [customFillerIds, setCustomFillerIds] = useState<string[] | null>(null);
+  const [cashOfferM, setCashOfferM] = useState<number>(0);
   const [inspectedPlayer, setInspectedPlayer] = useState<Player | null>(null);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+
+  const clampedCashOfferM = Math.max(0, Math.min(cashOfferM, availableCashM));
+  const ffpEmbargoActive = windowIndex === 2 && ffpTier === 2;
 
   const switchTab = (nextTab: MpTransferTab) => {
     setTacticsSelectedSlot(null);
@@ -543,6 +553,7 @@ export function MpLeagueTransferModal({
       allPlayerStats: {},
       conditionMap,
       shockBargainIds,
+      cashOfferM: clampedCashOfferM,
     });
   }, [
     activeClubOffer,
@@ -553,6 +564,7 @@ export function MpLeagueTransferModal({
     myRank,
     leagueSize,
     conditionMap,
+    clampedCashOfferM,
   ]);
 
   const highlightedNeedUserIds = useMemo(() => {
@@ -575,6 +587,7 @@ export function MpLeagueTransferModal({
     }
     setSelectedUserSlots(preSlots);
     setCustomFillerIds(null);
+    setCashOfferM(0);
     setPosFilter('ALL');
   };
 
@@ -583,6 +596,7 @@ export function MpLeagueTransferModal({
     setSelectedAiPlayerIds([]);
     setSelectedUserSlots([]);
     setCustomFillerIds(null);
+    setCashOfferM(0);
     setPosFilter('ALL');
   };
 
@@ -628,6 +642,7 @@ export function MpLeagueTransferModal({
     activeOffer &&
       !locked &&
       !noAttempts &&
+      !ffpEmbargoActive &&
       tradeEval &&
       !tradeEval.blockedReason &&
       tradeEval.requiredUserReleaseCount === 0 &&
@@ -643,6 +658,7 @@ export function MpLeagueTransferModal({
       userSentPlayerIds: selectedUserPlayers.map((p) => p.id),
       aiTargetPlayerIds: selectedAiPlayers.map((p) => p.id),
       aiFillerPlayerIds: autoFillerPlayers.map((p) => p.id),
+      cashOfferM: clampedCashOfferM,
     });
     handleExitCounterOffer();
   };
@@ -679,14 +695,27 @@ export function MpLeagueTransferModal({
                 {activeOffer ? `역제안 (${activeOffer.club.shortName})` : '받은 제안'}
               </h2>
               <span
-                className={`rounded-md border px-2 py-0.5 text-[11px] font-extrabold tabular-nums ${
+                className={`rounded-md border px-2 py-0.5 text-[11px] font-extrabold tabular-nums whitespace-nowrap ${
                   noAttempts
                     ? 'border-slate-700 bg-slate-900/80 text-slate-500'
                     : 'border-emerald-400/35 bg-emerald-500/12 text-emerald-300'
                 }`}
               >
-                {attemptsLeft}/3회
+                {attemptsLeft}회 남음
               </span>
+              <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-200 tabular-nums whitespace-nowrap">
+                보유 €{availableCashM}M
+              </span>
+              {ffpEmbargoActive && (
+                <span className="rounded-md border border-rose-500/40 bg-rose-500/15 px-2 py-0.5 text-[10.5px] font-black text-rose-300 whitespace-nowrap">
+                  FFP 2단계 영입 동결
+                </span>
+              )}
+              {!ffpEmbargoActive && ffpTier === 1 && windowIndex === 2 && (
+                <span className="rounded-md border border-amber-500/40 bg-amber-500/15 px-2 py-0.5 text-[10.5px] font-bold text-amber-300 whitespace-nowrap">
+                  FFP 1단계 (1회 제한)
+                </span>
+              )}
             </div>
           </div>
 
@@ -2188,28 +2217,37 @@ export function MpLeagueTransferModal({
 
         {/* Sticky Bottom Bar for Counter-Offer Submission */}
         {activeTab === 'offers' && activeOffer && (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 bg-[#090f19] px-4 py-2.5">
-            <button
-              type="button"
-              onClick={handleExitCounterOffer}
-              className="inline-flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              받은 제안으로
-            </button>
-            <button
-              id="mp-submit-counter-btn"
-              type="button"
-              disabled={!canSubmitCounter}
-              onClick={handleSubmitCounter}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-sky-400 px-5 py-2 text-xs font-black text-slate-950 hover:bg-sky-300 disabled:opacity-40 cursor-pointer"
-            >
-              <Send className="h-3.5 w-3.5" />
-              역제안 제출
-              {tradeEval && !tradeEval.blockedReason && tradeEval.requiredUserReleaseCount === 0
-                ? ` (${tradeEval.acceptanceChance}%)`
-                : ''}
-            </button>
+          <div className="border-t border-slate-800 bg-[#090f19] px-4 py-2.5 space-y-2">
+            <CashSweetenerControl
+              availableCashM={availableCashM}
+              cashOfferM={clampedCashOfferM}
+              onChange={setCashOfferM}
+              mode="trade"
+              disabled={locked || noAttempts || ffpEmbargoActive}
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleExitCounterOffer}
+                className="inline-flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                받은 제안으로
+              </button>
+              <button
+                id="mp-submit-counter-btn"
+                type="button"
+                disabled={!canSubmitCounter}
+                onClick={handleSubmitCounter}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-sky-400 px-5 py-2 text-xs font-black text-slate-950 hover:bg-sky-300 disabled:opacity-40 cursor-pointer whitespace-nowrap"
+              >
+                <Send className="h-3.5 w-3.5" />
+                역제안 제출
+                {tradeEval && !tradeEval.blockedReason && tradeEval.requiredUserReleaseCount === 0
+                  ? ` (${tradeEval.acceptanceChance}%)`
+                  : ''}
+              </button>
+            </div>
           </div>
         )}
       </div>

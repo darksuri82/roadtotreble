@@ -1,6 +1,7 @@
 import { FORMATIONS } from '../data/formations';
 import { evaluateManagerPlayerSynergy, MANAGER_TRAITS } from '../data/managerTraits';
 import { getPlayerAttributes } from '../engine/attributeEngine';
+import { applyAwakeningToPlayer, isValidAwakeningRecord } from '../engine/awakeningEngine';
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
 import { ACTIVE_PLAYERS, LEGEND_PLAYERS } from '../engine/dataLoader';
 import { reconstructHallOfFameSquad } from '../engine/legacyEngine';
@@ -194,6 +195,7 @@ function serializePlayerForSnapshot(
     position: player.position,
     mainPositions: [...player.mainPositions],
     isLegend: Boolean(player.isLegend),
+    ...(player.awakening ? { awakening: player.awakening } : {}),
     ...(stats && stats.goals > 0 ? { goals: stats.goals } : {}),
     ...(stats && stats.assists > 0 ? { assists: stats.assists } : {}),
     ...(stats && stats.avgRating > 0
@@ -249,10 +251,16 @@ function rebuildPlayerFromSnapshot(
   if (!snap.isGenerated) {
     const byId = REAL_PLAYERS_BY_ID.get(snap.id);
     if (byId) {
+      if (snap.awakening && isValidAwakeningRecord(byId, snap.awakening)) {
+        return applyAwakeningToPlayer(byId, snap.awakening);
+      }
       return { ...byId, attrs: getPlayerAttributes(byId) };
     }
     const byName = REAL_PLAYERS_BY_NAME.get(snap.name);
     if (byName) {
+      if (snap.awakening && isValidAwakeningRecord(byName, snap.awakening)) {
+        return applyAwakeningToPlayer(byName, snap.awakening);
+      }
       return { ...byName, attrs: getPlayerAttributes(byName) };
     }
   }

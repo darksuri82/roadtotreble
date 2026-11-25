@@ -20,16 +20,21 @@ import {
   closeMpLeagueTransferWindow,
   completeMpLeagueH2H,
   createMpLeagueSeason,
+  dismissMpLeagueAdaptationAlert,
+  dismissMpLeagueAwakeningAlert,
   endMpLeagueCast,
   getMpCastDurationMs,
   getMpTickerExtraPkMs,
   grantMpLeagueConsent,
+  hireMpLeagueStaffCoach,
   mpHumanClubId,
   rejectMpLeagueOffer,
   resolveMpLeagueEvent,
   runMpLeague,
+  skipMpLeagueStaffCoach,
   submitMpLeagueTrade,
 } from '../../../engine/mpLeagueEngine';
+import type { StaffCoachId } from '../../../types/game';
 import type { MpH2HSideInput } from '../../../engine/mpLeagueH2H';
 import {
   extraTimeFirstHalfMpH2H,
@@ -676,6 +681,11 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
               action.kind === 'trade_counter'
                 ? toIdList(action.payload.aiFillerPlayerIds)
                 : undefined,
+            cashOfferM:
+              action.kind === 'trade_counter' &&
+              typeof action.payload.cashOfferM === 'number'
+                ? action.payload.cashOfferM
+                : undefined,
           });
           current = outcome.state;
           if (outcome.squad) {
@@ -686,6 +696,17 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
               squad: outcome.squad,
             });
           }
+        } else if (action.kind === 'coach_hire') {
+          const coachId = String(action.payload.coachId ?? '') as StaffCoachId;
+          if (coachId) {
+            current = hireMpLeagueStaffCoach(current, human.clubId, coachId);
+          }
+        } else if (action.kind === 'coach_skip') {
+          current = skipMpLeagueStaffCoach(current, human.clubId);
+        } else if (action.kind === 'adaptation_dismiss') {
+          current = dismissMpLeagueAdaptationAlert(current, human.clubId);
+        } else if (action.kind === 'awakening_dismiss') {
+          current = dismissMpLeagueAwakeningAlert(current, human.clubId);
         }
         completionTasks.push(completeLeagueAction(action.id, { ok: true }));
         batchHandledIds.push(action.id);
@@ -830,15 +851,31 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       }
 
       if (flow.kind === 'transfer') {
-        const allDone = st.humans.every((h) => {
-          const hs = st?.perHuman[h.clubId];
-          const noPending = !hs || hs.offers.every((o) => o.status !== 'pending');
-          if (noPending && hs && hs.offers.length === 0) return true;
+        let nextSt = st;
+        const allDone = nextSt.humans.every((h) => {
+          const hs = nextSt.perHuman[h.clubId];
+          if (hs?.staffCoach?.pendingSelection) {
+            const row = humanRow(h.clubId);
+            const offline = !row || !p.onlinePlayerIds.includes(row.player_id);
+            if (offline && waited > TRANSFER_OFFLINE_MS) {
+              nextSt = skipMpLeagueStaffCoach(nextSt, h.clubId);
+            } else {
+              return false;
+            }
+          }
+          const latestHs = nextSt.perHuman[h.clubId];
+          const noPending = !latestHs || latestHs.offers.every((o) => o.status !== 'pending');
+          if (noPending && latestHs && latestHs.offers.length === 0) return true;
           return ackedOrGone(h.clubId, flow.key, TRANSFER_OFFLINE_MS);
         });
-        if (!allDone) return;
+        if (!allDone) {
+          if (nextSt !== st) {
+            await commit(nextSt, squads, p.room.id);
+          }
+          return;
+        }
         nextAutoAtRef.current = Date.now() + st.settings.autoMs;
-        await commit(closeMpLeagueTransferWindow(st), squads, p.room.id);
+        await commit(closeMpLeagueTransferWindow(nextSt), squads, p.room.id);
         return;
       }
 

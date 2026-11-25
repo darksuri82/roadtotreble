@@ -1,4 +1,4 @@
-import { Crown, Diamond, Link2, Lock, Star } from 'lucide-react';
+import { Crown, Diamond, Flame, Link2, Lock, Star } from 'lucide-react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
 import {
@@ -40,6 +40,8 @@ interface PlayerCardProps {
   disabledActionLabel?: string | null;
   /** Live expected adjacent 4-color chemistry link count when placed in the active draft starter slot */
   expectedLinkCount?: number;
+  /** Optional progressive draft budget cost (€M) displayed in draft selection cards */
+  draftCostM?: number;
 }
 
 const TIER_STYLES: Record<
@@ -101,11 +103,14 @@ export function PlayerCard({
   disableConfirmAction = false,
   disabledActionLabel = null,
   expectedLinkCount,
+  draftCostM,
 }: PlayerCardProps) {
   const tier = getCardTier(player);
   const style = TIER_STYLES[tier];
   const isLegend = tier === 'legend';
   const isSuperstar = tier === 'superstar';
+  const isAwakened = Boolean(player.awakening);
+  const effectiveWrapper = isAwakened ? 'card-awakened-ember' : style.wrapper;
   const mainPosText = formatMainPositions(player);
   const isInjured = isPlayerActivelyInjured(condition);
   const moraleTier = condition ? getMoraleTier(condition.morale) : 'normal';
@@ -136,7 +141,7 @@ export function PlayerCard({
         onClick={onClick}
         disabled={disabled}
         title={ovrBr.summaryLine}
-        className={`relative w-full overflow-hidden rounded-xl p-3 text-left transition-colors duration-150 ${style.wrapper} ${
+        className={`relative w-full overflow-hidden rounded-xl p-3 text-left transition-colors duration-150 ${effectiveWrapper} ${
           selected ? 'ring-2 ring-emerald-400' : ''
         } ${
           onClick && !disabled ? 'cursor-pointer' : 'cursor-default'
@@ -262,7 +267,7 @@ export function PlayerCard({
             onClick?.();
           }
         }}
-        className={`group relative flex flex-col justify-between gap-1.5 overflow-hidden rounded-lg p-2 text-left transition-colors duration-150 ${style.wrapper} ${
+        className={`group relative flex flex-col justify-between gap-1.5 overflow-hidden rounded-lg p-2 text-left transition-colors duration-150 ${effectiveWrapper} ${
           selected ? 'ring-2 ring-emerald-400' : ''
         } ${
           onClick && !disabled ? 'cursor-pointer' : 'cursor-default'
@@ -278,10 +283,10 @@ export function PlayerCard({
           </div>
         )}
 
-        {/* Row 1: OVR + Penalty + Position + Tier */}
+        {/* Row 1: OVR + Penalty + Position + Cost / Tier */}
         <div className="relative z-10 flex items-center justify-between gap-1">
           <div className="flex items-center gap-1 min-w-0 tabular-nums">
-            <span className={`font-display text-lg font-bold leading-none ${style.ovrText}`}>
+            <span className={`font-display text-lg font-bold leading-none ${isAwakened ? 'text-rose-200' : style.ovrText}`}>
               {player.ovr}
             </span>
             {hasPenalty && fit && (
@@ -295,27 +300,42 @@ export function PlayerCard({
               {mainPosText}
             </span>
           </div>
-          {isLegend || isSuperstar ? (
-            <span
-              className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[8.5px] shrink-0 ${style.badge}`}
-            >
-              {isLegend ? (
-                <>
-                  <Crown className="w-2.5 h-2.5" />
-                  LEGEND
-                </>
-              ) : (
-                <>
-                  <Diamond className="w-2.5 h-2.5" />
-                  슈퍼스타
-                </>
-              )}
-            </span>
-          ) : (
-            <span className={`rounded px-1 py-px text-[8.5px] font-semibold shrink-0 ${style.badge}`}>
-              {TIER_LABELS[tier]}
-            </span>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {typeof draftCostM === 'number' && (
+              <span
+                className="rounded border border-amber-400/30 bg-amber-500/12 px-1 py-px text-[8.5px] font-black tabular-nums text-amber-200 whitespace-nowrap"
+                title={`드래프트 예산 €${draftCostM}M`}
+              >
+                €{draftCostM}M
+              </span>
+            )}
+            {isAwakened && player.awakening ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full border border-rose-400/50 bg-rose-500/20 px-1.5 py-px text-[8.5px] font-black text-rose-200 whitespace-nowrap">
+                <Flame className="w-2.5 h-2.5 text-orange-300" />
+                각성+{player.awakening.ovrGain}
+              </span>
+            ) : isLegend || isSuperstar ? (
+              <span
+                className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-px text-[8.5px] shrink-0 ${style.badge}`}
+              >
+                {isLegend ? (
+                  <>
+                    <Crown className="w-2.5 h-2.5" />
+                    LEGEND
+                  </>
+                ) : (
+                  <>
+                    <Diamond className="w-2.5 h-2.5" />
+                    슈퍼스타
+                  </>
+                )}
+              </span>
+            ) : (
+              <span className={`rounded px-1 py-px text-[8.5px] font-semibold shrink-0 ${style.badge}`}>
+                {TIER_LABELS[tier]}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Row 2: Flag + Name + Compact Playstyles/Manager Synergy */}
@@ -435,7 +455,7 @@ export function PlayerCard({
           onClick?.();
         }
       }}
-      className={`group relative flex flex-col justify-between overflow-hidden rounded-xl p-3.5 text-left transition-colors duration-150 ${style.wrapper} ${
+      className={`group relative flex flex-col justify-between overflow-hidden rounded-xl p-3.5 text-left transition-colors duration-150 ${effectiveWrapper} ${
         selected ? 'ring-2 ring-emerald-400' : ''
       } ${
         onClick && !disabled ? 'cursor-pointer' : 'cursor-default'
@@ -452,11 +472,11 @@ export function PlayerCard({
         </div>
       )}
 
-      {/* Top Row: OVR + Multi Main Positions + Minimal Tier */}
+      {/* Top Row: OVR + Multi Main Positions + Cost / Tier */}
       <div className="relative z-10 flex items-start justify-between gap-2">
         <div>
           <div className="flex flex-wrap items-baseline gap-1.5">
-            <span className={`font-display text-2xl font-bold leading-none ${style.ovrText}`}>
+            <span className={`font-display text-2xl font-bold leading-none ${isAwakened ? 'text-rose-200' : style.ovrText}`}>
               {player.ovr}
             </span>
             {hasPenalty && fit && (
@@ -495,27 +515,39 @@ export function PlayerCard({
           </div>
         </div>
 
-        {(isLegend || isSuperstar) ? (
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] shrink-0 ${style.badge}`}
-          >
-            {isLegend ? (
-              <>
-                <Crown className="w-3 h-3" />
-                LEGEND
-              </>
-            ) : (
-              <>
-                <Diamond className="w-3 h-3" />
-                슈퍼스타
-              </>
-            )}
-          </span>
-        ) : (
-          <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0 ${style.badge}`}>
-            {TIER_LABELS[tier]}
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {isAwakened && player.awakening ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/50 bg-rose-500/20 px-2 py-0.5 text-[10px] font-black text-rose-200 whitespace-nowrap">
+              <Flame className="w-3 h-3 text-orange-300" />
+              각성 +{player.awakening.ovrGain}
+            </span>
+          ) : (isLegend || isSuperstar) ? (
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] shrink-0 ${style.badge}`}
+            >
+              {isLegend ? (
+                <>
+                  <Crown className="w-3 h-3" />
+                  LEGEND
+                </>
+              ) : (
+                <>
+                  <Diamond className="w-3 h-3" />
+                  슈퍼스타
+                </>
+              )}
+            </span>
+          ) : (
+            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold shrink-0 ${style.badge}`}>
+              {TIER_LABELS[tier]}
+            </span>
+          )}
+          {typeof draftCostM === 'number' && (
+            <span className="rounded border border-amber-400/30 bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-black tabular-nums text-amber-200 whitespace-nowrap">
+              €{draftCostM}M
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Name, Nation, Club */}

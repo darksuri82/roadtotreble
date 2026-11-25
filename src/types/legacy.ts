@@ -54,6 +54,9 @@ export interface SeasonScoreBreakdown {
   squadCraftDetails?: string[];
   awardsBonus?: number; // Ballon d'Or, World Best XI, League MVP, League Best XI
   awardsBonusDetails?: string[];
+  /** FFP Tier 2 overspend score reduction (e.g. 12 for -12%) */
+  ffpPenaltyPct?: number;
+  ffpPenaltyPoints?: number;
   totalScore: number;
   grade: 'S+' | 'S' | 'A+' | 'A' | 'B+' | 'B' | 'C';
 }
@@ -68,6 +71,7 @@ export interface HallOfFameSquadMember {
   goals: number;
   assists: number;
   avgRating: number;
+  awakening?: import('./player').PlayerAwakeningRecord;
 }
 
 export interface HallOfFameMatchSummary {
@@ -148,6 +152,7 @@ export interface GlobalSquadSnapshotPlayer {
   def?: number;
   stamina?: number;
   playstyles?: string[];
+  awakening?: import('./player').PlayerAwakeningRecord;
 }
 
 export interface GlobalSquadSnapshot {
@@ -265,6 +270,7 @@ export function buildHallOfFameMember(
     goals,
     assists,
     avgRating,
+    ...(player.awakening ? { awakening: player.awakening } : {}),
   };
 }
 

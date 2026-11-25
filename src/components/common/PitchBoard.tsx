@@ -1,4 +1,4 @@
-import { Crown, Diamond, Info } from 'lucide-react';
+import { Crown, Diamond, Flame, Info } from 'lucide-react';
 import { useState } from 'react';
 import { BENCH_SLOTS, FORMATIONS } from '../../data/formations';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
@@ -734,17 +734,19 @@ export function PitchBoard({
                     : isPreview && player
                       ? 'bg-[#0e221b]/95 border border-emerald-400 ring-2 ring-emerald-400/55'
                       : player
-                        ? isLegend
-                          ? 'bg-gradient-to-b from-amber-950/95 via-stone-900/95 to-amber-950/95 border border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.38)]'
-                          : isSuperstar
-                            ? 'bg-gradient-to-b from-cyan-950/95 via-slate-900/95 to-cyan-950/95 border border-cyan-400/85 shadow-[0_0_12px_rgba(34,211,238,0.32)]'
-                            : isWorldclass
-                              ? 'bg-gradient-to-b from-sky-950/90 via-[#0e1726]/95 to-sky-950/90 border border-sky-400/65 shadow-[0_0_8px_rgba(56,189,248,0.22)]'
-                              : staminaPct !== null && staminaPct < 40
-                                ? 'bg-[#221218]/95 border border-rose-500/70'
-                                : staminaPct !== null && staminaPct < 55
-                                  ? 'bg-[#1f1710]/95 border border-amber-500/60'
-                                  : 'bg-[#0f1621]/95 border border-slate-700/75 hover:border-slate-500/80'
+                        ? player.awakening
+                          ? 'card-awakened-ember'
+                          : isLegend
+                            ? 'bg-gradient-to-b from-amber-950/95 via-stone-900/95 to-amber-950/95 border border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.38)]'
+                            : isSuperstar
+                              ? 'bg-gradient-to-b from-cyan-950/95 via-slate-900/95 to-cyan-950/95 border border-cyan-400/85 shadow-[0_0_12px_rgba(34,211,238,0.32)]'
+                              : isWorldclass
+                                ? 'bg-gradient-to-b from-sky-950/90 via-[#0e1726]/95 to-sky-950/90 border border-sky-400/65 shadow-[0_0_8px_rgba(56,189,248,0.22)]'
+                                : staminaPct !== null && staminaPct < 40
+                                  ? 'bg-[#221218]/95 border border-rose-500/70'
+                                  : staminaPct !== null && staminaPct < 55
+                                    ? 'bg-[#1f1710]/95 border border-amber-500/60'
+                                    : 'bg-[#0f1621]/95 border border-slate-700/75 hover:border-slate-500/80'
                         : isActive
                           ? 'bg-emerald-500/12 border border-emerald-400/65'
                           : 'bg-slate-950/70 border border-dashed border-slate-600/55'
@@ -766,6 +768,8 @@ export function PitchBoard({
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-600/90 px-1.5 py-0.2 text-[8px] font-bold text-white shadow">
                     프리뷰
                   </span>
+                ) : player?.awakening ? (
+                  <Flame className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-orange-400 drop-shadow" />
                 ) : isLegend ? (
                   <Crown className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-amber-300 drop-shadow" />
                 ) : isSuperstar ? (
@@ -1222,11 +1226,13 @@ export function PitchBoard({
                       : isPreview && player
                         ? 'bg-emerald-950/90 border-2 border-emerald-300 ring-2 ring-emerald-400/75 shadow-[0_0_12px_rgba(16,185,129,0.45)]'
                         : player
-                          ? isLegend
-                            ? 'bg-amber-950/45 border border-amber-400'
-                            : isSuperstar
-                              ? 'bg-cyan-950/45 border border-cyan-300'
-                              : 'bg-slate-900/90 border border-slate-700/80'
+                          ? player.awakening
+                            ? 'card-awakened-ember'
+                            : isLegend
+                              ? 'bg-amber-950/45 border border-amber-400'
+                              : isSuperstar
+                                ? 'bg-cyan-950/45 border border-cyan-300'
+                                : 'bg-slate-900/90 border border-slate-700/80'
                           : isActive
                             ? 'bg-emerald-500/15 border-2 border-emerald-400'
                             : 'bg-slate-950/60 border border-dashed border-slate-700/60'

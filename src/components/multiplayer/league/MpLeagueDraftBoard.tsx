@@ -41,6 +41,7 @@ import type {
 import type { MpRoomPlayerRow, MpRoomRow } from '../../../types/multiplayer';
 import type { Player, SubPosition } from '../../../types/player';
 import { ManagerFitBadge } from '../../common/ManagerFitBadge';
+import { DraftBudgetBar } from '../../common/DraftBudgetBar';
 import { PitchBoard } from '../../common/PitchBoard';
 import type { SlotRef } from '../../common/PitchBoard';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
@@ -781,6 +782,12 @@ export function MpLeagueDraftBoard({
           </div>
         )}
       </div>
+
+      <DraftBudgetBar
+        players={[...board.starters, ...board.bench]}
+        previewPlayer={previewCandidate}
+        compact
+      />
 
       {/* Main 2-Column Layout: [Left: Player Tabs + Single Original Pitch] | [Right: Compact Candidate Pool] */}
       <div className="grid grid-cols-1 gap-2.5 sm:gap-3.5 lg:grid-cols-12 items-start">

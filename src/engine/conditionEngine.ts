@@ -498,6 +498,10 @@ export interface PostMatchTeamUpdateInput {
   teamLossStreak?: number;
   trackUserAlerts?: boolean;
   starterSlotIndexByPlayerId?: Record<string, number>;
+  /** FFP Tier 2 overspend: extra morale drop on losses */
+  extraLossMoraleDrop?: number;
+  /** Locker Room Assistant Coach: mitigates morale drop on losses */
+  moraleLossDefense?: number;
   rng?: () => number;
 }
 
@@ -535,6 +539,8 @@ export function updateSquadConditionsAfterMatch(
     teamLossStreak = 0,
     trackUserAlerts = false,
     starterSlotIndexByPlayerId = {},
+    extraLossMoraleDrop = 0,
+    moraleLossDefense = 0,
     rng = Math.random,
   } = input;
 
@@ -579,9 +585,21 @@ export function updateSquadConditionsAfterMatch(
     if (isBigMatch && goalDiff <= -2) {
       teamPartDelta -= 1;
     }
+    if (extraLossMoraleDrop > 0) {
+      teamPartDelta -= extraLossMoraleDrop;
+      teamMoraleDelta -= extraLossMoraleDrop;
+    }
+    if (moraleLossDefense > 0) {
+      if (teamPartDelta < 0) {
+        teamPartDelta = Math.min(0, teamPartDelta + moraleLossDefense);
+      }
+      if (teamMoraleDelta < 0) {
+        teamMoraleDelta = Math.min(0, teamMoraleDelta + moraleLossDefense);
+      }
+    }
   }
-  teamPartDelta = Math.max(-2, Math.min(1, teamPartDelta));
-  teamMoraleDelta = Math.max(-2, Math.min(1, teamMoraleDelta));
+  teamPartDelta = Math.max(-3, Math.min(1, teamPartDelta));
+  teamMoraleDelta = Math.max(-3, Math.min(1, teamMoraleDelta));
 
   // On a winning clean sheet, identify the top GK/DF (used only to thaw negative morale)
   let cleanSheetHeroId: string | null = null;

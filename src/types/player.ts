@@ -61,6 +61,15 @@ export interface PlayerAttributes {
   gk?: GoalkeeperAttributes;
 }
 
+export interface PlayerAwakeningRecord {
+  originalOvr: number;
+  ovrGain: number; // +2 .. +7 (+2 fixed for baseOvr >= 89)
+  round: number;
+  competition: 'league' | 'cup' | 'ucl';
+  /** Top boosted sub-attribute deltas for celebration UI & detail modal */
+  statDeltas: { key: string; label: string; before: number; after: number }[];
+}
+
 export interface Player {
   id: string;
   name: string;
@@ -82,6 +91,8 @@ export interface Player {
   isGenerated?: boolean;
   attrs?: PlayerAttributes;
   formerClubs?: string[];
+  /** Permanent potential breakthrough growth stored strictly on cloned roster instances (never mutating static DB) */
+  awakening?: PlayerAwakeningRecord;
 }
 
 export type PositionFitLevel = 'main' | 'secondary' | 'out_of_pos' | 'severe';

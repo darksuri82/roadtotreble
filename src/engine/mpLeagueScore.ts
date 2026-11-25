@@ -124,11 +124,15 @@ export function computeMpHumanSeasonScore(params: {
 }): SeasonScoreBreakdown {
   const { state, human, squad, humanSeason } = params;
   const clubId = human.clubId;
+  const staffCoachId = humanSeason.staffCoach?.hiredCoachId ?? null;
+  const ffpChemPenalty = humanSeason.budget?.chemPenalty ?? 0;
   const chem = calculateChemistry(
     squad.formation,
     squad.starters,
     squad.tactic,
     human.managerTraitId,
+    undefined,
+    { staffCoachId, ffpChemPenalty },
   );
   const ratings = calculateTeamRatings(
     squad.formation,
@@ -137,6 +141,7 @@ export function computeMpHumanSeasonScore(params: {
     human.managerTraitId,
     chem.slotSynergies,
     squad.tactic,
+    staffCoachId,
   );
   const rowIdx = state.standings.findIndex((r) => r.teamId === clubId);
   const row = rowIdx === -1 ? null : state.standings[rowIdx];
@@ -218,6 +223,7 @@ export function computeMpHumanSeasonScore(params: {
     awards: state.awards,
     globalAwards: state.globalAwards,
     userClubId: clubId,
+    ffpScoreMultiplier: humanSeason.budget?.scoreMultiplier ?? 1,
   });
 }
 

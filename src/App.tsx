@@ -1,7 +1,10 @@
+import { AwakeningCelebrationModal } from './components/common/AwakeningCelebrationModal';
 import { HeaderNav } from './components/common/HeaderNav';
 import { InjuryAlertModal } from './components/common/InjuryAlertModal';
 import { InjuryReturnToast } from './components/common/InjuryReturnToast';
 import { ManagerEventModal } from './components/common/ManagerEventModal';
+import { StaffCoachHireModal } from './components/common/StaffCoachHireModal';
+import { TacticalAdaptationModal } from './components/common/TacticalAdaptationModal';
 import { DraftScreen } from './components/draft/DraftScreen';
 import { DreamMatchArena } from './components/dream/DreamMatchArena';
 import { LeagueSelect } from './components/league/LeagueSelect';
@@ -19,6 +22,7 @@ import { GameProvider, useGame } from './store/GameContext';
 function GameRouter() {
   const {
     state,
+    activeTactic,
     chemistry,
     ratings,
     dreamMatchOpen,
@@ -29,23 +33,61 @@ function GameRouter() {
     dismissManagerEventResolution,
     dismissInjuryAlerts,
     dismissInjuryReturnToast,
+    hireStaffCoach,
+    skipStaffCoach,
+    dismissAdaptationAlert,
+    dismissAwakeningAlert,
   } = useGame();
 
   const isPlayableSeason =
     !dreamMatchOpen &&
     !multiplayerOpen &&
     !soloTickerPlaying &&
+    !state.season?.liveHalftime &&
     (state.phase === 'season' || state.phase === 'ucl');
+  const isTransferOpen = Boolean(state.season?.transferMarket.isOpen);
+  const hasPendingStaffCoach = Boolean(
+    isPlayableSeason &&
+      state.season?.staffCoach?.pendingSelection &&
+      state.season.staffCoach.offeredCoachIds.length > 0,
+  );
   const pendingInjuryAlerts =
-    isPlayableSeason ? (state.season?.pendingInjuryAlerts ?? []) : [];
+    isPlayableSeason && !hasPendingStaffCoach && !isTransferOpen
+      ? (state.season?.pendingInjuryAlerts ?? [])
+      : [];
   const injuryReturnToasts =
     isPlayableSeason ? (state.season?.injuryReturnToasts ?? []) : [];
+  const pendingAwakeningAlert =
+    isPlayableSeason &&
+    !hasPendingStaffCoach &&
+    !isTransferOpen &&
+    pendingInjuryAlerts.length === 0
+      ? (state.season?.pendingAwakeningAlerts?.[0] ?? null)
+      : null;
+  const pendingAdaptationAlert =
+    isPlayableSeason &&
+    !hasPendingStaffCoach &&
+    !isTransferOpen &&
+    pendingInjuryAlerts.length === 0 &&
+    !pendingAwakeningAlert
+      ? (state.season?.tacticalAdaptation?.pendingAlert ?? null)
+      : null;
   const activeManagerEvent =
-    isPlayableSeason && pendingInjuryAlerts.length === 0
+    isPlayableSeason &&
+    !hasPendingStaffCoach &&
+    !isTransferOpen &&
+    pendingInjuryAlerts.length === 0 &&
+    !pendingAwakeningAlert &&
+    !pendingAdaptationAlert
       ? (state.season?.managerEvents?.activeEvent ?? null)
       : null;
   const lastManagerResolution =
-    isPlayableSeason && pendingInjuryAlerts.length === 0
+    isPlayableSeason &&
+    !hasPendingStaffCoach &&
+    !isTransferOpen &&
+    pendingInjuryAlerts.length === 0 &&
+    !pendingAwakeningAlert &&
+    !pendingAdaptationAlert
       ? (state.season?.managerEvents?.lastResolution ?? null)
       : null;
 
@@ -76,6 +118,14 @@ function GameRouter() {
         toasts={injuryReturnToasts}
         onDismiss={dismissInjuryReturnToast}
       />
+      {hasPendingStaffCoach && state.season?.staffCoach && (
+        <StaffCoachHireModal
+          offeredCoachIds={state.season.staffCoach.offeredCoachIds}
+          activeTactic={activeTactic}
+          onHire={hireStaffCoach}
+          onSkip={skipStaffCoach}
+        />
+      )}
       <InjuryAlertModal
         alerts={pendingInjuryAlerts}
         formation={state.formation}
@@ -88,6 +138,18 @@ function GameRouter() {
         onSwapSlots={swapSquadPositions}
         onConfirmClose={dismissInjuryAlerts}
       />
+      {pendingAwakeningAlert && (
+        <AwakeningCelebrationModal
+          alert={pendingAwakeningAlert}
+          onDismiss={dismissAwakeningAlert}
+        />
+      )}
+      {pendingAdaptationAlert && (
+        <TacticalAdaptationModal
+          alert={pendingAdaptationAlert}
+          onDismiss={dismissAdaptationAlert}
+        />
+      )}
       <ManagerEventModal
         activeEvent={activeManagerEvent}
         lastResolution={lastManagerResolution}

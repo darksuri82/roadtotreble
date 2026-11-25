@@ -1,8 +1,13 @@
 import { FORMATIONS } from '../data/formations';
-import type { FormationId, ManagerTraitId } from '../types/game';
+import type { FormationId, ManagerTraitId, StaffCoachId } from '../types/game';
 import type { LiveSubRecord, TacticId } from '../types/league';
 import type { Player, SubPosition } from '../types/player';
 import { evaluatePositionFit, getPrimaryPosition } from './positionEngine';
+import {
+  STAFF_COACH_LATE_STAMINA_REDUCTION,
+  STAFF_COACH_SUB_COMBINED_CAP,
+  STAFF_COACH_SUB_OVR_LIFT,
+} from './staffCoachEngine';
 
 export const MAX_MATCH_SUBS = 5;
 
@@ -57,6 +62,8 @@ export function computePlayerStaminaPct(params: {
   minutesPlayed: number;
   initialStaminaCap?: number;
   managerTraitId?: ManagerTraitId | null;
+  staffCoachId?: StaffCoachId | null;
+  currentMinute?: number;
 }): number {
   const {
     staminaStat,
@@ -65,6 +72,8 @@ export function computePlayerStaminaPct(params: {
     minutesPlayed,
     initialStaminaCap = 100,
     managerTraitId = null,
+    staffCoachId = null,
+    currentMinute,
   } = params;
   const startCap = Math.max(50, Math.min(100, Math.round(initialStaminaCap)));
   if (minutesPlayed <= 0) return startCap;
@@ -80,7 +89,17 @@ export function computePlayerStaminaPct(params: {
   }
 
   const drainPerMin = 0.44 * statFactor * posMult * tacticMult;
-  const remaining = startCap - drainPerMin * minutesPlayed;
+  let effectiveMinutes = minutesPlayed;
+  // Physical/Super-Sub Assistant Coach mitigates stamina drain after minute 65 by 25%
+  if (staffCoachId === 'sys_supersub_phys') {
+    const matchMin = currentMinute ?? minutesPlayed;
+    if (matchMin > 65) {
+      const lateMins = Math.min(minutesPlayed, matchMin - 65);
+      effectiveMinutes =
+        minutesPlayed - lateMins * STAFF_COACH_LATE_STAMINA_REDUCTION;
+    }
+  }
+  const remaining = startCap - drainPerMin * effectiveMinutes;
   return Math.max(15, Math.min(startCap, Math.round(remaining)));
 }
 
@@ -116,6 +135,7 @@ export function computeLineupStaminaImpact(params: {
   minute: number;
   enteredAtMinute?: Record<string, number>;
   managerTraitId?: ManagerTraitId | null;
+  staffCoachId?: StaffCoachId | null;
 }): {
   attDelta: number;
   midDelta: number;
@@ -130,6 +150,7 @@ export function computeLineupStaminaImpact(params: {
     minute,
     enteredAtMinute = {},
     managerTraitId = null,
+    staffCoachId = null,
   } = params;
   const slots = (FORMATIONS[formation] ?? FORMATIONS['4-3-3']).slots;
 
@@ -143,6 +164,7 @@ export function computeLineupStaminaImpact(params: {
   let freshSubCount = 0;
 
   const isSuperSub = managerTraitId === 'super_sub';
+  const hasSubPhysCoach = staffCoachId === 'sys_supersub_phys';
 
   starters.forEach((player, idx) => {
     const subPos = slots[idx]?.subPosition ?? getPrimaryPosition(player);
@@ -154,13 +176,22 @@ export function computeLineupStaminaImpact(params: {
       tactic,
       minutesPlayed: minsOnPitch,
       managerTraitId,
+      staffCoachId,
+      currentMinute: minute,
     });
     const penalty = getStaminaPenalty(pct).ovrPenalty;
     totalPct += pct;
 
-    // Fresh substitute in 2nd half provides an energetic boost against tired legs (super_sub: +3.0 vs +1.4)
+    // Fresh substitute in 2nd half provides an energetic boost against tired legs
+    // Default +1.4 | super_sub manager +3.0 | sys_supersub_phys coach +3.0 (combined capped at +4.0)
     const isFreshSub = entryMin >= 45 && pct >= 80 && player.position !== 'GK';
-    const jokerOvrLift = isFreshSub ? (isSuperSub ? 3.0 : 1.4) : 0;
+    const baseJoker = isSuperSub ? 3.0 : 1.4;
+    const coachJoker = hasSubPhysCoach
+      ? isSuperSub
+        ? STAFF_COACH_SUB_COMBINED_CAP
+        : STAFF_COACH_SUB_OVR_LIFT
+      : baseJoker;
+    const jokerOvrLift = isFreshSub ? coachJoker : 0;
     if (isFreshSub) freshSubCount += 1;
 
     const netDelta = penalty + jokerOvrLift;
@@ -179,11 +210,14 @@ export function computeLineupStaminaImpact(params: {
   const avgStaminaPct =
     starters.length > 0 ? Math.round(totalPct / starters.length) : 100;
 
+  const subXgPerPlayer = isSuperSub || hasSubPhysCoach ? 0.085 : 0.06;
+  const subXgCap = isSuperSub || hasSubPhysCoach ? 0.34 : 0.24;
+
   return {
     attDelta: attCount > 0 ? Math.round((attSum / attCount) * 100) / 100 : 0,
     midDelta: midCount > 0 ? Math.round((midSum / midCount) * 100) / 100 : 0,
     defDelta: defCount > 0 ? Math.round((defSum / defCount) * 100) / 100 : 0,
-    freshSubXgBonus: Math.min(isSuperSub ? 0.36 : 0.24, freshSubCount * (isSuperSub ? 0.09 : 0.06)),
+    freshSubXgBonus: Math.min(subXgCap, freshSubCount * subXgPerPlayer),
     avgStaminaPct,
   };
 }

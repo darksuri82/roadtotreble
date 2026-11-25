@@ -12,11 +12,16 @@ import type {
   FormationId,
   ManagerTraitId,
   PlayerSlotSynergy,
+  StaffCoachId,
   TeamRatings,
 } from '../types/game';
 import type { TacticId } from '../types/league';
 import type { Player, PlaystyleId } from '../types/player';
 import { evaluatePositionFit } from './positionEngine';
+import {
+  evaluateStaffCoachEffect,
+  getDevCoachPlayerBonus,
+} from './staffCoachEngine';
 
 /**
  * Unified 4-Pillar Player Synergy Engine:
@@ -175,6 +180,10 @@ export function calculateChemistry(
   tactic: TacticId = 'balanced',
   managerTraitId: ManagerTraitId | null = null,
   managerOvr = 84,
+  options?: {
+    staffCoachId?: StaffCoachId | null;
+    ffpChemPenalty?: number;
+  },
 ): ChemistryResult {
   const formation = FORMATIONS[formationId] ?? FORMATIONS['4-3-3'];
   const links: ChemistryLink[] = [];
@@ -276,7 +285,7 @@ export function calculateChemistry(
     nationLines * TEAM_CHEMISTRY_LINE_WEIGHTS.nation +
     styleLines * TEAM_CHEMISTRY_LINE_WEIGHTS.style +
     eliteLines * TEAM_CHEMISTRY_LINE_WEIGHTS.elite;
-  const total =
+  const baseTotal =
     totalActiveLines === 0
       ? 0
       : Math.min(
@@ -286,6 +295,15 @@ export function calculateChemistry(
             Math.round(12 + (weightedLines / (totalLinkCount * 1.65)) * 88),
           ),
         );
+  const staffChemBonus = evaluateStaffCoachEffect(
+    options?.staffCoachId,
+    tactic,
+  ).chemBonus;
+  const ffpPenalty = options?.ffpChemPenalty ?? 0;
+  const total =
+    totalActiveLines === 0 && staffChemBonus === 0 && ffpPenalty === 0
+      ? 0
+      : Math.min(100, Math.max(0, baseTotal + staffChemBonus + ffpPenalty));
 
   const chemistryOvrBonus = computeChemistryOvrBonus(total);
 
@@ -424,6 +442,7 @@ export function calculateTeamRatings(
   managerTraitId: ManagerTraitId | null = null,
   slotSynergies?: Record<number, PlayerSlotSynergy>,
   tactic: TacticId = 'balanced',
+  staffCoachId: StaffCoachId | null = null,
 ): TeamRatings {
   const formation = FORMATIONS[formationId] ?? FORMATIONS['4-3-3'];
   const adjusted: {
@@ -447,13 +466,23 @@ export function calculateTeamRatings(
       slot.alternateSubPositions,
     );
     const synBonus = slotSynergies?.[i]?.totalBonus ?? 0;
+    const devCoachLift = getDevCoachPlayerBonus(p, staffCoachId);
     adjusted.push({
       player: p,
       slotPos: slot.position,
-      effectiveOvr: Math.min(99, fit.effectiveOvr + synBonus),
-      effectiveAtt: Math.min(99, Math.max(30, p.att + fit.penalty + synBonus)),
-      effectiveMid: Math.min(99, Math.max(30, p.mid + fit.penalty + synBonus)),
-      effectiveDef: Math.min(99, Math.max(30, p.def + fit.penalty + synBonus)),
+      effectiveOvr: Math.min(99, fit.effectiveOvr + synBonus + devCoachLift),
+      effectiveAtt: Math.min(
+        99,
+        Math.max(30, p.att + fit.penalty + synBonus + devCoachLift),
+      ),
+      effectiveMid: Math.min(
+        99,
+        Math.max(30, p.mid + fit.penalty + synBonus + devCoachLift),
+      ),
+      effectiveDef: Math.min(
+        99,
+        Math.max(30, p.def + fit.penalty + synBonus + devCoachLift),
+      ),
       synergyBonus: synBonus,
     });
   }
@@ -477,6 +506,10 @@ export function calculateTeamRatings(
       managerTargetCount: 0,
       managerTacticActive: false,
       managerEffectSummary: '',
+      staffAttBonus: 0,
+      staffMidBonus: 0,
+      staffDefBonus: 0,
+      staffCoachEffectSummary: '',
     };
   }
 
@@ -546,26 +579,29 @@ export function calculateTeamRatings(
     tactic,
   });
 
+  // Single-source-of-truth Mid-season Assistant Coach A/M/D bonus
+  const staffEffect = evaluateStaffCoachEffect(staffCoachId, tactic);
+
+  const totalAttBonus = mgrEffect.baseAttDelta + staffEffect.attDelta;
+  const totalMidBonus = mgrEffect.baseMidDelta + staffEffect.midDelta;
+  const totalDefBonus = mgrEffect.baseDefDelta + staffEffect.defDelta;
+
   return {
-    att: Math.round(rawAtt + mgrEffect.baseAttDelta),
-    mid: Math.round(rawMid + mgrEffect.baseMidDelta),
-    def: Math.round(rawDef + mgrEffect.baseDefDelta),
+    att: Math.round(rawAtt + totalAttBonus),
+    mid: Math.round(rawMid + totalMidBonus),
+    def: Math.round(rawDef + totalDefBonus),
     ovr: Math.round(
-      effOvrAvg +
-        (mgrEffect.baseAttDelta +
-          mgrEffect.baseMidDelta +
-          mgrEffect.baseDefDelta) /
-          3,
+      effOvrAvg + (totalAttBonus + totalMidBonus + totalDefBonus) / 3,
     ),
     rawOvr: Math.round(rawOvrAvg),
     chemistryBonus: fullChemBonus,
     synergyOvrBonus: avgSynergyBonus,
     effectiveAtt:
-      Math.round((rawAtt + teamOrgBonus + mgrEffect.baseAttDelta) * 10) / 10,
+      Math.round((rawAtt + teamOrgBonus + totalAttBonus) * 10) / 10,
     effectiveMid:
-      Math.round((rawMid + teamOrgBonus + mgrEffect.baseMidDelta) * 10) / 10,
+      Math.round((rawMid + teamOrgBonus + totalMidBonus) * 10) / 10,
     effectiveDef:
-      Math.round((rawDef + teamOrgBonus + mgrEffect.baseDefDelta) * 10) / 10,
+      Math.round((rawDef + teamOrgBonus + totalDefBonus) * 10) / 10,
     managerAttBonus: mgrEffect.baseAttDelta,
     managerMidBonus: mgrEffect.baseMidDelta,
     managerDefBonus: mgrEffect.baseDefDelta,
@@ -573,6 +609,10 @@ export function calculateTeamRatings(
     managerTargetCount: mgrEffect.targetCount,
     managerTacticActive: mgrEffect.isTacticSynergyActive,
     managerEffectSummary: mgrEffect.compactSummary,
+    staffAttBonus: staffEffect.attDelta,
+    staffMidBonus: staffEffect.midDelta,
+    staffDefBonus: staffEffect.defDelta,
+    staffCoachEffectSummary: staffEffect.statusChip,
   };
 }
 

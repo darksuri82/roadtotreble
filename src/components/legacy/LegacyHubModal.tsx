@@ -1297,6 +1297,18 @@ function LegacyHubModalContent({
                 ))}
               </div>
 
+              {selectedEntry.seasonScore.ffpPenaltyPoints &&
+                selectedEntry.seasonScore.ffpPenaltyPoints > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-500/10 px-3.5 py-2 text-[11px] text-rose-200 tabular-nums">
+                    <span className="font-bold text-rose-300">
+                      FFP 2단계 예산 초과 감점 (-{selectedEntry.seasonScore.ffpPenaltyPct ?? 12}%)
+                    </span>
+                    <span className="font-mono font-black text-rose-300">
+                      -{selectedEntry.seasonScore.ffpPenaltyPoints.toLocaleString()}점
+                    </span>
+                  </div>
+                )}
+
               {selectedEntry.seasonScore.honorsBonusDetails &&
                 selectedEntry.seasonScore.honorsBonusDetails.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3.5 py-2 text-[11px] text-amber-200">
@@ -2057,6 +2069,18 @@ function LegacyHubModalContent({
                   </div>
                 ))}
               </div>
+
+              {selectedGlobal.scoreBreakdown.ffpPenaltyPoints &&
+                selectedGlobal.scoreBreakdown.ffpPenaltyPoints > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-500/10 px-3.5 py-2 text-[11px] text-rose-200 tabular-nums">
+                    <span className="font-bold text-rose-300">
+                      FFP 2단계 예산 초과 감점 (-{selectedGlobal.scoreBreakdown.ffpPenaltyPct ?? 12}%)
+                    </span>
+                    <span className="font-mono font-black text-rose-300">
+                      -{selectedGlobal.scoreBreakdown.ffpPenaltyPoints.toLocaleString()}점
+                    </span>
+                  </div>
+                )}
 
               {/* Formation PitchBoard + Manager & Bench */}
               {globalPitchData && (

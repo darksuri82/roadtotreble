@@ -149,7 +149,11 @@ export type MpLeagueActionKind =
   | 'injury_ack'
   | 'trade_accept'
   | 'trade_reject'
-  | 'trade_counter';
+  | 'trade_counter'
+  | 'coach_hire'
+  | 'coach_skip'
+  | 'adaptation_dismiss'
+  | 'awakening_dismiss';
 
 export interface MpLeagueActionRow {
   id: string;
@@ -257,6 +261,11 @@ export interface MpHumanSeasonState {
   attemptsLeft: number;
   tradeNote: MpTradeResultNote | null;
   lastMatch: MatchResult | null;
+  budget?: import('./game').SeasonBudgetState;
+  tacticalAdaptation?: import('./game').TacticalAdaptationState;
+  staffCoach?: import('./game').StaffCoachState;
+  awakenedPlayers?: Record<string, import('./player').PlayerAwakeningRecord>;
+  pendingAwakeningAlerts?: import('./game').AwakeningAlertItem[];
 }
 
 export interface MpCastMatch {
@@ -414,6 +423,11 @@ export interface MpHumanLive {
   h2h: MpH2HRecord;
   recent: MpLiteMatch[];
   nextOpponentId: string | null;
+  budget?: import('./game').SeasonBudgetState;
+  tacticalAdaptation?: import('./game').TacticalAdaptationState;
+  staffCoach?: import('./game').StaffCoachState;
+  awakenedPlayers?: Record<string, import('./player').PlayerAwakeningRecord>;
+  pendingAwakeningAlerts?: import('./game').AwakeningAlertItem[];
 }
 
 export interface MpDraftLive {
