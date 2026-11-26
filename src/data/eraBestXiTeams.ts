@@ -92,65 +92,106 @@ interface EraTeamSpec {
 
 const ERA_SPECS: EraTeamSpec[] = [
   // =========================================================================
-  // 1. 60s~70s ALL-STAR BEST XI (4-3-3) — Includes classic icons outside roulette
+  // 1. 1960s ALL-STAR BEST XI (4-3-3)
   // =========================================================================
   {
-    id: 'era-60s70s-xi',
-    seasonLabel: '60s~70s',
-    displayName: '60s~70s 올스타 베스트 11',
-    nickname: '토탈 풋볼과 축구 황제의 시대',
+    id: 'era-60s-xi',
+    seasonLabel: '60s',
+    displayName: '1960s 올스타 베스트 11',
+    nickname: '축구 황제 펠레·야신·가린샤의 태동기',
+    managerName: '엘레니오 에레라',
+    managerTraitId: 'catenaccio',
+    managerRating: 96,
+    managerStyleNote: '그란데 인테르 유러피언컵 2연패, 카테나치오를 완성한 60년대 최고 명장',
+    managerAvatar: { gender: 'male', skinTone: 'peach', hairStyle: 'slick', hairColor: 'silver', outfit: 'classic_suit' },
+    userClub: { name: '1960s 베스트 11', shortName: '60S', primaryColor: '#b45309', secondaryColor: '#1b140d', pattern: 'sash' },
+    leagueId: 'seriea',
+    leagueKoreanName: '시대별 올스타',
+    formation: '4-3-3',
+    defaultTactic: 'counter',
+    summaryNote: '펠레·야신·가린샤에 더해 보비 무어·파케티·자우마 산투스·보비 찰턴·잔니 리베라·조지 베스트·에우제비우·고든 뱅크스까지 1960년대 세계 축구를 지배한 전설들의 올스타',
+    starters: [
+      ['era60-gk-1', '레프 야신', '60s', '1963', 'GK', ['GK'], [], 93, '러시아', 'RU', 32, 68, 94, 83, ['shot_stopper', 'sweeper_keeper'], '유일한 GK 발롱도르, 검은 거미'],
+      ['era60-lb-1', '자친토 파케티', '60s', '1965', 'DF', ['LB', 'LWB'], ['CB'], 91, '이탈리아', 'IT', 76, 84, 92, 91, ['attacking_wingback'], '공격형 풀백의 시초, 그란데 인테르의 캡틴'],
+      ['era60-cb-1', '보비 무어', '60s', '1966', 'DF', ['CB'], ['CDM'], 92, '잉글랜드', 'GB', 62, 84, 94, 88, ['ball_playing_cb', 'stopper_cb'], '66 월드컵 우승 주장, 예측 수비의 교과서'],
+      ['era60-cb-2', '체사레 말디니', '60s', '1963', 'DF', ['CB'], ['RB'], 90, '이탈리아', 'IT', 56, 78, 93, 87, ['stopper_cb', 'ball_playing_cb'], '63 유러피언컵 우승 AC 밀란 캡틴, 말디니 가문의 시조'],
+      ['era60-rb-1', '자우마 산투스', '60s', '1962', 'DF', ['RB', 'RWB'], ['CB'], 91, '브라질', 'BR', 74, 84, 92, 91, ['attacking_wingback', 'stopper_cb'], '월드컵 2회 우승·3회 연속 올스타팀, 브라질 원조 우풀백'],
+      ['era60-cdm-1', '루이스 수아레스 미라몬테스', '60s', '1964', 'MF', ['CDM', 'CM'], ['CAM'], 92, '스페인', 'ES', 82, 94, 80, 88, ['deep_playmaker', 'playmaker_10'], '60 발롱도르·유로 64·유러피언컵 2연패, 그란데 인테르의 건축가'],
+      ['era60-cm-1', '보비 찰턴', '60s', '1966', 'MF', ['CM', 'CAM'], ['LW'], 93, '잉글랜드', 'GB', 91, 93, 68, 90, ['playmaker_10', 'box_to_box'], '66 발롱도르·월드컵 우승, 대포알 양발 중거리'],
+      ['era60-cm-2', '잔니 리베라', '60s', '1969', 'MF', ['CM', 'CAM'], [], 91, '이탈리아', 'IT', 85, 94, 58, 84, ['playmaker_10'], '69 발롱도르, AC 밀란 황금 소년'],
+      ['era60-lw-1', '조지 베스트', '60s', '1968', 'FW', ['LW', 'RW'], ['CAM'], 93, '북아일랜드', 'GB', 93, 88, 48, 86, ['inverted_winger', 'classic_winger'], '68 발롱도르, 다섯 번째 비틀즈의 천재 드리블'],
+      ['era60-st-1', '펠레', '60s', '1962', 'FW', ['ST', 'CAM'], ['LW', 'RW'], 96, '브라질', 'BR', 97, 92, 58, 90, ['complete_forward', 'playmaker_10'], '월드컵 3회 우승, 축구 황제'],
+      ['era60-rw-1', '가린샤', '60s', '1962', 'FW', ['RW', 'RM'], ['LW'], 92, '브라질', 'BR', 93, 86, 46, 86, ['classic_winger', 'inverted_winger'], '역대 최고 1대1 드리블의 국민들의 기쁨'],
+    ],
+    bench: [
+      ['era60-b-1', '고든 뱅크스', '60s', '1966', 'GK', ['GK'], [], 91, '잉글랜드', 'GB', 28, 62, 92, 82, ['shot_stopper'], '66 월드컵 우승·세기의 선방의 잉글랜드 수문장'],
+      ['era60-b-2', '닐톤 산투스', '60s', '1962', 'DF', ['LB', 'LWB'], [], 90, '브라질', 'BR', 75, 83, 90, 89, ['attacking_wingback'], '축구의 백과사전, 현대 공격형 레프트백의 원조'],
+      ['era60-b-3', '산드로 마촐라', '60s', '1965', 'MF', ['CAM', 'CM'], ['RW'], 90, '이탈리아', 'IT', 88, 91, 60, 87, ['playmaker_10'], '그란데 인테르 원클럽맨 공격 에이스'],
+      ['era60-b-4', '데니스 로', '60s', '1964', 'FW', ['ST'], [], 91, '스코틀랜드', 'GB', 93, 78, 46, 86, ['poacher', 'line_breaker'], '64 발롱도르 수상, 맨유 삼총사의 스트렛포드 킹'],
+      ['era60-b-5', '에우제비우', '60s', '1966', 'FW', ['ST', 'CAM'], ['RW'], 93, '포르투갈', 'PT', 95, 84, 52, 89, ['line_breaker', 'complete_forward'], '65 발롱도르·66 월드컵 득점왕, 흑표범'],
+    ],
+  },
+
+  // =========================================================================
+  // 2. 1970s ALL-STAR BEST XI (4-3-3)
+  // =========================================================================
+  {
+    id: 'era-70s-xi',
+    seasonLabel: '70s',
+    displayName: '1970s 올스타 베스트 11',
+    nickname: '토탈 풋볼과 카이저 베켄바워의 시대',
     managerName: '리누스 미헬스',
     managerTraitId: 'total_football',
     managerRating: 97,
     managerStyleNote: '토탈 풋볼의 창시자, 전 포지션 스위칭과 압박의 선구자',
     managerAvatar: { gender: 'male', skinTone: 'light', hairStyle: 'parted', hairColor: 'silver', outfit: 'classic_suit' },
-    userClub: { name: '60s~70s 베스트 11', shortName: '70S', primaryColor: '#d97706', secondaryColor: '#1c140c', pattern: 'sash' },
+    userClub: { name: '1970s 베스트 11', shortName: '70S', primaryColor: '#ea580c', secondaryColor: '#1c120a', pattern: 'stripes' },
     leagueId: 'bundesliga',
     leagueKoreanName: '시대별 올스타',
     formation: '4-3-3',
     defaultTactic: 'possession',
-    summaryNote: '야신·베켄바워·크루이프·펠레·게르트 뮐러에 더해 보비 무어·파케티·카를루스 아우베르투·보비 찰턴·에우제비우·조지 베스트까지 집결한 고전 올스타',
+    summaryNote: '베켄바워·크루이프·게르트 뮐러에 더해 제프 마이어·카를루스 아우베르투·가에타노 시레아·루드 크롤·요한 네스컨스·자이르지뉴·히벨리누·마리오 켐페스까지 70년대 황금 올스타',
     starters: [
-      ['era70-gk-1', '레프 야신', '60s', '1963', 'GK', ['GK'], [], 93, '러시아', 'RU', 32, 68, 94, 83, ['shot_stopper', 'sweeper_keeper'], '유일한 GK 발롱도르, 검은 거미'],
-      ['era70-lb-1', '자친토 파케티', '60s', '1965', 'DF', ['LB', 'LWB'], ['CB'], 91, '이탈리아', 'IT', 76, 84, 92, 91, ['attacking_wingback'], '공격형 풀백의 시초, 그란데 인테르의 캡틴'],
+      ['era70-gk-1', '제프 마이어', '70s', '1974', 'GK', ['GK'], [], 92, '독일', 'DE', 30, 64, 93, 83, ['shot_stopper'], '74 월드컵·유러피언컵 3연패, 안징의 고양이'],
+      ['era70-lb-1', '루드 크롤', '70s', '1974', 'DF', ['LB', 'CB'], ['LWB'], 91, '네덜란드', 'NL', 75, 86, 92, 91, ['ball_playing_cb', 'attacking_wingback'], '아약스 유러피언컵 3연패·토탈 풋볼 최강 레프트백'],
       ['era70-cb-1', '프란츠 베켄바워', '70s', '1974', 'DF', ['CB', 'CDM'], ['CM'], 95, '독일', 'DE', 80, 93, 96, 89, ['ball_playing_cb', 'deep_playmaker'], '리베로를 완성한 카이저'],
-      ['era70-cb-2', '보비 무어', '60s', '1966', 'DF', ['CB'], ['CDM'], 92, '잉글랜드', 'GB', 62, 84, 94, 88, ['ball_playing_cb', 'stopper_cb'], '66 월드컵 우승 주장, 예측 수비의 교과서'],
+      ['era70-cb-2', '가에타노 시레아', '70s', '1978', 'DF', ['CB'], ['CDM'], 91, '이탈리아', 'IT', 66, 86, 93, 87, ['ball_playing_cb'], '퇴장 0회의 신사 리베로'],
       ['era70-rb-1', '카를루스 아우베르투', '70s', '1970', 'DF', ['RB', 'RWB'], ['CB'], 92, '브라질', 'BR', 81, 86, 91, 91, ['attacking_wingback'], '1970 월드컵 결승 전설의 골, 브라질 위대한 주장'],
-      ['era70-mf-1', '요한 네스컨스', '70s', '1974', 'MF', ['CM', 'CDM'], ['RB'], 92, '네덜란드', 'NL', 82, 91, 88, 95, ['box_to_box', 'ball_winner'], '토탈 풋볼의 엔진, 요한 2세'],
-      ['era70-mf-2', '보비 찰턴', '60s', '1966', 'MF', ['CAM', 'CM'], ['LW'], 93, '잉글랜드', 'GB', 91, 93, 68, 90, ['playmaker_10', 'box_to_box'], '66 발롱도르·월드컵 우승, 대포알 양발 중거리'],
-      ['era70-mf-3', '요한 크루이프', '70s', '1974', 'MF', ['CAM', 'ST'], ['LW', 'CM'], 95, '네덜란드', 'NL', 94, 96, 66, 89, ['playmaker_10', 'complete_forward'], '토탈 풋볼의 상징, 발롱도르 3회'],
-      ['era70-lw-1', '조지 베스트', '60s', '1968', 'FW', ['LW', 'RW'], ['CAM'], 93, '북아일랜드', 'GB', 93, 88, 48, 86, ['inverted_winger', 'classic_winger'], '68 발롱도르, 다섯 번째 비틀즈의 천재 드리블'],
-      ['era70-st-1', '펠레', '60s', '1962', 'FW', ['ST', 'CAM'], ['LW', 'RW'], 96, '브라질', 'BR', 97, 92, 58, 90, ['complete_forward', 'playmaker_10'], '월드컵 3회 우승, 축구 황제'],
-      ['era70-rw-1', '가린샤', '60s', '1962', 'FW', ['RW', 'RM'], ['LW'], 92, '브라질', 'BR', 93, 86, 46, 86, ['classic_winger', 'inverted_winger'], '역대 최고 1대1 드리블의 국민들의 기쁨'],
+      ['era70-cdm-1', '요한 네스컨스', '70s', '1974', 'MF', ['CDM', 'CM'], ['RB'], 92, '네덜란드', 'NL', 82, 91, 88, 95, ['box_to_box', 'ball_winner'], '토탈 풋볼의 엔진, 요한 2세'],
+      ['era70-cm-1', '파울 브라이트너', '70s', '1974', 'MF', ['CM', 'LB'], ['CDM'], 91, '독일', 'DE', 82, 90, 87, 92, ['box_to_box', 'deep_playmaker'], '74 월드컵·유로 72 우승, 독일의 만능 미드필더'],
+      ['era70-cm-2', '요한 크루이프', '70s', '1974', 'MF', ['CM', 'CAM', 'ST'], ['LW'], 95, '네덜란드', 'NL', 94, 96, 66, 89, ['playmaker_10', 'complete_forward'], '토탈 풋볼의 상징, 발롱도르 3회'],
+      ['era70-lw-1', '로베르토 히벨리누', '70s', '1970', 'FW', ['LW', 'CAM'], ['CM'], 91, '브라질', 'BR', 90, 92, 54, 86, ['inverted_winger', 'playmaker_10'], '70 월드컵 우승, 대포알 왼발과 플립플랩의 마술사'],
+      ['era70-st-1', '게르트 뮐러', '70s', '1974', 'FW', ['ST'], [], 93, '독일', 'DE', 95, 77, 48, 85, ['poacher'], '박스 안 결정력의 폭격기'],
+      ['era70-rw-1', '자이르지뉴', '70s', '1970', 'FW', ['RW', 'ST'], ['RM'], 92, '브라질', 'BR', 93, 84, 52, 91, ['line_breaker', 'inverted_winger'], '70 월드컵 전 경기 득점(7골), 브라질의 허리케인'],
     ],
     bench: [
-      ['era70-b-1', '제프 마이어', '70s', '1974', 'GK', ['GK'], [], 92, '독일', 'DE', 30, 64, 93, 83, ['shot_stopper'], '74 월드컵·유러피언컵 3연패, 안징의 고양이'],
-      ['era70-b-2', '가에타노 시레아', '70s', '1978', 'DF', ['CB'], ['CDM'], 91, '이탈리아', 'IT', 66, 86, 93, 87, ['ball_playing_cb'], '퇴장 0회의 신사 리베로'],
-      ['era70-b-3', '잔니 리베라', '70s', '1969', 'MF', ['CAM'], ['CM'], 91, '이탈리아', 'IT', 85, 94, 56, 83, ['playmaker_10'], '69 발롱도르, AC 밀란 황금 소년'],
-      ['era70-b-4', '게르트 뮐러', '70s', '1974', 'FW', ['ST'], [], 93, '독일', 'DE', 95, 77, 48, 85, ['poacher'], '박스 안 결정력의 폭격기'],
-      ['era70-b-5', '에우제비우', '60s', '1966', 'FW', ['ST', 'CAM'], ['RW'], 93, '포르투갈', 'PT', 95, 84, 52, 89, ['line_breaker', 'complete_forward'], '65 발롱도르·66 월드컵 득점왕, 흑표범'],
+      ['era70-b-1', '디노 조프', '70s', '1974', 'GK', ['GK'], [], 91, '이탈리아', 'IT', 30, 64, 92, 82, ['shot_stopper'], 'A매치 1142분 무실점, 70년대 유벤투스·이탈리아 수호신'],
+      ['era70-b-2', '베르티 포크츠', '70s', '1974', 'DF', ['RB', 'CB'], [], 90, '독일', 'DE', 66, 78, 92, 93, ['stopper_cb'], '74 결승 크루이프 전담 마크, 독일의 테리어'],
+      ['era70-b-3', '귄터 네처', '70s', '1972', 'MF', ['CM', 'CAM'], [], 91, '독일', 'DE', 84, 94, 62, 84, ['deep_playmaker', 'playmaker_10'], '유로 72 우승 주역, 70년대 분데스리가 최고의 지휘자'],
+      ['era70-b-4', '마리오 켐페스', '70s', '1978', 'FW', ['ST', 'LW'], ['CAM'], 91, '아르헨티나', 'AR', 93, 83, 48, 88, ['complete_forward', 'line_breaker'], '78 월드컵 우승·골든볼·득점왕, 엘 마타도르'],
+      ['era70-b-5', '케빈 키건', '70s', '1979', 'FW', ['RW', 'ST'], ['CAM'], 91, '잉글랜드', 'GB', 91, 86, 54, 92, ['inverted_winger', 'line_breaker'], '78·79 발롱도르 2연패, 리버풀·함부르크의 마이티 마우스'],
     ],
   },
 
   // =========================================================================
-  // 2. 80s ALL-STAR BEST XI (4-4-2 Diamond)
+  // 3. 1980s ALL-STAR BEST XI (4-4-2 Diamond)
   // =========================================================================
   {
     id: 'era-80s-xi',
     seasonLabel: '80s',
-    displayName: '80s 올스타 베스트 11',
+    displayName: '1980s 올스타 베스트 11',
     nickname: '마라도나·플라티니·밀란 오렌지 삼총사',
     managerName: '아리고 사키',
     managerTraitId: 'gegenpress_guru',
     managerRating: 97,
     managerStyleNote: '현대 압박 축구와 컴팩트 지역 방어의 혁명가',
     managerAvatar: { gender: 'male', skinTone: 'peach', hairStyle: 'bald', hairColor: 'silver', outfit: 'navy_coat' },
-    userClub: { name: '80s 베스트 11', shortName: '80S', primaryColor: '#eab308', secondaryColor: '#1a1408', pattern: 'stripes' },
+    userClub: { name: '1980s 베스트 11', shortName: '80S', primaryColor: '#eab308', secondaryColor: '#1a1408', pattern: 'stripes' },
     leagueId: 'seriea',
     leagueKoreanName: '시대별 올스타',
     formation: '4-4-2-diamond',
     defaultTactic: 'gegenpressing',
-    summaryNote: '마라도나·플라티니·마테우스·바레시·판 바스턴과 슈마허·베르고미·카브리니·소크라테스·팔캉까지 1980년대 세리에A·월드컵 전성기 올스타',
+    summaryNote: '마라도나·플라티니·마테우스·바레시·판 바스턴과 슈마허·베르고미·카브리니·소크라테스·굴리트·지쿠까지 1980년대 세리에A·월드컵 전성기 올스타',
     starters: [
       ['era80-gk-1', '디노 조프', '80s', '1982', 'GK', ['GK'], [], 91, '이탈리아', 'IT', 30, 64, 92, 82, ['shot_stopper'], '82 월드컵 40세 우승 주장'],
       ['era80-lb-1', '안드레아스 브레메', '80s', '1990', 'DF', ['LB', 'RB'], ['LWB'], 91, '독일', 'DE', 80, 87, 90, 92, ['attacking_wingback'], '양발 크로스와 결승골의 레프트백'],
@@ -174,19 +215,19 @@ const ERA_SPECS: EraTeamSpec[] = [
   },
 
   // =========================================================================
-  // 3. 90s ALL-STAR BEST XI (4-2-3-1)
+  // 4. 1990s ALL-STAR BEST XI (4-2-3-1)
   // =========================================================================
   {
     id: 'era-90s-xi',
     seasonLabel: '90s',
-    displayName: '90s 올스타 베스트 11',
+    displayName: '1990s 올스타 베스트 11',
     nickname: '외계인 호나우두와 판타지스타의 황금기',
     managerName: '알렉스 퍼거슨',
     managerTraitId: 'big_game_hunter',
     managerRating: 98,
     managerStyleNote: '99 트레블과 빅매치 지배력의 전설적 명장',
     managerAvatar: { gender: 'male', skinTone: 'light', hairStyle: 'parted', hairColor: 'silver', outfit: 'navy_coat' },
-    userClub: { name: '90s 베스트 11', shortName: '90S', primaryColor: '#e11d48', secondaryColor: '#190f15', pattern: 'half' },
+    userClub: { name: '1990s 베스트 11', shortName: '90S', primaryColor: '#e11d48', secondaryColor: '#190f15', pattern: 'half' },
     leagueId: 'epl',
     leagueKoreanName: '시대별 올스타',
     formation: '4-2-3-1',
@@ -215,33 +256,33 @@ const ERA_SPECS: EraTeamSpec[] = [
   },
 
   // =========================================================================
-  // 4. 00s ALL-STAR BEST XI (4-3-3)
+  // 5. 2000s ALL-STAR BEST XI (4-3-3)
   // =========================================================================
   {
     id: 'era-00s-xi',
     seasonLabel: '00s',
-    displayName: '00s 올스타 베스트 11',
+    displayName: '2000s 올스타 베스트 11',
     nickname: '지단·호나우지뉴·앙리 갈락티코 시대',
     managerName: '카를로 안첼로티',
     managerTraitId: 'galactico_manager',
     managerRating: 97,
     managerStyleNote: '슈퍼스타 군단을 하나로 묶는 유럽 최다 UCL 명장',
     managerAvatar: { gender: 'male', skinTone: 'light', hairStyle: 'slick', hairColor: 'silver', outfit: 'classic_suit' },
-    userClub: { name: '00s 베스트 11', shortName: '00S', primaryColor: '#cbd5e1', secondaryColor: '#141923', pattern: 'solid' },
+    userClub: { name: '2000s 베스트 11', shortName: '00S', primaryColor: '#cbd5e1', secondaryColor: '#141923', pattern: 'solid' },
     leagueId: 'laliga',
     leagueKoreanName: '시대별 올스타',
     formation: '4-3-3',
     defaultTactic: 'balanced',
-    summaryNote: '지단·앙리·호나우지뉴·부폰·네스타·사비·피를로에 더해 미하엘 발락·마이콩·잠브로타·뤼트 판 니스텔로이까지 모은 2000년대 올스타',
+    summaryNote: '지단·앙리·호나우지뉴·부폰·네스타·사비·피를로에 더해 미하엘 발락·마이콩·뤼트 판 니스텔로이·비에이라까지 모은 2000년대 올스타',
     starters: [
       ['era00-gk-1', '잔루이지 부폰', '00s', '2006', 'GK', ['GK'], [], 93, '이탈리아', 'IT', 30, 64, 94, 83, ['shot_stopper'], '06 월드컵 우승, 수문장의 교과서'],
       ['era00-lb-1', '애슐리 콜', '00s', '2006', 'DF', ['LB', 'LWB'], [], 91, '잉글랜드', 'GB', 74, 84, 91, 94, ['attacking_wingback'], '세계 최강 윙어들을 봉쇄한 레프트백'],
       ['era00-cb-1', '알레산드로 네스타', '00s', '2005', 'DF', ['CB'], [], 92, '이탈리아', 'IT', 58, 80, 95, 87, ['stopper_cb', 'ball_playing_cb'], '우아한 태클과 수비 예술'],
       ['era00-cb-2', '파비오 칸나바로', '00s', '2006', 'DF', ['CB'], ['RB'], 91, '이탈리아', 'IT', 56, 76, 94, 89, ['stopper_cb'], '06 월드컵·발롱도르 수상 센터백'],
       ['era00-rb-1', '필립 람', '00s', '2010', 'DF', ['RB', 'LB', 'CDM'], [], 92, '독일', 'DE', 74, 90, 92, 94, ['attacking_wingback', 'deep_playmaker'], '퇴장 0회의 완벽한 축구 지능'],
-      ['era00-mf-1', '사비 에르난데스', '00s', '2009', 'MF', ['CM', 'CDM'], [], 93, '스페인', 'ES', 80, 96, 78, 92, ['deep_playmaker', 'playmaker_10'], '티키타카의 두뇌'],
-      ['era00-mf-2', '안드레아 피를로', '00s', '2006', 'MF', ['CDM', 'CM'], [], 92, '이탈리아', 'IT', 80, 95, 74, 86, ['deep_playmaker'], '레지스타의 교과서'],
-      ['era00-mf-3', '지네딘 지단', '00s', '2002', 'MF', ['CAM', 'CM'], [], 94, '프랑스', 'FR', 90, 96, 72, 88, ['playmaker_10', 'box_to_box'], '02 UCL 결승 발리, 세기의 마에스트로'],
+      ['era00-mf-1', '안드레아 피를로', '00s', '2006', 'MF', ['CDM', 'CM'], [], 92, '이탈리아', 'IT', 80, 95, 74, 86, ['deep_playmaker'], '레지스타의 교과서'],
+      ['era00-mf-2', '사비 에르난데스', '00s', '2009', 'MF', ['CM', 'CDM'], [], 93, '스페인', 'ES', 80, 96, 78, 92, ['deep_playmaker', 'playmaker_10'], '티키타카의 두뇌'],
+      ['era00-mf-3', '지네딘 지단', '00s', '2002', 'MF', ['CM', 'CAM'], [], 94, '프랑스', 'FR', 90, 96, 72, 88, ['playmaker_10', 'box_to_box'], '02 UCL 결승 발리, 세기의 마에스트로'],
       ['era00-lw-1', '호나우지뉴', '00s', '2005', 'FW', ['LW', 'CAM'], [], 94, '브라질', 'BR', 93, 94, 48, 86, ['inverted_winger', 'playmaker_10'], '05 발롱도르 외계인 판타지스타'],
       ['era00-st-1', '티에리 앙리', '00s', '2004', 'FW', ['ST', 'LW'], [], 94, '프랑스', 'FR', 95, 86, 52, 90, ['line_breaker', 'inverted_winger'], '아스널 무패 우승의 왕'],
       ['era00-rw-1', '카카', '00s', '2007', 'FW', ['RW', 'CAM'], ['ST'], 92, '브라질', 'BR', 92, 92, 56, 89, ['playmaker_10', 'line_breaker'], '07 발롱도르 폭발적 치달 마에스트로'],
@@ -256,24 +297,24 @@ const ERA_SPECS: EraTeamSpec[] = [
   },
 
   // =========================================================================
-  // 5. 10s ALL-STAR BEST XI (4-3-3)
+  // 6. 2010s ALL-STAR BEST XI (4-3-3)
   // =========================================================================
   {
     id: 'era-10s-xi',
     seasonLabel: '10s',
-    displayName: '10s 올스타 베스트 11',
+    displayName: '2010s 올스타 베스트 11',
     nickname: '메시·호날두와 현대 축구의 정점',
     managerName: '펩 과르디올라',
     managerTraitId: 'tiki_taka',
     managerRating: 98,
     managerStyleNote: '포지셔널 플레이와 점유율 축구의 절대 정점',
     managerAvatar: { gender: 'male', skinTone: 'peach', hairStyle: 'bald', hairColor: 'black', outfit: 'casual_shirt' },
-    userClub: { name: '10s 베스트 11', shortName: '10S', primaryColor: '#8b5cf6', secondaryColor: '#151126', pattern: 'sash' },
+    userClub: { name: '2010s 베스트 11', shortName: '10S', primaryColor: '#8b5cf6', secondaryColor: '#151126', pattern: 'sash' },
     leagueId: 'laliga',
     leagueKoreanName: '시대별 올스타',
     formation: '4-3-3',
     defaultTactic: 'possession',
-    summaryNote: '메시·호날두·레반도프스키·모드리치·이니에스타·노이어·라모스·판 다이크에 더해 뱅상 콤파니·야야 투레·메수트 외질·마르코 로이스까지 집결한 2010년대 올스타',
+    summaryNote: '메시·호날두·레반도프스키·모드리치·이니에스타·노이어·라모스·판 다이크에 더해 뱅상 콤파니·야야 투레·메수트 외질·수아레스까지 집결한 2010년대 올스타',
     starters: [
       ['era10-gk-1', '마누엘 노이어', '10s', '2014', 'GK', ['GK'], [], 93, '독일', 'DE', 38, 80, 94, 86, ['sweeper_keeper', 'shot_stopper'], '스위퍼 키퍼 혁명가'],
       ['era10-lb-1', '마르셀루', '10s', '2017', 'DF', ['LB', 'LWB'], [], 91, '브라질', 'BR', 85, 89, 86, 90, ['attacking_wingback'], '공격수급 발기술의 레알 UCL 3연패 레프트백'],

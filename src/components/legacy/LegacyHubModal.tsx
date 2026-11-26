@@ -17,6 +17,7 @@ import {
 import { HIDDEN_ACHIEVEMENTS } from '../../data/achievements';
 import {
   buildUnifiedLeaderboard,
+  ERA_BEST_XI_DREAM_TEAMS,
   HISTORICAL_BENCHMARK_TEAMS,
 } from '../../data/historicalTeams';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
@@ -54,7 +55,7 @@ import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 
-type HofFilterTab = 'all' | 'user' | 'historical';
+type HofFilterTab = 'all' | 'user' | 'historical' | 'era_xi';
 type HofSortBy = 'score' | 'date';
 type HofDetailSubTab = 'squad' | 'history';
 type HofHistoryFilter = 'all' | 'league' | 'cup' | 'ucl';
@@ -258,11 +259,13 @@ function LegacyHubModalContent({
 
   const unifiedLeaderboard = useMemo(
     () =>
-      buildUnifiedLeaderboard({
-        userEntries: legacyState.hallOfFame,
-        filter: hofFilter,
-        sortBy,
-      }),
+      hofFilter === 'era_xi'
+        ? []
+        : buildUnifiedLeaderboard({
+            userEntries: legacyState.hallOfFame,
+            filter: hofFilter,
+            sortBy,
+          }),
     [legacyState.hallOfFame, hofFilter, sortBy],
   );
 
@@ -493,6 +496,10 @@ function LegacyHubModalContent({
                         'historical',
                         `역대 실제 강팀 (${HISTORICAL_BENCHMARK_TEAMS.length})`,
                       ],
+                      [
+                        'era_xi',
+                        `년도별 베스트 11 (${ERA_BEST_XI_DREAM_TEAMS.length})`,
+                      ],
                     ] as [HofFilterTab, string][]
                   ).map(([fid, label]) => (
                     <button
@@ -504,7 +511,9 @@ function LegacyHubModalContent({
                       }}
                       className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
                         hofFilter === fid
-                          ? 'bg-slate-800 text-white border border-slate-600/80 shadow-sm'
+                          ? fid === 'era_xi'
+                            ? 'bg-cyan-500/20 text-cyan-200 border border-cyan-400/50 shadow-sm'
+                            : 'bg-slate-800 text-white border border-slate-600/80 shadow-sm'
                           : 'text-slate-400 border border-transparent hover:text-slate-200'
                       }`}
                     >
@@ -542,10 +551,89 @@ function LegacyHubModalContent({
               </div>
 
               <p className="text-xs text-slate-400">
-                모든 유저 팀과 실제 축구 역사 속 최강 {HISTORICAL_BENCHMARK_TEAMS.length}팀은 동일한 공정 시즌 스코어 공식으로 순위를 겨룹니다.
+                {hofFilter === 'era_xi'
+                  ? `1960s ~ 2010s 시대를 대표하는 올스타 베스트 11 (${ERA_BEST_XI_DREAM_TEAMS.length}팀)입니다. 각 시대 스쿼드를 피치에서 확인하고 2D 드림 매치로 바로 도전할 수 있습니다.`
+                  : `모든 유저 팀과 실제 축구 역사 속 최강 ${HISTORICAL_BENCHMARK_TEAMS.length}팀은 5대 리그·시대별 리그 난이도가 반영된 동일한 공정 시즌 스코어 공식으로 순위를 겨룹니다.`}
               </p>
 
-              {unifiedLeaderboard.length === 0 ? (
+              {hofFilter === 'era_xi' ? (
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  {ERA_BEST_XI_DREAM_TEAMS.map((eraTeam) => {
+                    const dreamRec = legacyState.dreamMatchRecords?.[eraTeam.id];
+                    const trait = MANAGER_TRAITS[eraTeam.managerTraitId];
+                    return (
+                      <div
+                        key={eraTeam.id}
+                        className="group relative flex flex-col justify-between rounded-2xl border border-cyan-500/30 bg-gradient-to-br from-[#0f1722] via-[#101620] to-[#0c1118] p-4 transition hover:border-cyan-400/65"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-cyan-400/35 bg-slate-900">
+                              <JerseySvg
+                                primaryColor={eraTeam.userClub.primaryColor}
+                                secondaryColor={eraTeam.userClub.secondaryColor}
+                                pattern={eraTeam.userClub.pattern}
+                                label={eraTeam.userClub.shortName}
+                                size={34}
+                              />
+                              <span className="absolute -top-2 -left-2 flex h-5 min-w-[26px] items-center justify-center rounded-full bg-cyan-400 px-1 text-[9px] font-black text-slate-950">
+                                {eraTeam.seasonLabel}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="truncate text-sm font-black text-white">
+                                  {eraTeam.displayName}
+                                </span>
+                                {dreamRec && dreamRec.wins > 0 && (
+                                  <span className="rounded bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">
+                                    ⚔️ {dreamRec.wins}승 {dreamRec.losses}패
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-0.5 text-[11px] font-semibold text-cyan-200/90 truncate">
+                                {eraTeam.nickname}
+                              </div>
+                              <div className="mt-0.5 text-[10px] text-slate-400 truncate">
+                                {eraTeam.managerName} (명장 {eraTeam.managerRating} · {trait.name}) · {eraTeam.formation} · 평균 OVR{' '}
+                                <strong className="text-white">{eraTeam.teamAvgOvr}</strong>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="mt-2.5 line-clamp-2 text-[11px] leading-relaxed text-slate-400 break-keep">
+                          {eraTeam.summaryNote}
+                        </p>
+
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 pt-2.5">
+                          <span className="text-[10px] text-slate-400">
+                            선발 {eraTeam.starters.length}명 + 벤치 {eraTeam.bench.length}명 · 케미{' '}
+                            <strong className="text-emerald-300">{eraTeam.chemistry}</strong>
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedHistorical(eraTeam)}
+                              className="rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-1 text-[11px] font-bold text-slate-200 hover:bg-slate-700 cursor-pointer"
+                            >
+                              스쿼드 보기
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openDreamMatch(eraTeam.id)}
+                              className="inline-flex items-center gap-1 rounded-lg border border-cyan-400/50 bg-cyan-500/20 px-2.5 py-1 text-[11px] font-extrabold text-cyan-200 hover:bg-cyan-500/30 cursor-pointer"
+                            >
+                              <Swords className="h-3 w-3" />
+                              드림 매치
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : unifiedLeaderboard.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-10 text-center">
                   <Trophy className="mx-auto mb-3 h-10 w-10 text-slate-600" />
                   <p className="text-sm font-bold text-slate-300">
@@ -949,7 +1037,17 @@ function LegacyHubModalContent({
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">
                 {[
                   { label: '리그 환산(PPG×38)', val: selectedHistorical.seasonScore.leagueConvertedScore },
-                  { label: '리그 순위', val: selectedHistorical.seasonScore.leagueRankBonus },
+                  {
+                    label:
+                      typeof selectedHistorical.seasonScore.leagueDifficultyFactor === 'number'
+                        ? `리그 순위 (×${selectedHistorical.seasonScore.leagueDifficultyFactor.toFixed(2)})`
+                        : '리그 순위',
+                    val: selectedHistorical.seasonScore.leagueRankBonus,
+                    sub:
+                      typeof selectedHistorical.seasonScore.leagueStrengthAvg === 'number'
+                        ? `${selectedHistorical.seasonScore.leagueStrengthEraLabel ?? '당시 리그'} ${selectedHistorical.seasonScore.leagueStrengthAvg.toFixed(1)}`
+                        : undefined,
+                  },
                   { label: '자국 컵', val: selectedHistorical.seasonScore.cupBonus },
                   { label: '챔피언스리그', val: selectedHistorical.seasonScore.uclBonus },
                   { label: '대업·대기록', val: selectedHistorical.seasonScore.honorsBonus },
@@ -965,6 +1063,11 @@ function LegacyHubModalContent({
                     <div className="mt-1 font-mono text-sm font-black text-amber-300">
                       +{item.val.toLocaleString()}
                     </div>
+                    {item.sub && (
+                      <div className="mt-0.5 text-[9px] text-slate-500 tabular-nums truncate">
+                        {item.sub}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -1285,7 +1388,17 @@ function LegacyHubModalContent({
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:grid-cols-8">
                 {[
                   { label: '리그 환산(PPG×38)', val: selectedEntry.seasonScore.leagueConvertedScore },
-                  { label: '리그 순위', val: selectedEntry.seasonScore.leagueRankBonus },
+                  {
+                    label:
+                      typeof selectedEntry.seasonScore.leagueDifficultyFactor === 'number'
+                        ? `리그 순위 (×${selectedEntry.seasonScore.leagueDifficultyFactor.toFixed(2)})`
+                        : '리그 순위',
+                    val: selectedEntry.seasonScore.leagueRankBonus,
+                    sub:
+                      typeof selectedEntry.seasonScore.leagueStrengthAvg === 'number'
+                        ? `리그 평균 ${selectedEntry.seasonScore.leagueStrengthAvg.toFixed(1)}`
+                        : undefined,
+                  },
                   { label: '자국 컵', val: selectedEntry.seasonScore.cupBonus },
                   { label: '챔피언스리그', val: selectedEntry.seasonScore.uclBonus },
                   { label: '대업·대기록', val: selectedEntry.seasonScore.honorsBonus },
@@ -1301,6 +1414,11 @@ function LegacyHubModalContent({
                     <div className="mt-1 font-mono text-sm font-black text-emerald-300">
                       +{item.val.toLocaleString()}
                     </div>
+                    {item.sub && (
+                      <div className="mt-0.5 text-[9px] text-slate-500 tabular-nums">
+                        {item.sub}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2055,8 +2173,15 @@ function LegacyHubModalContent({
                     val: selectedGlobal.scoreBreakdown.leagueConvertedScore,
                   },
                   {
-                    label: '리그 순위',
+                    label:
+                      typeof selectedGlobal.scoreBreakdown.leagueDifficultyFactor === 'number'
+                        ? `리그 순위 (×${selectedGlobal.scoreBreakdown.leagueDifficultyFactor.toFixed(2)})`
+                        : '리그 순위',
                     val: selectedGlobal.scoreBreakdown.leagueRankBonus,
+                    sub:
+                      typeof selectedGlobal.scoreBreakdown.leagueStrengthAvg === 'number'
+                        ? `리그 평균 ${selectedGlobal.scoreBreakdown.leagueStrengthAvg.toFixed(1)}`
+                        : undefined,
                   },
                   {
                     label: '자국 컵',
@@ -2093,6 +2218,11 @@ function LegacyHubModalContent({
                     <div className="mt-1 font-mono text-sm font-black text-sky-300 tabular-nums">
                       +{item.val.toLocaleString()}
                     </div>
+                    {item.sub && (
+                      <div className="mt-0.5 text-[9px] text-slate-500 tabular-nums">
+                        {item.sub}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

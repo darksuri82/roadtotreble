@@ -5,6 +5,22 @@
 
 ---
 
+## v9.3.1 — 5대 리그·시대별 리그 난이도 우승 점수 보정 · 드림 매치 년도별 베스트 11(60s~10s) 독립 개편 · 가이드북·튜토리얼 전수 동기화
+
+- **5대 리그·시대별 리그 난이도 우승·순위 점수 공정 보정 (`src/types/legacy.ts`, `src/engine/legacyEngine.ts`, `src/data/historicalTeams.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueScore.ts`, `src/services/globalRankingService.ts`, `supabase/schema.sql`, `src/components/league/SeasonSummary.tsx`, `src/components/legacy/LegacyHubModal.tsx`, `src/components/multiplayer/league/MpLeagueFinalBoard.tsx`)**:
+  - `getModernLeagueStrengthAvg(leagueId)`(전체 평균 60% + 상위 6팀 40%)와 `getLeagueDifficultyFactor(avg)`(기준 `78.0`, 기울기 `0.085`, `0.72~1.32`)를 `computeSeasonScore`의 `leagueRankBonus`에 적용: **EPL `80.86` (`×1.243` · 1위 `1,492`) > 세리에 A `77.86` (`×0.988` · `1,186`) > 라리가 `77.55` (`×0.962` · `1,154`) > 분데스리가 `76.86` (`×0.903` · `1,084`) > 리그 1 `75.82` (`×0.815` · `978`)**.
+  - 역대 명전 24팀(`HISTORICAL_ERA_LEAGUE_STRENGTH`)은 현대가 아닌 **각 팀이 활약한 당시 시즌의 리그 평균 강도**(88-89 세리에 A `81.0`, 14-15 라리가 `80.8`, 22-23 EPL `80.8`, 12-13 분데스리가 `78.8`, 71-72 에레디비시 `77.4`, 24-25 리그 1 `75.8` 등) 기준으로 산출.
+  - `recalibrateScoreBreakdownForLeagueDifficulty` 멱등 마이그레이션을 `loadLegacyState()`(로컬 개인 명전 자동 재계산·저장) 및 `globalRankingService.ts`(`mapRawRowToEntry` / `buildGlobalSubmissionPayload` 글로벌 TOP 15 자동 보정·재정렬)에 적용하고, `supabase/schema.sql`에 DB 일괄 보정용 멱등 SQL 블록 추가.
+  - 시즌 결산·명전(역대/개인/글로벌)·멀티 최종 결산의 `리그 순위` 카드에 난이도 배율(`×1.24` 등) 및 리그 평균 강도 표시.
+- **드림 매치 · 역대 년도별 베스트 11 (1960s~2010s · 6팀) 독립 개편 (`src/data/eraBestXiTeams.ts`, `src/components/dream/DreamMatchArena.tsx`, `src/components/legacy/LegacyHubModal.tsx`, `src/components/setup/TitleScreen.tsx`)**:
+  - `60s~70s` 통합팀을 **`1960s 올스타 베스트 11`**(엘레니오 에레라 · 펠레·야신·가린샤·보비 무어·파케티·자우마 산투스·보비 찰턴·리베라·조지 베스트·에우제비우 등)과 **`1970s 올스타 베스트 11`**(리누스 미헬스 · 베켄바워·크루이프·게르트 뮐러·제프 마이어·카를루스 아우베르투·시레아·루드 크롤·네스컨스·브라이트너·자이르지뉴·히벨리누 등)으로 분리해 **60s·70s·80s·90s·00s·10s 총 6개 독립 시대 팀**(전원 선발 0 포지션 페널티 + 벤치 5인) 완성.
+  - `DreamMatchArena` 1단계 상단에 **[역대 최강 클럽 (24팀)]** vs **[역대 년도별 베스트 11 (60s~10s · 6팀)]** 2대 전용 모드 선택 카드를 신설하고, `LegacyHubModal`에 **[년도별 베스트 11 (6)]** 전용 필터와 피치 열람·드림 매치 직행 버튼을 추가했으며 `TitleScreen` 드림 매치 배지를 `역대·시대별 XI`로 갱신.
+- **가이드북 & 비주얼 튜토리얼 전수 동기화 (`src/components/guide/SystemGuideModal.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`, `src/__tests__/v931LeagueScoreAndEraDream.test.ts`)**:
+  - 잔존 구버전 표기(`엘리트 88+` → `엘리트 86+`, `LEGEND` → `CLASSIC`, `레전드 제외` → `클래식 제외`, `OVR 몸값·클래식 균일가`, `시대별 클래식 60s~10s · 101명`, `클래식 FA 협상`, `이적시장 룰렛 클래식 확률`, `중복 선수/클래식 상한 검증`) 전수 정리.
+  - 가이드북 6탭에 엔진 실수치 연동 **5대 리그 난이도별 리그 우승·순위 점수 보정표**, 역대 24팀 당시 시즌 리그 평균 강도 기준 및 년도별 베스트 11(6팀) 드림 매치 안내 수록.
+
+---
+
 ## v9.3.0 — 시대별 클래식(60s~10s) 101명 개편 · 현역 OVR 압축 & 중위권 핵심 상향 · 저·중 OVR 포텐 각성(0~3명) & 드래프트 육성 지표
 
 - **시대별 클래식 카드(`60s`~`10s`) 101명 전면 개편 & 시대별 베스트 11 드림 매치 5팀 (`src/types/player.ts`, `src/data/legendPlayers.json`, `src/data/formerClubs.ts`, `src/data/eraBestXiTeams.ts`, `src/data/historicalTeams.ts`, `src/components/dream/DreamMatchArena.tsx`, `src/components/league/OpponentPitchView.tsx`)**:

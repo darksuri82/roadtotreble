@@ -502,3 +502,87 @@ grant execute on function public.submit_global_hof_ranking(jsonb) to anon, authe
 --     ''
 --   )
 -- ) !~ '^v(9|[1-9][0-9]+)(\.|$)';
+
+-- =============================================================================
+-- v9.3.1 Production Idempotent League-Difficulty Score Recalibration SQL
+-- Applies modern 5-league difficulty multiplier (EPL 1.243 / Serie A 0.988 /
+-- La Liga 0.962 / Bundesliga 0.903 / Ligue 1 0.815) to any existing global rows
+-- lacking score_breakdown->>'leagueDifficultyFactor' so DB season_score matches
+-- client-side recalibration 100%. Safe to run repeatedly (idempotent).
+-- =============================================================================
+-- with factors(league_id, strength_avg, factor) as (
+--   values
+--     ('epl',        80.86::numeric, 1.243::numeric),
+--     ('seriea',     77.86::numeric, 0.988::numeric),
+--     ('laliga',     77.55::numeric, 0.962::numeric),
+--     ('bundesliga', 76.86::numeric, 0.903::numeric),
+--     ('ligue1',     75.82::numeric, 0.815::numeric)
+-- ),
+-- calc as (
+--   select
+--     g.id,
+--     f.strength_avg,
+--     f.factor,
+--     coalesce((g.score_breakdown->>'leagueRankBonus')::int, 0) as old_rank_bonus,
+--     round(coalesce((g.score_breakdown->>'leagueRankBonus')::int, 0) * f.factor)::int as new_rank_bonus,
+--     coalesce((g.score_breakdown->>'ffpPenaltyPct')::numeric, 0) as ffp_pct,
+--     coalesce((g.score_breakdown->>'ffpPenaltyPoints')::int, 0) as old_ffp_pts,
+--     g.season_score as old_total
+--   from public.global_hof_rankings g
+--   join factors f on f.league_id = g.league_id
+--   where (g.score_breakdown->>'leagueDifficultyFactor') is null
+-- ),
+-- adjusted as (
+--   select
+--     id,
+--     strength_avg,
+--     factor,
+--     old_rank_bonus,
+--     new_rank_bonus,
+--     ffp_pct,
+--     case
+--       when ffp_pct > 0 then
+--         round(greatest(0, (old_total + old_ffp_pts) + (new_rank_bonus - old_rank_bonus)) * greatest(0.5, least(1, 1 - ffp_pct / 100.0)))::int
+--       else
+--         greatest(0, old_total + (new_rank_bonus - old_rank_bonus))
+--     end as new_total,
+--     case
+--       when ffp_pct > 0 then
+--         greatest(0, greatest(0, (old_total + old_ffp_pts) + (new_rank_bonus - old_rank_bonus)) - round(greatest(0, (old_total + old_ffp_pts) + (new_rank_bonus - old_rank_bonus)) * greatest(0.5, least(1, 1 - ffp_pct / 100.0)))::int)
+--       else 0
+--     end as new_ffp_pts
+--   from calc
+-- )
+-- update public.global_hof_rankings g
+-- set
+--   season_score = a.new_total,
+--   grade = case
+--     when a.new_total >= 7200 then 'S+'
+--     when a.new_total >= 5600 then 'S'
+--     when a.new_total >= 4200 then 'A+'
+--     when a.new_total >= 3200 then 'A'
+--     when a.new_total >= 2300 then 'B+'
+--     when a.new_total >= 1500 then 'B'
+--     else 'C'
+--   end,
+--   score_breakdown = g.score_breakdown
+--     || jsonb_build_object(
+--       'leagueRankBonus', a.new_rank_bonus,
+--       'leagueRankBaseBonus', a.old_rank_bonus,
+--       'leagueStrengthAvg', a.strength_avg,
+--       'leagueDifficultyFactor', a.factor,
+--       'totalScore', a.new_total,
+--       'grade', case
+--         when a.new_total >= 7200 then 'S+'
+--         when a.new_total >= 5600 then 'S'
+--         when a.new_total >= 4200 then 'A+'
+--         when a.new_total >= 3200 then 'A'
+--         when a.new_total >= 2300 then 'B+'
+--         when a.new_total >= 1500 then 'B'
+--         else 'C'
+--       end
+--     )
+--     || case when a.ffp_pct > 0 then jsonb_build_object('ffpPenaltyPoints', a.new_ffp_pts) else '{}'::jsonb end
+-- from adjusted a
+-- where g.id = a.id;
+

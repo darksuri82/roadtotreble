@@ -145,7 +145,7 @@ export function TitleScreen() {
                 <Swords className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-300 shrink-0" />
                 <span className="whitespace-nowrap">드림 매치</span>
                 <span className="hidden sm:inline rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
-                  명전 대결
+                  역대·시대별 XI
                 </span>
               </button>
             </div>

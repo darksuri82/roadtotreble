@@ -25,9 +25,11 @@ describe('v2.4 Features: Historical Benchmarks, 0-Rank Bug Fix & Manager Avatar 
       expect(team.seasonScore.totalScore).toBeGreaterThan(2000);
       expect(team.seasonScore.leagueConvertedScore).toBeGreaterThan(1500);
       if (team.isLeagueChampion) {
-        expect(team.seasonScore.leagueRankBonus).toBe(1200);
+        expect(team.seasonScore.leagueRankBaseBonus).toBe(1200);
+        expect(team.seasonScore.leagueRankBonus).toBeGreaterThanOrEqual(900);
+        expect(team.seasonScore.leagueRankBonus).toBeLessThanOrEqual(1600);
       } else {
-        expect(team.seasonScore.leagueRankBonus).toBeGreaterThanOrEqual(380);
+        expect(team.seasonScore.leagueRankBonus).toBeGreaterThanOrEqual(320);
       }
       expect(team.trophies.length).toBeGreaterThanOrEqual(1);
     }

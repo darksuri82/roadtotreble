@@ -1197,7 +1197,7 @@ export function DreamMatchArena() {
               <span className="rounded bg-amber-400/20 px-2 py-0.5 text-[10px] font-black text-amber-300 border border-amber-400/35">
                 {activeOpponent.isGlobalRanking
                   ? `🌍 글로벌 #${activeOpponent.rank}위 도전`
-                  : `역대 최강 ${HISTORICAL_BENCHMARK_TEAMS.length}팀 도전`}
+                  : `역대 ${HISTORICAL_BENCHMARK_TEAMS.length}팀 · 년도별 베스트 11 (${ERA_BEST_XI_DREAM_TEAMS.length}팀)`}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 truncate">
@@ -1251,41 +1251,93 @@ export function DreamMatchArena() {
       {/* ================================================================= */}
       {stage === 'select_opponent' && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Dedicated 2-Mode Arena Selector: Historical 24 Clubs vs Decade Best XI (60s~10s) */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setOpponentCategory('historical')}
+              className={`group flex items-start justify-between gap-3 rounded-2xl border p-3.5 text-left transition cursor-pointer ${
+                opponentCategory === 'historical'
+                  ? 'border-amber-400/75 bg-gradient-to-br from-amber-500/15 via-[#151512] to-[#0d1118] shadow-lg shadow-amber-500/10'
+                  : 'border-slate-800 bg-[#0d121a] hover:border-slate-700 hover:bg-[#111824]'
+              }`}
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Crown
+                    className={`h-4 w-4 shrink-0 ${
+                      opponentCategory === 'historical'
+                        ? 'text-amber-300'
+                        : 'text-slate-400'
+                    }`}
+                  />
+                  <span className="text-sm font-black text-white">
+                    역대 최강 클럽 ({HISTORICAL_BENCHMARK_TEAMS.length}팀)
+                  </span>
+                  {opponentCategory === 'historical' && (
+                    <span className="rounded bg-amber-400/20 border border-amber-400/40 px-1.5 py-0.5 text-[9px] font-black text-amber-200">
+                      선택됨
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed break-keep">
+                  14-15 바르사 · 19-20 바이에른 · 22-23 맨시티 · 71-72 아약스 등 실제 역사 속 단일 시즌 최강 클럽 24팀
+                </p>
+              </div>
+              <span className="shrink-0 rounded-lg border border-amber-400/30 bg-amber-500/10 px-2 py-1 font-mono text-[11px] font-black text-amber-300">
+                24 CLUBS
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setOpponentCategory('era_xi')}
+              className={`group flex items-start justify-between gap-3 rounded-2xl border p-3.5 text-left transition cursor-pointer ${
+                opponentCategory === 'era_xi'
+                  ? 'border-cyan-400/75 bg-gradient-to-br from-cyan-500/15 via-[#0f1722] to-[#0c1118] shadow-lg shadow-cyan-500/10'
+                  : 'border-slate-800 bg-[#0d121a] hover:border-slate-700 hover:bg-[#111824]'
+              }`}
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Sparkles
+                    className={`h-4 w-4 shrink-0 ${
+                      opponentCategory === 'era_xi'
+                        ? 'text-cyan-300'
+                        : 'text-slate-400'
+                    }`}
+                  />
+                  <span className="text-sm font-black text-white">
+                    역대 년도별 베스트 11 ({ERA_BEST_XI_DREAM_TEAMS.length}팀)
+                  </span>
+                  {opponentCategory === 'era_xi' && (
+                    <span className="rounded bg-cyan-400/20 border border-cyan-400/40 px-1.5 py-0.5 text-[9px] font-black text-cyan-200">
+                      선택됨
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed break-keep">
+                  1960s · 1970s · 1980s · 1990s · 2000s · 2010s — 룰렛 외 전설들까지 총출동하는 시대별 올스타 베스트 11
+                </p>
+              </div>
+              <span className="shrink-0 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2 py-1 font-mono text-[11px] font-black text-cyan-300">
+                60s~10s
+              </span>
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h2 className="text-sm sm:text-base font-extrabold text-white">
-                1단계 · 도전할 드림 매치 상대 선택
+                {opponentCategory === 'historical'
+                  ? '1단계 · 역대 최강 클럽 선택'
+                  : '1단계 · 역대 년도별 올스타 베스트 11 선택'}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 break-keep">
                 {opponentCategory === 'historical'
                   ? '모든 역대 강팀은 실제 전성기 선발 11명 + 핵심 벤치와 명장 전술·세부 능력치로 구현되어 있습니다.'
-                  : '룰렛에 등장하지 않는 전설들(마이어·무어·카를로스 알베르투·보비 찰턴·에우제비우·베스트·소크라치스·발락·야야 투레 등)까지 총출동하는 시대별 올스타 베스트 11입니다.'}
+                  : '각 시대를 대표하는 11인 베스트 XI + 5인 핵심 벤치(야신·보비 무어·제프 마이어·카를루스 아우베르투·에우제비우·소크라테스·발락·야야 투레 등)와 2D 단판 대결을 펼칩니다.'}
               </p>
-            </div>
-
-            <div className="inline-flex rounded-xl border border-slate-800 bg-[#0b1018] p-1 gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => setOpponentCategory('historical')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition cursor-pointer ${
-                  opponentCategory === 'historical'
-                    ? 'bg-amber-400 text-slate-950 shadow'
-                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                }`}
-              >
-                역대 최강 클럽 ({HISTORICAL_BENCHMARK_TEAMS.length}팀)
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpponentCategory('era_xi')}
-                className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition cursor-pointer ${
-                  opponentCategory === 'era_xi'
-                    ? 'bg-cyan-400 text-slate-950 shadow'
-                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
-                }`}
-              >
-                시대별 베스트 11 ({ERA_BEST_XI_DREAM_TEAMS.length}팀)
-              </button>
             </div>
           </div>
 

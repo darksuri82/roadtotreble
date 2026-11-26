@@ -441,8 +441,8 @@ describe('v9.3 Era Classics, Active OVR Rebalance & 50-Season Simulation Verific
     expect(eraHits.size).toBeGreaterThanOrEqual(5);
   });
 
-  it('5) validates all 5 Era Best XI Dream Match teams (zero starter pos penalty, non-roulette icons, playable simulation)', () => {
-    expect(ERA_BEST_XI_DREAM_TEAMS.length).toBe(5);
+  it('5) validates all 6 Era Best XI Dream Match teams (zero starter pos penalty, non-roulette icons, playable simulation)', () => {
+    expect(ERA_BEST_XI_DREAM_TEAMS.length).toBe(6);
 
     const allEraPlayerNames = new Set<string>();
     for (const team of ERA_BEST_XI_DREAM_TEAMS) {
@@ -494,7 +494,7 @@ describe('v9.3 Era Classics, Active OVR Rebalance & 50-Season Simulation Verific
     }
 
     // Play a live Dream Match against 90s Best XI cleanly
-    const built90s = buildHistoricalClubForMatch(ERA_BEST_XI_DREAM_TEAMS[2]);
+    const built90s = buildHistoricalClubForMatch(ERA_BEST_XI_DREAM_TEAMS[3]);
     const epl = getLeagueById('epl');
     const challengerClub = epl.clubs[0];
     const challengerRoster = buildAiClubRoster(challengerClub, 'epl');

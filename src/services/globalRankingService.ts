@@ -8,6 +8,7 @@ import {
   HOF_RULE_ERA_V9,
   isV9EraHofEntry,
   isV9PlusRuleEra,
+  recalibrateScoreBreakdownForLeagueDifficulty,
   reconstructHallOfFameSquad,
 } from '../engine/legacyEngine';
 import { TACTICS } from '../engine/tacticEngine';
@@ -513,11 +514,18 @@ export function buildGlobalSubmissionPayload(entry: HallOfFameEntry) {
       ? entry.seasonScore.ruleEra!
       : GLOBAL_RANKING_RULE_ERA;
 
+  const { breakdown: calibratedBreakdown } =
+    recalibrateScoreBreakdownForLeagueDifficulty(
+      entry.seasonScore,
+      entry.leagueId,
+      entry.finalLeagueRank,
+    );
+
   return {
     run_id: runId,
     rule_era: ruleEra,
-    season_score: Math.round(entry.seasonScore.totalScore),
-    grade: entry.seasonScore.grade,
+    season_score: Math.round(calibratedBreakdown.totalScore),
+    grade: calibratedBreakdown.grade,
     club_name: entry.userClub.name,
     manager_name: entry.managerName ?? DEFAULT_MANAGER_NAME,
     league_id: entry.leagueId,
@@ -545,7 +553,7 @@ export function buildGlobalSubmissionPayload(entry: HallOfFameEntry) {
     top_scorer_summary: entry.topScorerSummary || '-',
     club_profile: entry.userClub,
     manager_avatar: entry.managerAvatar ?? DEFAULT_MANAGER_AVATAR,
-    score_breakdown: { ...entry.seasonScore, ruleEra },
+    score_breakdown: { ...calibratedBreakdown, ruleEra },
     squad_snapshot: { ...squadSnapshot, ruleEra },
     achieved_at: entry.completedAt,
   };
@@ -644,6 +652,20 @@ function sanitizeScoreBreakdown(
   return {
     leagueConvertedScore: Number(obj.leagueConvertedScore) || 0,
     leagueRankBonus: Number(obj.leagueRankBonus) || 0,
+    ...(typeof obj.leagueRankBaseBonus === 'number'
+      ? { leagueRankBaseBonus: obj.leagueRankBaseBonus }
+      : {}),
+    ...(typeof obj.leagueStrengthAvg === 'number'
+      ? { leagueStrengthAvg: obj.leagueStrengthAvg }
+      : {}),
+    ...(typeof obj.leagueDifficultyFactor === 'number' &&
+    obj.leagueDifficultyFactor > 0
+      ? { leagueDifficultyFactor: obj.leagueDifficultyFactor }
+      : {}),
+    ...(typeof obj.leagueStrengthEraLabel === 'string' &&
+    obj.leagueStrengthEraLabel
+      ? { leagueStrengthEraLabel: obj.leagueStrengthEraLabel }
+      : {}),
     cupBonus: Number(obj.cupBonus) || 0,
     uclBonus: Number(obj.uclBonus) || 0,
     honorsBonus: Number(obj.honorsBonus) || 0,
@@ -696,7 +718,7 @@ function mapRawRowToEntry(
   row: RawGlobalRankingRow,
   rank: number,
 ): GlobalHofRankingEntry {
-  const grade = (
+  const rawGrade = (
     ['S+', 'S', 'A+', 'A', 'B+', 'B', 'C'].includes(row.grade)
       ? row.grade
       : 'C'
@@ -706,18 +728,36 @@ function mapRawRowToEntry(
       ? (row.squad_snapshot as Partial<GlobalSquadSnapshot>)
       : {};
   const ruleEra = extractRawRowRuleEra(row);
+  const leagueId: LeagueId = isValidLeagueId(row.league_id) ? row.league_id : 'epl';
+  const finalLeagueRank = Number(row.final_league_rank) || 1;
+  const rawScore = Number(row.season_score) || 0;
+  const sanitizedBreakdown = sanitizeScoreBreakdown(
+    row.score_breakdown,
+    rawScore,
+    rawGrade,
+  );
+  // v9.3.1: Idempotently recalibrate already-uploaded Global TOP 15 rows lacking leagueDifficultyFactor
+  const { breakdown: calibratedBreakdown, changed } =
+    recalibrateScoreBreakdownForLeagueDifficulty(
+      { ...sanitizedBreakdown, totalScore: rawScore },
+      leagueId,
+      finalLeagueRank,
+    );
+  const effectiveScore = changed ? calibratedBreakdown.totalScore : rawScore;
+  const effectiveGrade = changed ? calibratedBreakdown.grade : rawGrade;
+
   return {
     id: row.id,
     runId: row.run_id,
     ...(ruleEra ? { ruleEra } : {}),
     rank,
-    seasonScore: Number(row.season_score) || 0,
-    grade,
+    seasonScore: effectiveScore,
+    grade: effectiveGrade,
     clubName: row.club_name || '구단',
     managerName: row.manager_name || DEFAULT_MANAGER_NAME,
-    leagueId: isValidLeagueId(row.league_id) ? row.league_id : 'epl',
+    leagueId,
     leagueKoreanName: row.league_korean_name || '프리미어리그',
-    finalLeagueRank: Number(row.final_league_rank) || 1,
+    finalLeagueRank,
     leaguePoints: Number(row.league_points) || 0,
     leagueTotalRounds: Number(row.league_total_rounds) || 38,
     leagueRecord: row.league_record || '',
@@ -745,11 +785,7 @@ function mapRawRowToEntry(
     topScorerSummary: row.top_scorer_summary || '-',
     clubProfile: sanitizeClubProfile(row.club_profile, row.club_name || '구단'),
     managerAvatar: sanitizeManagerAvatar(row.manager_avatar),
-    scoreBreakdown: sanitizeScoreBreakdown(
-      row.score_breakdown,
-      Number(row.season_score) || 0,
-      grade,
-    ),
+    scoreBreakdown: calibratedBreakdown,
     squadSnapshot: {
       ...(typeof rawSnap.ruleEra === 'string' ? { ruleEra: rawSnap.ruleEra } : {}),
       starters: Array.isArray(rawSnap.starters) ? rawSnap.starters : [],

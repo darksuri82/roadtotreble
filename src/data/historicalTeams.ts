@@ -69,6 +69,45 @@ interface RawHistoricalTeamSpec {
   bestXiNotes?: Record<string, string>;
 }
 
+/**
+ * Historical era league average strength (same 0.6*fullAvg + 0.4*top6Avg scale as modern 5 leagues:
+ * modern EPL=80.86, Serie A=77.86, La Liga=77.55, Bundesliga=76.86, Ligue 1=75.82).
+ * Each historical team is judged by the real competitiveness of its own league in THAT exact season.
+ */
+export const HISTORICAL_ERA_LEAGUE_STRENGTH: Record<string, number> = {
+  // Peak 80s-90s Serie A (UEFA #1: Maradona Napoli, Matthäus Inter, Sampdoria, Juve)
+  'hist-8889-milan': 81.0,
+  // Peak 2000s-2020s EPL
+  'hist-0708-manutd': 80.8, // Big 4 peak (3 English teams in UCL SF)
+  'hist-2223-mancity': 80.8, // Modern super-deep EPL
+  'hist-1920-liverpool': 80.4, // Pep City, Chelsea, United, Leicester
+  'hist-0405-chelsea': 79.8, // Invincibles Arsenal, UCL winner Liverpool, Fergie United
+  'hist-1718-mancity': 79.8, // UCL finalist Liverpool, Mourinho United, Spurs, Chelsea
+  'hist-0304-arsenal': 79.4, // Abramovich Chelsea, United, Liverpool
+  'hist-1516-leicester': 79.0, // Competitive Big 6 era
+  'hist-9899-manutd': 78.8, // Wenger Arsenal, Vialli Chelsea, Leeds
+  // Peak 2000s-2010s La Liga (UEFA #1)
+  'hist-1415-barca': 80.8, // BBC Real, Simeone Atletico, UEL winner Sevilla, Valencia
+  'hist-1617-realmadrid': 80.6, // MSN Barca, Simeone Atletico, Sevilla
+  'hist-1112-realmadrid': 80.4, // Pep Barca, UEL winner Atletico, Valencia, Bilbao
+  'hist-1011-barca': 80.2, // Mourinho Real, Valencia, Villarreal
+  'hist-0102-realmadrid': 80.2, // UEFA #1 La Liga: Benitez Valencia, Super Depor, Barca
+  'hist-0809-barca': 79.6, // Real, Sevilla, Atletico, Villarreal
+  // Bundesliga eras
+  'hist-1213-bayern': 78.8, // All-German UCL final vs Klopp Dortmund, Leverkusen, Schalke
+  'hist-2324-leverkusen': 78.6, // UEFA #2 Bundesliga: Bayern, UCL finalist Dortmund, Stuttgart, Leipzig
+  'hist-1920-bayern': 78.2, // Dortmund, UCL SF Leipzig, Gladbach, Leverkusen
+  // Serie A 2000s-2010s
+  'hist-0910-inter': 78.0, // Roma, Milan, Sampdoria, Napoli
+  'hist-0607-milan': 77.4, // Post-Calciopoli Serie A (Juve in Serie B, Inter/Roma strong)
+  'hist-1314-juventus': 76.6, // Serie A trough era (Roma, Napoli, Fiorentina)
+  // Eredivisie eras
+  'hist-7172-ajax': 77.4, // UEFA #1 Dutch golden era (1970 European Cup winner Feyenoord, PSV), wider bottom gap
+  'hist-9495-ajax': 76.4, // Strong Ajax/PSV/Feyenoord top, modest mid/lower table
+  // Modern Ligue 1
+  'hist-2425-psg': 75.8, // Marseille, Monaco, Lille, Nice (lowest avg among Big 5)
+};
+
 function makeDummyStat(name: string, idx: number): PlayerSeasonStats {
   return {
     playerId: `hist-p-${idx}`,
@@ -248,7 +287,9 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
         }).tacticalFit
       : undefined;
 
-  // Evaluate with the EXACT same function used for user seasons
+  // Evaluate with the EXACT same function used for user seasons, using THAT historical era's league strength average
+  const historicalLeagueStrength =
+    HISTORICAL_ERA_LEAGUE_STRENGTH[spec.id] ?? 78.0;
   const seasonScore = computeSeasonScore({
     leaguePoints: spec.leaguePoints,
     leaguePlayed: spec.leagueTotalRounds,
@@ -257,6 +298,9 @@ function buildHistoricalEntry(spec: RawHistoricalTeamSpec): HistoricalTeamEntry 
     leagueGoalsFor: spec.goalsFor,
     leagueGoalsAgainst: spec.goalsAgainst,
     finalLeagueRank: spec.finalLeagueRank,
+    leagueId: spec.leagueId,
+    leagueStrengthAvgOverride: historicalLeagueStrength,
+    leagueStrengthEraLabel: `${spec.seasonLabel} ${spec.leagueKoreanName}`,
     cup: syntheticCup,
     ucl: syntheticUcl,
     uclPerfectWin: spec.uclPerfectWin,

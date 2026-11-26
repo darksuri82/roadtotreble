@@ -775,9 +775,10 @@ describe('v9.2 Balance Calibration, Mobile Scroll & Pre-v9.0 Reset', () => {
       expect(migrated.hallOfFame).toHaveLength(1);
       expect(migrated.hallOfFame[0].id).toBe('new-v9');
       expect(isV9EraHofEntry(migrated.hallOfFame[0])).toBe(true);
+      // v9.3.1: loadLegacyState() also idempotently recalibrates EPL champion rank bonus (1200 -> 1492, +292)
       expect(migrated.hofSummaryCache).toEqual({
         count: 1,
-        bestScore: 9800,
+        bestScore: 10092,
         trebleCount: 1,
         uclWins: 1,
       });

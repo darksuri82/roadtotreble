@@ -45,6 +45,14 @@ export interface UnlockedAchievementRecord {
 export interface SeasonScoreBreakdown {
   leagueConvertedScore: number; // PPG * 38 * 26 + GD bonus
   leagueRankBonus: number;
+  /** Pre-multiplier base league rank bonus (1st=1200, 2nd=750, ...) */
+  leagueRankBaseBonus?: number;
+  /** Effective league average strength used for championship/rank calibration */
+  leagueStrengthAvg?: number;
+  /** Multiplier applied to leagueRankBonus based on league strength (e.g. EPL 1.243, Ligue 1 0.815) */
+  leagueDifficultyFactor?: number;
+  /** Optional era label for historical teams (e.g. '14-15 라리가') */
+  leagueStrengthEraLabel?: string;
   cupBonus: number;
   uclBonus: number;
   honorsBonus: number; // Treble / Double / Unbeaten / Historic milestones

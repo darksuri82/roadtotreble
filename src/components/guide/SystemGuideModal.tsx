@@ -20,7 +20,10 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { FORMATION_LIST } from '../../data/formations';
-import { HISTORICAL_BENCHMARK_TEAMS } from '../../data/historicalTeams';
+import {
+  ERA_BEST_XI_DREAM_TEAMS,
+  HISTORICAL_BENCHMARK_TEAMS,
+} from '../../data/historicalTeams';
 import { MANAGER_TRAIT_LIST } from '../../data/managerTraits';
 import {
   AWAKENING_FOURTH_PLUS_MULT,
@@ -71,15 +74,17 @@ import {
   TEAM_CHEMISTRY_ORG_BONUS_CAP,
   TEAM_CHEMISTRY_SYNERGY_DEDUCT_RATIO,
 } from '../../engine/chemistryEngine';
-import { ALL_CLUBS_WITH_LEAGUE } from '../../engine/dataLoader';
+import { ALL_CLUBS_WITH_LEAGUE, LEGEND_PLAYERS } from '../../engine/dataLoader';
 import {
   CANDIDATES_PER_REEL,
   DEFAULT_ROULETTE_LEGEND_RATE,
 } from '../../engine/draftEngine';
 import {
+  getModernLeagueRankBonusTable,
   HOF_AUTO_INDUCTION_MIN_SCORE,
   HOF_RESET_NOTICE_TEXT,
   HOF_RULE_ERA_V9,
+  LEAGUE_STRENGTH_BASELINE,
 } from '../../engine/legacyEngine';
 import { MP_H2H_MAX_POINTS } from '../../engine/mpLeagueScore';
 import {
@@ -140,7 +145,7 @@ const TABS: { id: GuideTabId; num: string; label: string }[] = [
 const TAB_SECTIONS: Record<GuideTabId, { id: string; label: string }[]> = {
   budget: [
     { id: 'guide-budget-draft', label: '3구단 룰렛·자유 벤치' },
-    { id: 'guide-budget-cost', label: 'OVR 몸값·레전드 고정가' },
+    { id: 'guide-budget-cost', label: 'OVR 몸값·클래식 균일가' },
     { id: 'guide-budget-ffp', label: 'FFP 1·2단계 제재' },
     { id: 'guide-budget-cash', label: '이월 현금 협상' },
   ],
@@ -167,7 +172,7 @@ const TAB_SECTIONS: Record<GuideTabId, { id: string; label: string }[]> = {
   ],
   legacy: [
     { id: 'guide-legacy-competitions', label: '5대 리그·컵·UCL' },
-    { id: 'guide-legacy-hof', label: '명전·글로벌 TOP 15' },
+    { id: 'guide-legacy-hof', label: '명전·리그 보정·시대 XI' },
     { id: 'guide-legacy-reset', label: 'v9.0 기록 초기화' },
     { id: 'guide-legacy-multi', label: '멀티 리그·1대1' },
   ],
@@ -198,7 +203,10 @@ export function SystemGuideContent({
   const baseLegendPct = (DEFAULT_ROULETTE_LEGEND_RATE * 100).toFixed(1);
   const transferLegendPct = (TRANSFER_ROULETTE_LEGEND_RATE * 100).toFixed(1);
   const clubCount = ALL_CLUBS_WITH_LEAGUE.length;
+  const classicPoolCount = LEGEND_PLAYERS.length;
   const historicalCount = HISTORICAL_BENCHMARK_TEAMS.length;
+  const eraBestXiCount = ERA_BEST_XI_DREAM_TEAMS.length;
+  const leagueRankBonusRows = getModernLeagueRankBonusTable();
   const uclExtCount = UCL_EXTERNAL_TEAMS.length;
   const tier1UpperM = Math.floor(
     DRAFT_BUDGET_CAP_M * (1 + FFP_TIER1_MAX_EXCESS_RATIO),
@@ -273,9 +281,14 @@ export function SystemGuideContent({
                 </div>
               </div>
               <div className="rounded-lg border border-amber-500/30 bg-amber-950/15 p-2.5">
-                <div className="font-bold text-amber-300">황금 [LEGEND] 확률</div>
+                <div className="font-bold text-amber-300">
+                  시대별 클래식 (60s~10s · {classicPoolCount}명)
+                </div>
                 <div className="mt-1 font-mono text-slate-200 tabular-nums">
-                  드래프트 {baseLegendPct}% · 이적시장 {transferLegendPct}% 고정 (순위 무관)
+                  드래프트 {baseLegendPct}% · 이적시장 {transferLegendPct}% 통합 고정
+                </div>
+                <div className="mt-0.5 text-[10px] text-slate-400">
+                  10s 클래식은 현역과 별도 시대 배지로 공존
                 </div>
               </div>
               <div className="rounded-lg border border-emerald-500/25 bg-emerald-950/15 p-2.5">
@@ -469,7 +482,7 @@ export function SystemGuideContent({
                 </div>
               </div>
               <div className="rounded-lg border border-amber-500/25 bg-amber-950/15 p-2.5">
-                <div className="font-bold text-amber-300">레전드 FA 협상</div>
+                <div className="font-bold text-amber-300">클래식 FA 협상</div>
                 <div className="mt-0.5 text-slate-200">
                   €10M당 +{CASH_LEGEND_CHANCE_PER_10M}%p
                 </div>
@@ -1021,7 +1034,7 @@ export function SystemGuideContent({
                 로스터 16인·GK 최소 1명 규칙이 항상 유지됩니다.
               </div>
               <div>
-                • 리그 순위가 높을수록 타 구단의 AI 영입 제안 수신 확률·건수가 증가합니다 (1위 최소 2건·2~4위 최소 1건 보장 / 이적시장 룰렛 레전드 확률은 순위 무관 {transferLegendPct}% 고정).
+                • 리그 순위가 높을수록 타 구단의 AI 영입 제안 수신 확률·건수가 증가합니다 (1위 최소 2건·2~4위 최소 1건 보장 / 이적시장 룰렛 클래식 확률은 순위 무관 {transferLegendPct}% 고정).
               </div>
             </div>
           </div>
@@ -1183,7 +1196,7 @@ export function SystemGuideContent({
             </div>
           </div>
 
-          {/* 6-2. Hall of Fame & Global TOP 15 */}
+          {/* 6-2. Hall of Fame, League Difficulty Calibration & Era Best XI */}
           <div
             id="guide-legacy-hof"
             className="scroll-mt-2 rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2.5"
@@ -1191,7 +1204,7 @@ export function SystemGuideContent({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-white">
                 <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                명예의 전당 ({historicalCount}팀) &amp; 글로벌 역대 유저 TOP 15
+                명예의 전당 ({historicalCount}팀) · 글로벌 TOP 15 · 년도별 베스트 11 ({eraBestXiCount}팀)
               </div>
               <span className="rounded bg-amber-500/15 border border-amber-400/35 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-200 whitespace-nowrap">
                 자동 등재 {HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}+ · S+ 7,200+
@@ -1201,17 +1214,53 @@ export function SystemGuideContent({
               <div className="rounded-lg border border-slate-800 bg-[#0f1622] p-2.5 space-y-1">
                 <div className="font-bold text-white">시즌 스코어 &amp; FFP 감점</div>
                 <div className="text-slate-300">
-                  리그 환산·순위·컵·UCL·영예(트레블/무패)·언더독·스쿼드 완성도·개인상 8항목 합산.
+                  리그 환산·리그 난이도 보정 순위·컵·UCL·영예(트레블/무패)·언더독·스쿼드 완성도·개인상 8항목 합산.
                   FFP 1단계 <strong className="text-amber-300">-{FFP_TIER1_SCORE_PENALTY_PCT}%</strong> ·
                   2단계 <strong className="text-rose-300">-{FFP_TIER2_SCORE_PENALTY_PCT}%</strong> 감점.
                 </div>
               </div>
               <div className="rounded-lg border border-sky-500/25 bg-sky-950/15 p-2.5 space-y-1">
-                <div className="font-bold text-sky-300">글로벌 TOP 15 &amp; 1대1 도전</div>
+                <div className="font-bold text-sky-300">글로벌 TOP 15 &amp; 드림 매치</div>
                 <div className="text-slate-300">
-                  상위 15팀만 원자적 유지(16위 즉시 삭제) · 중복 선수/레전드 상한 검증 ·
-                  모든 랭킹 팀과 2D <strong className="text-white">1대1 드림 매치</strong> 가능
+                  상위 15팀만 원자적 유지(16위 즉시 삭제) · 중복 선수/클래식 상한 검증 ·
+                  역대 클럽 {historicalCount}팀·글로벌 TOP 15·<strong className="text-cyan-300">년도별 베스트 11 (1960s~2010s · {eraBestXiCount}팀)</strong> 2D 대결 지원
                 </div>
+              </div>
+            </div>
+
+            {/* 5-League Difficulty Score Calibration Table */}
+            <div className="rounded-lg border border-emerald-500/25 bg-[#0a1019] p-2.5 space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+                <span className="font-bold text-emerald-300">
+                  5대 리그 난이도별 리그 우승·순위 점수 보정 (기준 평균 {LEAGUE_STRENGTH_BASELINE.toFixed(1)})
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  개인 명전 · 역대 24팀 · 글로벌 TOP 15 일괄 반영
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center text-[10.5px] tabular-nums">
+                {leagueRankBonusRows.map((row) => (
+                  <div
+                    key={row.leagueId}
+                    className="rounded-md border border-slate-800 bg-[#0f1622] px-2 py-1.5"
+                  >
+                    <div className="font-bold text-white truncate">{row.koreanName}</div>
+                    <div className="text-[9.5px] text-slate-400">
+                      평균 {row.leagueStrengthAvg.toFixed(2)} · ×{row.factor.toFixed(3)}
+                    </div>
+                    <div
+                      className={`mt-0.5 font-mono font-black ${
+                        row.deltaFromBase >= 0 ? 'text-emerald-300' : 'text-amber-300'
+                      }`}
+                    >
+                      1위 +{row.firstPlaceBonus.toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10.5px] text-slate-400 leading-relaxed">
+                • 2026-27 현행 리그 평균 강도(전체 평균 60% + 상위 6팀 40%)에 따라 리그 순위 보너스(1위 기본 1,200)에 난이도 배율이 곱해집니다.
+                단, <strong className="text-amber-200">역대 명전 {historicalCount}팀은 현대가 아닌 해당 시즌 당시 리그의 평균 강도</strong>(예: 88-89 세리에 A 81.0 · 14-15 라리가 80.8 · 22-23 EPL 80.8 · 24-25 리그 1 75.8)로 공정 산출되며, 기존 개인 명전·글로벌 TOP 15 기록에도 자동 보정됩니다.
               </div>
             </div>
           </div>

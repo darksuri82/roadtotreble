@@ -18,11 +18,13 @@ import {
   X,
 } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { ERA_BEST_XI_DREAM_TEAMS } from '../../data/eraBestXiTeams';
 import {
   DRAFT_BUDGET_CAP_M,
   FFP_TIER1_MAX_EXCESS_RATIO,
   LEGEND_FLAT_DRAFT_COST_M,
 } from '../../engine/budgetEngine';
+import { ELITE_PAIR_MIN_OVR } from '../../engine/chemistryEngine';
 import { STAFF_COACHES } from '../../engine/staffCoachEngine';
 import {
   ADAPTATION_HISTORY_WINDOW,
@@ -119,7 +121,7 @@ function Step1Visual() {
           <text x="46" y="24" textAnchor="middle" fill="#fcd34d" fontSize="10" fontWeight="800">★ GOAL</text>
           <text x="46" y="47" textAnchor="middle" fill="#fef3c7" fontSize="13.5" fontWeight="900">트레블 달성</text>
           <text x="46" y="66" textAnchor="middle" fill="#fbbf24" fontSize="9.5" fontWeight="700">명예의 전당</text>
-          <text x="46" y="80" textAnchor="middle" fill="#cbd5e1" fontSize="8.5">역대 24팀 비교</text>
+          <text x="46" y="80" textAnchor="middle" fill="#cbd5e1" fontSize="8.5">역대 24팀·시대XI</text>
         </g>
         <rect x="132" y="122" width="296" height="22" rx="11" fill="#0f172a" stroke="#1e293b" />
         <text x="280" y="136.5" textAnchor="middle" fill="#94a3b8" fontSize="10" fontWeight="600">
@@ -274,7 +276,7 @@ function Step3Visual() {
               <div className="text-[8.5px] text-emerald-300">후보 3명</div>
             </div>
             <div className="rounded-lg border border-amber-400/70 bg-amber-950/35 py-1.5 px-1">
-              <div className="text-[10px] font-black text-amber-300">LEGEND</div>
+              <div className="text-[10px] font-black text-amber-300">CLASSIC</div>
               <div className="text-[8.5px] text-amber-200/90">€{LEGEND_FLAT_DRAFT_COST_M}M</div>
             </div>
           </div>
@@ -301,7 +303,7 @@ function Step3Visual() {
             </span>
             <span className="inline-flex items-center gap-1 whitespace-nowrap">
               <span className="h-1.5 w-3 rounded-full bg-purple-400" />
-              엘리트 88+
+              엘리트 {ELITE_PAIR_MIN_OVR}+
             </span>
           </div>
         </div>
@@ -414,7 +416,7 @@ function Step5Visual() {
               선수 포텐 폭발 (영구 각성)
             </span>
             <span className="rounded bg-rose-500/20 border border-rose-400/40 px-1.5 py-0.5 text-[9.5px] font-black text-rose-200">
-              레전드 제외
+              클래식 제외
             </span>
           </div>
 
@@ -507,7 +509,7 @@ const TUTORIAL_STEPS: TutorialStepSpec[] = [
     headline: '드래프트부터 트레블까지, 한 시즌 축구 감독 시뮬레이션',
     bullets: [
       '나만의 16인 스쿼드로 5대 리그 · 자국 컵 · 36팀 챔피언스리그 3관왕(트레블)에 도전합니다.',
-      '시즌 종료 후 역대 전설 24팀과 동일 기준으로 점수를 겨루고 명예의 전당에 기록됩니다.',
+      `시즌 종료 후 리그 난이도가 반영된 공정 점수로 역대 전설 24팀·글로벌 TOP 15와 겨루며, 드림 매치에서 년도별 베스트 11(${ERA_BEST_XI_DREAM_TEAMS.length}팀)에도 도전할 수 있습니다.`,
     ],
     visual: <Step1Visual />,
   },
@@ -526,8 +528,8 @@ const TUTORIAL_STEPS: TutorialStepSpec[] = [
     shortLabel: '3. 예산·FFP',
     headline: `예산 €${DRAFT_BUDGET_CAP_M}M · 클래식 €${LEGEND_FLAT_DRAFT_COST_M}M · FFP 주의`,
     bullets: [
-      `후보를 클릭하면 예산 바와 남은 한도를 실시간 확인할 수 있으며, 아낀 예산은 시즌 이적 자금으로 이월됩니다.`,
-      '시대별 클래식(60s~10s)·슈퍼스타를 과도하게 모아 예산을 초과하면 FFP 1·2단계 제재가 적용되니 균형 있게 구성하세요.',
+      `후보를 클릭하면 예산 바·시너지·각성 잠재(포텐↑/육성)를 실시간 확인할 수 있으며, 아낀 예산은 시즌 이적 자금으로 이월됩니다.`,
+      '시대별 클래식(60s~10s)·슈퍼스타를 과도하게 모아 예산을 초과하면 FFP 1·2단계 제재가 적용되니 균형 있게 구성하세요(10s 클래식은 현역과 별도 표기로 공존).',
     ],
     visual: <Step3Visual />,
   },

@@ -209,6 +209,7 @@ export function computeMpHumanSeasonScore(params: {
     leagueGoalsFor: row?.goalsFor,
     leagueGoalsAgainst: row?.goalsAgainst,
     finalLeagueRank: finalRank,
+    leagueId: state.settings.leagueId,
     cup: cupView,
     ucl: uclView,
     uclPerfectWin: run.perfect,

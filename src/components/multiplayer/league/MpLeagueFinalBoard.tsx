@@ -178,7 +178,13 @@ function FriendRankCard({
   const s = row.seasonScore;
   const parts: { label: string; value: number; highlight?: boolean }[] = [
     { label: '리그 환산(PPG×38)', value: s.leagueConvertedScore },
-    { label: '리그 순위', value: s.leagueRankBonus },
+    {
+      label:
+        typeof s.leagueDifficultyFactor === 'number'
+          ? `리그 순위 (×${s.leagueDifficultyFactor.toFixed(2)})`
+          : '리그 순위',
+      value: s.leagueRankBonus,
+    },
     { label: '자국 컵', value: s.cupBonus },
     { label: '챔피언스리그', value: s.uclBonus },
     { label: '대업·대기록', value: s.honorsBonus },

@@ -67,21 +67,22 @@ describe('v6.0 Stage 1 & Stage 2: HoF Scoring, 24 Historical Teams & 2026-27 Ros
     expect(highOvr.totalScore).toBeGreaterThan(midOvr.totalScore);
   });
 
-  it('v6.2: produces an unbiased top tier interleaving Barca, Bayern, and Ajax with zero single-club 1-2-3 monopoly', () => {
+  it('v6.2+v9.3.1: produces an unbiased top tier interleaving Barca, Bayern, Man City, and Ajax with zero single-club 1-2-3 monopoly', () => {
     const board = buildUnifiedLeaderboard({
       userEntries: [],
       filter: 'historical',
       sortBy: 'score',
     });
 
-    const top5Ids = board.slice(0, 5).map((e) => e.id);
-    expect(top5Ids).toContain('hist-1415-barca');
-    expect(top5Ids).toContain('hist-1920-bayern');
-    expect(top5Ids).toContain('hist-7172-ajax');
-    expect(top5Ids).toContain('hist-1213-bayern');
-    expect(top5Ids).toContain('hist-0809-barca');
+    const top6Ids = board.slice(0, 6).map((e) => e.id);
+    expect(top6Ids).toContain('hist-1415-barca');
+    expect(top6Ids).toContain('hist-1920-bayern');
+    expect(top6Ids).toContain('hist-2223-mancity');
+    expect(top6Ids).toContain('hist-7172-ajax');
+    expect(top6Ids).toContain('hist-0809-barca');
+    expect(top6Ids).toContain('hist-1213-bayern');
 
-    // Top 3 must not be monopolized by a single club
+    // Top 3 must not be monopolized by a single club (Barca, Bayern, Man City from 3 distinct leagues)
     const top3Clubs = new Set(
       board.slice(0, 3).map((e) => e.historicalEntry?.userClub.name ?? e.id),
     );

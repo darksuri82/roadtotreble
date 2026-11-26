@@ -775,7 +775,17 @@ export function SeasonSummary() {
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8 text-center">
             {[
               { label: '리그 환산(PPG×38)', val: score.leagueConvertedScore },
-              { label: '리그 순위', val: score.leagueRankBonus },
+              {
+                label:
+                  typeof score.leagueDifficultyFactor === 'number'
+                    ? `리그 순위 (×${score.leagueDifficultyFactor.toFixed(2)})`
+                    : '리그 순위',
+                val: score.leagueRankBonus,
+                sub:
+                  typeof score.leagueStrengthAvg === 'number'
+                    ? `리그 평균 ${score.leagueStrengthAvg.toFixed(1)}`
+                    : undefined,
+              },
               { label: '자국 컵', val: score.cupBonus },
               { label: '챔피언스리그', val: score.uclBonus },
               { label: '대업·대기록', val: score.honorsBonus },
@@ -801,6 +811,11 @@ export function SeasonSummary() {
                 >
                   +{item.val.toLocaleString()}
                 </div>
+                {item.sub && (
+                  <div className="mt-0.5 text-[9px] text-slate-500 tabular-nums">
+                    {item.sub}
+                  </div>
+                )}
               </div>
             ))}
           </div>

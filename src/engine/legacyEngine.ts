@@ -38,6 +38,7 @@ import {
   ACTIVE_PLAYERS,
   CLASSIC_BY_NAME_MAP,
   getLeagueById,
+  LEAGUES,
   PLAYER_BY_ID_MAP,
 } from './dataLoader';
 import { USER_CLUB_ID } from './matchEngine';
@@ -48,6 +49,157 @@ export const LEGACY_STORAGE_KEY = 'pitch_manager_legacy_v1';
 export const HOF_RULE_ERA_V9 = 'v9.0';
 export const HOF_RESET_NOTICE_TEXT =
   'v9.0 밸런스 개편(예산·FFP·전술 파훼·각성) 기준에 맞춰 v9.0 이전 구버전 기록은 초기화되었습니다.';
+
+/**
+ * v9.3.1 League-Difficulty-Adjusted Championship/Rank Score Calibration
+ * - Modern 5-league strength avg = 0.6 * fullLeagueAvg + 0.4 * top6ClubsAvg (from live leagues.json)
+ * - Baseline = 78.0 OVR (factor 1.000); each +1.0 league avg OVR scales leagueRankBonus by +8.5%
+ * - Historical 24 benchmark teams pass their own era's factual league average strength override
+ */
+export const LEAGUE_STRENGTH_BASELINE = 78.0;
+export const LEAGUE_DIFFICULTY_SLOPE = 0.085;
+export const LEAGUE_DIFFICULTY_MIN_MULT = 0.72;
+export const LEAGUE_DIFFICULTY_MAX_MULT = 1.32;
+
+const MODERN_LEAGUE_STRENGTH_CACHE: Partial<Record<LeagueId, number>> = {};
+
+export function computeBaseLeagueRankBonus(finalLeagueRank: number): number {
+  if (finalLeagueRank === 1) return 1200;
+  if (finalLeagueRank === 2) return 750;
+  if (finalLeagueRank === 3) return 520;
+  if (finalLeagueRank === 4) return 380;
+  if (finalLeagueRank <= 6) return 200;
+  if (finalLeagueRank <= 10) return 80;
+  return 0;
+}
+
+export function getScoreGrade(totalScore: number): SeasonScoreBreakdown['grade'] {
+  if (totalScore >= 7200) return 'S+';
+  if (totalScore >= 5600) return 'S';
+  if (totalScore >= 4200) return 'A+';
+  if (totalScore >= 3200) return 'A';
+  if (totalScore >= 2300) return 'B+';
+  if (totalScore >= 1500) return 'B';
+  return 'C';
+}
+
+export function getModernLeagueStrengthAvg(leagueId: LeagueId): number {
+  const cached = MODERN_LEAGUE_STRENGTH_CACHE[leagueId];
+  if (typeof cached === 'number') return cached;
+
+  const league = LEAGUES.find((l) => l.id === leagueId) ?? LEAGUES[0];
+  if (!league || league.clubs.length === 0) return LEAGUE_STRENGTH_BASELINE;
+
+  const clubStrengths = league.clubs
+    .map((c) => (c.att + c.mid + c.def) / 3)
+    .sort((a, b) => b - a);
+  const fullAvg =
+    clubStrengths.reduce((sum, v) => sum + v, 0) / clubStrengths.length;
+  const top6 = clubStrengths.slice(0, Math.min(6, clubStrengths.length));
+  const top6Avg = top6.reduce((sum, v) => sum + v, 0) / top6.length;
+  const weighted = Math.round((fullAvg * 0.6 + top6Avg * 0.4) * 100) / 100;
+  MODERN_LEAGUE_STRENGTH_CACHE[leagueId] = weighted;
+  return weighted;
+}
+
+export function getLeagueDifficultyFactor(leagueStrengthAvg: number): number {
+  const raw =
+    1 + (leagueStrengthAvg - LEAGUE_STRENGTH_BASELINE) * LEAGUE_DIFFICULTY_SLOPE;
+  const clamped = Math.max(
+    LEAGUE_DIFFICULTY_MIN_MULT,
+    Math.min(LEAGUE_DIFFICULTY_MAX_MULT, raw),
+  );
+  return Math.round(clamped * 1000) / 1000;
+}
+
+export interface ModernLeagueRankBonusRow {
+  leagueId: LeagueId;
+  koreanName: string;
+  leagueStrengthAvg: number;
+  factor: number;
+  firstPlaceBonus: number;
+  deltaFromBase: number;
+}
+
+export function getModernLeagueRankBonusTable(): ModernLeagueRankBonusRow[] {
+  const baseFirst = computeBaseLeagueRankBonus(1);
+  return LEAGUES.map((league) => {
+    const leagueStrengthAvg = getModernLeagueStrengthAvg(league.id);
+    const factor = getLeagueDifficultyFactor(leagueStrengthAvg);
+    const firstPlaceBonus = Math.round(baseFirst * factor);
+    return {
+      leagueId: league.id,
+      koreanName: league.koreanName,
+      leagueStrengthAvg,
+      factor,
+      firstPlaceBonus,
+      deltaFromBase: firstPlaceBonus - baseFirst,
+    };
+  }).sort((a, b) => b.leagueStrengthAvg - a.leagueStrengthAvg);
+}
+
+/**
+ * Idempotently recalibrates a previously saved SeasonScoreBreakdown (local HOF or Global TOP 15)
+ * to apply the v9.3.1 league difficulty multiplier on leagueRankBonus.
+ * Returns { breakdown, changed: false } immediately if already calibrated.
+ */
+export function recalibrateScoreBreakdownForLeagueDifficulty(
+  breakdown: SeasonScoreBreakdown,
+  leagueId: LeagueId,
+  _finalLeagueRank?: number,
+  options?: { leagueStrengthAvgOverride?: number; eraLabel?: string },
+): { breakdown: SeasonScoreBreakdown; changed: boolean } {
+  if (
+    typeof breakdown.leagueDifficultyFactor === 'number' &&
+    breakdown.leagueDifficultyFactor > 0
+  ) {
+    return { breakdown, changed: false };
+  }
+
+  const leagueStrengthAvg =
+    typeof options?.leagueStrengthAvgOverride === 'number'
+      ? Math.round(options.leagueStrengthAvgOverride * 100) / 100
+      : getModernLeagueStrengthAvg(leagueId);
+  const factor = getLeagueDifficultyFactor(leagueStrengthAvg);
+  const oldRankBonus = Number(breakdown.leagueRankBonus) || 0;
+  const baseRankBonus = oldRankBonus;
+  const newRankBonus = Math.round(baseRankBonus * factor);
+  const deltaRaw = newRankBonus - oldRankBonus;
+
+  const hasFfpPenalty =
+    typeof breakdown.ffpPenaltyPct === 'number' && breakdown.ffpPenaltyPct > 0;
+  let newTotalScore: number;
+  let newFfpPenaltyPoints = breakdown.ffpPenaltyPoints;
+
+  if (hasFfpPenalty) {
+    const ffpMult = Math.max(
+      0.5,
+      Math.min(1, 1 - (breakdown.ffpPenaltyPct ?? 0) / 100),
+    );
+    const oldRawTotal =
+      (Number(breakdown.totalScore) || 0) +
+      (Number(breakdown.ffpPenaltyPoints) || 0);
+    const newRawTotal = Math.max(0, oldRawTotal + deltaRaw);
+    newTotalScore = Math.round(newRawTotal * ffpMult);
+    newFfpPenaltyPoints = Math.max(0, newRawTotal - newTotalScore);
+  } else {
+    newTotalScore = Math.max(0, (Number(breakdown.totalScore) || 0) + deltaRaw);
+  }
+
+  const nextBreakdown: SeasonScoreBreakdown = {
+    ...breakdown,
+    leagueRankBonus: newRankBonus,
+    leagueRankBaseBonus: baseRankBonus,
+    leagueStrengthAvg,
+    leagueDifficultyFactor: factor,
+    ...(options?.eraLabel ? { leagueStrengthEraLabel: options.eraLabel } : {}),
+    ...(hasFfpPenalty ? { ffpPenaltyPoints: newFfpPenaltyPoints } : {}),
+    totalScore: newTotalScore,
+    grade: getScoreGrade(newTotalScore),
+  };
+
+  return { breakdown: nextBreakdown, changed: true };
+}
 
 const CELEBRATED_RUNS_STORAGE_KEY = 'rtt_global_top15_celebrated_v1';
 
@@ -117,9 +269,26 @@ export function loadLegacyState(): LegacyStorageState {
       : [];
 
     const needsV9ResetMigration = !isV9PlusRuleEra(parsed.hofMigrationEra);
-    const hallOfFame = needsV9ResetMigration
+    const filteredEntries = needsV9ResetMigration
       ? rawEntries.filter((entry) => isV9EraHofEntry(entry))
       : rawEntries;
+
+    let recalibratedAny = false;
+    const hallOfFame = filteredEntries.map((entry) => {
+      if (!entry.seasonScore) return entry;
+      const { breakdown, changed } = recalibrateScoreBreakdownForLeagueDifficulty(
+        entry.seasonScore,
+        entry.leagueId,
+        entry.finalLeagueRank,
+      );
+      if (!changed) return entry;
+      recalibratedAny = true;
+      return {
+        ...entry,
+        seasonScore: breakdown,
+      };
+    });
+
     const hofSummaryCache = computeLegacyHofSummaryCache(hallOfFame);
 
     const nextState: LegacyStorageState = {
@@ -139,8 +308,11 @@ export function loadLegacyState(): LegacyStorageState {
           : {},
     };
 
-    if (needsV9ResetMigration) {
+    if (needsV9ResetMigration || recalibratedAny) {
       saveLegacyState(nextState);
+    }
+
+    if (needsV9ResetMigration) {
       // Clean up pre-v9.0 celebrated global run IDs so only surviving v9.0+ local runs remain cached
       try {
         const survivingRunIds = new Set(
@@ -200,6 +372,12 @@ export interface SeasonScoreInput {
   leagueGoalsFor?: number;
   leagueGoalsAgainst?: number;
   finalLeagueRank: number;
+  /** Optional leagueId for modern 5-league difficulty calibration on leagueRankBonus */
+  leagueId?: LeagueId;
+  /** Optional historical era league average OVR override (used by 24 Historical Benchmark teams) */
+  leagueStrengthAvgOverride?: number;
+  /** Optional historical era label (e.g. '14-15 라리가') */
+  leagueStrengthEraLabel?: string;
   cup: DomesticCupState | null;
   ucl: UclTournamentState | null;
   uclPerfectWin?: boolean;
@@ -254,8 +432,8 @@ export function computeUserSeasonManagerRating(params: {
 
 /**
  * Computes a fair cross-league Season Score normalizing 34-round (Bundesliga / Ligue 1)
- * and 38-round (EPL / La Liga / Serie A) leagues via PPG * 38, plus capped historic milestone bonuses,
- * squad OVR/chemistry/manager synergy/tactical-fit craft bonuses, and capped individual awards bonuses.
+ * and 38-round (EPL / La Liga / Serie A) leagues via PPG * 38, plus league-difficulty-calibrated
+ * championship/rank bonuses, capped historic milestone bonuses, squad craft bonuses, and awards.
  * Identical formula is applied to BOTH User Teams and Historical Benchmark Teams with zero team-specific overrides.
  */
 export function computeSeasonScore(
@@ -269,6 +447,9 @@ export function computeSeasonScore(
     leagueGoalsFor,
     leagueGoalsAgainst,
     finalLeagueRank,
+    leagueId,
+    leagueStrengthAvgOverride,
+    leagueStrengthEraLabel,
     cup,
     ucl,
     uclPerfectWin = false,
@@ -300,14 +481,23 @@ export function computeSeasonScore(
     Math.round(ptsBase + Math.max(-150, Math.min(360, gdNormalized * 3.6))),
   );
 
-  // League Rank Bonus
-  let leagueRankBonus = 0;
-  if (finalLeagueRank === 1) leagueRankBonus = 1200;
-  else if (finalLeagueRank === 2) leagueRankBonus = 750;
-  else if (finalLeagueRank === 3) leagueRankBonus = 520;
-  else if (finalLeagueRank === 4) leagueRankBonus = 380;
-  else if (finalLeagueRank <= 6) leagueRankBonus = 200;
-  else if (finalLeagueRank <= 10) leagueRankBonus = 80;
+  // League Rank Bonus (calibrated by league average strength when leagueId or era override is supplied)
+  const leagueRankBaseBonus = computeBaseLeagueRankBonus(finalLeagueRank);
+  const hasLeagueCalibration =
+    typeof leagueStrengthAvgOverride === 'number' || Boolean(leagueId);
+  const leagueStrengthAvg = hasLeagueCalibration
+    ? typeof leagueStrengthAvgOverride === 'number'
+      ? Math.round(leagueStrengthAvgOverride * 100) / 100
+      : getModernLeagueStrengthAvg(leagueId!)
+    : undefined;
+  const leagueDifficultyFactor =
+    typeof leagueStrengthAvg === 'number'
+      ? getLeagueDifficultyFactor(leagueStrengthAvg)
+      : undefined;
+  const leagueRankBonus =
+    typeof leagueDifficultyFactor === 'number'
+      ? Math.round(leagueRankBaseBonus * leagueDifficultyFactor)
+      : leagueRankBaseBonus;
 
   // Domestic Cup Bonus
   let cupBonus = 0;
@@ -541,18 +731,19 @@ export function computeSeasonScore(
   const resolvedFfpTier =
     ffpPenaltyPct > 0 ? resolveFfpPenaltyTier(ffpPenaltyPct, ffpTier) : undefined;
 
-  let grade: SeasonScoreBreakdown['grade'];
-  if (totalScore >= 7200) grade = 'S+';
-  else if (totalScore >= 5600) grade = 'S';
-  else if (totalScore >= 4200) grade = 'A+';
-  else if (totalScore >= 3200) grade = 'A';
-  else if (totalScore >= 2300) grade = 'B+';
-  else if (totalScore >= 1500) grade = 'B';
-  else grade = 'C';
+  const grade = getScoreGrade(totalScore);
 
   return {
     leagueConvertedScore,
     leagueRankBonus,
+    ...(typeof leagueDifficultyFactor === 'number'
+      ? {
+          leagueRankBaseBonus,
+          leagueStrengthAvg,
+          leagueDifficultyFactor,
+          ...(leagueStrengthEraLabel ? { leagueStrengthEraLabel } : {}),
+        }
+      : {}),
     cupBonus,
     uclBonus,
     honorsBonus,

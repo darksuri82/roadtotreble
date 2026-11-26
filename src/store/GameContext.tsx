@@ -1371,6 +1371,7 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
     leagueGoalsFor: userRow?.goalsFor,
     leagueGoalsAgainst: userRow?.goalsAgainst,
     finalLeagueRank: finalRank,
+    leagueId: state.season.leagueId,
     cup: state.season.cup,
     ucl: state.season.ucl,
     uclPerfectWin,
