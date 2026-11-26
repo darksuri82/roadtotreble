@@ -5,6 +5,23 @@
 
 ---
 
+## v9.7.0 — 이적시장 가상 교체(스왑) 시너지 프리뷰 → 제안 확정 · 팀 소개 9종 정체성 다각화 · 팀 스토리 부진/위기→반등 다큐 회고 · 포텐 각성 100시즌 실측 진단 & 저발동 병목 해소
+
+- **이적시장 가상 교체(스왑) 시너지 프리뷰 → 제안 확정 플로우 개편 (`src/engine/chemistryEngine.ts`, `src/components/common/PitchBoard.tsx`, `src/components/transfer/TradeSwapPreviewCard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:
+  - `computeTradeSwapPreview()` 순수 엔진을 신설해 1:1~3:1 패키지·클래식 FA·수신 제안·멀티리그 역제안에서 최적 슬롯 매칭(주 영입 대상 선발 슬롯 우선)과 Before → After Δ(인접 시너지 연결선·팀 케미·감독 궁합 수·포지션 적합도·라인별 A/M/D·실효 OVR·현금 잔액)를 원본 스쿼드 무변형으로 실시간 계산.
+  - `PitchBoard`에 다중 슬롯 가상 프리뷰(`previewSlotKeys`)와 `TradeSwapPreviewCard`(피치 프리뷰 ON/원본 스쿼드 토글 · 원복 버튼)를 통합해, 내 선수와 상대/클래식 선수를 클릭하면 즉시 내 피치에 가상 투입해 비교한 뒤 `제안 확정` 클릭 시에만 실제 트레이드 요청이 실행되도록 싱글(일반/클래식 FA/수신 제안)·멀티리그 일관 개편.
+- **팀 소개(1~2줄) 표현 다양성 대폭 확장 (`src/engine/teamStoryEngine.ts`, `src/components/league/SeasonSummary.tsx`, `src/store/GameContext.tsx`)**:
+  - 특정 에이스 1인 반복 서술을 탈피해 9가지 시즌 정체성 분기(`underdog_rebellion` · `iron_defense` · `awakening_corps` · `ffp_defiance` · `classic_modern_harmony` · `explosive_firepower` · `tactical_identity`[선수명 없는 감독/전술/수석 코치/케미/로테이션 중심] · `spine_duo_trio`[공격 듀오·중원 사령탑 축·철벽 수비 라인·3인 척추] · `balanced_ace`)와 다채로운 문장 풀로 매 시즌 자연스럽게 달라지는 톤 구현.
+- **팀 스토리 탭 — 부진·위기 서사 추가 & 시즌 회고형 다큐 문체 (`src/types/game.ts`, `src/types/legacy.ts`, `src/engine/teamStoryEngine.ts`, `src/components/common/TeamStoryTab.tsx`, `src/store/GameContext.tsx`, `src/components/league/SeasonSummary.tsx`)**:
+  - 연패·무승 슬럼프 구간, 강팀전 대패·하프타임 리드 역전패, 핵심 선수 부상 이탈(`SeasonState.storyCrisisLog`), 전술 노출도 파훼 위기, 리그 중반 순위 추락/정체, 자국 컵·UCL 조기 탈락/준우승의 아쉬움을 자동 추출하고 `slump`/`setback` 전용 타임라인 카드로 시각화.
+  - 단순 나열 대신 `위기/부진 → 수석 코치 합류·이적 보강·전술 변주·각성을 통한 반등`(또는 `끝내 넘지 못한 아쉬운 벽`)으로 기승전결 회고 서사를 자연스럽게 연결.
+- **포텐 각성 100시즌 실측 진단 · 버그 수정 & 밸런스 조정 (`src/engine/awakeningEngine.ts`, `src/store/GameContext.tsx`, `src/components/guide/SystemGuideModal.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`, `src/__tests__/v97TradePreviewStoryAwakening.test.ts`)**:
+  - 100시즌 실전 매치 시뮬레이션 진단을 통해 저발동 핵심 원인이었던 `consecutiveMatchesPlayed` 과감쇠 병목(주전 고정 시 시즌 82% 구간에서 ×0.45~×0.62 급감), `SIMULATE_UCL_TO_END`의 각성/컨디션 호출 누락, `chemForAwakening` 슬롯 인덱스 누락, 윙·풀백·GK `neighborBonus === 1` 공명 제외 및 GK/DF 비공격포인트 과감점을 근본 수정.
+  - OVR 구간별 배율(`≤76 ×2.30 / 77~79 ×2.00 / 80~81 ×1.65 / 82~84 ×1.40 / 85~87 ×0.78 / 88+ ×0.04`), 상대 평점 기준(`6.75~7.4+`), 육성 코치 1~3명째 한정 가속을 보정해 고활용 시 시즌 평균 `1.58→2.30명`(표준 드래프트 `1.24→1.88명`, 육성팀 `1.69→2.54명`)으로 체감을 끌어올리며 저활용 `0.0%`·클래식 `0%`·88~89+ 인플레 억제·4명+ 남발 차단 원칙을 100% 유지.
+- **가이드북·튜토리얼·패치노트·첫 화면 `WhatsNewModal` 동기화 (`src/data/patchNotes.ts`, `src/components/common/WhatsNewModal.tsx`, `CHANGELOG.md`, `PROJECT_HANDOFF.md`)**: `CURRENT_APP_VERSION = 'v9.7.0'` 갱신 및 신규 회귀 테스트 `v97TradePreviewStoryAwakening.test.ts`(4건) 추가.
+
+---
+
 ## v9.6.0 — 명전 날짜 표기·과거 기록 일일 랭킹 제출 차단 · 5대 리그 전체 풀 공정성 규칙 · 시기별 팀 스토리텔링 & 칼럼형 팀 소개 · 저OVR 활약·각성 밸런스 개편
 
 - **일일 랭킹 과거 기록 제출 차단 · 명전 KST 날짜 표기 · 날짜 불명 과거 기록 자동 정리 (`src/engine/legacyEngine.ts`, `src/services/globalRankingService.ts`, `src/components/legacy/LegacyHubModal.tsx`, `supabase/schema.sql`)**:

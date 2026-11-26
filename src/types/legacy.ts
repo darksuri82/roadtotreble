@@ -74,6 +74,8 @@ export interface SeasonScoreBreakdown {
 
 export type TeamStoryHighlightKind =
   | 'opening'
+  | 'slump'
+  | 'setback'
   | 'overachieve'
   | 'turning_point'
   | 'title_match'

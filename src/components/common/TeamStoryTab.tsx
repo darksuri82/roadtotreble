@@ -1,10 +1,12 @@
 import {
+  AlertTriangle,
   Award,
   Compass,
   Flag,
   Flame,
   Quote,
   Sparkles,
+  TrendingDown,
   TrendingUp,
   Trophy,
   Zap,
@@ -50,6 +52,18 @@ function getHighlightStyle(kind: TeamStoryHighlightKind): {
         icon: <Flag className="h-3.5 w-3.5 text-teal-300" />,
         badgeCls: 'border-teal-400/40 bg-teal-500/15 text-teal-200',
         dotCls: 'bg-teal-400',
+      };
+    case 'slump':
+      return {
+        icon: <TrendingDown className="h-3.5 w-3.5 text-rose-300" />,
+        badgeCls: 'border-rose-500/40 bg-rose-500/12 text-rose-200',
+        dotCls: 'bg-rose-400',
+      };
+    case 'setback':
+      return {
+        icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-300" />,
+        badgeCls: 'border-amber-500/40 bg-amber-950/50 text-amber-200',
+        dotCls: 'bg-amber-400',
       };
     case 'turning_point':
       return {

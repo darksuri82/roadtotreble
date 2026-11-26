@@ -28,7 +28,10 @@ import {
 } from '../../data/managerTraits';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { formatFfpBadgeSummary } from '../../engine/budgetEngine';
-import { calculateTeamRatings } from '../../engine/chemistryEngine';
+import {
+  calculateTeamRatings,
+  computeTradeSwapPreview,
+} from '../../engine/chemistryEngine';
 import {
   getInjuryTooltip,
   getMoraleLabel,
@@ -79,6 +82,7 @@ import { PitchBoard } from '../common/PitchBoard';
 import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
+import { TradeSwapPreviewCard } from './TradeSwapPreviewCard';
 
 interface TransferMarketModalProps {
   embedded?: boolean;
@@ -294,6 +298,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
   // Legend FA 1:1 Special Slot State
   const [legendOutSlot, setLegendOutSlot] = useState<SlotRef | null>(null);
+  // Virtual swap preview toggle on user pitch (default ON whenever incoming + outgoing picked)
+  const [showSwapPreviewOnPitch, setShowSwapPreviewOnPitch] = useState(true);
 
   useEffect(() => {
     if (!animating) return;
@@ -314,6 +320,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
   }, [animating]);
 
   const formationSlots = FORMATIONS[state.formation].slots;
+  const staffCoachId = season.staffCoach?.hiredCoachId ?? null;
+  const ffpChemPenalty = season.budgetState?.chemPenalty ?? 0;
 
   const teamRatings = useMemo(
     () =>
@@ -324,6 +332,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         state.manager.traitId,
         chemistry.slotSynergies,
         state.defaultTactic,
+        staffCoachId,
       ),
     [
       state.formation,
@@ -332,6 +341,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       chemistry.slotSynergies,
       state.manager.traitId,
       state.defaultTactic,
+      staffCoachId,
     ],
   );
 
@@ -577,6 +587,84 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     clampedCashOfferM,
   ]);
 
+  const tradeSwapPreview = useMemo(
+    () =>
+      computeTradeSwapPreview({
+        formationId: state.formation,
+        starters: state.starters,
+        bench: state.bench,
+        outSlots: selectedUserSlots,
+        inItems: [
+          ...selectedAiPlayers.map((player) => ({ player, isFiller: false })),
+          ...autoFillerPlayers.map((player) => ({ player, isFiller: true })),
+        ],
+        tactic: state.defaultTactic,
+        managerTraitId: state.manager.traitId,
+        staffCoachId,
+        ffpChemPenalty,
+        beforeChemistry: chemistry,
+        beforeRatings: teamRatings,
+        cashBeforeM: availableCashM,
+        cashOfferM: clampedCashOfferM,
+      }),
+    [
+      state.formation,
+      state.starters,
+      state.bench,
+      selectedUserSlots,
+      selectedAiPlayers,
+      autoFillerPlayers,
+      state.defaultTactic,
+      state.manager.traitId,
+      staffCoachId,
+      ffpChemPenalty,
+      chemistry,
+      teamRatings,
+      availableCashM,
+      clampedCashOfferM,
+    ],
+  );
+
+  const legendTargetPlayer = activeClubOffer?.isLegendSlot
+    ? (activeClubOffer.squad[0]?.player ?? null)
+    : null;
+
+  const legendSwapPreview = useMemo(
+    () =>
+      computeTradeSwapPreview({
+        formationId: state.formation,
+        starters: state.starters,
+        bench: state.bench,
+        outSlots: legendOutSlot ? [legendOutSlot] : [],
+        inItems: legendTargetPlayer
+          ? [{ player: legendTargetPlayer, isFiller: false }]
+          : [],
+        tactic: state.defaultTactic,
+        managerTraitId: state.manager.traitId,
+        staffCoachId,
+        ffpChemPenalty,
+        beforeChemistry: chemistry,
+        beforeRatings: teamRatings,
+        cashBeforeM: availableCashM,
+        cashOfferM: clampedCashOfferM,
+      }),
+    [
+      state.formation,
+      state.starters,
+      state.bench,
+      legendOutSlot,
+      legendTargetPlayer,
+      state.defaultTactic,
+      state.manager.traitId,
+      staffCoachId,
+      ffpChemPenalty,
+      chemistry,
+      teamRatings,
+      availableCashM,
+      clampedCashOfferM,
+    ],
+  );
+
   const inspectedBreakdown = useMemo(() => {
     if (!inspectedPlayer) return null;
     return buildPlayerCompetitionBreakdown(inspectedPlayer.id, season, null);
@@ -590,6 +678,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     setSelectedUserSlots([]);
     setCustomFillerIds(null);
     setCashOfferM(0);
+    setShowSwapPreviewOnPitch(true);
   };
 
   const handleSelectClubReel = (idx: number) => {
@@ -1314,6 +1403,60 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                         </div>
                       </div>
 
+                      {isPending && (() => {
+                        const outSlots: SlotRef[] = [];
+                        for (const req of offer.userRequestedPlayers) {
+                          const found = userRosterEntries.find(
+                            (e) => e.player.id === req.id,
+                          );
+                          if (found) outSlots.push(found.ref);
+                        }
+                        const preview = computeTradeSwapPreview({
+                          formationId: state.formation,
+                          starters: state.starters,
+                          bench: state.bench,
+                          outSlots,
+                          inItems: offer.aiOffersPlayers.map((player) => ({
+                            player,
+                            isFiller: false,
+                          })),
+                          tactic: state.defaultTactic,
+                          managerTraitId: state.manager.traitId,
+                          staffCoachId,
+                          ffpChemPenalty,
+                          beforeChemistry: chemistry,
+                          beforeRatings: teamRatings,
+                        });
+                        if (!preview.isActive) return null;
+                        const tone = (v: number) =>
+                          v > 0
+                            ? 'text-emerald-300'
+                            : v < 0
+                              ? 'text-rose-300'
+                              : 'text-slate-400';
+                        const sgn = (v: number, dec = 0) =>
+                          `${v > 0 ? '+' : ''}${dec > 0 ? v.toFixed(dec) : Math.round(v)}`;
+                        return (
+                          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border border-emerald-500/25 bg-[#0a131f] px-2.5 py-1.5 text-[10px] font-mono tabular-nums">
+                            <span className="font-sans font-bold text-emerald-300 whitespace-nowrap">
+                              투입 프리뷰
+                            </span>
+                            <span className="text-slate-300 whitespace-nowrap">
+                              케미 <strong className={tone(preview.chemDelta)}>{sgn(preview.chemDelta)}</strong>
+                            </span>
+                            <span className="text-slate-300 whitespace-nowrap">
+                              연결선 <strong className={tone(preview.totalLinesDelta)}>{sgn(preview.totalLinesDelta)}</strong>
+                            </span>
+                            <span className="text-slate-300 whitespace-nowrap">
+                              궁합 <strong className={tone(preview.managerFitDelta)}>{sgn(preview.managerFitDelta)}</strong>
+                            </span>
+                            <span className="text-slate-300 whitespace-nowrap">
+                              실효 OVR <strong className={tone(preview.ovrDelta)}>{sgn(preview.ovrDelta, 1)}</strong>
+                            </span>
+                          </div>
+                        );
+                      })()}
+
                       <p className="rounded-lg bg-slate-950/70 px-3 py-2 text-[11px] leading-relaxed text-slate-300 italic">
                         {offer.club.shortName} 단장: {offer.aiPitch}
                       </p>
@@ -1324,21 +1467,21 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                             type="button"
                             disabled={tm.attemptsRemaining <= 0}
                             onClick={() => tradeAcceptIncoming(offer.id)}
-                            className="flex-1 min-w-[110px] rounded-xl bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-40 cursor-pointer"
+                            className="flex-1 min-w-[110px] rounded-xl bg-emerald-500 px-3 py-2 text-xs font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-40 cursor-pointer whitespace-nowrap"
                           >
-                            ✅ 즉시 수락
+                            ✅ 제안 수락
                           </button>
                           <button
                             type="button"
                             onClick={() => handleStartCounterOffer(offer)}
-                            className="flex-1 min-w-[110px] rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
+                            className="flex-1 min-w-[125px] rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer whitespace-nowrap"
                           >
-                            🔄 조건 수정 · 역제안
+                            👁️ 피치 프리뷰 · 수정
                           </button>
                           <button
                             type="button"
                             onClick={() => tradeRejectIncoming(offer.id)}
-                            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-400 hover:border-rose-400/50 hover:text-rose-300 cursor-pointer"
+                            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-bold text-slate-400 hover:border-rose-400/50 hover:text-rose-300 cursor-pointer whitespace-nowrap"
                           >
                             거절
                           </button>
@@ -1665,7 +1808,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                           >
                             {alreadySigned
                               ? '영입 완료'
-                              : `👑 ${legEraMeta.shortLabel} 클래식 FA 영입 제안 (${Math.min(
+                              : `👑 ${legEraMeta.shortLabel} 제안 확정 (${Math.min(
                                   95,
                                   Math.round(
                                     legTarget.successChance +
@@ -1689,10 +1832,24 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                           }
                         />
 
+                        {legendSwapPreview.isActive && (
+                          <TradeSwapPreviewCard
+                            preview={legendSwapPreview}
+                            showOnPitch={showSwapPreviewOnPitch}
+                            onToggleShowOnPitch={() =>
+                              setShowSwapPreviewOnPitch((v) => !v)
+                            }
+                            onResetPreview={() => {
+                              setLegendOutSlot(null);
+                              setShowSwapPreviewOnPitch(true);
+                            }}
+                          />
+                        )}
+
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                             <span className="font-bold text-slate-300">
-                              방출(교체)할 우리 팀 선수 1명을 선택하세요:
+                              교체(가상 투입)할 우리 팀 선수를 선택하세요:
                             </span>
                             {(() => {
                               const pickedOut = legendOutSlot
@@ -1703,62 +1860,107 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               if (!pickedOut) {
                                 return (
                                   <span className="rounded-md border border-slate-700/80 bg-slate-900/70 px-2 py-0.5 text-[10px] font-semibold text-slate-400 whitespace-nowrap">
-                                    미선택 · 아래 선수 클릭
+                                    미선택 · 아래 선수 클릭 시 프리뷰
                                   </span>
                                 );
                               }
                               return (
-                                <span className="inline-flex items-center gap-1.5 rounded-md border border-rose-400/55 bg-rose-950/50 px-2 py-0.5 text-[10px] font-extrabold text-rose-200 whitespace-nowrap">
+                                <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-400/50 bg-emerald-950/45 px-2 py-0.5 text-[10px] font-extrabold text-emerald-200 whitespace-nowrap">
                                   <span>
-                                    OUT {formatPlayerRecordName(pickedOut)} (OVR {pickedOut.ovr})
+                                    OUT {formatPlayerRecordName(pickedOut)} ({pickedOut.ovr}) → IN{' '}
+                                    {formatPlayerRecordName(legTarget.player)} ({legTarget.player.ovr})
                                   </span>
                                   <button
                                     type="button"
                                     onClick={() => setLegendOutSlot(null)}
-                                    className="rounded bg-rose-500/25 px-1 text-[9px] text-rose-100 hover:bg-rose-500/45 cursor-pointer"
+                                    className="rounded bg-slate-800/90 px-1 text-[9px] text-slate-200 hover:bg-rose-500/45 cursor-pointer"
                                   >
-                                    해제
+                                    원복
                                   </button>
                                 </span>
                               );
                             })()}
                           </div>
-                          <PitchBoard
-                            formation={state.formation}
-                            starters={state.starters}
-                            bench={state.bench}
-                            chemistry={chemistry}
-                            managerTraitId={state.manager.traitId}
-                            tactic={state.defaultTactic}
-                            conditionByPlayerId={season.playerConditions}
-                            selectedSlot={legendOutSlot}
-                            selectedTone="rose"
-                            onSlotClick={(area, index) => {
-                              const p =
-                                area === 'starter'
-                                  ? state.starters[index]
-                                  : state.bench[index];
-                              if (!p) return;
-                              setLegendOutSlot((prev) =>
-                                prev && prev.area === area && prev.index === index
-                                  ? null
-                                  : { area, index },
-                              );
-                            }}
-                            onInspectPlayer={(p) => setInspectedPlayer(p)}
-                            compact
-                            showBench
-                            showChemBreakdown={false}
-                            showChemLegend
-                            headerLabel={state.userClub.name}
-                            headerRight={
-                              <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
-                                A <strong className="text-white">{teamRatings.effectiveAtt}</strong> · M{' '}
-                                <strong className="text-white">{teamRatings.effectiveMid}</strong> · D{' '}
-                                <strong className="text-white">{teamRatings.effectiveDef}</strong>
-                              </span>
-                            }
-                          />
+                          {(() => {
+                            const usePreview =
+                              showSwapPreviewOnPitch && legendSwapPreview.isActive;
+                            const activeRatings = usePreview
+                              ? legendSwapPreview.afterRatings
+                              : teamRatings;
+                            return (
+                              <PitchBoard
+                                formation={state.formation}
+                                starters={
+                                  usePreview
+                                    ? legendSwapPreview.previewStarters
+                                    : state.starters
+                                }
+                                bench={
+                                  usePreview
+                                    ? legendSwapPreview.previewBench
+                                    : state.bench
+                                }
+                                chemistry={
+                                  usePreview
+                                    ? legendSwapPreview.afterChemistry
+                                    : chemistry
+                                }
+                                baselineStarters={
+                                  usePreview ? state.starters : null
+                                }
+                                managerTraitId={state.manager.traitId}
+                                tactic={state.defaultTactic}
+                                conditionByPlayerId={season.playerConditions}
+                                selectedSlot={usePreview ? null : legendOutSlot}
+                                previewSlotKeys={
+                                  usePreview
+                                    ? legendSwapPreview.previewSlotKeys
+                                    : undefined
+                                }
+                                selectedTone="rose"
+                                onSlotClick={(area, index) => {
+                                  const p =
+                                    area === 'starter'
+                                      ? state.starters[index]
+                                      : state.bench[index];
+                                  if (!p) return;
+                                  setLegendOutSlot((prev) =>
+                                    prev &&
+                                    prev.area === area &&
+                                    prev.index === index
+                                      ? null
+                                      : { area, index },
+                                  );
+                                }}
+                                onInspectPlayer={(p) => setInspectedPlayer(p)}
+                                compact
+                                showBench
+                                showChemBreakdown={false}
+                                showChemLegend
+                                headerLabel={
+                                  usePreview
+                                    ? `${state.userClub.name} · 프리뷰`
+                                    : state.userClub.name
+                                }
+                                headerRight={
+                                  <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
+                                    A{' '}
+                                    <strong className="text-white">
+                                      {activeRatings.effectiveAtt}
+                                    </strong>{' '}
+                                    · M{' '}
+                                    <strong className="text-white">
+                                      {activeRatings.effectiveMid}
+                                    </strong>{' '}
+                                    · D{' '}
+                                    <strong className="text-white">
+                                      {activeRatings.effectiveDef}
+                                    </strong>
+                                  </span>
+                                }
+                              />
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -2149,7 +2351,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   onClick={handleSubmitTrade}
                                   className="rounded-xl bg-emerald-600 px-5 py-2.5 text-xs sm:text-sm font-black text-white shadow-lg shadow-emerald-950/40 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shrink-0 transition-colors whitespace-nowrap"
                                 >
-                                  트레이드 제안 ({tradeEval.acceptanceChance}%)
+                                  제안 확정 (트레이드 요청 · {tradeEval.acceptanceChance}%)
                                 </button>
                               </div>
 
@@ -2164,6 +2366,17 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                               />
                             </div>
                           )}
+
+                        {tradeSwapPreview.isActive && (
+                          <TradeSwapPreviewCard
+                            preview={tradeSwapPreview}
+                            showOnPitch={showSwapPreviewOnPitch}
+                            onToggleShowOnPitch={() =>
+                              setShowSwapPreviewOnPitch((v) => !v)
+                            }
+                            onResetPreview={resetTradeBuilder}
+                          />
+                        )}
                       </div>
 
                       {/* DUAL FORMATION PITCH VIEW (DEFAULT) */}
@@ -2449,93 +2662,169 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                 </span>
                               </div>
 
-                              {/* Unified Original Squad Pitch + Free Bench (100% identical chemistry, +/- OVR, A/M/D) */}
-                              <PitchBoard
-                                formation={state.formation}
-                                starters={state.starters}
-                                bench={state.bench}
-                                chemistry={chemistry}
-                                managerTraitId={state.manager.traitId}
-                                tactic={state.defaultTactic}
-                                conditionByPlayerId={season.playerConditions}
-                                selectedSlotKeys={selectedUserSlotKeys}
-                                selectedTone="rose"
-                                onSlotClick={(area, index) => {
-                                  const p =
-                                    area === 'starter'
-                                      ? state.starters[index]
-                                      : state.bench[index];
-                                  if (!p) return;
-                                  handleToggleUserSlot({ area, index });
-                                }}
-                                onInspectPlayer={(p) => setInspectedPlayer(p)}
-                                slotExtraMeta={(_area, _index, p) => {
-                                  const tpVal = computePlayerTradePoints({
-                                    player: p,
-                                    receivingClubNeeds: activeClubNeeds,
-                                    stats:
-                                      season.allPlayerStats[p.id] ??
-                                      season.allPlayerStats[`user::${p.id}`] ??
-                                      null,
-                                    conditionMap: season.playerConditions,
-                                  });
-                                  const isTopNeed = tpVal.needModPct >= 30;
-                                  const isSecondNeed = tpVal.needModPct > 0 && tpVal.needModPct < 30;
-                                  const isSaturated = tpVal.needModPct < 0;
-                                  return (
-                                    <div
-                                      className={`mt-0.5 flex items-center justify-center gap-0.5 text-[7.5px] sm:text-[8px] tabular-nums leading-none ${
-                                        highlightNeedsOnly && !isTopNeed && !isSecondNeed
-                                          ? 'opacity-40'
-                                          : ''
-                                      }`}
-                                    >
-                                      <span className="font-mono font-bold text-rose-300/95">
-                                        {Math.round(tpVal.effectiveTp)}
+                              {/* Unified Squad Pitch + Free Bench with Live Virtual Swap Preview */}
+                              {(() => {
+                                const usePreview =
+                                  showSwapPreviewOnPitch &&
+                                  tradeSwapPreview.isActive;
+                                const activeRatings = usePreview
+                                  ? tradeSwapPreview.afterRatings
+                                  : teamRatings;
+                                const pairBySlotKey = new Map(
+                                  tradeSwapPreview.swapPairs.map((pair) => [
+                                    pair.slotKey,
+                                    pair,
+                                  ]),
+                                );
+                                return (
+                                  <PitchBoard
+                                    formation={state.formation}
+                                    starters={
+                                      usePreview
+                                        ? tradeSwapPreview.previewStarters
+                                        : state.starters
+                                    }
+                                    bench={
+                                      usePreview
+                                        ? tradeSwapPreview.previewBench
+                                        : state.bench
+                                    }
+                                    chemistry={
+                                      usePreview
+                                        ? tradeSwapPreview.afterChemistry
+                                        : chemistry
+                                    }
+                                    baselineStarters={
+                                      usePreview ? state.starters : null
+                                    }
+                                    managerTraitId={state.manager.traitId}
+                                    tactic={state.defaultTactic}
+                                    conditionByPlayerId={
+                                      season.playerConditions
+                                    }
+                                    selectedSlotKeys={selectedUserSlotKeys}
+                                    previewSlotKeys={
+                                      usePreview
+                                        ? tradeSwapPreview.previewSlotKeys
+                                        : undefined
+                                    }
+                                    selectedTone="rose"
+                                    onSlotClick={(area, index) => {
+                                      const p =
+                                        area === 'starter'
+                                          ? state.starters[index]
+                                          : state.bench[index];
+                                      if (!p) return;
+                                      handleToggleUserSlot({ area, index });
+                                    }}
+                                    onInspectPlayer={(p) =>
+                                      setInspectedPlayer(p)
+                                    }
+                                    slotExtraMeta={(area, index, p) => {
+                                      const sk = `${area}:${index}`;
+                                      const swapped = usePreview
+                                        ? pairBySlotKey.get(sk)
+                                        : undefined;
+                                      if (swapped) {
+                                        return (
+                                          <div className="mt-0.5 flex items-center justify-center gap-0.5 text-[7px] sm:text-[7.5px] leading-none text-emerald-300/95 font-bold truncate max-w-full">
+                                            <span>
+                                              ↔{shortPitchName(swapped.outPlayer.name)}
+                                            </span>
+                                          </div>
+                                        );
+                                      }
+                                      const tpVal = computePlayerTradePoints({
+                                        player: p,
+                                        receivingClubNeeds: activeClubNeeds,
+                                        stats:
+                                          season.allPlayerStats[p.id] ??
+                                          season.allPlayerStats[
+                                            `user::${p.id}`
+                                          ] ??
+                                          null,
+                                        conditionMap: season.playerConditions,
+                                      });
+                                      const isTopNeed = tpVal.needModPct >= 30;
+                                      const isSecondNeed =
+                                        tpVal.needModPct > 0 &&
+                                        tpVal.needModPct < 30;
+                                      const isSaturated = tpVal.needModPct < 0;
+                                      return (
+                                        <div
+                                          className={`mt-0.5 flex items-center justify-center gap-0.5 text-[7.5px] sm:text-[8px] tabular-nums leading-none ${
+                                            highlightNeedsOnly &&
+                                            !isTopNeed &&
+                                            !isSecondNeed
+                                              ? 'opacity-40'
+                                              : ''
+                                          }`}
+                                        >
+                                          <span className="font-mono font-bold text-rose-300/95">
+                                            {Math.round(tpVal.effectiveTp)}
+                                          </span>
+                                          {isTopNeed && (
+                                            <span
+                                              className={`font-black text-amber-300 ${
+                                                highlightNeedsOnly
+                                                  ? 'rounded bg-amber-500/25 border border-amber-400/50 px-1 py-px text-[7px]'
+                                                  : 'text-[8px]'
+                                              }`}
+                                            >
+                                              {highlightNeedsOnly
+                                                ? '🔥+32%'
+                                                : '🔥'}
+                                            </span>
+                                          )}
+                                          {isSecondNeed && (
+                                            <span
+                                              className={`font-black text-sky-300 ${
+                                                highlightNeedsOnly
+                                                  ? 'rounded bg-sky-500/20 border border-sky-400/45 px-1 py-px text-[7px]'
+                                                  : 'text-[8px]'
+                                              }`}
+                                            >
+                                              {highlightNeedsOnly
+                                                ? '✨+18%'
+                                                : '✨'}
+                                            </span>
+                                          )}
+                                          {highlightNeedsOnly && isSaturated && (
+                                            <span className="text-[7px] font-bold text-slate-500">
+                                              포화
+                                            </span>
+                                          )}
+                                        </div>
+                                      );
+                                    }}
+                                    compact
+                                    showBench
+                                    showChemBreakdown={false}
+                                    showChemLegend
+                                    headerLabel={
+                                      usePreview
+                                        ? `${state.userClub.name} · 프리뷰`
+                                        : state.userClub.name
+                                    }
+                                    headerRight={
+                                      <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
+                                        A{' '}
+                                        <strong className="text-white">
+                                          {activeRatings.effectiveAtt}
+                                        </strong>{' '}
+                                        · M{' '}
+                                        <strong className="text-white">
+                                          {activeRatings.effectiveMid}
+                                        </strong>{' '}
+                                        · D{' '}
+                                        <strong className="text-white">
+                                          {activeRatings.effectiveDef}
+                                        </strong>
                                       </span>
-                                      {isTopNeed && (
-                                        <span
-                                          className={`font-black text-amber-300 ${
-                                            highlightNeedsOnly
-                                              ? 'rounded bg-amber-500/25 border border-amber-400/50 px-1 py-px text-[7px]'
-                                              : 'text-[8px]'
-                                          }`}
-                                        >
-                                          {highlightNeedsOnly ? '🔥+32%' : '🔥'}
-                                        </span>
-                                      )}
-                                      {isSecondNeed && (
-                                        <span
-                                          className={`font-black text-sky-300 ${
-                                            highlightNeedsOnly
-                                              ? 'rounded bg-sky-500/20 border border-sky-400/45 px-1 py-px text-[7px]'
-                                              : 'text-[8px]'
-                                          }`}
-                                        >
-                                          {highlightNeedsOnly ? '✨+18%' : '✨'}
-                                        </span>
-                                      )}
-                                      {highlightNeedsOnly && isSaturated && (
-                                        <span className="text-[7px] font-bold text-slate-500">
-                                          포화
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                }}
-                                compact
-                                showBench
-                                showChemBreakdown={false}
-                                showChemLegend
-                                headerLabel={state.userClub.name}
-                                headerRight={
-                                  <span className="font-mono text-[10px] font-bold text-slate-300 tabular-nums">
-                                    A <strong className="text-white">{teamRatings.effectiveAtt}</strong> · M{' '}
-                                    <strong className="text-white">{teamRatings.effectiveMid}</strong> · D{' '}
-                                    <strong className="text-white">{teamRatings.effectiveDef}</strong>
-                                  </span>
-                                }
-                              />
+                                    }
+                                  />
+                                );
+                              })()}
                             </div>
                           </div>
                         )}
@@ -2914,7 +3203,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                     onClick={() => setLegendOutSlot(null)}
                     className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] sm:text-[11px] font-bold text-slate-300 cursor-pointer whitespace-nowrap"
                   >
-                    해제
+                    원복
                   </button>
                   <button
                     type="button"
@@ -2928,7 +3217,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                   >
                     {alreadySigned
                       ? '영입 완료'
-                      : `👑 클래식 FA 제안 (${chancePct}%)`}
+                      : `👑 제안 확정 (${chancePct}%)`}
                   </button>
                 </div>
               </div>
@@ -2968,6 +3257,40 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                     <Info className="h-2.5 w-2.5 opacity-80" />
                   </button>
                 ))}
+                {tradeSwapPreview.isActive && (
+                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-md border border-slate-700/80 bg-slate-900/90 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-200 tabular-nums whitespace-nowrap">
+                    <span>
+                      케미{' '}
+                      <strong
+                        className={
+                          tradeSwapPreview.chemDelta > 0
+                            ? 'text-emerald-300'
+                            : tradeSwapPreview.chemDelta < 0
+                              ? 'text-rose-300'
+                              : 'text-slate-400'
+                        }
+                      >
+                        {tradeSwapPreview.chemDelta > 0 ? '+' : ''}
+                        {tradeSwapPreview.chemDelta}
+                      </strong>
+                    </span>
+                    <span>
+                      OVR{' '}
+                      <strong
+                        className={
+                          tradeSwapPreview.ovrDelta > 0
+                            ? 'text-emerald-300'
+                            : tradeSwapPreview.ovrDelta < 0
+                              ? 'text-rose-300'
+                              : 'text-slate-400'
+                        }
+                      >
+                        {tradeSwapPreview.ovrDelta > 0 ? '+' : ''}
+                        {tradeSwapPreview.ovrDelta.toFixed(1)}
+                      </strong>
+                    </span>
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {counterOfferClub && (
@@ -2983,9 +3306,9 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                 <button
                   type="button"
                   onClick={resetTradeBuilder}
-                  className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] sm:text-[11px] font-bold text-slate-300 cursor-pointer touch-manipulation"
+                  className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] sm:text-[11px] font-bold text-slate-300 cursor-pointer touch-manipulation whitespace-nowrap"
                 >
-                  초기화
+                  원복
                 </button>
                 <button
                   type="button"
@@ -2994,7 +3317,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                   className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] sm:text-xs font-extrabold text-white hover:bg-emerald-500 disabled:opacity-40 cursor-pointer touch-manipulation whitespace-nowrap transition-colors"
                 >
                   {tradeEval
-                    ? `제안 (${tradeEval.acceptanceChance}%)`
+                    ? `제안 확정 (${tradeEval.acceptanceChance}%)`
                     : '선수 선택 중'}
                 </button>
               </div>

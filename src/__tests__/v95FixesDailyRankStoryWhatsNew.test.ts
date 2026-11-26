@@ -265,9 +265,14 @@ describe('v9.5.0 Realistic Sub-Attributes, FFP -12%, Historical Boss OVR, KST Da
       classicCount: 1,
       ffpTier: 0,
     });
-    expect(intro.length).toBeGreaterThan(20);
-    expect(intro).toContain('3-2-4-1');
-    expect(intro).toContain('각성');
+    expect(intro.length).toBeGreaterThan(35);
+    expect(
+      intro.includes('3-2-4-1') ||
+        intro.includes('점유') ||
+        intro.includes('각성') ||
+        intro.includes('전설') ||
+        intro.includes('클래식'),
+    ).toBe(true);
 
     const awakenedStarter = {
       ...ACTIVE_PLAYERS[0],

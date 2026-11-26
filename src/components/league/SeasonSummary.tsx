@@ -1131,6 +1131,10 @@ export function SeasonSummary() {
           effectiveOvr: effectiveTotalOvr,
           chemistry: chemistry.total,
           ffpTier: season.budgetState?.ffpTier,
+          tacticalAdaptation: season.tacticalAdaptation ?? null,
+          tradeHistory: season.transferMarket?.tradeHistory ?? [],
+          storyCrisisLog: season.storyCrisisLog ?? null,
+          managerSynergyCount: ratings.managerMatchedCount,
         });
 
         return (

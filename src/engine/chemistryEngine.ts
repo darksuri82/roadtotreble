@@ -656,3 +656,378 @@ export function computeChemistryOvrBonus(chemistryTotal: number): number {
         TEAM_CHEMISTRY_MAX_RAW_BONUS;
   return Math.round(raw * 100) / 100;
 }
+
+// =============================================================================
+// Transfer Market Virtual Swap Preview (Before -> After Delta)
+// =============================================================================
+
+export interface TradePreviewSlotRef {
+  area: 'starter' | 'bench';
+  index: number;
+}
+
+export interface TradePreviewIncomingItem {
+  player: Player;
+  isFiller?: boolean;
+}
+
+export interface TradeSwapPreviewPair {
+  slotKey: string;
+  area: 'starter' | 'bench';
+  index: number;
+  slotLabel: string;
+  outPlayer: Player;
+  inPlayer: Player;
+  isFiller: boolean;
+  inPositionFit: ReturnType<typeof evaluatePositionFit> | null;
+  outPositionFit: ReturnType<typeof evaluatePositionFit> | null;
+  inManagerMatch: boolean;
+  outManagerMatch: boolean;
+  inSlotSynergy: PlayerSlotSynergy | null;
+  outSlotSynergy: PlayerSlotSynergy | null;
+  lineDelta: number;
+}
+
+export interface TradeSwapPreviewResult {
+  isActive: boolean;
+  previewStarters: (Player | null)[];
+  previewBench: (Player | null)[];
+  previewSlotKeys: Set<string>;
+  swapPairs: TradeSwapPreviewPair[];
+  beforeChemistry: ChemistryResult;
+  afterChemistry: ChemistryResult;
+  chemDelta: number;
+  totalLinesBefore: number;
+  totalLinesAfter: number;
+  totalLinesDelta: number;
+  beforeRatings: TeamRatings;
+  afterRatings: TeamRatings;
+  attDelta: number;
+  midDelta: number;
+  defDelta: number;
+  beforeEffectiveAvgOvr: number;
+  afterEffectiveAvgOvr: number;
+  ovrDelta: number;
+  rawOvrDelta: number;
+  managerFitBefore: number;
+  managerFitAfter: number;
+  managerFitDelta: number;
+  managerFitTarget: number;
+  cashBeforeM?: number;
+  cashAfterM?: number;
+  cashDeltaM?: number;
+}
+
+function getPermutations<T>(arr: T[]): T[][] {
+  if (arr.length <= 1) return [arr];
+  const res: T[][] = [];
+  for (let i = 0; i < arr.length; i += 1) {
+    const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
+    for (const perm of getPermutations(rest)) {
+      res.push([arr[i], ...perm]);
+    }
+  }
+  return res;
+}
+
+function round1(v: number): number {
+  return Math.round(v * 10) / 10;
+}
+
+/**
+ * Computes a live virtual-swap preview of placing incoming trade/FA player(s) into the user's
+ * selected outgoing slot(s) without mutating actual squad state.
+ */
+export function computeTradeSwapPreview(params: {
+  formationId: FormationId;
+  starters: (Player | null)[];
+  bench: (Player | null)[];
+  outSlots: TradePreviewSlotRef[];
+  inItems: TradePreviewIncomingItem[];
+  tactic: TacticId;
+  managerTraitId: ManagerTraitId | null;
+  staffCoachId?: StaffCoachId | null;
+  ffpChemPenalty?: number;
+  beforeChemistry?: ChemistryResult;
+  beforeRatings?: TeamRatings;
+  cashBeforeM?: number;
+  cashOfferM?: number;
+}): TradeSwapPreviewResult {
+  const {
+    formationId,
+    starters,
+    bench,
+    outSlots,
+    inItems,
+    tactic,
+    managerTraitId,
+    staffCoachId = null,
+    ffpChemPenalty = 0,
+    cashBeforeM,
+    cashOfferM = 0,
+  } = params;
+
+  const formation = FORMATIONS[formationId] ?? FORMATIONS['4-3-3'];
+  const chemOpts = { staffCoachId, ffpChemPenalty };
+
+  const beforeChemistry =
+    params.beforeChemistry ??
+    calculateChemistry(
+      formationId,
+      starters,
+      tactic,
+      managerTraitId,
+      undefined,
+      chemOpts,
+    );
+  const beforeRatings =
+    params.beforeRatings ??
+    calculateTeamRatings(
+      formationId,
+      starters,
+      beforeChemistry.total,
+      managerTraitId,
+      beforeChemistry.slotSynergies,
+      tactic,
+      staffCoachId,
+    );
+
+  const validOutSlots = outSlots
+    .map((ref) => ({
+      ref,
+      player:
+        ref.area === 'starter'
+          ? (starters[ref.index] ?? null)
+          : (bench[ref.index] ?? null),
+    }))
+    .filter(
+      (x): x is { ref: TradePreviewSlotRef; player: Player } =>
+        x.player !== null,
+    );
+
+  const pairCount = Math.min(validOutSlots.length, inItems.length);
+  const beforeEffAvg = round1(
+    (beforeRatings.effectiveAtt +
+      beforeRatings.effectiveMid +
+      beforeRatings.effectiveDef) /
+      3,
+  );
+  const totalLinesBefore =
+    beforeChemistry.breakdown.totalLines ??
+    beforeChemistry.breakdown.club +
+      beforeChemistry.breakdown.nation +
+      beforeChemistry.breakdown.tacticStyle +
+      beforeChemistry.breakdown.roleBalance;
+
+  if (pairCount === 0) {
+    return {
+      isActive: false,
+      previewStarters: starters,
+      previewBench: bench,
+      previewSlotKeys: new Set<string>(),
+      swapPairs: [],
+      beforeChemistry,
+      afterChemistry: beforeChemistry,
+      chemDelta: 0,
+      totalLinesBefore,
+      totalLinesAfter: totalLinesBefore,
+      totalLinesDelta: 0,
+      beforeRatings,
+      afterRatings: beforeRatings,
+      attDelta: 0,
+      midDelta: 0,
+      defDelta: 0,
+      beforeEffectiveAvgOvr: beforeEffAvg,
+      afterEffectiveAvgOvr: beforeEffAvg,
+      ovrDelta: 0,
+      rawOvrDelta: 0,
+      managerFitBefore: beforeRatings.managerMatchedCount ?? 0,
+      managerFitAfter: beforeRatings.managerMatchedCount ?? 0,
+      managerFitDelta: 0,
+      managerFitTarget: beforeRatings.managerTargetCount ?? 0,
+      ...(typeof cashBeforeM === 'number'
+        ? {
+            cashBeforeM,
+            cashAfterM: Math.max(0, cashBeforeM - Math.max(0, cashOfferM)),
+            cashDeltaM: -Math.min(cashBeforeM, Math.max(0, cashOfferM)),
+          }
+        : {}),
+    };
+  }
+
+  // Pair up to 3 incoming players into outgoing slots by best positional fit
+  // (prioritizing non-filler primary targets for starter slots)
+  const chosenOut = validOutSlots.slice(0, pairCount);
+  const chosenIn = inItems.slice(0, pairCount);
+
+  const inPerms = getPermutations(chosenIn);
+  let bestPerm = chosenIn;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const perm of inPerms) {
+    let score = 0;
+    for (let i = 0; i < pairCount; i += 1) {
+      const outEntry = chosenOut[i];
+      const inEntry = perm[i];
+      if (outEntry.ref.area === 'starter') {
+        const slot = formation.slots[outEntry.ref.index];
+        if (slot) {
+          const fit = evaluatePositionFit(
+            inEntry.player,
+            slot.subPosition,
+            managerTraitId,
+            slot.alternateSubPositions,
+          );
+          score += fit.effectiveOvr + (fit.penalty === 0 ? 15 : fit.penalty * 2);
+        }
+        // Strongly prefer primary trade target over backup filler in starter slots
+        score += inEntry.isFiller ? -40 : 40;
+      } else {
+        score += inEntry.isFiller ? 10 : 0;
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestPerm = perm;
+    }
+  }
+
+  const previewStarters = [...starters];
+  const previewBench = [...bench];
+  const previewSlotKeys = new Set<string>();
+
+  for (let i = 0; i < pairCount; i += 1) {
+    const { ref } = chosenOut[i];
+    const inItem = bestPerm[i];
+    const k = `${ref.area}:${ref.index}`;
+    previewSlotKeys.add(k);
+    if (ref.area === 'starter') {
+      previewStarters[ref.index] = inItem.player;
+    } else {
+      previewBench[ref.index] = inItem.player;
+    }
+  }
+
+  const afterChemistry = calculateChemistry(
+    formationId,
+    previewStarters,
+    tactic,
+    managerTraitId,
+    undefined,
+    chemOpts,
+  );
+  const afterRatings = calculateTeamRatings(
+    formationId,
+    previewStarters,
+    afterChemistry.total,
+    managerTraitId,
+    afterChemistry.slotSynergies,
+    tactic,
+    staffCoachId,
+  );
+
+  const swapPairs: TradeSwapPreviewPair[] = [];
+  for (let i = 0; i < pairCount; i += 1) {
+    const { ref, player: outPlayer } = chosenOut[i];
+    const inItem = bestPerm[i];
+    const k = `${ref.area}:${ref.index}`;
+    const slot = ref.area === 'starter' ? formation.slots[ref.index] : undefined;
+    const inPositionFit = slot
+      ? evaluatePositionFit(
+          inItem.player,
+          slot.subPosition,
+          managerTraitId,
+          slot.alternateSubPositions,
+        )
+      : null;
+    const outPositionFit = slot
+      ? evaluatePositionFit(
+          outPlayer,
+          slot.subPosition,
+          managerTraitId,
+          slot.alternateSubPositions,
+        )
+      : null;
+    const inSlotSynergy =
+      ref.area === 'starter'
+        ? (afterChemistry.slotSynergies[ref.index] ?? null)
+        : null;
+    const outSlotSynergy =
+      ref.area === 'starter'
+        ? (beforeChemistry.slotSynergies[ref.index] ?? null)
+        : null;
+    const inLines = inSlotSynergy?.lineCount ?? 0;
+    const outLines = outSlotSynergy?.lineCount ?? 0;
+
+    swapPairs.push({
+      slotKey: k,
+      area: ref.area,
+      index: ref.index,
+      slotLabel: slot ? slot.label : `벤치 ${ref.index + 1}`,
+      outPlayer,
+      inPlayer: inItem.player,
+      isFiller: Boolean(inItem.isFiller),
+      inPositionFit,
+      outPositionFit,
+      inManagerMatch: evaluateManagerPlayerSynergy(
+        inItem.player,
+        managerTraitId,
+      ).isMatch,
+      outManagerMatch: evaluateManagerPlayerSynergy(
+        outPlayer,
+        managerTraitId,
+      ).isMatch,
+      inSlotSynergy,
+      outSlotSynergy,
+      lineDelta: inLines - outLines,
+    });
+  }
+
+  const totalLinesAfter =
+    afterChemistry.breakdown.totalLines ??
+    afterChemistry.breakdown.club +
+      afterChemistry.breakdown.nation +
+      afterChemistry.breakdown.tacticStyle +
+      afterChemistry.breakdown.roleBalance;
+  const afterEffAvg = round1(
+    (afterRatings.effectiveAtt +
+      afterRatings.effectiveMid +
+      afterRatings.effectiveDef) /
+      3,
+  );
+
+  return {
+    isActive: true,
+    previewStarters,
+    previewBench,
+    previewSlotKeys,
+    swapPairs,
+    beforeChemistry,
+    afterChemistry,
+    chemDelta: afterChemistry.total - beforeChemistry.total,
+    totalLinesBefore,
+    totalLinesAfter,
+    totalLinesDelta: totalLinesAfter - totalLinesBefore,
+    beforeRatings,
+    afterRatings,
+    attDelta: round1(afterRatings.effectiveAtt - beforeRatings.effectiveAtt),
+    midDelta: round1(afterRatings.effectiveMid - beforeRatings.effectiveMid),
+    defDelta: round1(afterRatings.effectiveDef - beforeRatings.effectiveDef),
+    beforeEffectiveAvgOvr: beforeEffAvg,
+    afterEffectiveAvgOvr: afterEffAvg,
+    ovrDelta: round1(afterEffAvg - beforeEffAvg),
+    rawOvrDelta: afterRatings.rawOvr - beforeRatings.rawOvr,
+    managerFitBefore: beforeRatings.managerMatchedCount ?? 0,
+    managerFitAfter: afterRatings.managerMatchedCount ?? 0,
+    managerFitDelta:
+      (afterRatings.managerMatchedCount ?? 0) -
+      (beforeRatings.managerMatchedCount ?? 0),
+    managerFitTarget: afterRatings.managerTargetCount ?? 0,
+    ...(typeof cashBeforeM === 'number'
+      ? {
+          cashBeforeM,
+          cashAfterM: Math.max(0, cashBeforeM - Math.max(0, cashOfferM)),
+          cashDeltaM: -Math.min(cashBeforeM, Math.max(0, cashOfferM)),
+        }
+      : {}),
+  };
+}

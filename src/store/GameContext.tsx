@@ -176,6 +176,7 @@ import {
   type ManagerAvatarConfig,
   type ManagerTraitId,
   type SeasonState,
+  type SeasonStoryCrisisLog,
   type StaffCoachId,
   type TacticalAdaptationState,
   type TeamRatings,
@@ -460,6 +461,7 @@ function applyPostUserMatchConditionAndEvents(params: {
   tacticalAdaptation: TacticalAdaptationState;
   awakenedPlayers: Record<string, PlayerAwakeningRecord>;
   pendingAwakeningAlerts: AwakeningAlertItem[];
+  storyCrisisLog: SeasonStoryCrisisLog;
 } {
   const {
     season,
@@ -486,6 +488,10 @@ function applyPostUserMatchConditionAndEvents(params: {
     season.tacticalAdaptation ?? createInitialTacticalAdaptationState();
   const prevAwakened = season.awakenedPlayers ?? {};
   const prevAwakeningAlerts = season.pendingAwakeningAlerts ?? [];
+  const prevCrisisLog: SeasonStoryCrisisLog = season.storyCrisisLog ?? {
+    keyInjuries: [],
+    tacticalCrises: [],
+  };
   const filledStarters = starters.filter((p): p is Player => p !== null);
   const filledBench = bench.filter((p): p is Player => p !== null);
   const fullSquad = [...filledStarters, ...filledBench];
@@ -498,6 +504,7 @@ function applyPostUserMatchConditionAndEvents(params: {
       tacticalAdaptation: prevAdaptation,
       awakenedPlayers: prevAwakened,
       pendingAwakeningAlerts: prevAwakeningAlerts,
+      storyCrisisLog: prevCrisisLog,
     };
   }
 
@@ -702,6 +709,50 @@ function applyPostUserMatchConditionAndEvents(params: {
     staffCoachId,
   });
 
+  // v9.7 Record notable injuries & tactical counter crises for documentary season storytelling
+  let nextKeyInjuries = prevCrisisLog.keyInjuries;
+  if (userCondUpdate.newInjuries.length > 0) {
+    const appended = userCondUpdate.newInjuries
+      .filter((a) => a.injury.initialMatches >= 2 || a.ovr >= 82)
+      .map((a) => ({
+        round: matchRound,
+        competition,
+        playerId: a.playerId,
+        playerName: a.playerName,
+        ovr: a.ovr,
+        severity: a.injury.severity,
+        matchesMissed: a.injury.initialMatches,
+      }));
+    if (appended.length > 0) {
+      nextKeyInjuries = [...prevCrisisLog.keyInjuries, ...appended].slice(-8);
+    }
+  }
+  let nextTacticalCrises = prevCrisisLog.tacticalCrises;
+  if (
+    nextTacticalAdaptation.pendingAlert &&
+    !prevAdaptation.pendingAlert &&
+    nextTacticalAdaptation.pendingAlert.tier === 'danger'
+  ) {
+    nextTacticalCrises = [
+      ...prevCrisisLog.tacticalCrises,
+      {
+        round: matchRound,
+        competition,
+        formation,
+        tactic,
+        exposureScore: nextTacticalAdaptation.pendingAlert.exposureScore,
+      },
+    ].slice(-4);
+  }
+  const nextStoryCrisisLog: SeasonStoryCrisisLog =
+    nextKeyInjuries === prevCrisisLog.keyInjuries &&
+    nextTacticalCrises === prevCrisisLog.tacticalCrises
+      ? prevCrisisLog
+      : {
+          keyInjuries: nextKeyInjuries,
+          tacticalCrises: nextTacticalCrises,
+        };
+
   // v9.0 Evaluate post-match Permanent Potential Awakening
   let nextAwakenedPlayers = prevAwakened;
   let nextPendingAwakeningAlerts = prevAwakeningAlerts;
@@ -711,7 +762,7 @@ function applyPostUserMatchConditionAndEvents(params: {
     season.userUclMatchHistory.length;
   const chemForAwakening = calculateChemistry(
     formation,
-    filledStarters,
+    starters,
     tactic,
     managerTraitId,
     undefined,
@@ -814,6 +865,7 @@ function applyPostUserMatchConditionAndEvents(params: {
     tacticalAdaptation: nextTacticalAdaptation,
     awakenedPlayers: nextAwakenedPlayers,
     pendingAwakeningAlerts: nextPendingAwakeningAlerts,
+    storyCrisisLog: nextStoryCrisisLog,
   };
 }
 
@@ -1065,6 +1117,7 @@ function simulateFullSingleRound(
     tacticalAdaptation: postCond.tacticalAdaptation,
     awakenedPlayers: postCond.awakenedPlayers,
     pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
+    storyCrisisLog: postCond.storyCrisisLog,
   };
 }
 
@@ -1271,6 +1324,7 @@ function syncCupAfterRound(params: {
         tacticalAdaptation: postCond.tacticalAdaptation,
         awakenedPlayers: postCond.awakenedPlayers,
         pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
+    storyCrisisLog: postCond.storyCrisisLog,
       };
     } else {
       current = interimCupSeason;
@@ -1931,6 +1985,7 @@ function commitLiveMatchResult(
       tacticalAdaptation: postCond.tacticalAdaptation,
       awakenedPlayers: postCond.awakenedPlayers,
       pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
+    storyCrisisLog: postCond.storyCrisisLog,
     };
     return {
       ...state,
@@ -2016,6 +2071,7 @@ function commitLiveMatchResult(
       tacticalAdaptation: postCond.tacticalAdaptation,
       awakenedPlayers: postCond.awakenedPlayers,
       pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
+    storyCrisisLog: postCond.storyCrisisLog,
     };
     return {
       ...state,
@@ -2192,6 +2248,7 @@ function commitLiveMatchResult(
     tacticalAdaptation: postCond.tacticalAdaptation,
     awakenedPlayers: postCond.awakenedPlayers,
     pendingAwakeningAlerts: postCond.pendingAwakeningAlerts,
+    storyCrisisLog: postCond.storyCrisisLog,
   };
 
   nextSeason = syncCupAfterRound({
@@ -4989,6 +5046,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             pendingAwakeningAlerts:
               postCond?.pendingAwakeningAlerts ??
               interimSeason.pendingAwakeningAlerts,
+            storyCrisisLog:
+              postCond?.storyCrisisLog ?? interimSeason.storyCrisisLog,
           },
         };
       }
@@ -6453,6 +6512,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           tacticalAdaptation: post.tacticalAdaptation,
           awakenedPlayers: post.awakenedPlayers,
           pendingAwakeningAlerts: post.pendingAwakeningAlerts,
+          storyCrisisLog: post.storyCrisisLog,
         };
       }
 
@@ -6578,26 +6638,55 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       });
 
       let nextTrackers = state.season.achievementTrackers;
+      let rollingSeason: SeasonState = {
+        ...state.season,
+        nextMatchTactic: null,
+        ucl: res.ucl,
+        uclPlayerStats: res.uclPlayerStats,
+        userUclMatchHistory: [
+          ...state.season.userUclMatchHistory,
+          ...res.newUserMatches,
+        ],
+        lastUserMatch:
+          res.newUserMatches[res.newUserMatches.length - 1] ??
+          state.season.lastUserMatch,
+        playerConditions: workingConditions,
+      };
       for (const m of res.newUserMatches) {
         nextTrackers = updateTrackersForUserMatch(nextTrackers, m);
+        const post = applyPostUserMatchConditionAndEvents({
+          season: rollingSeason,
+          workingConditions: rollingSeason.playerConditions ?? workingConditions,
+          formation: state.formation,
+          tactic: activeTactic,
+          managerTraitId: state.manager.traitId,
+          starters: state.starters,
+          bench: state.bench,
+          userMatchResult: m,
+          competition: 'ucl',
+          round: m.round,
+          isShortRest: true,
+          teamName: state.userClub.name,
+          managerName: state.manager.name,
+          allowEventTrigger: false,
+        });
+        rollingSeason = {
+          ...rollingSeason,
+          playerConditions: post.playerConditions,
+          managerEvents: post.managerEvents,
+          pendingInjuryAlerts: post.pendingInjuryAlerts,
+          tacticalAdaptation: post.tacticalAdaptation,
+          awakenedPlayers: post.awakenedPlayers,
+          pendingAwakeningAlerts: post.pendingAwakeningAlerts,
+          storyCrisisLog: post.storyCrisisLog,
+        };
       }
 
       return {
         ...state,
         season: {
-          ...state.season,
-          nextMatchTactic: null,
-          ucl: res.ucl,
-          uclPlayerStats: res.uclPlayerStats,
-          userUclMatchHistory: [
-            ...state.season.userUclMatchHistory,
-            ...res.newUserMatches,
-          ],
-          lastUserMatch:
-            res.newUserMatches[res.newUserMatches.length - 1] ??
-            state.season.lastUserMatch,
+          ...rollingSeason,
           achievementTrackers: nextTrackers,
-          playerConditions: workingConditions,
         },
       };
     }
@@ -8019,6 +8108,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
       effectiveOvr: effectiveTotalOvr,
       chemistry: chemistry.total,
       ffpTier: state.season.budgetState?.ffpTier,
+      tacticalAdaptation: state.season.tacticalAdaptation ?? null,
+      tradeHistory: state.season.transferMarket?.tradeHistory ?? [],
+      storyCrisisLog: state.season.storyCrisisLog ?? null,
+      managerSynergyCount,
     });
 
     const updated = archiveSeasonToHallOfFame({

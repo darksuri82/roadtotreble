@@ -69,6 +69,8 @@ interface PitchBoardProps {
     player: Player,
   ) => React.ReactNode;
   previewSlot?: SlotRef | null;
+  /** Optional multi-slot virtual swap preview keys ("starter:9", "bench:1") used in Transfer Market */
+  previewSlotKeys?: Set<string>;
   staminaByPlayerId?: Record<string, number>;
   conditionByPlayerId?: PlayerConditionMap;
   highlightedPlayerIds?: Set<string>;
@@ -149,6 +151,7 @@ export function PitchBoard({
   selectedTone = 'emerald',
   slotExtraMeta,
   previewSlot = null,
+  previewSlotKeys,
   staminaByPlayerId,
   conditionByPlayerId: conditionProp,
   highlightedPlayerIds,
@@ -646,13 +649,15 @@ export function PitchBoard({
           const player = starters[slot.index];
           const isActive =
             activeSlot?.area === 'starter' && activeSlot.index === slot.index;
-          const isSelected =
-            (selectedSlot?.area === 'starter' &&
-              selectedSlot.index === slot.index) ||
-            Boolean(selectedSlotKeys?.has(`starter:${slot.index}`));
           const isPreview =
-            previewSlot?.area === 'starter' &&
-            previewSlot.index === slot.index;
+            (previewSlot?.area === 'starter' &&
+              previewSlot.index === slot.index) ||
+            Boolean(previewSlotKeys?.has(`starter:${slot.index}`));
+          const isSelected =
+            !isPreview &&
+            ((selectedSlot?.area === 'starter' &&
+              selectedSlot.index === slot.index) ||
+              Boolean(selectedSlotKeys?.has(`starter:${slot.index}`)));
           const isDragOver =
             dragOverSlot?.area === 'starter' &&
             dragOverSlot.index === slot.index;
@@ -1216,13 +1221,15 @@ export function PitchBoard({
               const isActive =
                 activeSlot?.area === 'bench' &&
                 activeSlot.index === benchIdx;
-              const isSelected =
-                (selectedSlot?.area === 'bench' &&
-                  selectedSlot.index === benchIdx) ||
-                Boolean(selectedSlotKeys?.has(`bench:${benchIdx}`));
               const isPreview =
-                previewSlot?.area === 'bench' &&
-                previewSlot.index === benchIdx;
+                (previewSlot?.area === 'bench' &&
+                  previewSlot.index === benchIdx) ||
+                Boolean(previewSlotKeys?.has(`bench:${benchIdx}`));
+              const isSelected =
+                !isPreview &&
+                ((selectedSlot?.area === 'bench' &&
+                  selectedSlot.index === benchIdx) ||
+                  Boolean(selectedSlotKeys?.has(`bench:${benchIdx}`)));
               const isDragOver =
                 dragOverSlot?.area === 'bench' &&
                 dragOverSlot.index === benchIdx;

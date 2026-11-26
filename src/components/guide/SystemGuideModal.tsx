@@ -890,16 +890,16 @@ export function SystemGuideContent({
               <div className="rounded-lg border border-rose-500/25 bg-[#191116] p-2.5 space-y-1">
                 <div className="font-bold text-rose-200">실제 활약 반영 요소</div>
                 <div className="text-[10.5px] text-slate-300">
-                  경기 평점(저·중 OVR 7.3+ / 고OVR 7.4+ · 8.1+/8.5+ 급상승) · 골/도움/GK·DF 무실점 ·
+                  경기 평점(OVR 구간별 6.75~7.4+ 기준 · 8.1+/8.5+ 급상승) · 골/도움/GK·DF 무실점·고평점 ·
                   출전시간(45&apos;+, 풀타임 우대) · 시즌 누적 평점 및 공격포인트/클린시트 비율
-                  ({AWAKENING_MIN_SEASON_MATCH}경기·개인 {AWAKENING_MIN_APPEARANCES}출전 이후)
+                  ({AWAKENING_MIN_SEASON_MATCH}경기·개인 {AWAKENING_MIN_APPEARANCES}출전 이후 · 리그·컵·UCL 전 경기 반영)
                 </div>
               </div>
               <div className="rounded-lg border border-amber-500/25 bg-[#191511] p-2.5 space-y-1">
                 <div className="font-bold text-amber-200">기용 완성도 반영 요소</div>
                 <div className="text-[10.5px] text-slate-300">
-                  인접 시너지(2~3+ 우대, 0선 감쇠) · 감독 궁합(★ 우대) · 사기(높을수록 상승) ·
-                  컨디션·로테이션 관리(혹사·부상 시 급감) · 주포지션 적합도(0 우대, 비적합 급감)
+                  인접 시너지(2선+/+1↑부터 공명 우대, 0선 감쇠) · 감독 궁합(★ 우대) · 사기(높을수록 상승) ·
+                  로테이션·부상 관리(로테이션 시 우대, 부상 강행 시 급감) · 주포지션 적합도(0 우대, 비적합 급감)
                 </div>
               </div>
             </div>
@@ -907,7 +907,7 @@ export function SystemGuideContent({
               <div>
                 <strong className="text-amber-200">드래프트 프리뷰 표기 기준:</strong>{' '}
                 미선택 카드에는 미리 노출되지 않으며, 후보를 클릭해 <strong className="text-white">선발 슬롯에 프리뷰 배치</strong>했을 때
-                해당 위치의 주포지션 적합(0) · 감독 궁합(★) · 인접 시너지(2선+)를 실시간 판정해{' '}
+                해당 위치의 주포지션 적합(0) · 감독 궁합(★) · 인접 시너지(2선+/+1↑)를 실시간 판정해{' '}
                 <strong className="text-amber-200">포텐↑</strong> 또는{' '}
                 <strong className="text-rose-200">육성</strong>으로 표시됩니다(벤치 프리뷰 시 미표시).
               </div>
@@ -932,13 +932,13 @@ export function SystemGuideContent({
                       원석·중위권 (≤76 / 77~79 / 80~81 / 82~84)
                     </td>
                     <td className="px-2.5 py-1.5 text-emerald-300 font-mono whitespace-nowrap">
-                      ×2.10 / ×1.85 / ×1.55 / ×1.35
+                      ×2.30 / ×2.00 / ×1.65 / ×1.40
                     </td>
                     <td className="px-2.5 py-1.5 font-mono text-rose-200 whitespace-nowrap">
                       +6~+{AWAKENING_MAX_GAIN} / +5~+8 / +4~+7 / +3~+6
                     </td>
                     <td className="px-2.5 py-1.5 text-slate-400">
-                      시너지·감독 궁합 시 경기 활약·평점 반영 + 저OVR 상대 평점 기준(6.8~7.2+) 완화
+                      시너지(+1↑)·감독 궁합 공명 시 저OVR 상대 평점 기준(6.75~7.25+) 완화
                     </td>
                   </tr>
                   <tr>
@@ -946,13 +946,13 @@ export function SystemGuideContent({
                       상위 주전 (OVR 85~{AWAKENING_SUPERSTAR_OVR_THRESHOLD - 1})
                     </td>
                     <td className="px-2.5 py-1.5 text-sky-300 font-mono whitespace-nowrap">
-                      ×0.75
+                      ×0.78
                     </td>
                     <td className="px-2.5 py-1.5 font-mono text-rose-200 whitespace-nowrap">
                       +{AWAKENING_MIN_GAIN}~+4 OVR
                     </td>
                     <td className="px-2.5 py-1.5 text-slate-400">
-                      이미 완성형 주전 · 완만한 성장폭
+                      이미 완성형 주전 · 완만한 성장폭 (평점 7.25~7.4+)
                     </td>
                   </tr>
                   <tr>
@@ -999,6 +999,7 @@ export function SystemGuideContent({
                 <strong className="text-rose-300">
                   4명째+ ×{AWAKENING_FOURTH_PLUS_MULT}
                 </strong>
+                {' '}(육성 코치는 1~3명째 구간만 가속)
               </span>
               <span>정적 DB 무오염 · 세이브·명전·일일 랭킹 영구 보존</span>
             </div>
@@ -1019,7 +1020,7 @@ export function SystemGuideContent({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-white">
                 <ArrowLeftRight className="w-4 h-4 text-sky-400 shrink-0" />
-                NBA 패키지 트레이드 · 구단 니즈 · 통합세
+                NBA 패키지 트레이드 · 가상 교체 프리뷰 · 구단 니즈
               </div>
               <span className="rounded bg-sky-500/15 border border-sky-400/35 px-2 py-0.5 font-mono text-[10px] font-bold text-sky-300 whitespace-nowrap">
                 기본 {ATTEMPTS_PER_WINDOW}회/창 · 1:1~3:1 패키지
@@ -1048,6 +1049,12 @@ export function SystemGuideContent({
                   {CASH_STAR_GUARD_RELIEF_THRESHOLD_M}M+ 시 1 완화)
                 </div>
               </div>
+            </div>
+            <div className="rounded-lg border border-emerald-500/25 bg-emerald-950/15 px-3 py-2 text-[10.5px] text-slate-300">
+              <strong className="text-emerald-300">가상 교체(스왑) 시너지 프리뷰 → 제안 확정:</strong>{' '}
+              내 스쿼드 선수와 상대·클래식 선수를 선택하면 즉시 거래가 진행되지 않고, 내 포메이션 피치에 임시 투입된{' '}
+              <strong className="text-white">시너지 연결선 · 팀 케미 · 감독 궁합 · 포지션 적합도 · A/M/D·실효 OVR · 현금 잔액 변화(Before → After Δ)</strong>를
+              실시간 비교한 뒤 <strong className="text-emerald-200">제안 확정</strong> 버튼으로 최종 요청할 수 있습니다(싱글·멀티리그 공통).
             </div>
             <div className="text-[10.5px] text-slate-400 space-y-1">
               <div>

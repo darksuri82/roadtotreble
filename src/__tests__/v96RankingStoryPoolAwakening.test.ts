@@ -662,12 +662,12 @@ describe('v9.6.0 Daily Ranking Date Guard, 5-League Pool Fairness, Storytelling 
   });
 
   it('4) lifts low-OVR synergized players in match ratings/sub-attributes and enables reliable, balanced awakening in 50-season real match sim', () => {
-    // 4a. Tier rates & gain ranges for low-OVR hidden gems
-    expect(getAwakeningTierRateMultiplier(75)).toBe(2.1);
-    expect(getAwakeningTierRateMultiplier(78)).toBe(1.85);
-    expect(getAwakeningTierRateMultiplier(80)).toBe(1.55);
+    // 4a. Tier rates & gain ranges for low-OVR hidden gems (v9.7.0 calibrated)
+    expect(getAwakeningTierRateMultiplier(75)).toBe(2.3);
+    expect(getAwakeningTierRateMultiplier(78)).toBe(2.0);
+    expect(getAwakeningTierRateMultiplier(80)).toBe(1.65);
     expect(getAwakeningExpectedGainRange(75)).toEqual({ min: 6, max: 8 });
-    expect(getAwakeningMinMatchRating(75, true)).toBe(6.8);
+    expect(getAwakeningMinMatchRating(75, true)).toBe(6.75);
     expect(getAwakeningMinMatchRating(78, true)).toBe(6.9);
 
     const rngGain = createSeededRng(20260960);

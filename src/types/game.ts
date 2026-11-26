@@ -563,6 +563,31 @@ export interface SeasonState {
   staffCoach?: StaffCoachState;
   awakenedPlayers?: Record<string, import('./player').PlayerAwakeningRecord>;
   pendingAwakeningAlerts?: AwakeningAlertItem[];
+  // v9.7: Compact chronological adversity log for documentary season storytelling
+  storyCrisisLog?: SeasonStoryCrisisLog;
+}
+
+export interface SeasonStoryInjuryLogEntry {
+  round: number;
+  competition: 'league' | 'cup' | 'ucl';
+  playerId: string;
+  playerName: string;
+  ovr: number;
+  severity: 'minor' | 'moderate' | 'severe';
+  matchesMissed: number;
+}
+
+export interface SeasonStoryTacticalCrisisEntry {
+  round: number;
+  competition: 'league' | 'cup' | 'ucl';
+  formation: FormationId;
+  tactic: TacticId;
+  exposureScore: number;
+}
+
+export interface SeasonStoryCrisisLog {
+  keyInjuries: SeasonStoryInjuryLogEntry[];
+  tacticalCrises: SeasonStoryTacticalCrisisEntry[];
 }
 
 export interface GameState {
