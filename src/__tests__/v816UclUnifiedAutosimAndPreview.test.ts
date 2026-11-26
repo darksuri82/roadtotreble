@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import mpBoardSrc from '../components/multiplayer/league/MpUclMulticastBoard.tsx?raw';
 import mpPreviewSrc from '../components/multiplayer/league/MpUclMatchPreviewModal.tsx?raw';
 import soloDashSrc from '../components/ucl/UclDashboard.tsx?raw';
+import { getInitialUclCastClock } from '../components/ucl/UclMulticastPopupBoard';
 import sharedPopupSrc from '../components/ucl/UclMulticastPopupBoard.tsx?raw';
 import { ACTIVE_PLAYERS } from '../engine/dataLoader';
 import {
@@ -402,5 +403,71 @@ describe('v8.16 — Unified UCL Auto-Sim Popup, Solo Pause/Takeover, KO Boundari
     expect(mpPreviewSrc).not.toContain('MpLeagueSquadEditor');
     expect(mpPreviewSrc).not.toContain('전술 수정');
     expect(mpPreviewSrc).not.toMatch(/zoom\s*:/);
+  });
+
+  it('5. v9.2.1 hotfix: mounts already-settled UCL casts directly at final FT/AET/PK state so post-match interviews never replay leg 1', () => {
+    const regularCast = {
+      key: 'solo-ucl-cast:r16-leg1',
+      title: 'UCL 16강 1차전',
+      matches: [
+        {
+          key: 'm1',
+          label: 'UCL 16강 1차전',
+          homeTeamId: USER_CLUB_ID,
+          awayTeamId: 'opp-1',
+          homeGoals: 2,
+          awayGoals: 1,
+          extraTime: false,
+          goals: [{ minute: 20, teamId: USER_CLUB_ID, scorer: '에이스' }],
+          humanClubIds: [USER_CLUB_ID],
+        },
+      ],
+    };
+    expect(getInitialUclCastClock(regularCast, false)).toEqual({
+      minute: 0,
+      phase: 'regular',
+      revealedPenKicks: 0,
+    });
+    expect(getInitialUclCastClock(regularCast, true)).toEqual({
+      minute: 90,
+      phase: 'final',
+      revealedPenKicks: 0,
+    });
+
+    const etPkCast = {
+      key: 'solo-ucl-cast:r16-leg2',
+      title: 'UCL 16강 2차전',
+      matches: [
+        {
+          ...regularCast.matches[0],
+          extraTime: true,
+          penalties: {
+            home: 5,
+            away: 4,
+            winnerId: USER_CLUB_ID,
+            kicks: Array.from({ length: 10 }, (_, idx) => ({
+              round: Math.floor(idx / 2) + 1,
+              side: idx % 2 === 0 ? ('home' as const) : ('away' as const),
+              teamId: idx % 2 === 0 ? USER_CLUB_ID : 'opp-1',
+              teamShortName: idx % 2 === 0 ? 'USR' : 'OPP',
+              kickerName: `키커${idx}`,
+              scored: idx !== 9,
+              homeScoreAfter: Math.floor(idx / 2) + (idx % 2 === 0 ? 1 : 0),
+              awayScoreAfter: Math.floor(idx / 2) + (idx % 2 === 1 && idx !== 9 ? 1 : 0),
+            })),
+          },
+        },
+      ],
+    };
+    expect(getInitialUclCastClock(etPkCast, true)).toEqual({
+      minute: 120,
+      phase: 'final',
+      revealedPenKicks: 10,
+    });
+
+    expect(sharedPopupSrc).toContain('initiallySettled?: boolean');
+    expect(sharedPopupSrc).toContain('if (initiallySettled)');
+    expect(soloDashSrc).toContain('isActiveCastAlreadySettled');
+    expect(soloDashSrc).toContain('initiallySettled={isActiveCastAlreadySettled}');
   });
 });

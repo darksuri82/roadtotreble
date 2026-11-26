@@ -86,6 +86,12 @@ export interface UclMulticastPopupBoardProps {
   ) => void;
   /** Fires strictly once when the cast finishes 90'/120' + PK shootout sequence */
   onSettled?: (castKey: string) => void;
+  /**
+   * When true, mounts directly in the settled FT/AET/PK final state without replaying
+   * the match clock (prevents replaying an already-committed match after a post-match
+   * interview/injury/awakening modal temporarily hides and remounts the popup).
+   */
+  initiallySettled?: boolean;
   /** Single-player only controls (omitted in multiplayer) */
   soloControls?: SoloUclCastControls;
   /** Optional footer slot inside the modal panel (e.g. solo standings strip or knockout boundary CTA) */
@@ -402,6 +408,34 @@ function CastMatchCard({
   );
 }
 
+/**
+ * Computes the initial clock state for UclMulticastPopupBoardInner.
+ * When `initiallySettled` is true (e.g. remounting after a post-match interview/injury modal
+ * temporarily hid the already-finished cast), starts directly at the final FT/AET/PK state.
+ */
+export function getInitialUclCastClock(
+  cast: MpCastLive,
+  initiallySettled = false,
+): {
+  minute: number;
+  phase: UclCastPhase;
+  revealedPenKicks: number;
+} {
+  if (!initiallySettled) {
+    return { minute: 0, phase: 'regular', revealedPenKicks: 0 };
+  }
+  const hasExtraTime = cast.matches.some((m) => m.extraTime);
+  const maxPkKicks = cast.matches.reduce(
+    (max, m) => Math.max(max, m.penalties?.kicks?.length ?? 0),
+    0,
+  );
+  return {
+    minute: hasExtraTime ? 120 : 90,
+    phase: 'final',
+    revealedPenKicks: maxPkKicks,
+  };
+}
+
 function UclMulticastPopupBoardInner({
   cast,
   clubsById,
@@ -414,6 +448,7 @@ function UclMulticastPopupBoardInner({
   bracketTies,
   onLiveOverlays,
   onSettled,
+  initiallySettled = false,
   soloControls,
   footerSlot,
 }: UclMulticastPopupBoardProps) {
@@ -421,11 +456,7 @@ function UclMulticastPopupBoardInner({
     minute: number;
     phase: UclCastPhase;
     revealedPenKicks: number;
-  }>({
-    minute: 0,
-    phase: 'regular',
-    revealedPenKicks: 0,
-  });
+  }>(() => getInitialUclCastClock(cast, initiallySettled));
 
   const paused = Boolean(soloControls?.paused);
   const effectiveRegularMs = soloControls
@@ -436,14 +467,14 @@ function UclMulticastPopupBoardInner({
   const onSettledRef = useRef(onSettled);
   const pausedRef = useRef(paused);
   const regularMsRef = useRef(effectiveRegularMs);
-  const settledFiredRef = useRef(false);
+  const settledFiredRef = useRef(initiallySettled);
 
   // Stage-accumulated timeline refs so pause/resume & mid-stream speed changes never jump backward
   const timelineRef = useRef({
-    regProgress: 0,
-    etBreakMs: 0,
-    etProgress: 0,
-    postMs: 0,
+    regProgress: initiallySettled ? 1 : 0,
+    etBreakMs: initiallySettled ? ET_BREAK_MS : 0,
+    etProgress: initiallySettled ? 1 : 0,
+    postMs: initiallySettled ? Number.MAX_SAFE_INTEGER : 0,
   });
 
   useEffect(() => {
@@ -472,6 +503,11 @@ function UclMulticastPopupBoardInner({
 
   // Wall-clock + rAF timeline (background-tab resilient, pause-safe, speed-change-safe, synced to multiplayer PK cadence)
   useEffect(() => {
+    // Already-settled cast remounted after a post-match modal: never replay from 0'
+    if (initiallySettled) {
+      settledFiredRef.current = true;
+      return;
+    }
     let rafId = 0;
     let lastTickAt: number | null = pausedRef.current ? null : performance.now();
     let lastMin = -1;
@@ -627,7 +663,7 @@ function UclMulticastPopupBoardInner({
       window.cancelAnimationFrame(rafId);
       window.clearInterval(watchdog);
     };
-  }, [cast.key, hasExtraTime, hasPenalties, maxPkKicks]);
+  }, [cast.key, hasExtraTime, hasPenalties, maxPkKicks, initiallySettled]);
 
   // Publish live overlays to the shared UclBracketTree (spoiler-free until phase === 'final')
   useEffect(() => {

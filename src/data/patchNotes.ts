@@ -12,15 +12,31 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v9.2';
+export const CURRENT_APP_VERSION = 'v9.2.1';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v9.2.1',
+    codename: '챔피언스리그 자동진행 경기 종료 후 인터뷰 시 직전 경기 재재생 버그 수정',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '챔피언스리그 토너먼트 1차전(또는 리그 페이즈) 자동진행 완료 직후 인터뷰·부상·각성 등 후속 모달이 열렸다 닫힐 때, 이미 끝난 1차전 팝업이 0분부터 다시 자동진행 재생되던 버그를 수정했습니다.',
+    sections: [
+      {
+        category: '버그 수정',
+        items: [
+          '인터뷰·부상·각성·전술 파훼 경고 모달로 인해 `UclMulticastPopupBoard`가 잠시 숨겨졌다 다시 마운트될 때, 이미 종료된 경기(`settledCastHold` / `spectateSettled`)에 `initiallySettled` 상태를 전달해 0분부터 재재생하지 않고 즉시 종료(FT/AET/PK) 결과 및 다음 차전 진행 바를 표시하도록 수정했습니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v9.2',
     codename:
       '레전드 €135M 인상 · FFP 1·2단계 강화 · 전술 파훼 타격 상향 · 종합 활용도 포텐 각성 · 가이드북 6탭 IA 개편 · 수석 코치 모바일 스크롤 수정 · v9.0 이전 명전·글로벌 기록 전면 초기화',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'MAJOR',
     summary:
       'v9.0 4대 시즌 깊이 시스템의 실전 밸런스·모바일 UX·가이드북 구조를 전면 정비했습니다. 레전드 드래프트 균일가를 슈퍼스타 하위권 수준(€135M)으로 올리고 FFP 1·2단계 페널티를 한 단계씩 강화했으며, 상위권·명장 AI 전술 파훼 타격과 종합 기용 완성도 기반 포텐 각성 확률식을 실전 시뮬레이션으로 정밀 보정했습니다. 또한 가이드북을 플레이 흐름 6탭 + 빠른 섹션 점프 칩 구조로 재편하고, 수석 코치 모달 등 모바일 스크롤 막힘을 근본 수정했으며, 공정한 v9.0+ 기준 비교를 위해 v9.0 이전 로컬 명전 및 글로벌 TOP 15 기록을 전면 폐기했습니다.',
     sections: [

@@ -5,6 +5,14 @@
 
 ---
 
+## v9.2.1 — 챔피언스리그 자동진행 경기 종료 후 인터뷰 시 직전 경기 재재생 버그 수정
+
+- **UCL 자동진행 리마운트 재재생 버그 수정 (`src/components/ucl/UclMulticastPopupBoard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/__tests__/v816UclUnifiedAutosimAndPreview.test.ts`)**:
+  - **원인**: 토너먼트 1차전(또는 리그 페이즈·관전) 자동진행 종료 후 `commitLiveMatch()`에서 인터뷰·부상·각성·전술경고 모달이 발생하면 `isPopupBlockedByOtherModal`에 의해 `UclMulticastPopupBoard`가 언마운트되었다가 모달 종료 후 재마운트되며, `settledCastHold`에 남아있던 이미 끝난 1차전 `cast`를 0분부터 다시 재생하던 문제.
+  - **수정**: `UclMulticastPopupBoard`에 `initiallySettled` prop과 `getInitialUclCastClock`을 추가하고 `UclDashboard`가 이미 확정된 경기(`settledCastHold` / `spectateSettled`)에 `initiallySettled={true}`를 전달해 즉시 종료(FT/AET/PK) 상태와 다음 차전 경계 바를 표시하도록 수정.
+
+---
+
 ## v9.2 — 레전드 €135M 인상 · FFP 1·2단계 강화 · 전술 파훼 타격 상향 · 종합 활용도 각성 · 가이드북 6탭 IA · 모바일 스크롤 수정 · v9.0 이전 기록 전면 초기화
 
 - **레전드 드래프트 가격 인상 & FFP 1·2단계 페널티 강화 (`src/engine/budgetEngine.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueEngine.ts`, `src/components/common/DraftBudgetBar.tsx`, `src/components/common/FfpOpeningNoticeModal.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/multiplayer/league/MpLeagueDashboard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:

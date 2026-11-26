@@ -1220,6 +1220,14 @@ export function UclDashboard() {
               ? Object.values(spectateCast.prevSnap.ties).flat()
               : Object.values(ucl.ties).flat();
 
+          const isActiveCastAlreadySettled = Boolean(
+            (autoPopupMode === 'ko_spectate' && spectateSettled) ||
+              (autoPopupMode !== 'ko_spectate' &&
+                !streamCast &&
+                settledCastHold !== null &&
+                activePopupCast.key === settledCastHold.cast.key),
+          );
+
           return (
             <UclMulticastPopupBoard
               cast={activePopupCast}
@@ -1230,6 +1238,7 @@ export function UclDashboard() {
               bracketTies={bracketTiesForCast}
               onLiveOverlays={handleCastLiveOverlays}
               onSettled={handleCastSettled}
+              initiallySettled={isActiveCastAlreadySettled}
               soloControls={{
                 paused: liveAutoUserPaused,
                 onTogglePause: () => setLiveAutoUserPaused((p) => !p),
