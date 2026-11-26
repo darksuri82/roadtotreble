@@ -608,6 +608,21 @@ export function MpLeagueTransferModal({
     ],
   );
 
+  const isMirrorSwapPreviewActive =
+    showSwapPreviewOnPitch && tradeSwapPreview.isActive;
+  const swapPairByAiId = useMemo(
+    () =>
+      new Map(
+        tradeSwapPreview.swapPairs.map((pair) => [pair.inPlayer.id, pair]),
+      ),
+    [tradeSwapPreview.swapPairs],
+  );
+  const swapPairByUserSlotKey = useMemo(
+    () =>
+      new Map(tradeSwapPreview.swapPairs.map((pair) => [pair.slotKey, pair])),
+    [tradeSwapPreview.swapPairs],
+  );
+
   const highlightedNeedUserIds = useMemo(() => {
     if (!highlightNeeds || !activeClubOffer?.clubNeeds) return undefined;
     const needed = new Set(activeClubOffer.clubNeeds.neededPositions);
@@ -1920,13 +1935,20 @@ export function MpLeagueTransferModal({
                 <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
                   {/* LEFT: Partner Club Formation Pitch + 5 Bench */}
                   <div className="rounded-2xl border border-emerald-500/25 bg-[#0c1320] p-3 space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-extrabold text-emerald-300">
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-extrabold text-emerald-300 truncate">
                         {activeClubOffer.club.name} ({partnerFormationId})
                       </span>
-                      <span className="text-[10px] text-slate-400">
-                        클릭 선택 · 우클릭 상세
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isMirrorSwapPreviewActive && (
+                          <span className="rounded bg-rose-500/18 border border-rose-400/45 px-1.5 py-0.5 text-[9.5px] font-black text-rose-200 whitespace-nowrap">
+                            가상 교체 중
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                          클릭 선택 · 우클릭 상세
+                        </span>
+                      </div>
                     </div>
 
                     <div className="pitch-surface relative aspect-[4/4.2] w-full overflow-hidden rounded-xl border border-slate-800">
@@ -1966,20 +1988,32 @@ export function MpLeagueTransferModal({
                       {partnerFormationSlots.map((slot, idx) => {
                         const t = partnerFormationLayout.starters[idx];
                         if (!t) return null;
-                        const p = t.player;
-                        const selected = selectedAiPlayerIds.includes(p.id);
+                        const origP = t.player;
+                        const mirroredPair = isMirrorSwapPreviewActive
+                          ? (swapPairByAiId.get(origP.id) ?? null)
+                          : null;
+                        const p = mirroredPair ? mirroredPair.outPlayer : origP;
+                        const selected = selectedAiPlayerIds.includes(origP.id);
                         const isBargain = Boolean(t.isShockBargain);
                         const tier = getCardTier(p);
-                        const tpVal = computePlayerTradePoints({
-                          player: p,
-                          sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
-                          isShockBargain: isBargain,
-                          conditionMap,
-                        });
-                        const mv = computePlayerMarketValueM(p, {
-                          isShockBargain: isBargain,
-                          marketValueMOverride: t.marketValueM,
-                        });
+                        const tpVal = mirroredPair
+                          ? computePlayerTradePoints({
+                              player: p,
+                              receivingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                              conditionMap,
+                            })
+                          : computePlayerTradePoints({
+                              player: origP,
+                              sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                              isShockBargain: isBargain,
+                              conditionMap,
+                            });
+                        const mv = mirroredPair
+                          ? computePlayerMarketValueM(p)
+                          : computePlayerMarketValueM(origP, {
+                              isShockBargain: isBargain,
+                              marketValueMOverride: t.marketValueM,
+                            });
                         const myFit = evaluateManagerPlayerSynergy(
                           p,
                           managerTraitId,
@@ -1988,49 +2022,69 @@ export function MpLeagueTransferModal({
                           <button
                             key={`p-st-${slot.index}`}
                             type="button"
-                            onClick={() => handleToggleAiPlayer(p.id)}
+                            onClick={() => {
+                              if (mirroredPair?.isFiller) {
+                                handleToggleUserSlot({
+                                  area: mirroredPair.area,
+                                  index: mirroredPair.index,
+                                });
+                              } else {
+                                handleToggleAiPlayer(origP.id);
+                              }
+                            }}
                             onContextMenu={(e) => {
                               e.preventDefault();
                               setInspectedPlayer(p);
                             }}
-                            title={`${p.name} (${slot.label} · OVR ${p.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)})${myFit.bonus > 0 ? ' · ★ 내 감독 궁합 일치' : ''}`}
+                            title={
+                              mirroredPair
+                                ? `[가상 교체] ${p.name} (OVR ${p.ovr}) ←→ ${origP.name} (OVR ${origP.ovr}) · 클릭 시 선택 해제`
+                                : `${origP.name} (${slot.label} · OVR ${origP.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)})${myFit.bonus > 0 ? ' · ★ 내 감독 궁합 일치' : ''}`
+                            }
                             style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
                             className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center rounded-lg px-1.5 py-0.5 min-w-[56px] sm:min-w-[66px] max-w-[78px] text-center transition-colors cursor-pointer touch-manipulation ${
-                              selected
-                                ? 'bg-emerald-950/95 border-2 border-emerald-400 ring-2 ring-emerald-400/50'
-                                : isBargain
-                                  ? 'bg-rose-950/90 border border-rose-400/80'
-                                  : myFit.bonus > 0
-                                    ? 'bg-[#0f1621]/95 border border-amber-400/60 hover:border-emerald-400/70'
-                                    : tier === 'legend'
-                                      ? 'bg-amber-950/90 border border-amber-400/80'
-                                      : tier === 'superstar'
-                                        ? 'bg-cyan-950/90 border border-cyan-400/80'
-                                        : 'bg-[#0f1621]/95 border border-slate-700/80 hover:border-emerald-400/60'
+                              mirroredPair
+                                ? 'bg-rose-950/95 border-2 border-rose-400 ring-2 ring-rose-400/55 z-30'
+                                : selected
+                                  ? 'bg-emerald-950/95 border-2 border-emerald-400 ring-2 ring-emerald-400/50'
+                                  : isBargain
+                                    ? 'bg-rose-950/90 border border-rose-400/80'
+                                    : myFit.bonus > 0
+                                      ? 'bg-[#0f1621]/95 border border-amber-400/60 hover:border-emerald-400/70'
+                                      : tier === 'legend'
+                                        ? 'bg-amber-950/90 border border-amber-400/80'
+                                        : tier === 'superstar'
+                                          ? 'bg-cyan-950/90 border border-cyan-400/80'
+                                          : 'bg-[#0f1621]/95 border border-slate-700/80 hover:border-emerald-400/60'
                             }`}
                           >
-                            {isBargain && (
+                            {mirroredPair ? (
+                              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 max-w-[76px] truncate rounded bg-rose-500 px-1 text-[7px] font-black text-white whitespace-nowrap shadow">
+                                ↔{shortPitchName(origP.name)}
+                              </span>
+                            ) : isBargain ? (
                               <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded bg-rose-500 px-1 text-[7px] font-black text-white whitespace-nowrap">
                                 급매-35%
                               </span>
-                            )}
+                            ) : null}
                             <div className="flex w-full items-center justify-between gap-0.5 text-[7.5px] tabular-nums leading-none">
                               <span className="text-slate-400 font-semibold">
                                 {slot.label}
                               </span>
                               <span className="inline-flex items-center gap-0.5 font-bold text-amber-300">
-                                {renderMyManagerFitBadge(
-                                  p,
-                                  managerTraitId,
-                                  'star',
-                                )}
+                                {!mirroredPair &&
+                                  renderMyManagerFitBadge(
+                                    p,
+                                    managerTraitId,
+                                    'star',
+                                  )}
                                 {p.ovr}
                               </span>
                             </div>
                             <span className="mt-0.5 max-w-[68px] truncate text-[8.5px] font-semibold text-white leading-tight">
                               {shortPitchName(p.name)}
                             </span>
-                            <span className="font-mono text-[7.5px] text-sky-300/90 tabular-nums leading-none">
+                            <span className={`font-mono text-[7.5px] tabular-nums leading-none ${mirroredPair ? 'text-rose-200' : 'text-sky-300/90'}`}>
                               TP {Math.round(tpVal.effectiveTp)}
                             </span>
                           </button>
@@ -2041,58 +2095,88 @@ export function MpLeagueTransferModal({
                     {/* Partner Bench */}
                     <div className="grid grid-cols-5 gap-1">
                       {partnerFormationLayout.bench.slice(0, 5).map((t) => {
-                        const p = t.player;
-                        const selected = selectedAiPlayerIds.includes(p.id);
+                        const origP = t.player;
+                        const mirroredPair = isMirrorSwapPreviewActive
+                          ? (swapPairByAiId.get(origP.id) ?? null)
+                          : null;
+                        const p = mirroredPair ? mirroredPair.outPlayer : origP;
+                        const selected = selectedAiPlayerIds.includes(origP.id);
                         const isBargain = Boolean(t.isShockBargain);
-                        const tpVal = computePlayerTradePoints({
-                          player: p,
-                          sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
-                          isShockBargain: isBargain,
-                          conditionMap,
-                        });
-                        const mv = computePlayerMarketValueM(p, {
-                          isShockBargain: isBargain,
-                          marketValueMOverride: t.marketValueM,
-                        });
+                        const tpVal = mirroredPair
+                          ? computePlayerTradePoints({
+                              player: p,
+                              receivingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                              conditionMap,
+                            })
+                          : computePlayerTradePoints({
+                              player: origP,
+                              sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                              isShockBargain: isBargain,
+                              conditionMap,
+                            });
+                        const mv = mirroredPair
+                          ? computePlayerMarketValueM(p)
+                          : computePlayerMarketValueM(origP, {
+                              isShockBargain: isBargain,
+                              marketValueMOverride: t.marketValueM,
+                            });
                         const myFit = evaluateManagerPlayerSynergy(
                           p,
                           managerTraitId,
                         );
                         return (
                           <button
-                            key={`p-bn-${p.id}`}
+                            key={`p-bn-${origP.id}`}
                             type="button"
-                            onClick={() => handleToggleAiPlayer(p.id)}
+                            onClick={() => {
+                              if (mirroredPair?.isFiller) {
+                                handleToggleUserSlot({
+                                  area: mirroredPair.area,
+                                  index: mirroredPair.index,
+                                });
+                              } else {
+                                handleToggleAiPlayer(origP.id);
+                              }
+                            }}
                             onContextMenu={(e) => {
                               e.preventDefault();
                               setInspectedPlayer(p);
                             }}
-                            title={`${p.name} · OVR ${p.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)}${myFit.bonus > 0 ? ' · ★ 내 감독 궁합 일치' : ''}`}
+                            title={
+                              mirroredPair
+                                ? `[가상 교체] ${p.name} (OVR ${p.ovr}) ←→ ${origP.name} (OVR ${origP.ovr}) · 클릭 시 선택 해제`
+                                : `${origP.name} · OVR ${origP.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)}${myFit.bonus > 0 ? ' · ★ 내 감독 궁합 일치' : ''}`
+                            }
                             className={`rounded-lg border p-1.5 text-center transition-colors cursor-pointer touch-manipulation ${
-                              selected
-                                ? 'border-emerald-400 bg-emerald-500/20'
-                                : isBargain
-                                  ? 'border-rose-400/70 bg-rose-950/30'
-                                  : myFit.bonus > 0
-                                    ? 'border-amber-400/50 bg-[#0a0f18] hover:border-emerald-400/60'
-                                    : 'border-slate-800 bg-[#0a0f18] hover:border-slate-600'
+                              mirroredPair
+                                ? 'border-rose-400 bg-rose-950/55 ring-1 ring-rose-400/55'
+                                : selected
+                                  ? 'border-emerald-400 bg-emerald-500/20'
+                                  : isBargain
+                                    ? 'border-rose-400/70 bg-rose-950/30'
+                                    : myFit.bonus > 0
+                                      ? 'border-amber-400/50 bg-[#0a0f18] hover:border-emerald-400/60'
+                                      : 'border-slate-800 bg-[#0a0f18] hover:border-slate-600'
                             }`}
                           >
-                            <div className="text-[8px] font-bold text-slate-400">
-                              {p.position}
+                            <div className={`truncate text-[8px] font-bold ${mirroredPair ? 'text-rose-200' : 'text-slate-400'}`}>
+                              {mirroredPair
+                                ? `↔${shortPitchName(origP.name)}`
+                                : origP.position}
                             </div>
                             <div className="inline-flex items-center justify-center gap-0.5 font-display text-xs font-bold text-white tabular-nums">
-                              {renderMyManagerFitBadge(
-                                p,
-                                managerTraitId,
-                                'star',
-                              )}
+                              {!mirroredPair &&
+                                renderMyManagerFitBadge(
+                                  p,
+                                  managerTraitId,
+                                  'star',
+                                )}
                               {p.ovr}
                             </div>
-                            <div className="truncate text-[9px] text-slate-300">
+                            <div className="truncate text-[9px] text-slate-200">
                               {shortPitchName(p.name)}
                             </div>
-                            <div className="font-mono text-[8px] text-sky-300/90 tabular-nums">
+                            <div className={`font-mono text-[8px] tabular-nums ${mirroredPair ? 'text-rose-200' : 'text-sky-300/90'}`}>
                               TP {Math.round(tpVal.effectiveTp)}
                             </div>
                           </button>
@@ -2250,37 +2334,67 @@ export function MpLeagueTransferModal({
                   <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                     {/* Partner List */}
                     <div className="rounded-xl border border-slate-800 bg-[#0b111c] p-2.5 space-y-1.5">
-                      <div className="text-xs font-extrabold text-emerald-300 px-1">
-                        {activeClubOffer.club.name} 스쿼드
+                      <div className="flex items-center justify-between gap-2 px-1">
+                        <span className="text-xs font-extrabold text-emerald-300">
+                          {activeClubOffer.club.name} 스쿼드
+                        </span>
+                        {isMirrorSwapPreviewActive && (
+                          <span className="rounded bg-rose-500/18 border border-rose-400/45 px-1.5 py-0.5 text-[9.5px] font-black text-rose-200 whitespace-nowrap">
+                            가상 교체 중
+                          </span>
+                        )}
                       </div>
                       {filteredPartnerSquad.map((t) => {
-                        const p = t.player;
-                        const selected = selectedAiPlayerIds.includes(p.id);
+                        const origP = t.player;
+                        const mirroredPair = isMirrorSwapPreviewActive
+                          ? (swapPairByAiId.get(origP.id) ?? null)
+                          : null;
+                        const p = mirroredPair ? mirroredPair.outPlayer : origP;
+                        const selected = selectedAiPlayerIds.includes(origP.id);
                         const isBargain = Boolean(t.isShockBargain);
-                        const tpVal = computePlayerTradePoints({
-                          player: p,
-                          sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
-                          isShockBargain: isBargain,
-                          conditionMap,
-                        });
-                        const mv = computePlayerMarketValueM(p, {
-                          isShockBargain: isBargain,
-                          marketValueMOverride: t.marketValueM,
-                        });
+                        const tpVal = mirroredPair
+                          ? computePlayerTradePoints({
+                              player: p,
+                              receivingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                              conditionMap,
+                            })
+                          : computePlayerTradePoints({
+                              player: origP,
+                              sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                              isShockBargain: isBargain,
+                              conditionMap,
+                            });
+                        const mv = mirroredPair
+                          ? computePlayerMarketValueM(p)
+                          : computePlayerMarketValueM(origP, {
+                              isShockBargain: isBargain,
+                              marketValueMOverride: t.marketValueM,
+                            });
                         return (
                           <div
-                            key={`lp-${p.id}`}
+                            key={`lp-${origP.id}`}
                             className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${
-                              selected
-                                ? 'border-emerald-400 bg-emerald-500/15'
-                                : isBargain
-                                  ? 'border-rose-400/60 bg-rose-950/25'
-                                  : 'border-slate-800/80 bg-[#101827]'
+                              mirroredPair
+                                ? 'border-rose-400 bg-rose-950/35 ring-1 ring-rose-400/50'
+                                : selected
+                                  ? 'border-emerald-400 bg-emerald-500/15'
+                                  : isBargain
+                                    ? 'border-rose-400/60 bg-rose-950/25'
+                                    : 'border-slate-800/80 bg-[#101827]'
                             }`}
                           >
                             <button
                               type="button"
-                              onClick={() => handleToggleAiPlayer(p.id)}
+                              onClick={() => {
+                                if (mirroredPair?.isFiller) {
+                                  handleToggleUserSlot({
+                                    area: mirroredPair.area,
+                                    index: mirroredPair.index,
+                                  });
+                                } else {
+                                  handleToggleAiPlayer(origP.id);
+                                }
+                              }}
                               className="flex flex-1 flex-wrap items-center gap-1.5 min-w-0 text-left cursor-pointer"
                             >
                               <span className="w-8 shrink-0 text-[10px] font-bold text-slate-400">
@@ -2294,12 +2408,18 @@ export function MpLeagueTransferModal({
                               <span className="truncate text-xs font-bold text-white">
                                 {p.name}
                               </span>
-                              {renderMyManagerFitBadge(
-                                p,
-                                managerTraitId,
-                                'pill',
+                              {mirroredPair && (
+                                <span className="whitespace-nowrap rounded bg-rose-500/25 border border-rose-400/45 px-1 py-px text-[9px] font-black text-rose-200">
+                                  ↔ {shortPitchName(origP.name)}
+                                </span>
                               )}
-                              {isBargain && (
+                              {!mirroredPair &&
+                                renderMyManagerFitBadge(
+                                  p,
+                                  managerTraitId,
+                                  'pill',
+                                )}
+                              {!mirroredPair && isBargain && (
                                 <span className="whitespace-nowrap rounded bg-rose-500/25 border border-rose-400/50 px-1 py-px text-[9px] font-black text-rose-200">
                                   🚨-35%
                                 </span>
@@ -2307,7 +2427,7 @@ export function MpLeagueTransferModal({
                               <span className="ml-auto whitespace-nowrap font-mono text-xs font-bold text-emerald-300 tabular-nums shrink-0">
                                 {p.ovr}
                               </span>
-                              <span className="whitespace-nowrap font-mono text-[10px] text-sky-300 tabular-nums shrink-0">
+                              <span className={`whitespace-nowrap font-mono text-[10px] tabular-nums shrink-0 ${mirroredPair ? 'text-rose-300' : 'text-sky-300'}`}>
                                 €{mv}M · TP {tpVal.effectiveTp}
                               </span>
                             </button>
@@ -2326,27 +2446,48 @@ export function MpLeagueTransferModal({
 
                     {/* Our List */}
                     <div className="rounded-xl border border-slate-800 bg-[#0b111c] p-2.5 space-y-1.5">
-                      <div className="text-xs font-extrabold text-rose-300 px-1">
-                        우리 팀 스쿼드
+                      <div className="flex items-center justify-between gap-2 px-1">
+                        <span className="text-xs font-extrabold text-rose-300">
+                          우리 팀 스쿼드
+                        </span>
+                        {isMirrorSwapPreviewActive && (
+                          <span className="rounded bg-emerald-500/18 border border-emerald-400/45 px-1.5 py-0.5 text-[9.5px] font-black text-emerald-200 whitespace-nowrap">
+                            가상 교체 중
+                          </span>
+                        )}
                       </div>
                       {filteredUserEntries.map((entry) => {
-                        const p = entry.player;
+                        const origP = entry.player;
+                        const mirroredUserPair = isMirrorSwapPreviewActive
+                          ? (swapPairByUserSlotKey.get(entry.key) ?? null)
+                          : null;
+                        const p = mirroredUserPair
+                          ? mirroredUserPair.inPlayer
+                          : origP;
                         const selected = selectedUserSlots.some(
                           (s) => slotKey(s) === entry.key,
                         );
-                        const tpVal = computePlayerTradePoints({
-                          player: p,
-                          receivingClubNeeds: activeClubOffer.clubNeeds ?? null,
-                          conditionMap,
-                        });
+                        const tpVal = mirroredUserPair
+                          ? computePlayerTradePoints({
+                              player: p,
+                              sellingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                              conditionMap,
+                            })
+                          : computePlayerTradePoints({
+                              player: origP,
+                              receivingClubNeeds: activeClubOffer.clubNeeds ?? null,
+                              conditionMap,
+                            });
                         const mv = computePlayerMarketValueM(p);
                         return (
                           <div
                             key={`lu-${entry.key}`}
                             className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 ${
-                              selected
-                                ? 'border-rose-400 bg-rose-500/15'
-                                : 'border-slate-800/80 bg-[#101827]'
+                              mirroredUserPair
+                                ? 'border-emerald-400 bg-emerald-950/35 ring-1 ring-emerald-400/50'
+                                : selected
+                                  ? 'border-rose-400 bg-rose-500/15'
+                                  : 'border-slate-800/80 bg-[#101827]'
                             }`}
                           >
                             <button
@@ -2365,22 +2506,27 @@ export function MpLeagueTransferModal({
                               <span className="truncate text-xs font-bold text-white">
                                 {p.name}
                               </span>
+                              {mirroredUserPair && (
+                                <span className="whitespace-nowrap rounded bg-emerald-500/25 border border-emerald-400/45 px-1 py-px text-[9px] font-black text-emerald-200">
+                                  ↔ {shortPitchName(origP.name)}
+                                </span>
+                              )}
                               {renderMyManagerFitBadge(
                                 p,
                                 managerTraitId,
                                 'short',
                               )}
-                              {tpVal.needModPct >= 30 && (
+                              {!mirroredUserPair && tpVal.needModPct >= 30 && (
                                 <span className="whitespace-nowrap rounded bg-amber-500/20 px-1 py-px text-[9px] font-black text-amber-200">
                                   🔥+{tpVal.needModPct}%
                                 </span>
                               )}
-                              {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
+                              {!mirroredUserPair && tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
                                 <span className="whitespace-nowrap rounded bg-sky-500/15 px-1 py-px text-[9px] font-black text-sky-200">
                                   ✨+{tpVal.needModPct}%
                                 </span>
                               )}
-                              {tpVal.needModPct < 0 && (
+                              {!mirroredUserPair && tpVal.needModPct < 0 && (
                                 <span className="whitespace-nowrap rounded bg-slate-800 px-1 py-px text-[9px] font-bold text-slate-400">
                                   ⚠️{tpVal.needModPct}%
                                 </span>
@@ -2388,7 +2534,7 @@ export function MpLeagueTransferModal({
                               <span className="ml-auto whitespace-nowrap font-mono text-xs font-bold text-amber-300 tabular-nums shrink-0">
                                 {p.ovr}
                               </span>
-                              <span className="whitespace-nowrap font-mono text-[10px] text-rose-300 tabular-nums shrink-0">
+                              <span className={`whitespace-nowrap font-mono text-[10px] tabular-nums shrink-0 ${mirroredUserPair ? 'text-emerald-300' : 'text-rose-300'}`}>
                                 €{mv}M · TP {tpVal.effectiveTp}
                               </span>
                             </button>

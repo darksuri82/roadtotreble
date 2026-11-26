@@ -857,8 +857,8 @@ describe('v9.7.0 Trade Virtual Swap Preview, Diverse Team Intros, Crisis/Rebound
     expect(90 + gain90).toBeLessThanOrEqual(AWAKENING_OVR_HARD_CAP);
 
     // Release version sync
-    expect(CURRENT_APP_VERSION).toBe('v9.7.0');
-    expect(PATCH_NOTES[0].version).toBe('v9.7.0');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.7.0');
+    expect(CURRENT_APP_VERSION).toBe('v9.7.1');
+    expect(PATCH_NOTES[0].version).toBe('v9.7.1');
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.7.1');
   });
 });

@@ -5,6 +5,14 @@
 
 ---
 
+## v9.7.1 — 이적시장 가상 교체(스왑) 프리뷰 양방향 반영 (상대 팀 피치·벤치·리스트 동시 교체 표시)
+
+- **이적시장 양방향 가상 교체 프리뷰 (`src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:
+  - 가상 교체 프리뷰 활성화 시 내 팀 피치·리스트뿐 아니라 **상대 팀 피치(선발 11명·벤치 5명)와 리스트에도 내가 보내는 선수가 상호 교체되어 표시**(`↔ 원소속 선수` 배지 · `가상 교체 중` 칩)되도록 양방향 미러링을 적용했습니다.
+  - 교체된 상대 슬롯 클릭 시 즉시 선택 해제(필러 슬롯은 연결된 내 송출 선수 해제), `[원본 스쿼드 보기]` 전환 시 양쪽 구단 동시 원복, 클래식 FA 카드 `↔ FA 방출` 배지까지 일관 반영했습니다.
+
+---
+
 ## v9.7.0 — 이적시장 가상 교체(스왑) 시너지 프리뷰 → 제안 확정 · 팀 소개 9종 정체성 다각화 · 팀 스토리 부진/위기→반등 다큐 회고 · 포텐 각성 100시즌 실측 진단 & 저발동 병목 해소
 
 - **이적시장 가상 교체(스왑) 시너지 프리뷰 → 제안 확정 플로우 개편 (`src/engine/chemistryEngine.ts`, `src/components/common/PitchBoard.tsx`, `src/components/transfer/TradeSwapPreviewCard.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:

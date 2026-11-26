@@ -625,6 +625,21 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     ],
   );
 
+  const isMirrorSwapPreviewActive =
+    showSwapPreviewOnPitch && tradeSwapPreview.isActive;
+  const swapPairByAiId = useMemo(
+    () =>
+      new Map(
+        tradeSwapPreview.swapPairs.map((pair) => [pair.inPlayer.id, pair]),
+      ),
+    [tradeSwapPreview.swapPairs],
+  );
+  const swapPairByUserSlotKey = useMemo(
+    () =>
+      new Map(tradeSwapPreview.swapPairs.map((pair) => [pair.slotKey, pair])),
+    [tradeSwapPreview.swapPairs],
+  );
+
   const legendTargetPlayer = activeClubOffer?.isLegendSlot
     ? (activeClubOffer.squad[0]?.player ?? null)
     : null;
@@ -1734,16 +1749,20 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                     const alreadySigned = tm.signedPlayerIds.includes(
                       legTarget.player.id,
                     );
+                    const legSwapPair =
+                      showSwapPreviewOnPitch && legendSwapPreview.isActive
+                        ? (legendSwapPreview.swapPairs[0] ?? null)
+                        : null;
                     return (
                       <div className="rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-950/35 via-[#131926] to-[#0d1320] p-4 sm:p-5 space-y-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div
-                              className={`flex h-12 w-12 items-center justify-center rounded-xl text-xs font-black shadow ${legEraMeta.badgeClass}`}
+                              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xs font-black shadow ${legEraMeta.badgeClass}`}
                             >
                               {legEraMeta.shortLabel}
                             </div>
-                            <div>
+                            <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <CountryFlagSvg
                                   code={legTarget.player.nationalityCode}
@@ -1773,6 +1792,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   legTarget.player,
                                   state.manager.traitId,
                                   'pill',
+                                )}
+                                {legSwapPair && (
+                                  <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-rose-400/55 bg-rose-950/50 px-2 py-0.5 text-[10px] font-black text-rose-200">
+                                    ↔ FA 방출: {legSwapPair.outPlayer.name} ({legSwapPair.outPlayer.ovr})
+                                  </span>
                                 )}
                               </div>
                               <p className="text-xs text-slate-300">
@@ -2410,9 +2434,16 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                     )}
                                   </div>
                                 </div>
-                                <span className="rounded bg-emerald-500/15 border border-emerald-400/35 px-2 py-0.5 text-[10px] font-extrabold text-emerald-200 shrink-0">
-                                  받는 선수 {selectedAiPlayers.length}/3
-                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {isMirrorSwapPreviewActive && (
+                                    <span className="rounded bg-rose-500/18 border border-rose-400/45 px-1.5 py-0.5 text-[9.5px] font-black text-rose-200 whitespace-nowrap">
+                                      가상 교체 중
+                                    </span>
+                                  )}
+                                  <span className="rounded bg-emerald-500/15 border border-emerald-400/35 px-2 py-0.5 text-[10px] font-extrabold text-emerald-200 whitespace-nowrap">
+                                    받는 선수 {selectedAiPlayers.length}/3
+                                  </span>
+                                </div>
                               </div>
 
                               {/* Partner Pitch */}
@@ -2430,16 +2461,32 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                     const t =
                                       partnerFormationLayout.starters[idx];
                                     if (!t) return null;
-                                    const p = t.player;
+                                    const origP = t.player;
+                                    const mirroredPair = isMirrorSwapPreviewActive
+                                      ? (swapPairByAiId.get(origP.id) ?? null)
+                                      : null;
+                                    const p = mirroredPair
+                                      ? mirroredPair.outPlayer
+                                      : origP;
                                     const isPicked =
-                                      selectedAiPlayerIds.includes(p.id);
-                                    const tpVal = computePlayerTradePoints({
-                                      player: p,
-                                      sellingClubNeeds: activeClubNeeds,
-                                      isShockBargain: Boolean(t.isShockBargain),
-                                      stats: season.allPlayerStats[p.id] ?? null,
-                                      conditionMap: season.playerConditions,
-                                    });
+                                      selectedAiPlayerIds.includes(origP.id);
+                                    const tpVal = mirroredPair
+                                      ? computePlayerTradePoints({
+                                          player: p,
+                                          receivingClubNeeds: activeClubNeeds,
+                                          stats:
+                                            season.allPlayerStats[p.id] ??
+                                            season.allPlayerStats[`user::${p.id}`] ??
+                                            null,
+                                          conditionMap: season.playerConditions,
+                                        })
+                                      : computePlayerTradePoints({
+                                          player: origP,
+                                          sellingClubNeeds: activeClubNeeds,
+                                          isShockBargain: Boolean(t.isShockBargain),
+                                          stats: season.allPlayerStats[origP.id] ?? null,
+                                          conditionMap: season.playerConditions,
+                                        });
                                       const cond = season.playerConditions?.[p.id];
                                       const inj = cond
                                         ? isPlayerActivelyInjured(cond)
@@ -2451,17 +2498,26 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         p,
                                         state.manager.traitId,
                                       );
-                                      const mv = computePlayerMarketValueM(p, {
-                                        isShockBargain: Boolean(t.isShockBargain),
-                                        marketValueMOverride: t.marketValueM,
-                                      });
+                                      const mv = mirroredPair
+                                        ? computePlayerMarketValueM(p)
+                                        : computePlayerMarketValueM(origP, {
+                                            isShockBargain: Boolean(t.isShockBargain),
+                                            marketValueMOverride: t.marketValueM,
+                                          });
 
                                       return (
                                         <div
-                                          key={`ai-pitch-${idx}-${p.id}`}
-                                          onClick={() =>
-                                            handleToggleAiPlayer(p.id)
-                                          }
+                                          key={`ai-pitch-${idx}-${origP.id}`}
+                                          onClick={() => {
+                                            if (mirroredPair?.isFiller) {
+                                              handleToggleUserSlot({
+                                                area: mirroredPair.area,
+                                                index: mirroredPair.index,
+                                              });
+                                            } else {
+                                              handleToggleAiPlayer(origP.id);
+                                            }
+                                          }}
                                           onContextMenu={(e) => {
                                             e.preventDefault();
                                             setInspectedPlayer(p);
@@ -2471,35 +2527,44 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             top: `${slot.y}%`,
                                           }}
                                           title={
-                                            t.isShockBargain
-                                              ? `${p.name} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)} · ${t.bargainReason ?? '프런트 급매 -35%'}${myFit.bonus > 0 ? ` · ★ 내 감독 궁합 일치` : ''} (우클릭 상세)`
-                                              : `${p.name} (주전 ${slot.label} · OVR ${p.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)})${myFit.bonus > 0 ? ` · ★ 내 감독 궁합 일치` : ''} (우클릭 상세)`
+                                            mirroredPair
+                                              ? `[가상 교체] ${p.name} (OVR ${p.ovr}) ←→ ${origP.name} (OVR ${origP.ovr}) · 클릭 시 선택 해제 (우클릭 상세)`
+                                              : t.isShockBargain
+                                                ? `${origP.name} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)} · ${t.bargainReason ?? '프런트 급매 -35%'}${myFit.bonus > 0 ? ` · ★ 내 감독 궁합 일치` : ''} (우클릭 상세)`
+                                                : `${origP.name} (주전 ${slot.label} · OVR ${origP.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)})${myFit.bonus > 0 ? ` · ★ 내 감독 궁합 일치` : ''} (우클릭 상세)`
                                           }
                                           className={`absolute -translate-x-1/2 -translate-y-1/2 w-[60px] sm:w-[74px] rounded-lg border px-1 py-0.5 sm:px-1.5 sm:py-0.5 text-center transition-colors cursor-pointer select-none touch-manipulation ${
-                                            isPicked
-                                              ? 'border-emerald-300 bg-emerald-950/95 ring-1 ring-emerald-400/70 shadow-md z-20'
-                                              : t.isShockBargain
-                                                ? 'border-rose-400/80 bg-rose-950/90 ring-1 ring-rose-400/45 hover:border-emerald-400 z-15'
-                                                : myFit.bonus > 0
-                                                  ? 'border-amber-400/55 bg-slate-950/90 hover:border-emerald-400/70 z-10'
-                                                  : 'border-slate-700/85 bg-slate-950/90 hover:border-emerald-400/60 z-10'
+                                            mirroredPair
+                                              ? 'border-rose-400 bg-rose-950/95 ring-2 ring-rose-400/65 shadow-md z-25'
+                                              : isPicked
+                                                ? 'border-emerald-300 bg-emerald-950/95 ring-1 ring-emerald-400/70 shadow-md z-20'
+                                                : t.isShockBargain
+                                                  ? 'border-rose-400/80 bg-rose-950/90 ring-1 ring-rose-400/45 hover:border-emerald-400 z-15'
+                                                  : myFit.bonus > 0
+                                                    ? 'border-amber-400/55 bg-slate-950/90 hover:border-emerald-400/70 z-10'
+                                                    : 'border-slate-700/85 bg-slate-950/90 hover:border-emerald-400/60 z-10'
                                           }`}
                                         >
-                                          {t.isShockBargain && (
+                                          {mirroredPair ? (
+                                            <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 max-w-[76px] truncate whitespace-nowrap rounded bg-rose-500 px-1 py-px text-[7px] font-black text-white shadow">
+                                              ↔{shortPitchName(origP.name)}
+                                            </span>
+                                          ) : t.isShockBargain ? (
                                             <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-600 px-1 py-px text-[7px] font-black text-white shadow">
                                               급매-35%
                                             </span>
-                                          )}
+                                          ) : null}
                                           <div className="flex items-center justify-between text-[7.5px] sm:text-[8.5px] tabular-nums leading-none">
                                             <span className="font-semibold text-slate-400">
                                               {slot.label}
                                             </span>
                                             <span className="inline-flex items-center gap-0.5 font-bold text-amber-300">
-                                              {renderMyManagerFitBadge(
-                                                p,
-                                                state.manager.traitId,
-                                                'star',
-                                              )}
+                                              {!mirroredPair &&
+                                                renderMyManagerFitBadge(
+                                                  p,
+                                                  state.manager.traitId,
+                                                  'star',
+                                                )}
                                               {p.ovr}
                                             </span>
                                           </div>
@@ -2514,7 +2579,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                             </span>
                                           </div>
                                           <div className="mt-0.5 flex items-center justify-center gap-1 text-[7.5px] sm:text-[8.5px] tabular-nums leading-none">
-                                            <span className="font-mono text-sky-300/90">
+                                            <span className={`font-mono ${mirroredPair ? 'text-rose-200' : 'text-sky-300/90'}`}>
                                               {Math.round(tpVal.effectiveTp)}
                                             </span>
                                             {inj && cond?.injury && (
@@ -2559,55 +2624,95 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   </div>
                                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                                     {partnerFormationLayout.bench.map((t) => {
-                                      const p = t.player;
+                                      const origP = t.player;
+                                      const mirroredPair = isMirrorSwapPreviewActive
+                                        ? (swapPairByAiId.get(origP.id) ?? null)
+                                        : null;
+                                      const p = mirroredPair
+                                        ? mirroredPair.outPlayer
+                                        : origP;
                                       const isPicked =
-                                        selectedAiPlayerIds.includes(p.id);
-                                      const tpVal = computePlayerTradePoints({
-                                        player: p,
-                                        sellingClubNeeds: activeClubNeeds,
-                                        isShockBargain: Boolean(t.isShockBargain),
-                                        stats: season.allPlayerStats[p.id] ?? null,
-                                        conditionMap: season.playerConditions,
-                                      });
+                                        selectedAiPlayerIds.includes(origP.id);
+                                      const tpVal = mirroredPair
+                                        ? computePlayerTradePoints({
+                                            player: p,
+                                            receivingClubNeeds: activeClubNeeds,
+                                            stats:
+                                              season.allPlayerStats[p.id] ??
+                                              season.allPlayerStats[`user::${p.id}`] ??
+                                              null,
+                                            conditionMap: season.playerConditions,
+                                          })
+                                        : computePlayerTradePoints({
+                                            player: origP,
+                                            sellingClubNeeds: activeClubNeeds,
+                                            isShockBargain: Boolean(t.isShockBargain),
+                                            stats: season.allPlayerStats[origP.id] ?? null,
+                                            conditionMap: season.playerConditions,
+                                          });
                                       const myFit = evaluateManagerPlayerSynergy(
                                         p,
                                         state.manager.traitId,
                                       );
-                                      const mv = computePlayerMarketValueM(p, {
-                                        isShockBargain: Boolean(t.isShockBargain),
-                                        marketValueMOverride: t.marketValueM,
-                                      });
+                                      const mv = mirroredPair
+                                        ? computePlayerMarketValueM(p)
+                                        : computePlayerMarketValueM(origP, {
+                                            isShockBargain: Boolean(t.isShockBargain),
+                                            marketValueMOverride: t.marketValueM,
+                                          });
                                       return (
                                         <div
-                                          key={`ai-bench-${p.id}`}
-                                          onClick={() =>
-                                            handleToggleAiPlayer(p.id)
-                                          }
+                                          key={`ai-bench-${origP.id}`}
+                                          onClick={() => {
+                                            if (mirroredPair?.isFiller) {
+                                              handleToggleUserSlot({
+                                                area: mirroredPair.area,
+                                                index: mirroredPair.index,
+                                              });
+                                            } else {
+                                              handleToggleAiPlayer(origP.id);
+                                            }
+                                          }}
                                           onContextMenu={(e) => {
                                             e.preventDefault();
                                             setInspectedPlayer(p);
                                           }}
-                                          title={`${p.name} · OVR ${p.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)}${myFit.bonus > 0 ? ' · ★ 내 감독 궁합 일치' : ''}`}
+                                          title={
+                                            mirroredPair
+                                              ? `[가상 교체] ${p.name} (OVR ${p.ovr}) ←→ ${origP.name} (OVR ${origP.ovr}) · 클릭 시 선택 해제`
+                                              : `${origP.name} · OVR ${origP.ovr} · €${mv}M · TP ${Math.round(tpVal.effectiveTp)}${myFit.bonus > 0 ? ' · ★ 내 감독 궁합 일치' : ''}`
+                                          }
                                           className={`rounded-lg border px-2 py-1.5 transition-colors cursor-pointer select-none touch-manipulation ${
-                                            isPicked
-                                              ? 'border-emerald-400 bg-emerald-950/45 ring-1 ring-emerald-400/50'
-                                              : t.isShockBargain
-                                                ? 'border-rose-400/70 bg-rose-950/30 hover:border-emerald-400'
-                                                : myFit.bonus > 0
-                                                  ? 'border-amber-400/45 bg-[#101826] hover:border-emerald-400/70'
-                                                  : 'border-slate-800 bg-[#101826] hover:border-slate-600'
+                                            mirroredPair
+                                              ? 'border-rose-400 bg-rose-950/50 ring-1 ring-rose-400/60'
+                                              : isPicked
+                                                ? 'border-emerald-400 bg-emerald-950/45 ring-1 ring-emerald-400/50'
+                                                : t.isShockBargain
+                                                  ? 'border-rose-400/70 bg-rose-950/30 hover:border-emerald-400'
+                                                  : myFit.bonus > 0
+                                                    ? 'border-amber-400/45 bg-[#101826] hover:border-emerald-400/70'
+                                                    : 'border-slate-800 bg-[#101826] hover:border-slate-600'
                                           }`}
                                         >
                                           <div className="flex items-center justify-between text-[9px] tabular-nums">
-                                            <span className="whitespace-nowrap rounded bg-slate-800 px-1 py-px font-bold text-sky-300">
-                                              {t.slotLabel ?? `벤치 ${p.position}`}
+                                            <span
+                                              className={`whitespace-nowrap rounded px-1 py-px font-bold ${
+                                                mirroredPair
+                                                  ? 'bg-rose-500/25 text-rose-200'
+                                                  : 'bg-slate-800 text-sky-300'
+                                              }`}
+                                            >
+                                              {mirroredPair
+                                                ? `↔${shortPitchName(origP.name)}`
+                                                : (t.slotLabel ?? `벤치 ${origP.position}`)}
                                             </span>
                                             <span className="inline-flex items-center gap-0.5 whitespace-nowrap font-black text-amber-300">
-                                              {renderMyManagerFitBadge(
-                                                p,
-                                                state.manager.traitId,
-                                                'star',
-                                              )}
+                                              {!mirroredPair &&
+                                                renderMyManagerFitBadge(
+                                                  p,
+                                                  state.manager.traitId,
+                                                  'star',
+                                                )}
                                               {p.ovr} · {Math.round(tpVal.effectiveTp)}
                                             </span>
                                           </div>
@@ -2622,7 +2727,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                                 {p.name}
                                               </span>
                                             </div>
-                                            {t.isShockBargain && (
+                                            {!mirroredPair && t.isShockBargain && (
                                               <span className="whitespace-nowrap rounded bg-rose-500/25 px-1 text-[8px] font-black text-rose-200 shrink-0">
                                                 급매
                                               </span>
@@ -2860,52 +2965,83 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
                             <div className="max-h-[340px] sm:max-h-[380px] overflow-y-auto space-y-1 pr-1">
                               {filteredPartnerSquad.map((target) => {
-                                const p = target.player;
+                                const origP = target.player;
+                                const mirroredPair = isMirrorSwapPreviewActive
+                                  ? (swapPairByAiId.get(origP.id) ?? null)
+                                  : null;
+                                const p = mirroredPair
+                                  ? mirroredPair.outPlayer
+                                  : origP;
                                 const isPicked = selectedAiPlayerIds.includes(
-                                  p.id,
+                                  origP.id,
                                 );
                                 const isStarterTarget =
                                   target.isStarter !== undefined
                                     ? target.isStarter
                                     : Boolean(
                                         partnerFormationLayout?.starterIdSet.has(
-                                          p.id,
+                                          origP.id,
                                         ),
                                       );
                                 const roleBadgeLabel = isStarterTarget
-                                  ? `선발 · ${target.slotLabel ?? p.position}`
-                                  : target.slotLabel ?? `벤치 ${p.position}`;
-                                const tpVal = computePlayerTradePoints({
-                                  player: p,
-                                  sellingClubNeeds: activeClubNeeds,
-                                  isShockBargain: Boolean(target.isShockBargain),
-                                  stats: season.allPlayerStats[p.id] ?? null,
-                                  conditionMap: season.playerConditions,
-                                });
-                                const mv = computePlayerMarketValueM(p, {
-                                  isShockBargain: Boolean(target.isShockBargain),
-                                  marketValueMOverride: target.marketValueM,
-                                });
+                                  ? `선발 · ${target.slotLabel ?? origP.position}`
+                                  : target.slotLabel ?? `벤치 ${origP.position}`;
+                                const tpVal = mirroredPair
+                                  ? computePlayerTradePoints({
+                                      player: p,
+                                      receivingClubNeeds: activeClubNeeds,
+                                      stats:
+                                        season.allPlayerStats[p.id] ??
+                                        season.allPlayerStats[`user::${p.id}`] ??
+                                        null,
+                                      conditionMap: season.playerConditions,
+                                    })
+                                  : computePlayerTradePoints({
+                                      player: origP,
+                                      sellingClubNeeds: activeClubNeeds,
+                                      isShockBargain: Boolean(target.isShockBargain),
+                                      stats: season.allPlayerStats[origP.id] ?? null,
+                                      conditionMap: season.playerConditions,
+                                    });
+                                const mv = mirroredPair
+                                  ? computePlayerMarketValueM(p)
+                                  : computePlayerMarketValueM(origP, {
+                                      isShockBargain: Boolean(target.isShockBargain),
+                                      marketValueMOverride: target.marketValueM,
+                                    });
                                 const tier = getCardTier(p);
                                 return (
                                   <div
-                                    key={`ai-p-${p.id}`}
-                                    onClick={() => handleToggleAiPlayer(p.id)}
+                                    key={`ai-p-${origP.id}`}
+                                    onClick={() => {
+                                      if (mirroredPair?.isFiller) {
+                                        handleToggleUserSlot({
+                                          area: mirroredPair.area,
+                                          index: mirroredPair.index,
+                                        });
+                                      } else {
+                                        handleToggleAiPlayer(origP.id);
+                                      }
+                                    }}
                                     className={`w-full rounded-xl border px-2.5 py-1.5 sm:px-3 sm:py-2 text-left transition-colors cursor-pointer touch-manipulation flex items-center justify-between gap-2 ${
-                                      isPicked
-                                        ? 'border-emerald-400 bg-emerald-950/35 ring-1 ring-emerald-400/40'
-                                        : target.isShockBargain
-                                          ? 'border-rose-400/60 bg-rose-950/25 hover:border-emerald-400'
-                                          : 'border-slate-800 bg-[#101826] hover:border-slate-600'
+                                      mirroredPair
+                                        ? 'border-rose-400 bg-rose-950/35 ring-1 ring-rose-400/50'
+                                        : isPicked
+                                          ? 'border-emerald-400 bg-emerald-950/35 ring-1 ring-emerald-400/40'
+                                          : target.isShockBargain
+                                            ? 'border-rose-400/60 bg-rose-950/25 hover:border-emerald-400'
+                                            : 'border-slate-800 bg-[#101826] hover:border-slate-600'
                                     }`}
                                   >
                                     <div className="min-w-0">
                                       <div className="flex flex-wrap items-center gap-1">
                                         <span
                                           className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[9px] font-black ${
-                                            isStarterTarget
-                                              ? 'bg-emerald-500/20 text-emerald-300'
-                                              : 'bg-sky-500/15 text-sky-300'
+                                            mirroredPair
+                                              ? 'bg-rose-500/25 text-rose-200'
+                                              : isStarterTarget
+                                                ? 'bg-emerald-500/20 text-emerald-300'
+                                                : 'bg-sky-500/15 text-sky-300'
                                           }`}
                                         >
                                           {roleBadgeLabel}
@@ -2918,15 +3054,21 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         <span className="truncate text-xs font-extrabold text-white">
                                           {p.name}
                                         </span>
+                                        {mirroredPair && (
+                                          <span className="whitespace-nowrap rounded bg-rose-500/25 border border-rose-400/45 px-1 py-px text-[9px] font-black text-rose-200">
+                                            ↔ {shortPitchName(origP.name)}
+                                          </span>
+                                        )}
                                         {tier === 'superstar' && (
                                           <Sparkles className="h-3 w-3 text-cyan-300 shrink-0" />
                                         )}
-                                        {renderMyManagerFitBadge(
-                                          p,
-                                          state.manager.traitId,
-                                          'pill',
-                                        )}
-                                        {target.isShockBargain && (
+                                        {!mirroredPair &&
+                                          renderMyManagerFitBadge(
+                                            p,
+                                            state.manager.traitId,
+                                            'pill',
+                                          )}
+                                        {!mirroredPair && target.isShockBargain && (
                                           <span className="whitespace-nowrap rounded bg-rose-500/25 border border-rose-400/50 px-1 py-px text-[9px] font-black text-rose-200">
                                             🚨-35%
                                           </span>
@@ -2939,15 +3081,17 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         <span className="whitespace-nowrap">
                                           · STA {p.stamina}
                                         </span>
-                                        <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
-                                          {target.formTrend === 'up' && (
-                                            <TrendingUp className="h-3 w-3 text-emerald-400" />
-                                          )}
-                                          {target.formTrend === 'down' && (
-                                            <TrendingDown className="h-3 w-3 text-rose-400" />
-                                          )}
-                                          {target.formRating.toFixed(1)}
-                                        </span>
+                                        {!mirroredPair && (
+                                          <span className="inline-flex items-center gap-0.5 whitespace-nowrap">
+                                            {target.formTrend === 'up' && (
+                                              <TrendingUp className="h-3 w-3 text-emerald-400" />
+                                            )}
+                                            {target.formTrend === 'down' && (
+                                              <TrendingDown className="h-3 w-3 text-rose-400" />
+                                            )}
+                                            {target.formRating.toFixed(1)}
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0 tabular-nums">
@@ -2955,7 +3099,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         <div className="text-xs font-black text-amber-300">
                                           {p.ovr}
                                         </div>
-                                        <div className="whitespace-nowrap text-[10px] font-mono text-sky-300">
+                                        <div className={`whitespace-nowrap text-[10px] font-mono ${mirroredPair ? 'text-rose-300' : 'text-sky-300'}`}>
                                           €{mv}M · TP {tpVal.effectiveTp}
                                         </div>
                                       </div>
@@ -2972,12 +3116,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       </button>
                                       <span
                                         className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${
-                                          isPicked
-                                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/45'
-                                            : 'bg-slate-800/80 text-slate-300 border-slate-700/70'
+                                          mirroredPair
+                                            ? 'bg-rose-500/20 text-rose-200 border-rose-400/50'
+                                            : isPicked
+                                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/45'
+                                              : 'bg-slate-800/80 text-slate-300 border-slate-700/70'
                                         }`}
                                       >
-                                        {isPicked ? '✓' : '+'}
+                                        {mirroredPair ? '↔' : isPicked ? '✓' : '+'}
                                       </span>
                                     </div>
                                   </div>
@@ -2999,19 +3145,32 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
                             <div className="max-h-[340px] sm:max-h-[380px] overflow-y-auto space-y-1 pr-1">
                               {userRosterEntries.map((entry) => {
-                                const p = entry.player;
+                                const origP = entry.player;
+                                const mirroredUserPair = isMirrorSwapPreviewActive
+                                  ? (swapPairByUserSlotKey.get(entry.key) ?? null)
+                                  : null;
+                                const p = mirroredUserPair
+                                  ? mirroredUserPair.inPlayer
+                                  : origP;
                                 const isPicked = selectedUserSlots.some(
                                   (s) => slotKey(s) === entry.key,
                                 );
-                                const tpVal = computePlayerTradePoints({
-                                  player: p,
-                                  receivingClubNeeds: activeClubNeeds,
-                                  stats:
-                                    season.allPlayerStats[p.id] ??
-                                    season.allPlayerStats[`user::${p.id}`] ??
-                                    null,
-                                  conditionMap: season.playerConditions,
-                                });
+                                const tpVal = mirroredUserPair
+                                  ? computePlayerTradePoints({
+                                      player: p,
+                                      sellingClubNeeds: activeClubNeeds,
+                                      stats: season.allPlayerStats[p.id] ?? null,
+                                      conditionMap: season.playerConditions,
+                                    })
+                                  : computePlayerTradePoints({
+                                      player: origP,
+                                      receivingClubNeeds: activeClubNeeds,
+                                      stats:
+                                        season.allPlayerStats[origP.id] ??
+                                        season.allPlayerStats[`user::${origP.id}`] ??
+                                        null,
+                                      conditionMap: season.playerConditions,
+                                    });
                                 const mv = computePlayerMarketValueM(p);
                                 return (
                                   <div
@@ -3020,9 +3179,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       handleToggleUserSlot(entry.ref)
                                     }
                                     className={`w-full rounded-xl border px-2.5 py-1.5 sm:px-3 sm:py-2 text-left transition-colors cursor-pointer touch-manipulation flex items-center justify-between gap-2 ${
-                                      isPicked
-                                        ? 'border-rose-400 bg-rose-950/35 ring-1 ring-rose-400/40'
-                                        : 'border-slate-800 bg-[#101826] hover:border-slate-600'
+                                      mirroredUserPair
+                                        ? 'border-emerald-400 bg-emerald-950/35 ring-1 ring-emerald-400/50'
+                                        : isPicked
+                                          ? 'border-rose-400 bg-rose-950/35 ring-1 ring-rose-400/40'
+                                          : 'border-slate-800 bg-[#101826] hover:border-slate-600'
                                     }`}
                                   >
                                     <div className="min-w-0">
@@ -3046,6 +3207,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         <span className="truncate text-xs font-extrabold text-white">
                                           {p.name}
                                         </span>
+                                        {mirroredUserPair && (
+                                          <span className="whitespace-nowrap rounded bg-emerald-500/25 border border-emerald-400/45 px-1 py-px text-[9px] font-black text-emerald-200">
+                                            ↔ {shortPitchName(origP.name)}
+                                          </span>
+                                        )}
                                         {renderMyManagerFitBadge(
                                           p,
                                           state.manager.traitId,
@@ -3057,17 +3223,17 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                           {formatMainPositions(p)} · STA{' '}
                                           {p.stamina}
                                         </span>
-                                        {tpVal.needModPct >= 30 && (
+                                        {!mirroredUserPair && tpVal.needModPct >= 30 && (
                                           <span className="whitespace-nowrap rounded bg-amber-500/20 px-1 py-px text-[9px] font-black text-amber-200">
                                             🔥+32%
                                           </span>
                                         )}
-                                        {tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
+                                        {!mirroredUserPair && tpVal.needModPct > 0 && tpVal.needModPct < 30 && (
                                           <span className="whitespace-nowrap rounded bg-sky-500/15 px-1 py-px text-[9px] font-black text-sky-200">
                                             ✨+18%
                                           </span>
                                         )}
-                                        {tpVal.needModPct < 0 && (
+                                        {!mirroredUserPair && tpVal.needModPct < 0 && (
                                           <span className="whitespace-nowrap rounded bg-slate-800 px-1 py-px text-[9px] font-bold text-slate-400">
                                             ⚠️-25%
                                           </span>
@@ -3079,7 +3245,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                         <div className="text-xs font-black text-white">
                                           {p.ovr}
                                         </div>
-                                        <div className="whitespace-nowrap text-[10px] font-mono text-rose-300">
+                                        <div className={`whitespace-nowrap text-[10px] font-mono ${mirroredUserPair ? 'text-emerald-300' : 'text-rose-300'}`}>
                                           €{mv}M · TP {tpVal.effectiveTp}
                                         </div>
                                       </div>
@@ -3096,12 +3262,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                       </button>
                                       <span
                                         className={`rounded-lg px-2 py-1 text-[10px] font-black ${
-                                          isPicked
-                                            ? 'bg-rose-500 text-white'
-                                            : 'bg-slate-800 text-slate-300'
+                                          mirroredUserPair
+                                            ? 'bg-emerald-500 text-slate-950'
+                                            : isPicked
+                                              ? 'bg-rose-500 text-white'
+                                              : 'bg-slate-800 text-slate-300'
                                         }`}
                                       >
-                                        {isPicked ? '✓' : '+'}
+                                        {mirroredUserPair ? '↔' : isPicked ? '✓' : '+'}
                                       </span>
                                     </div>
                                   </div>
