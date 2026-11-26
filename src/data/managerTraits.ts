@@ -83,12 +83,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '측면 폭격기',
     tagline: '하프스페이스와 터치라인을 가르는 폭격',
     effectSummary:
-      '궁합 1~11명 ATT +2.8 | 측면 전술 시 ATT +1.1 · xG +0.12 추가 | 궁합 선수 OVR +1',
+      '궁합 1~6명 ATT +2.4 | 측면 전술 시 ATT +1.1 · xG +0.12 추가 | 궁합 선수 OVR +1',
     draftGuideTip:
-      '윙어·공격형 윙백·포처를 모으고 측면 공략을 쓰면 크로스와 컷백 화력이 폭발합니다.',
+      '윙어·공격형 윙백·포처 6명만 모아도 최대 효과가 발동하며 측면 공략 시 화력이 폭발합니다.',
     badgeColor: '#22c55e',
     category: 'builder',
-    philosophyTarget: 11,
+    philosophyTarget: 6,
     synergyTactic: 'wingplay',
     synergyPlaystyles: [
       'attacking_wingback',
@@ -138,12 +138,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '세트피스 장인',
     tagline: '코너킥과 프리킥으로 승점을 수확하는 디테일',
     effectSummary:
-      '궁합 1~11명 세트피스 xG +0.16~+0.30 · 코너/프리킥 2.8배 · 상대 xG -0.06 | 궁합 +1',
+      '궁합 1~6명 세트피스 xG +0.14~+0.28 · 코너/프리킥 2.8배 · 상대 xG -0.06 | 궁합 +1',
     draftGuideTip:
-      '제공권이 강한 파이터 CB·완성형 FW·포처와 킥이 정교한 딥라잉 플레이메이커를 모으세요.',
+      '파이터 CB·완성형 FW·포처·후방조율 6명만 모아도 세트피스 화력이 최대치에 도달합니다.',
     badgeColor: '#14b8a6',
     category: 'specialist',
-    philosophyTarget: 11,
+    philosophyTarget: 6,
     synergyPlaystyles: [
       'stopper_cb',
       'complete_forward',
@@ -187,12 +187,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '갈락티코 매니저',
     tagline: '월드클래스 스타 군단을 하나로 묶는 카리스마',
     effectSummary:
-      '선발 OVR 90+ · 레전드 1~5명 A·M·D +0.70/명 (최대 +3.5) · 개인 OVR +1',
+      '선발 OVR 89+ · 레전드 1~4명 A·M·D +0.80/명 (최대 +3.2) · 개인 OVR +1',
     draftGuideTip:
-      'OVR 90+ 슈퍼스타와 레전드를 최대 5명까지 모으면 개인 +1과 팀 A·M·D가 함께 폭발합니다.',
+      'OVR 89+ 슈퍼스타와 레전드를 최대 4명까지 모으면 예산 내에서 개인 +1과 팀 A·M·D가 함께 폭발합니다.',
     badgeColor: '#fbbf24',
     category: 'builder',
-    philosophyTarget: 5,
+    philosophyTarget: 4,
     synergyPlaystyles: [],
   },
   direct_football: {
@@ -200,17 +200,18 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '다이렉트 풋볼',
     tagline: '군더더기 없는 종패스와 압도적 마무리',
     effectSummary:
-      '전술 무관 상시 궁합 1~11명 ATT +3.4 · xG 최대 +0.18 | 직선 공격 자원 개인 OVR +1',
+      '전술 무관 상시 궁합 1~6명 ATT +3.0 · xG 최대 +0.16 | 직선 공격·종패스 자원 개인 OVR +1',
     draftGuideTip:
-      '라인브레이커·포처·완성형 FW·클래식 윙어를 모으면 어떤 전술이든 최전방 화력이 폭발합니다.',
+      '침투형·포처·완성형 FW·측면돌파·후방조율 6명을 모으면 어떤 전술이든 최전방 화력이 최대치에 도달합니다.',
     badgeColor: '#fb7185',
     category: 'builder',
-    philosophyTarget: 11,
+    philosophyTarget: 6,
     synergyPlaystyles: [
       'line_breaker',
       'poacher',
       'complete_forward',
       'classic_winger',
+      'deep_playmaker',
     ],
   },
   defensive_architect: {
@@ -218,12 +219,12 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '수비 조직력 전문가',
     tagline: '리그 최소 실점을 만드는 완벽한 간격 유지',
     effectSummary:
-      '전술 무관 상시 궁합 1~11명 DEF +3.3 · 상대 xG 최대 -0.16 | 수비 핵심 자원 개인 OVR +1',
+      '전술 무관 상시 궁합 1~6명 DEF +3.0 · 상대 xG 최대 -0.15 | 수비 핵심 자원 개인 OVR +1',
     draftGuideTip:
-      '파이터 CB·빌드업 CB·볼위너·선방형 GK를 모으면 어떤 전술에서도 최소 실점에 도전할 수 있습니다.',
+      '파이터 CB·빌드업 CB·볼위너·선방형 GK 6명을 모으면 어떤 전술에서도 최소 실점에 도전할 수 있습니다.',
     badgeColor: '#60a5fa',
     category: 'builder',
-    philosophyTarget: 11,
+    philosophyTarget: 6,
     synergyPlaystyles: [
       'stopper_cb',
       'ball_playing_cb',
@@ -236,17 +237,18 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '중원 지배자',
     tagline: '허리를 장악하는 자가 경기를 지배한다',
     effectSummary:
-      '전술 무관 상시 궁합 1~11명 MID +3.4 · 점유율 최대 +7% | 미드필더 핵심 자원 개인 OVR +1',
+      '전술 무관 상시 궁합 1~6명 MID +3.0 · 점유율 최대 +6% | 중원·빌드업 핵심 자원 개인 OVR +1',
     draftGuideTip:
-      '딥라잉·플레이메이커·박스투박스·볼위너를 모으면 어떤 전술을 써도 중원을 완전히 장악합니다.',
+      '후방조율·찬스메이커·B2B·볼위너·빌드업 CB 6명을 모으면 어떤 전술을 써도 중원을 완전히 장악합니다.',
     badgeColor: '#34d399',
     category: 'builder',
-    philosophyTarget: 11,
+    philosophyTarget: 6,
     synergyPlaystyles: [
       'deep_playmaker',
       'playmaker_10',
       'box_to_box',
       'ball_winner',
+      'ball_playing_cb',
     ],
   },
   super_sub: {
@@ -318,7 +320,7 @@ export function evaluateManagerPlayerSynergy(
   // Special trait-specific criteria beyond playstyles
   if (
     managerTraitId === 'galactico_manager' &&
-    (player.isLegend || player.ovr >= 90)
+    (player.isLegend || player.ovr >= 89)
   ) {
     return {
       isMatch: true,
@@ -550,32 +552,32 @@ export function evaluateManagerTeamEffect(
       break;
 
     case 'wing_bomber':
-      baseAttDelta += 2.8 * progressRatio;
+      baseAttDelta += 2.4 * progressRatio;
       if (isTacticSynergyActive) {
         baseAttDelta += 1.1;
         xgBonus += 0.12;
       }
       break;
 
-    // ── Group B: Always-On Builders ────────────────────────────────────────
+    // ── Group B: Always-On Line Specialists (1..6 players) ─────────────────
     case 'defensive_architect':
-      baseDefDelta += 3.3 * progressRatio;
-      oppXgPenalty += 0.16 * progressRatio;
+      baseDefDelta += 3.0 * progressRatio;
+      oppXgPenalty += 0.15 * progressRatio;
       break;
 
     case 'midfield_maestro':
-      baseMidDelta += 3.4 * progressRatio;
-      possessionBonus += 7 * progressRatio;
+      baseMidDelta += 3.0 * progressRatio;
+      possessionBonus += 6 * progressRatio;
       break;
 
     case 'direct_football':
-      baseAttDelta += 3.4 * progressRatio;
-      xgBonus += 0.18 * progressRatio;
+      baseAttDelta += 3.0 * progressRatio;
+      xgBonus += 0.16 * progressRatio;
       break;
 
     case 'galactico_manager': {
-      // OVR 90+ / Legend 1..5 players (+0.70/player, max +3.50 A·M·D)
-      const lift = 3.5 * progressRatio;
+      // OVR 89+ / Legend 1..4 players (+0.80/player, max +3.20 A·M·D)
+      const lift = 3.2 * progressRatio;
       baseAttDelta += lift;
       baseMidDelta += lift;
       baseDefDelta += lift;
@@ -593,8 +595,8 @@ export function evaluateManagerTeamEffect(
     }
 
     case 'set_piece_master':
-      // Scales set-piece xG cleanly from +0.16 up to +0.30 across 1..11 aerial/set-piece specialists
-      xgBonus += 0.16 + 0.14 * progressRatio;
+      // Scales set-piece xG cleanly from +0.14 up to +0.28 across 1..6 aerial/set-piece specialists
+      xgBonus += 0.14 + 0.14 * progressRatio;
       oppXgPenalty += 0.06;
       break;
 
@@ -838,13 +840,13 @@ const PER_PLAYER_STEP_LABELS: Partial<Record<ManagerTraitId, string>> = {
   tiki_taka: '+1명당 MID +0.27 · 점유율 +0.5%',
   gegenpress_guru: '+1명당 ATT +0.18 · MID +0.15',
   catenaccio: '+1명당 DEF +0.27',
-  wing_bomber: '+1명당 ATT +0.25',
-  direct_football: '+1명당 ATT +0.31 · xG +0.02',
-  defensive_architect: '+1명당 DEF +0.30 · 상대 xG -0.01',
-  midfield_maestro: '+1명당 MID +0.31 · 점유율 +0.6%',
-  galactico_manager: '+1명당 A·M·D +0.70 (최대 5명)',
+  wing_bomber: '+1명당 ATT +0.40 (최대 6명)',
+  direct_football: '+1명당 ATT +0.50 · xG +0.027 (최대 6명)',
+  defensive_architect: '+1명당 DEF +0.50 · 상대 xG -0.025 (최대 6명)',
+  midfield_maestro: '+1명당 MID +0.50 · 점유율 +1.0% (최대 6명)',
+  galactico_manager: '+1명당 A·M·D +0.80 (최대 4명)',
   total_football: '+1명당 A·M·D +0.55 (최대 5명)',
-  set_piece_master: '기본 xG +0.16 + 1명당 +0.013 (최대 +0.30)',
+  set_piece_master: '기본 xG +0.14 + 1명당 +0.023 (최대 6명 · +0.28)',
 };
 
 const SITUATIONAL_RULES: Partial<
@@ -901,22 +903,22 @@ function buildMilestoneAtCount(
       def = 3.0 * ratio;
       break;
     case 'wing_bomber':
-      att = 2.8 * ratio;
+      att = 2.4 * ratio;
       break;
     case 'defensive_architect':
-      def = 3.3 * ratio;
-      extra = `상대 xG -${(0.16 * ratio).toFixed(2)}`;
+      def = 3.0 * ratio;
+      extra = `상대 xG -${(0.15 * ratio).toFixed(2)}`;
       break;
     case 'midfield_maestro':
-      mid = 3.4 * ratio;
-      extra = `점유 +${(7 * ratio).toFixed(1)}%`;
+      mid = 3.0 * ratio;
+      extra = `점유 +${(6 * ratio).toFixed(1)}%`;
       break;
     case 'direct_football':
-      att = 3.4 * ratio;
-      extra = `xG +${(0.18 * ratio).toFixed(2)}`;
+      att = 3.0 * ratio;
+      extra = `xG +${(0.16 * ratio).toFixed(2)}`;
       break;
     case 'galactico_manager': {
-      const lift = 3.5 * ratio;
+      const lift = 3.2 * ratio;
       att = lift;
       mid = lift;
       def = lift;
@@ -930,7 +932,7 @@ function buildMilestoneAtCount(
       break;
     }
     case 'set_piece_master':
-      extra = `세트피스 xG +${(0.16 + 0.14 * ratio).toFixed(2)}`;
+      extra = `세트피스 xG +${(0.14 + 0.14 * ratio).toFixed(2)}`;
       break;
     default:
       break;
@@ -958,7 +960,7 @@ function getCriteriaLabels(traitId: ManagerTraitId): string[] {
   const cfg = MANAGER_TRAITS[traitId];
   if (!cfg) return [];
   if (traitId === 'galactico_manager') {
-    return ['OVR 90+ · 레전드'];
+    return ['OVR 89+ · 레전드'];
   }
   if (traitId === 'total_football') {
     return ['3포지션+ 멀티'];
@@ -1064,7 +1066,14 @@ export function evaluateManagerFitDetail(params: {
     }
   }
 
-  const milestoneCounts = totalSlots === 5 ? [1, 3, 5] : [3, 6, 9, 11];
+  const milestoneCounts =
+    totalSlots === 4
+      ? [1, 2, 4]
+      : totalSlots === 5
+        ? [1, 3, 5]
+        : totalSlots === 6
+          ? [2, 4, 6]
+          : [3, 6, 9, 11];
   const milestones: ManagerFitMilestone[] =
     scalingMode === 'progressive'
       ? milestoneCounts.map((c) =>
