@@ -160,12 +160,17 @@ function resolveAiRosterForPreview(
   club: Club,
   ucl: MpUclLive,
   fallbackLeagueId: LeagueId,
+  humanOwnedIds: Set<string>,
 ): Player[] {
   const fromLive = ucl.knockoutPreviewRosters?.[club.id];
-  if (fromLive && fromLive.length > 0) return fromLive.slice(0, 11);
+  if (fromLive && fromLive.length > 0) {
+    return fromLive.filter((p) => !humanOwnedIds.has(p.id)).slice(0, 11);
+  }
   const fromExternal = EXTERNAL_ROSTER_BY_CLUB_ID.get(club.id);
-  if (fromExternal && fromExternal.length > 0) return fromExternal.slice(0, 11);
-  return buildAiClubRoster(club, fallbackLeagueId).slice(0, 11);
+  if (fromExternal && fromExternal.length > 0) {
+    return fromExternal.filter((p) => !humanOwnedIds.has(p.id)).slice(0, 11);
+  }
+  return buildAiClubRoster(club, fallbackLeagueId, humanOwnedIds).slice(0, 11);
 }
 
 function buildSidePreview(params: {
@@ -216,7 +221,23 @@ function buildSidePreview(params: {
     managerName = aiMgr.name;
     managerOvr = aiMgr.ovr;
     managerTraitId = aiMgr.traitId;
-    const rawRoster = resolveAiRosterForPreview(club, ucl, fallbackLeagueId);
+    const humanOwnedIds = new Set<string>();
+    if (mySquad) {
+      for (const p of [...mySquad.starters, ...mySquad.bench]) {
+        if (p) humanOwnedIds.add(p.id);
+      }
+    }
+    for (const sq of Object.values(publicSquads)) {
+      for (const p of [...sq.starters, ...sq.bench]) {
+        if (p) humanOwnedIds.add(p.id);
+      }
+    }
+    const rawRoster = resolveAiRosterForPreview(
+      club,
+      ucl,
+      fallbackLeagueId,
+      humanOwnedIds,
+    );
     starters = optimizeCurrentStartersForFormation(
       rawRoster,
       formation,

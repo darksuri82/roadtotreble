@@ -23,7 +23,12 @@ import {
   commitAiClubPostMatchConditions,
   prepareAiClubLineupForMatch,
 } from './conditionEngine';
-import { buildAiClubRoster, getLeagueById, LEAGUES } from './dataLoader';
+import {
+  buildAiClubRoster,
+  getLeagueById,
+  LEAGUES,
+  sanitizeAiClubRoster,
+} from './dataLoader';
 import {
   simulateExtraTimeAndPenalties,
   simulateMatch,
@@ -231,6 +236,8 @@ export function createUclTournamentState(params: {
   userAiRosters: Record<string, Player[]>;
   otherLeagues: Partial<Record<LeagueId, OtherLeagueSeasonState>>;
   excludeIds?: Set<string>;
+  ownedIds?: Set<string>;
+  humanClubIds?: Set<string>;
   userParticipated?: boolean;
   rng?: () => number;
 }): {
@@ -246,12 +253,18 @@ export function createUclTournamentState(params: {
     userAiRosters,
     otherLeagues,
     excludeIds,
+    ownedIds,
+    humanClubIds,
     userParticipated = true,
     rng = Math.random,
   } = params;
 
-  const globalExcludeIds = new Set<string>(excludeIds ?? []);
-  for (const p of userSquad) globalExcludeIds.add(p.id);
+  const effectiveOwnedIds = new Set<string>(ownedIds ?? []);
+  for (const p of userSquad) effectiveOwnedIds.add(p.id);
+  const globalExcludeIds = new Set<string>([
+    ...(excludeIds ?? []),
+    ...effectiveOwnedIds,
+  ]);
 
   const qualifiedEntries: Omit<UclTeamEntry, 'pot'>[] = [];
   const aiRosters: Record<string, Player[]> = {};
@@ -273,14 +286,32 @@ export function createUclTournamentState(params: {
       isLeagueChampion,
     });
     if (club.id !== USER_CLUB_ID) {
-      if (roster) {
-        aiRosters[club.id] = roster.filter((p) => !globalExcludeIds.has(p.id));
-      } else if (userAiRosters[club.id]) {
+      if (humanClubIds?.has(club.id) && userAiRosters[club.id]) {
         aiRosters[club.id] = userAiRosters[club.id];
+        return;
+      }
+      const resolvedLeagueId: LeagueId =
+        originLeagueId === 'other' ? 'epl' : originLeagueId;
+      if (roster) {
+        aiRosters[club.id] = sanitizeAiClubRoster({
+          club,
+          leagueId: resolvedLeagueId,
+          roster,
+          ownedIds: effectiveOwnedIds,
+          excludeIds: globalExcludeIds,
+        });
+      } else if (userAiRosters[club.id]) {
+        aiRosters[club.id] = sanitizeAiClubRoster({
+          club,
+          leagueId: resolvedLeagueId,
+          roster: userAiRosters[club.id],
+          ownedIds: effectiveOwnedIds,
+          excludeIds: globalExcludeIds,
+        });
       } else {
         aiRosters[club.id] = buildAiClubRoster(
           club,
-          originLeagueId === 'other' ? 'epl' : originLeagueId,
+          resolvedLeagueId,
           globalExcludeIds,
         );
       }
@@ -533,6 +564,30 @@ function buildNextKnockoutTies(
   return ties;
 }
 
+function resolveUclExclusionSets(params: {
+  ucl: UclTournamentState;
+  userClubId: string;
+  userContext?: UserMatchContext;
+  excludeIds?: Set<string>;
+  ownedIds?: Set<string>;
+}): { effectiveExcludeIds?: Set<string>; effectiveOwnedIds?: Set<string> } {
+  const { ucl, userClubId, userContext, excludeIds, ownedIds } = params;
+  const owned = new Set<string>(ownedIds ?? []);
+  if (userContext) {
+    for (const p of userContext.starters) owned.add(p.id);
+    for (const p of userContext.bench ?? []) owned.add(p.id);
+  }
+  if (ucl.userParticipated !== false && userClubId === USER_CLUB_ID) {
+    for (const p of ucl.aiRosters[USER_CLUB_ID] ?? []) owned.add(p.id);
+  }
+  const effectiveOwnedIds = owned.size > 0 ? owned : undefined;
+  const effectiveExcludeIds =
+    excludeIds || effectiveOwnedIds
+      ? new Set<string>([...(excludeIds ?? []), ...(effectiveOwnedIds ?? [])])
+      : undefined;
+  return { effectiveExcludeIds, effectiveOwnedIds };
+}
+
 /**
  * Simulates 1 round (18 matches) of the 36-Team UCL Swiss League Phase.
  * After Round 8, locks `userLeaguePhaseRank`, sets `enteredViaPlayoff` if 9..24,
@@ -548,6 +603,8 @@ export function simulateUclLeaguePhaseRound(params: {
   userClubId?: string;
   conditionMap?: PlayerConditionMap;
   excludeIds?: Set<string>;
+  ownedIds?: Set<string>;
+  humanClubIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -563,6 +620,8 @@ export function simulateUclLeaguePhaseRound(params: {
     userClubId = USER_CLUB_ID,
     conditionMap,
     excludeIds,
+    ownedIds,
+    humanClubIds,
     rng = Math.random,
   } = params;
 
@@ -570,6 +629,14 @@ export function simulateUclLeaguePhaseRound(params: {
   if (targetRound > 8) {
     return { ucl, uclPlayerStats, userResult: null };
   }
+
+  const { effectiveExcludeIds, effectiveOwnedIds } = resolveUclExclusionSets({
+    ucl,
+    userClubId,
+    userContext,
+    excludeIds,
+    ownedIds,
+  });
 
   const clubsById: Record<string, Club> = Object.fromEntries(
     ucl.clubs.map((c) => [c.id, c]),
@@ -595,30 +662,34 @@ export function simulateUclLeaguePhaseRound(params: {
       fix.homeTeamId === userClubId || fix.awayTeamId === userClubId;
     const homeClub = clubsById[fix.homeTeamId];
     const awayClub = clubsById[fix.awayTeamId];
-    const homeIsUser = fix.homeTeamId === userClubId && Boolean(userContext);
-    const awayIsUser = fix.awayTeamId === userClubId && Boolean(userContext);
+    const homeIsHuman =
+      fix.homeTeamId === userClubId || Boolean(humanClubIds?.has(fix.homeTeamId));
+    const awayIsHuman =
+      fix.awayTeamId === userClubId || Boolean(humanClubIds?.has(fix.awayTeamId));
 
-    const homePrep = homeIsUser
+    const homePrep = homeIsHuman
       ? null
       : prepareAiClubLineupForMatch({
           club: homeClub,
           baseRoster: ucl.aiRosters[fix.homeTeamId] ?? [],
           conditionMap,
-          excludeIds,
+          excludeIds: effectiveExcludeIds,
+          ownedIds: effectiveOwnedIds,
         });
-    const awayPrep = awayIsUser
+    const awayPrep = awayIsHuman
       ? null
       : prepareAiClubLineupForMatch({
           club: awayClub,
           baseRoster: ucl.aiRosters[fix.awayTeamId] ?? [],
           conditionMap,
-          excludeIds,
+          excludeIds: effectiveExcludeIds,
+          ownedIds: effectiveOwnedIds,
         });
 
-    const homeRoster = homeIsUser && userContext
+    const homeRoster = fix.homeTeamId === userClubId && userContext
       ? userContext.starters
       : homePrep?.effectiveStarters ?? ucl.aiRosters[fix.homeTeamId] ?? [];
-    const awayRoster = awayIsUser && userContext
+    const awayRoster = fix.awayTeamId === userClubId && userContext
       ? userContext.starters
       : awayPrep?.effectiveStarters ?? ucl.aiRosters[fix.awayTeamId] ?? [];
 
@@ -855,6 +926,8 @@ export function advanceUclKnockoutLeg(params: {
   userClubId?: string;
   conditionMap?: PlayerConditionMap;
   excludeIds?: Set<string>;
+  ownedIds?: Set<string>;
+  humanClubIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -870,6 +943,8 @@ export function advanceUclKnockoutLeg(params: {
     userClubId = USER_CLUB_ID,
     conditionMap,
     excludeIds,
+    ownedIds,
+    humanClubIds,
     rng = Math.random,
   } = params;
 
@@ -880,6 +955,14 @@ export function advanceUclKnockoutLeg(params: {
   ) {
     return { ucl, uclPlayerStats, userResult: null };
   }
+
+  const { effectiveExcludeIds, effectiveOwnedIds } = resolveUclExclusionSets({
+    ucl,
+    userClubId,
+    userContext,
+    excludeIds,
+    ownedIds,
+  });
 
   const stage = ucl.stage;
   const isFinal = stage === 'final';
@@ -901,14 +984,21 @@ export function advanceUclKnockoutLeg(params: {
   let userEliminatedAt = ucl.userEliminatedAt;
 
   const prepSide = (teamId: string) => {
-    if (teamId === userClubId && userContext) {
-      return { roster: userContext.starters, aiPrep: null };
+    if (teamId === userClubId || humanClubIds?.has(teamId)) {
+      return {
+        roster:
+          teamId === userClubId && userContext
+            ? userContext.starters
+            : (ucl.aiRosters[teamId] ?? []),
+        aiPrep: null,
+      };
     }
     const aiPrep = prepareAiClubLineupForMatch({
       club: clubsById[teamId],
       baseRoster: ucl.aiRosters[teamId] ?? [],
       conditionMap,
-      excludeIds,
+      excludeIds: effectiveExcludeIds,
+      ownedIds: effectiveOwnedIds,
     });
     return { roster: aiPrep.effectiveStarters, aiPrep };
   };
@@ -1330,6 +1420,8 @@ export function simulateUclToCompletion(params: {
   userClubId?: string;
   conditionMap?: PlayerConditionMap;
   excludeIds?: Set<string>;
+  ownedIds?: Set<string>;
+  humanClubIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -1355,6 +1447,8 @@ export function simulateUclToCompletion(params: {
         userClubId: params.userClubId,
         conditionMap: params.conditionMap,
         excludeIds: params.excludeIds,
+        ownedIds: params.ownedIds,
+        humanClubIds: params.humanClubIds,
         rng,
       });
       curUcl = res.ucl;
@@ -1368,6 +1462,8 @@ export function simulateUclToCompletion(params: {
         userClubId: params.userClubId,
         conditionMap: params.conditionMap,
         excludeIds: params.excludeIds,
+        ownedIds: params.ownedIds,
+        humanClubIds: params.humanClubIds,
         rng,
       });
       curUcl = res.ucl;
@@ -1405,6 +1501,7 @@ export function simulateUclLeaguePhaseToEnd(params: {
   userClubId?: string;
   conditionMap?: PlayerConditionMap;
   excludeIds?: Set<string>;
+  ownedIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -1431,6 +1528,7 @@ export function simulateUclLeaguePhaseToEnd(params: {
       userClubId,
       conditionMap: params.conditionMap,
       excludeIds: params.excludeIds,
+      ownedIds: params.ownedIds,
       rng,
     });
     curUcl = res.ucl;
@@ -1473,6 +1571,7 @@ export function advanceUclPlayoffToCompletion(params: {
   userClubId?: string;
   conditionMap?: PlayerConditionMap;
   excludeIds?: Set<string>;
+  ownedIds?: Set<string>;
   rng?: () => number;
 }): {
   ucl: UclTournamentState;
@@ -1490,6 +1589,7 @@ export function advanceUclPlayoffToCompletion(params: {
       userClubId: params.userClubId,
       conditionMap: params.conditionMap,
       excludeIds: params.excludeIds,
+      ownedIds: params.ownedIds,
       rng,
     });
     curUcl = res.ucl;

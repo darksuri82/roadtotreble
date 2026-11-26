@@ -474,6 +474,76 @@ export function pickReplacementForAiClub(params: {
   });
 }
 
+/**
+ * Scrubs any globally human-owned players (and duplicate IDs) from an AI club roster,
+ * backfilling each removed slot with a position-matched replacement via `pickReplacementForAiClub`
+ * while preserving legitimately traded-in players (who may appear in `departedPlayerIds` but not `ownedIds`).
+ */
+export function sanitizeAiClubRoster(params: {
+  club: Club;
+  leagueId: LeagueId;
+  roster: Player[];
+  ownedIds?: Set<string>;
+  excludeIds?: Set<string>;
+  round?: number;
+}): Player[] {
+  const { club, leagueId, roster, ownedIds, excludeIds, round = 0 } = params;
+  if (!roster || roster.length === 0) return roster;
+
+  const blockedOwned = ownedIds ?? new Set<string>();
+  const seenIds = new Set<string>();
+  let needsRepair = false;
+  for (const p of roster) {
+    if (blockedOwned.has(p.id) || seenIds.has(p.id)) {
+      needsRepair = true;
+      break;
+    }
+    seenIds.add(p.id);
+  }
+  if (!needsRepair) return roster;
+
+  const working: (Player | null)[] = [];
+  const removedAt: { index: number; player: Player }[] = [];
+  const keptIds = new Set<string>();
+
+  for (let i = 0; i < roster.length; i += 1) {
+    const p = roster[i];
+    if (blockedOwned.has(p.id) || keptIds.has(p.id)) {
+      working.push(null);
+      removedAt.push({ index: i, player: p });
+    } else {
+      working.push(p);
+      keptIds.add(p.id);
+    }
+  }
+
+  const baseExclude = new Set<string>([
+    ...(excludeIds ?? []),
+    ...blockedOwned,
+    ...keptIds,
+  ]);
+
+  for (const { index, player } of removedAt) {
+    baseExclude.add(player.id);
+    // Only backfill slots that belong to the starting XI (indices 0..10) so bench/extra duplicates simply drop cleanly
+    if (index >= 11) continue;
+    const currentNonNull = working.filter((x): x is Player => x !== null);
+    const replacement = pickReplacementForAiClub({
+      club,
+      leagueId,
+      departedPlayer: player,
+      currentRoster: currentNonNull,
+      excludeIds: baseExclude,
+      round,
+    });
+    working[index] = replacement;
+    baseExclude.add(replacement.id);
+  }
+
+  return working.filter((x): x is Player => x !== null);
+}
+
+
 export interface AiClubSquad16 {
   starters: Player[];
   starterSlotLabels: string[];

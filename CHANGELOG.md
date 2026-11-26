@@ -5,6 +5,18 @@
 
 ---
 
+## v9.2.5 — 드래프트·영입 선수 타 리그/챔피언스리그 AI 구단 중복 출전(도플갱어) 근본 수정
+
+- **라이브 2D·자동진행 후반전 상대 벤치 보충 중복 차단 (`src/store/GameContext.tsx`, `src/engine/conditionEngine.ts`, `src/engine/dataLoader.ts`)**:
+  - `START_SECOND_HALF_BROADCAST`(라이브 2D 후반전 및 `START_SOLO_STREAM_MATCH` 자동진행 공용)에서 `getClubRealDepthPool(oppClubObj.name, new Set(oppBaseRoster.map(p => p.id)))`가 유저 보유 선수·방출 선수(`excludeIds`)를 제외하지 않아, 유저가 드래프트한 선수(예: 홀란드)가 원소속팀(맨시티)의 벤치 1순위로 생성되어 하프타임 교체 출전하던 치명적 버그를 `buildSafeOpponentLiveRoster` 공용 헬퍼로 원천 차단하고, 라이브 교체·연장전·즉시 확정(`APPLY_SECOND_HALF_LIVE_SUB`, `START_EXTRA_TIME_BROADCAST`, `START_ET_SECOND_HALF_BROADCAST`, `COMMIT_LIVE_MATCH`)까지 전면 통합.
+  - `sanitizeAiClubRoster` 신설 및 `selectConditionAwareAiLineup`/`prepareAiClubLineupForMatch`에 `ownedIds` 가드를 추가해 `conditionMap` 유무와 무관하게 보유 선수가 AI 선발·벤치에 절대 포함되지 않도록 보강(정상 트레이드 이적 선수는 보존).
+- **UCL 시뮬레이션·세이브 복원·UI 폴백 전 경로 `ownedIds`/`excludeIds` 누락 일괄 수정 (`src/engine/uclEngine.ts`, `src/engine/mpLeagueEngine.ts`, `src/store/GameContext.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/components/league/OpponentPitchView.tsx`, `src/components/multiplayer/league/MpUclMatchPreviewModal.tsx`, `src/utils/playerLookup.ts`, `src/__tests__/v925GlobalUniqueUclFix.test.ts`)**:
+  - `SIMULATE_UCL_PLAYOFF_BYE`·배경 UCL·`SKIP_UCL_TO_FINAL_SUMMARY`·`FINISH_UCL_TO_SUMMARY` 및 멀티리그 UCL 자동 완료 경로에 누락된 `excludeIds`/`ownedIds` 전달 보강, `createUclTournamentState`에 `sanitizeAiClubRoster` 적용(중복 제거 시 10인 축소 대신 포지션 맞춤 대체 + 정상 트레이드·멀티 인간 구단 보존).
+  - `loadSavedGameState()`의 `otherLeagues` 미존재 재구성 시 `savedExcludeIds` 전달 누락 수정 및 기존 오염된 세이브(`aiRosters`·`otherLeagues`·`ucl.aiRosters`) 로드 시 자동 치유 로직 추가.
+  - `LiveMatchBroadcast`·`OpponentPitchView`·`MpUclMatchPreviewModal`·`resolveClubRoster`의 폴백 경로에서 보유 선수 제외 보강 및 `TRANSFER_SUBMIT_OFFER` 방출 선수의 `departedPlayerIds` 등록 보강.
+
+---
+
 ## v9.2.4 — FFP 이적시장 페널티 1·2·3차/UCL 기준 통일 · 자동진행 전술 파훼 경고 수정 이동 버그 수정
 
 - **FFP 이적시장 페널티 1·2·3차/UCL 기준 통일 (`src/engine/budgetEngine.ts`, `src/types/game.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueEngine.ts`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`, `src/components/common/DraftBudgetBar.tsx`, `src/components/common/FfpOpeningNoticeModal.tsx`, `src/components/common/TeamSeasonArchiveTab.tsx`, `src/components/common/StaffCoachHireModal.tsx`, `src/components/guide/SystemGuideModal.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`)**:

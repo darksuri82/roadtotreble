@@ -43,6 +43,7 @@ import {
   commitAiClubPostMatchConditions,
   compactConditionMapForStorage,
   createDefaultManagerEventsState,
+  isPlayerUnavailable,
   prepareAiClubLineupForMatch,
   resolveAutoReturnInjuredStarters,
   updateSquadConditionsAfterMatch,
@@ -66,6 +67,7 @@ import {
   getWeakestClub,
   LEGEND_PLAYERS,
   pickReplacementForAiClub,
+  sanitizeAiClubRoster,
 } from '../engine/dataLoader';
 import {
   DEFAULT_ROULETTE_LEGEND_RATE,
@@ -1465,6 +1467,10 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
       filledStarters,
       ratings,
     );
+    const ownedIds = new Set<string>([
+      ...filledStarters.map((p) => p.id),
+      ...filledBench.map((p) => p.id),
+    ]);
     const bgInit = createUclTournamentState({
       userLeagueId: finalSeason.leagueId,
       userClub: userClubEntry,
@@ -1474,11 +1480,14 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
       userAiRosters: finalSeason.aiRosters,
       otherLeagues: finalOtherLeagues,
       excludeIds,
+      ownedIds,
       userParticipated: false,
     });
     const bgSim = simulateUclToCompletion({
       ucl: bgInit.ucl,
       uclPlayerStats: bgInit.uclPlayerStats,
+      excludeIds,
+      ownedIds,
     });
     finalUcl = bgSim.ucl;
     finalUclPlayerStats = bgSim.uclPlayerStats;
@@ -1696,6 +1705,119 @@ type GameAction =
   | { type: 'MARK_LEGACY_ARCHIVED' }
   | { type: 'RESET_GAME' };
 
+function buildUserExclusionSets(
+  starters: (Player | null)[],
+  bench: (Player | null)[],
+  departedPlayerIds?: string[],
+): { ownedIds: Set<string>; excludeIds: Set<string> } {
+  const ownedIds = new Set<string>();
+  for (const p of starters) {
+    if (p) ownedIds.add(p.id);
+  }
+  for (const p of bench) {
+    if (p) ownedIds.add(p.id);
+  }
+  const excludeIds = new Set<string>([
+    ...ownedIds,
+    ...(departedPlayerIds ?? []),
+  ]);
+  return { ownedIds, excludeIds };
+}
+
+function buildSafeOpponentLiveRoster(params: {
+  club: Club | undefined;
+  baseRoster: Player[];
+  conditionMap: PlayerConditionMap | undefined;
+  ownedIds: Set<string>;
+  excludeIds: Set<string>;
+  includeBench?: boolean;
+}): Player[] {
+  const {
+    club,
+    baseRoster,
+    conditionMap,
+    ownedIds,
+    excludeIds,
+    includeBench = false,
+  } = params;
+  if (!club) {
+    return baseRoster.filter((p) => !ownedIds.has(p.id));
+  }
+  const prep = prepareAiClubLineupForMatch({
+    club,
+    baseRoster,
+    conditionMap,
+    excludeIds,
+    ownedIds,
+  });
+  const starters = prep.effectiveStarters;
+  if (!includeBench) return starters;
+
+  const starterIds = new Set(starters.map((p) => p.id));
+  const extraBenchFromBase = baseRoster
+    .slice(11)
+    .filter(
+      (p) =>
+        !ownedIds.has(p.id) &&
+        !starterIds.has(p.id) &&
+        !isPlayerUnavailable(conditionMap?.[p.id]),
+    );
+  const benchExclude = new Set<string>([
+    ...excludeIds,
+    ...starterIds,
+    ...extraBenchFromBase.map((p) => p.id),
+  ]);
+  const needed = Math.max(0, 5 - extraBenchFromBase.length);
+  const depthBench =
+    needed > 0
+      ? getClubRealDepthPool(club.name, benchExclude)
+          .filter((p) => !isPlayerUnavailable(conditionMap?.[p.id]))
+          .slice(0, needed)
+      : [];
+  return [...starters, ...extraBenchFromBase, ...depthBench];
+}
+
+function sanitizeRosterMapForUser(params: {
+  rosters: Record<string, Player[]> | undefined;
+  clubs: Club[];
+  leagueIdByClubId?: Map<string, LeagueId>;
+  defaultLeagueId: LeagueId;
+  ownedIds: Set<string>;
+  excludeIds: Set<string>;
+}): Record<string, Player[]> {
+  const {
+    rosters,
+    clubs,
+    leagueIdByClubId,
+    defaultLeagueId,
+    ownedIds,
+    excludeIds,
+  } = params;
+  if (!rosters) return {};
+  if (ownedIds.size === 0) return rosters;
+  const clubById = new Map(clubs.map((c) => [c.id, c]));
+  const out: Record<string, Player[]> = {};
+  for (const [cid, list] of Object.entries(rosters)) {
+    if (cid === USER_CLUB_ID) {
+      out[cid] = list;
+      continue;
+    }
+    const club = clubById.get(cid);
+    if (!club) {
+      out[cid] = list.filter((p) => !ownedIds.has(p.id));
+      continue;
+    }
+    out[cid] = sanitizeAiClubRoster({
+      club,
+      leagueId: leagueIdByClubId?.get(cid) ?? defaultLeagueId,
+      roster: list,
+      ownedIds,
+      excludeIds,
+    });
+  }
+  return out;
+}
+
 function commitLiveMatchResult(
   state: GameState,
   userMatchResult: MatchResult,
@@ -1720,11 +1842,11 @@ function commitLiveMatchResult(
   const workingConditions: PlayerConditionMap = {
     ...season.playerConditions,
   };
-  const excludeIds = new Set<string>([
-    ...filledStarters.map((p) => p.id),
-    ...filledBench.map((p) => p.id),
-    ...(season.departedPlayerIds ?? []),
-  ]);
+  const { ownedIds, excludeIds } = buildUserExclusionSets(
+    filledStarters,
+    filledBench,
+    season.departedPlayerIds,
+  );
 
   const { ratings } = computeUserChemAndRatings({
     formation: restoredFormation,
@@ -1837,6 +1959,7 @@ function commitLiveMatchResult(
             precomputedUserResult: userMatchResult,
             conditionMap: workingConditions,
             excludeIds,
+            ownedIds,
           })
         : advanceUclKnockoutLeg({
             ucl,
@@ -1844,6 +1967,7 @@ function commitLiveMatchResult(
             precomputedUserResult: userMatchResult,
             conditionMap: workingConditions,
             excludeIds,
+            ownedIds,
           });
     const finalUserUclMatch = uclRes.userResult ?? userMatchResult;
     const interimUclSeason: SeasonState = {
@@ -3549,11 +3673,12 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const awayClub = clubsById[userFixture.awayTeamId];
       if (!homeClub || !awayClub) return state;
 
-      const liveExcludeIds = new Set<string>([
-        ...filledStarters.map((p) => p.id),
-        ...filledBench.map((p) => p.id),
-        ...(state.season.departedPlayerIds ?? []),
-      ]);
+      const { ownedIds: liveOwnedIds, excludeIds: liveExcludeIds } =
+        buildUserExclusionSets(
+          filledStarters,
+          filledBench,
+          state.season.departedPlayerIds,
+        );
       const homeRoster =
         userFixture.homeTeamId === USER_CLUB_ID
           ? effectiveUserStarters
@@ -3562,6 +3687,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
               baseRoster: activeAiRosters[userFixture.homeTeamId] ?? [],
               conditionMap: condMap,
               excludeIds: liveExcludeIds,
+              ownedIds: liveOwnedIds,
             }).effectiveStarters;
       const awayRoster =
         userFixture.awayTeamId === USER_CLUB_ID
@@ -3571,6 +3697,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
               baseRoster: activeAiRosters[userFixture.awayTeamId] ?? [],
               conditionMap: condMap,
               excludeIds: liveExcludeIds,
+              ownedIds: liveOwnedIds,
             }).effectiveStarters;
 
       const oppId =
@@ -3693,16 +3820,20 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         ? halftime.awayTeamId
         : halftime.homeTeamId;
       const oppIdx = activeStandings.findIndex((r) => r.teamId === oppId);
-      const oppBaseRoster = activeAiRosters[oppId] ?? [];
-      const oppClubObj = clubsById[oppId];
-      const oppBenchFill =
-        oppBaseRoster.length <= 11 && oppClubObj
-          ? getClubRealDepthPool(
-              oppClubObj.name,
-              new Set(oppBaseRoster.map((p) => p.id)),
-            ).slice(0, 5)
-          : [];
-      const oppFullRoster = [...oppBaseRoster, ...oppBenchFill];
+      const { ownedIds: shOwnedIds, excludeIds: shExcludeIds } =
+        buildUserExclusionSets(
+          filledStarters,
+          filledBench,
+          season.departedPlayerIds,
+        );
+      const oppFullRoster = buildSafeOpponentLiveRoster({
+        club: clubsById[oppId],
+        baseRoster: activeAiRosters[oppId] ?? [],
+        conditionMap: season.playerConditions,
+        ownedIds: shOwnedIds,
+        excludeIds: shExcludeIds,
+        includeBench: true,
+      });
 
       const userMatchResult = simulateSecondHalf({
         halftime,
@@ -3891,6 +4022,19 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         : halftime.homeTeamId;
       const oppIdx = activeStandings.findIndex((r) => r.teamId === oppId);
       const allSubsSoFar = [...(halftime.liveSubs ?? []), ...newSubRecords];
+      const { ownedIds: subOwnedIds, excludeIds: subExcludeIds } =
+        buildUserExclusionSets(
+          filledStarters,
+          filledBench,
+          season.departedPlayerIds,
+        );
+      const safeOppRoster = buildSafeOpponentLiveRoster({
+        club: clubsById[oppId],
+        baseRoster: activeAiRosters[oppId] ?? [],
+        conditionMap: season.playerConditions,
+        ownedIds: subOwnedIds,
+        excludeIds: subExcludeIds,
+      });
 
       const updatedResult = resimulateRemainingSecondHalf({
         halftime,
@@ -3900,12 +4044,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         allSubsSoFar,
         homeClub: clubsById[halftime.homeTeamId],
         awayClub: clubsById[halftime.awayTeamId],
-        homeRoster: halftime.isUserHome
-          ? filledStarters
-          : activeAiRosters[halftime.homeTeamId] ?? [],
-        awayRoster: halftime.isUserHome
-          ? activeAiRosters[halftime.awayTeamId] ?? []
-          : filledStarters,
+        homeRoster: halftime.isUserHome ? filledStarters : safeOppRoster,
+        awayRoster: halftime.isUserHome ? safeOppRoster : filledStarters,
         userContext: {
           userClubId: USER_CLUB_ID,
           starters: filledStarters,
@@ -4039,16 +4179,28 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       }
 
       const allSubsSoFar = [...(halftime.liveSubs ?? []), ...extraSubRecords];
+      const et1OppId = halftime.isUserHome
+        ? halftime.awayTeamId
+        : halftime.homeTeamId;
+      const { ownedIds: et1OwnedIds, excludeIds: et1ExcludeIds } =
+        buildUserExclusionSets(
+          filledStarters,
+          filledBench,
+          season.departedPlayerIds,
+        );
+      const safeEt1OppRoster = buildSafeOpponentLiveRoster({
+        club: clubsById[et1OppId],
+        baseRoster: activeAiRosters[et1OppId] ?? [],
+        conditionMap: season.playerConditions,
+        ownedIds: et1OwnedIds,
+        excludeIds: et1ExcludeIds,
+      });
       const et1Result = simulateExtraTimeFirstHalf({
         baseResult,
         homeClub: clubsById[halftime.homeTeamId],
         awayClub: clubsById[halftime.awayTeamId],
-        homeRoster: halftime.isUserHome
-          ? filledStarters
-          : activeAiRosters[halftime.homeTeamId] ?? [],
-        awayRoster: halftime.isUserHome
-          ? activeAiRosters[halftime.awayTeamId] ?? []
-          : filledStarters,
+        homeRoster: halftime.isUserHome ? filledStarters : safeEt1OppRoster,
+        awayRoster: halftime.isUserHome ? safeEt1OppRoster : filledStarters,
         userContext: {
           userClubId: USER_CLUB_ID,
           starters: filledStarters,
@@ -4156,17 +4308,29 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const extraTimeSubIds = allSubsSoFar
         .filter((r) => r.minute >= 90)
         .map((r) => r.inPlayerId);
+      const et2OppId = halftime.isUserHome
+        ? halftime.awayTeamId
+        : halftime.homeTeamId;
+      const { ownedIds: et2OwnedIds, excludeIds: et2ExcludeIds } =
+        buildUserExclusionSets(
+          filledStarters,
+          filledBench,
+          season.departedPlayerIds,
+        );
+      const safeEt2OppRoster = buildSafeOpponentLiveRoster({
+        club: clubsById[et2OppId],
+        baseRoster: activeAiRosters[et2OppId] ?? [],
+        conditionMap: season.playerConditions,
+        ownedIds: et2OwnedIds,
+        excludeIds: et2ExcludeIds,
+      });
 
       const et2FullResult = simulateExtraTimeSecondHalfAndPenalties({
         et1Result,
         homeClub: clubsById[halftime.homeTeamId],
         awayClub: clubsById[halftime.awayTeamId],
-        homeRoster: halftime.isUserHome
-          ? filledStarters
-          : activeAiRosters[halftime.homeTeamId] ?? [],
-        awayRoster: halftime.isUserHome
-          ? activeAiRosters[halftime.awayTeamId] ?? []
-          : filledStarters,
+        homeRoster: halftime.isUserHome ? filledStarters : safeEt2OppRoster,
+        awayRoster: halftime.isUserHome ? safeEt2OppRoster : filledStarters,
         userContext: {
           userClubId: USER_CLUB_ID,
           starters: filledStarters,
@@ -4259,6 +4423,28 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         return map;
       };
 
+      const commitOppId = halftime.isUserHome
+        ? halftime.awayTeamId
+        : halftime.homeTeamId;
+      const { ownedIds: commitOwnedIds, excludeIds: commitExcludeIds } =
+        buildUserExclusionSets(
+          filledStarters,
+          filledBench,
+          season.departedPlayerIds,
+        );
+      const getSafeCommitOppRoster = (
+        clubsMap: Record<string, Club>,
+        includeBench = false,
+      ) =>
+        buildSafeOpponentLiveRoster({
+          club: clubsMap[commitOppId],
+          baseRoster: activeAiRosters[commitOppId] ?? [],
+          conditionMap: season.playerConditions,
+          ownedIds: commitOwnedIds,
+          excludeIds: commitExcludeIds,
+          includeBench,
+        });
+
       if (halftime.fullMatchResult) {
         let finalRes = halftime.fullMatchResult;
         // If user clicked instant finish during ET 1st Half or 105' ET Halftime, complete ET 2nd Half + Penalties!
@@ -4285,17 +4471,14 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             userTactic,
           );
           const clubsById = buildClubsById(ratings);
+          const safeOppRoster = getSafeCommitOppRoster(clubsById);
           const allSubsSoFar = halftime.liveSubs ?? [];
           finalRes = simulateExtraTimeSecondHalfAndPenalties({
             et1Result: et1Base,
             homeClub: clubsById[halftime.homeTeamId],
             awayClub: clubsById[halftime.awayTeamId],
-            homeRoster: halftime.isUserHome
-              ? filledStarters
-              : activeAiRosters[halftime.homeTeamId] ?? [],
-            awayRoster: halftime.isUserHome
-              ? activeAiRosters[halftime.awayTeamId] ?? []
-              : filledStarters,
+            homeRoster: halftime.isUserHome ? filledStarters : safeOppRoster,
+            awayRoster: halftime.isUserHome ? safeOppRoster : filledStarters,
             userContext: {
               userClubId: USER_CLUB_ID,
               starters: filledStarters,
@@ -4338,16 +4521,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
               userTactic,
             );
             const clubsById = buildClubsById(ratings);
+            const safeOppRoster = getSafeCommitOppRoster(clubsById);
             finalRes = simulateExtraTimeAndPenalties({
               baseResult: finalRes,
               homeClub: clubsById[halftime.homeTeamId],
               awayClub: clubsById[halftime.awayTeamId],
-              homeRoster: halftime.isUserHome
-                ? filledStarters
-                : activeAiRosters[halftime.homeTeamId] ?? [],
-              awayRoster: halftime.isUserHome
-                ? activeAiRosters[halftime.awayTeamId] ?? []
-                : filledStarters,
+              homeRoster: halftime.isUserHome ? filledStarters : safeOppRoster,
+              awayRoster: halftime.isUserHome ? safeOppRoster : filledStarters,
               userContext: {
                 userClubId: USER_CLUB_ID,
                 starters: filledStarters,
@@ -4388,21 +4568,15 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       );
 
       const clubsById = buildClubsById(ratings);
-      const oppId = halftime.isUserHome
-        ? halftime.awayTeamId
-        : halftime.homeTeamId;
-      const oppIdx = activeStandings.findIndex((r) => r.teamId === oppId);
+      const oppIdx = activeStandings.findIndex((r) => r.teamId === commitOppId);
+      const safeOppWithBench = getSafeCommitOppRoster(clubsById, true);
 
       let userMatchResult = simulateSecondHalf({
         halftime,
         homeClub: clubsById[halftime.homeTeamId],
         awayClub: clubsById[halftime.awayTeamId],
-        homeRoster: halftime.isUserHome
-          ? filledStarters
-          : activeAiRosters[halftime.homeTeamId] ?? [],
-        awayRoster: halftime.isUserHome
-          ? activeAiRosters[halftime.awayTeamId] ?? []
-          : filledStarters,
+        homeRoster: halftime.isUserHome ? filledStarters : safeOppWithBench,
+        awayRoster: halftime.isUserHome ? safeOppWithBench : filledStarters,
         userContext: {
           userClubId: USER_CLUB_ID,
           starters: filledStarters,
@@ -4429,16 +4603,13 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         const aggA =
           (halftime.aggAwayBeforeMatch ?? 0) + userMatchResult.awayGoals;
         if (aggH === aggA) {
+          const safeOppEt = getSafeCommitOppRoster(clubsById);
           userMatchResult = simulateExtraTimeAndPenalties({
             baseResult: userMatchResult,
             homeClub: clubsById[halftime.homeTeamId],
             awayClub: clubsById[halftime.awayTeamId],
-            homeRoster: halftime.isUserHome
-              ? filledStarters
-              : activeAiRosters[halftime.homeTeamId] ?? [],
-            awayRoster: halftime.isUserHome
-              ? activeAiRosters[halftime.awayTeamId] ?? []
-              : filledStarters,
+            homeRoster: halftime.isUserHome ? filledStarters : safeOppEt,
+            awayRoster: halftime.isUserHome ? safeOppEt : filledStarters,
             userContext: {
               userClubId: USER_CLUB_ID,
               starters: filledStarters,
@@ -4691,11 +4862,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           workingConditions,
           teamMorale,
         );
-        const excludeIds = new Set<string>([
-          ...filledStarters.map((p) => p.id),
-          ...filledBench.map((p) => p.id),
-          ...(state.season.departedPlayerIds ?? []),
-        ]);
+        const { ownedIds, excludeIds } = buildUserExclusionSets(
+          filledStarters,
+          filledBench,
+          state.season.departedPlayerIds,
+        );
 
         const { chem, ratings, staffCoachId } = computeUserChemAndRatings({
           formation: state.formation,
@@ -4743,6 +4914,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
                 userContext: userCtx,
                 conditionMap: workingConditions,
                 excludeIds,
+                ownedIds,
               })
             : advanceUclKnockoutLeg({
                 ucl: syncedUcl,
@@ -4750,6 +4922,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
                 userContext: userCtx,
                 conditionMap: workingConditions,
                 excludeIds,
+                ownedIds,
               });
 
         const interimSeason: SeasonState = {
@@ -5324,7 +5497,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const nextFilledBench = nextBench.filter((p): p is Player => p !== null);
 
       const nextDepartedPlayerIds = Array.from(
-        new Set([...(state.season.departedPlayerIds ?? []), incomingPlayer.id]),
+        new Set([
+          ...(state.season.departedPlayerIds ?? []),
+          incomingPlayer.id,
+          outPlayer.id,
+        ]),
       );
       const globalExcludeIds = new Set<string>([
         ...nextFilledStarters.map((p) => p.id),
@@ -6069,11 +6246,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         ratings,
       );
 
-      const excludeIds = new Set<string>([
-        ...filledStarters.map((p) => p.id),
-        ...filledBench.map((p) => p.id),
-        ...(state.season.departedPlayerIds ?? []),
-      ]);
+      const { ownedIds, excludeIds } = buildUserExclusionSets(
+        filledStarters,
+        filledBench,
+        state.season.departedPlayerIds,
+      );
 
       const { ucl, uclPlayerStats } = createUclTournamentState({
         userLeagueId: state.season.leagueId,
@@ -6084,6 +6261,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         userAiRosters: state.season.aiRosters,
         otherLeagues: state.season.otherLeagues,
         excludeIds,
+        ownedIds,
         userParticipated: true,
       });
 
@@ -6175,17 +6353,18 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const workingConditions: PlayerConditionMap = {
         ...state.season.playerConditions,
       };
-      const excludeIds = new Set<string>([
-        ...filledStarters.map((p) => p.id),
-        ...filledBench.map((p) => p.id),
-        ...(state.season.departedPlayerIds ?? []),
-      ]);
+      const { ownedIds, excludeIds } = buildUserExclusionSets(
+        filledStarters,
+        filledBench,
+        state.season.departedPlayerIds,
+      );
 
       const res = simulateUclLeaguePhaseToEnd({
         ucl: syncedUcl,
         uclPlayerStats: state.season.uclPlayerStats,
         conditionMap: workingConditions,
         excludeIds,
+        ownedIds,
         userContext: {
           userClubId: USER_CLUB_ID,
           starters: applyConditionToPlayers(
@@ -6268,10 +6447,17 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const workingConditions: PlayerConditionMap = {
         ...state.season.playerConditions,
       };
+      const { ownedIds, excludeIds } = buildUserExclusionSets(
+        state.starters,
+        state.bench,
+        state.season.departedPlayerIds,
+      );
       const res = advanceUclPlayoffToCompletion({
         ucl: state.season.ucl,
         uclPlayerStats: state.season.uclPlayerStats,
         conditionMap: workingConditions,
+        excludeIds,
+        ownedIds,
       });
       return {
         ...state,
@@ -6305,11 +6491,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       const workingConditions: PlayerConditionMap = {
         ...state.season.playerConditions,
       };
-      const excludeIds = new Set<string>([
-        ...filledStarters.map((p) => p.id),
-        ...filledBench.map((p) => p.id),
-        ...(state.season.departedPlayerIds ?? []),
-      ]);
+      const { ownedIds, excludeIds } = buildUserExclusionSets(
+        filledStarters,
+        filledBench,
+        state.season.departedPlayerIds,
+      );
       const chem = calculateChemistry(
         state.formation,
         filledStarters,
@@ -6345,6 +6531,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         uclPlayerStats: state.season.uclPlayerStats,
         conditionMap: workingConditions,
         excludeIds,
+        ownedIds,
         userContext: {
           userClubId: USER_CLUB_ID,
           starters: applyConditionToPlayers(
@@ -6415,11 +6602,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         filledStarters,
         ratings,
       );
-      const excludeIds = new Set<string>([
-        ...filledStarters.map((p) => p.id),
-        ...filledBench.map((p) => p.id),
-        ...(state.season.departedPlayerIds ?? []),
-      ]);
+      const { ownedIds, excludeIds } = buildUserExclusionSets(
+        filledStarters,
+        filledBench,
+        state.season.departedPlayerIds,
+      );
 
       const userRank = getUserRank(state.season.standings, USER_CLUB_ID);
       const init = state.season.ucl
@@ -6433,6 +6620,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             userAiRosters: state.season.aiRosters,
             otherLeagues: state.season.otherLeagues,
             excludeIds,
+            ownedIds,
             userParticipated: userRank <= 4,
           });
 
@@ -6445,6 +6633,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         : simulateUclToCompletion({
             ucl: init.ucl,
             uclPlayerStats: init.uclPlayerStats,
+            excludeIds,
+            ownedIds,
             userContext:
               userRank <= 4
                 ? {
@@ -6514,11 +6704,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       if (!state.season) return state;
       const filledStarters = state.starters.filter((p): p is Player => p !== null);
       const filledBench = state.bench.filter((p): p is Player => p !== null);
-      const excludeIds = new Set<string>([
-        ...filledStarters.map((p) => p.id),
-        ...filledBench.map((p) => p.id),
-        ...(state.season.departedPlayerIds ?? []),
-      ]);
+      const { ownedIds, excludeIds } = buildUserExclusionSets(
+        filledStarters,
+        filledBench,
+        state.season.departedPlayerIds,
+      );
 
       // Guarantee UCL is fully completed before computing Ballon d'Or & entering final summary
       let finalUcl = state.season.ucl;
@@ -6546,6 +6736,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         const sim = simulateUclToCompletion({
           ucl: finalUcl,
           uclPlayerStats: finalUclStats,
+          excludeIds,
+          ownedIds,
           userContext:
             finalUcl.userParticipated !== false
               ? {
@@ -7211,20 +7403,44 @@ export function loadSavedGameState(): GameState {
       }
 
       if (parsed.season) {
-        parsed.season.aiRosters = hydrateRosterMapFromCatalog(
-          parsed.season.aiRosters,
-        );
+        if (!Array.isArray(parsed.season.departedPlayerIds)) {
+          parsed.season.departedPlayerIds = [];
+        }
+        const savedOwnedIds = new Set<string>(seenSquadIds);
+        const savedExcludeIds = new Set<string>([
+          ...savedOwnedIds,
+          ...parsed.season.departedPlayerIds,
+        ]);
+
+        parsed.season.aiRosters = sanitizeRosterMapForUser({
+          rosters: hydrateRosterMapFromCatalog(parsed.season.aiRosters),
+          clubs: parsed.season.clubs ?? [],
+          defaultLeagueId: parsed.season.leagueId,
+          ownedIds: savedOwnedIds,
+          excludeIds: savedExcludeIds,
+        });
         if (!parsed.season.otherLeagues) {
-          const initOther = createOtherLeaguesState(parsed.season.leagueId);
+          const initOther = createOtherLeaguesState(
+            parsed.season.leagueId,
+            savedExcludeIds,
+          );
           parsed.season.otherLeagues = advanceOtherLeaguesToProgress(
             initOther,
             parsed.season.currentRound,
             parsed.season.totalRounds,
+            Math.random,
+            savedExcludeIds,
           );
         } else {
           for (const lg of Object.values(parsed.season.otherLeagues)) {
             if (lg && lg.aiRosters) {
-              lg.aiRosters = hydrateRosterMapFromCatalog(lg.aiRosters);
+              lg.aiRosters = sanitizeRosterMapForUser({
+                rosters: hydrateRosterMapFromCatalog(lg.aiRosters),
+                clubs: lg.clubs ?? [],
+                defaultLeagueId: lg.leagueId,
+                ownedIds: savedOwnedIds,
+                excludeIds: savedExcludeIds,
+              });
             }
           }
         }
@@ -7237,9 +7453,20 @@ export function loadSavedGameState(): GameState {
         if (parsed.season.ucl === undefined) {
           parsed.season.ucl = null;
         } else if (parsed.season.ucl) {
-          parsed.season.ucl.aiRosters = hydrateRosterMapFromCatalog(
-            parsed.season.ucl.aiRosters,
-          );
+          const uclLeagueByClubId = new Map<string, LeagueId>();
+          for (const t of parsed.season.ucl.teams ?? []) {
+            if (t.originLeagueId !== 'other') {
+              uclLeagueByClubId.set(t.club.id, t.originLeagueId);
+            }
+          }
+          parsed.season.ucl.aiRosters = sanitizeRosterMapForUser({
+            rosters: hydrateRosterMapFromCatalog(parsed.season.ucl.aiRosters),
+            clubs: parsed.season.ucl.clubs ?? [],
+            leagueIdByClubId: uclLeagueByClubId,
+            defaultLeagueId: parsed.season.leagueId,
+            ownedIds: savedOwnedIds,
+            excludeIds: savedExcludeIds,
+          });
         }
         if (!parsed.season.uclPlayerStats) parsed.season.uclPlayerStats = {};
         if (!Array.isArray(parsed.season.userUclMatchHistory)) {
@@ -7253,9 +7480,6 @@ export function loadSavedGameState(): GameState {
         }
         if (parsed.season.cupChampionCelebrated === undefined) {
           parsed.season.cupChampionCelebrated = false;
-        }
-        if (!Array.isArray(parsed.season.departedPlayerIds)) {
-          parsed.season.departedPlayerIds = [];
         }
         // Backfill v9.0 Season Depth fields for legacy saves (zero-breakage fallback)
         if (!parsed.season.budgetState) {

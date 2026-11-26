@@ -111,9 +111,12 @@ export function OpponentPitchView({
       };
     }
 
-    const excludeIds = new Set<string>([
+    const ownedIds = new Set<string>([
       ...state.starters.filter((p): p is Player => Boolean(p)).map((p) => p.id),
       ...state.bench.filter((p): p is Player => Boolean(p)).map((p) => p.id),
+    ]);
+    const excludeIds = new Set<string>([
+      ...ownedIds,
       ...(state.season?.departedPlayerIds ?? []),
     ]);
     const depthPool = getClubRealDepthPool(opponent.name, excludeIds);
@@ -121,6 +124,7 @@ export function OpponentPitchView({
       baseRoster: roster,
       fullClubPool: depthPool,
       conditionMap,
+      ownedIds,
     });
     return {
       expectedStarters: res.starters,

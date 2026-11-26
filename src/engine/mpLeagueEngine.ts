@@ -2272,6 +2272,9 @@ function stepFinishLeague(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueH
     if (squad) uclRosters[h.clubId] = squad.starters;
   }
 
+  const humanOwnedIds = new Set<string>(allHumanPlayerIds(env.squads));
+  const humanClubIdSet = new Set<string>(state.humans.map((h) => h.clubId));
+
   const created = createUclTournamentState({
     userLeagueId: state.settings.leagueId,
     userClub: clubs[0],
@@ -2281,6 +2284,8 @@ function stepFinishLeague(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueH
     userAiRosters: uclRosters,
     otherLeagues,
     excludeIds,
+    ownedIds: humanOwnedIds,
+    humanClubIds: humanClubIdSet,
     userParticipated: false,
     rng,
   });
@@ -2312,6 +2317,9 @@ function stepFinishLeague(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueH
     const bg = simulateUclToCompletion({
       ucl: created.ucl,
       uclPlayerStats: created.uclPlayerStats,
+      excludeIds,
+      ownedIds: humanOwnedIds,
+      humanClubIds: humanClubIdSet,
     });
     return {
       ...base,
@@ -2453,6 +2461,8 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
     }
   }
 
+  const humanOwnedIds = new Set<string>(allHumanPlayerIds(env.squads));
+  const humanClubIdSet = new Set<string>(state.humans.map((h) => h.clubId));
   const sim = simulateUclLeaguePhaseRound({
     ucl,
     uclPlayerStats: state.uclPlayerStats,
@@ -2460,6 +2470,8 @@ function stepUclLeaguePhase(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
     userClubId: MP_NO_USER_ID,
     conditionMap: conditions,
     excludeIds,
+    ownedIds: humanOwnedIds,
+    humanClubIds: humanClubIdSet,
     rng,
   });
 
@@ -2865,6 +2877,8 @@ function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
     });
   }
 
+  const humanOwnedIds = new Set<string>(allHumanPlayerIds(env.squads));
+  const humanClubIdSet = new Set<string>(state.humans.map((h) => h.clubId));
   const advanced = advanceUclKnockoutLeg({
     ucl,
     uclPlayerStats: state.uclPlayerStats,
@@ -2872,6 +2886,8 @@ function stepUclKnockoutLeg(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagu
     userClubId: MP_NO_USER_ID,
     conditionMap: conditions,
     excludeIds,
+    ownedIds: humanOwnedIds,
+    humanClubIds: humanClubIdSet,
     rng,
   });
 
@@ -2980,9 +2996,16 @@ export function grantMpLeagueConsent(state: MpLeagueHostState): MpLeagueHostStat
     return { ...state, flow: { kind: 'auto' } };
   }
   if (state.flow.allEliminated) {
+    const ownedInUcl = new Set<string>();
+    for (const cid of state.uclHumanClubIds) {
+      for (const p of state.ucl.aiRosters[cid] ?? []) ownedInUcl.add(p.id);
+    }
     const done = simulateUclToCompletion({
       ucl: state.ucl,
       uclPlayerStats: state.uclPlayerStats,
+      excludeIds: new Set<string>([...state.departedIds, ...ownedInUcl]),
+      ownedIds: ownedInUcl,
+      humanClubIds: new Set<string>(state.humans.map((h) => h.clubId)),
     });
     return {
       ...state,

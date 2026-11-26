@@ -12,14 +12,34 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v9.2.4';
+export const CURRENT_APP_VERSION = 'v9.2.5';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v9.2.5',
+    codename: '드래프트·영입 선수 타 리그/챔피언스리그 AI 구단 중복 출전(도플갱어) 근본 수정',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '유저가 드래프트나 이적시장에서 보유한 선수(예: 홀란드를 뽑고 세리에 A 진행 후 UCL에서 맨시티 대결)가 상대 AI 구단에서 중복 등장하던 모든 경로를 전수 분석해 근본 해결했습니다. 라이브 2D/자동진행 후반 벤치 보충, UCL 플레이오프 부상 대체·스킵, 세이브 복원 및 UI 폴백까지 전역 유일 선수 불변식을 100% 보장하며, 이미 오염된 진행 중 세이브도 새로고침 시 자동 복구됩니다.',
+    sections: [
+      {
+        category: '전역 유일 선수 불변식(중복 출전 원천 차단) 근본 수정',
+        items: [
+          '라이브 2D 중계 및 자동진행 후반전(`START_SECOND_HALF_BROADCAST`)에서 상대 AI 벤치 5명을 `getClubRealDepthPool`로 보충할 때 유저 스쿼드·방출 선수(`excludeIds`)가 제외되지 않아, 드래프트로 뽑은 고OVR 선수(예: 홀란드)가 하프타임 교체로 원소속팀(맨시티 등)에 투입되던 핵심 원인을 `buildSafeOpponentLiveRoster` 공용 헬퍼로 원천 차단했습니다.',
+          'UCL 16강 플레이오프 부전승 진행(`SIMULATE_UCL_PLAYOFF_BYE`)과 UCL 스킵/결산·배경 UCL·멀티리그 UCL 자동 완료 경로에서 누락되어 있던 `excludeIds`·`ownedIds` 전달을 전면 보강해, 상대 AI 주전 부상 시 유저 보유 선수가 대체 소집되지 않도록 수정했습니다.',
+          '`sanitizeAiClubRoster`·`prepareAiClubLineupForMatch`·`createUclTournamentState`에 보유 선수(`ownedIds`) 강제 제거 및 포지션 맞춤 자동 대체 로직을 도입하고, 정상 트레이드된 선수는 유지하면서 중복만 제거하도록 구조화했습니다.',
+          '세이브 로드(`loadSavedGameState`) 시 누락된 타 리그 재구성에 `excludeIds`를 적용하고, 기존에 이미 중복 선수가 섞인 진행 중 세이브(`aiRosters`·`otherLeagues`·`ucl.aiRosters`)도 불러올 때 자동 정리·대체되도록 자가 치유를 추가했습니다.',
+          '라이브 중계(`LiveMatchBroadcast`)·상대 피치 프리뷰(`OpponentPitchView`)·멀티 UCL 프리뷰(`MpUclMatchPreviewModal`)·구단 로스터 조회(`resolveClubRoster`)의 폴백 경로에도 보유 선수 제외 가드를 모두 적용했습니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v9.2.4',
     codename: 'FFP 이적시장 페널티 1·2·3차/UCL 기준 통일 · 자동진행 전술 파훼 경고 수정 이동 버그 수정',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'BALANCE',
     summary:
       'FFP 1·2단계 이적시장 시도 제한을 3차 이적시장과 UCL 특별 이적시장까지 포함해 직관적인 기준(1단계 1/1/1/UCL 3회, 2단계 0/1/0/UCL 3회)으로 통일하고 게임 내 모든 안내·배지·가이드를 동기화했습니다. 또한 자동진행 중 전술 파훼 경고 팝업에서 [전술 수정하러 가기] 버튼을 눌러도 전술 수정 화면으로 이동하지 않던 버그를 수정했습니다.',
     sections: [

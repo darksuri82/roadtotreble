@@ -813,11 +813,29 @@ export function LiveMatchBroadcast({
   const oppFormation = halftime.isUserHome
     ? halftime.awayFormation
     : halftime.homeFormation;
-  const oppRoster =
+  const ownedPlayerIds = new Set<string>([
+    ...state.starters.filter((p): p is Player => p !== null).map((p) => p.id),
+    ...state.bench.filter((p): p is Player => p !== null).map((p) => p.id),
+  ]);
+  const oppExcludeIds = new Set<string>([
+    ...ownedPlayerIds,
+    ...(gameCtx.state.season?.departedPlayerIds ?? []),
+  ]);
+  const rawOppRoster =
     override?.opponentRoster ??
-    gameCtx.state.season?.aiRosters?.[oppClub.id] ??
-    gameCtx.state.season?.ucl?.aiRosters?.[oppClub.id] ??
-    buildAiClubRoster(oppClub, gameCtx.state.season?.leagueId ?? 'epl');
+    (halftime.competition === 'ucl'
+      ? (gameCtx.state.season?.ucl?.aiRosters?.[oppClub.id] ??
+        gameCtx.state.season?.aiRosters?.[oppClub.id])
+      : (gameCtx.state.season?.aiRosters?.[oppClub.id] ??
+        gameCtx.state.season?.ucl?.aiRosters?.[oppClub.id])) ??
+    buildAiClubRoster(
+      oppClub,
+      gameCtx.state.season?.leagueId ?? 'epl',
+      oppExcludeIds,
+    );
+  const oppRoster = override?.opponentRoster
+    ? rawOppRoster
+    : rawOppRoster.filter((p) => !ownedPlayerIds.has(p.id));
 
   const htUnifiedMatchup = evaluateUnifiedTacticalMatchup(
     {

@@ -812,17 +812,26 @@ export function selectConditionAwareAiLineup(params: {
   baseRoster: Player[];
   fullClubPool: Player[];
   conditionMap: PlayerConditionMap | undefined | null;
+  ownedIds?: Set<string>;
 }): {
   starters: Player[];
   fullClubSquad: Player[];
   injuredPlayers: { player: Player; injury: PlayerInjury }[];
 } {
-  const { baseRoster, fullClubPool, conditionMap } = params;
+  const { baseRoster, fullClubPool, conditionMap, ownedIds } = params;
 
-  // Deduplicate union of baseRoster + fullClubPool
+  const isOwned = (id: string) => Boolean(ownedIds && ownedIds.has(id));
+  const filteredBaseRoster = ownedIds && ownedIds.size > 0
+    ? baseRoster.filter((p) => !isOwned(p.id))
+    : baseRoster;
+  const filteredClubPool = ownedIds && ownedIds.size > 0
+    ? fullClubPool.filter((p) => !isOwned(p.id))
+    : fullClubPool;
+
+  // Deduplicate union of filteredBaseRoster + filteredClubPool
   const byId = new Map<string, Player>();
-  for (const p of baseRoster) byId.set(p.id, p);
-  for (const p of fullClubPool) {
+  for (const p of filteredBaseRoster) byId.set(p.id, p);
+  for (const p of filteredClubPool) {
     if (!byId.has(p.id)) byId.set(p.id, p);
   }
   const fullClubSquad = Array.from(byId.values());
@@ -837,10 +846,10 @@ export function selectConditionAwareAiLineup(params: {
 
   // If baseRoster carries > 11 players (e.g. traded-in additions or legacy saves),
   // ensure higher-OVR healthy players in indices 11+ are promoted over weaker same-position starters.
-  let effectiveBase = baseRoster;
-  if (baseRoster.length > 11) {
-    const promoted = baseRoster.slice(0, 11);
-    const extras = [...baseRoster.slice(11)].sort((a, b) => b.ovr - a.ovr);
+  let effectiveBase = filteredBaseRoster;
+  if (filteredBaseRoster.length > 11) {
+    const promoted = filteredBaseRoster.slice(0, 11);
+    const extras = [...filteredBaseRoster.slice(11)].sort((a, b) => b.ovr - a.ovr);
     for (const extra of extras) {
       const extraCond = conditionMap?.[extra.id];
       if (isPlayerUnavailable(extraCond)) continue;
@@ -874,8 +883,19 @@ export function selectConditionAwareAiLineup(params: {
   }
 
   if (!conditionMap) {
+    const noCondStarters = effectiveBase.slice(0, 11);
+    if (noCondStarters.length < 11) {
+      const used = new Set(noCondStarters.map((p) => p.id));
+      for (const cand of fullClubSquad) {
+        if (noCondStarters.length >= 11) break;
+        if (!used.has(cand.id)) {
+          noCondStarters.push(cand);
+          used.add(cand.id);
+        }
+      }
+    }
     return {
-      starters: effectiveBase.slice(0, 11),
+      starters: noCondStarters,
       fullClubSquad,
       injuredPlayers,
     };
@@ -1152,26 +1172,40 @@ export function prepareAiClubLineupForMatch(params: {
   baseRoster: Player[];
   conditionMap: PlayerConditionMap | undefined | null;
   excludeIds?: Set<string>;
+  ownedIds?: Set<string>;
 }): {
   effectiveStarters: Player[];
   rawStarters: Player[];
   fullClubSquad: Player[];
 } {
-  const { club, baseRoster, conditionMap, excludeIds } = params;
-  if (!conditionMap) {
+  const { club, baseRoster, conditionMap, excludeIds, ownedIds } = params;
+  const effectiveExclude =
+    ownedIds && ownedIds.size > 0
+      ? new Set<string>([...(excludeIds ?? []), ...ownedIds])
+      : excludeIds;
+
+  const hasOwnedCollision = Boolean(
+    ownedIds && ownedIds.size > 0 && baseRoster.some((p) => ownedIds.has(p.id)),
+  );
+
+  if (!conditionMap && !hasOwnedCollision) {
     return {
       effectiveStarters: baseRoster,
       rawStarters: baseRoster,
       fullClubSquad: baseRoster,
     };
   }
-  const depthPool = getClubRealDepthPool(club.name, excludeIds);
+
+  const depthPool = getClubRealDepthPool(club.name, effectiveExclude);
   const { starters, fullClubSquad } = selectConditionAwareAiLineup({
     baseRoster,
     fullClubPool: depthPool,
     conditionMap,
+    ownedIds,
   });
-  const effectiveStarters = applyConditionToPlayers(starters, conditionMap, 0);
+  const effectiveStarters = conditionMap
+    ? applyConditionToPlayers(starters, conditionMap, 0)
+    : starters;
   return {
     effectiveStarters,
     rawStarters: starters,
