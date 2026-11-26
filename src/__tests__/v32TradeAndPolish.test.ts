@@ -209,6 +209,14 @@ describe('v3.2 / v3.3 NBA-Style Trade System, 16-Player AI Squad (11 Starters + 
       ...st,
       season: {
         ...st.season!,
+        transferMarket: {
+          ...st.season!.transferMarket,
+          ffpEmbargoActive: false,
+          attemptsRemaining: Math.max(
+            1,
+            st.season!.transferMarket.attemptsRemaining,
+          ),
+        },
         allPlayerStats: {
           ...st.season!.allPlayerStats,
           [targetPlayer.id]: {

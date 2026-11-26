@@ -34,6 +34,7 @@ import {
   createSeasonBudgetState,
   deductTransferCash,
   getFfpWindowMaxAttempts,
+  isFfpEmbargoWindow,
 } from '../engine/budgetEngine';
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
 import {
@@ -2124,9 +2125,9 @@ function openTransferWindowWithIncomingOffers(params: {
     options,
   } = params;
   const isRegularWindow = !options?.isUclSpecial;
-  const isWindow2 = windowIndex === 2 && isRegularWindow;
-  const ffpTier = season.budgetState?.ffpTier ?? 0;
-  const ffpEmbargoActive = isWindow2 && ffpTier === 2;
+  const ffpEmbargoActive = isFfpEmbargoWindow(season.budgetState, windowIndex, {
+    isUclSpecial: options?.isUclSpecial,
+  });
   const maxAttemptsOverride = isRegularWindow
     ? getFfpWindowMaxAttempts(season.budgetState, windowIndex, 3)
     : undefined;
@@ -5218,7 +5219,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     case 'TRANSFER_SPIN_CLUBS': {
       if (!state.season || !state.season.transferMarket.isOpen) return state;
       const tm = state.season.transferMarket;
-      if (tm.hasSpunClubs) return state;
+      if (tm.ffpEmbargoActive || tm.hasSpunClubs) return state;
 
       const ownedIds = getAllSquadIds(state.starters, state.bench);
       const userRank = getUserRank(state.season.standings, USER_CLUB_ID);
@@ -5842,7 +5843,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     case 'TRADE_ACCEPT_INCOMING': {
       if (!state.season || !state.season.transferMarket.isOpen) return state;
       const tm = state.season.transferMarket;
-      if (tm.attemptsRemaining <= 0) return state;
+      if (tm.ffpEmbargoActive || tm.attemptsRemaining <= 0) return state;
 
       const offer = (tm.incomingOffers ?? []).find(
         (o) => o.id === action.payload.offerId && o.status === 'pending',

@@ -135,6 +135,7 @@ describe('v9.2 Balance Calibration, Mobile Scroll & Pre-v9.0 Reset', () => {
     expect(ev3.chemPenalty).toBe(-FFP_TIER1_CHEM_PENALTY);
     expect(ev3.window1MaxAttempts).toBe(FFP_TIER1_WINDOW1_MAX_ATTEMPTS);
     expect(ev3.window2MaxAttempts).toBe(FFP_TIER1_WINDOW2_MAX_ATTEMPTS);
+    expect(ev3.window3MaxAttempts).toBe(1);
     expect(ev3.extraLossMoraleDrop).toBe(FFP_TIER1_LOSS_MORALE_EXTRA);
     expect(ev3.scoreMultiplier).toBe(FFP_TIER1_SCORE_MULTIPLIER);
 
@@ -149,27 +150,48 @@ describe('v9.2 Balance Calibration, Mobile Scroll & Pre-v9.0 Reset', () => {
     expect(ev5.chemPenalty).toBe(-FFP_TIER2_CHEM_PENALTY);
     expect(ev5.window1MaxAttempts).toBe(FFP_TIER2_WINDOW1_MAX_ATTEMPTS);
     expect(ev5.window2MaxAttempts).toBe(FFP_TIER2_WINDOW2_MAX_ATTEMPTS);
+    expect(ev5.window3MaxAttempts).toBe(0);
     expect(ev5.extraLossMoraleDrop).toBe(FFP_TIER2_LOSS_MORALE_EXTRA);
     expect(ev5.scoreMultiplier).toBe(FFP_TIER2_SCORE_MULTIPLIER);
 
-    expect(
-      getFfpWindowMaxAttempts(
-        {
-          capM: 950,
-          initialSpentM: 1000,
-          excessM: 50,
-          excessPct: 5.3,
-          ffpTier: 1,
-          transferCashM: 0,
-          chemPenalty: -8,
-          window1MaxAttempts: 2,
-          window2MaxAttempts: 1,
-          scoreMultiplier: 0.94,
-          extraLossMoraleDrop: 1,
-        },
-        1,
-      ),
-    ).toBe(2);
+    // Verify 1/2/3/UCL attempt schedule: Tier 1 (1/1/1/3) & Tier 2 (0/1/0/3)
+    const tier1Budget = {
+      capM: 950,
+      initialSpentM: 1000,
+      excessM: 50,
+      excessPct: 5.3,
+      ffpTier: 1 as const,
+      transferCashM: 0,
+      chemPenalty: -8,
+      window1MaxAttempts: 1,
+      window2MaxAttempts: 1,
+      window3MaxAttempts: 1,
+      scoreMultiplier: 0.94,
+      extraLossMoraleDrop: 1,
+    };
+    expect(getFfpWindowMaxAttempts(tier1Budget, 1)).toBe(1);
+    expect(getFfpWindowMaxAttempts(tier1Budget, 2)).toBe(1);
+    expect(getFfpWindowMaxAttempts(tier1Budget, 3)).toBe(1);
+    expect(getFfpWindowMaxAttempts(tier1Budget, 4)).toBe(3);
+
+    const tier2Budget = {
+      capM: 950,
+      initialSpentM: 1200,
+      excessM: 250,
+      excessPct: 26.3,
+      ffpTier: 2 as const,
+      transferCashM: 0,
+      chemPenalty: -14,
+      window1MaxAttempts: 0,
+      window2MaxAttempts: 1,
+      window3MaxAttempts: 0,
+      scoreMultiplier: 0.8,
+      extraLossMoraleDrop: 2,
+    };
+    expect(getFfpWindowMaxAttempts(tier2Budget, 1)).toBe(0);
+    expect(getFfpWindowMaxAttempts(tier2Budget, 2)).toBe(1);
+    expect(getFfpWindowMaxAttempts(tier2Budget, 3)).toBe(0);
+    expect(getFfpWindowMaxAttempts(tier2Budget, 4)).toBe(3);
   });
 
   it('4) creates a decisive 38R league point gap between Fixed vs Varied tactics and shifts 2D pitch doctrine', () => {

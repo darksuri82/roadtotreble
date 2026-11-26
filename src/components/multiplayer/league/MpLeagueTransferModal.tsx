@@ -23,7 +23,10 @@ import {
   MANAGER_TRAITS,
 } from '../../../data/managerTraits';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
-import { formatFfpBadgeSummary } from '../../../engine/budgetEngine';
+import {
+  formatFfpBadgeSummary,
+  isFfpTierEmbargoWindow,
+} from '../../../engine/budgetEngine';
 import {
   calculateChemistry,
   calculateTeamRatings,
@@ -265,7 +268,7 @@ export function MpLeagueTransferModal({
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
 
   const clampedCashOfferM = Math.max(0, Math.min(cashOfferM, availableCashM));
-  const ffpEmbargoActive = windowIndex === 2 && ffpTier === 2;
+  const ffpEmbargoActive = isFfpTierEmbargoWindow(ffpTier, windowIndex);
 
   const switchTab = (nextTab: MpTransferTab) => {
     setTacticsSelectedSlot(null);
@@ -718,7 +721,7 @@ export function MpLeagueTransferModal({
                   }`}
                 >
                   {formatFfpBadgeSummary(ffpTier, {
-                    isWindow2: windowIndex === 2,
+                    windowIndex,
                     isEmbargo: ffpEmbargoActive,
                   })}
                 </span>
@@ -1009,9 +1012,26 @@ export function MpLeagueTransferModal({
           {activeTab === 'offers' && !activeOffer && (
             <div className="space-y-3">
               {offers.length === 0 ? (
-                <div className="rounded-2xl border border-slate-800 bg-[#0b111c] px-4 py-10 text-center text-xs font-bold text-slate-500">
-                  이번 이적시장에 도착한 타 구단 트레이드 제안이 없습니다.
-                </div>
+                ffpEmbargoActive ? (
+                  <div className="rounded-2xl border border-rose-500/40 bg-rose-950/15 px-5 py-8 text-center space-y-2.5">
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-[11px] font-black text-rose-200">
+                      FFP 2단계 예산 초과 · {windowIndex}차 이적시장 영입 동결
+                    </div>
+                    <div className="text-sm sm:text-base font-black text-white">
+                      이번 {windowIndex}차 이적시장에서는 선수 영입이 제한됩니다
+                    </div>
+                    <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed break-keep">
+                      FFP 2단계 제재로 1·3차 이적시장 영입이 동결되었습니다.{' '}
+                      {windowIndex === 1
+                        ? '2차 이적시장(1회 제한)에서 보강하거나 현재 스쿼드 전술을 정비하세요.'
+                        : '현재 스쿼드와 전술 정비로 남은 리그를 마무리하세요.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-slate-800 bg-[#0b111c] px-4 py-10 text-center text-xs font-bold text-slate-500">
+                    이번 이적시장에 도착한 타 구단 트레이드 제안이 없습니다.
+                  </div>
+                )
               ) : (
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                   {offers.map((offer) => {

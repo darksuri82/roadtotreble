@@ -50,11 +50,14 @@ import {
   FFP_TIER1_SCORE_PENALTY_PCT,
   FFP_TIER1_WINDOW1_MAX_ATTEMPTS,
   FFP_TIER1_WINDOW2_MAX_ATTEMPTS,
+  FFP_TIER1_WINDOW3_MAX_ATTEMPTS,
   FFP_TIER2_CHEM_PENALTY,
   FFP_TIER2_LOSS_MORALE_EXTRA,
   FFP_TIER2_SCORE_PENALTY_PCT,
   FFP_TIER2_WINDOW1_MAX_ATTEMPTS,
   FFP_TIER2_WINDOW2_MAX_ATTEMPTS,
+  FFP_TIER2_WINDOW3_MAX_ATTEMPTS,
+  FFP_UCL_SPECIAL_MAX_ATTEMPTS,
   LEGEND_FLAT_DRAFT_COST_M,
 } from '../../engine/budgetEngine';
 import {
@@ -384,7 +387,7 @@ export function SystemGuideContent({
                       €{DRAFT_BUDGET_CAP_M}M 이하
                     </td>
                     <td className="px-2.5 py-2 text-emerald-200 whitespace-nowrap">
-                      1차 {ATTEMPTS_PER_WINDOW}회 · 2차 {ATTEMPTS_PER_WINDOW}회
+                      1·2·3차 각 {ATTEMPTS_PER_WINDOW}회 · UCL {FFP_UCL_SPECIAL_MAX_ATTEMPTS}회
                     </td>
                     <td className="px-2.5 py-2 text-slate-300 whitespace-nowrap">
                       페널티 없음 · 잔액 100% 이월
@@ -401,7 +404,7 @@ export function SystemGuideContent({
                       +1~{FFP_TIER1_MAX_OVERRUN_PCT}% (€{DRAFT_BUDGET_CAP_M + 1}~{tier1UpperM}M)
                     </td>
                     <td className="px-2.5 py-2 text-amber-200 whitespace-nowrap">
-                      1차 {FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 2차 {FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회
+                      1차 {FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 2차 {FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 · 3차 {FFP_TIER1_WINDOW3_MAX_ATTEMPTS}회 · UCL {FFP_UCL_SPECIAL_MAX_ATTEMPTS}회
                     </td>
                     <td className="px-2.5 py-2 text-amber-200 whitespace-nowrap">
                       케미 -{FFP_TIER1_CHEM_PENALTY} · 패배 사기 -{FFP_TIER1_LOSS_MORALE_EXTRA}
@@ -418,7 +421,7 @@ export function SystemGuideContent({
                       +{FFP_TIER1_MAX_OVERRUN_PCT}% 초과 (€{tier1UpperM + 1}M+)
                     </td>
                     <td className="px-2.5 py-2 font-bold text-rose-200 whitespace-nowrap">
-                      1차 {FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회 · 2차 동결({FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회)
+                      1차 동결({FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회) · 2차 {FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회 · 3차 동결({FFP_TIER2_WINDOW3_MAX_ATTEMPTS}회) · UCL {FFP_UCL_SPECIAL_MAX_ATTEMPTS}회
                     </td>
                     <td className="px-2.5 py-2 font-bold text-rose-200 whitespace-nowrap">
                       케미 -{FFP_TIER2_CHEM_PENALTY} · 패배 사기 -{FFP_TIER2_LOSS_MORALE_EXTRA}
@@ -432,7 +435,8 @@ export function SystemGuideContent({
             </div>
             <div className="text-[10.5px] text-slate-400">
               • FFP 1·2단계 모두 이월 이적 자금은 <strong className="text-slate-200">€0M</strong>이며,
-              2차 이적시장 <strong className="text-emerald-300">수석 코치 1명 선임</strong>은 동결 상태에서도 정상 허용됩니다.
+              <strong className="text-sky-300">UCL 특별 이적시장({FFP_UCL_SPECIAL_MAX_ATTEMPTS}회)</strong> 및
+              2차 이적시장 <strong className="text-emerald-300">수석 코치 1명 선임</strong>은 FFP와 무관하게 정상 허용됩니다.
             </div>
           </div>
 
@@ -994,8 +998,8 @@ export function SystemGuideContent({
             </div>
             <div className="text-[10.5px] text-slate-400 space-y-1">
               <div>
-                • FFP 1단계(1차 {FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 2차 {FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회) /
-                2단계(1차 {FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회 · 2차 동결) 제한이 싱글·멀티리그 동일 적용되며,
+                • FFP 1단계(1·2·3차 각 {FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회) /
+                2단계(1·3차 동결 · 2차 {FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회) 제한이 싱글·멀티리그 동일 적용되며(UCL 특별 {FFP_UCL_SPECIAL_MAX_ATTEMPTS}회 정상),
                 로스터 16인·GK 최소 1명 규칙이 항상 유지됩니다.
               </div>
               <div>

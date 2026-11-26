@@ -197,22 +197,6 @@ export function SeasonDashboard() {
     };
   }, [setSoloTickerPlaying]);
 
-  useEffect(() => {
-    const handleGoToTactics = () => {
-      setActiveTab('match');
-      setLiveAutoUserPaused(true);
-      window.setTimeout(() => {
-        document
-          .getElementById('tactics-room-line-ovr')
-          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 60);
-    };
-    window.addEventListener('rtt:go-to-tactics', handleGoToTactics);
-    return () => {
-      window.removeEventListener('rtt:go-to-tactics', handleGoToTactics);
-    };
-  }, []);
-
   // Unified skip flow: detect transfer market closing after auto-pause → show resume prompt
   const isTransferOpen = Boolean(season?.transferMarket.isOpen);
   useEffect(() => {
@@ -319,6 +303,23 @@ export function SeasonDashboard() {
     startTacticEdit();
     setActiveTab('squad');
   }, [startTacticEdit]);
+
+  useEffect(() => {
+    const handleGoToTactics = () => {
+      if (liveAutoActive) {
+        startTacticEdit();
+        setLiveAutoUserPaused(true);
+      }
+      setActiveTab('squad');
+      window.setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 60);
+    };
+    window.addEventListener('rtt:go-to-tactics', handleGoToTactics);
+    return () => {
+      window.removeEventListener('rtt:go-to-tactics', handleGoToTactics);
+    };
+  }, [liveAutoActive, startTacticEdit]);
 
   const stopLiveAuto = useCallback(() => {
     liveAutoNeedsPromptRef.current = null;

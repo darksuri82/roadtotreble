@@ -13,11 +13,14 @@ import {
   FFP_TIER1_SCORE_PENALTY_PCT,
   FFP_TIER1_WINDOW1_MAX_ATTEMPTS,
   FFP_TIER1_WINDOW2_MAX_ATTEMPTS,
+  FFP_TIER1_WINDOW3_MAX_ATTEMPTS,
   FFP_TIER2_CHEM_PENALTY,
   FFP_TIER2_LOSS_MORALE_EXTRA,
   FFP_TIER2_SCORE_PENALTY_PCT,
   FFP_TIER2_WINDOW1_MAX_ATTEMPTS,
   FFP_TIER2_WINDOW2_MAX_ATTEMPTS,
+  FFP_TIER2_WINDOW3_MAX_ATTEMPTS,
+  FFP_UCL_SPECIAL_MAX_ATTEMPTS,
 } from '../../engine/budgetEngine';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import type {
@@ -218,8 +221,8 @@ export function FfpOpeningNoticeModal({
           severe: true,
         },
         {
-          label: `1차 이적 ${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회 제한 · 2차 영입 전면 동결 (${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회)`,
-          detail: '1차 이적시장 시도 축소 및 반환점 2차 이적시장 신규 영입 전면 금지',
+          label: `이적 제한: 1차 동결(${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회) · 2차 ${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회 · 3차 동결(${FFP_TIER2_WINDOW3_MAX_ATTEMPTS}회)`,
+          detail: `정규 1·3차 영입 전면 동결, 2차만 ${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회 허용 (UCL 특별 이적시장 ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회 정상)`,
           severe: true,
         },
         {
@@ -243,8 +246,8 @@ export function FfpOpeningNoticeModal({
           detail: `시즌 내내 팀 케미스트리 -${FFP_TIER1_CHEM_PENALTY} 페널티 적용`,
         },
         {
-          label: `1차 이적 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 2차 이적 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 제한`,
-          detail: `1차 이적시장 3회→${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회, 2차 이적시장 3회→${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 축소`,
+          label: `이적 제한: 1·2·3차 각 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 (UCL ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회)`,
+          detail: `정규 1차(${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회)·2차(${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회)·3차(${FFP_TIER1_WINDOW3_MAX_ATTEMPTS}회) 모두 3회→1회 축소, UCL 특별 이적시장 정상`,
         },
         {
           label: `패배 시 사기 추가 하락 (-${FFP_TIER1_LOSS_MORALE_EXTRA}단계)`,

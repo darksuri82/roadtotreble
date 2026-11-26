@@ -43,6 +43,7 @@ import {
   createSeasonBudgetState,
   deductTransferCash,
   getFfpWindowMaxAttempts,
+  isFfpEmbargoWindow,
 } from './budgetEngine';
 import { calculateChemistry, calculateTeamRatings } from './chemistryEngine';
 import {
@@ -1647,8 +1648,7 @@ function stepTransfer(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
     }
 
     const isWindow2 = trigger.windowIndex === 2;
-    const ffpTier = hs.budget?.ffpTier ?? 0;
-    const ffpEmbargo = isWindow2 && ffpTier === 2;
+    const ffpEmbargo = isFfpEmbargoWindow(hs.budget, trigger.windowIndex);
     const attemptsLeft = getFfpWindowMaxAttempts(
       hs.budget,
       trigger.windowIndex,
@@ -1680,7 +1680,7 @@ function stepTransfer(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
       tradeNote: ffpEmbargo
         ? {
             success: false,
-            message: 'FFP 2단계 징계로 2차 이적시장 선수 영입이 동결되었습니다.',
+            message: `FFP 2단계 징계로 ${trigger.windowIndex}차 이적시장 선수 영입이 동결되었습니다.`,
           }
         : null,
       ...(nextStaffCoach ? { staffCoach: nextStaffCoach } : {}),

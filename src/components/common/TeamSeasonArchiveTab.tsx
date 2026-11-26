@@ -19,10 +19,9 @@ import {
   FFP_TIER1_CHEM_PENALTY,
   FFP_TIER1_SCORE_PENALTY_PCT,
   FFP_TIER1_WINDOW1_MAX_ATTEMPTS,
-  FFP_TIER1_WINDOW2_MAX_ATTEMPTS,
   FFP_TIER2_CHEM_PENALTY,
   FFP_TIER2_SCORE_PENALTY_PCT,
-  FFP_TIER2_WINDOW1_MAX_ATTEMPTS,
+  FFP_TIER2_WINDOW2_MAX_ATTEMPTS,
 } from '../../engine/budgetEngine';
 import {
   calculateChemistry,
@@ -214,7 +213,7 @@ export function TeamSeasonArchiveTab({
     if (budgetState.ffpTier === 2) {
       return {
         label: `FFP 2단계 (+${budgetState.excessPct}%)`,
-        sub: `1차 ${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회/2차 동결 · 케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%`,
+        sub: `1·3차 동결/2차 ${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회 · 케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%`,
         cls: 'border-rose-500/45 bg-rose-500/15 text-rose-200',
         icon: <ShieldAlert className="w-3.5 h-3.5 text-rose-400 shrink-0" />,
       };
@@ -222,7 +221,7 @@ export function TeamSeasonArchiveTab({
     if (budgetState.ffpTier === 1) {
       return {
         label: `FFP 1단계 (+${budgetState.excessPct}%)`,
-        sub: `1차 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회/2차 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 · 케미 -${FFP_TIER1_CHEM_PENALTY} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%`,
+        sub: `1·2·3차 각 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 케미 -${FFP_TIER1_CHEM_PENALTY} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%`,
         cls: 'border-amber-400/45 bg-amber-500/15 text-amber-200',
         icon: <ShieldAlert className="w-3.5 h-3.5 text-amber-300 shrink-0" />,
       };

@@ -789,7 +789,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                 }`}
               >
                 {formatFfpBadgeSummary(ffpTier, {
-                  isWindow2: tm.windowIndex === 2 && !isUclSpecial,
+                  windowIndex: tm.windowIndex,
+                  isUclSpecial,
                   isEmbargo: ffpEmbargoActive,
                 })}
               </span>
@@ -1355,14 +1356,16 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
             {ffpEmbargoActive ? (
               <div className="rounded-2xl border border-rose-500/40 bg-rose-950/15 p-5 sm:p-6 text-center space-y-3">
                 <div className="inline-flex items-center gap-1.5 rounded-full border border-rose-400/40 bg-rose-500/15 px-3 py-1 text-[11px] font-black text-rose-200">
-                  FFP 2단계 예산 초과 · 2차 이적시장 영입 동결
+                  FFP 2단계 예산 초과 · {tm.windowIndex}차 이적시장 영입 동결
                 </div>
                 <h3 className="text-base sm:text-lg font-black text-white">
-                  이번 2차 이적시장에서는 선수 영입이 제한됩니다
+                  이번 {tm.windowIndex}차 이적시장에서는 선수 영입이 제한됩니다
                 </h3>
                 <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed break-keep">
-                  드래프트 예산 15% 초과(FFP 2단계) 제재로 2차 이적시장 구단 추첨과 트레이드가 동결되었습니다.
-                  선임한 수석 코치와 현재 스쿼드 전술 정비 후 3차 이적시장에서 다시 보강할 수 있습니다.
+                  드래프트 예산 15% 초과(FFP 2단계) 제재로 1·3차 이적시장 구단 추첨과 트레이드가 동결되었습니다.{' '}
+                  {tm.windowIndex === 1
+                    ? '2차 이적시장(1회 제한) 및 UCL 진출 시 특별 이적시장(3회)에서 보강할 수 있습니다.'
+                    : '현재 스쿼드와 전술 정비로 시즌을 마무리하며, UCL 진출 시 특별 이적시장(3회)에서 보강할 수 있습니다.'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2 pt-1">
                   <button

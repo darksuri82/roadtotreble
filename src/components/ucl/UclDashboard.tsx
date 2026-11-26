@@ -219,6 +219,20 @@ export function UclDashboard() {
     streamHalftime || (autoPopupMode === 'ko_spectate' && spectateCast && !spectateSettled),
   );
 
+  useEffect(() => {
+    const handleGoToTactics = () => {
+      setLiveAutoUserPaused(true);
+      setTab('squad');
+      window.setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 60);
+    };
+    window.addEventListener('rtt:go-to-tactics', handleGoToTactics);
+    return () => {
+      window.removeEventListener('rtt:go-to-tactics', handleGoToTactics);
+    };
+  }, []);
+
   const isTransferOpen = Boolean(season?.transferMarket.isOpen);
   const hasPendingStaffCoach = Boolean(
     season?.staffCoach?.pendingSelection &&

@@ -22,18 +22,23 @@ export const FFP_TIER1_MAX_OVERRUN_PCT = Math.round(
 /** FFP Tier 1 (Mild Overrun: +1% .. +15%) */
 export const FFP_TIER1_CHEM_PENALTY = 8; // -8 team chemistry
 export const FFP_TIER1_LOSS_MORALE_EXTRA = 1; // +1 extra morale drop on losses
-export const FFP_TIER1_WINDOW1_MAX_ATTEMPTS = 2; // 3 -> 2 attempts in Window 1
+export const FFP_TIER1_WINDOW1_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 1
 export const FFP_TIER1_WINDOW2_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 2
+export const FFP_TIER1_WINDOW3_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 3
 export const FFP_TIER1_SCORE_MULTIPLIER = 0.94; // -6% HOF / Global TOP 15 score
 export const FFP_TIER1_SCORE_PENALTY_PCT = 6;
 
 /** FFP Tier 2 (Severe Overrun: > +15%) */
 export const FFP_TIER2_CHEM_PENALTY = 14; // -14 team chemistry
 export const FFP_TIER2_LOSS_MORALE_EXTRA = 2; // +2 extra morale drop on losses
-export const FFP_TIER2_WINDOW1_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 1
-export const FFP_TIER2_WINDOW2_MAX_ATTEMPTS = 0; // Window 2 signings frozen
+export const FFP_TIER2_WINDOW1_MAX_ATTEMPTS = 0; // Window 1 signings frozen
+export const FFP_TIER2_WINDOW2_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 2
+export const FFP_TIER2_WINDOW3_MAX_ATTEMPTS = 0; // Window 3 signings frozen
 export const FFP_TIER2_SCORE_MULTIPLIER = 0.8; // -20% HOF / Global TOP 15 score
 export const FFP_TIER2_SCORE_PENALTY_PCT = 20;
+
+/** UCL Special Transfer Window (Window 4) is exempt from FFP attempt caps */
+export const FFP_UCL_SPECIAL_MAX_ATTEMPTS = 3;
 
 /** Transfer Cash-Sweetener conversion rates */
 export const CASH_TO_TP_RATE = 1.25; // €1M -> +1.25 TP up to €100M
@@ -53,8 +58,9 @@ export interface SquadBudgetEvaluation {
   ffpTier: FfpTier;
   tierLabel: string;
   chemPenalty: number; // 0, -8, or -14
-  window1MaxAttempts: number; // 3, 2, or 1
-  window2MaxAttempts: number; // 3, 1, or 0
+  window1MaxAttempts: number; // 3, 1, or 0
+  window2MaxAttempts: number; // 3, 1, or 1
+  window3MaxAttempts: number; // 3, 1, or 0
   scoreMultiplier: number; // 1.0, 0.94, or 0.80
   extraLossMoraleDrop: number; // 0, 1, or 2
   previewDeltaM?: number;
@@ -154,6 +160,13 @@ export function evaluateSquadBudget(
         ? FFP_TIER1_WINDOW2_MAX_ATTEMPTS
         : 3;
 
+  const window3MaxAttempts =
+    ffpTier === 2
+      ? FFP_TIER2_WINDOW3_MAX_ATTEMPTS
+      : ffpTier === 1
+        ? FFP_TIER1_WINDOW3_MAX_ATTEMPTS
+        : 3;
+
   const scoreMultiplier =
     ffpTier === 2
       ? FFP_TIER2_SCORE_MULTIPLIER
@@ -180,6 +193,7 @@ export function evaluateSquadBudget(
     chemPenalty,
     window1MaxAttempts,
     window2MaxAttempts,
+    window3MaxAttempts,
     scoreMultiplier,
     extraLossMoraleDrop,
     ...(previewPlayer ? { previewDeltaM } : {}),
@@ -187,8 +201,9 @@ export function evaluateSquadBudget(
 }
 
 /**
- * Resolves the FFP-adjusted transfer attempt limit for Window 1 or Window 2.
- * Falls back cleanly from `ffpTier` for older saves missing `window1MaxAttempts`.
+ * Resolves the FFP-adjusted transfer attempt limit for Window 1, 2, or 3.
+ * Window 4 (UCL Special) always returns `defaultAttempts` (3).
+ * Falls back cleanly from `ffpTier` for older saves missing `window1MaxAttempts` / `window3MaxAttempts`.
  */
 export function getFfpWindowMaxAttempts(
   budget: SeasonBudgetState | undefined | null,
@@ -205,9 +220,51 @@ export function getFfpWindowMaxAttempts(
       : FFP_TIER1_WINDOW1_MAX_ATTEMPTS;
   }
   if (windowIndex === 2) {
-    return budget.window2MaxAttempts;
+    if (typeof budget.window2MaxAttempts === 'number') {
+      return budget.window2MaxAttempts;
+    }
+    return budget.ffpTier === 2
+      ? FFP_TIER2_WINDOW2_MAX_ATTEMPTS
+      : FFP_TIER1_WINDOW2_MAX_ATTEMPTS;
+  }
+  if (windowIndex === 3) {
+    if (typeof budget.window3MaxAttempts === 'number') {
+      return budget.window3MaxAttempts;
+    }
+    return budget.ffpTier === 2
+      ? FFP_TIER2_WINDOW3_MAX_ATTEMPTS
+      : FFP_TIER1_WINDOW3_MAX_ATTEMPTS;
   }
   return defaultAttempts;
+}
+
+/**
+ * Resolves whether a given FFP tier imposes a transfer embargo (0 attempts) on `windowIndex`.
+ * Tier 2 freezes Window 1 & Window 3; Window 2 allows 1 attempt and UCL Special allows 3 attempts.
+ */
+export function isFfpTierEmbargoWindow(
+  ffpTier: FfpTier,
+  windowIndex: number,
+  isUclSpecial = false,
+): boolean {
+  if (isUclSpecial || ffpTier !== 2) return false;
+  if (windowIndex === 1) return FFP_TIER2_WINDOW1_MAX_ATTEMPTS <= 0;
+  if (windowIndex === 2) return FFP_TIER2_WINDOW2_MAX_ATTEMPTS <= 0;
+  if (windowIndex === 3) return FFP_TIER2_WINDOW3_MAX_ATTEMPTS <= 0;
+  return false;
+}
+
+/**
+ * Resolves whether the given season budget imposes a transfer embargo (0 attempts) on `windowIndex`.
+ */
+export function isFfpEmbargoWindow(
+  budget: SeasonBudgetState | undefined | null,
+  windowIndex: number,
+  options?: { isUclSpecial?: boolean },
+): boolean {
+  if (options?.isUclSpecial) return false;
+  if (!budget || budget.ffpTier === 0) return false;
+  return getFfpWindowMaxAttempts(budget, windowIndex, 3) <= 0;
 }
 
 /**
@@ -228,6 +285,7 @@ export function createSeasonBudgetState(
     chemPenalty: ev.chemPenalty,
     window1MaxAttempts: ev.window1MaxAttempts,
     window2MaxAttempts: ev.window2MaxAttempts,
+    window3MaxAttempts: ev.window3MaxAttempts,
     scoreMultiplier: ev.scoreMultiplier,
     extraLossMoraleDrop: ev.extraLossMoraleDrop,
   };
@@ -245,6 +303,7 @@ export function createDefaultSeasonBudgetState(): SeasonBudgetState {
     chemPenalty: 0,
     window1MaxAttempts: 3,
     window2MaxAttempts: 3,
+    window3MaxAttempts: 3,
     scoreMultiplier: 1.0,
     extraLossMoraleDrop: 0,
   };
@@ -291,19 +350,37 @@ export function deductTransferCash(
  */
 export function formatFfpBadgeSummary(
   ffpTier: FfpTier,
-  options?: { isWindow2?: boolean; isEmbargo?: boolean },
+  options?: {
+    windowIndex?: number;
+    isUclSpecial?: boolean;
+    isEmbargo?: boolean;
+  },
 ): string {
   if (ffpTier === 2) {
     if (options?.isEmbargo) {
-      return `FFP 2단계 · 2차 영입 동결 (케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%)`;
+      const winPrefix = options.windowIndex ? `${options.windowIndex}차 ` : '';
+      return `FFP 2단계 · ${winPrefix}영입 동결 (케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%)`;
     }
-    return `FFP 2단계 · 1차 ${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회/2차 동결 · 케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%`;
+    if (options?.isUclSpecial) {
+      return `FFP 2단계 · UCL 특별 ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회 (케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%)`;
+    }
+    if (options?.windowIndex === 2) {
+      return `FFP 2단계 · 2차 ${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회 제한 (케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%)`;
+    }
+    return `FFP 2단계 · 1·3차 동결/2차 ${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회 · 케미 -${FFP_TIER2_CHEM_PENALTY} · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%`;
   }
   if (ffpTier === 1) {
-    if (options?.isWindow2) {
-      return `FFP 1단계 · 2차 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 제한 (케미 -${FFP_TIER1_CHEM_PENALTY} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%)`;
+    if (options?.isUclSpecial) {
+      return `FFP 1단계 · UCL 특별 ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회 (케미 -${FFP_TIER1_CHEM_PENALTY} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%)`;
     }
-    return `FFP 1단계 · 1차 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회/2차 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 · 케미 -${FFP_TIER1_CHEM_PENALTY} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%`;
+    if (
+      options?.windowIndex &&
+      options.windowIndex >= 1 &&
+      options.windowIndex <= 3
+    ) {
+      return `FFP 1단계 · ${options.windowIndex}차 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 제한 (케미 -${FFP_TIER1_CHEM_PENALTY} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%)`;
+    }
+    return `FFP 1단계 · 1·2·3차 각 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 케미 -${FFP_TIER1_CHEM_PENALTY} · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%`;
   }
   return '예산 준수';
 }
@@ -317,7 +394,7 @@ export function buildFfpPenaltyHelpItems(budget: SeasonBudgetState): string[] {
     return [
       spendLine,
       `이월 현금 €0M · 팀 케미 상시 -${FFP_TIER2_CHEM_PENALTY} 적용`,
-      `1차 이적시장 ${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회 제한 · 2차 이적시장 신규 영입 전면 동결 (${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회)`,
+      `정규 이적시장: 1차 동결(${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회) · 2차 ${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회 · 3차 동결(${FFP_TIER2_WINDOW3_MAX_ATTEMPTS}회) · UCL 특별 ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회`,
       `경기 패배 시 선수단 사기 추가 하락 (-${FFP_TIER2_LOSS_MORALE_EXTRA}단계)`,
       `명예의 전당 · 글로벌 TOP 15 최종 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}% 감점`,
     ];
@@ -326,7 +403,7 @@ export function buildFfpPenaltyHelpItems(budget: SeasonBudgetState): string[] {
     return [
       spendLine,
       `이월 현금 €0M · 팀 케미 상시 -${FFP_TIER1_CHEM_PENALTY} 적용`,
-      `1차 이적시장 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 2차 이적시장 ${FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회 제한`,
+      `정규 이적시장: 1·2·3차 각 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 제한 · UCL 특별 ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회`,
       `경기 패배 시 선수단 사기 추가 하락 (-${FFP_TIER1_LOSS_MORALE_EXTRA}단계)`,
       `명예의 전당 · 글로벌 TOP 15 최종 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}% 감점`,
     ];

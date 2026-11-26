@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { computeFocusedStandingIndices } from '../components/common/CompactLiveStandings';
 import { hasPlayableTickerMatches } from '../components/multiplayer/league/MpLiveTicker';
 import { uclZoneOf } from '../components/multiplayer/league/MpUclSidePanel';
+import { isFfpEmbargoWindow } from '../engine/budgetEngine';
 import { ACTIVE_PLAYERS } from '../engine/dataLoader';
 import { TACTIC_NEXT_MATCH_NOTICE } from '../hooks/useSoloTacticEditPause';
 import {
@@ -378,10 +379,12 @@ describe('v8.5 MP Fast Sync, Spoiler-Free Cup/Standings Snapshots & UCL Phase 2 
 
         const seenAiClubs = new Set<string>();
         const seenAiPlayers = new Set<string>();
-        const isWindow2 = state.transferWindowIndex === 2;
         for (const h of humans) {
           const hs = state.perHuman[h.clubId];
-          const isFfpEmbargo = isWindow2 && hs.budget?.ffpTier === 2;
+          const isFfpEmbargo = isFfpEmbargoWindow(
+            hs.budget,
+            state.transferWindowIndex ?? 0,
+          );
           if (isFfpEmbargo) {
             expect(hs.offers.length).toBe(0);
           } else {
