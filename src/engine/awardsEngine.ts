@@ -150,6 +150,27 @@ export function computeSeasonAwards(
 
   const poty = scoredPool[0]?.st ?? null;
 
+  const gkPlayers = players
+    .filter((p) => p.position === 'GK')
+    .sort(
+      (a, b) =>
+        b.cleanSheets - a.cleanSheets ||
+        b.avgRating - a.avgRating ||
+        b.momCount - a.momCount,
+    );
+  const bestGoalkeeper = gkPlayers[0] ?? null;
+
+  const bestDefender =
+    scoredPool.find((x) => x.st.position === 'DF')?.st ??
+    players
+      .filter((p) => p.position === 'DF')
+      .sort(
+        (a, b) =>
+          computeAwardScore(b, teamRankById) -
+          computeAwardScore(a, teamRankById),
+      )[0] ??
+    null;
+
   return {
     topScorers,
     topAssisters,
@@ -157,6 +178,8 @@ export function computeSeasonAwards(
     topRatings,
     bestXi,
     poty,
+    bestGoalkeeper,
+    bestDefender,
   };
 }
 

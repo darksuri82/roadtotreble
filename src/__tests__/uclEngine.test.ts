@@ -8,7 +8,7 @@ import {
 import { createInitialStandings } from '../engine/standingsEngine';
 import {
   evaluateTransferTarget,
-  UCL_CHAMPION_LEGEND_RATE,
+  TRANSFER_ROULETTE_LEGEND_RATE,
 } from '../engine/transferEngine';
 import {
   createUclTournamentState,
@@ -168,7 +168,7 @@ describe('36-Team UEFA Champions League Swiss + Knockout Engine', () => {
   });
 
   it('applies League Champion Prestige Bonus in UCL Special Transfer Window', () => {
-    expect(UCL_CHAMPION_LEGEND_RATE).toBe(0.055);
+    expect(TRANSFER_ROULETTE_LEGEND_RATE).toBe(0.025);
     const epl = getLeagueById('epl');
     const samplePlayer = buildAiClubRoster(epl.clubs[0], 'epl')[0];
     const normal = evaluateTransferTarget({

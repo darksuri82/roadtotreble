@@ -5,6 +5,18 @@
 
 ---
 
+## v9.2.3 — 내 팀 결산 최고 GK·최우수 수비수 분리 · 명전 FFP 1/2단계 라벨 수정 · 이적시장 레전드 2.5% 고정 & 순위 비례 영입 제안 상향
+
+- **내 팀 결산 최고 GK 수비수 수상 버그 수정 & 최우수 수비수 신설 (`src/types/league.ts`, `src/engine/awardsEngine.ts`, `src/components/league/SeasonSummary.tsx`)**:
+  - `computeSeasonAwards`에 GK 전용 `bestGoalkeeper`(클린시트→평점 순)와 DF 전용 `bestDefender`(수비수 어워드 점수 1위)를 분리 추가해, `topCleanSheets` 동률 평점 역전으로 수비수가 `최고 GK`를 받던 오류를 근본 수정하고 내 팀 결산에 `최우수 수비수 · {이름}` 명예 배지를 신설.
+- **명예의 전당 · 결산 FFP 1/2단계 페널티 라벨 수정 (`src/engine/budgetEngine.ts`, `src/types/legacy.ts`, `src/engine/legacyEngine.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueScore.ts`, `src/components/legacy/LegacyHubModal.tsx`, `src/components/league/SeasonSummary.tsx`, `src/components/multiplayer/league/MpLeagueFinalBoard.tsx`, `src/components/common/TeamSeasonArchiveTab.tsx`)**:
+  - `resolveFfpPenaltyTier` · `formatFfpScorePenaltyLabel` 단일 헬퍼를 신설해 로컬 명예의 전당·글로벌 TOP 15·싱글/멀티 시즌 결산 점수표에서 FFP 1단계(`-6%`)가 `FFP 2단계`로 표기되던 버그를 수정(이미 등록된 기존 기록도 `ffpPenaltyPct` 기반 자동 판별로 즉시 정상 표시)하고, `TeamSeasonArchiveTab`의 FFP 1/2단계 요약 수치도 v9.2 엔진 상수와 동기화.
+- **이적시장 룰렛 레전드 성적 보너스 제거 & 리그 순위 비례 AI 영입 제안 상향 (`src/engine/transferEngine.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueEngine.ts`, `src/types/game.ts`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/guide/SystemGuideModal.tsx`, `src/__tests__/v923AwardsFfpTransfer.test.ts`)**:
+  - `spinTransferClubs`의 Top 4(`4.0%`)·우승/UCL 특별(`5.5%`) 레전드 등장 확률 상승을 제거해 모든 이적시장 룰렛 레전드 확률을 `TRANSFER_ROULETTE_LEGEND_RATE = 2.5%` 고정으로 통일.
+  - `generateIncomingTradeOffers`에 `userRank` 기반 `rollIncomingOfferTargetCount`를 도입해 리그 순위가 높을수록 타 구단 영입 제안 수신 확률과 평균 건수가 증가하도록 개편(1위 `100%`·최소 2건·평균 ~3.5건 / 2~4위 `100%`·최소 1건·평균 ~3.1건 / 5~8위 `95%`·평균 ~2.5건 / 중위권 `88%`·평균 ~2.1건 / 하위권 `78%`·평균 ~1.5건, 싱글·멀티리그 공통).
+
+---
+
 ## v9.2.2 — 감독 특성 궁합 목표 인원 그룹별 밸런스 개편 (라인·측면·세트피스 6명 / 갈락티코 4명·OVR 89+)
 
 - **감독 특성 4그룹 목표 인원 통일 & 스타일 보강 (`src/data/managerTraits.ts`, `src/components/setup/ManagerRouletteScreen.tsx`, `src/components/common/TacticsGuideModal.tsx`, `src/__tests__/v814ManagerFitUi.test.ts`)**:

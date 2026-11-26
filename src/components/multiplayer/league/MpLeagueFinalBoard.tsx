@@ -11,6 +11,10 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { HISTORICAL_BENCHMARK_TEAMS } from '../../../data/historicalTeams';
+import {
+  formatFfpScorePenaltyLabel,
+  resolveFfpPenaltyTier,
+} from '../../../engine/budgetEngine';
 import { buildAiClubRoster, getLeagueById } from '../../../engine/dataLoader';
 import { formatMainPositions } from '../../../engine/positionEngine';
 import type { DomesticCupState } from '../../../types/cup';
@@ -324,16 +328,26 @@ function FriendRankCard({
             ))}
           </div>
 
-          {s.ffpPenaltyPoints && s.ffpPenaltyPoints > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-1.5 text-[10px] text-rose-200 tabular-nums">
-              <span className="font-bold text-rose-300">
-                FFP 2단계 예산 초과 감점 (-{s.ffpPenaltyPct ?? 12}%)
-              </span>
-              <span className="font-mono font-black text-rose-300">
-                -{s.ffpPenaltyPoints.toLocaleString()}점
-              </span>
-            </div>
-          )}
+          {s.ffpPenaltyPoints && s.ffpPenaltyPoints > 0 && (() => {
+            const tier = resolveFfpPenaltyTier(s.ffpPenaltyPct, s.ffpTier);
+            const isTier1 = tier === 1;
+            return (
+              <div
+                className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-1.5 text-[10px] tabular-nums ${
+                  isTier1
+                    ? 'border-amber-400/35 bg-amber-500/10 text-amber-200'
+                    : 'border-rose-500/35 bg-rose-500/10 text-rose-200'
+                }`}
+              >
+                <span className={`font-bold ${isTier1 ? 'text-amber-300' : 'text-rose-300'}`}>
+                  {formatFfpScorePenaltyLabel(s.ffpPenaltyPct, s.ffpTier)}
+                </span>
+                <span className={`font-mono font-black ${isTier1 ? 'text-amber-300' : 'text-rose-300'}`}>
+                  -{s.ffpPenaltyPoints.toLocaleString()}점
+                </span>
+              </div>
+            );
+          })()}
 
           {s.honorsBonusDetails && s.honorsBonusDetails.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-1.5 text-[10px] text-amber-200">

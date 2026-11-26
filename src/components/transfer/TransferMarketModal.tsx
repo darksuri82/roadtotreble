@@ -794,11 +794,6 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                 })}
               </span>
             )}
-            {tm.legendBonusActive && (
-              <span className="rounded-md border border-amber-400/35 bg-amber-500/12 px-2 py-0.5 text-[10px] font-bold text-amber-300">
-                👑 {isChampBonus ? '5.5%' : '4.0%'}
-              </span>
-            )}
             <InfoHelpButton
               title="트레이드 규칙 · 가치(TP)"
               align="left"

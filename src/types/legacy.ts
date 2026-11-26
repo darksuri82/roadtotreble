@@ -55,6 +55,7 @@ export interface SeasonScoreBreakdown {
   awardsBonus?: number; // Ballon d'Or, World Best XI, League MVP, League Best XI
   awardsBonusDetails?: string[];
   /** FFP overspend score reduction (e.g. 6 for Tier 1 -6%, 20 for Tier 2 -20%) */
+  ffpTier?: 0 | 1 | 2;
   ffpPenaltyPct?: number;
   ffpPenaltyPoints?: number;
   /** Rule era marker (e.g. 'v9.0') for post-rebalance ranking eligibility */

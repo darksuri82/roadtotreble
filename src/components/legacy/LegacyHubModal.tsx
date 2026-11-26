@@ -20,6 +20,10 @@ import {
   HISTORICAL_BENCHMARK_TEAMS,
 } from '../../data/historicalTeams';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
+import {
+  formatFfpScorePenaltyLabel,
+  resolveFfpPenaltyTier,
+} from '../../engine/budgetEngine';
 import { calculateChemistry } from '../../engine/chemistryEngine';
 import {
   getAchievementProgress,
@@ -1302,16 +1306,32 @@ function LegacyHubModalContent({
               </div>
 
               {selectedEntry.seasonScore.ffpPenaltyPoints &&
-                selectedEntry.seasonScore.ffpPenaltyPoints > 0 && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-500/10 px-3.5 py-2 text-[11px] text-rose-200 tabular-nums">
-                    <span className="font-bold text-rose-300">
-                      FFP 2단계 예산 초과 감점 (-{selectedEntry.seasonScore.ffpPenaltyPct ?? 12}%)
-                    </span>
-                    <span className="font-mono font-black text-rose-300">
-                      -{selectedEntry.seasonScore.ffpPenaltyPoints.toLocaleString()}점
-                    </span>
-                  </div>
-                )}
+                selectedEntry.seasonScore.ffpPenaltyPoints > 0 && (() => {
+                  const tier = resolveFfpPenaltyTier(
+                    selectedEntry.seasonScore.ffpPenaltyPct,
+                    selectedEntry.seasonScore.ffpTier,
+                  );
+                  const isTier1 = tier === 1;
+                  return (
+                    <div
+                      className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3.5 py-2 text-[11px] tabular-nums ${
+                        isTier1
+                          ? 'border-amber-400/35 bg-amber-500/10 text-amber-200'
+                          : 'border-rose-500/35 bg-rose-500/10 text-rose-200'
+                      }`}
+                    >
+                      <span className={`font-bold ${isTier1 ? 'text-amber-300' : 'text-rose-300'}`}>
+                        {formatFfpScorePenaltyLabel(
+                          selectedEntry.seasonScore.ffpPenaltyPct,
+                          selectedEntry.seasonScore.ffpTier,
+                        )}
+                      </span>
+                      <span className={`font-mono font-black ${isTier1 ? 'text-amber-300' : 'text-rose-300'}`}>
+                        -{selectedEntry.seasonScore.ffpPenaltyPoints.toLocaleString()}점
+                      </span>
+                    </div>
+                  );
+                })()}
 
               {selectedEntry.seasonScore.honorsBonusDetails &&
                 selectedEntry.seasonScore.honorsBonusDetails.length > 0 && (
@@ -2078,16 +2098,32 @@ function LegacyHubModalContent({
               </div>
 
               {selectedGlobal.scoreBreakdown.ffpPenaltyPoints &&
-                selectedGlobal.scoreBreakdown.ffpPenaltyPoints > 0 && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-500/10 px-3.5 py-2 text-[11px] text-rose-200 tabular-nums">
-                    <span className="font-bold text-rose-300">
-                      FFP 2단계 예산 초과 감점 (-{selectedGlobal.scoreBreakdown.ffpPenaltyPct ?? 12}%)
-                    </span>
-                    <span className="font-mono font-black text-rose-300">
-                      -{selectedGlobal.scoreBreakdown.ffpPenaltyPoints.toLocaleString()}점
-                    </span>
-                  </div>
-                )}
+                selectedGlobal.scoreBreakdown.ffpPenaltyPoints > 0 && (() => {
+                  const tier = resolveFfpPenaltyTier(
+                    selectedGlobal.scoreBreakdown.ffpPenaltyPct,
+                    selectedGlobal.scoreBreakdown.ffpTier,
+                  );
+                  const isTier1 = tier === 1;
+                  return (
+                    <div
+                      className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3.5 py-2 text-[11px] tabular-nums ${
+                        isTier1
+                          ? 'border-amber-400/35 bg-amber-500/10 text-amber-200'
+                          : 'border-rose-500/35 bg-rose-500/10 text-rose-200'
+                      }`}
+                    >
+                      <span className={`font-bold ${isTier1 ? 'text-amber-300' : 'text-rose-300'}`}>
+                        {formatFfpScorePenaltyLabel(
+                          selectedGlobal.scoreBreakdown.ffpPenaltyPct,
+                          selectedGlobal.scoreBreakdown.ffpTier,
+                        )}
+                      </span>
+                      <span className={`font-mono font-black ${isTier1 ? 'text-amber-300' : 'text-rose-300'}`}>
+                        -{selectedGlobal.scoreBreakdown.ffpPenaltyPoints.toLocaleString()}점
+                      </span>
+                    </div>
+                  );
+                })()}
 
               {/* Formation PitchBoard + Manager & Bench */}
               {globalPitchData && (

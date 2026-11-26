@@ -1,6 +1,7 @@
 import { HIDDEN_ACHIEVEMENTS } from '../data/achievements';
 import type { DomesticCupState } from '../types/cup';
 import type {
+  FfpTier,
   FormationId,
   ManagerAvatarConfig,
   ManagerTraitId,
@@ -30,6 +31,7 @@ import type { Player, Position, SubPosition } from '../types/player';
 import type { UclTournamentState } from '../types/ucl';
 import { getPlayerAttributes } from './attributeEngine';
 import { applyAwakeningToPlayer, isValidAwakeningRecord } from './awakeningEngine';
+import { resolveFfpPenaltyTier } from './budgetEngine';
 import { didUserWinCup, getUserCupResultLabel } from './cupEngine';
 import { ACTIVE_PLAYERS, getLeagueById, LEGEND_PLAYERS } from './dataLoader';
 import { USER_CLUB_ID } from './matchEngine';
@@ -206,7 +208,9 @@ export interface SeasonScoreInput {
   awards?: SeasonAwards | null;
   globalAwards?: GlobalSeasonAwards | null;
   userClubId?: string;
-  /** Optional FFP Tier 2 score multiplier (e.g. 0.88 for -12% penalty). Default 1.0 */
+  /** Optional FFP sanction tier (0 = compliant, 1 = Tier 1, 2 = Tier 2). */
+  ffpTier?: FfpTier;
+  /** Optional FFP score multiplier (e.g. 0.94 for Tier 1 -6%, 0.80 for Tier 2 -20%). Default 1.0 */
   ffpScoreMultiplier?: number;
 }
 
@@ -273,6 +277,7 @@ export function computeSeasonScore(
     awards = null,
     globalAwards = null,
     userClubId = USER_CLUB_ID,
+    ffpTier,
     ffpScoreMultiplier = 1,
   } = input;
 
@@ -527,6 +532,8 @@ export function computeSeasonScore(
     clampedFfpMult < 1 ? Math.max(0, rawTotalScore - totalScore) : 0;
   const ffpPenaltyPct =
     clampedFfpMult < 1 ? Math.round((1 - clampedFfpMult) * 100) : 0;
+  const resolvedFfpTier =
+    ffpPenaltyPct > 0 ? resolveFfpPenaltyTier(ffpPenaltyPct, ffpTier) : undefined;
 
   let grade: SeasonScoreBreakdown['grade'];
   if (totalScore >= 7200) grade = 'S+';
@@ -549,7 +556,9 @@ export function computeSeasonScore(
     squadCraftDetails,
     awardsBonus,
     awardsBonusDetails,
-    ...(ffpPenaltyPct > 0 ? { ffpPenaltyPct, ffpPenaltyPoints } : {}),
+    ...(ffpPenaltyPct > 0
+      ? { ffpTier: resolvedFfpTier, ffpPenaltyPct, ffpPenaltyPoints }
+      : {}),
     totalScore,
     grade,
   };

@@ -1572,11 +1572,14 @@ function stepTransfer(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueHostS
 
     // Retry up to 4 times if RNG rolled 0 offers or all collided with other friends' clubs
     // so every player in a 2~4 player room reliably receives incoming offers and sees the transfer modal.
+    const humanRankIdx = state.standings.findIndex((s) => s.teamId === human.clubId);
+    const humanRank = humanRankIdx === -1 ? undefined : humanRankIdx + 1;
     for (let attempt = 0; attempt < 4 && offers.length === 0; attempt += 1) {
       const raw = generateIncomingTradeOffers({
         windowIndex: trigger.windowIndex,
         currentRound: state.round,
         userLeagueId: state.settings.leagueId,
+        userRank: humanRank,
         userStarters: squad.starters,
         userBench: squad.bench,
         standings: state.standings,

@@ -223,6 +223,7 @@ export function computeMpHumanSeasonScore(params: {
     awards: state.awards,
     globalAwards: state.globalAwards,
     userClubId: clubId,
+    ffpTier: humanSeason.budget?.ffpTier ?? 0,
     ffpScoreMultiplier: humanSeason.budget?.scoreMultiplier ?? 1,
   });
 }

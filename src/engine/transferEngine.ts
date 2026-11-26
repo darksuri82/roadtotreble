@@ -30,13 +30,11 @@ import {
   CASH_STAR_GUARD_RELIEF_THRESHOLD_M,
   computeCashOfferTp,
 } from './budgetEngine';
-import {
-  DEFAULT_ROULETTE_LEGEND_RATE,
-  TOP4_TRANSFER_LEGEND_RATE,
-} from './draftEngine';
+import { DEFAULT_ROULETTE_LEGEND_RATE } from './draftEngine';
 
 export const ATTEMPTS_PER_WINDOW = 3;
-export const UCL_CHAMPION_LEGEND_RATE = 0.055;
+/** Transfer market roulette Legend FA rate is fixed at base 2.5% per reel regardless of league rank. */
+export const TRANSFER_ROULETTE_LEGEND_RATE = DEFAULT_ROULETTE_LEGEND_RATE;
 
 function clamp(val: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, val));
@@ -136,7 +134,7 @@ export function createOpenTransferState(
     triggerRound,
     attemptsRemaining: maxAttempts,
     maxAttempts,
-    legendBonusActive: userRank <= 4 || isUclSpecial,
+    legendBonusActive: false,
     isUclSpecial,
     championBonusActive,
     userRankAtOpen: userRank,
@@ -658,7 +656,7 @@ export interface SpinTransferClubsParams {
 /**
  * Spins the V5 3-Club Transfer Market Roulette:
  * - Draws 3 unique clubs from the user's selected draftLeaguePool (default all 96 European Top-5 clubs),
- *   with a rare chance (2.5% base, 4.0% Top 4/UCL, 5.5% League Champion UCL Special) per reel for a
+ *   with a fixed rare chance (2.5% per reel, regardless of league standing) for a
  *   golden [LEGEND FA] slot presenting exactly 1 Legend player (unaffected by league pool filter).
  * - Each club slot contains its full 2026-27 browseable squad with dynamic form values & probabilities.
  */
@@ -677,7 +675,6 @@ export function spinTransferClubs(
     aiRosters,
     ownedIds,
     departedPlayerIds = [],
-    legendBonusActive,
     championBonusActive = false,
     allowedLeagueIds,
     rng = Math.random,
@@ -685,11 +682,8 @@ export function spinTransferClubs(
 
   const excludeIds = new Set<string>([...ownedIds, ...departedPlayerIds]);
 
-  const legendRate = championBonusActive
-    ? UCL_CHAMPION_LEGEND_RATE
-    : legendBonusActive
-      ? TOP4_TRANSFER_LEGEND_RATE
-      : DEFAULT_ROULETTE_LEGEND_RATE;
+  // Fixed base 2.5% per reel regardless of league rank/UCL champion status
+  const legendRate = TRANSFER_ROULETTE_LEGEND_RATE;
   const userLeagueSize = standings.length || 20;
 
   const allowedSet =
@@ -1469,6 +1463,8 @@ export interface GenerateIncomingTradeOffersParams {
   windowIndex: number;
   currentRound: number;
   userLeagueId: LeagueId;
+  /** User's current league rank (1-based). Higher standing attracts more AI clubs seeking coveted squad players. */
+  userRank?: number;
   userStarters: (Player | null)[];
   userBench: (Player | null)[];
   standings: StandingRow[];
@@ -1495,7 +1491,66 @@ export interface GenerateIncomingTradeOffersParams {
 }
 
 /**
+ * Rolls the target incoming AI trade offer count (0..5) scaled by current league standing:
+ * - 1st: 100% receive rate (min 2, avg ~3.54)
+ * - 2nd–4th: 100% receive rate (min 1, avg ~3.05)
+ * - 5th–8th: 95% receive rate (avg ~2.54)
+ * - Mid-table (9th–14th in 20-team / 9th–12th in 18-team): 88% receive rate (avg ~2.06)
+ * - Lower-table (bottom 6): 78% receive rate (avg ~1.49)
+ */
+export function rollIncomingOfferTargetCount(
+  userRank: number | undefined,
+  leagueSize: number,
+  rng: () => number = Math.random,
+): number {
+  const safeLeagueSize = Math.max(8, leagueSize || 20);
+  const rank =
+    typeof userRank === 'number' && userRank >= 1
+      ? userRank
+      : Math.ceil(safeLeagueSize / 2);
+  const midTableMaxRank = Math.max(9, safeLeagueSize - 6);
+  const roll = rng();
+
+  if (rank === 1) {
+    if (roll < 0.18) return 2;
+    if (roll < 0.48) return 3;
+    if (roll < 0.8) return 4;
+    return 5;
+  }
+  if (rank <= 4) {
+    if (roll < 0.1) return 1;
+    if (roll < 0.32) return 2;
+    if (roll < 0.65) return 3;
+    if (roll < 0.88) return 4;
+    return 5;
+  }
+  if (rank <= 8) {
+    if (roll < 0.05) return 0;
+    if (roll < 0.2) return 1;
+    if (roll < 0.48) return 2;
+    if (roll < 0.79) return 3;
+    if (roll < 0.94) return 4;
+    return 5;
+  }
+  if (rank <= midTableMaxRank) {
+    if (roll < 0.12) return 0;
+    if (roll < 0.34) return 1;
+    if (roll < 0.64) return 2;
+    if (roll < 0.87) return 3;
+    if (roll < 0.97) return 4;
+    return 5;
+  }
+  if (roll < 0.22) return 0;
+  if (roll < 0.54) return 1;
+  if (roll < 0.81) return 2;
+  if (roll < 0.95) return 3;
+  if (roll < 0.99) return 4;
+  return 5;
+}
+
+/**
  * Generates 0 to 5 realistic incoming AI trade offers per transfer window.
+ * Higher league standing increases both the chance of receiving offers and average offer volume.
  * Each AI club analyzes its actual 16-player squad (11 starters + 5 core bench),
  * targets a fitting player on the user's squad, and constructs a coherent 1:1 trade offer.
  * Includes a rare (~8%, max 1 per window) "Luka Dončić style" blockbuster bargain offer!
@@ -1507,6 +1562,7 @@ export function generateIncomingTradeOffers(
     windowIndex,
     currentRound,
     userLeagueId,
+    userRank,
     userStarters,
     userBench,
     standings,
@@ -1527,17 +1583,21 @@ export function generateIncomingTradeOffers(
   ];
   if (userSquad.length < 11) return [];
 
-  // Weighted 0..5 offer count distribution (average ~2.3 offers, can be 0 or up to 5)
-  const rollCount = rng();
-  let targetCount: number;
-  if (rollCount < 0.1) targetCount = 0;
-  else if (rollCount < 0.28) targetCount = 1;
-  else if (rollCount < 0.56) targetCount = 2;
-  else if (rollCount < 0.8) targetCount = 3;
-  else if (rollCount < 0.94) targetCount = 4;
-  else targetCount = 5;
-
-  targetCount = Math.max(minOfferCount, targetCount);
+  const inferredRankIdx = standings.findIndex((s) => s.isUser);
+  const resolvedUserRank =
+    typeof userRank === 'number' && userRank >= 1
+      ? userRank
+      : inferredRankIdx !== -1
+        ? inferredRankIdx + 1
+        : undefined;
+  const targetCount = Math.max(
+    minOfferCount,
+    rollIncomingOfferTargetCount(
+      resolvedUserRank,
+      standings.length || 20,
+      rng,
+    ),
+  );
   if (targetCount === 0) return [];
 
   const ownedIds = new Set(userSquad.map((p) => p.id));

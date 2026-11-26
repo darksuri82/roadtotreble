@@ -387,6 +387,8 @@ export interface SeasonAwards {
   topRatings: PlayerSeasonStats[];
   bestXi: BestXiEntry[]; // 4-3-3 11 players
   poty: PlayerSeasonStats | null;
+  bestGoalkeeper?: PlayerSeasonStats | null; // Strictly GK (cleanSheets -> avgRating)
+  bestDefender?: PlayerSeasonStats | null; // Strictly DF (highest defender award score)
 }
 
 export interface BallonDorCandidate {

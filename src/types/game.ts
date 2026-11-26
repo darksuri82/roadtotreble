@@ -395,9 +395,9 @@ export interface TransferMarketState {
   triggerRound: number;
   attemptsRemaining: number; // starts at 3
   maxAttempts: number; // 3
-  legendBonusActive: boolean; // rank <= 4 => 4.0% vs 2.5%
+  legendBonusActive: boolean; // Legacy field (transfer roulette Legend FA rate is now fixed at 2.5%)
   isUclSpecial?: boolean;
-  championBonusActive?: boolean; // League champion entering UCL -> 5.5% legend & +5% signing bonus
+  championBonusActive?: boolean; // League champion entering UCL -> +5% signing / +3% trade prestige bonus
   userRankAtOpen: number;
   hasSpunClubs: boolean;
   rolledClubs: TransferClubOffer[];

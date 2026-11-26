@@ -335,3 +335,40 @@ export function buildFfpPenaltyHelpItems(budget: SeasonBudgetState): string[] {
     `예산 준수 · 잔여 이월 현금 €${budget.transferCashM}M`,
   ];
 }
+
+/**
+ * Resolves whether a season-score FFP penalty came from Tier 1 or Tier 2,
+ * supporting both explicit `ffpTier` and backward-compatible inference from `ffpPenaltyPct`.
+ */
+export function resolveFfpPenaltyTier(
+  ffpPenaltyPct?: number,
+  ffpTier?: FfpTier,
+): 1 | 2 {
+  if (ffpTier === 1) return 1;
+  if (ffpTier === 2) return 2;
+  if (
+    typeof ffpPenaltyPct === 'number' &&
+    ffpPenaltyPct > 0 &&
+    ffpPenaltyPct <= FFP_TIER1_SCORE_PENALTY_PCT
+  ) {
+    return 1;
+  }
+  return 2;
+}
+
+/**
+ * Single-source-of-truth label for FFP score deductions in Season Summary & Hall of Fame.
+ */
+export function formatFfpScorePenaltyLabel(
+  ffpPenaltyPct?: number,
+  ffpTier?: FfpTier,
+): string {
+  const tier = resolveFfpPenaltyTier(ffpPenaltyPct, ffpTier);
+  const pct =
+    typeof ffpPenaltyPct === 'number' && ffpPenaltyPct > 0
+      ? ffpPenaltyPct
+      : tier === 1
+        ? FFP_TIER1_SCORE_PENALTY_PCT
+        : FFP_TIER2_SCORE_PENALTY_PCT;
+  return `FFP ${tier}단계 예산 초과 감점 (-${pct}%)`;
+}

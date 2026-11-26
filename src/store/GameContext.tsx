@@ -1380,6 +1380,7 @@ function computeSeasonScoreFromState(state: GameState): SeasonState['seasonScore
     tacticalFit,
     awards: state.season.awards,
     globalAwards: state.season.globalAwards ?? null,
+    ffpTier: state.season.budgetState?.ffpTier ?? 0,
     ffpScoreMultiplier: state.season.budgetState?.scoreMultiplier ?? 1,
   });
 }
@@ -2136,6 +2137,7 @@ function openTransferWindowWithIncomingOffers(params: {
         windowIndex,
         currentRound: season.currentRound,
         userLeagueId: season.leagueId,
+        userRank,
         userStarters: starters,
         userBench: bench,
         standings: season.standings,

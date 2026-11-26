@@ -20,6 +20,10 @@ import {
   computeTeamSeasonAnalytics,
   mergePlayerStatsMaps,
 } from '../../engine/analyticsEngine';
+import {
+  formatFfpScorePenaltyLabel,
+  resolveFfpPenaltyTier,
+} from '../../engine/budgetEngine';
 import { didUserWinCup, getUserCupResultLabel } from '../../engine/cupEngine';
 import { getLeagueById, LEAGUES } from '../../engine/dataLoader';
 import {
@@ -801,16 +805,26 @@ export function SeasonSummary() {
             ))}
           </div>
 
-          {score.ffpPenaltyPoints && score.ffpPenaltyPoints > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-[11px] text-rose-200 tabular-nums">
-              <span className="font-bold text-rose-300">
-                FFP 2단계 예산 초과 감점 (-{score.ffpPenaltyPct ?? 12}%)
-              </span>
-              <span className="font-mono font-black text-rose-300">
-                -{score.ffpPenaltyPoints.toLocaleString()}점
-              </span>
-            </div>
-          )}
+          {score.ffpPenaltyPoints && score.ffpPenaltyPoints > 0 && (() => {
+            const tier = resolveFfpPenaltyTier(score.ffpPenaltyPct, score.ffpTier);
+            const isTier1 = tier === 1;
+            return (
+              <div
+                className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-[11px] tabular-nums ${
+                  isTier1
+                    ? 'border-amber-400/35 bg-amber-500/10 text-amber-200'
+                    : 'border-rose-500/35 bg-rose-500/10 text-rose-200'
+                }`}
+              >
+                <span className={`font-bold ${isTier1 ? 'text-amber-300' : 'text-rose-300'}`}>
+                  {formatFfpScorePenaltyLabel(score.ffpPenaltyPct, score.ffpTier)}
+                </span>
+                <span className={`font-mono font-black ${isTier1 ? 'text-amber-300' : 'text-rose-300'}`}>
+                  -{score.ffpPenaltyPoints.toLocaleString()}점
+                </span>
+              </div>
+            );
+          })()}
 
           {score.honorsBonusDetails && score.honorsBonusDetails.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">
@@ -1000,10 +1014,25 @@ export function SeasonSummary() {
             tone: 'emerald',
           });
         }
-        if (awards?.topCleanSheets[0]?.isUserTeam) {
+        const bestGoalkeeper =
+          awards?.bestGoalkeeper ??
+          awards?.topCleanSheets.find((p) => p.position === 'GK') ??
+          awards?.bestXi.find((x) => x.slotLabel === 'GK')?.stats ??
+          null;
+        if (bestGoalkeeper?.isUserTeam && bestGoalkeeper.position === 'GK') {
           honors.push({
-            label: `최고 GK · ${awards.topCleanSheets[0].playerName}`,
+            label: `최고 GK · ${bestGoalkeeper.playerName}`,
             tone: 'sky',
+          });
+        }
+        const bestDefender =
+          awards?.bestDefender ??
+          awards?.bestXi.find((x) => x.stats.position === 'DF')?.stats ??
+          null;
+        if (bestDefender?.isUserTeam && bestDefender.position === 'DF') {
+          honors.push({
+            label: `최우수 수비수 · ${bestDefender.playerName}`,
+            tone: 'emerald',
           });
         }
         if (season.legacyArchived) {

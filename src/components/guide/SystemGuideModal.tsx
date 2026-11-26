@@ -71,7 +71,6 @@ import { ALL_CLUBS_WITH_LEAGUE } from '../../engine/dataLoader';
 import {
   CANDIDATES_PER_REEL,
   DEFAULT_ROULETTE_LEGEND_RATE,
-  TOP4_TRANSFER_LEGEND_RATE,
 } from '../../engine/draftEngine';
 import {
   HOF_AUTO_INDUCTION_MIN_SCORE,
@@ -112,7 +111,7 @@ import {
 } from '../../engine/tacticalAdaptationEngine';
 import {
   ATTEMPTS_PER_WINDOW,
-  UCL_CHAMPION_LEGEND_RATE,
+  TRANSFER_ROULETTE_LEGEND_RATE,
 } from '../../engine/transferEngine';
 import { UCL_EXTERNAL_TEAMS } from '../../engine/uclEngine';
 import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
@@ -193,8 +192,7 @@ export function SystemGuideContent({
   );
 
   const baseLegendPct = (DEFAULT_ROULETTE_LEGEND_RATE * 100).toFixed(1);
-  const top4LegendPct = (TOP4_TRANSFER_LEGEND_RATE * 100).toFixed(1);
-  const champLegendPct = (UCL_CHAMPION_LEGEND_RATE * 100).toFixed(1);
+  const transferLegendPct = (TRANSFER_ROULETTE_LEGEND_RATE * 100).toFixed(1);
   const clubCount = ALL_CLUBS_WITH_LEAGUE.length;
   const historicalCount = HISTORICAL_BENCHMARK_TEAMS.length;
   const uclExtCount = UCL_EXTERNAL_TEAMS.length;
@@ -273,8 +271,7 @@ export function SystemGuideContent({
               <div className="rounded-lg border border-amber-500/30 bg-amber-950/15 p-2.5">
                 <div className="font-bold text-amber-300">황금 [LEGEND] 확률</div>
                 <div className="mt-1 font-mono text-slate-200 tabular-nums">
-                  드래프트 {baseLegendPct}% · Top4/UCL {top4LegendPct}% · 우승{' '}
-                  {champLegendPct}%
+                  드래프트 {baseLegendPct}% · 이적시장 {transferLegendPct}% 고정 (순위 무관)
                 </div>
               </div>
               <div className="rounded-lg border border-emerald-500/25 bg-emerald-950/15 p-2.5">
@@ -995,10 +992,15 @@ export function SystemGuideContent({
                 </div>
               </div>
             </div>
-            <div className="text-[10.5px] text-slate-400">
-              • FFP 1단계(1차 {FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 2차 {FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회) /
-              2단계(1차 {FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회 · 2차 동결) 제한이 싱글·멀티리그 동일 적용되며,
-              로스터 16인·GK 최소 1명 규칙이 항상 유지됩니다.
+            <div className="text-[10.5px] text-slate-400 space-y-1">
+              <div>
+                • FFP 1단계(1차 {FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 · 2차 {FFP_TIER1_WINDOW2_MAX_ATTEMPTS}회) /
+                2단계(1차 {FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회 · 2차 동결) 제한이 싱글·멀티리그 동일 적용되며,
+                로스터 16인·GK 최소 1명 규칙이 항상 유지됩니다.
+              </div>
+              <div>
+                • 리그 순위가 높을수록 타 구단의 AI 영입 제안 수신 확률·건수가 증가합니다 (1위 최소 2건·2~4위 최소 1건 보장 / 이적시장 룰렛 레전드 확률은 순위 무관 {transferLegendPct}% 고정).
+              </div>
             </div>
           </div>
 

@@ -33,17 +33,14 @@ import {
   SEVERITY_LABELS,
 } from '../engine/conditionEngine';
 import { ACTIVE_PLAYERS, LEGEND_PLAYERS } from '../engine/dataLoader';
-import {
-  DEFAULT_ROULETTE_LEGEND_RATE,
-  TOP4_TRANSFER_LEGEND_RATE,
-} from '../engine/draftEngine';
+import { DEFAULT_ROULETTE_LEGEND_RATE } from '../engine/draftEngine';
 import { HOF_AUTO_INDUCTION_MIN_SCORE } from '../engine/legacyEngine';
 import { MP_H2H_MAX_POINTS } from '../engine/mpLeagueScore';
 import { evaluatePositionFit } from '../engine/positionEngine';
 import { MAX_MATCH_SUBS, TACTIC_STAMINA_MULT } from '../engine/staminaEngine';
 import {
   ATTEMPTS_PER_WINDOW,
-  UCL_CHAMPION_LEGEND_RATE,
+  TRANSFER_ROULETTE_LEGEND_RATE,
 } from '../engine/transferEngine';
 
 const GUIDE_SOURCES: [string, string][] = [
@@ -110,8 +107,7 @@ describe('v8.10 Guidebook 100% Engine Sync, Visual Tutorial & Contextual UX', ()
     expect(systemGuideSrc.includes('팀 케미 (0~100) 구조')).toBe(true);
     expect(systemGuideSrc.includes('TEAM_CHEMISTRY_LINE_WEIGHTS')).toBe(true);
     expect(DEFAULT_ROULETTE_LEGEND_RATE).toBe(0.025);
-    expect(TOP4_TRANSFER_LEGEND_RATE).toBe(0.04);
-    expect(UCL_CHAMPION_LEGEND_RATE).toBe(0.055);
+    expect(TRANSFER_ROULETTE_LEGEND_RATE).toBe(0.025);
     expect(ATTEMPTS_PER_WINDOW).toBe(3);
     expect(HOF_AUTO_INDUCTION_MIN_SCORE).toBe(6500);
     expect(MP_H2H_MAX_POINTS).toBe(1500);
