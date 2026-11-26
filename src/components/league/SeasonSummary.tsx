@@ -30,6 +30,7 @@ import {
   buildCompactMatchHistory,
   computeUserSeasonManagerRating,
   HOF_AUTO_INDUCTION_MIN_SCORE,
+  isFullFiveLeagueDraftPool,
 } from '../../engine/legacyEngine';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { buildFiveLeagueUclQualifiers } from '../../engine/otherLeaguesEngine';
@@ -909,6 +910,31 @@ export function SeasonSummary() {
           })()}
 
           {isSupabaseConfigured && uclCompleted && (() => {
+            const fullPoolEligible = isFullFiveLeagueDraftPool(
+              state.draftLeaguePool,
+            );
+            if (!fullPoolEligible) {
+              return (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-rose-500/35 bg-rose-500/10 px-3.5 py-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 text-rose-300">
+                    <span className="rounded bg-rose-500/20 border border-rose-400/40 px-2 py-0.5 text-[10px] font-black text-rose-200 whitespace-nowrap">
+                      🚫 일일 랭킹 제외
+                    </span>
+                    <span className="font-semibold break-keep">
+                      5대 리그 드래프트 풀 전체 미선택 시즌 — 개인 명예의 전당 기록은 가능하지만 일일 랭킹 제출은 불가합니다.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openLegacyModal('global_top15')}
+                    className="shrink-0 text-[11px] font-bold text-sky-300 hover:underline cursor-pointer whitespace-nowrap"
+                  >
+                    일일 랭킹 보기 →
+                  </button>
+                </div>
+              );
+            }
+
             const runSubmit =
               lastGlobalSubmitResult &&
               season.runId &&

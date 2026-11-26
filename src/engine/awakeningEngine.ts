@@ -56,6 +56,7 @@ export const AWAKENING_FOURTH_PLUS_MULT = AWAKENING_THIRD_PLUS_MULT;
 export const AWAKENING_MAX_VALID_PER_TEAM = 4;
 export const AWAKENING_BASE_ELIGIBLE_PROB = 0.0033;
 export const AWAKENING_MAX_CANDIDATE_PROB = 0.042;
+export const AWAKENING_LOW_OVR_MAX_CANDIDATE_PROB = 0.046;
 
 export function getAwakeningTierRateMultiplier(baseOvr: number): number {
   if (baseOvr >= AWAKENING_SUPERSTAR_OVR_THRESHOLD) {
@@ -63,8 +64,25 @@ export function getAwakeningTierRateMultiplier(baseOvr: number): number {
   }
   if (baseOvr >= 85) return 0.75; // 85..87: solid starter
   if (baseOvr >= 82) return 1.35; // 82..84: mid-table core / key gem
-  if (baseOvr >= 80) return 1.5; // 80..81: high-upside rotation gem
-  return 1.75; // <=79: raw diamond gem
+  if (baseOvr >= 80) return 1.55; // 80..81: high-upside rotation gem
+  if (baseOvr >= 77) return 1.85; // 77..79: underrated gem
+  return 2.1; // <=76: raw hidden diamond
+}
+
+/**
+ * OVR-relative minimum match rating required to qualify for post-match awakening.
+ * Well-utilized low-OVR players (manager fit + 2+ neighbor synergy + natural position)
+ * can trigger on strong relative displays without needing superstar 7.4+ match ratings.
+ */
+export function getAwakeningMinMatchRating(
+  baseOvr: number,
+  wellUtilized: boolean,
+): number {
+  if (baseOvr <= 76) return wellUtilized ? 6.8 : 6.9;
+  if (baseOvr <= 79) return wellUtilized ? 6.9 : 7.0;
+  if (baseOvr <= 81) return wellUtilized ? 7.1 : 7.2;
+  if (baseOvr <= 84) return 7.3;
+  return 7.4;
 }
 
 export function getAwakeningExpectedGainRange(
@@ -76,6 +94,7 @@ export function getAwakeningExpectedGainRange(
     const cap = Math.min(AWAKENING_SUPERSTAR_MAX_GAIN, maxAllowed);
     return { min: cap, max: cap };
   }
+  if (baseOvr <= 76) return { min: 6, max: Math.min(8, maxAllowed) };
   if (baseOvr <= 79) return { min: 5, max: Math.min(8, maxAllowed) };
   if (baseOvr <= 81) return { min: 4, max: Math.min(7, maxAllowed) };
   if (baseOvr <= 84) return { min: 3, max: Math.min(6, maxAllowed) };
@@ -117,7 +136,13 @@ export function rollAwakeningOvrGain(
   }
 
   let table: [number, number][];
-  if (baseOvr <= 79) {
+  if (baseOvr <= 76) {
+    table = [
+      [6, 25],
+      [7, 45],
+      [8, 30],
+    ];
+  } else if (baseOvr <= 79) {
     table = [
       [5, 20],
       [6, 35],
@@ -427,20 +452,35 @@ export function computeAwakeningCandidateProbability(params: {
     };
   }
 
-  // 1) Actual match + season performance multiplier
-  let perfMult = 0.88;
-  if (rating >= 8.5) perfMult = 2.25;
-  else if (rating >= 8.1) perfMult = 1.75;
-  else if (rating >= 7.8) perfMult = 1.4;
-  else if (rating >= 7.6) perfMult = 1.15;
+  const mgrFit = evaluateManagerPlayerSynergy(player, managerTraitId);
+  const wellUtilized =
+    mgrFit.isMatch && (syn?.neighborBonus ?? 0) >= 2 && positionPenalty === 0;
+
+  // OVR-relative rating expectation: a 74 OVR player delivering 7.1~7.3 is outperforming their baseline
+  const ovrExpectationOffset =
+    player.ovr <= 76 ? 0.45 : player.ovr <= 79 ? 0.3 : player.ovr <= 81 ? 0.15 : 0;
+  const adjRating = rating + ovrExpectationOffset;
+
+  // 1) Actual match + season performance multiplier (OVR-relative)
+  let perfMult = 0.9;
+  if (adjRating >= 8.5) perfMult = 2.25;
+  else if (adjRating >= 8.1) perfMult = 1.75;
+  else if (adjRating >= 7.8) perfMult = 1.42;
+  else if (adjRating >= 7.55) perfMult = 1.18;
+  else if (adjRating >= 7.25) perfMult = 1.02;
 
   const isDefensiveCleanSheet =
-    cleanSheet && (player.position === 'GK' || player.position === 'DF') && rating >= 7.5;
+    cleanSheet &&
+    (player.position === 'GK' || player.position === 'DF') &&
+    adjRating >= 7.45;
   const directGA = goals + assists;
   if (directGA >= 2) {
     perfMult *= 1.42;
   } else if (directGA === 1 || isDefensiveCleanSheet) {
     perfMult *= 1.24;
+  } else if (player.ovr <= 79 && wellUtilized) {
+    // Well-nurtured low-OVR connective players (DM/CM/FB/CB) shouldn't be harshly taxed for non-G/A displays
+    perfMult *= 0.98;
   } else {
     perfMult *= 0.86;
   }
@@ -449,9 +489,10 @@ export function computeAwakeningCandidateProbability(params: {
   else if (minutes < 60) perfMult *= 0.82;
 
   if (st && st.appearances >= AWAKENING_MIN_APPEARANCES) {
-    if (st.appearances >= 8 && st.avgRating >= 7.4) perfMult *= 1.32;
-    else if (st.avgRating >= 7.15) perfMult *= 1.15;
-    else if (st.avgRating < 6.85) perfMult *= 0.58;
+    const seasonAdjAvg = st.avgRating + ovrExpectationOffset * 0.7;
+    if (st.appearances >= 8 && seasonAdjAvg >= 7.4) perfMult *= 1.32;
+    else if (seasonAdjAvg >= 7.12) perfMult *= 1.15;
+    else if (seasonAdjAvg < 6.75) perfMult *= 0.62;
 
     const gaPerApp = (st.goals + st.assists) / Math.max(1, st.appearances);
     const csRate = st.cleanSheets / Math.max(1, st.appearances);
@@ -476,7 +517,6 @@ export function computeAwakeningCandidateProbability(params: {
   }
 
   // 2b. Manager trait compatibility
-  const mgrFit = evaluateManagerPlayerSynergy(player, managerTraitId);
   if (mgrFit.isMatch) {
     utilMult *= 1.4;
   } else if (managerTraitId !== null) {
@@ -515,8 +555,19 @@ export function computeAwakeningCandidateProbability(params: {
     utilMult *= 0.14;
   }
 
-  // 3) Tier multiplier (<=79 x1.75, 80..81 x1.50, 82..84 x1.35, 85..87 x0.75, 88+ x0.04)
+  // 2f. Low-OVR Cultivation Resonance: rewards pairing low-OVR gems with manager fit + synergy + natural role
+  if (wellUtilized) {
+    if (player.ovr <= 76) utilMult *= 1.24;
+    else if (player.ovr <= 79) utilMult *= 1.18;
+    else if (player.ovr <= 81) utilMult *= 1.1;
+  }
+
+  // 3) Tier multiplier (<=76 x2.10, 77..79 x1.85, 80..81 x1.55, 82..84 x1.35, 85..87 x0.75, 88+ x0.04)
   const tierMult = getAwakeningTierRateMultiplier(player.ovr);
+  const maxCandidateProb =
+    player.ovr <= 79
+      ? AWAKENING_LOW_OVR_MAX_CANDIDATE_PROB
+      : AWAKENING_MAX_CANDIDATE_PROB;
 
   const finalProb = clamp(
     AWAKENING_BASE_ELIGIBLE_PROB *
@@ -526,7 +577,7 @@ export function computeAwakeningCandidateProbability(params: {
       coachMult *
       tierMult,
     0,
-    AWAKENING_MAX_CANDIDATE_PROB,
+    maxCandidateProb,
   );
 
   return {
@@ -626,7 +677,7 @@ export function evaluatePostMatchAwakening(
     ...bench.filter((p): p is Player => p !== null),
   ];
 
-  // Evaluate candidates in order of highest match rating so top performer gets first crack
+  // Evaluate candidates in order of highest OVR-relative performance so deserving gems get a fair shot
   const candidates = allPlayers
     .filter((p) => {
       if (p.isLegend) return false; // Hard guard: Era Classics 0%
@@ -635,7 +686,12 @@ export function evaluatePostMatchAwakening(
       const mins = minutesByPlayerId[p.id] ?? 0;
       if (mins < 45) return false;
       const rating = ratingsByPlayerId[p.id] ?? 0;
-      const minRating = p.ovr <= 81 ? 7.3 : 7.4;
+      const syn = synergyByPlayerId.get(p.id);
+      const posPen = positionPenaltyByPlayerId.get(p.id) ?? 0;
+      const mgrFit = evaluateManagerPlayerSynergy(p, managerTraitId);
+      const wellUtilized =
+        mgrFit.isMatch && (syn?.neighborBonus ?? 0) >= 2 && posPen === 0;
+      const minRating = getAwakeningMinMatchRating(p.ovr, wellUtilized);
       if (rating < minRating) return false;
       const st = allPlayerStats[p.id];
       const apps = st?.appearances ?? matchPlayedNumber;
@@ -788,8 +844,9 @@ export function evaluateDraftAwakeningPotential(
     range.min === range.max ? `+${range.min}` : `+${range.min}~+${range.max}`;
 
   const reasons: string[] = [];
-  if (player.ovr <= 79) reasons.push('원석 구간(×1.75)');
-  else if (player.ovr <= 81) reasons.push('고잠재 구간(×1.50)');
+  if (player.ovr <= 76) reasons.push('숨은 원석(×2.10)');
+  else if (player.ovr <= 79) reasons.push('원석 구간(×1.85)');
+  else if (player.ovr <= 81) reasons.push('고잠재 구간(×1.55)');
   else reasons.push('중위권 유망(×1.35)');
   if (mgrFit.isMatch) reasons.push('감독 궁합 ✓');
   if (expectedLinkCount >= 2) reasons.push(`인접 ${expectedLinkCount}선 ✓`);

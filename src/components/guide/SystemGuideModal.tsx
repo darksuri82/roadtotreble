@@ -929,16 +929,16 @@ export function SystemGuideContent({
                 <tbody className="divide-y divide-rose-500/15 bg-[#110c10]">
                   <tr>
                     <td className="px-2.5 py-1.5 font-bold text-emerald-200 whitespace-nowrap">
-                      원석·중위권 (OVR ≤79 / 80~81 / 82~84)
+                      원석·중위권 (≤76 / 77~79 / 80~81 / 82~84)
                     </td>
                     <td className="px-2.5 py-1.5 text-emerald-300 font-mono whitespace-nowrap">
-                      ×1.75 / ×1.50 / ×1.35
+                      ×2.10 / ×1.85 / ×1.55 / ×1.35
                     </td>
                     <td className="px-2.5 py-1.5 font-mono text-rose-200 whitespace-nowrap">
-                      +5~+{AWAKENING_MAX_GAIN} / +4~+7 / +3~+6
+                      +6~+{AWAKENING_MAX_GAIN} / +5~+8 / +4~+7 / +3~+6
                     </td>
                     <td className="px-2.5 py-1.5 text-slate-400">
-                      선발 프리뷰 배치 시 포텐↑·육성 지표 표시
+                      시너지·감독 궁합 시 경기 활약·평점 반영 + 저OVR 상대 평점 기준(6.8~7.2+) 완화
                     </td>
                   </tr>
                   <tr>
@@ -1303,8 +1303,13 @@ export function SystemGuideContent({
               </span>
             </div>
             <p className="text-[11px] text-slate-300">{HOF_RESET_NOTICE_TEXT}</p>
-            <div className="text-[10.5px] text-slate-400">
-              • 로컬 명전은 개인 시즌 기록을 영구 보존하며, 일일 랭킹은 <strong className="text-slate-200">KST 기준 당일 TOP 10 · 지난 날짜 TOP 3 아카이브 · 매주 월요일 00:00 주간 전체 초기화</strong>로 공정한 최신 메타 경쟁을 유지합니다(히든 업적·드림매치 전적 보존).
+            <div className="text-[10.5px] text-slate-400 space-y-1">
+              <div>
+                • 로컬 명전은 개인 시즌 기록을 영구 보존하며, 일일 랭킹은 <strong className="text-slate-200">KST 기준 당일 TOP 10 · 지난 날짜 TOP 3 아카이브 · 매주 월요일 00:00 주간 전체 초기화</strong>로 공정한 최신 메타 경쟁을 유지합니다(히든 업적·드림매치 전적 보존).
+              </div>
+              <div>
+                • <strong className="text-rose-300">공정성 기준:</strong> 드래프트 설정에서 <strong className="text-slate-200">5대 리그 풀을 모두 체크</strong>하고 <strong className="text-slate-200">오늘(KST) 완료한 시즌</strong>만 오늘의 일일 랭킹에 제출할 수 있습니다(일부 리그 풀 선택 시즌·지난 날짜 기록은 개인 명예의 전당 보관만 가능).
+              </div>
             </div>
           </div>
 

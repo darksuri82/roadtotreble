@@ -17,6 +17,7 @@ import type {
 } from '../types/game';
 import type { TacticId } from '../types/league';
 import type { Player, PlaystyleId } from '../types/player';
+import { getPlayerAttributes } from './attributeEngine';
 import { evaluatePositionFit } from './positionEngine';
 import {
   evaluateStaffCoachEffect,
@@ -402,27 +403,54 @@ export function calculateChemistry(
 }
 
 /**
- * Returns a copy of starter players with their individual slotSynergy OVR boosts applied
- * directly to ovr/att/mid/def so match simulation engines reflect exact pitch-displayed stats.
+ * Returns a copy of starter players with their individual slotSynergy (+ dev-coach) OVR boosts
+ * applied directly to ovr/att/mid/def AND sub-attributes (`attrs`) so match simulation engines
+ * (scorer/assister selection & individual impact) reflect exact pitch-displayed stats.
  */
 export function applySlotSynergiesToStarters(
   starters: (Player | null)[],
   slotSynergies?: Record<number, PlayerSlotSynergy>,
+  staffCoachId: StaffCoachId | null = null,
 ): Player[] {
   const out: Player[] = [];
   for (let i = 0; i < starters.length; i += 1) {
     const p = starters[i];
     if (!p) continue;
-    const bonus = slotSynergies?.[i]?.totalBonus ?? 0;
+    const synBonus = slotSynergies?.[i]?.totalBonus ?? 0;
+    const devLift = staffCoachId ? getDevCoachPlayerBonus(p, staffCoachId) : 0;
+    const bonus = synBonus + devLift;
     if (bonus <= 0) {
       out.push(p);
     } else {
+      const baseAttrs = getPlayerAttributes(p);
+      const lift = Math.round(bonus);
+      const liftedAttrs = {
+        sho: Math.min(99, baseAttrs.sho + lift),
+        pas: Math.min(99, baseAttrs.pas + lift),
+        cro: Math.min(99, baseAttrs.cro + lift),
+        dri: Math.min(99, baseAttrs.dri + lift),
+        aer: Math.min(99, baseAttrs.aer + lift),
+        def: Math.min(99, baseAttrs.def + lift),
+        phy: Math.min(99, baseAttrs.phy + lift),
+        ...(baseAttrs.gk
+          ? {
+              gk: {
+                div: Math.min(99, baseAttrs.gk.div + lift),
+                han: Math.min(99, baseAttrs.gk.han + lift),
+                kic: Math.min(99, baseAttrs.gk.kic + lift),
+                ref: Math.min(99, baseAttrs.gk.ref + lift),
+                pos: Math.min(99, baseAttrs.gk.pos + lift),
+              },
+            }
+          : {}),
+      };
       out.push({
         ...p,
         ovr: Math.min(99, p.ovr + bonus),
         att: Math.min(99, p.att + bonus),
         mid: Math.min(99, p.mid + bonus),
         def: Math.min(99, p.def + bonus),
+        attrs: liftedAttrs,
       });
     }
   }

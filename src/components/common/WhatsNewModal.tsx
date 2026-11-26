@@ -29,7 +29,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.3.0 ~ v9.5.0';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.3.0 ~ v9.6.0';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -72,10 +72,10 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
+  { id: 'ranking', label: '일일 랭킹 · 스토리', badge: '9.6 NEW', icon: Globe },
+  { id: 'fixes', label: '저OVR 각성 · 공정성', badge: '9.6 BAL', icon: Wrench },
   { id: 'classics', label: '클래식 · 능력치', badge: '9.3~9.5', icon: Crown },
-  { id: 'tactics', label: '3-2-4-1 · 각성', badge: '9.4', icon: Flame },
-  { id: 'ranking', label: '일일 랭킹 · 스토리', badge: '9.5 NEW', icon: Globe },
-  { id: 'fixes', label: '밸런스 · 수정', badge: '9.5 FIX', icon: Wrench },
+  { id: 'tactics', label: '3-2-4-1 · 전술', badge: '9.4', icon: Flame },
 ];
 
 const LEGEND_PLAYERS = legendPlayersRaw as Player[];
@@ -90,7 +90,7 @@ export function WhatsNewModal({
   onOpenPatchNotes,
 }: WhatsNewModalProps) {
   useBodyScrollLock(true);
-  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('classics');
+  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('ranking');
   const [dontShowAgain, setDontShowAgain] = useState<boolean>(false);
 
   const previewPlayers = useMemo(() => {
@@ -492,35 +492,41 @@ export function WhatsNewModal({
 
                 <p className="text-[11px] leading-relaxed text-slate-300">
                   당일은 <strong className="text-sky-200">TOP 10</strong>으로
-                  실시간 경쟁하고, 날짜가 지나면 상위{' '}
-                  <strong className="text-amber-300">TOP 3</strong>만 해당 주간
-                  아카이브로 보존됩니다. 5대 리그 난이도 배율(EPL ×1.24 ~ 리그 1
-                  ×0.82)도 모든 랭킹에 공정 적용됩니다.
+                  실시간 경쟁하고, 지난 날짜는{' '}
+                  <strong className="text-amber-300">TOP 3</strong>만 아카이브로
+                  보존됩니다. 공정성을 위해{' '}
+                  <strong className="text-rose-300">
+                    5대 리그 풀 전체 체크 + 오늘(KST) 완료 시즌
+                  </strong>
+                  만 일일 랭킹에 제출할 수 있으며, 모든 명전 기록에 완료 날짜가
+                  표기됩니다.
                 </p>
               </div>
 
-              {/* Compact Team Intro & Story Preview */}
+              {/* Expressive Team Intro & Chronological Story Preview */}
               <div className="rounded-2xl border border-slate-800 bg-[#0d1522] p-3.5 sm:p-4 space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1.5 text-xs font-black text-amber-300">
                     <BookOpen className="h-3.5 w-3.5" />
-                    컴팩트 팀 소개 & 전용 ‘팀 스토리’ 탭 신설
+                    풍부해진 팀 소개 &amp; 시기별 스토리텔링 연대기
                   </span>
                   <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-200 whitespace-nowrap">
-                    결산 · 일일 랭킹 · 명전
+                    v9.6.0 개편
                   </span>
                 </div>
                 <div className="rounded-xl border border-slate-800/90 bg-[#090f19] px-3 py-2 text-[11px] text-slate-200 leading-relaxed">
-                  “점유 지배 철학과 수석 코치 시너지로 묶인 실효 OVR 87.4의
-                  3-2-4-1 박스 미드필드 군단 — 각성 에이스와 함께 트레블을
-                  완성했습니다.”
+                  “개막 전 저평가를 비웃듯 3-2-4-1 점유율 축구에 승부사 기질을
+                  녹여내며 정상을 훔쳐낸 반란의 주인공이다. 시즌 중 잠재력을
+                  깨운 각성 에이스와 클래식의 품격이 어우러져 트레블의 서사를
+                  완성했다.”
                 </div>
                 <p className="text-[11px] leading-relaxed text-slate-400">
-                  감독 특성·수석 코치·각성·전술 색깔을 압축한 1~2줄 팀 소개와
-                  함께, 대역전승·우승 확정전·UCL 결승·포텐 각성 활약을 실제
-                  경기 데이터로 엮은{' '}
-                  <strong className="text-slate-200">팀 스토리</strong> 탭이
-                  저장·공유됩니다.
+                  딱딱한 수치 나열 대신 스포츠 칼럼처럼 생생한 팀 설명을 생성하며,
+                  <strong className="text-slate-200">
+                    개막 → 강호 격파 → 각성 → 연승 → 반환점 → 대역전극 → 컵·리그·UCL
+                    결승 → 에필로그
+                  </strong>
+                  까지 시즌 주요 사건을 시기별로 한 문장씩 엮어냅니다.
                 </p>
               </div>
             </div>
@@ -530,28 +536,28 @@ export function WhatsNewModal({
             <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
               {[
                 {
-                  badge: 'FFP 완화',
-                  accent: 'text-emerald-300 border-emerald-400/35 bg-emerald-500/10',
-                  title: `FFP 2단계 최종 점수 감점 20% → ${FFP_TIER2_SCORE_PENALTY_PCT}%`,
-                  desc: '과도한 최종 점수 페널티를 12%로 완화해 공격적 예산 운용의 전략 선택지를 넓혔습니다.',
+                  badge: '저OVR 각성 개편',
+                  accent: 'text-orange-300 border-orange-400/35 bg-orange-500/10',
+                  title: '저OVR 원석 활약·평점·각성 밸런스 상향',
+                  desc: '시너지·감독 궁합·육성 코치 보너스를 경기 세부 스탯과 평점에 직접 반영하고, 저OVR(≤79) 상대 평점 기준(6.8~7.0+)과 육성 공명 보너스를 도입해 잘 키운 원석이 실제로 활약하고 각성하도록 개선했습니다.',
                 },
                 {
-                  badge: '명전 보스',
-                  accent: 'text-amber-300 border-amber-400/35 bg-amber-500/10',
-                  title: '역대 24팀(최종 보스) OVR 소폭 현실화',
-                  desc: '현역 OVR 압축에 맞춰 역사 팀의 과대평가 OVR만 소폭 조정해, 최종 보스 위상을 유지하면서도 도전 가능한 격차로 다듬었습니다.',
-                },
-                {
-                  badge: '공정성',
+                  badge: '랭킹 공정성',
                   accent: 'text-rose-300 border-rose-400/35 bg-rose-500/10',
-                  title: '라이브 중계 중단·새로고침 리트라이 차단',
-                  desc: '경기 중 일시중지 후 중단하거나 새로고침해도 기록이 초기화되지 않고 즉시 확정·유지되도록 원천 보완했습니다.',
+                  title: '과거 기록 제출 차단 & 5대 리그 전체 풀 필수화',
+                  desc: '유저 명전에 완료 날짜(KST)를 표기하고 과거 기록·날짜 불명 기록의 일일 랭킹 제출을 차단했습니다. 5대 리그 드래프트 풀 중 하나라도 해제하면 개인 명전 기록만 가능하며 랭킹 제출은 불가합니다.',
                 },
                 {
-                  badge: '편의·수정',
+                  badge: 'FFP · 보스',
+                  accent: 'text-emerald-300 border-emerald-400/35 bg-emerald-500/10',
+                  title: `FFP 2단계 감점 ${FFP_TIER2_SCORE_PENALTY_PCT}% 완화 & 역대 24팀 현실화`,
+                  desc: 'FFP 2단계 점수 감점을 20%→12%로 완화하고, 역대 24팀(최종 보스)의 과대평가 OVR을 소폭 현실화해 전략적 도전이 가능한 균형을 맞췄습니다.',
+                },
+                {
+                  badge: '안정성',
                   accent: 'text-sky-300 border-sky-400/35 bg-sky-500/10',
-                  title: '자동진행 하단 잠금 & 이적시장 클래식 선택 수정',
-                  desc: '자동진행 중 하단 프리뷰 오조작을 잠그고, 이적시장에서 클래식 선수 클릭 시 선택 표시와 FA 액션 바가 즉각 반응하도록 수정했습니다.',
+                  title: '라이브 리트라이 차단 & 자동진행/이적시장 수정',
+                  desc: '라이브 중계 일시중지·새로고침 리트라이를 원천 차단하고, 자동진행 중 하단 잠금 및 이적시장 클래식 카드 선택 피드백을 개선했습니다.',
                 },
               ].map((item) => (
                 <div

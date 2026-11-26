@@ -552,7 +552,7 @@ describe('v9.5.0 Realistic Sub-Attributes, FFP -12%, Historical Boss OVR, KST Da
       expect(isWhatsNewDismissed(CURRENT_APP_VERSION)).toBe(true);
 
       // Next release version automatically re-shows the popup!
-      expect(isWhatsNewDismissed('v9.6.0')).toBe(false);
+      expect(isWhatsNewDismissed('v9.9.9')).toBe(false);
     } finally {
       Object.defineProperty(globalThis, 'window', {
         value: origWindow,

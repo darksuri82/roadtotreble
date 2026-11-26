@@ -1,5 +1,7 @@
 import {
   Award,
+  Compass,
+  Flag,
   Flame,
   Quote,
   Sparkles,
@@ -16,7 +18,7 @@ interface TeamIntroBannerProps {
 }
 
 /**
- * Compact 1~2 line team identity summary strip used in Season Summary,
+ * Expressive 2~3 sentence team narrative summary strip used in Season Summary,
  * Hall of Fame detail, and Daily Ranking detail.
  */
 export function TeamIntroBanner({
@@ -27,12 +29,12 @@ export function TeamIntroBanner({
   if (!intro.trim()) return null;
   return (
     <div
-      className={`flex items-start gap-2 rounded-xl border border-slate-800/90 bg-[#0b111b] ${
-        compact ? 'px-3 py-2 text-[11px]' : 'px-3.5 py-2.5 text-xs'
+      className={`flex items-start gap-2.5 rounded-xl border border-slate-800/90 bg-[#0b111b] ${
+        compact ? 'px-3 py-2.5 text-[11px]' : 'px-4 py-3 text-xs sm:text-[13px]'
       } text-slate-200 leading-relaxed break-keep ${className}`}
     >
       <Quote className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400/80" />
-      <p className="min-w-0 flex-1 line-clamp-2">{intro}</p>
+      <p className="min-w-0 flex-1">{intro}</p>
     </div>
   );
 }
@@ -43,6 +45,18 @@ function getHighlightStyle(kind: TeamStoryHighlightKind): {
   dotCls: string;
 } {
   switch (kind) {
+    case 'opening':
+      return {
+        icon: <Flag className="h-3.5 w-3.5 text-teal-300" />,
+        badgeCls: 'border-teal-400/40 bg-teal-500/15 text-teal-200',
+        dotCls: 'bg-teal-400',
+      };
+    case 'turning_point':
+      return {
+        icon: <Compass className="h-3.5 w-3.5 text-indigo-300" />,
+        badgeCls: 'border-indigo-400/40 bg-indigo-500/15 text-indigo-200',
+        dotCls: 'bg-indigo-400',
+      };
     case 'ucl_final':
       return {
         icon: <Trophy className="h-3.5 w-3.5 text-sky-300" />,
@@ -80,6 +94,12 @@ function getHighlightStyle(kind: TeamStoryHighlightKind): {
         badgeCls: 'border-cyan-400/40 bg-cyan-500/15 text-cyan-200',
         dotCls: 'bg-cyan-400',
       };
+    case 'epilogue':
+      return {
+        icon: <Award className="h-3.5 w-3.5 text-amber-300" />,
+        badgeCls: 'border-amber-400/40 bg-amber-500/15 text-amber-200',
+        dotCls: 'bg-amber-400',
+      };
     case 'cup_final':
     case 'ace':
     default:
@@ -98,7 +118,7 @@ interface TeamStoryTabProps {
 }
 
 /**
- * Clean, lightweight timeline/card view of a club's seasonal story.
+ * Chronological season chronicle timeline view of a club's narrative journey.
  */
 export function TeamStoryTab({
   story,
@@ -127,12 +147,19 @@ export function TeamStoryTab({
                   aria-hidden="true"
                 />
                 <div className="flex flex-wrap items-center justify-between gap-1.5">
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-extrabold whitespace-nowrap ${st.badgeCls}`}
-                  >
-                    {st.icon}
-                    {item.tag}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {item.period && (
+                      <span className="rounded-md border border-slate-700/80 bg-slate-950/90 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-300 whitespace-nowrap tabular-nums">
+                        {item.period}
+                      </span>
+                    )}
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-extrabold whitespace-nowrap ${st.badgeCls}`}
+                    >
+                      {st.icon}
+                      {item.tag}
+                    </span>
+                  </div>
                   {item.metric && (
                     <span className="rounded-md border border-slate-700/80 bg-slate-900/90 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-200 whitespace-nowrap tabular-nums">
                       {item.metric}
@@ -142,7 +169,7 @@ export function TeamStoryTab({
                 <div className="mt-1.5 text-xs sm:text-sm font-extrabold text-white">
                   {item.title}
                 </div>
-                <p className="mt-0.5 text-[11px] sm:text-xs text-slate-400 leading-relaxed">
+                <p className="mt-1 text-[11px] sm:text-xs text-slate-300 leading-relaxed">
                   {item.detail}
                 </p>
               </div>

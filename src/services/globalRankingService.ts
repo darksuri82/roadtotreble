@@ -6,8 +6,10 @@ import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEng
 import { ACTIVE_PLAYERS, LEGEND_PLAYERS } from '../engine/dataLoader';
 import {
   HOF_RULE_ERA_V9,
+  isHofEntryFullFiveLeagueEligible,
   isV9EraHofEntry,
   isV9PlusRuleEra,
+  isValidIsoTimestamp,
   recalibrateScoreBreakdownForLeagueDifficulty,
   reconstructHallOfFameSquad,
 } from '../engine/legacyEngine';
@@ -112,6 +114,42 @@ export function formatKstDateTabLabel(
   if (diffDays === 0) return `오늘 (${wd})`;
   if (diffDays === 1) return `어제 (${wd})`;
   return `${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')} (${wd})`;
+}
+
+/** Formats an ISO timestamp as 'YYYY.MM.DD' in KST (Asia/Seoul). Returns '' if invalid. */
+export function formatKstDisplayDate(iso: string | undefined | null): string {
+  if (!isValidIsoTimestamp(iso)) return '';
+  return getKstDateKey(iso).replaceAll('-', '.');
+}
+
+/**
+ * Returns true ONLY when the HOF record has a valid timestamp whose KST calendar date
+ * matches today (KST). Past records can be viewed in personal HOF but never submitted today.
+ */
+export function isHofEntryFromTodayKst(
+  entry: Pick<HallOfFameEntry, 'completedAt'> | null | undefined,
+  referenceDate?: Date | string,
+): boolean {
+  if (!entry || !isValidIsoTimestamp(entry.completedAt)) return false;
+  return getKstDateKey(entry.completedAt) === getKstDateKey(referenceDate);
+}
+
+const MIDNIGHT_ROLLOVER_GRACE_MS = 10 * 60 * 1000;
+
+/**
+ * Checks whether a ranking row's `achievedAt` timestamp genuinely belongs to `rankingDate` (KST),
+ * allowing a 10-minute grace window right across midnight KST for auto-submissions finished at 23:55+.
+ */
+export function isAchievedDateMatchingRankingDate(
+  achievedAt: string | undefined | null,
+  rankingDate: string,
+): boolean {
+  if (!isValidIsoTimestamp(achievedAt)) return false;
+  const achievedKstDate = getKstDateKey(achievedAt);
+  if (achievedKstDate === rankingDate) return true;
+  // Allow tiny midnight rollover grace (e.g. finished 23:55 KST, submitted 00:01 KST)
+  const shiftedMs = Date.parse(achievedAt) + MIDNIGHT_ROLLOVER_GRACE_MS;
+  return getKstDateKey(new Date(shiftedMs)) === rankingDate;
 }
 
 export interface DailyRankingBucket {
@@ -385,6 +423,7 @@ export function buildSquadSnapshotFromHofEntry(
 
   return {
     ruleEra,
+    fullFiveLeaguePool: isHofEntryFullFiveLeagueEligible(entry),
     ...(entry.staffCoachId ? { staffCoachId: entry.staffCoachId } : {}),
     ...(entry.teamStory ? { teamStory: entry.teamStory } : {}),
     starters,
@@ -895,6 +934,9 @@ function mapRawRowToEntry(
     scoreBreakdown: calibratedBreakdown,
     squadSnapshot: {
       ...(typeof rawSnap.ruleEra === 'string' ? { ruleEra: rawSnap.ruleEra } : {}),
+      ...(typeof rawSnap.fullFiveLeaguePool === 'boolean'
+        ? { fullFiveLeaguePool: rawSnap.fullFiveLeaguePool }
+        : {}),
       ...(rawSnap.staffCoachId ? { staffCoachId: rawSnap.staffCoachId } : {}),
       ...(rawSnap.teamStory ? { teamStory: rawSnap.teamStory } : {}),
       starters: Array.isArray(rawSnap.starters) ? rawSnap.starters : [],
@@ -918,6 +960,8 @@ function mapRawRowToEntry(
  * - Weekly reset every Monday 00:00 KST (entries from earlier weeks are excluded).
  * - Today (`todayKey`): capped at TOP 10 (`GLOBAL_DAILY_TOP_LIMIT`).
  * - Earlier days of the same week (`dateKey < todayKey`): capped at TOP 3 (`GLOBAL_PAST_DAY_ARCHIVE_LIMIT`).
+ * - Excludes past-dated records mistakenly submitted on a later day (`achievedAt` KST date != `rankingDate`)
+ *   and entries explicitly flagged as `fullFiveLeaguePool === false`.
  */
 export function groupWeeklyDailyRankings(
   entries: readonly GlobalHofRankingEntry[],
@@ -933,10 +977,12 @@ export function groupWeeklyDailyRankings(
 
   for (const entry of entries) {
     if (!isV9EraGlobalEntry(entry)) continue;
+    if (entry.squadSnapshot?.fullFiveLeaguePool === false) continue;
     const entryDate = entry.rankingDate?.trim() || getKstDateKey(entry.achievedAt);
     const entryWeek =
       entry.rankingWeekStart?.trim() || getKstWeekStartKey(entry.achievedAt);
     if (entryWeek !== weekStartKey || !dateKeySet.has(entryDate)) continue;
+    if (!isAchievedDateMatchingRankingDate(entry.achievedAt, entryDate)) continue;
     rawByDate.get(entryDate)?.push({
       ...entry,
       rankingDate: entryDate,
@@ -1014,6 +1060,40 @@ export function applyDailyTop10RankingLogic(
         prunedCount: 0,
         rankingDate: todayKey,
         error: 'v9.0 이전 구버전 기록은 일일 랭킹에 등록할 수 없습니다.',
+      },
+    };
+  }
+
+  if (!isAchievedDateMatchingRankingDate(candidate.achievedAt, todayKey)) {
+    return {
+      board: beforeBoard,
+      result: {
+        ok: false,
+        entered: false,
+        rank: null,
+        alreadyExists: false,
+        cutoffScore: beforeBoard.todayCutoffScore,
+        totalCount: beforeBoard.todayEntries.length,
+        prunedCount: 0,
+        rankingDate: todayKey,
+        error: '오늘(KST) 완료한 시즌 기록만 오늘의 일일 랭킹에 제출할 수 있습니다.',
+      },
+    };
+  }
+
+  if (candidate.squadSnapshot?.fullFiveLeaguePool === false) {
+    return {
+      board: beforeBoard,
+      result: {
+        ok: false,
+        entered: false,
+        rank: null,
+        alreadyExists: false,
+        cutoffScore: beforeBoard.todayCutoffScore,
+        totalCount: beforeBoard.todayEntries.length,
+        prunedCount: 0,
+        rankingDate: todayKey,
+        error: '5대 리그 드래프트 풀을 모두 선택한 시즌만 일일 랭킹에 제출할 수 있습니다.',
       },
     };
   }
@@ -1200,8 +1280,8 @@ export const MAX_GLOBAL_HOF_TOTAL_LEGENDS = 6;
 export const MAX_GLOBAL_HOF_TEAM_AVG_OVR = 96.5;
 
 /**
- * Validates that a Hall of Fame squad snapshot is v9.0+ eligible and free of duplicate players,
- * tampered OVR, or impossible Legend-spam rosters before global TOP 15 submission.
+ * Validates that a Hall of Fame squad snapshot is v9.0+ eligible, satisfied the full 5-league draft pool rule,
+ * and is free of duplicate players, tampered OVR, or impossible Classic-spam rosters.
  */
 export function validateGlobalHofEntryIntegrity(entry: HallOfFameEntry): {
   valid: boolean;
@@ -1210,7 +1290,13 @@ export function validateGlobalHofEntryIntegrity(entry: HallOfFameEntry): {
   if (!isV9EraHofEntry(entry)) {
     return {
       valid: false,
-      reason: 'v9.0 이전 구버전 기록은 글로벌 TOP 15에 등록할 수 없습니다.',
+      reason: 'v9.0 이전 구버전 기록은 일일 랭킹에 등록할 수 없습니다.',
+    };
+  }
+  if (!isHofEntryFullFiveLeagueEligible(entry)) {
+    return {
+      valid: false,
+      reason: '5대 리그 드래프트 풀을 모두 선택한 시즌만 일일 랭킹에 제출할 수 있습니다.',
     };
   }
   const payload = buildGlobalSubmissionPayload(entry);
@@ -1245,16 +1331,69 @@ export function validateGlobalHofEntryIntegrity(entry: HallOfFameEntry): {
   ) {
     return {
       valid: false,
-      reason: '비정상적인 레전드 편성 스쿼드는 글로벌 랭킹에 등록할 수 없습니다.',
+      reason: '비정상적인 클래식 편성 스쿼드는 일일 랭킹에 등록할 수 없습니다.',
     };
   }
   if (payload.team_avg_ovr > MAX_GLOBAL_HOF_TEAM_AVG_OVR) {
     return {
       valid: false,
-      reason: '비정상적인 팀 능력치 스쿼드는 글로벌 랭킹에 등록할 수 없습니다.',
+      reason: '비정상적인 팀 능력치 스쿼드는 일일 랭킹에 등록할 수 없습니다.',
     };
   }
   return { valid: true };
+}
+
+export type DailyRankingIneligibleCode =
+  | 'missing_date'
+  | 'past_date'
+  | 'partial_pool'
+  | 'integrity';
+
+/**
+ * Complete eligibility check for submitting a Hall of Fame entry to today's KST Daily Ranking:
+ * 1) Valid completion date
+ * 2) Completed today (KST) — past records cannot be submitted today
+ * 3) Full 5-league draft pool enabled — partial pools are personal HOF only
+ * 4) Squad & rule-era integrity checks
+ */
+export function validateDailyRankingEligibility(
+  entry: HallOfFameEntry,
+  referenceDate?: Date | string,
+): {
+  eligible: boolean;
+  code?: DailyRankingIneligibleCode;
+  reason?: string;
+} {
+  if (!isValidIsoTimestamp(entry.completedAt)) {
+    return {
+      eligible: false,
+      code: 'missing_date',
+      reason: '기록 날짜 정보가 없는 과거 기록은 일일 랭킹에 제출할 수 없습니다.',
+    };
+  }
+  if (!isHofEntryFromTodayKst(entry, referenceDate)) {
+    return {
+      eligible: false,
+      code: 'past_date',
+      reason: '과거에 완료한 기록은 오늘의 일일 랭킹에 제출할 수 없습니다.',
+    };
+  }
+  if (!isHofEntryFullFiveLeagueEligible(entry)) {
+    return {
+      eligible: false,
+      code: 'partial_pool',
+      reason: '5대 리그 드래프트 풀을 모두 선택한 시즌만 일일 랭킹에 제출할 수 있습니다.',
+    };
+  }
+  const integrity = validateGlobalHofEntryIntegrity(entry);
+  if (!integrity.valid) {
+    return {
+      eligible: false,
+      code: 'integrity',
+      reason: integrity.reason ?? '스쿼드 무결성 검증에 실패했습니다.',
+    };
+  }
+  return { eligible: true };
 }
 
 export async function submitGlobalHofRanking(
@@ -1287,8 +1426,8 @@ export async function submitGlobalHofRanking(
   }
 
   try {
-    const integrity = validateGlobalHofEntryIntegrity(entry);
-    if (!integrity.valid) {
+    const eligibility = validateDailyRankingEligibility(entry);
+    if (!eligibility.eligible) {
       return {
         ok: false,
         entered: false,
@@ -1297,7 +1436,7 @@ export async function submitGlobalHofRanking(
         cutoffScore: null,
         totalCount: 0,
         prunedCount: 0,
-        error: integrity.reason ?? '스쿼드 무결성 검증에 실패했습니다.',
+        error: eligibility.reason ?? '일일 랭킹 제출 조건을 충족하지 않습니다.',
       };
     }
 

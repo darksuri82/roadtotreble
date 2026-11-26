@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
 import { LEAGUES } from '../../engine/dataLoader';
+import { isFullFiveLeagueDraftPool } from '../../engine/legacyEngine';
 import { TACTIC_LIST } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
 import type { JerseyPattern, LeagueId } from '../../types/league';
@@ -407,15 +408,37 @@ export function FormationSelect() {
               })}
             </div>
 
-            <div className="flex items-center justify-between text-[11px] pt-1">
-              {canStart ? (
-                <span className="text-emerald-300 font-semibold tabular-nums">
-                  선택 풀: {selectedLeagues.length}개 리그 · {totalSelectedClubs}구단
-                </span>
-              ) : (
-                <span className="text-rose-400 font-bold">
-                  최소 1개 이상의 리그를 선택해야 시작할 수 있습니다.
-                </span>
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between text-[11px]">
+                {canStart ? (
+                  <span
+                    className={`font-semibold tabular-nums ${
+                      isFullFiveLeagueDraftPool(selectedLeagues)
+                        ? 'text-emerald-300'
+                        : 'text-amber-300'
+                    }`}
+                  >
+                    선택 풀: {selectedLeagues.length}개 리그 · {totalSelectedClubs}구단
+                    {isFullFiveLeagueDraftPool(selectedLeagues) && ' · 일일 랭킹 제출 가능'}
+                  </span>
+                ) : (
+                  <span className="text-rose-400 font-bold">
+                    최소 1개 이상의 리그를 선택해야 시작할 수 있습니다.
+                  </span>
+                )}
+              </div>
+
+              {canStart && !isFullFiveLeagueDraftPool(selectedLeagues) && (
+                <div
+                  role="alert"
+                  className="rounded-xl border border-rose-500/50 bg-rose-500/12 px-3 py-2 text-[11px] font-bold text-rose-400 leading-relaxed break-keep"
+                >
+                  ⚠️ 5대 리그 드래프트 풀을 모두 체크하지 않으면 공정성을 위해 개인 명예의 전당 기록만 가능하며,{' '}
+                  <span className="text-rose-300 underline underline-offset-2">
+                    일일 랭킹 제출은 불가
+                  </span>
+                  합니다.
+                </div>
               )}
             </div>
           </section>

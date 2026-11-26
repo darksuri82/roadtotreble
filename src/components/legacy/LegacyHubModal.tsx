@@ -31,6 +31,7 @@ import {
   getAchievementProgress,
   HOF_AUTO_INDUCTION_MIN_SCORE,
   HOF_RESET_NOTICE_TEXT,
+  isHofEntryFullFiveLeagueEligible,
   reconstructHallOfFameSquad,
 } from '../../engine/legacyEngine';
 import { TACTICS } from '../../engine/tacticEngine';
@@ -42,10 +43,13 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
 import {
   fetchWeeklyDailyRankings,
+  formatKstDisplayDate,
   GLOBAL_DAILY_TOP_LIMIT,
   GLOBAL_PAST_DAY_ARCHIVE_LIMIT,
   groupWeeklyDailyRankings,
+  isHofEntryFromTodayKst,
   reconstructSquadFromGlobalRanking,
+  validateDailyRankingEligibility,
   type WeeklyDailyRankingsBoard,
 } from '../../services/globalRankingService';
 import { type LegacyModalTab, useGame } from '../../store/GameContext';
@@ -71,11 +75,14 @@ type GlobalDetailSubTab = 'squad' | 'story';
 type HofHistoryFilter = 'all' | 'league' | 'cup' | 'ucl';
 
 function formatShortDate(iso: string): string {
+  const kst = formatKstDisplayDate(iso);
+  if (kst) return kst;
   try {
     const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
   } catch {
-    return iso.slice(0, 10);
+    return '';
   }
 }
 
@@ -420,7 +427,8 @@ function LegacyHubModalContent({
                   items={[
                     `자동 등재: 시즌 스코어 ${HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}+ (역대 강팀급) · S+ 등급 · UCL 우승 · 트레블 달성 시`,
                     '수동 등재: 기준 미만 시즌도 시즌 결산 화면의 [수동 등록] 버튼으로 직접 등재 가능',
-                    `일일 랭킹(KST): 당일 TOP ${GLOBAL_DAILY_TOP_LIMIT} 경쟁 · 지난 날짜는 TOP ${GLOBAL_PAST_DAY_ARCHIVE_LIMIT} 아카이브 · 매주 월요일 00:00(KST) 주간 초기화`,
+                    `일일 랭킹(KST): 당일 TOP ${GLOBAL_DAILY_TOP_LIMIT} 경쟁 · 지난 날짜 TOP ${GLOBAL_PAST_DAY_ARCHIVE_LIMIT} 아카이브 · 매주 월요일 00:00(KST) 주간 초기화`,
+                    '랭킹 공정성: 5대 리그 드래프트 풀을 모두 선택하고 오늘(KST) 완료한 시즌만 일일 랭킹에 제출 가능 (지난 기록 · 일부 리그 풀은 개인 명전만 가능)',
                   ]}
                 />
               </div>
@@ -840,15 +848,36 @@ function LegacyHubModalContent({
                                     👑 트레블
                                   </span>
                                 )}
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums border ${
+                                    isHofEntryFromTodayKst(entry)
+                                      ? 'border-sky-400/40 bg-sky-500/15 text-sky-200'
+                                      : 'border-slate-700/80 bg-slate-900/90 text-slate-300'
+                                  }`}
+                                  title="기록 완료 날짜 (KST)"
+                                >
+                                  <Calendar className="h-2.5 w-2.5 shrink-0" />
+                                  <span>{formatShortDate(entry.completedAt)}</span>
+                                  {isHofEntryFromTodayKst(entry) && (
+                                    <span className="text-[9px] font-black text-sky-300">오늘</span>
+                                  )}
+                                </span>
+                                {!isHofEntryFullFiveLeagueEligible(entry) && (
+                                  <span
+                                    className="rounded border border-rose-500/40 bg-rose-500/12 px-1.5 py-0.5 text-[9px] font-bold text-rose-300"
+                                    title="5대 리그 드래프트 풀 전체 미선택 시즌 — 개인 명전만 가능, 일일 랭킹 제출 불가"
+                                  >
+                                    일부 리그 풀
+                                  </span>
+                                )}
                               </div>
                               <p className="mt-0.5 text-[11px] text-slate-300 truncate">
                                 {entry.managerName ? `${entry.managerName} 감독 · ` : ''}
                                 {entry.leagueRecord} ({entry.leaguePoints}점) · {entry.cupName}{' '}
                                 {entry.cupResultLabel} · UCL {entry.uclResultLabel}
                               </p>
-                              <p className="mt-0.5 text-[10px] text-slate-500 truncate">
-                                {formatShortDate(entry.completedAt)} · OVR {entry.teamAvgOvr} · 케미{' '}
-                                {entry.chemistry}
+                              <p className="mt-0.5 text-[10px] text-slate-400 truncate">
+                                OVR {entry.teamAvgOvr} · 케미 {entry.chemistry}
                                 {trait ? ` · ${trait.name}` : ''}
                               </p>
                             </div>
@@ -887,6 +916,7 @@ function LegacyHubModalContent({
                           const globalRank = globalRankByRunId.get(entryRunId);
                           const submitMsg = manualSubmitMsgByRunId[entryRunId];
                           const isSubmitting = submittingRunId === entryRunId;
+                          const dailyEligibility = validateDailyRankingEligibility(entry);
                           return (
                             <div className="mt-3 space-y-2 border-t border-slate-800/80 pt-2.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -909,17 +939,33 @@ function LegacyHubModalContent({
                                         <Globe className="h-3 w-3" />
                                         <span>오늘 #{globalRank}</span>
                                       </button>
-                                    ) : (
+                                    ) : dailyEligibility.eligible ? (
                                       <button
                                         type="button"
                                         disabled={isSubmitting}
                                         onClick={() => void handleManualGlobalSubmit(entry)}
                                         className="inline-flex items-center gap-1 rounded-lg border border-sky-400/35 bg-sky-500/12 px-2 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/22 disabled:opacity-50 cursor-pointer"
-                                        title={`이 명예의 전당 기록을 오늘의 일일 랭킹 TOP ${GLOBAL_DAILY_TOP_LIMIT}에 도전/제출합니다`}
+                                        title={`오늘(KST) 완료한 기록을 오늘의 일일 랭킹 TOP ${GLOBAL_DAILY_TOP_LIMIT}에 제출합니다`}
                                       >
                                         <Upload className="h-3 w-3" />
                                         <span>{isSubmitting ? '제출 중...' : '일일 랭킹 도전'}</span>
                                       </button>
+                                    ) : (
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[10px] font-bold whitespace-nowrap ${
+                                          dailyEligibility.code === 'partial_pool'
+                                            ? 'border-rose-500/35 bg-rose-500/10 text-rose-300'
+                                            : 'border-slate-700/80 bg-slate-900/70 text-slate-500'
+                                        }`}
+                                        title={dailyEligibility.reason}
+                                      >
+                                        <Lock className="h-2.5 w-2.5 shrink-0" />
+                                        <span>
+                                          {dailyEligibility.code === 'partial_pool'
+                                            ? '5대리그 미포함'
+                                            : '지난 기록 · 제출 불가'}
+                                        </span>
+                                      </span>
                                     )
                                   )}
                                   <button
@@ -1282,6 +1328,7 @@ function LegacyHubModalContent({
                 const globalRank = globalRankByRunId.get(entryRunId);
                 const submitMsg = manualSubmitMsgByRunId[entryRunId];
                 const isSubmitting = submittingRunId === entryRunId;
+                const dailyEligibility = validateDailyRankingEligibility(selectedEntry);
                 return (
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <button
@@ -1316,7 +1363,7 @@ function LegacyHubModalContent({
                             <Globe className="h-3.5 w-3.5" />
                             <span>오늘의 랭킹 · #{globalRank}위</span>
                           </button>
-                        ) : (
+                        ) : dailyEligibility.eligible ? (
                           <button
                             type="button"
                             disabled={isSubmitting}
@@ -1330,6 +1377,22 @@ function LegacyHubModalContent({
                                 : `오늘 TOP ${GLOBAL_DAILY_TOP_LIMIT} 도전/등록`}
                             </span>
                           </button>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-bold ${
+                              dailyEligibility.code === 'partial_pool'
+                                ? 'border-rose-500/40 bg-rose-500/10 text-rose-300'
+                                : 'border-slate-700 bg-slate-900/80 text-slate-400'
+                            }`}
+                            title={dailyEligibility.reason}
+                          >
+                            <Lock className="h-3 w-3 shrink-0" />
+                            <span>
+                              {dailyEligibility.code === 'partial_pool'
+                                ? '5대 리그 풀 미포함 · 일일 랭킹 제출 불가'
+                                : '지난 날짜 기록 · 오늘 일일 랭킹 제출 불가'}
+                            </span>
+                          </span>
                         )}
                       </div>
                     )}

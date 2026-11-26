@@ -73,7 +73,9 @@ export interface SeasonScoreBreakdown {
 }
 
 export type TeamStoryHighlightKind =
+  | 'opening'
   | 'overachieve'
+  | 'turning_point'
   | 'title_match'
   | 'comeback'
   | 'ucl_final'
@@ -81,10 +83,13 @@ export type TeamStoryHighlightKind =
   | 'awakening'
   | 'best_match'
   | 'streak'
-  | 'ace';
+  | 'ace'
+  | 'epilogue';
 
 export interface TeamStoryHighlight {
   kind: TeamStoryHighlightKind;
+  /** Optional chronological stage marker (e.g. '개막', '14R', '후반기', '컵 결승', 'UCL 결승', '에필로그') */
+  period?: string;
   tag: string;
   title: string;
   detail: string;
@@ -92,9 +97,9 @@ export interface TeamStoryHighlight {
 }
 
 export interface TeamSeasonStory {
-  /** Compact 1~2 line team identity intro (manager trait, coach, squad/awakening/tactics) */
+  /** Narrative 2~3 sentence human-styled team identity description */
   intro: string;
-  /** Short data-backed seasonal narrative cards (overachievement, comebacks, finals, awakening) */
+  /** Chronological data-backed seasonal storytelling chapters */
   highlights: TeamStoryHighlight[];
 }
 
@@ -130,6 +135,10 @@ export interface HallOfFameEntry {
   /** Balance rule era marker ('v9.0'+ entries preserved across v9.0 reset migration) */
   ruleEra?: string;
   completedAt: string;
+  /** Selected draft league pool for this season run (all 5 leagues required for Daily Ranking fairness) */
+  draftLeaguePool?: LeagueId[];
+  /** Explicit flag indicating whether all 5 European major leagues were enabled in the draft pool */
+  fullFiveLeaguePool?: boolean;
   userClub: UserClubProfile;
   managerName?: string;
   managerAvatar?: ManagerAvatarConfig;
@@ -201,6 +210,7 @@ export interface GlobalSquadSnapshotPlayer {
 
 export interface GlobalSquadSnapshot {
   ruleEra?: string;
+  fullFiveLeaguePool?: boolean;
   staffCoachId?: import('./game').StaffCoachId | null;
   teamStory?: TeamSeasonStory;
   starters: GlobalSquadSnapshotPlayer[];

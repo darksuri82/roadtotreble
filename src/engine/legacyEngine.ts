@@ -203,6 +203,62 @@ export function recalibrateScoreBreakdownForLeagueDifficulty(
 
 const CELEBRATED_RUNS_STORAGE_KEY = 'rtt_global_top15_celebrated_v1';
 
+export const ALL_FIVE_LEAGUE_IDS: readonly LeagueId[] = [
+  'epl',
+  'laliga',
+  'seriea',
+  'bundesliga',
+  'ligue1',
+] as const;
+
+/**
+ * Returns true ONLY when all 5 European major leagues are included in the draft pool.
+ * Required for Daily Ranking submission fairness (personal HOF remains unrestricted).
+ */
+export function isFullFiveLeagueDraftPool(
+  pool: readonly LeagueId[] | undefined | null,
+): boolean {
+  if (!Array.isArray(pool) || pool.length < ALL_FIVE_LEAGUE_IDS.length) {
+    return false;
+  }
+  const set = new Set<LeagueId>(pool);
+  return ALL_FIVE_LEAGUE_IDS.every((id) => set.has(id));
+}
+
+/**
+ * Evaluates whether a HallOfFameEntry satisfied the full 5-league draft pool rule.
+ */
+export function isHofEntryFullFiveLeagueEligible(
+  entry:
+    | Pick<HallOfFameEntry, 'draftLeaguePool' | 'fullFiveLeaguePool'>
+    | null
+    | undefined,
+): boolean {
+  if (!entry) return false;
+  if (entry.fullFiveLeaguePool === false) return false;
+  if (Array.isArray(entry.draftLeaguePool)) {
+    return isFullFiveLeagueDraftPool(entry.draftLeaguePool);
+  }
+  if (entry.fullFiveLeaguePool === true) return true;
+  // Legacy entries archived prior to v9.6.0 without explicit draftLeaguePool field
+  // (already date-gated for daily ranking unless achieved today).
+  return true;
+}
+
+/**
+ * Checks whether a stored `completedAt` timestamp is a valid, displayable calendar date.
+ * Any legacy HOF record lacking a parseable date is pruned on load.
+ */
+export function isValidIsoTimestamp(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  const ms = Date.parse(trimmed);
+  if (!Number.isFinite(ms)) return false;
+  const year = new Date(ms).getUTCFullYear();
+  return year >= 2020 && year <= 2100;
+}
+
 export function isV9PlusRuleEra(era: unknown): boolean {
   if (typeof era !== 'string') return false;
   const m = /^v(\d+)(?:\.|$)/.exec(era.trim().toLowerCase());
@@ -269,9 +325,15 @@ export function loadLegacyState(): LegacyStorageState {
       : [];
 
     const needsV9ResetMigration = !isV9PlusRuleEra(parsed.hofMigrationEra);
-    const filteredEntries = needsV9ResetMigration
+    const eraFilteredEntries = needsV9ResetMigration
       ? rawEntries.filter((entry) => isV9EraHofEntry(entry))
       : rawEntries;
+
+    // v9.6.0: Delete any past HOF entries whose completion date cannot be determined/displayed
+    const filteredEntries = eraFilteredEntries.filter((entry) =>
+      isValidIsoTimestamp(entry.completedAt),
+    );
+    const prunedUndatedAny = filteredEntries.length < eraFilteredEntries.length;
 
     let recalibratedAny = false;
     const hallOfFame = filteredEntries.map((entry) => {
@@ -308,7 +370,7 @@ export function loadLegacyState(): LegacyStorageState {
           : {},
     };
 
-    if (needsV9ResetMigration || recalibratedAny) {
+    if (needsV9ResetMigration || prunedUndatedAny || recalibratedAny) {
       saveLegacyState(nextState);
     }
 
@@ -1062,6 +1124,7 @@ export function generateSeasonRunId(): string {
 
 export function archiveSeasonToHallOfFame(params: {
   runId?: string;
+  draftLeaguePool?: LeagueId[];
   userClub: UserClubProfile;
   managerName?: string;
   managerAvatar?: ManagerAvatarConfig;
@@ -1092,6 +1155,7 @@ export function archiveSeasonToHallOfFame(params: {
 }): LegacyStorageState {
   const {
     runId,
+    draftLeaguePool,
     userClub,
     managerName,
     managerAvatar,
@@ -1174,11 +1238,19 @@ export function archiveSeasonToHallOfFame(params: {
     return current;
   }
 
+  const resolvedPool: LeagueId[] =
+    Array.isArray(draftLeaguePool) && draftLeaguePool.length > 0
+      ? [...draftLeaguePool]
+      : [...ALL_FIVE_LEAGUE_IDS];
+  const fullFiveLeaguePool = isFullFiveLeagueDraftPool(resolvedPool);
+
   const entry: HallOfFameEntry = {
     id: generatedId,
     runId: effectiveRunId,
     ruleEra: HOF_RULE_ERA_V9,
     completedAt: new Date().toISOString(),
+    draftLeaguePool: resolvedPool,
+    fullFiveLeaguePool,
     userClub: { ...userClub },
     managerName,
     managerAvatar: managerAvatar ? { ...managerAvatar } : undefined,

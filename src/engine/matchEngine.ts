@@ -48,7 +48,10 @@ import {
   calculateChemistry,
 } from './chemistryEngine';
 import { getPrimaryPosition } from './positionEngine';
-import { STAFF_COACH_TACTIC_MATCHUP_MULT } from './staffCoachEngine';
+import {
+  getDevCoachPlayerBonus,
+  STAFF_COACH_TACTIC_MATCHUP_MULT,
+} from './staffCoachEngine';
 import {
   computeLineupStaminaImpact,
   planAutoSubstitutions,
@@ -421,6 +424,7 @@ function resolveMatchStrengths(params: {
       ? applySlotSynergiesToStarters(
           homeUserCtx.starters,
           homeUserCtx.slotSynergies,
+          homeUserCtx.staffCoachId ?? null,
         )
       : [];
   const awayHumanSynergyRoster =
@@ -428,6 +432,7 @@ function resolveMatchStrengths(params: {
       ? applySlotSynergiesToStarters(
           awayUserCtx.starters,
           awayUserCtx.slotSynergies,
+          awayUserCtx.staffCoachId ?? null,
         )
       : [];
 
@@ -1842,6 +1847,19 @@ function generateHalfFlavorEvents(params: {
   return events;
 }
 
+function applyUserSynergyToRoster(
+  roster: Player[],
+  userCtx?: UserMatchContext,
+): Player[] {
+  if (!userCtx || roster.length === 0) return roster;
+  if (!userCtx.slotSynergies && !userCtx.staffCoachId) return roster;
+  return applySlotSynergiesToStarters(
+    roster,
+    userCtx.slotSynergies,
+    userCtx.staffCoachId ?? null,
+  );
+}
+
 function buildPlayerRatings(params: {
   homeClub: Club;
   awayClub: Club;
@@ -1855,6 +1873,8 @@ function buildPlayerRatings(params: {
   awayXg: number;
   events: MatchEvent[];
   userClubId?: string;
+  userSlotSynergies?: Record<number, PlayerSlotSynergy>;
+  userStaffCoachId?: StaffCoachId | null;
   halftimeSubIds?: string[];
   firstHalfUserStarters?: Player[];
   userLiveSubs?: LiveSubRecord[];
@@ -1879,12 +1899,23 @@ function buildPlayerRatings(params: {
     awayXg,
     events,
     userClubId,
+    userSlotSynergies,
+    userStaffCoachId = null,
     halftimeSubIds = [],
     firstHalfUserStarters = [],
     userLiveSubs = [],
     userBench = [],
     rng,
   } = params;
+
+  const synergyBonusByPlayerId = new Map<string, number>();
+  if (userSlotSynergies) {
+    for (const s of Object.values(userSlotSynergies)) {
+      if (s?.playerId) {
+        synergyBonusByPlayerId.set(s.playerId, s.totalBonus ?? 0);
+      }
+    }
+  }
 
   const subIdSet = new Set(halftimeSubIds);
   const subInMinute = new Map<string, number>();
@@ -2013,7 +2044,10 @@ function buildPlayerRatings(params: {
       const goals = goalCounts.get(`${teamId}:${player.id}`) ?? 0;
       const basePos =
         player.position === 'FW' ? 3.2 : player.position === 'MF' ? 1.5 : 0.45;
-      const attFactor = Math.max(0.5, (player.att - 55) / 25);
+      const synBonus =
+        teamId === userClubId ? (synergyBonusByPlayerId.get(player.id) ?? 0) : 0;
+      const effAtt = Math.min(99, player.att + synBonus);
+      const attFactor = Math.max(0.5, (effAtt - 55) / 25);
       const minScale = Math.max(0.25, minutesPlayed / 90);
       return basePos * attFactor * minScale + goals * 2.4;
     });
@@ -2028,16 +2062,45 @@ function buildPlayerRatings(params: {
             ? 0
             : Math.round(teamXg * (xgWeights[idx] / totalWeight) * 100) / 100;
 
-        const base = 6.3 + (p.ovr - 78) * 0.025 + teamResultMod;
+        const isUserPlayer = teamId === userClubId;
+        const synBonus = isUserPlayer
+          ? (synergyBonusByPlayerId.get(p.id) ?? 0)
+          : 0;
+        const devCoachLift =
+          isUserPlayer && userStaffCoachId
+            ? getDevCoachPlayerBonus(p, userStaffCoachId)
+            : 0;
+        const effectiveOvr = Math.min(99, p.ovr + synBonus + devCoachLift);
+        const ovrTerm =
+          effectiveOvr >= 78
+            ? Math.min(0.28, (effectiveOvr - 78) * 0.02)
+            : (effectiveOvr - 78) * 0.012;
+        const synergyPerfLift =
+          (synBonus >= 4
+            ? 0.24
+            : synBonus >= 3
+              ? 0.18
+              : synBonus >= 2
+                ? 0.11
+                : 0) + (devCoachLift > 0 ? 0.08 : 0);
+
+        const base = 6.32 + ovrTerm + teamResultMod + synergyPerfLift;
         const contrib = goals * 1.15 + assists * 0.72;
         const defBonus =
           cleanSheet &&
           minutesPlayed >= 30 &&
           (p.position === 'GK' || p.position === 'DF')
             ? 0.55
-            : ga >= 3 && (p.position === 'GK' || p.position === 'DF')
-              ? -0.45
-              : 0;
+            : cleanSheet && minutesPlayed >= 30 && p.position === 'MF'
+              ? 0.14
+              : ga === 1 &&
+                  gf > ga &&
+                  minutesPlayed >= 30 &&
+                  (p.position === 'GK' || p.position === 'DF')
+                ? 0.16
+                : ga >= 3 && (p.position === 'GK' || p.position === 'DF')
+                  ? -0.45
+                  : 0;
         const jokerEnergyBonus = isSub && goals + assists > 0 ? 0.25 : 0;
         const noise = (rng() - 0.5) * 0.7;
         const rating =
@@ -2182,6 +2245,17 @@ export function simulateFirstHalf(params: {
     ? userContext.managerTraitId
     : opponentUserContext?.managerTraitId ?? userContext.managerTraitId;
 
+  const homeEventRoster1st = isHomeUser
+    ? applyUserSynergyToRoster(homeRoster, userContext)
+    : opponentUserContext
+      ? applyUserSynergyToRoster(homeRoster, opponentUserContext)
+      : homeRoster;
+  const awayEventRoster1st = isAwayUser
+    ? applyUserSynergyToRoster(awayRoster, userContext)
+    : opponentUserContext
+      ? applyUserSynergyToRoster(awayRoster, opponentUserContext)
+      : awayRoster;
+
   const events: MatchEvent[] = [
     {
       minute: 0,
@@ -2215,8 +2289,8 @@ export function simulateFirstHalf(params: {
       goals: homeGoals,
       half: 1,
       club: homeClub,
-      roster: homeRoster,
-      defendingRoster: awayRoster,
+      roster: homeEventRoster1st,
+      defendingRoster: awayEventRoster1st,
       tactic: resolved.homeTactic,
       managerTraitId: homeTraitForGoals,
       isUser: isHomeUser,
@@ -2226,8 +2300,8 @@ export function simulateFirstHalf(params: {
       goals: awayGoals,
       half: 1,
       club: awayClub,
-      roster: awayRoster,
-      defendingRoster: homeRoster,
+      roster: awayEventRoster1st,
+      defendingRoster: homeEventRoster1st,
       tactic: resolved.awayTactic,
       managerTraitId: awayTraitForGoals,
       isUser: isAwayUser,
@@ -2237,8 +2311,8 @@ export function simulateFirstHalf(params: {
       half: 1,
       homeClub,
       awayClub,
-      homeRoster,
-      awayRoster,
+      homeRoster: homeEventRoster1st,
+      awayRoster: awayEventRoster1st,
       homeTactic: resolved.homeTactic,
       awayTactic: resolved.awayTactic,
       isHomeUser,
@@ -2626,16 +2700,27 @@ export function simulateSecondHalf(params: {
         if (bp) cur[rec.slotIndex] = bp;
       }
     }
-    return cur;
+    return applyUserSynergyToRoster(cur, userContext);
   };
+
+  const homeEventRoster2nd = isHomeUser
+    ? applyUserSynergyToRoster(homeRoster2nd, userContext)
+    : opponentUserContext
+      ? applyUserSynergyToRoster(homeRoster2nd, opponentUserContext)
+      : homeRoster2nd;
+  const awayEventRoster2nd = isAwayUser
+    ? applyUserSynergyToRoster(awayRoster2nd, userContext)
+    : opponentUserContext
+      ? applyUserSynergyToRoster(awayRoster2nd, opponentUserContext)
+      : awayRoster2nd;
 
   secondHalfEvents.push(
     ...generateHalfGoalEvents({
       goals: h2Goals,
       half: 2,
       club: homeClub,
-      roster: homeRoster2nd,
-      defendingRoster: awayRoster2nd,
+      roster: homeEventRoster2nd,
+      defendingRoster: awayEventRoster2nd,
       tactic: resolved.homeTactic,
       managerTraitId: isHomeUser
         ? userContext.managerTraitId
@@ -2653,8 +2738,8 @@ export function simulateSecondHalf(params: {
       goals: a2Goals,
       half: 2,
       club: awayClub,
-      roster: awayRoster2nd,
-      defendingRoster: homeRoster2nd,
+      roster: awayEventRoster2nd,
+      defendingRoster: homeEventRoster2nd,
       tactic: resolved.awayTactic,
       managerTraitId: isAwayUser
         ? userContext.managerTraitId
@@ -2672,8 +2757,8 @@ export function simulateSecondHalf(params: {
       half: 2,
       homeClub,
       awayClub,
-      homeRoster: homeRoster2nd,
-      awayRoster: awayRoster2nd,
+      homeRoster: homeEventRoster2nd,
+      awayRoster: awayEventRoster2nd,
       homeTactic: resolved.homeTactic,
       awayTactic: resolved.awayTactic,
       isHomeUser,
@@ -2722,6 +2807,8 @@ export function simulateSecondHalf(params: {
     awayXg: totalAwayXg,
     events: allEvents,
     userClubId: userContext.userClubId,
+    userSlotSynergies: userContext.slotSynergies,
+    userStaffCoachId: userContext.staffCoachId ?? null,
     halftimeSubIds: htSubIds,
     firstHalfUserStarters:
       userContext.firstHalfStarters ?? userContext.starters,
@@ -2874,14 +2961,21 @@ export function resimulateRemainingSecondHalf(params: {
   const remHomeGoals = samplePoisson(remHomeXg, rng);
   const remAwayGoals = samplePoisson(remAwayXg, rng);
 
+  const homeEventRosterRem = isHomeUser
+    ? applyUserSynergyToRoster(homeRoster, userContext)
+    : homeRoster;
+  const awayEventRosterRem = isAwayUser
+    ? applyUserSynergyToRoster(awayRoster, userContext)
+    : awayRoster;
+
   const remStart = Math.min(89, safeFrom + 1);
   const remEvents: MatchEvent[] = [
     ...generateHalfGoalEvents({
       goals: remHomeGoals,
       half: 2,
       club: homeClub,
-      roster: homeRoster,
-      defendingRoster: awayRoster,
+      roster: homeEventRosterRem,
+      defendingRoster: awayEventRosterRem,
       tactic: resolved.homeTactic,
       managerTraitId: userContext.managerTraitId,
       isUser: isHomeUser,
@@ -2894,8 +2988,8 @@ export function resimulateRemainingSecondHalf(params: {
       goals: remAwayGoals,
       half: 2,
       club: awayClub,
-      roster: awayRoster,
-      defendingRoster: homeRoster,
+      roster: awayEventRosterRem,
+      defendingRoster: homeEventRosterRem,
       tactic: resolved.awayTactic,
       managerTraitId: userContext.managerTraitId,
       isUser: isAwayUser,
@@ -2909,8 +3003,8 @@ export function resimulateRemainingSecondHalf(params: {
           half: 2,
           homeClub,
           awayClub,
-          homeRoster,
-          awayRoster,
+          homeRoster: homeEventRosterRem,
+          awayRoster: awayEventRosterRem,
           homeTactic: resolved.homeTactic,
           awayTactic: resolved.awayTactic,
           isHomeUser,
@@ -2979,6 +3073,8 @@ export function resimulateRemainingSecondHalf(params: {
     awayXg: totalAwayXg,
     events: allEvents,
     userClubId: userContext.userClubId,
+    userSlotSynergies: userContext.slotSynergies,
+    userStaffCoachId: userContext.staffCoachId ?? null,
     halftimeSubIds: userContext.halftimeSubIds,
     firstHalfUserStarters:
       userContext.firstHalfStarters ?? userContext.starters,
@@ -3133,16 +3229,29 @@ export function simulateMatch(
         if (bp) cur[rec.slotIndex] = bp;
       }
     }
-    return cur;
+    return applyUserSynergyToRoster(cur, userContext);
   };
+
+  const homeEventRoster1 = isHomeUser
+    ? applyUserSynergyToRoster(homeRoster, userContext)
+    : homeRoster;
+  const awayEventRoster1 = isAwayUser
+    ? applyUserSynergyToRoster(awayRoster, userContext)
+    : awayRoster;
+  const homeEventRoster2 = isHomeUser
+    ? applyUserSynergyToRoster(userEndingStarters, userContext)
+    : homeRoster;
+  const awayEventRoster2 = isAwayUser
+    ? applyUserSynergyToRoster(userEndingStarters, userContext)
+    : awayRoster;
 
   const events: MatchEvent[] = [
     ...generateHalfGoalEvents({
       goals: h1Home,
       half: 1,
       club: homeClub,
-      roster: homeRoster,
-      defendingRoster: awayRoster,
+      roster: homeEventRoster1,
+      defendingRoster: awayEventRoster1,
       tactic: resolved.homeTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isHomeUser,
@@ -3152,8 +3261,8 @@ export function simulateMatch(
       goals: h2Home,
       half: 2,
       club: homeClub,
-      roster: isHomeUser ? userEndingStarters : homeRoster,
-      defendingRoster: isAwayUser ? userEndingStarters : awayRoster,
+      roster: homeEventRoster2,
+      defendingRoster: awayEventRoster2,
       tactic: resolved.homeTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isHomeUser,
@@ -3165,8 +3274,8 @@ export function simulateMatch(
       goals: h1Away,
       half: 1,
       club: awayClub,
-      roster: awayRoster,
-      defendingRoster: homeRoster,
+      roster: awayEventRoster1,
+      defendingRoster: homeEventRoster1,
       tactic: resolved.awayTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isAwayUser,
@@ -3176,8 +3285,8 @@ export function simulateMatch(
       goals: h2Away,
       half: 2,
       club: awayClub,
-      roster: isAwayUser ? userEndingStarters : awayRoster,
-      defendingRoster: isHomeUser ? userEndingStarters : homeRoster,
+      roster: awayEventRoster2,
+      defendingRoster: homeEventRoster2,
       tactic: resolved.awayTactic,
       managerTraitId: userContext?.managerTraitId,
       isUser: isAwayUser,
@@ -3280,6 +3389,8 @@ export function simulateMatch(
     awayXg,
     events,
     userClubId: userContext?.userClubId,
+    userSlotSynergies: userContext?.slotSynergies,
+    userStaffCoachId: userContext?.staffCoachId ?? null,
     firstHalfUserStarters: userContext?.starters,
     userLiveSubs: autoSubs,
     userBench: userContext?.bench,

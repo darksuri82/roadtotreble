@@ -374,7 +374,10 @@ begin
   v_score := coalesce((p_entry->>'season_score')::int, -1);
   v_is_treble := coalesce((p_entry->>'is_treble')::boolean, false);
   v_ucl_won := coalesce((p_entry->>'ucl_won')::boolean, false);
-  v_achieved_at := coalesce((p_entry->>'achieved_at')::timestamptz, now());
+  if nullif(trim(coalesce(p_entry->>'achieved_at', '')), '') is null then
+    raise exception 'Missing achieved_at timestamp';
+  end if;
+  v_achieved_at := (p_entry->>'achieved_at')::timestamptz;
   v_team_avg_ovr := coalesce((p_entry->>'team_avg_ovr')::numeric(4,1), 80.0);
 
   if v_run_id = '' or length(v_run_id) > 120 then
@@ -382,6 +385,13 @@ begin
   end if;
   if lower(v_rule_era) !~ '^v(9|[1-9][0-9]+)(\.|$)' then
     raise exception 'Pre-v9.0 records are not eligible for daily rankings';
+  end if;
+  if to_char((v_achieved_at at time zone 'Asia/Seoul'), 'YYYY-MM-DD') <> v_today_kst
+     and to_char(((v_achieved_at + interval '10 minutes') at time zone 'Asia/Seoul'), 'YYYY-MM-DD') <> v_today_kst then
+    raise exception 'Only today (KST) season records can be submitted to today''s daily ranking';
+  end if;
+  if coalesce((p_entry->'squad_snapshot'->>'fullFiveLeaguePool')::boolean, false) is not true then
+    raise exception 'All 5 major leagues must be enabled in the draft pool for daily rankings';
   end if;
   if v_score < 0 or v_score > 15000 then
     raise exception 'Invalid season_score';
@@ -645,6 +655,33 @@ grant execute on function public.submit_global_hof_ranking(jsonb) to anon, authe
 --   on public.global_hof_rankings (
 --     ranking_week_start, ranking_date, season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
 --   );
--- select public.prune_global_daily_rankings();
+-- =============================================================================
+-- v9.6.0 Production SQL (Run in Supabase Dashboard -> SQL Editor)
+-- 1) Delete ONLY today's mistakenly uploaded #1 past-dated record (and verify first)
+-- 2) Re-run `submit_global_hof_ranking` above so past records & non-5-league runs are blocked server-side
+-- =============================================================================
+-- -- (확인용) 현재 오늘(KST) 랭킹 상위 5개 조회:
+-- select id, run_id, club_name, manager_name, season_score, ranking_date,
+--        to_char(achieved_at at time zone 'Asia/Seoul', 'YYYY-MM-DD') as achieved_date_kst
+-- from public.global_hof_rankings
+-- where ranking_date = to_char((now() at time zone 'Asia/Seoul'), 'YYYY-MM-DD')
+-- order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
+-- limit 5;
+--
+-- -- (삭제용) 오늘(KST) 랭킹의 현재 1등 기록 1건만 정확히 삭제:
+-- delete from public.global_hof_rankings
+-- where id in (
+--   select id
+--   from public.global_hof_rankings
+--   where ranking_date = to_char((now() at time zone 'Asia/Seoul'), 'YYYY-MM-DD')
+--   order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
+--   limit 1
+-- );
+--
+-- -- (추가 방어) 만약 다른 날짜에 올라간 과거 날짜 불일치 기록도 정리하려면:
+-- -- delete from public.global_hof_rankings
+-- -- where to_char((achieved_at at time zone 'Asia/Seoul'), 'YYYY-MM-DD') <> ranking_date
+-- --   and to_char(((achieved_at + interval '10 minutes') at time zone 'Asia/Seoul'), 'YYYY-MM-DD') <> ranking_date;
+
 
 

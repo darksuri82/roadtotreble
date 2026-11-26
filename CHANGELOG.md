@@ -5,6 +5,24 @@
 
 ---
 
+## v9.6.0 — 명전 날짜 표기·과거 기록 일일 랭킹 제출 차단 · 5대 리그 전체 풀 공정성 규칙 · 시기별 팀 스토리텔링 & 칼럼형 팀 소개 · 저OVR 활약·각성 밸런스 개편
+
+- **일일 랭킹 과거 기록 제출 차단 · 명전 KST 날짜 표기 · 날짜 불명 과거 기록 자동 정리 (`src/engine/legacyEngine.ts`, `src/services/globalRankingService.ts`, `src/components/legacy/LegacyHubModal.tsx`, `supabase/schema.sql`)**:
+  - `loadLegacyState()`에서 `completedAt`이 없거나 유효하지 않은 과거 명전 기록을 자동 삭제하고, 모든 유저 명전 카드·상세 화면에 KST 완료 날짜(`YYYY.MM.DD` + 당일 `오늘` 배지)를 표시.
+  - `validateDailyRankingEligibility()`(클라이언트), `applyDailyTop10RankingLogic()`·`groupWeeklyDailyRankings()`(날짜 불일치 과거 행 필터), `submit_global_hof_ranking` RPC(서버)에서 오늘(KST) 완료된 기록만 제출·노출되도록 이중 차단하고, 잘못 올라간 과거 1등 기록 단건 삭제용 SQL을 `supabase/schema.sql`에 수록.
+- **5대 리그 드래프트 풀 전체 체크 공정성 규칙 (`src/types/legacy.ts`, `src/engine/legacyEngine.ts`, `src/components/setup/FormationSelect.tsx`, `src/store/GameContext.tsx`, `src/components/league/SeasonSummary.tsx`, `src/components/legacy/LegacyHubModal.tsx`, `src/services/globalRankingService.ts`, `supabase/schema.sql`)**:
+  - `FormationSelect`의 5대 리그 드래프트 풀 체크박스에서 하나라도 체크를 빼면 하단에 빨간 경고 문구(`개인 명전 기록만 가능 · 일일 랭킹 제출 불가`)가 즉시 노출.
+  - `HallOfFameEntry`에 `draftLeaguePool`/`fullFiveLeaguePool`을 기록해 개인 명전은 계속 허용하되, 일일 랭킹 자동·수동 제출 및 서버 RPC에서는 5대 리그 풀 전체 선택 시즌만 허용.
+- **시기별 스토리텔링 연대기 & 칼럼형 팀 소개 표현력 대폭 강화 (`src/engine/teamStoryEngine.ts`, `src/components/common/TeamStoryTab.tsx`)**:
+  - 한국어 조사 자동 보정(`josa`)과 감독 특성·전술·수비/공격 성향·언더독 반란·핵심/각성/클래식 선수·수석 코치 서사를 결합해 딱딱한 수치 나열 대신 자연스러운 스포츠 칼럼 문체의 2~3문장 팀 소개로 전면 개편(`TeamIntroBanner` 2줄 말줄임 제거).
+  - 팀 스토리를 개막 → 강호 격파 → 포텐 각성(실제 라운드) → 최장 연승/무패 → 반환점·수석 코치 → 대역전승/대승 → 자국 컵 결승 → 리그 우승 확정/피날레 → UCL 4강·결승 → 에필로그 순으로 시기별 주요 사건을 한 문장씩 엮어내는 연대기 타임라인으로 확장.
+- **저OVR 원석 경기 활약 & 포텐 각성 밸런스 개선 (`src/engine/chemistryEngine.ts`, `src/engine/matchEngine.ts`, `src/engine/awakeningEngine.ts`, `src/components/guide/SystemGuideModal.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`, `src/__tests__/v96RankingStoryPoolAwakening.test.ts`)**:
+  - `applySlotSynergiesToStarters`가 `attrs`(세부능력치·GK 포함)와 육성 코치 보너스까지 함께 끌어올리고, 경기 이벤트(득점/도움/찬스) 및 `buildPlayerRatings`에 개별 시너지·감독 궁합·육성 코치·완만 저OVR 바닥선을 반영.
+  - `awakeningEngine.ts`에 `≤76 ×2.10`(+6~+8) / `77~79 ×1.85` / `80~81 ×1.55` 배율, OVR 상대 평점 최소 기준(`6.8~7.1+`), OVR 상대 활약/시즌 평균 평점 보정, 및 시너지+감독 궁합+주포지션 육성 공명 보너스(`×1.10~×1.24`)를 도입해 잘 육성한 저OVR 원석의 실전 활약과 각성 밸런스를 정밀 최적화.
+- **패치노트·가이드북·튜토리얼·첫 화면 `WhatsNewModal` 동기화 (`src/data/patchNotes.ts`, `src/components/common/WhatsNewModal.tsx`, `CHANGELOG.md`, `PROJECT_HANDOFF.md`)**: `CURRENT_APP_VERSION = 'v9.6.0'` 상향으로 업데이트 팝업 자동 재노출 및 신규 테스트 4건(40시즌 저OVR 실전 시뮬 포함) 추가.
+
+---
+
 ## v9.5.0 — 세부능력치 현실화 전수 보정 · KST 주간 일일 랭킹(TOP 10/TOP 3) · 팀 스토리 & 1~2줄 소개 · 라이브 리트라이/자동진행/이적시장 수정 · FFP -12% & 역사 팀 OVR 현실화 · 첫 화면 업데이트 팝업
 
 - **세부능력치 현실화 전수 점검 및 보정 (`src/engine/attributeEngine.ts`, `src/data/attributeOverrides.ts`, `src/data/legendPlayers.json`, `src/data/activePlayers.json`)**:

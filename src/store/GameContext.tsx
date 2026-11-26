@@ -83,6 +83,7 @@ import {
   evaluateAchievements,
   generateSeasonRunId,
   isEligibleForAutoHofInduction,
+  isFullFiveLeagueDraftPool,
   loadLegacyState,
   recordDreamMatchResult,
   unlockAchievementsInStorage,
@@ -8022,6 +8023,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const updated = archiveSeasonToHallOfFame({
       runId: effectiveRunId,
+      draftLeaguePool: state.draftLeaguePool,
       userClub: state.userClub,
       managerName: state.manager.name,
       managerAvatar: state.manager.avatar,
@@ -8055,7 +8057,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const archivedEntry =
       updated.hallOfFame.find((e) => (e.runId ?? e.id) === effectiveRunId) ??
       updated.hallOfFame[0];
-    if (archivedEntry) {
+    if (archivedEntry && isFullFiveLeagueDraftPool(state.draftLeaguePool)) {
       void submitHallOfFameEntryToGlobal(archivedEntry, {
         triggerCelebration: true,
       });
