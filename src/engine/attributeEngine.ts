@@ -1,8 +1,12 @@
-import { CURATED_ATTRIBUTE_OVERRIDES } from '../data/attributeOverrides';
+import {
+  CURATED_ATTRIBUTE_OVERRIDES,
+  CURATED_CLASSIC_BY_NAME,
+} from '../data/attributeOverrides';
 import type {
   GoalkeeperAttributes,
   Player,
   PlayerAttributes,
+  PlaystyleId,
   SubPosition,
 } from '../types/player';
 
@@ -45,7 +49,17 @@ export function getPrimarySubPosition(
 
 export function getPositionWeights(
   sub: SubPosition,
+  playstyles?: readonly PlaystyleId[],
 ): Record<'sho' | 'pas' | 'cro' | 'dri' | 'aer' | 'def' | 'phy', number> {
+  const ps = playstyles ? new Set(playstyles) : null;
+  const isDeepPlaymaker = Boolean(ps?.has('deep_playmaker'));
+  const isPlaymaker10 = Boolean(ps?.has('playmaker_10'));
+  const isBallWinner = Boolean(ps?.has('ball_winner'));
+  const isBoxToBox = Boolean(ps?.has('box_to_box'));
+  const isLineBreaker = Boolean(ps?.has('line_breaker'));
+  const isBallPlayingCb = Boolean(ps?.has('ball_playing_cb'));
+  const isStopperCb = Boolean(ps?.has('stopper_cb'));
+
   switch (sub) {
     case 'ST':
       return { sho: 0.34, pas: 0.14, cro: 0.0, dri: 0.16, aer: 0.16, def: 0.0, phy: 0.20 };
@@ -53,19 +67,39 @@ export function getPositionWeights(
     case 'RW':
     case 'LM':
     case 'RM':
+      if ((isPlaymaker10 || isDeepPlaymaker) && !isLineBreaker && !isBoxToBox) {
+        return { sho: 0.22, pas: 0.26, cro: 0.18, dri: 0.26, aer: 0.0, def: 0.0, phy: 0.08 };
+      }
       return { sho: 0.20, pas: 0.19, cro: 0.17, dri: 0.28, aer: 0.0, def: 0.0, phy: 0.16 };
     case 'CAM':
-      return { sho: 0.21, pas: 0.30, cro: 0.14, dri: 0.25, aer: 0.0, def: 0.0, phy: 0.10 };
+      return { sho: 0.21, pas: 0.32, cro: 0.14, dri: 0.27, aer: 0.0, def: 0.0, phy: 0.06 };
     case 'CM':
+      if ((isDeepPlaymaker || isPlaymaker10) && !isBoxToBox && !isBallWinner) {
+        return { sho: 0.10, pas: 0.36, cro: 0.14, dri: 0.24, aer: 0.0, def: 0.10, phy: 0.06 };
+      }
       return { sho: 0.10, pas: 0.28, cro: 0.08, dri: 0.18, aer: 0.0, def: 0.18, phy: 0.18 };
     case 'CDM':
-      return { sho: 0.0, pas: 0.24, cro: 0.0, dri: 0.12, aer: 0.14, def: 0.30, phy: 0.20 };
+      if (isDeepPlaymaker && !isBallWinner && !isBoxToBox) {
+        // Regista / technical anchor (Pirlo, Pedri, Kimmich, Zubimendi)
+        return { sho: 0.06, pas: 0.36, cro: 0.14, dri: 0.20, aer: 0.0, def: 0.18, phy: 0.06 };
+      }
+      if (isDeepPlaymaker && isBallWinner) {
+        // Positional pivot / holding playmaker (Busquets, Rodri, Redondo)
+        return { sho: 0.0, pas: 0.32, cro: 0.04, dri: 0.16, aer: 0.08, def: 0.32, phy: 0.08 };
+      }
+      return { sho: 0.0, pas: 0.20, cro: 0.0, dri: 0.10, aer: 0.14, def: 0.34, phy: 0.22 };
     case 'LB':
     case 'RB':
     case 'LWB':
     case 'RWB':
+      if (isDeepPlaymaker) {
+        return { sho: 0.0, pas: 0.24, cro: 0.22, dri: 0.16, aer: 0.0, def: 0.26, phy: 0.12 };
+      }
       return { sho: 0.0, pas: 0.16, cro: 0.20, dri: 0.16, aer: 0.0, def: 0.26, phy: 0.22 };
     case 'CB':
+      if (isBallPlayingCb && !isStopperCb) {
+        return { sho: 0.0, pas: 0.24, cro: 0.0, dri: 0.08, aer: 0.20, def: 0.34, phy: 0.14 };
+      }
       return { sho: 0.0, pas: 0.15, cro: 0.0, dri: 0.0, aer: 0.25, def: 0.38, phy: 0.22 };
     case 'GK':
     default:
@@ -74,7 +108,9 @@ export function getPositionWeights(
 }
 
 export function computePositionWeightedAttributeOvr(
-  player: Pick<Player, 'position' | 'mainPositions'>,
+  player: Pick<Player, 'position' | 'mainPositions'> & {
+    playstyles?: readonly PlaystyleId[];
+  },
   attrs: PlayerAttributes,
 ): number {
   if (player.position === 'GK' && attrs.gk) {
@@ -84,7 +120,7 @@ export function computePositionWeightedAttributeOvr(
     );
   }
   const sub = getPrimarySubPosition(player);
-  const w = getPositionWeights(sub);
+  const w = getPositionWeights(sub, player.playstyles);
   const sum =
     attrs.sho * w.sho +
     attrs.pas * w.pas +
@@ -97,7 +133,9 @@ export function computePositionWeightedAttributeOvr(
 }
 
 function normalizeToTargetOvr(
-  player: Pick<Player, 'ovr' | 'position' | 'mainPositions' | 'isLegend'>,
+  player: Pick<Player, 'ovr' | 'position' | 'mainPositions' | 'isLegend'> & {
+    playstyles?: readonly PlaystyleId[];
+  },
   raw: PlayerAttributes,
   tolerance = 1.3,
 ): PlayerAttributes {
@@ -134,7 +172,7 @@ function normalizeToTargetOvr(
   }
 
   const sub = getPrimarySubPosition(player);
-  const w = getPositionWeights(sub);
+  const w = getPositionWeights(sub, player.playstyles);
   let copy: PlayerAttributes = {
     sho: clampForTier(raw.sho),
     pas: clampForTier(raw.pas),
@@ -156,14 +194,16 @@ function normalizeToTargetOvr(
       copy.phy * w.phy;
     const delta = target - weighted;
     if (Math.abs(delta) <= tolerance) break;
+    // Preserve intentionally low physicality on playmakers (when w.phy <= 0.10)
+    const phyFactor = w.phy >= 0.16 ? 0.90 : w.phy > 0 ? 0.25 : 0.15;
     copy = {
-      sho: clampForTier(copy.sho + delta * (w.sho > 0 ? 0.95 : 0.30)),
-      pas: clampForTier(copy.pas + delta * (w.pas > 0 ? 0.95 : 0.30)),
-      cro: clampForTier(copy.cro + delta * (w.cro > 0 ? 0.95 : 0.30)),
-      dri: clampForTier(copy.dri + delta * (w.dri > 0 ? 0.95 : 0.30)),
-      aer: clampForTier(copy.aer + delta * (w.aer > 0 ? 0.95 : 0.25)),
-      def: clampForTier(copy.def + delta * (w.def > 0 ? 0.95 : 0.20)),
-      phy: clampForTier(copy.phy + delta * (w.phy > 0 ? 0.95 : 0.40)),
+      sho: clampForTier(copy.sho + delta * (w.sho > 0 ? 0.95 : 0.25)),
+      pas: clampForTier(copy.pas + delta * (w.pas > 0 ? 0.95 : 0.25)),
+      cro: clampForTier(copy.cro + delta * (w.cro > 0 ? 0.95 : 0.25)),
+      dri: clampForTier(copy.dri + delta * (w.dri > 0 ? 0.95 : 0.25)),
+      aer: clampForTier(copy.aer + delta * (w.aer > 0 ? 0.95 : 0.20)),
+      def: clampForTier(copy.def + delta * (w.def > 0 ? 0.95 : 0.18)),
+      phy: clampForTier(copy.phy + delta * phyFactor),
     };
   }
 
@@ -244,30 +284,30 @@ function deriveAttributesFromArchetype(player: Player): PlayerAttributes {
       break;
     case 'CAM':
       sho = ovr - 3;
-      pas = ovr + 3;
+      pas = ovr + 4;
       cro = ovr - 2;
-      dri = ovr + 2;
-      aer = ovr - 20;
-      def = Math.max(50, player.def - 4);
-      phy = ovr - 6;
+      dri = ovr + 3;
+      aer = ovr - 22;
+      def = Math.max(48, player.def - 5);
+      phy = ovr - 9;
       break;
     case 'CM':
       sho = ovr - 7;
-      pas = ovr + 2;
-      cro = ovr - 5;
-      dri = ovr - 1;
-      aer = ovr - 10;
-      def = ovr - 3;
-      phy = ovr - 1;
+      pas = ovr + 3;
+      cro = ovr - 4;
+      dri = ovr;
+      aer = ovr - 12;
+      def = ovr - 4;
+      phy = ovr - 4;
       break;
     case 'CDM':
-      sho = ovr - 12;
-      pas = ovr;
-      cro = ovr - 11;
-      dri = ovr - 4;
-      aer = ovr - 3;
+      sho = ovr - 13;
+      pas = ovr + 1;
+      cro = ovr - 10;
+      dri = ovr - 3;
+      aer = ovr - 6;
       def = ovr + 2;
-      phy = ovr + 1;
+      phy = ovr - 3;
       break;
     case 'LB':
     case 'RB':
@@ -293,7 +333,7 @@ function deriveAttributesFromArchetype(player: Player): PlayerAttributes {
       break;
   }
 
-  // Playstyle modifiers (archetype shaping across all 5 leagues)
+  // Playstyle modifiers (archetype shaping across all 5 leagues & classics)
   if (ps.has('poacher')) {
     sho += 4;
     aer += 3;
@@ -307,7 +347,7 @@ function deriveAttributesFromArchetype(player: Player): PlayerAttributes {
     pas += 2;
   }
   if (ps.has('line_breaker')) {
-    phy += 3;
+    phy += 4;
     sho += 1;
     dri += 1;
   }
@@ -325,7 +365,11 @@ function deriveAttributesFromArchetype(player: Player): PlayerAttributes {
   if (ps.has('playmaker_10')) {
     pas += 5;
     cro += 3;
-    dri += 2;
+    dri += 3;
+    if (!ps.has('line_breaker') && !ps.has('box_to_box')) {
+      phy -= 5;
+      aer -= 4;
+    }
     if (hasWideMain) {
       // Creative winger archetype (e.g., Yamal/Olise/Saka/Kvara type across leagues)
       pas += 2;
@@ -333,20 +377,31 @@ function deriveAttributesFromArchetype(player: Player): PlayerAttributes {
     }
   }
   if (ps.has('deep_playmaker')) {
-    pas += 6;
-    cro += 2;
-    dri += 1;
+    pas += 7;
+    cro += 3;
+    dri += 2;
     sho -= 3;
+    if (!ps.has('box_to_box') && !ps.has('line_breaker')) {
+      phy -= 6;
+      aer -= 4;
+    }
   }
   if (ps.has('box_to_box')) {
-    phy += 3;
+    phy += 5;
     sho += 2;
     def += 1;
   }
   if (ps.has('ball_winner')) {
     def += 4;
-    phy += 3;
-    aer += 2;
+    // Technical pivots (deep_playmaker + ball_winner, e.g. Busquets/Rodri) rely on
+    // positioning & reading rather than pure sprint/physicality like pure destroyers.
+    if (ps.has('deep_playmaker')) {
+      phy -= 1;
+      aer += 1;
+    } else {
+      phy += 5;
+      aer += 2;
+    }
     sho -= 3;
   }
   if (ps.has('attacking_wingback')) {
@@ -358,11 +413,14 @@ function deriveAttributesFromArchetype(player: Player): PlayerAttributes {
   if (ps.has('ball_playing_cb')) {
     pas += 6;
     dri += 4;
+    if (!ps.has('stopper_cb')) {
+      phy -= 3;
+    }
   }
   if (ps.has('stopper_cb')) {
     def += 2;
-    aer += 3;
-    phy += 2;
+    aer += 4;
+    phy += 3;
   }
 
   // Hybrid multi-position bonuses
@@ -376,8 +434,8 @@ function deriveAttributesFromArchetype(player: Player): PlayerAttributes {
   }
 
   // Stamina tie-in to PHY
-  if (player.stamina >= 90) phy += 2;
-  else if (player.stamina <= 74) phy -= 2;
+  if (player.stamina >= 92) phy += 2;
+  else if (player.stamina <= 76) phy -= 3;
 
   // Subtle deterministic variation per player ID
   const raw: PlayerAttributes = {
@@ -414,7 +472,9 @@ export function getPlayerAttributes(player: Player): PlayerAttributes {
   const cached = ATTRIBUTE_CACHE.get(cacheKey);
   if (cached) return cached;
 
-  const curated = CURATED_ATTRIBUTE_OVERRIDES[player.id];
+  const curated =
+    CURATED_ATTRIBUTE_OVERRIDES[player.id] ??
+    (player.isLegend ? CURATED_CLASSIC_BY_NAME[player.name] : undefined);
   const computed = curated
     ? normalizeToTargetOvr(player, curated, 1.5)
     : deriveAttributesFromArchetype(player);

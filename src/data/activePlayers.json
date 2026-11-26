@@ -29,7 +29,7 @@
       "dri": 97,
       "aer": 54,
       "def": 51,
-      "phy": 84
+      "phy": 82
     }
   },
   {
@@ -57,12 +57,12 @@
     "scoutNote": "초인적 스프린트와 침투로 수비라인을 찢는 슈퍼스타",
     "isLegend": false,
     "attrs": {
-      "sho": 97,
-      "pas": 86,
-      "cro": 80,
-      "dri": 97,
-      "aer": 75,
-      "def": 47,
+      "sho": 95,
+      "pas": 84,
+      "cro": 79,
+      "dri": 95,
+      "aer": 74,
+      "def": 46,
       "phy": 97
     }
   },
@@ -90,13 +90,13 @@
     "scoutNote": "득점과 2선 패스 연계를 모두 지배하는 완벽한 9번",
     "isLegend": false,
     "attrs": {
-      "sho": 97,
+      "sho": 96,
       "pas": 91,
-      "cro": 81,
+      "cro": 82,
       "dri": 84,
       "aer": 92,
       "def": 56,
-      "phy": 86
+      "phy": 82
     }
   },
   {
@@ -124,12 +124,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 97,
-      "pas": 74,
+      "pas": 73,
       "cro": 58,
-      "dri": 80,
+      "dri": 79,
       "aer": 95,
       "def": 50,
-      "phy": 97
+      "phy": 96
     }
   },
   {
@@ -163,7 +163,7 @@
       "dri": 87,
       "aer": 87,
       "def": 92,
-      "phy": 89
+      "phy": 87
     }
   },
   {
@@ -197,7 +197,7 @@
       "dri": 94,
       "aer": 57,
       "def": 55,
-      "phy": 83
+      "phy": 80
     }
   },
   {
@@ -227,13 +227,13 @@
     "scoutNote": "천재적 볼 간수와 패스 템포 조율의 바르사 두뇌",
     "isLegend": false,
     "attrs": {
-      "sho": 81,
-      "pas": 97,
-      "cro": 87,
-      "dri": 97,
-      "aer": 69,
-      "def": 91,
-      "phy": 86
+      "sho": 78,
+      "pas": 96,
+      "cro": 86,
+      "dri": 95,
+      "aer": 58,
+      "def": 81,
+      "phy": 76
     }
   },
   {
@@ -263,11 +263,11 @@
     "scoutNote": "박스 침투와 클러치 득점을 겸비한 차세대 올라운더",
     "isLegend": false,
     "attrs": {
-      "sho": 90,
-      "pas": 91,
-      "cro": 83,
-      "dri": 92,
-      "aer": 84,
+      "sho": 89,
+      "pas": 90,
+      "cro": 82,
+      "dri": 91,
+      "aer": 85,
       "def": 80,
       "phy": 92
     }
@@ -301,11 +301,11 @@
     "attrs": {
       "sho": 85,
       "pas": 97,
-      "cro": 88,
-      "dri": 94,
-      "aer": 63,
-      "def": 85,
-      "phy": 83
+      "cro": 90,
+      "dri": 96,
+      "aer": 59,
+      "def": 84,
+      "phy": 81
     }
   },
   {
@@ -378,7 +378,7 @@
         "div": 91,
         "han": 87,
         "ref": 92,
-        "kic": 78,
+        "kic": 76,
         "pos": 89
       }
     }
@@ -408,12 +408,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 54,
-      "pas": 82,
+      "pas": 83,
       "cro": 61,
       "dri": 76,
       "aer": 89,
       "def": 92,
-      "phy": 91
+      "phy": 92
     }
   },
   {
@@ -445,7 +445,7 @@
       "dri": 70,
       "aer": 94,
       "def": 91,
-      "phy": 92
+      "phy": 93
     }
   },
   {
@@ -550,7 +550,7 @@
         "div": 90,
         "han": 90,
         "ref": 91,
-        "kic": 79,
+        "kic": 78,
         "pos": 90
       }
     }
@@ -583,10 +583,10 @@
       "sho": 87,
       "pas": 83,
       "cro": 83,
-      "dri": 94,
+      "dri": 95,
       "aer": 61,
-      "def": 47,
-      "phy": 93
+      "def": 46,
+      "phy": 94
     }
   },
   {
@@ -652,10 +652,10 @@
       "sho": 86,
       "pas": 87,
       "cro": 87,
-      "dri": 93,
+      "dri": 94,
       "aer": 65,
       "def": 55,
-      "phy": 86
+      "phy": 85
     }
   },
   {
@@ -686,10 +686,10 @@
       "sho": 85,
       "pas": 88,
       "cro": 82,
-      "dri": 94,
-      "aer": 62,
-      "def": 64,
-      "phy": 81
+      "dri": 95,
+      "aer": 60,
+      "def": 63,
+      "phy": 78
     }
   },
   {
@@ -722,10 +722,10 @@
       "sho": 84,
       "pas": 92,
       "cro": 86,
-      "dri": 91,
-      "aer": 59,
-      "def": 65,
-      "phy": 80
+      "dri": 92,
+      "aer": 58,
+      "def": 64,
+      "phy": 77
     }
   },
   {
@@ -751,13 +751,13 @@
     "scoutNote": "리버풀을 이끄는 월드클래스 ST 핵심 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 92,
+      "sho": 91,
       "pas": 80,
       "cro": 72,
       "dri": 89,
-      "aer": 85,
+      "aer": 84,
       "def": 49,
-      "phy": 89
+      "phy": 88
     }
   },
   {
@@ -795,7 +795,7 @@
         "div": 88,
         "han": 87,
         "ref": 89,
-        "kic": 91,
+        "kic": 90,
         "pos": 88
       }
     }
@@ -824,13 +824,13 @@
     "scoutNote": "첼시을 이끄는 월드클래스 CAM/RW 핵심 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 88,
-      "pas": 90,
+      "sho": 89,
+      "pas": 91,
       "cro": 88,
-      "dri": 88,
-      "aer": 65,
-      "def": 57,
-      "phy": 80
+      "dri": 89,
+      "aer": 64,
+      "def": 55,
+      "phy": 77
     }
   },
   {
@@ -869,7 +869,7 @@
       "dri": 84,
       "aer": 79,
       "def": 86,
-      "phy": 94
+      "phy": 95
     }
   },
   {
@@ -896,13 +896,13 @@
     "scoutNote": "왕성한 압박과 다재다능한 마무리 능력의 거미",
     "isLegend": false,
     "attrs": {
-      "sho": 92,
-      "pas": 87,
+      "sho": 91,
+      "pas": 86,
       "cro": 84,
-      "dri": 89,
-      "aer": 80,
+      "dri": 88,
+      "aer": 78,
       "def": 64,
-      "phy": 89
+      "phy": 88
     }
   },
   {
@@ -934,7 +934,7 @@
       "dri": 88,
       "aer": 75,
       "def": 85,
-      "phy": 93
+      "phy": 94
     }
   },
   {
@@ -962,13 +962,13 @@
     "scoutNote": "엄청난 활동량과 볼 탈취, 탈압박의 천재 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 78,
+      "sho": 77,
       "pas": 91,
       "cro": 83,
       "dri": 89,
-      "aer": 76,
-      "def": 90,
-      "phy": 89
+      "aer": 74,
+      "def": 89,
+      "phy": 86
     }
   },
   {
@@ -995,13 +995,13 @@
     "scoutNote": "저돌적 압박과 탁월한 박스 안 마무리의 인테르 캡틴",
     "isLegend": false,
     "attrs": {
-      "sho": 93,
+      "sho": 92,
       "pas": 79,
       "cro": 69,
       "dri": 86,
       "aer": 88,
       "def": 57,
-      "phy": 89
+      "phy": 88
     }
   },
   {
@@ -1028,13 +1028,13 @@
     "scoutNote": "바이에른 뮌헨을 이끄는 월드클래스 CDM/RB 핵심 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 78,
+      "sho": 77,
       "pas": 95,
       "cro": 94,
-      "dri": 86,
-      "aer": 77,
-      "def": 88,
-      "phy": 85
+      "dri": 85,
+      "aer": 71,
+      "def": 86,
+      "phy": 79
     }
   },
   {
@@ -1069,11 +1069,11 @@
       "def": 88,
       "phy": 87,
       "gk": {
-        "div": 87,
-        "han": 87,
-        "ref": 88,
+        "div": 88,
+        "han": 88,
+        "ref": 89,
         "kic": 88,
-        "pos": 88
+        "pos": 89
       }
     }
   },
@@ -1102,12 +1102,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 81,
-      "cro": 63,
-      "dri": 73,
-      "aer": 91,
-      "def": 87,
-      "phy": 87
+      "pas": 84,
+      "cro": 64,
+      "dri": 74,
+      "aer": 92,
+      "def": 89,
+      "phy": 90
     }
   },
   {
@@ -1137,12 +1137,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 86,
-      "pas": 92,
-      "cro": 91,
-      "dri": 83,
-      "aer": 67,
-      "def": 71,
-      "phy": 83
+      "pas": 93,
+      "cro": 92,
+      "dri": 84,
+      "aer": 66,
+      "def": 70,
+      "phy": 80
     }
   },
   {
@@ -1169,13 +1169,13 @@
     "scoutNote": "예리한 스루패스와 전방 압박 지휘의 아스널 캡틴",
     "isLegend": false,
     "attrs": {
-      "sho": 83,
+      "sho": 82,
       "pas": 94,
       "cro": 91,
       "dri": 90,
-      "aer": 57,
-      "def": 76,
-      "phy": 79
+      "aer": 56,
+      "def": 73,
+      "phy": 75
     }
   },
   {
@@ -1204,10 +1204,10 @@
     "isLegend": false,
     "attrs": {
       "sho": 71,
-      "pas": 85,
-      "cro": 78,
-      "dri": 78,
-      "aer": 84,
+      "pas": 84,
+      "cro": 76,
+      "dri": 79,
+      "aer": 82,
       "def": 91,
       "phy": 92
     }
@@ -1284,7 +1284,7 @@
         "div": 88,
         "han": 90,
         "ref": 88,
-        "kic": 77,
+        "kic": 75,
         "pos": 90
       }
     }
@@ -1350,12 +1350,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 87,
-      "cro": 81,
-      "dri": 78,
+      "pas": 88,
+      "cro": 82,
+      "dri": 79,
       "aer": 87,
       "def": 88,
-      "phy": 86
+      "phy": 85
     }
   },
   {
@@ -1384,12 +1384,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 81,
-      "pas": 88,
+      "pas": 89,
       "cro": 85,
-      "dri": 86,
-      "aer": 71,
+      "dri": 87,
+      "aer": 70,
       "def": 84,
-      "phy": 89
+      "phy": 88
     }
   },
   {
@@ -1554,12 +1554,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 88,
-      "pas": 91,
+      "pas": 89,
       "cro": 90,
-      "dri": 88,
-      "aer": 81,
-      "def": 83,
-      "phy": 91
+      "dri": 86,
+      "aer": 78,
+      "def": 81,
+      "phy": 89
     }
   },
   {
@@ -1622,13 +1622,13 @@
     "scoutNote": "탁월한 탈압박과 중거리 킥의 리버풀 중원 핵심",
     "isLegend": false,
     "attrs": {
-      "sho": 72,
-      "pas": 88,
-      "cro": 78,
-      "dri": 83,
-      "aer": 84,
-      "def": 86,
-      "phy": 90
+      "sho": 79,
+      "pas": 93,
+      "cro": 82,
+      "dri": 89,
+      "aer": 75,
+      "def": 87,
+      "phy": 82
     }
   },
   {
@@ -1800,12 +1800,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 86,
-      "pas": 86,
+      "pas": 87,
       "cro": 83,
-      "dri": 89,
+      "dri": 90,
       "aer": 56,
-      "def": 59,
-      "phy": 79
+      "def": 58,
+      "phy": 76
     }
   },
   {
@@ -1835,12 +1835,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 76,
-      "pas": 92,
+      "pas": 94,
       "cro": 86,
-      "dri": 84,
+      "dri": 85,
       "aer": 77,
       "def": 84,
-      "phy": 85
+      "phy": 80
     }
   },
   {
@@ -1934,12 +1934,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 79,
-      "pas": 92,
+      "pas": 93,
       "cro": 95,
-      "dri": 80,
+      "dri": 81,
       "aer": 68,
-      "def": 78,
-      "phy": 81
+      "def": 77,
+      "phy": 79
     }
   },
   {
@@ -2069,7 +2069,7 @@
       "dri": 83,
       "aer": 67,
       "def": 79,
-      "phy": 84
+      "phy": 83
     }
   },
   {
@@ -2101,7 +2101,7 @@
       "dri": 84,
       "aer": 87,
       "def": 55,
-      "phy": 91
+      "phy": 92
     }
   },
   {
@@ -2128,13 +2128,13 @@
     "scoutNote": "침착한 탈압박과 패스 정확도의 뮌헨 주전 수미",
     "isLegend": false,
     "attrs": {
-      "sho": 67,
-      "pas": 91,
-      "cro": 74,
-      "dri": 82,
-      "aer": 80,
-      "def": 85,
-      "phy": 87
+      "sho": 69,
+      "pas": 92,
+      "cro": 79,
+      "dri": 84,
+      "aer": 77,
+      "def": 86,
+      "phy": 80
     }
   },
   {
@@ -2344,12 +2344,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 67,
-      "pas": 88,
+      "pas": 89,
       "cro": 75,
       "dri": 77,
       "aer": 79,
       "def": 85,
-      "phy": 83
+      "phy": 82
     }
   },
   {
@@ -3027,7 +3027,7 @@
       "dri": 80,
       "aer": 90,
       "def": 50,
-      "phy": 88
+      "phy": 89
     }
   },
   {
@@ -3229,13 +3229,13 @@
     "scoutNote": "맨체스터 시티의 안쪽으로 파고드는 드리블과 슈팅이 날카로운 윙어",
     "isLegend": false,
     "attrs": {
-      "sho": 74,
-      "pas": 78,
-      "cro": 80,
-      "dri": 93,
-      "aer": 52,
-      "def": 46,
-      "phy": 90
+      "sho": 76,
+      "pas": 80,
+      "cro": 82,
+      "dri": 94,
+      "aer": 54,
+      "def": 47,
+      "phy": 91
     }
   },
   {
@@ -3542,12 +3542,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 70,
-      "pas": 90,
+      "pas": 93,
       "cro": 77,
-      "dri": 81,
+      "dri": 83,
       "aer": 79,
       "def": 83,
-      "phy": 86
+      "phy": 78
     }
   },
   {
@@ -3959,13 +3959,13 @@
     "scoutNote": "치명적인 왼발 프리킥과 크로스의 공격형 윙백",
     "isLegend": false,
     "attrs": {
-      "sho": 82,
+      "sho": 81,
       "pas": 88,
       "cro": 93,
       "dri": 85,
       "aer": 65,
       "def": 79,
-      "phy": 82
+      "phy": 81
     }
   },
   {
@@ -4208,8 +4208,8 @@
       "pas": 92,
       "cro": 91,
       "dri": 81,
-      "aer": 64,
-      "def": 65,
+      "aer": 65,
+      "def": 64,
       "phy": 72
     }
   },
@@ -4305,12 +4305,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 81,
-      "pas": 90,
+      "pas": 91,
       "cro": 85,
       "dri": 90,
       "aer": 64,
       "def": 66,
-      "phy": 80
+      "phy": 79
     }
   },
   {
@@ -5018,12 +5018,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 71,
-      "pas": 90,
+      "pas": 92,
       "cro": 80,
       "dri": 87,
       "aer": 75,
       "def": 87,
-      "phy": 82
+      "phy": 79
     }
   },
   {
@@ -5054,12 +5054,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 74,
-      "pas": 93,
+      "pas": 95,
       "cro": 83,
       "dri": 82,
       "aer": 72,
       "def": 83,
-      "phy": 81
+      "phy": 78
     }
   },
   {
@@ -5496,12 +5496,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 81,
-      "pas": 86,
-      "cro": 84,
-      "dri": 87,
+      "pas": 88,
+      "cro": 80,
+      "dri": 88,
       "aer": 66,
       "def": 67,
-      "phy": 84
+      "phy": 81
     }
   },
   {
@@ -5771,12 +5771,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 88,
+      "pas": 91,
       "cro": 73,
-      "dri": 80,
+      "dri": 81,
       "aer": 79,
       "def": 85,
-      "phy": 83
+      "phy": 77
     }
   },
   {
@@ -5915,12 +5915,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 68,
-      "pas": 88,
+      "pas": 91,
       "cro": 75,
-      "dri": 79,
+      "dri": 80,
       "aer": 79,
       "def": 82,
-      "phy": 83
+      "phy": 77
     }
   },
   {
@@ -6198,12 +6198,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 82,
-      "pas": 88,
+      "pas": 90,
       "cro": 84,
       "dri": 77,
       "aer": 81,
       "def": 84,
-      "phy": 86
+      "phy": 83
     }
   },
   {
@@ -6299,12 +6299,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 71,
-      "pas": 88,
+      "pas": 91,
       "cro": 75,
-      "dri": 79,
+      "dri": 81,
       "aer": 83,
       "def": 84,
-      "phy": 87
+      "phy": 78
     }
   },
   {
@@ -6396,12 +6396,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 87,
+      "pas": 90,
       "cro": 74,
-      "dri": 78,
+      "dri": 80,
       "aer": 77,
       "def": 85,
-      "phy": 84
+      "phy": 77
     }
   },
   {
@@ -6649,12 +6649,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 73,
-      "pas": 91,
+      "pas": 94,
       "cro": 83,
-      "dri": 84,
+      "dri": 85,
       "aer": 76,
       "def": 82,
-      "phy": 85
+      "phy": 79
     }
   },
   {
@@ -6856,12 +6856,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 69,
-      "pas": 86,
+      "pas": 89,
       "cro": 76,
-      "dri": 81,
+      "dri": 82,
       "aer": 79,
       "def": 84,
-      "phy": 82
+      "phy": 76
     }
   },
   {
@@ -8342,12 +8342,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 69,
-      "pas": 93,
+      "pas": 95,
       "cro": 81,
-      "dri": 79,
+      "dri": 80,
       "aer": 73,
       "def": 77,
-      "phy": 80
+      "phy": 76
     }
   },
   {
@@ -8513,12 +8513,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 71,
-      "pas": 90,
+      "pas": 92,
       "cro": 78,
       "dri": 85,
       "aer": 77,
       "def": 84,
-      "phy": 85
+      "phy": 82
     }
   },
   {
@@ -8721,12 +8721,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 68,
-      "pas": 89,
+      "pas": 92,
       "cro": 73,
-      "dri": 77,
+      "dri": 79,
       "aer": 79,
       "def": 83,
-      "phy": 83
+      "phy": 76
     }
   },
   {
@@ -9090,12 +9090,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 85,
+      "pas": 87,
       "cro": 70,
-      "dri": 76,
+      "dri": 77,
       "aer": 77,
       "def": 85,
-      "phy": 80
+      "phy": 75
     }
   },
   {
@@ -9331,12 +9331,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 68,
-      "pas": 88,
+      "pas": 91,
       "cro": 74,
-      "dri": 76,
+      "dri": 77,
       "aer": 77,
       "def": 82,
-      "phy": 83
+      "phy": 77
     }
   },
   {
@@ -9788,12 +9788,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 72,
-      "pas": 88,
+      "pas": 91,
       "cro": 78,
-      "dri": 79,
+      "dri": 80,
       "aer": 73,
       "def": 77,
-      "phy": 81
+      "phy": 75
     }
   },
   {
@@ -10607,12 +10607,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 63,
-      "pas": 86,
+      "pas": 88,
       "cro": 70,
-      "dri": 76,
+      "dri": 77,
       "aer": 76,
       "def": 81,
-      "phy": 80
+      "phy": 75
     }
   },
   {
@@ -11434,12 +11434,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 71,
-      "pas": 91,
+      "pas": 94,
       "cro": 79,
-      "dri": 82,
+      "dri": 83,
       "aer": 70,
       "def": 80,
-      "phy": 82
+      "phy": 76
     }
   },
   {
@@ -11813,12 +11813,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 68,
-      "pas": 85,
+      "pas": 88,
       "cro": 73,
-      "dri": 77,
+      "dri": 78,
       "aer": 77,
       "def": 85,
-      "phy": 81
+      "phy": 75
     }
   },
   {
@@ -11911,12 +11911,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 78,
-      "pas": 83,
+      "pas": 86,
       "cro": 76,
-      "dri": 82,
+      "dri": 84,
       "aer": 82,
       "def": 86,
-      "phy": 90
+      "phy": 79
     }
   },
   {
@@ -12081,12 +12081,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 65,
-      "pas": 87,
+      "pas": 89,
       "cro": 71,
-      "dri": 76,
+      "dri": 77,
       "aer": 75,
       "def": 83,
-      "phy": 80
+      "phy": 75
     }
   },
   {
@@ -12621,12 +12621,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 82,
+      "pas": 83,
       "cro": 71,
       "dri": 73,
       "aer": 75,
       "def": 85,
-      "phy": 80
+      "phy": 78
     }
   },
   {
@@ -12759,12 +12759,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 86,
+      "pas": 88,
       "cro": 71,
       "dri": 76,
       "aer": 77,
       "def": 81,
-      "phy": 77
+      "phy": 74
     }
   },
   {
@@ -14352,12 +14352,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 85,
+      "pas": 88,
       "cro": 69,
-      "dri": 74,
+      "dri": 75,
       "aer": 74,
       "def": 82,
-      "phy": 80
+      "phy": 74
     }
   },
   {
@@ -14751,12 +14751,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 84,
+      "pas": 87,
       "cro": 74,
-      "dri": 78,
+      "dri": 80,
       "aer": 76,
       "def": 82,
-      "phy": 83
+      "phy": 76
     }
   },
   {
@@ -15293,12 +15293,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 84,
+      "pas": 86,
       "cro": 69,
-      "dri": 72,
+      "dri": 73,
       "aer": 75,
       "def": 83,
-      "phy": 82
+      "phy": 78
     }
   },
   {
@@ -15434,13 +15434,13 @@
     "scoutNote": "RB 라이프치히의 창의적인 키패스로 공격을 조율하는 플레이메이커",
     "isLegend": false,
     "attrs": {
-      "sho": 72,
-      "pas": 88,
-      "cro": 75,
-      "dri": 81,
+      "sho": 69,
+      "pas": 87,
+      "cro": 72,
+      "dri": 79,
       "aer": 68,
-      "def": 74,
-      "phy": 77
+      "def": 71,
+      "phy": 72
     }
   },
   {
@@ -16217,12 +16217,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 86,
+      "pas": 89,
       "cro": 71,
-      "dri": 75,
+      "dri": 76,
       "aer": 74,
       "def": 80,
-      "phy": 79
+      "phy": 73
     }
   },
   {
@@ -16250,12 +16250,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 82,
+      "pas": 85,
       "cro": 69,
-      "dri": 74,
+      "dri": 75,
       "aer": 76,
       "def": 80,
-      "phy": 79
+      "phy": 73
     }
   },
   {
@@ -16391,12 +16391,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 87,
+      "pas": 90,
       "cro": 71,
-      "dri": 75,
+      "dri": 76,
       "aer": 78,
       "def": 79,
-      "phy": 79
+      "phy": 73
     }
   },
   {
@@ -16425,13 +16425,13 @@
     "scoutNote": "뉴캐슬 유나이티드 1군 로테이션의 핵심 CM/CDM 선수",
     "isLegend": false,
     "attrs": {
-      "sho": 69,
-      "pas": 88,
-      "cro": 77,
-      "dri": 81,
+      "sho": 66,
+      "pas": 87,
+      "cro": 74,
+      "dri": 79,
       "aer": 71,
-      "def": 77,
-      "phy": 78
+      "def": 74,
+      "phy": 72
     }
   },
   {
@@ -16690,12 +16690,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 67,
-      "pas": 82,
+      "pas": 85,
       "cro": 70,
-      "dri": 76,
+      "dri": 78,
       "aer": 75,
       "def": 79,
-      "phy": 80
+      "phy": 73
     }
   },
   {
@@ -17898,12 +17898,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 63,
-      "pas": 83,
+      "pas": 86,
       "cro": 68,
-      "dri": 76,
+      "dri": 78,
       "aer": 74,
       "def": 82,
-      "phy": 81
+      "phy": 73
     }
   },
   {
@@ -18567,12 +18567,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 67,
-      "pas": 88,
+      "pas": 90,
       "cro": 75,
-      "dri": 77,
+      "dri": 78,
       "aer": 67,
       "def": 74,
-      "phy": 78
+      "phy": 73
     }
   },
   {
@@ -18848,12 +18848,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 70,
-      "pas": 86,
+      "pas": 89,
       "cro": 78,
-      "dri": 78,
+      "dri": 79,
       "aer": 69,
       "def": 74,
-      "phy": 79
+      "phy": 73
     }
   },
   {
@@ -19590,12 +19590,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 87,
+      "pas": 88,
       "cro": 74,
       "dri": 75,
       "aer": 70,
       "def": 79,
-      "phy": 78
+      "phy": 77
     }
   },
   {
@@ -19623,12 +19623,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 87,
+      "pas": 89,
       "cro": 71,
-      "dri": 76,
+      "dri": 77,
       "aer": 77,
       "def": 79,
-      "phy": 78
+      "phy": 73
     }
   },
   {
@@ -19823,12 +19823,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 63,
-      "pas": 85,
+      "pas": 88,
       "cro": 70,
-      "dri": 74,
+      "dri": 76,
       "aer": 74,
       "def": 81,
-      "phy": 80
+      "phy": 73
     }
   },
   {
@@ -19856,12 +19856,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 70,
-      "pas": 88,
+      "pas": 90,
       "cro": 76,
       "dri": 79,
       "aer": 67,
       "def": 75,
-      "phy": 76
+      "phy": 73
     }
   },
   {
@@ -20232,12 +20232,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 63,
-      "pas": 84,
+      "pas": 87,
       "cro": 69,
-      "dri": 74,
+      "dri": 76,
       "aer": 75,
       "def": 80,
-      "phy": 80
+      "phy": 73
     }
   },
   {
@@ -20513,12 +20513,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 69,
-      "pas": 85,
+      "pas": 88,
       "cro": 78,
-      "dri": 80,
+      "dri": 81,
       "aer": 69,
       "def": 75,
-      "phy": 79
+      "phy": 73
     }
   },
   {
@@ -20645,12 +20645,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 65,
-      "pas": 85,
+      "pas": 87,
       "cro": 71,
-      "dri": 74,
+      "dri": 75,
       "aer": 73,
       "def": 79,
-      "phy": 77
+      "phy": 73
     }
   },
   {
@@ -20714,13 +20714,13 @@
     "scoutNote": "피오렌티나 1군 로테이션의 핵심 CM/CDM 선수",
     "isLegend": false,
     "attrs": {
-      "sho": 71,
-      "pas": 88,
-      "cro": 75,
-      "dri": 80,
+      "sho": 68,
+      "pas": 87,
+      "cro": 72,
+      "dri": 78,
       "aer": 68,
-      "def": 78,
-      "phy": 77
+      "def": 75,
+      "phy": 72
     }
   },
   {
@@ -21119,12 +21119,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 72,
-      "pas": 88,
+      "pas": 90,
       "cro": 78,
-      "dri": 83,
+      "dri": 84,
       "aer": 74,
       "def": 79,
-      "phy": 82
+      "phy": 77
     }
   },
   {
@@ -21528,12 +21528,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 84,
+      "pas": 86,
       "cro": 68,
-      "dri": 75,
+      "dri": 76,
       "aer": 71,
       "def": 80,
-      "phy": 77
+      "phy": 72
     }
   },
   {
@@ -22242,12 +22242,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 81,
+      "pas": 83,
       "cro": 70,
-      "dri": 72,
+      "dri": 73,
       "aer": 73,
       "def": 80,
-      "phy": 77
+      "phy": 72
     }
   },
   {
@@ -23178,12 +23178,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 65,
-      "pas": 83,
+      "pas": 85,
       "cro": 73,
       "dri": 75,
       "aer": 79,
       "def": 83,
-      "phy": 83
+      "phy": 80
     }
   },
   {
@@ -23619,12 +23619,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 63,
-      "pas": 84,
+      "pas": 86,
       "cro": 70,
       "dri": 75,
       "aer": 72,
       "def": 80,
-      "phy": 75
+      "phy": 72
     }
   },
   {
@@ -23953,12 +23953,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 70,
-      "pas": 84,
+      "pas": 86,
       "cro": 76,
-      "dri": 76,
+      "dri": 77,
       "aer": 69,
       "def": 73,
-      "phy": 76
+      "phy": 72
     }
   },
   {
@@ -25738,12 +25738,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 71,
-      "pas": 83,
+      "pas": 85,
       "cro": 78,
       "dri": 80,
       "aer": 68,
       "def": 74,
-      "phy": 75
+      "phy": 72
     }
   },
   {
@@ -26277,12 +26277,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 67,
-      "pas": 85,
+      "pas": 87,
       "cro": 76,
-      "dri": 77,
+      "dri": 78,
       "aer": 69,
       "def": 72,
-      "phy": 75
+      "phy": 71
     }
   },
   {
@@ -26684,12 +26684,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 70,
-      "pas": 84,
+      "pas": 86,
       "cro": 74,
-      "dri": 80,
+      "dri": 81,
       "aer": 66,
       "def": 72,
-      "phy": 76
+      "phy": 71
     }
   },
   {
@@ -26887,12 +26887,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 69,
-      "pas": 87,
+      "pas": 89,
       "cro": 74,
-      "dri": 75,
+      "dri": 76,
       "aer": 68,
       "def": 76,
-      "phy": 76
+      "phy": 71
     }
   },
   {
@@ -27065,12 +27065,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 63,
-      "pas": 81,
+      "pas": 83,
       "cro": 66,
-      "dri": 72,
+      "dri": 73,
       "aer": 74,
       "def": 79,
-      "phy": 75
+      "phy": 71
     }
   },
   {
@@ -27173,12 +27173,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 63,
-      "pas": 80,
+      "pas": 82,
       "cro": 66,
-      "dri": 72,
+      "dri": 73,
       "aer": 71,
       "def": 79,
-      "phy": 76
+      "phy": 71
     }
   },
   {
@@ -27307,12 +27307,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 83,
+      "pas": 86,
       "cro": 66,
-      "dri": 71,
+      "dri": 73,
       "aer": 75,
       "def": 76,
-      "phy": 79
+      "phy": 71
     }
   },
   {
@@ -27481,12 +27481,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 80,
+      "pas": 83,
       "cro": 68,
-      "dri": 73,
+      "dri": 75,
       "aer": 73,
       "def": 79,
-      "phy": 78
+      "phy": 71
     }
   },
   {
@@ -27985,12 +27985,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 82,
+      "pas": 85,
       "cro": 70,
-      "dri": 72,
+      "dri": 73,
       "aer": 74,
       "def": 79,
-      "phy": 77
+      "phy": 71
     }
   },
   {
@@ -28123,12 +28123,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 59,
-      "pas": 82,
+      "pas": 84,
       "cro": 69,
       "dri": 72,
       "aer": 73,
       "def": 79,
-      "phy": 74
+      "phy": 71
     }
   },
   {
@@ -28497,12 +28497,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 85,
+      "pas": 87,
       "cro": 67,
-      "dri": 75,
+      "dri": 76,
       "aer": 72,
       "def": 78,
-      "phy": 76
+      "phy": 71
     }
   },
   {
@@ -28778,12 +28778,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 83,
+      "pas": 85,
       "cro": 67,
-      "dri": 72,
+      "dri": 73,
       "aer": 73,
       "def": 78,
-      "phy": 75
+      "phy": 71
     }
   },
   {
@@ -28846,12 +28846,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 81,
+      "pas": 84,
       "cro": 68,
-      "dri": 72,
+      "dri": 73,
       "aer": 72,
       "def": 78,
-      "phy": 77
+      "phy": 71
     }
   },
   {
@@ -29116,12 +29116,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 65,
-      "pas": 83,
+      "pas": 86,
       "cro": 74,
-      "dri": 77,
+      "dri": 79,
       "aer": 67,
       "def": 76,
-      "phy": 78
+      "phy": 71
     }
   },
   {
@@ -29184,12 +29184,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 67,
-      "pas": 83,
+      "pas": 85,
       "cro": 73,
       "dri": 77,
       "aer": 68,
       "def": 73,
-      "phy": 74
+      "phy": 71
     }
   },
   {
@@ -29617,12 +29617,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 68,
-      "pas": 83,
+      "pas": 86,
       "cro": 73,
-      "dri": 78,
+      "dri": 80,
       "aer": 69,
       "def": 72,
-      "phy": 78
+      "phy": 71
     }
   },
   {
@@ -29824,12 +29824,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 69,
-      "pas": 83,
+      "pas": 85,
       "cro": 77,
       "dri": 77,
       "aer": 67,
       "def": 75,
-      "phy": 74
+      "phy": 71
     }
   },
   {
@@ -29890,12 +29890,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 68,
-      "pas": 85,
+      "pas": 88,
       "cro": 72,
-      "dri": 76,
+      "dri": 77,
       "aer": 65,
       "def": 74,
-      "phy": 77
+      "phy": 71
     }
   },
   {
@@ -31071,12 +31071,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 73,
-      "pas": 89,
+      "pas": 91,
       "cro": 78,
-      "dri": 82,
+      "dri": 83,
       "aer": 70,
       "def": 77,
-      "phy": 81
+      "phy": 76
     }
   },
   {
@@ -31271,12 +31271,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 65,
-      "pas": 87,
+      "pas": 89,
       "cro": 75,
-      "dri": 77,
+      "dri": 78,
       "aer": 65,
       "def": 74,
-      "phy": 75
+      "phy": 71
     }
   },
   {
@@ -31371,12 +31371,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 63,
-      "pas": 85,
+      "pas": 87,
       "cro": 74,
-      "dri": 76,
+      "dri": 77,
       "aer": 64,
       "def": 74,
-      "phy": 74
+      "phy": 70
     }
   },
   {
@@ -31503,12 +31503,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 83,
+      "pas": 86,
       "cro": 65,
-      "dri": 72,
+      "dri": 74,
       "aer": 71,
       "def": 78,
-      "phy": 77
+      "phy": 70
     }
   },
   {
@@ -31632,12 +31632,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 59,
-      "pas": 80,
+      "pas": 83,
       "cro": 67,
-      "dri": 71,
+      "dri": 72,
       "aer": 73,
       "def": 75,
-      "phy": 76
+      "phy": 70
     }
   },
   {
@@ -32247,12 +32247,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 65,
-      "pas": 85,
+      "pas": 87,
       "cro": 75,
-      "dri": 74,
+      "dri": 75,
       "aer": 68,
       "def": 74,
-      "phy": 74
+      "phy": 70
     }
   },
   {
@@ -32313,12 +32313,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 85,
+      "pas": 87,
       "cro": 71,
-      "dri": 76,
+      "dri": 77,
       "aer": 64,
       "def": 74,
-      "phy": 75
+      "phy": 70
     }
   },
   {
@@ -32381,12 +32381,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 82,
+      "pas": 84,
       "cro": 71,
-      "dri": 74,
+      "dri": 75,
       "aer": 67,
       "def": 72,
-      "phy": 74
+      "phy": 70
     }
   },
   {
@@ -32515,13 +32515,13 @@
     "scoutNote": "리즈 유나이티드 소속 CM/CDM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 66,
+      "sho": 63,
       "pas": 85,
-      "cro": 74,
-      "dri": 76,
+      "cro": 71,
+      "dri": 75,
       "aer": 64,
-      "def": 74,
-      "phy": 77
+      "def": 71,
+      "phy": 69
     }
   },
   {
@@ -33323,12 +33323,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 81,
+      "pas": 84,
       "cro": 67,
-      "dri": 69,
+      "dri": 70,
       "aer": 71,
       "def": 76,
-      "phy": 76
+      "phy": 70
     }
   },
   {
@@ -33626,12 +33626,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 83,
+      "pas": 86,
       "cro": 69,
-      "dri": 74,
+      "dri": 75,
       "aer": 71,
       "def": 77,
-      "phy": 76
+      "phy": 70
     }
   },
   {
@@ -34340,12 +34340,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 68,
-      "pas": 84,
+      "pas": 86,
       "cro": 73,
       "dri": 78,
       "aer": 68,
       "def": 71,
-      "phy": 73
+      "phy": 70
     }
   },
   {
@@ -34477,12 +34477,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 80,
+      "pas": 83,
       "cro": 68,
-      "dri": 70,
+      "dri": 71,
       "aer": 72,
       "def": 76,
-      "phy": 76
+      "phy": 70
     }
   },
   {
@@ -34574,12 +34574,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 82,
+      "pas": 84,
       "cro": 67,
-      "dri": 69,
+      "dri": 70,
       "aer": 70,
       "def": 77,
-      "phy": 74
+      "phy": 70
     }
   },
   {
@@ -34644,13 +34644,13 @@
     "scoutNote": "스타드 렌 소속 CM/CAM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 66,
+      "sho": 63,
       "pas": 85,
-      "cro": 71,
-      "dri": 77,
+      "cro": 68,
+      "dri": 76,
       "aer": 66,
-      "def": 73,
-      "phy": 77
+      "def": 70,
+      "phy": 69
     }
   },
   {
@@ -35283,12 +35283,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 82,
+      "pas": 84,
       "cro": 64,
       "dri": 73,
       "aer": 73,
       "def": 76,
-      "phy": 73
+      "phy": 70
     }
   },
   {
@@ -35527,12 +35527,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 80,
+      "pas": 82,
       "cro": 66,
-      "dri": 73,
+      "dri": 74,
       "aer": 71,
       "def": 80,
-      "phy": 75
+      "phy": 70
     }
   },
   {
@@ -35834,12 +35834,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 67,
-      "pas": 82,
+      "pas": 84,
       "cro": 75,
-      "dri": 76,
+      "dri": 77,
       "aer": 66,
       "def": 71,
-      "phy": 74
+      "phy": 70
     }
   },
   {
@@ -37395,12 +37395,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 77,
+      "pas": 80,
       "cro": 65,
-      "dri": 71,
+      "dri": 72,
       "aer": 71,
       "def": 76,
-      "phy": 75
+      "phy": 69
     }
   },
   {
@@ -37822,12 +37822,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 80,
+      "pas": 83,
       "cro": 64,
-      "dri": 70,
+      "dri": 71,
       "aer": 70,
       "def": 77,
-      "phy": 75
+      "phy": 69
     }
   },
   {
@@ -37890,12 +37890,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 82,
+      "pas": 84,
       "cro": 71,
       "dri": 74,
       "aer": 64,
       "def": 73,
-      "phy": 72
+      "phy": 69
     }
   },
   {
@@ -38064,12 +38064,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 69,
-      "pas": 80,
+      "pas": 83,
       "cro": 75,
-      "dri": 78,
+      "dri": 79,
       "aer": 66,
       "def": 71,
-      "phy": 75
+      "phy": 69
     }
   },
   {
@@ -38097,12 +38097,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 81,
+      "pas": 83,
       "cro": 67,
-      "dri": 70,
+      "dri": 71,
       "aer": 70,
       "def": 77,
-      "phy": 74
+      "phy": 69
     }
   },
   {
@@ -38950,12 +38950,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 80,
+      "pas": 83,
       "cro": 68,
-      "dri": 70,
+      "dri": 71,
       "aer": 70,
       "def": 79,
-      "phy": 75
+      "phy": 69
     }
   },
   {
@@ -39349,12 +39349,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 82,
+      "pas": 85,
       "cro": 74,
-      "dri": 76,
+      "dri": 77,
       "aer": 66,
       "def": 70,
-      "phy": 75
+      "phy": 69
     }
   },
   {
@@ -39382,12 +39382,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 59,
-      "pas": 81,
+      "pas": 83,
       "cro": 65,
-      "dri": 70,
+      "dri": 71,
       "aer": 69,
       "def": 78,
-      "phy": 73
+      "phy": 69
     }
   },
   {
@@ -39513,13 +39513,13 @@
     "scoutNote": "AS 로마 소속 CDM/CM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 68,
-      "pas": 79,
-      "cro": 73,
-      "dri": 72,
+      "sho": 71,
+      "pas": 85,
+      "cro": 76,
+      "dri": 77,
       "aer": 80,
-      "def": 85,
-      "phy": 84
+      "def": 88,
+      "phy": 76
     }
   },
   {
@@ -39890,12 +39890,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 82,
+      "pas": 85,
       "cro": 72,
-      "dri": 76,
+      "dri": 78,
       "aer": 67,
       "def": 71,
-      "phy": 76
+      "phy": 69
     }
   },
   {
@@ -39923,12 +39923,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 83,
+      "pas": 86,
       "cro": 70,
-      "dri": 77,
+      "dri": 79,
       "aer": 65,
       "def": 70,
-      "phy": 76
+      "phy": 69
     }
   },
   {
@@ -41000,12 +41000,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 80,
+      "pas": 83,
       "cro": 72,
-      "dri": 75,
+      "dri": 77,
       "aer": 65,
       "def": 72,
-      "phy": 75
+      "phy": 68
     }
   },
   {
@@ -41064,12 +41064,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 80,
+      "pas": 83,
       "cro": 63,
-      "dri": 71,
+      "dri": 72,
       "aer": 68,
       "def": 74,
-      "phy": 74
+      "phy": 68
     }
   },
   {
@@ -41464,13 +41464,13 @@
     "scoutNote": "베르더 브레멘 소속 CM/CDM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 66,
+      "sho": 63,
       "pas": 83,
-      "cro": 70,
-      "dri": 73,
+      "cro": 67,
+      "dri": 72,
       "aer": 62,
-      "def": 71,
-      "phy": 75
+      "def": 68,
+      "phy": 67
     }
   },
   {
@@ -41667,12 +41667,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 69,
-      "pas": 79,
+      "pas": 80,
       "cro": 73,
       "dri": 77,
       "aer": 52,
       "def": 54,
-      "phy": 69
+      "phy": 68
     }
   },
   {
@@ -42357,12 +42357,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 67,
-      "pas": 80,
+      "pas": 82,
       "cro": 71,
-      "dri": 74,
+      "dri": 75,
       "aer": 65,
       "def": 70,
-      "phy": 73
+      "phy": 68
     }
   },
   {
@@ -42421,13 +42421,13 @@
     "scoutNote": "라싱 산탄데르의 중원 압박과 수비 보호의 핵심 수비형 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 62,
+      "sho": 59,
       "pas": 84,
-      "cro": 70,
-      "dri": 74,
+      "cro": 67,
+      "dri": 73,
       "aer": 62,
-      "def": 73,
-      "phy": 75
+      "def": 70,
+      "phy": 67
     }
   },
   {
@@ -42654,12 +42654,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 78,
+      "pas": 81,
       "cro": 62,
-      "dri": 69,
+      "dri": 70,
       "aer": 71,
       "def": 76,
-      "phy": 74
+      "phy": 68
     }
   },
   {
@@ -42992,12 +42992,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 77,
+      "pas": 80,
       "cro": 64,
-      "dri": 71,
+      "dri": 73,
       "aer": 71,
       "def": 73,
-      "phy": 75
+      "phy": 68
     }
   },
   {
@@ -43093,12 +43093,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 83,
+      "pas": 86,
       "cro": 71,
-      "dri": 73,
+      "dri": 74,
       "aer": 64,
       "def": 71,
-      "phy": 74
+      "phy": 68
     }
   },
   {
@@ -44002,12 +44002,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 80,
+      "pas": 82,
       "cro": 71,
-      "dri": 74,
+      "dri": 75,
       "aer": 65,
       "def": 69,
-      "phy": 73
+      "phy": 68
     }
   },
   {
@@ -44037,12 +44037,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 81,
+      "pas": 83,
       "cro": 63,
-      "dri": 70,
+      "dri": 71,
       "aer": 71,
       "def": 74,
-      "phy": 73
+      "phy": 68
     }
   },
   {
@@ -44171,12 +44171,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 56,
-      "pas": 79,
+      "pas": 81,
       "cro": 62,
-      "dri": 71,
+      "dri": 72,
       "aer": 68,
       "def": 76,
-      "phy": 73
+      "phy": 68
     }
   },
   {
@@ -44745,12 +44745,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 84,
+      "pas": 86,
       "cro": 73,
-      "dri": 72,
+      "dri": 73,
       "aer": 65,
       "def": 72,
-      "phy": 72
+      "phy": 68
     }
   },
   {
@@ -44877,12 +44877,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 82,
+      "pas": 84,
       "cro": 70,
       "dri": 76,
       "aer": 63,
       "def": 70,
-      "phy": 71
+      "phy": 68
     }
   },
   {
@@ -45105,12 +45105,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 80,
+      "pas": 83,
       "cro": 69,
-      "dri": 73,
+      "dri": 74,
       "aer": 65,
       "def": 72,
-      "phy": 74
+      "phy": 68
     }
   },
   {
@@ -45277,12 +45277,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 87,
+      "pas": 89,
       "cro": 72,
       "dri": 77,
       "aer": 68,
       "def": 73,
-      "phy": 74
+      "phy": 71
     }
   },
   {
@@ -45610,12 +45610,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 79,
+      "pas": 82,
       "cro": 63,
-      "dri": 71,
+      "dri": 72,
       "aer": 73,
       "def": 74,
-      "phy": 74
+      "phy": 68
     }
   },
   {
@@ -45646,12 +45646,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 66,
-      "pas": 82,
+      "pas": 84,
       "cro": 71,
-      "dri": 75,
+      "dri": 76,
       "aer": 66,
       "def": 73,
-      "phy": 72
+      "phy": 68
     }
   },
   {
@@ -45679,12 +45679,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 84,
+      "pas": 86,
       "cro": 73,
       "dri": 72,
       "aer": 66,
       "def": 70,
-      "phy": 71
+      "phy": 68
     }
   },
   {
@@ -46380,12 +46380,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 56,
-      "pas": 81,
+      "pas": 84,
       "cro": 63,
-      "dri": 70,
+      "dri": 71,
       "aer": 68,
       "def": 74,
-      "phy": 73
+      "phy": 67
     }
   },
   {
@@ -46920,12 +46920,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 79,
+      "pas": 82,
       "cro": 65,
-      "dri": 67,
+      "dri": 69,
       "aer": 70,
       "def": 72,
-      "phy": 74
+      "phy": 67
     }
   },
   {
@@ -47166,13 +47166,13 @@
     "scoutNote": "브라이튼의 중원을 지휘하며 2026-27시즌 최다 기회 창출과 득점·도움을 이끄는 핵심 플레이메이커",
     "isLegend": false,
     "attrs": {
-      "sho": 82,
-      "pas": 92,
-      "cro": 94,
-      "dri": 86,
+      "sho": 79,
+      "pas": 89,
+      "cro": 91,
+      "dri": 83,
       "aer": 67,
-      "def": 79,
-      "phy": 76
+      "def": 76,
+      "phy": 75
     }
   },
   {
@@ -47571,12 +47571,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 78,
+      "pas": 81,
       "cro": 63,
-      "dri": 69,
+      "dri": 71,
       "aer": 69,
       "def": 74,
-      "phy": 75
+      "phy": 67
     }
   },
   {
@@ -48004,12 +48004,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 79,
+      "pas": 81,
       "cro": 71,
-      "dri": 71,
+      "dri": 72,
       "aer": 63,
       "def": 72,
-      "phy": 72
+      "phy": 67
     }
   },
   {
@@ -48337,13 +48337,13 @@
     "scoutNote": "셀타 비고 소속 CM/CAM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 61,
+      "sho": 58,
       "pas": 82,
-      "cro": 71,
-      "dri": 74,
+      "cro": 68,
+      "dri": 73,
       "aer": 61,
-      "def": 70,
-      "phy": 74
+      "def": 67,
+      "phy": 66
     }
   },
   {
@@ -48474,12 +48474,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 81,
+      "pas": 83,
       "cro": 67,
-      "dri": 73,
+      "dri": 74,
       "aer": 76,
       "def": 78,
-      "phy": 76
+      "phy": 71
     }
   },
   {
@@ -49247,12 +49247,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 80,
+      "pas": 83,
       "cro": 70,
-      "dri": 72,
+      "dri": 73,
       "aer": 61,
       "def": 68,
-      "phy": 73
+      "phy": 67
     }
   },
   {
@@ -49622,12 +49622,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 77,
+      "pas": 80,
       "cro": 63,
-      "dri": 72,
+      "dri": 73,
       "aer": 71,
       "def": 73,
-      "phy": 73
+      "phy": 67
     }
   },
   {
@@ -50057,12 +50057,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 56,
-      "pas": 77,
+      "pas": 79,
       "cro": 63,
-      "dri": 68,
+      "dri": 69,
       "aer": 72,
       "def": 74,
-      "phy": 72
+      "phy": 67
     }
   },
   {
@@ -50455,12 +50455,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 80,
+      "pas": 82,
       "cro": 69,
-      "dri": 72,
+      "dri": 73,
       "aer": 63,
       "def": 70,
-      "phy": 72
+      "phy": 67
     }
   },
   {
@@ -50885,12 +50885,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 80,
+      "pas": 82,
       "cro": 68,
       "dri": 72,
       "aer": 61,
       "def": 68,
-      "phy": 70
+      "phy": 67
     }
   },
   {
@@ -51113,12 +51113,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 64,
-      "pas": 80,
+      "pas": 82,
       "cro": 72,
-      "dri": 75,
+      "dri": 76,
       "aer": 61,
       "def": 72,
-      "phy": 71
+      "phy": 67
     }
   },
   {
@@ -51275,12 +51275,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 82,
+      "pas": 85,
       "cro": 70,
-      "dri": 72,
+      "dri": 73,
       "aer": 62,
       "def": 70,
-      "phy": 73
+      "phy": 67
     }
   },
   {
@@ -51381,12 +51381,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 54,
-      "pas": 77,
+      "pas": 80,
       "cro": 62,
-      "dri": 68,
+      "dri": 69,
       "aer": 69,
       "def": 72,
-      "phy": 72
+      "phy": 66
     }
   },
   {
@@ -51513,12 +51513,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 76,
+      "pas": 78,
       "cro": 62,
-      "dri": 71,
+      "dri": 72,
       "aer": 71,
       "def": 74,
-      "phy": 71
+      "phy": 66
     }
   },
   {
@@ -52641,12 +52641,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 55,
-      "pas": 75,
+      "pas": 78,
       "cro": 65,
-      "dri": 68,
+      "dri": 69,
       "aer": 67,
       "def": 75,
-      "phy": 72
+      "phy": 66
     }
   },
   {
@@ -53261,13 +53261,13 @@
     "scoutNote": "알라베스 소속 CM/CAM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 61,
-      "pas": 82,
-      "cro": 71,
-      "dri": 74,
+      "sho": 58,
+      "pas": 81,
+      "cro": 68,
+      "dri": 71,
       "aer": 64,
-      "def": 69,
-      "phy": 69
+      "def": 66,
+      "phy": 65
     }
   },
   {
@@ -53498,13 +53498,13 @@
     "scoutNote": "엘체 소속 CM/CAM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 60,
+      "sho": 57,
       "pas": 81,
-      "cro": 71,
-      "dri": 73,
+      "cro": 68,
+      "dri": 72,
       "aer": 61,
-      "def": 69,
-      "phy": 73
+      "def": 66,
+      "phy": 65
     }
   },
   {
@@ -53893,12 +53893,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 79,
+      "pas": 81,
       "cro": 66,
-      "dri": 72,
+      "dri": 73,
       "aer": 61,
       "def": 69,
-      "phy": 70
+      "phy": 66
     }
   },
   {
@@ -54497,12 +54497,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 79,
+      "pas": 81,
       "cro": 69,
-      "dri": 73,
+      "dri": 74,
       "aer": 61,
       "def": 71,
-      "phy": 70
+      "phy": 66
     }
   },
   {
@@ -54694,12 +54694,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 63,
-      "pas": 79,
+      "pas": 81,
       "cro": 68,
-      "dri": 74,
+      "dri": 75,
       "aer": 60,
       "def": 68,
-      "phy": 71
+      "phy": 66
     }
   },
   {
@@ -55050,12 +55050,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 80,
+      "pas": 82,
       "cro": 70,
-      "dri": 72,
+      "dri": 73,
       "aer": 64,
       "def": 69,
-      "phy": 71
+      "phy": 66
     }
   },
   {
@@ -55219,12 +55219,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 78,
+      "pas": 80,
       "cro": 71,
-      "dri": 74,
+      "dri": 75,
       "aer": 61,
       "def": 68,
-      "phy": 70
+      "phy": 66
     }
   },
   {
@@ -56158,12 +56158,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 77,
+      "pas": 80,
       "cro": 61,
-      "dri": 66,
+      "dri": 68,
       "aer": 66,
       "def": 73,
-      "phy": 72
+      "phy": 65
     }
   },
   {
@@ -56498,12 +56498,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 56,
-      "pas": 77,
+      "pas": 79,
       "cro": 59,
       "dri": 65,
       "aer": 66,
       "def": 73,
-      "phy": 68
+      "phy": 65
     }
   },
   {
@@ -56534,13 +56534,13 @@
     "scoutNote": "우니온 베를린 소속 CM/CDM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 62,
-      "pas": 81,
-      "cro": 70,
-      "dri": 73,
+      "sho": 59,
+      "pas": 80,
+      "cro": 67,
+      "dri": 71,
       "aer": 62,
-      "def": 66,
-      "phy": 69
+      "def": 63,
+      "phy": 64
     }
   },
   {
@@ -57157,12 +57157,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 54,
-      "pas": 77,
+      "pas": 79,
       "cro": 62,
       "dri": 67,
       "aer": 66,
       "def": 71,
-      "phy": 68
+      "phy": 65
     }
   },
   {
@@ -58115,12 +58115,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 62,
-      "pas": 78,
+      "pas": 80,
       "cro": 68,
-      "dri": 73,
+      "dri": 74,
       "aer": 62,
       "def": 67,
-      "phy": 70
+      "phy": 65
     }
   },
   {
@@ -58350,12 +58350,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 75,
+      "pas": 77,
       "cro": 60,
-      "dri": 67,
+      "dri": 68,
       "aer": 68,
       "def": 73,
-      "phy": 70
+      "phy": 65
     }
   },
   {
@@ -58723,12 +58723,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 55,
-      "pas": 76,
+      "pas": 78,
       "cro": 63,
-      "dri": 67,
+      "dri": 68,
       "aer": 65,
       "def": 72,
-      "phy": 70
+      "phy": 65
     }
   },
   {
@@ -59091,12 +59091,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 59,
-      "pas": 77,
+      "pas": 80,
       "cro": 68,
-      "dri": 73,
+      "dri": 75,
       "aer": 60,
       "def": 68,
-      "phy": 72
+      "phy": 65
     }
   },
   {
@@ -59194,12 +59194,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 56,
-      "pas": 76,
+      "pas": 78,
       "cro": 63,
       "dri": 65,
       "aer": 68,
       "def": 73,
-      "phy": 68
+      "phy": 65
     }
   },
   {
@@ -59430,12 +59430,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 54,
-      "pas": 77,
+      "pas": 80,
       "cro": 63,
-      "dri": 67,
+      "dri": 69,
       "aer": 64,
       "def": 70,
-      "phy": 72
+      "phy": 65
     }
   },
   {
@@ -59537,12 +59537,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 56,
-      "pas": 75,
+      "pas": 78,
       "cro": 61,
-      "dri": 69,
+      "dri": 71,
       "aer": 68,
       "def": 72,
-      "phy": 73
+      "phy": 65
     }
   },
   {
@@ -59666,13 +59666,13 @@
     "scoutNote": "AC 밀란 소속 CM/CDM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 63,
-      "pas": 79,
-      "cro": 69,
-      "dri": 72,
+      "sho": 60,
+      "pas": 78,
+      "cro": 66,
+      "dri": 70,
       "aer": 61,
-      "def": 70,
-      "phy": 69
+      "def": 67,
+      "phy": 64
     }
   },
   {
@@ -60021,13 +60021,13 @@
     "scoutNote": "사수올로의 중원 압박과 수비 보호의 핵심 수비형 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 59,
+      "sho": 56,
       "pas": 79,
-      "cro": 70,
-      "dri": 72,
+      "cro": 67,
+      "dri": 70,
       "aer": 63,
-      "def": 69,
-      "phy": 71
+      "def": 66,
+      "phy": 64
     }
   },
   {
@@ -60087,12 +60087,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 79,
+      "pas": 81,
       "cro": 70,
       "dri": 70,
       "aer": 60,
       "def": 68,
-      "phy": 68
+      "phy": 65
     }
   },
   {
@@ -60217,12 +60217,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 75,
+      "pas": 78,
       "cro": 60,
-      "dri": 67,
+      "dri": 69,
       "aer": 69,
       "def": 71,
-      "phy": 74
+      "phy": 65
     }
   },
   {
@@ -60592,12 +60592,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 53,
-      "pas": 73,
+      "pas": 76,
       "cro": 61,
-      "dri": 67,
+      "dri": 69,
       "aer": 64,
       "def": 70,
-      "phy": 71
+      "phy": 64
     }
   },
   {
@@ -61168,12 +61168,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 77,
+      "pas": 79,
       "cro": 67,
-      "dri": 70,
+      "dri": 71,
       "aer": 58,
       "def": 65,
-      "phy": 69
+      "phy": 64
     }
   },
   {
@@ -61370,12 +61370,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 74,
+      "pas": 76,
       "cro": 60,
       "dri": 67,
       "aer": 63,
       "def": 72,
-      "phy": 67
+      "phy": 64
     }
   },
   {
@@ -62011,12 +62011,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 79,
+      "pas": 81,
       "cro": 66,
-      "dri": 70,
+      "dri": 71,
       "aer": 58,
       "def": 67,
-      "phy": 68
+      "phy": 64
     }
   },
   {
@@ -62046,12 +62046,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 53,
-      "pas": 76,
+      "pas": 78,
       "cro": 61,
-      "dri": 64,
+      "dri": 65,
       "aer": 67,
       "def": 71,
-      "phy": 68
+      "phy": 64
     }
   },
   {
@@ -62319,12 +62319,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 54,
-      "pas": 74,
+      "pas": 77,
       "cro": 62,
-      "dri": 65,
+      "dri": 67,
       "aer": 68,
       "def": 71,
-      "phy": 71
+      "phy": 64
     }
   },
   {
@@ -63214,12 +63214,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 76,
+      "pas": 78,
       "cro": 65,
       "dri": 69,
       "aer": 62,
       "def": 69,
-      "phy": 67
+      "phy": 64
     }
   },
   {
@@ -63379,12 +63379,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 54,
-      "pas": 77,
+      "pas": 80,
       "cro": 63,
-      "dri": 65,
+      "dri": 67,
       "aer": 68,
       "def": 70,
-      "phy": 71
+      "phy": 64
     }
   },
   {
@@ -64733,12 +64733,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 59,
-      "pas": 80,
+      "pas": 83,
       "cro": 66,
-      "dri": 70,
+      "dri": 71,
       "aer": 60,
       "def": 65,
-      "phy": 70
+      "phy": 64
     }
   },
   {
@@ -64939,12 +64939,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 55,
-      "pas": 76,
+      "pas": 79,
       "cro": 58,
-      "dri": 67,
+      "dri": 69,
       "aer": 64,
       "def": 70,
-      "phy": 71
+      "phy": 64
     }
   },
   {
@@ -64974,12 +64974,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 59,
-      "pas": 76,
+      "pas": 78,
       "cro": 69,
       "dri": 68,
       "aer": 61,
       "def": 67,
-      "phy": 67
+      "phy": 64
     }
   },
   {
@@ -65038,13 +65038,13 @@
     "scoutNote": "사수올로 소속 CM/CAM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 62,
+      "sho": 59,
       "pas": 80,
-      "cro": 65,
-      "dri": 71,
+      "cro": 62,
+      "dri": 69,
       "aer": 60,
-      "def": 66,
-      "phy": 70
+      "def": 63,
+      "phy": 63
     }
   },
   {
@@ -65276,13 +65276,13 @@
     "scoutNote": "칼리아리 소속 CM/CB 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 59,
+      "sho": 56,
       "pas": 80,
-      "cro": 66,
-      "dri": 71,
+      "cro": 63,
+      "dri": 70,
       "aer": 60,
-      "def": 65,
-      "phy": 71
+      "def": 62,
+      "phy": 63
     }
   },
   {
@@ -65665,12 +65665,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 59,
-      "pas": 76,
+      "pas": 79,
       "cro": 69,
-      "dri": 70,
+      "dri": 71,
       "aer": 60,
       "def": 68,
-      "phy": 70
+      "phy": 64
     }
   },
   {
@@ -66028,12 +66028,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 54,
-      "pas": 74,
+      "pas": 77,
       "cro": 59,
-      "dri": 66,
+      "dri": 68,
       "aer": 63,
       "def": 70,
-      "phy": 70
+      "phy": 63
     }
   },
   {
@@ -66203,12 +66203,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 75,
+      "pas": 77,
       "cro": 64,
-      "dri": 67,
+      "dri": 68,
       "aer": 61,
       "def": 66,
-      "phy": 67
+      "phy": 63
     }
   },
   {
@@ -66964,12 +66964,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 75,
+      "pas": 77,
       "cro": 67,
-      "dri": 70,
+      "dri": 71,
       "aer": 57,
       "def": 68,
-      "phy": 68
+      "phy": 63
     }
   },
   {
@@ -66997,12 +66997,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 61,
-      "pas": 77,
+      "pas": 79,
       "cro": 66,
-      "dri": 68,
+      "dri": 69,
       "aer": 60,
       "def": 66,
-      "phy": 67
+      "phy": 63
     }
   },
   {
@@ -67567,12 +67567,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 60,
-      "pas": 76,
+      "pas": 79,
       "cro": 66,
-      "dri": 70,
+      "dri": 71,
       "aer": 57,
       "def": 67,
-      "phy": 69
+      "phy": 63
     }
   },
   {
@@ -67942,12 +67942,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 75,
+      "pas": 78,
       "cro": 66,
-      "dri": 67,
+      "dri": 69,
       "aer": 58,
       "def": 64,
-      "phy": 70
+      "phy": 63
     }
   },
   {
@@ -68257,12 +68257,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 75,
+      "pas": 77,
       "cro": 66,
       "dri": 67,
       "aer": 60,
       "def": 68,
-      "phy": 66
+      "phy": 63
     }
   },
   {
@@ -68393,12 +68393,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 52,
-      "pas": 72,
+      "pas": 75,
       "cro": 57,
-      "dri": 65,
+      "dri": 67,
       "aer": 66,
       "def": 70,
-      "phy": 70
+      "phy": 63
     }
   },
   {
@@ -68428,12 +68428,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 56,
-      "pas": 73,
+      "pas": 76,
       "cro": 60,
-      "dri": 64,
+      "dri": 66,
       "aer": 63,
       "def": 71,
-      "phy": 71
+      "phy": 63
     }
   },
   {
@@ -68835,12 +68835,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 58,
-      "pas": 76,
+      "pas": 78,
       "cro": 64,
       "dri": 70,
       "aer": 59,
       "def": 68,
-      "phy": 66
+      "phy": 63
     }
   },
   {
@@ -68867,12 +68867,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 54,
-      "pas": 75,
+      "pas": 78,
       "cro": 58,
-      "dri": 64,
+      "dri": 66,
       "aer": 62,
       "def": 70,
-      "phy": 70
+      "phy": 63
     }
   },
   {
@@ -71327,12 +71327,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 57,
-      "pas": 76,
+      "pas": 79,
       "cro": 67,
-      "dri": 66,
+      "dri": 68,
       "aer": 57,
       "def": 64,
-      "phy": 69
+      "phy": 62
     }
   },
   {
@@ -72010,13 +72010,13 @@
     "scoutNote": "파르마 소속 CM 스쿼드 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 56,
+      "sho": 53,
       "pas": 78,
-      "cro": 65,
-      "dri": 66,
+      "cro": 62,
+      "dri": 65,
       "aer": 58,
-      "def": 67,
-      "phy": 69
+      "def": 64,
+      "phy": 61
     }
   },
   {
@@ -72399,12 +72399,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 59,
-      "pas": 75,
+      "pas": 77,
       "cro": 62,
-      "dri": 65,
+      "dri": 66,
       "aer": 57,
       "def": 62,
-      "phy": 65
+      "phy": 61
     }
   },
   {
@@ -73097,12 +73097,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 56,
-      "pas": 73,
+      "pas": 75,
       "cro": 63,
-      "dri": 68,
+      "dri": 69,
       "aer": 55,
       "def": 65,
-      "phy": 66
+      "phy": 61
     }
   },
   {
@@ -73130,12 +73130,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 53,
-      "pas": 71,
+      "pas": 73,
       "cro": 56,
-      "dri": 61,
+      "dri": 62,
       "aer": 65,
       "def": 70,
-      "phy": 65
+      "phy": 61
     }
   },
   {
@@ -74195,12 +74195,12 @@
     "isLegend": false,
     "attrs": {
       "sho": 51,
-      "pas": 71,
+      "pas": 74,
       "cro": 58,
-      "dri": 64,
+      "dri": 65,
       "aer": 62,
       "def": 69,
-      "phy": 66
+      "phy": 60
     }
   },
   {

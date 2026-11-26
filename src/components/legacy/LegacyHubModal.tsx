@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Award,
+  BookOpen,
   Calendar,
   Crown,
   Globe,
@@ -33,12 +34,19 @@ import {
   reconstructHallOfFameSquad,
 } from '../../engine/legacyEngine';
 import { TACTICS } from '../../engine/tacticEngine';
+import {
+  resolveGlobalEntryTeamStory,
+  resolveHofTeamStory,
+} from '../../engine/teamStoryEngine';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
 import {
-  fetchGlobalTop15Rankings,
-  GLOBAL_TOP15_LIMIT,
+  fetchWeeklyDailyRankings,
+  GLOBAL_DAILY_TOP_LIMIT,
+  GLOBAL_PAST_DAY_ARCHIVE_LIMIT,
+  groupWeeklyDailyRankings,
   reconstructSquadFromGlobalRanking,
+  type WeeklyDailyRankingsBoard,
 } from '../../services/globalRankingService';
 import { type LegacyModalTab, useGame } from '../../store/GameContext';
 import type {
@@ -54,10 +62,12 @@ import { PitchBoard } from '../common/PitchBoard';
 import { PixelManagerAvatar } from '../common/PixelManagerAvatar';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
+import { TeamIntroBanner, TeamStoryTab } from '../common/TeamStoryTab';
 
 type HofFilterTab = 'all' | 'user' | 'historical' | 'era_xi';
 type HofSortBy = 'score' | 'date';
-type HofDetailSubTab = 'squad' | 'history';
+type HofDetailSubTab = 'squad' | 'story' | 'history';
+type GlobalDetailSubTab = 'squad' | 'story';
 type HofHistoryFilter = 'all' | 'league' | 'cup' | 'ucl';
 
 function formatShortDate(iso: string): string {
@@ -122,16 +132,20 @@ function LegacyHubModalContent({
     useState<GlobalHofRankingEntry | null>(null);
   const [inspectedPlayer, setInspectedPlayer] = useState<Player | null>(null);
   const [detailSubTab, setDetailSubTab] = useState<HofDetailSubTab>('squad');
+  const [globalDetailSubTab, setGlobalDetailSubTab] =
+    useState<GlobalDetailSubTab>('squad');
   const [historyFilter, setHistoryFilter] = useState<HofHistoryFilter>('all');
   const [achFilter, setAchFilter] = useState<'all' | 'unlocked' | 'locked'>(
     'all',
   );
 
-  // Global TOP 15 state
-  const [globalEntries, setGlobalEntries] = useState<GlobalHofRankingEntry[]>(
-    [],
+  // Weekly KST Daily Rankings state (Today TOP 10 / Past Days TOP 3 / Weekly Monday 00:00 KST Reset)
+  const [weeklyBoard, setWeeklyBoard] = useState<WeeklyDailyRankingsBoard>(() =>
+    groupWeeklyDailyRankings([]),
   );
-  const [globalCutoff, setGlobalCutoff] = useState<number | null>(null);
+  const [selectedDateKey, setSelectedDateKey] = useState<string>(
+    () => groupWeeklyDailyRankings([]).todayKey,
+  );
   const [globalLoading, setGlobalLoading] = useState<boolean>(
     isSupabaseConfigured,
   );
@@ -149,10 +163,12 @@ function LegacyHubModalContent({
     }
     setGlobalLoading(true);
     setGlobalError(null);
-    const res = await fetchGlobalTop15Rankings();
-    if (res.ok) {
-      setGlobalEntries(res.entries);
-      setGlobalCutoff(res.cutoffScore);
+    const res = await fetchWeeklyDailyRankings();
+    if (res.ok && res.weekly) {
+      setWeeklyBoard(res.weekly);
+      setSelectedDateKey((prev) =>
+        res.weekly!.byDate[prev] ? prev : res.weekly!.todayKey,
+      );
     } else {
       setGlobalError(res.error ?? '랭킹을 불러오지 못했습니다.');
     }
@@ -162,11 +178,13 @@ function LegacyHubModalContent({
   useEffect(() => {
     let active = true;
     if (!isSupabaseConfigured) return;
-    void fetchGlobalTop15Rankings().then((res) => {
+    void fetchWeeklyDailyRankings().then((res) => {
       if (!active) return;
-      if (res.ok) {
-        setGlobalEntries(res.entries);
-        setGlobalCutoff(res.cutoffScore);
+      if (res.ok && res.weekly) {
+        setWeeklyBoard(res.weekly);
+        setSelectedDateKey((prev) =>
+          res.weekly!.byDate[prev] ? prev : res.weekly!.todayKey,
+        );
         setGlobalError(null);
       } else {
         setGlobalError(res.error ?? '랭킹을 불러오지 못했습니다.');
@@ -178,6 +196,14 @@ function LegacyHubModalContent({
     };
   }, [globalRankingsVersion]);
 
+  const activeDailyBucket =
+    weeklyBoard.byDate[selectedDateKey] ??
+    weeklyBoard.byDate[weeklyBoard.todayKey] ??
+    weeklyBoard.buckets[0];
+  const globalEntries = activeDailyBucket?.entries ?? [];
+  const globalCutoff = activeDailyBucket?.cutoffScore ?? null;
+  const activeDailyLimit = activeDailyBucket?.limit ?? GLOBAL_DAILY_TOP_LIMIT;
+
   const localRunIds = useMemo(
     () => new Set(legacyState.hallOfFame.map((e) => e.runId ?? e.id)),
     [legacyState.hallOfFame],
@@ -185,9 +211,9 @@ function LegacyHubModalContent({
 
   const globalRankByRunId = useMemo(() => {
     const map = new Map<string, number>();
-    for (const g of globalEntries) map.set(g.runId, g.rank);
+    for (const g of weeklyBoard.todayEntries) map.set(g.runId, g.rank);
     return map;
-  }, [globalEntries]);
+  }, [weeklyBoard.todayEntries]);
 
   const hasPlayableChallengerSquad = useMemo(() => {
     const hasHof = legacyState.hallOfFame.length > 0;
@@ -231,8 +257,8 @@ function LegacyHubModalContent({
           [runId]: {
             ok: true,
             text: res.alreadyExists
-              ? `이미 글로벌 #${res.rank}위 등록됨`
-              : `글로벌 #${res.rank}위 등재 완료!`,
+              ? `이미 오늘 #${res.rank}위 등록됨`
+              : `오늘의 랭킹 #${res.rank}위 등재 완료!`,
           },
         }));
         void loadGlobalRankings();
@@ -243,8 +269,8 @@ function LegacyHubModalContent({
             ok: false,
             text:
               res.cutoffScore !== null
-                ? `15위 컷(${res.cutoffScore.toLocaleString()}점) 미달`
-                : 'TOP 15 진입 기준 미달',
+                ? `오늘 ${GLOBAL_DAILY_TOP_LIMIT}위 컷(${res.cutoffScore.toLocaleString()}점) 미달`
+                : `오늘 TOP ${GLOBAL_DAILY_TOP_LIMIT} 진입 기준 미달`,
           },
         }));
       }
@@ -388,13 +414,13 @@ function LegacyHubModalContent({
                   Road To Treble 명예의 전당
                 </h2>
                 <InfoHelpButton
-                  title="명예의 전당 & 글로벌 TOP 15 기준"
+                  title="명예의 전당 & 일일 랭킹 기준"
                   align="left"
                   guideTab="legacy"
                   items={[
                     `자동 등재: 시즌 스코어 ${HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}+ (역대 강팀급) · S+ 등급 · UCL 우승 · 트레블 달성 시`,
                     '수동 등재: 기준 미만 시즌도 시즌 결산 화면의 [수동 등록] 버튼으로 직접 등재 가능',
-                    '글로벌 TOP 15: 상위 15개 기록만 유지되며 16위 이하로 밀려나면 자동 삭제됩니다.',
+                    `일일 랭킹(KST): 당일 TOP ${GLOBAL_DAILY_TOP_LIMIT} 경쟁 · 지난 날짜는 TOP ${GLOBAL_PAST_DAY_ARCHIVE_LIMIT} 아카이브 · 매주 월요일 00:00(KST) 주간 초기화`,
                   ]}
                 />
               </div>
@@ -443,7 +469,7 @@ function LegacyHubModalContent({
                     : 'text-slate-400 border border-transparent hover:text-white'
                 }`}
               >
-                🌍 역대 TOP 15
+                🌍 일일 랭킹
               </button>
               <button
                 type="button"
@@ -881,7 +907,7 @@ function LegacyHubModalContent({
                                         className="inline-flex items-center gap-1 rounded-lg border border-sky-400/40 bg-sky-500/15 px-2 py-1 text-[11px] font-bold text-sky-300 hover:bg-sky-500/25 cursor-pointer"
                                       >
                                         <Globe className="h-3 w-3" />
-                                        <span>글로벌 #{globalRank}</span>
+                                        <span>오늘 #{globalRank}</span>
                                       </button>
                                     ) : (
                                       <button
@@ -889,10 +915,10 @@ function LegacyHubModalContent({
                                         disabled={isSubmitting}
                                         onClick={() => void handleManualGlobalSubmit(entry)}
                                         className="inline-flex items-center gap-1 rounded-lg border border-sky-400/35 bg-sky-500/12 px-2 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/22 disabled:opacity-50 cursor-pointer"
-                                        title="이 명예의 전당 기록을 글로벌 TOP 15 랭킹에 도전/제출합니다"
+                                        title={`이 명예의 전당 기록을 오늘의 일일 랭킹 TOP ${GLOBAL_DAILY_TOP_LIMIT}에 도전/제출합니다`}
                                       >
                                         <Upload className="h-3 w-3" />
-                                        <span>{isSubmitting ? '제출 중...' : '글로벌 도전'}</span>
+                                        <span>{isSubmitting ? '제출 중...' : '일일 랭킹 도전'}</span>
                                       </button>
                                     )
                                   )}
@@ -1288,7 +1314,7 @@ function LegacyHubModalContent({
                             className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-1.5 text-xs font-black text-sky-200 hover:bg-sky-500/25 cursor-pointer"
                           >
                             <Globe className="h-3.5 w-3.5" />
-                            <span>글로벌 TOP 15 · #{globalRank}위</span>
+                            <span>오늘의 랭킹 · #{globalRank}위</span>
                           </button>
                         ) : (
                           <button
@@ -1301,7 +1327,7 @@ function LegacyHubModalContent({
                             <span>
                               {isSubmitting
                                 ? '제출 중...'
-                                : '글로벌 TOP 15 도전/등록'}
+                                : `오늘 TOP ${GLOBAL_DAILY_TOP_LIMIT} 도전/등록`}
                             </span>
                           </button>
                         )}
@@ -1496,12 +1522,18 @@ function LegacyHubModalContent({
                   </div>
                 )}
 
-              {/* Detail Sub-Tabs: Squad vs Full Match History */}
-              <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+              {/* Compact 1~2 Line Team Intro */}
+              <TeamIntroBanner
+                intro={resolveHofTeamStory(selectedEntry).intro}
+                compact
+              />
+
+              {/* Detail Sub-Tabs: Squad vs Team Story vs Full Match History */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-2">
                 <button
                   type="button"
                   onClick={() => setDetailSubTab('squad')}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold cursor-pointer transition-colors ${
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold cursor-pointer transition-colors whitespace-nowrap ${
                     detailSubTab === 'squad'
                       ? 'bg-slate-800 text-white border-emerald-500/50'
                       : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
@@ -1511,8 +1543,20 @@ function LegacyHubModalContent({
                 </button>
                 <button
                   type="button"
+                  onClick={() => setDetailSubTab('story')}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold cursor-pointer transition-colors whitespace-nowrap ${
+                    detailSubTab === 'story'
+                      ? 'bg-slate-800 text-amber-200 border-amber-400/50'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  팀 스토리
+                </button>
+                <button
+                  type="button"
                   onClick={() => setDetailSubTab('history')}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold cursor-pointer transition-colors ${
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold cursor-pointer transition-colors whitespace-nowrap ${
                     detailSubTab === 'history'
                       ? 'bg-slate-800 text-white border-emerald-500/50'
                       : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
@@ -1522,7 +1566,13 @@ function LegacyHubModalContent({
                 </button>
               </div>
 
-              {detailSubTab === 'squad' ? (
+              {detailSubTab === 'story' ? (
+                <TeamStoryTab
+                  story={resolveHofTeamStory(selectedEntry)}
+                  clubName={selectedEntry.userClub.name}
+                  showIntroBanner={false}
+                />
+              ) : detailSubTab === 'squad' ? (
                 userEntryPitchData ? (
                   <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5 sm:p-4 space-y-3.5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1769,23 +1819,93 @@ function LegacyHubModalContent({
 
           {tab === 'global_top15' && !selectedGlobal && (
             <div className="space-y-4">
-              <div className="rounded-lg border border-slate-800/90 bg-[#0b1018] px-3 py-1.5 text-[11px] text-slate-400 break-keep">
-                {HOF_RESET_NOTICE_TEXT}
+              {/* Weekly KST Daily Ranking Policy Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/90 bg-[#0b1018] px-3.5 py-2 text-[11px] text-slate-400 break-keep">
+                <span>
+                  <strong className="text-sky-300">KST 일일 랭킹</strong> · 당일{' '}
+                  <strong className="text-slate-200">
+                    TOP {GLOBAL_DAILY_TOP_LIMIT}
+                  </strong>{' '}
+                  경쟁 · 지난 날짜는{' '}
+                  <strong className="text-amber-300">
+                    TOP {GLOBAL_PAST_DAY_ARCHIVE_LIMIT}
+                  </strong>{' '}
+                  아카이브 · 매주 월요일 00:00(KST) 주간 초기화
+                </span>
+                <span className="font-mono text-[10px] text-slate-500 whitespace-nowrap">
+                  {weeklyBoard.weekStartKey.slice(5).replace('-', '.')} 주간
+                </span>
               </div>
-              {/* Top Bar: Status + Cutoff + Refresh */}
+
+              {/* Weekly Date Tabs (Today -> Earlier Days of This Week) */}
+              <div
+                role="tablist"
+                aria-label="이번 주 일일 랭킹 날짜 선택"
+                className="flex items-center gap-1.5 overflow-x-auto pb-1"
+              >
+                {weeklyBoard.buckets.map((bucket) => {
+                  const isActive =
+                    (activeDailyBucket?.dateKey ?? weeklyBoard.todayKey) ===
+                    bucket.dateKey;
+                  const count = bucket.entries.length;
+                  return (
+                    <button
+                      key={bucket.dateKey}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setSelectedDateKey(bucket.dateKey)}
+                      className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                        isActive
+                          ? bucket.isToday
+                            ? 'border-sky-400/60 bg-sky-500/18 text-sky-200 shadow-sm shadow-sky-500/15'
+                            : 'border-amber-400/55 bg-amber-500/15 text-amber-200'
+                          : 'border-slate-800 bg-[#0a0f17] text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                      }`}
+                    >
+                      <span>{bucket.label}</span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-black tabular-nums ${
+                          isActive
+                            ? bucket.isToday
+                              ? 'bg-sky-400/20 text-sky-200'
+                              : 'bg-amber-400/20 text-amber-200'
+                            : 'bg-slate-900 text-slate-500'
+                        }`}
+                      >
+                        {bucket.isToday
+                          ? `${count}/${bucket.limit}`
+                          : `TOP ${bucket.limit}${count > 0 ? ` · ${count}` : ''}`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Top Bar: Active Date Status + Cutoff + Refresh */}
               <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-800 bg-[#090e15] px-3.5 py-2.5">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="inline-flex items-center gap-1 rounded-md border border-sky-400/35 bg-sky-500/15 px-2 py-0.5 text-[11px] font-black text-sky-300">
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-black whitespace-nowrap ${
+                      activeDailyBucket?.isToday
+                        ? 'border-sky-400/35 bg-sky-500/15 text-sky-300'
+                        : 'border-amber-400/35 bg-amber-500/15 text-amber-300'
+                    }`}
+                  >
                     <Globe className="h-3.5 w-3.5" />
-                    역대 유저 TOP {GLOBAL_TOP15_LIMIT}
+                    {activeDailyBucket?.isToday
+                      ? `오늘의 랭킹 TOP ${activeDailyLimit}`
+                      : `${activeDailyBucket?.label ?? selectedDateKey} TOP ${activeDailyLimit} 아카이브`}
                   </span>
                   <span className="font-mono text-[11px] text-slate-300 tabular-nums">
-                    {globalEntries.length} / {GLOBAL_TOP15_LIMIT}
+                    {globalEntries.length} / {activeDailyLimit}
                   </span>
-                  {globalEntries.length >= GLOBAL_TOP15_LIMIT &&
+                  {activeDailyBucket?.isToday &&
+                    globalEntries.length >= activeDailyLimit &&
                     globalCutoff !== null && (
                       <span className="rounded bg-slate-900 border border-slate-800 px-2 py-0.5 font-mono text-[11px] text-amber-300 tabular-nums">
-                        15위 컷 {globalCutoff.toLocaleString()} PTS
+                        {activeDailyLimit}위 컷 {globalCutoff.toLocaleString()}{' '}
+                        PTS
                       </span>
                     )}
                 </div>
@@ -1794,7 +1914,7 @@ function LegacyHubModalContent({
                     type="button"
                     disabled={globalLoading}
                     onClick={() => void loadGlobalRankings()}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:border-sky-400/50 hover:text-white disabled:opacity-50 cursor-pointer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-[11px] font-bold text-slate-300 hover:border-sky-400/50 hover:text-white disabled:opacity-50 cursor-pointer whitespace-nowrap"
                   >
                     <RefreshCw
                       className={`h-3 w-3 ${globalLoading ? 'animate-spin' : ''}`}
@@ -1826,7 +1946,7 @@ function LegacyHubModalContent({
                 <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-10 text-center space-y-2">
                   <Globe className="mx-auto h-9 w-9 text-slate-600" />
                   <p className="text-sm font-bold text-slate-300">
-                    글로벌 랭킹 서버가 연결되어 있지 않습니다.
+                    일일 랭킹 서버가 연결되어 있지 않습니다.
                   </p>
                   <p className="text-xs text-slate-500">
                     로컬 명예의 전당과 싱글플레이는 정상적으로 이용할 수 있습니다.
@@ -1860,10 +1980,14 @@ function LegacyHubModalContent({
                 <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-10 text-center space-y-2">
                   <Trophy className="mx-auto h-10 w-10 text-slate-600" />
                   <p className="text-sm font-bold text-slate-300">
-                    아직 글로벌 TOP {GLOBAL_TOP15_LIMIT}에 등재된 기록이 없습니다.
+                    {activeDailyBucket?.isToday
+                      ? `오늘의 일일 랭킹 TOP ${activeDailyLimit}에 아직 기록이 없습니다.`
+                      : `${activeDailyBucket?.label ?? selectedDateKey}에 보존된 TOP ${activeDailyLimit} 기록이 없습니다.`}
                   </p>
-                  <p className="text-xs text-slate-500">
-                    싱글플레이 시즌을 완주해 명예의 전당에 등록하면 첫 번째 랭커가 될 수 있습니다.
+                  <p className="text-xs text-slate-500 break-keep">
+                    {activeDailyBucket?.isToday
+                      ? '싱글플레이 시즌을 완주해 명예의 전당에 등록하면 오늘의 첫 번째 랭커가 될 수 있습니다.'
+                      : '매주 월요일 00:00(KST) 주간 초기화 이후 일별 상위 3팀이 이 날짜에 아카이브됩니다.'}
                   </p>
                 </div>
               ) : (
@@ -1896,10 +2020,14 @@ function LegacyHubModalContent({
                           <div
                             role="button"
                             tabIndex={0}
-                            onClick={() => setSelectedGlobal(entry)}
+                            onClick={() => {
+                              setGlobalDetailSubTab('squad');
+                              setSelectedGlobal(entry);
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault();
+                                setGlobalDetailSubTab('squad');
                                 setSelectedGlobal(entry);
                               }
                             }}
@@ -2019,7 +2147,10 @@ function LegacyHubModalContent({
                             <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => setSelectedGlobal(entry)}
+                                onClick={() => {
+                                  setGlobalDetailSubTab('squad');
+                                  setSelectedGlobal(entry);
+                                }}
                                 className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-200 hover:border-slate-500 hover:text-white cursor-pointer whitespace-nowrap"
                               >
                                 스쿼드
@@ -2043,7 +2174,7 @@ function LegacyHubModalContent({
             </div>
           )}
 
-          {/* GLOBAL TOP 15 TEAM DETAIL VIEW */}
+          {/* DAILY RANKING TEAM DETAIL VIEW */}
           {tab === 'global_top15' && selectedGlobal && (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2051,11 +2182,12 @@ function LegacyHubModalContent({
                   type="button"
                   onClick={() => {
                     setSelectedGlobal(null);
+                    setGlobalDetailSubTab('squad');
                     setChallengeNotice(null);
                   }}
                   className="text-xs font-bold text-sky-300 hover:underline cursor-pointer"
                 >
-                  ← 역대 TOP {GLOBAL_TOP15_LIMIT} 랭킹으로 돌아가기
+                  ← 일일 랭킹으로 돌아가기
                 </button>
                 <button
                   type="button"
@@ -2133,7 +2265,8 @@ function LegacyHubModalContent({
                     <p className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                       <span className="inline-flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {formatShortDate(selectedGlobal.achievedAt)}
+                        {selectedGlobal.rankingDate ??
+                          formatShortDate(selectedGlobal.achievedAt)}
                       </span>
                       <span>포메이션 {selectedGlobal.formation}</span>
                       <span>
@@ -2255,8 +2388,50 @@ function LegacyHubModalContent({
                   );
                 })()}
 
+              {/* Compact 1~2 Line Team Intro */}
+              <TeamIntroBanner
+                intro={resolveGlobalEntryTeamStory(selectedGlobal).intro}
+                compact
+              />
+
+              {/* Sub-Tab Switcher: Squad vs Team Story */}
+              <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 pb-2">
+                <button
+                  type="button"
+                  onClick={() => setGlobalDetailSubTab('squad')}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                    globalDetailSubTab === 'squad'
+                      ? 'border-sky-400/50 bg-sky-500/15 text-sky-200'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>스쿼드 · 포메이션</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGlobalDetailSubTab('story')}
+                  className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+                    globalDetailSubTab === 'story'
+                      ? 'border-amber-400/50 bg-amber-500/15 text-amber-200'
+                      : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  <span>팀 스토리</span>
+                </button>
+              </div>
+
+              {globalDetailSubTab === 'story' && (
+                <TeamStoryTab
+                  story={resolveGlobalEntryTeamStory(selectedGlobal)}
+                  clubName={selectedGlobal.clubProfile.name}
+                  showIntroBanner={false}
+                />
+              )}
+
               {/* Formation PitchBoard + Manager & Bench */}
-              {globalPitchData && (
+              {globalDetailSubTab === 'squad' && globalPitchData && (
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3.5 sm:p-4 space-y-3.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">

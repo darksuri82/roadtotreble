@@ -394,7 +394,7 @@ export interface SeasonScoreInput {
   userClubId?: string;
   /** Optional FFP sanction tier (0 = compliant, 1 = Tier 1, 2 = Tier 2). */
   ffpTier?: FfpTier;
-  /** Optional FFP score multiplier (e.g. 0.94 for Tier 1 -6%, 0.80 for Tier 2 -20%). Default 1.0 */
+  /** Optional FFP score multiplier (e.g. 0.94 for Tier 1 -6%, 0.88 for Tier 2 -12%). Default 1.0 */
   ffpScoreMultiplier?: number;
 }
 
@@ -1067,6 +1067,7 @@ export function archiveSeasonToHallOfFame(params: {
   managerAvatar?: ManagerAvatarConfig;
   managerTraitId: ManagerTraitId | null;
   managerRating?: number;
+  staffCoachId?: import('../types/game').StaffCoachId | null;
   leagueId: LeagueId;
   formation: FormationId;
   defaultTactic: TacticId;
@@ -1082,6 +1083,7 @@ export function archiveSeasonToHallOfFame(params: {
   awards?: SeasonAwards | null;
   globalAwards?: GlobalSeasonAwards | null;
   matchHistory?: HallOfFameMatchSummary[];
+  teamStory?: import('../types/legacy').TeamSeasonStory;
   starters: (Player | null)[];
   bench: (Player | null)[];
   combinedPlayerStats: Record<string, PlayerSeasonStats>;
@@ -1095,6 +1097,7 @@ export function archiveSeasonToHallOfFame(params: {
     managerAvatar,
     managerTraitId,
     managerRating,
+    staffCoachId = null,
     leagueId,
     formation,
     defaultTactic,
@@ -1110,6 +1113,7 @@ export function archiveSeasonToHallOfFame(params: {
     awards = null,
     globalAwards = null,
     matchHistory,
+    teamStory,
     starters,
     bench,
     combinedPlayerStats,
@@ -1180,6 +1184,7 @@ export function archiveSeasonToHallOfFame(params: {
     managerAvatar: managerAvatar ? { ...managerAvatar } : undefined,
     managerTraitId,
     managerRating,
+    staffCoachId,
     leagueId,
     leagueKoreanName: league.koreanName,
     formation,
@@ -1213,6 +1218,7 @@ export function archiveSeasonToHallOfFame(params: {
     worldBestXiUserCount,
     leagueBestXiUserCount,
     matchHistory,
+    teamStory,
     starters: starterMembers,
     bench: benchMembers,
     fullStarters,

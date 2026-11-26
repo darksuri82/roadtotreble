@@ -1690,8 +1690,38 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                         />
 
                         <div className="space-y-2">
-                          <div className="text-xs font-bold text-slate-300">
-                            방출(교체)할 우리 팀 선수 1명을 선택하세요:
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <span className="font-bold text-slate-300">
+                              방출(교체)할 우리 팀 선수 1명을 선택하세요:
+                            </span>
+                            {(() => {
+                              const pickedOut = legendOutSlot
+                                ? legendOutSlot.area === 'starter'
+                                  ? state.starters[legendOutSlot.index]
+                                  : state.bench[legendOutSlot.index]
+                                : null;
+                              if (!pickedOut) {
+                                return (
+                                  <span className="rounded-md border border-slate-700/80 bg-slate-900/70 px-2 py-0.5 text-[10px] font-semibold text-slate-400 whitespace-nowrap">
+                                    미선택 · 아래 선수 클릭
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-flex items-center gap-1.5 rounded-md border border-rose-400/55 bg-rose-950/50 px-2 py-0.5 text-[10px] font-extrabold text-rose-200 whitespace-nowrap">
+                                  <span>
+                                    OUT {formatPlayerRecordName(pickedOut)} (OVR {pickedOut.ovr})
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setLegendOutSlot(null)}
+                                    className="rounded bg-rose-500/25 px-1 text-[9px] text-rose-100 hover:bg-rose-500/45 cursor-pointer"
+                                  >
+                                    해제
+                                  </button>
+                                </span>
+                              );
+                            })()}
                           </div>
                           <PitchBoard
                             formation={state.formation}
@@ -2840,6 +2870,71 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           </div>
         )}
       </div>
+
+      {/* Sticky Bottom Classic FA Bar (instant feedback when clicking a player to release) */}
+      {activeTab === 'explore' &&
+        activeClubOffer?.isLegendSlot &&
+        activeClubOffer.squad[0] &&
+        legendOutSlot &&
+        (() => {
+          const legTarget = activeClubOffer.squad[0];
+          const pickedOut =
+            legendOutSlot.area === 'starter'
+              ? state.starters[legendOutSlot.index]
+              : state.bench[legendOutSlot.index];
+          if (!pickedOut) return null;
+          const alreadySigned = tm.signedPlayerIds.includes(legTarget.player.id);
+          const chancePct = Math.min(
+            95,
+            Math.round(
+              legTarget.successChance +
+                computeCashLegendChanceBonus(clampedCashOfferM),
+            ),
+          );
+          return (
+            <div className="shrink-0 border-t border-amber-500/35 bg-[#0b101b] px-3 py-2 sm:px-4 sm:py-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-1.5 text-[10px] sm:text-[11px] min-w-0 flex-1">
+                  <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/45 bg-amber-500/15 px-1.5 py-0.5 font-bold text-amber-200 whitespace-nowrap">
+                    IN {shortPitchName(legTarget.player.name)} ({legTarget.player.ovr})
+                  </span>
+                  <span className="text-slate-500">↔</span>
+                  <button
+                    type="button"
+                    onClick={() => setInspectedPlayer(pickedOut)}
+                    className="inline-flex items-center gap-1 rounded-md border border-rose-400/45 bg-rose-500/15 px-1.5 py-0.5 font-bold text-rose-200 cursor-pointer whitespace-nowrap"
+                  >
+                    <span>OUT {shortPitchName(pickedOut.name)} ({pickedOut.ovr})</span>
+                    <Info className="h-2.5 w-2.5 opacity-80" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setLegendOutSlot(null)}
+                    className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-[10px] sm:text-[11px] font-bold text-slate-300 cursor-pointer whitespace-nowrap"
+                  >
+                    해제
+                  </button>
+                  <button
+                    type="button"
+                    disabled={
+                      alreadySigned ||
+                      tm.attemptsRemaining <= 0 ||
+                      ffpEmbargoActive
+                    }
+                    onClick={() => handleSubmitLegendOffer(legTarget)}
+                    className="rounded-lg bg-amber-400 px-3 py-1.5 text-[11px] sm:text-xs font-black text-slate-950 hover:bg-amber-300 disabled:opacity-40 cursor-pointer whitespace-nowrap"
+                  >
+                    {alreadySigned
+                      ? '영입 완료'
+                      : `👑 클래식 FA 제안 (${chancePct}%)`}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* Sticky Bottom Trade Bar (Mobile & PC convenience: inspect selected players & submit without scrolling back up!) */}
       {activeTab === 'explore' &&

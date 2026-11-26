@@ -28,12 +28,14 @@ import { didUserWinCup, getUserCupResultLabel } from '../../engine/cupEngine';
 import { getLeagueById, LEAGUES } from '../../engine/dataLoader';
 import {
   buildCompactMatchHistory,
+  computeUserSeasonManagerRating,
   HOF_AUTO_INDUCTION_MIN_SCORE,
 } from '../../engine/legacyEngine';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { buildFiveLeagueUclQualifiers } from '../../engine/otherLeaguesEngine';
 import { formatMainPositions } from '../../engine/positionEngine';
 import { getUserRank } from '../../engine/standingsEngine';
+import { generateSoloSeasonTeamStory } from '../../engine/teamStoryEngine';
 import { didUserWinUcl, getUserUclResultLabel } from '../../engine/uclEngine';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
 import { fetchGlobalTop15Rankings } from '../../services/globalRankingService';
@@ -214,6 +216,8 @@ function BestXiPitchCard({
 export function SeasonSummary() {
   const {
     state,
+    chemistry,
+    ratings,
     enterUclMode,
     skipUclToFinalSummary,
     setLegacyModalOpen,
@@ -925,20 +929,20 @@ export function SeasonSummary() {
             return (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-[#090e15] px-3.5 py-2 text-xs">
                 <div className="flex flex-wrap items-center gap-2 text-slate-300">
-                  <span className="rounded bg-sky-500/15 border border-sky-400/30 px-2 py-0.5 text-[10px] font-black text-sky-300">
-                    🌍 글로벌 TOP 15
+                  <span className="rounded bg-sky-500/15 border border-sky-400/30 px-2 py-0.5 text-[10px] font-black text-sky-300 whitespace-nowrap">
+                    🌍 일일 랭킹 TOP 10
                   </span>
                   {enteredRank !== null ? (
                     <span className="font-bold text-emerald-300 tabular-nums">
-                      역대 글로벌 #{enteredRank}위 등재 완료
+                      오늘의 랭킹 #{enteredRank}위 등재 완료
                     </span>
-                  ) : totalCount !== null && totalCount < 15 ? (
+                  ) : totalCount !== null && totalCount < 10 ? (
                     <span className="text-slate-300 tabular-nums">
-                      현재 {totalCount}/15팀 등재 중
+                      오늘 {totalCount}/10팀 등재 중
                     </span>
                   ) : cutoffScore !== null ? (
                     <span className="text-slate-400 tabular-nums">
-                      현재 15위 커트라인{' '}
+                      오늘 10위 커트라인{' '}
                       <strong className="font-mono text-slate-200">
                         {cutoffScore.toLocaleString()} PTS
                       </strong>
@@ -948,9 +952,9 @@ export function SeasonSummary() {
                 <button
                   type="button"
                   onClick={() => openLegacyModal('global_top15')}
-                  className="shrink-0 text-[11px] font-bold text-sky-300 hover:underline cursor-pointer"
+                  className="shrink-0 text-[11px] font-bold text-sky-300 hover:underline cursor-pointer whitespace-nowrap"
                 >
-                  TOP 15 랭킹 보기 →
+                  일일 랭킹 보기 →
                 </button>
               </div>
             );
@@ -1054,6 +1058,55 @@ export function SeasonSummary() {
           honors.push({ label: '🏛️ 명예의 전당 등재', tone: 'gold' });
         }
 
+        const playedRounds = Math.max(
+          1,
+          userRow?.played ?? season.totalRounds,
+        );
+        const computedMgrRating = computeUserSeasonManagerRating({
+          finalLeagueRank: finalRank,
+          wonCup: didUserWinCup(season.cup, USER_CLUB_ID),
+          wonUcl: didUserWinUcl(season.ucl, USER_CLUB_ID),
+          leagueLosses: userRow?.lost ?? 0,
+          leaguePlayed: playedRounds,
+          converted38Points: ((userRow?.points ?? 0) / playedRounds) * 38,
+          chemistry: chemistry.total,
+          managerSynergyCount: 0,
+        });
+        const effectiveTotalOvr =
+          Math.round(
+            ((ratings.effectiveAtt +
+              ratings.effectiveMid +
+              ratings.effectiveDef) /
+              3) *
+              10,
+          ) / 10;
+        const soloTeamStory = generateSoloSeasonTeamStory({
+          userClubName: state.userClub.name,
+          managerName: state.manager.name,
+          managerTraitId: state.manager.traitId,
+          managerRating: computedMgrRating,
+          staffCoachId: season.staffCoach?.hiredCoachId ?? null,
+          formation: state.formation,
+          tactic: season.defaultTactic,
+          leagueName: league.koreanName,
+          clubs: season.clubs,
+          standings: season.standings,
+          fixtures: season.fixtures,
+          totalRounds: season.totalRounds,
+          userMatchHistory: season.userMatchHistory,
+          userCupMatchHistory: season.userCupMatchHistory,
+          userUclMatchHistory: season.userUclMatchHistory,
+          cup: season.cup,
+          ucl: season.ucl,
+          starters: state.starters,
+          bench: state.bench,
+          combinedStatsMap: scopeStatsMap,
+          baseAvgOvr: ratings.rawOvr,
+          effectiveOvr: effectiveTotalOvr,
+          chemistry: chemistry.total,
+          ffpTier: season.budgetState?.ffpTier,
+        });
+
         return (
           <TeamSeasonArchiveTab
             milestoneLabel={
@@ -1085,6 +1138,7 @@ export function SeasonSummary() {
             }
             honors={honors}
             teamStats={myTeamStats}
+            teamStory={soloTeamStory}
             onInspectPlayer={(p) =>
               openPlayerById(p.id, scopeStatsMap[p.id] ?? null)
             }

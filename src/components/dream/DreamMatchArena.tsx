@@ -218,7 +218,7 @@ export function DreamMatchArena() {
         isGlobalRanking: true as const,
         id: `global:${activeGlobalOpponent.runId}`,
         rank: activeGlobalOpponent.rank,
-        seasonLabel: `TOP 15 #${activeGlobalOpponent.rank}`,
+        seasonLabel: `일일 랭킹 #${activeGlobalOpponent.rank}`,
         displayName: activeGlobalOpponent.clubProfile.name || activeGlobalOpponent.clubName,
         nickname: `${activeGlobalOpponent.leagueKoreanName} ${activeGlobalOpponent.finalLeagueRank}위 · ${activeGlobalOpponent.seasonScore.toLocaleString()} PTS`,
         managerName: activeGlobalOpponent.managerName,
@@ -758,7 +758,7 @@ export function DreamMatchArena() {
       ...ht,
       competition: 'ucl',
       competitionLabel: activeOpponent.isGlobalRanking
-        ? `TOP 15 대결 · vs ${activeOpponent.displayName}`
+        ? `일일 랭킹 대결 · vs ${activeOpponent.displayName}`
         : `드림 매치 · vs ${activeOpponent.displayName}`,
       isKnockoutDecider: knockoutRules,
       phase: 'first_half',
@@ -785,7 +785,7 @@ export function DreamMatchArena() {
       ...result,
       competition: 'ucl',
       competitionLabel: activeOpponent.isGlobalRanking
-        ? `TOP 15 대결 · vs ${activeOpponent.displayName}`
+        ? `일일 랭킹 대결 · vs ${activeOpponent.displayName}`
         : `드림 매치 · vs ${activeOpponent.displayName}`,
     };
     if (knockoutRules && result.homeGoals === result.awayGoals) {
@@ -1191,7 +1191,7 @@ export function DreamMatchArena() {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-base sm:text-lg font-black text-white">
                 {activeOpponent.isGlobalRanking
-                  ? '글로벌 TOP 15 · 1대1 도전 매치'
+                  ? '일일 랭킹 · 1대1 도전 매치'
                   : '드림 매치 · 명예의 전당 챌린지'}
               </h1>
               <span className="rounded bg-amber-400/20 px-2 py-0.5 text-[10px] font-black text-amber-300 border border-amber-400/35">
@@ -1217,7 +1217,7 @@ export function DreamMatchArena() {
               className="inline-flex items-center gap-1 rounded-lg border border-sky-400/40 bg-sky-500/12 px-3 py-1.5 text-xs font-bold text-sky-200 hover:bg-sky-500/20 cursor-pointer"
             >
               <Globe className="h-3.5 w-3.5" />
-              <span>TOP 15 목록</span>
+              <span>일일 랭킹 목록</span>
             </button>
           ) : (
             stage !== 'select_opponent' && (
@@ -1497,7 +1497,7 @@ export function DreamMatchArena() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[10px] font-black text-amber-300">
                     {activeOpponent.isGlobalRanking
-                      ? `🌍 글로벌 TOP 15 · #${activeOpponent.rank}위`
+                      ? `🌍 일일 랭킹 · #${activeOpponent.rank}위`
                       : '상대 역대 강팀'}
                   </span>
                   <h2 className="text-base sm:text-lg font-black text-white">
@@ -1527,7 +1527,7 @@ export function DreamMatchArena() {
               }}
               className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
             >
-              {activeOpponent.isGlobalRanking ? 'TOP 15 목록으로' : '다른 상대 고르기'}
+              {activeOpponent.isGlobalRanking ? '일일 랭킹으로' : '다른 상대 고르기'}
             </button>
           </div>
 
@@ -2054,7 +2054,7 @@ export function DreamMatchArena() {
             isHome
             headerBadge={
               activeOpponent.isGlobalRanking
-                ? `TOP 15 MATCH · vs #${activeOpponent.rank}`
+                ? `DAILY RANK MATCH · vs #${activeOpponent.rank}`
                 : `DREAM MATCH · vs ${activeOpponent.seasonLabel}`
             }
             headerAccent="ucl"
@@ -2153,7 +2153,7 @@ export function DreamMatchArena() {
               >
                 <div className="text-xs font-extrabold uppercase tracking-wider text-amber-300">
                   {activeOpponent.isGlobalRanking
-                    ? `GLOBAL TOP 15 #${activeOpponent.rank} · FULL TIME`
+                    ? `GLOBAL 일일 랭킹 #${activeOpponent.rank} · FULL TIME`
                     : 'DREAM MATCH FULL TIME'}
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-white">
@@ -2194,7 +2194,7 @@ export function DreamMatchArena() {
                       className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-4 py-2 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 cursor-pointer"
                     >
                       <Globe className="h-3.5 w-3.5" />
-                      <span>TOP 15 랭킹으로 돌아가기</span>
+                      <span>일일 랭킹으로 돌아가기</span>
                     </button>
                   ) : (
                     <>

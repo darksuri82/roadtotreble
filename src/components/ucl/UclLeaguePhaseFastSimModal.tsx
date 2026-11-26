@@ -391,9 +391,15 @@ function UclLeaguePhaseFastSimModalInner({
                     return (
                       <div
                         key={m.fixtureId}
-                        onClick={() => onSelectMatch?.(m)}
+                        onClick={() => {
+                          if (!isTargetReached) return;
+                          onSelectMatch?.(m);
+                        }}
+                        aria-disabled={!isTargetReached}
                         className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs tabular-nums transition-all ${
-                          onSelectMatch ? 'cursor-pointer hover:border-sky-400/45' : ''
+                          isTargetReached && onSelectMatch
+                            ? 'cursor-pointer hover:border-sky-400/45'
+                            : 'pointer-events-none'
                         } ${
                           idx === 0
                             ? 'border border-sky-500/40 bg-sky-500/10'
@@ -432,8 +438,9 @@ function UclLeaguePhaseFastSimModalInner({
                 </span>
                 <button
                   type="button"
+                  disabled={!isTargetReached}
                   onClick={onFinishAndOpenStandings}
-                  className="text-[11px] font-bold text-sky-400 hover:underline cursor-pointer"
+                  className="text-[11px] font-bold text-sky-400 hover:underline disabled:opacity-40 disabled:pointer-events-none cursor-pointer whitespace-nowrap"
                 >
                   36팀 전체 팝업 →
                 </button>

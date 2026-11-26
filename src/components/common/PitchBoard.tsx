@@ -786,13 +786,25 @@ export function PitchBoard({
                 } ${
                   isSelected
                     ? selectedTone === 'rose'
-                      ? 'ring-2 ring-rose-400 border-rose-400/90 shadow-lg'
-                      : 'ring-2 ring-emerald-400/80'
+                      ? 'ring-2 ring-rose-400 border-rose-400/95 outline-2 outline-offset-1 outline-rose-400/90 [animation:none] shadow-lg'
+                      : 'ring-2 ring-emerald-400/90 border-emerald-400/95 outline-2 outline-offset-1 outline-emerald-400/90 [animation:none]'
                     : ''
                 } ${
                   isDragOver ? 'ring-2 ring-sky-400/80' : ''
                 }`}
               >
+                {isSelected && player && (
+                  <span
+                    className={`absolute -top-2 -left-1.5 z-10 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-black shadow ${
+                      selectedTone === 'rose'
+                        ? 'bg-rose-500 text-white ring-1 ring-rose-200/80'
+                        : 'bg-emerald-500 text-slate-950 ring-1 ring-emerald-200/80'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    ✓
+                  </span>
+                )}
                 {isHighlightedInjury && player ? (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-rose-600/90 px-1.5 py-0.2 text-[8px] font-bold text-white shadow">
                     부상 발생
@@ -1285,13 +1297,25 @@ export function PitchBoard({
                   } ${
                     isSelected
                       ? selectedTone === 'rose'
-                        ? 'ring-2 ring-rose-400 border-rose-400/90'
-                        : 'ring-2 ring-emerald-400'
+                        ? 'ring-2 ring-rose-400 border-rose-400/95 outline-2 outline-offset-1 outline-rose-400/90 [animation:none]'
+                        : 'ring-2 ring-emerald-400 border-emerald-400/95 outline-2 outline-offset-1 outline-emerald-400/90 [animation:none]'
                       : ''
                   } ${
                     isDragOver ? 'ring-2 ring-sky-400' : ''
                   }`}
                 >
+                  {isSelected && player && (
+                    <span
+                      className={`absolute -top-2 -left-1 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-black shadow ${
+                        selectedTone === 'rose'
+                          ? 'bg-rose-500 text-white ring-1 ring-rose-200/80'
+                          : 'bg-emerald-500 text-slate-950 ring-1 ring-emerald-200/80'
+                      }`}
+                      aria-hidden="true"
+                    >
+                      ✓
+                    </span>
+                  )}
                   {isPreview && player ? (
                     <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-400 px-1 text-[7px] font-black text-slate-950">
                       프리뷰

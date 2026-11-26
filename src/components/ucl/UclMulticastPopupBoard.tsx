@@ -901,10 +901,11 @@ function UclMulticastPopupBoardInner({
                 id="solo-ucl-cast-direct-2d-btn"
                 type="button"
                 onClick={() => soloControls.onStopAndDirectPlay?.(currentProgress)}
-                className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1.5 text-[11px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer touch-manipulation"
+                title="현재 진행 중인 경기 스코어 그대로 2D 중계로 이어서 지휘합니다"
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1.5 text-[11px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer touch-manipulation whitespace-nowrap"
               >
                 <Tv className="h-3 w-3" />
-                {soloControls.directPlayLabel ?? '중단 · 직접 2D 진행'}
+                {soloControls.directPlayLabel ?? '2D 중계 이어하기'}
               </button>
             )}
             {soloControls.onQuickSkip && (
@@ -912,7 +913,8 @@ function UclMulticastPopupBoardInner({
                 id="solo-ucl-cast-quick-skip-btn"
                 type="button"
                 onClick={soloControls.onQuickSkip}
-                className="inline-flex items-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/15 px-2.5 py-1.5 text-[11px] font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer touch-manipulation"
+                title="진행 중인 경기를 확정한 뒤 남은 라운드를 빠르게 스킵합니다"
+                className="inline-flex items-center gap-1 rounded-lg border border-sky-500/40 bg-sky-500/15 px-2.5 py-1.5 text-[11px] font-bold text-sky-200 hover:bg-sky-500/25 cursor-pointer touch-manipulation whitespace-nowrap"
               >
                 <FastForward className="h-3 w-3" />
                 {soloControls.quickSkipLabel ?? '빠른 스킵'}
@@ -922,10 +924,11 @@ function UclMulticastPopupBoardInner({
               id="solo-ucl-cast-stop-btn"
               type="button"
               onClick={soloControls.onStopToDashboard}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#101826] px-2.5 py-1.5 text-[11px] font-bold text-slate-300 hover:border-rose-500/45 hover:text-rose-200 cursor-pointer touch-manipulation"
+              title="진행 중인 경기 결과를 확정하고 자동진행을 중단합니다"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#101826] px-2.5 py-1.5 text-[11px] font-bold text-slate-300 hover:border-rose-500/45 hover:text-rose-200 cursor-pointer touch-manipulation whitespace-nowrap"
             >
               <Square className="h-2.5 w-2.5 fill-current" />
-              {soloControls.stopLabel ?? '자동진행 중단'}
+              {soloControls.stopLabel ?? '확정 후 중단'}
             </button>
           </div>
         </div>

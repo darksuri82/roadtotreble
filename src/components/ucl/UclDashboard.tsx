@@ -392,6 +392,9 @@ export function UclDashboard() {
   );
 
   const stopUclLiveAuto = useCallback(() => {
+    if (activePopupCast?.key) {
+      committedCastKeyRef.current = activePopupCast.key;
+    }
     pendingSpectateSnapRef.current = null;
     setAutoPopupMode(null);
     setLiveAutoUserPaused(false);
@@ -402,7 +405,7 @@ export function UclDashboard() {
     setLiveOverlays({});
     cancelSoloStreamMatch();
     setSoloTickerPlaying(false);
-  }, [cancelSoloStreamMatch, setSoloTickerPlaying]);
+  }, [activePopupCast, cancelSoloStreamMatch, setSoloTickerPlaying]);
 
   const startLpAutoSim = useCallback(() => {
     if (!canPlayNextUserLpMatch) return;
@@ -541,8 +544,11 @@ export function UclDashboard() {
       setSoloTickerPlaying(false);
 
       if (!alreadyCommitted) {
-        // Atomically abort uncommitted auto-sim preview and start a clean 2D live broadcast
-        abortStreamAndStartLive2D();
+        // Anti-save-scum: resume the exact in-progress match in 2D broadcast at current minute
+        abortStreamAndStartLive2D({
+          minute: snapshot.minute,
+          inPenalties: snapshot.inPenalties,
+        });
       } else if (canPlayNextUserLpMatch || canPlayNextUserKoMatch) {
         // Previous match already committed: jump directly into the next match's 2D live broadcast
         startLiveMatch();
@@ -1763,7 +1769,17 @@ export function UclDashboard() {
                         isUserHomeLeg2: isUserHomeUcl,
                       }
                     : null;
+                const isUclAutoSimLocked =
+                  autoPopupMode !== null || lpFastSimOpen || liveTickerPlaying;
                 return (
+                  <div
+                    aria-disabled={isUclAutoSimLocked}
+                    className={
+                      isUclAutoSimLocked
+                        ? 'pointer-events-none select-none opacity-55 transition-opacity'
+                        : ''
+                    }
+                  >
                   <MatchDayTacticsRoom
                     opponent={uclOpponent}
                     opponentRoster={uclOppRoster}
@@ -1773,6 +1789,7 @@ export function UclDashboard() {
                         : undefined
                     }
                     isHome={isUserHomeUcl}
+                    locked={isUclAutoSimLocked}
                     headerBadge={
                       nextKnockoutInfo
                         ? nextKnockoutInfo.competitionLabel
@@ -1806,7 +1823,7 @@ export function UclDashboard() {
                           stopUclLiveAuto();
                           startLiveMatch();
                         }}
-                        disabled={liveTickerPlaying}
+                        disabled={isUclAutoSimLocked}
                         className="flex-1 min-w-[200px] inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
                         <Play className="h-4 w-4 fill-current" />
@@ -1818,7 +1835,7 @@ export function UclDashboard() {
                             id="ucl-lp-live-auto-btn"
                             type="button"
                             onClick={startLpAutoSim}
-                            disabled={liveTickerPlaying}
+                            disabled={isUclAutoSimLocked}
                             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-400/55 bg-sky-500/18 px-4 py-3 text-xs font-extrabold text-sky-100 hover:bg-sky-500/28 disabled:opacity-50 cursor-pointer touch-manipulation"
                           >
                             <Radio className="h-4 w-4 text-sky-300" />
@@ -1832,7 +1849,7 @@ export function UclDashboard() {
                               setShowLpSummary(true);
                               setLpFastSimOpen(true);
                             }}
-                            disabled={liveTickerPlaying}
+                            disabled={isUclAutoSimLocked}
                             className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/85 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white disabled:opacity-50 cursor-pointer touch-manipulation"
                           >
                             <FastForward className="h-4 w-4" />
@@ -1844,7 +1861,7 @@ export function UclDashboard() {
                           id="ucl-ko-live-auto-btn"
                           type="button"
                           onClick={startKoAutoSimSingleLeg}
-                          disabled={liveTickerPlaying}
+                          disabled={isUclAutoSimLocked}
                           className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-400/55 bg-sky-500/18 px-4 py-3 text-xs font-extrabold text-sky-100 hover:bg-sky-500/28 disabled:opacity-50 cursor-pointer touch-manipulation"
                         >
                           <Radio className="h-4 w-4 text-sky-300" />
@@ -1863,7 +1880,7 @@ export function UclDashboard() {
                           setSkipResultModalOpen(true);
                           simulateSingleMatchInstant();
                         }}
-                        disabled={liveTickerPlaying}
+                        disabled={isUclAutoSimLocked}
                         className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/80 px-4 py-3 text-xs font-bold text-slate-200 hover:border-sky-400 hover:text-white disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
                         <FastForward className="h-4 w-4" />
@@ -1875,18 +1892,26 @@ export function UclDashboard() {
                           stopUclLiveAuto();
                           simulateUclToEnd();
                         }}
-                        disabled={liveTickerPlaying}
+                        disabled={isUclAutoSimLocked}
                         className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-xs font-bold text-slate-300 hover:border-amber-400/60 hover:text-amber-300 disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
                         대회 끝까지 스킵
                       </button>
                     </div>
                   </MatchDayTacticsRoom>
+                  </div>
                 );
               })()
             ) : (
               /* User Eliminated or Bye (Top 8 skipping Playoff!) */
-              <div className="rounded-2xl border border-slate-800 bg-[#0e141d] p-5 sm:p-6 text-center space-y-3.5">
+              <div
+                aria-disabled={autoPopupMode !== null || lpFastSimOpen || liveTickerPlaying}
+                className={`rounded-2xl border border-slate-800 bg-[#0e141d] p-5 sm:p-6 text-center space-y-3.5 ${
+                  autoPopupMode !== null || lpFastSimOpen || liveTickerPlaying
+                    ? 'pointer-events-none select-none opacity-55'
+                    : ''
+                }`}
+              >
                 {userEliminated ? (
                   <>
                     <div className="text-[11px] font-bold tracking-wider text-rose-400 uppercase">
@@ -1900,8 +1925,9 @@ export function UclDashboard() {
                         <button
                           id="ucl-ko-spectate-auto-btn"
                           type="button"
+                          disabled={autoPopupMode !== null || lpFastSimOpen || liveTickerPlaying}
                           onClick={startKoAutoSimSingleLeg}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/55 bg-sky-500/20 px-4 py-2.5 text-xs sm:text-sm font-extrabold text-sky-100 hover:bg-sky-500/30 cursor-pointer touch-manipulation"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/55 bg-sky-500/20 px-4 py-2.5 text-xs sm:text-sm font-extrabold text-sky-100 hover:bg-sky-500/30 disabled:opacity-50 cursor-pointer touch-manipulation"
                         >
                           <Radio className="h-4 w-4 text-sky-300" />
                           1경기씩 자동 관전
@@ -1909,15 +1935,17 @@ export function UclDashboard() {
                       )}
                       <button
                         type="button"
+                        disabled={autoPopupMode !== null || lpFastSimOpen || liveTickerPlaying}
                         onClick={simulateUclToEnd}
-                        className="rounded-xl bg-sky-400 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 hover:bg-sky-300 cursor-pointer touch-manipulation"
+                        className="rounded-xl bg-sky-400 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 hover:bg-sky-300 disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
                         결승까지 빠르게 스킵 →
                       </button>
                       <button
                         type="button"
+                        disabled={autoPopupMode !== null || lpFastSimOpen || liveTickerPlaying}
                         onClick={finishUclToSummary}
-                        className="rounded-xl border border-slate-700 bg-[#131b27] px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer touch-manipulation"
+                        className="rounded-xl border border-slate-700 bg-[#131b27] px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
                         최종 결산으로 이동 →
                       </button>
@@ -1936,24 +1964,27 @@ export function UclDashboard() {
                     <div className="flex flex-wrap justify-center gap-2">
                       <button
                         type="button"
+                        disabled={autoPopupMode !== null || lpFastSimOpen || liveTickerPlaying}
                         onClick={simulateUclPlayoffBye}
-                        className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 hover:bg-emerald-400 cursor-pointer touch-manipulation"
+                        className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 hover:bg-emerald-400 disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
                         플레이오프 완료 → 16강 대진 확정
                       </button>
                       <button
                         id="ucl-ko-bye-auto-btn"
                         type="button"
+                        disabled={autoPopupMode !== null || lpFastSimOpen || liveTickerPlaying}
                         onClick={startKoAutoSimSingleLeg}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/50 bg-sky-500/18 px-4 py-2.5 text-xs font-extrabold text-sky-100 hover:bg-sky-500/28 cursor-pointer touch-manipulation"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/50 bg-sky-500/18 px-4 py-2.5 text-xs font-extrabold text-sky-100 hover:bg-sky-500/28 disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
                         <Radio className="h-3.5 w-3.5 text-sky-300" />
                         {ucl.knockoutLeg}차전 자동 관전
                       </button>
                       <button
                         type="button"
+                        disabled={autoPopupMode !== null || lpFastSimOpen || liveTickerPlaying}
                         onClick={simulateSingleMatchInstant}
-                        className="rounded-xl border border-slate-700 bg-[#131b27] px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white cursor-pointer touch-manipulation"
+                        className="rounded-xl border border-slate-700 bg-[#131b27] px-4 py-2.5 text-xs font-bold text-slate-200 hover:text-white disabled:opacity-50 cursor-pointer touch-manipulation"
                       >
                         {ucl.knockoutLeg}차전 스킵
                       </button>

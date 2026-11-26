@@ -186,7 +186,7 @@ describe('v9.2 Balance Calibration, Mobile Scroll & Pre-v9.0 Reset', () => {
       window1MaxAttempts: 0,
       window2MaxAttempts: 1,
       window3MaxAttempts: 0,
-      scoreMultiplier: 0.8,
+      scoreMultiplier: FFP_TIER2_SCORE_MULTIPLIER,
       extraLossMoraleDrop: 2,
     };
     expect(getFfpWindowMaxAttempts(tier2Budget, 1)).toBe(0);

@@ -31,9 +31,107 @@ import type {
 } from '../types/legacy';
 import type { Player, PlaystyleId, Position, SubPosition } from '../types/player';
 
-export const GLOBAL_TOP15_LIMIT = 15;
+export const GLOBAL_DAILY_TOP_LIMIT = 10;
+export const GLOBAL_PAST_DAY_ARCHIVE_LIMIT = 3;
+/** Backward-compatible alias now equal to GLOBAL_DAILY_TOP_LIMIT (10). */
+export const GLOBAL_TOP15_LIMIT = GLOBAL_DAILY_TOP_LIMIT;
 export const GLOBAL_RANKING_RULE_ERA = HOF_RULE_ERA_V9;
 const CELEBRATED_RUNS_STORAGE_KEY = 'rtt_global_top15_celebrated_v1';
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const KO_WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
+
+function toKstShiftedDate(input?: Date | string): Date {
+  const d =
+    input instanceof Date
+      ? input
+      : typeof input === 'string' && input
+        ? new Date(input)
+        : new Date();
+  const safeMs = Number.isNaN(d.getTime()) ? Date.now() : d.getTime();
+  return new Date(safeMs + KST_OFFSET_MS);
+}
+
+/** Formats a Date/ISO timestamp as 'YYYY-MM-DD' in KST (Asia/Seoul, UTC+9). */
+export function getKstDateKey(input?: Date | string): string {
+  const kst = toKstShiftedDate(input);
+  const y = kst.getUTCFullYear();
+  const m = String(kst.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(kst.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Returns the Monday 'YYYY-MM-DD' of the KST week containing `input`.
+ * Matches PostgreSQL `to_char(date_trunc('week', now() at time zone 'Asia/Seoul'), 'YYYY-MM-DD')`.
+ */
+export function getKstWeekStartKey(input?: Date | string): string {
+  const kst = toKstShiftedDate(input);
+  const dayOfWeek = kst.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const daysSinceMonday = (dayOfWeek + 6) % 7;
+  const monday = new Date(
+    Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() - daysSinceMonday),
+  );
+  const y = monday.getUTCFullYear();
+  const m = String(monday.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(monday.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Returns all KST date keys in the current week from today back to Monday (descending).
+ * Example on Thursday: [Thu(today), Wed, Tue, Mon].
+ */
+export function getKstWeekDateKeys(referenceDate?: Date | string): string[] {
+  const kst = toKstShiftedDate(referenceDate);
+  const dayOfWeek = kst.getUTCDay();
+  const daysSinceMonday = (dayOfWeek + 6) % 7;
+  const keys: string[] = [];
+  for (let offset = 0; offset <= daysSinceMonday; offset += 1) {
+    const d = new Date(
+      Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() - offset),
+    );
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    keys.push(`${y}-${m}-${day}`);
+  }
+  return keys;
+}
+
+/** Formats a KST date key ('YYYY-MM-DD') as a concise UI tab label ('오늘', '어제', 'MM.DD (월)'). */
+export function formatKstDateTabLabel(
+  dateKey: string,
+  todayKey: string,
+): string {
+  const [ty, tm, td] = todayKey.split('-').map(Number);
+  const todayUtc = Date.UTC(ty || 2026, (tm || 1) - 1, td || 1);
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const targetUtc = Date.UTC(y || 2026, (m || 1) - 1, d || 1);
+  const diffDays = Math.round((todayUtc - targetUtc) / (24 * 60 * 60 * 1000));
+  const wd = KO_WEEKDAYS[new Date(targetUtc).getUTCDay()] ?? '';
+  if (diffDays === 0) return `오늘 (${wd})`;
+  if (diffDays === 1) return `어제 (${wd})`;
+  return `${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')} (${wd})`;
+}
+
+export interface DailyRankingBucket {
+  dateKey: string;
+  label: string;
+  isToday: boolean;
+  limit: number;
+  entries: GlobalHofRankingEntry[];
+  cutoffScore: number | null;
+}
+
+export interface WeeklyDailyRankingsBoard {
+  weekStartKey: string;
+  todayKey: string;
+  dateKeys: string[];
+  buckets: DailyRankingBucket[];
+  byDate: Record<string, DailyRankingBucket>;
+  todayEntries: GlobalHofRankingEntry[];
+  todayCutoffScore: number | null;
+}
 
 export function isV9EraGlobalEntry(
   entry:
@@ -285,7 +383,13 @@ export function buildSquadSnapshotFromHofEntry(
       ? entry.seasonScore.ruleEra
       : GLOBAL_RANKING_RULE_ERA;
 
-  return { ruleEra, starters, bench };
+  return {
+    ruleEra,
+    ...(entry.staffCoachId ? { staffCoachId: entry.staffCoachId } : {}),
+    ...(entry.teamStory ? { teamStory: entry.teamStory } : {}),
+    starters,
+    bench,
+  };
 }
 
 function rebuildPlayerFromSnapshot(
@@ -563,6 +667,8 @@ export interface RawGlobalRankingRow {
   id: string;
   run_id: string;
   rule_era?: string | null;
+  ranking_date?: string | null;
+  ranking_week_start?: string | null;
   season_score: number;
   grade: string;
   club_name: string;
@@ -777,6 +883,7 @@ function mapRawRowToEntry(
       ? row.manager_trait_id
       : null,
     managerRating: Number(row.manager_rating) || 86,
+    ...(rawSnap.staffCoachId ? { staffCoachId: rawSnap.staffCoachId } : {}),
     teamAvgOvr: Math.round((Number(row.team_avg_ovr) || 80) * 10) / 10,
     chemistry: Number(row.chemistry) || 50,
     avgSynergyOvrBonus:
@@ -788,10 +895,177 @@ function mapRawRowToEntry(
     scoreBreakdown: calibratedBreakdown,
     squadSnapshot: {
       ...(typeof rawSnap.ruleEra === 'string' ? { ruleEra: rawSnap.ruleEra } : {}),
+      ...(rawSnap.staffCoachId ? { staffCoachId: rawSnap.staffCoachId } : {}),
+      ...(rawSnap.teamStory ? { teamStory: rawSnap.teamStory } : {}),
       starters: Array.isArray(rawSnap.starters) ? rawSnap.starters : [],
       bench: Array.isArray(rawSnap.bench) ? rawSnap.bench : [],
     },
+    ...(rawSnap.teamStory ? { teamStory: rawSnap.teamStory } : {}),
+    rankingDate:
+      typeof row.ranking_date === 'string' && row.ranking_date.trim()
+        ? row.ranking_date.trim()
+        : getKstDateKey(row.achieved_at),
+    rankingWeekStart:
+      typeof row.ranking_week_start === 'string' && row.ranking_week_start.trim()
+        ? row.ranking_week_start.trim()
+        : getKstWeekStartKey(row.achieved_at),
     achievedAt: row.achieved_at || new Date().toISOString(),
+  };
+}
+
+/**
+ * Groups global ranking entries into the current KST weekly board:
+ * - Weekly reset every Monday 00:00 KST (entries from earlier weeks are excluded).
+ * - Today (`todayKey`): capped at TOP 10 (`GLOBAL_DAILY_TOP_LIMIT`).
+ * - Earlier days of the same week (`dateKey < todayKey`): capped at TOP 3 (`GLOBAL_PAST_DAY_ARCHIVE_LIMIT`).
+ */
+export function groupWeeklyDailyRankings(
+  entries: readonly GlobalHofRankingEntry[],
+  referenceDate?: Date | string,
+): WeeklyDailyRankingsBoard {
+  const todayKey = getKstDateKey(referenceDate);
+  const weekStartKey = getKstWeekStartKey(referenceDate);
+  const dateKeys = getKstWeekDateKeys(referenceDate);
+  const dateKeySet = new Set(dateKeys);
+
+  const rawByDate = new Map<string, GlobalHofRankingEntry[]>();
+  for (const dk of dateKeys) rawByDate.set(dk, []);
+
+  for (const entry of entries) {
+    if (!isV9EraGlobalEntry(entry)) continue;
+    const entryDate = entry.rankingDate?.trim() || getKstDateKey(entry.achievedAt);
+    const entryWeek =
+      entry.rankingWeekStart?.trim() || getKstWeekStartKey(entry.achievedAt);
+    if (entryWeek !== weekStartKey || !dateKeySet.has(entryDate)) continue;
+    rawByDate.get(entryDate)?.push({
+      ...entry,
+      rankingDate: entryDate,
+      rankingWeekStart: entryWeek,
+    });
+  }
+
+  const buckets: DailyRankingBucket[] = [];
+  const byDate: Record<string, DailyRankingBucket> = {};
+
+  for (const dk of dateKeys) {
+    const isToday = dk === todayKey;
+    const limit = isToday
+      ? GLOBAL_DAILY_TOP_LIMIT
+      : GLOBAL_PAST_DAY_ARCHIVE_LIMIT;
+    const ranked = [...(rawByDate.get(dk) ?? [])]
+      .sort(compareGlobalRankingEntries)
+      .slice(0, limit)
+      .map((e, idx) => ({ ...e, rank: idx + 1 }));
+    const cutoffScore =
+      ranked.length >= limit
+        ? ranked[limit - 1].seasonScore
+        : ranked.length > 0
+          ? ranked[ranked.length - 1].seasonScore
+          : null;
+    const bucket: DailyRankingBucket = {
+      dateKey: dk,
+      label: formatKstDateTabLabel(dk, todayKey),
+      isToday,
+      limit,
+      entries: ranked,
+      cutoffScore,
+    };
+    buckets.push(bucket);
+    byDate[dk] = bucket;
+  }
+
+  const todayBucket = byDate[todayKey];
+  return {
+    weekStartKey,
+    todayKey,
+    dateKeys,
+    buckets,
+    byDate,
+    todayEntries: todayBucket?.entries ?? [],
+    todayCutoffScore: todayBucket?.cutoffScore ?? null,
+  };
+}
+
+/**
+ * Pure mirror of the PostgreSQL KST Daily TOP 10 / Past-Day TOP 3 / Weekly Reset RPC.
+ */
+export function applyDailyTop10RankingLogic(
+  existing: readonly GlobalHofRankingEntry[],
+  candidate: GlobalHofRankingEntry,
+  referenceDate?: Date | string,
+): {
+  board: WeeklyDailyRankingsBoard;
+  result: GlobalRankingSubmitResult;
+} {
+  const todayKey = getKstDateKey(referenceDate);
+  const weekStartKey = getKstWeekStartKey(referenceDate);
+  const beforeBoard = groupWeeklyDailyRankings(existing, referenceDate);
+
+  if (!isV9EraGlobalEntry(candidate)) {
+    return {
+      board: beforeBoard,
+      result: {
+        ok: false,
+        entered: false,
+        rank: null,
+        alreadyExists: false,
+        cutoffScore: beforeBoard.todayCutoffScore,
+        totalCount: beforeBoard.todayEntries.length,
+        prunedCount: 0,
+        rankingDate: todayKey,
+        error: 'v9.0 이전 구버전 기록은 일일 랭킹에 등록할 수 없습니다.',
+      },
+    };
+  }
+
+  const existingToday = beforeBoard.todayEntries.find(
+    (e) => e.runId === candidate.runId,
+  );
+  if (existingToday) {
+    return {
+      board: beforeBoard,
+      result: {
+        ok: true,
+        entered: existingToday.rank <= GLOBAL_DAILY_TOP_LIMIT,
+        rank: existingToday.rank,
+        alreadyExists: true,
+        cutoffScore: beforeBoard.todayCutoffScore,
+        totalCount: beforeBoard.todayEntries.length,
+        prunedCount: 0,
+        rankingDate: todayKey,
+      },
+    };
+  }
+
+  const taggedCandidate: GlobalHofRankingEntry = {
+    ...candidate,
+    rankingDate: todayKey,
+    rankingWeekStart: weekStartKey,
+  };
+  const nextAll = [
+    ...beforeBoard.buckets.flatMap((b) => b.entries),
+    taggedCandidate,
+  ];
+  const afterBoard = groupWeeklyDailyRankings(nextAll, referenceDate);
+  const inserted = afterBoard.todayEntries.find(
+    (e) => e.runId === candidate.runId,
+  );
+  const entered = Boolean(inserted && inserted.rank <= GLOBAL_DAILY_TOP_LIMIT);
+  const prunedCount =
+    entered && beforeBoard.todayEntries.length >= GLOBAL_DAILY_TOP_LIMIT ? 1 : 0;
+
+  return {
+    board: afterBoard,
+    result: {
+      ok: true,
+      entered,
+      rank: entered && inserted ? inserted.rank : null,
+      alreadyExists: false,
+      cutoffScore: afterBoard.todayCutoffScore,
+      totalCount: afterBoard.todayEntries.length,
+      prunedCount,
+      rankingDate: todayKey,
+    },
   };
 }
 
@@ -821,16 +1095,21 @@ export interface FetchGlobalTop15Result {
   configured: boolean;
   entries: GlobalHofRankingEntry[];
   cutoffScore: number | null;
+  weekly?: WeeklyDailyRankingsBoard;
   error?: string;
 }
 
-export async function fetchGlobalTop15Rankings(): Promise<FetchGlobalTop15Result> {
+export async function fetchWeeklyDailyRankings(
+  referenceDate?: Date | string,
+): Promise<FetchGlobalTop15Result> {
+  const emptyBoard = groupWeeklyDailyRankings([], referenceDate);
   if (!isSupabaseConfigured) {
     return {
       ok: false,
       configured: false,
       entries: [],
       cutoffScore: null,
+      weekly: emptyBoard,
       error: 'Supabase 미연결 환경',
     };
   }
@@ -841,39 +1120,64 @@ export async function fetchGlobalTop15Rankings(): Promise<FetchGlobalTop15Result
       configured: false,
       entries: [],
       cutoffScore: null,
+      weekly: emptyBoard,
       error: 'Supabase 클라이언트 초기화 불가',
     };
   }
 
   try {
-    const { data, error } = await client
+    const weekStartKey = getKstWeekStartKey(referenceDate);
+    // Prefer week-filtered query; gracefully fall back if DB migration hasn't added ranking_week_start yet
+    let rows: RawGlobalRankingRow[] = [];
+    const primary = await client
       .from('global_hof_rankings')
       .select('*')
+      .eq('ranking_week_start', weekStartKey)
       .order('season_score', { ascending: false })
       .order('is_treble', { ascending: false })
       .order('ucl_won', { ascending: false })
       .order('achieved_at', { ascending: true })
       .order('id', { ascending: true })
-      .limit(50);
+      .limit(120);
 
-    if (error) {
-      return {
-        ok: false,
-        configured: true,
-        entries: [],
-        cutoffScore: null,
-        error: error.message,
-      };
+    if (primary.error) {
+      const fallback = await client
+        .from('global_hof_rankings')
+        .select('*')
+        .order('season_score', { ascending: false })
+        .order('is_treble', { ascending: false })
+        .order('ucl_won', { ascending: false })
+        .order('achieved_at', { ascending: true })
+        .order('id', { ascending: true })
+        .limit(120);
+
+      if (fallback.error) {
+        return {
+          ok: false,
+          configured: true,
+          entries: [],
+          cutoffScore: null,
+          weekly: emptyBoard,
+          error: fallback.error.message,
+        };
+      }
+      rows = (fallback.data ?? []) as RawGlobalRankingRow[];
+    } else {
+      rows = (primary.data ?? []) as RawGlobalRankingRow[];
     }
 
-    const rows = (data ?? []) as RawGlobalRankingRow[];
-    const { entries, cutoffScore } = filterAndRankV9GlobalRows(rows);
+    const mappedValid = rows
+      .filter((row) => isV9PlusRuleEra(extractRawRowRuleEra(row)))
+      .map((row, idx) => mapRawRowToEntry(row, idx + 1));
+
+    const weekly = groupWeeklyDailyRankings(mappedValid, referenceDate);
 
     return {
       ok: true,
       configured: true,
-      entries,
-      cutoffScore,
+      entries: weekly.todayEntries,
+      cutoffScore: weekly.todayCutoffScore,
+      weekly,
     };
   } catch (err) {
     return {
@@ -881,9 +1185,14 @@ export async function fetchGlobalTop15Rankings(): Promise<FetchGlobalTop15Result
       configured: true,
       entries: [],
       cutoffScore: null,
+      weekly: emptyBoard,
       error: err instanceof Error ? err.message : '네트워크 오류',
     };
   }
+}
+
+export async function fetchGlobalTop15Rankings(): Promise<FetchGlobalTop15Result> {
+  return fetchWeeklyDailyRankings();
 }
 
 export const MAX_GLOBAL_HOF_STARTER_LEGENDS = 5;
@@ -1018,6 +1327,7 @@ export async function submitGlobalHofRanking(
       cutoff_score?: number | null;
       total_count?: number;
       pruned_count?: number;
+      ranking_date?: string | null;
     };
 
     return {
@@ -1030,6 +1340,9 @@ export async function submitGlobalHofRanking(
       totalCount: typeof parsed.total_count === 'number' ? parsed.total_count : 0,
       prunedCount:
         typeof parsed.pruned_count === 'number' ? parsed.pruned_count : 0,
+      ...(typeof parsed.ranking_date === 'string' && parsed.ranking_date.trim()
+        ? { rankingDate: parsed.ranking_date.trim() }
+        : {}),
     };
   } catch (err) {
     return {

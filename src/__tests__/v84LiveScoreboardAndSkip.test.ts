@@ -448,13 +448,13 @@ describe('v8.4 solo live scoreboard, H2H preview skip/result confirmation & redu
     expect(mid2nd.season?.liveHalftime?.resumeFromMinute).toBe(66);
     expect(mid2nd.season?.liveHalftime?.fullMatchResult).toBeTruthy();
 
-    // Cancel uncommitted stream cleanly without mutating standings/round
+    // Anti-save-scum (v9.5.0): cancelling an in-progress stream settles the match instead of wiping it
     const cancelled = gameReducer(streaming, { type: 'CANCEL_SOLO_STREAM_MATCH' });
     expect(cancelled.season?.liveHalftime).toBeNull();
     expect(shouldRenderLiveMatchBroadcast(cancelled.season?.liveHalftime)).toBe(false);
-    expect(cancelled.season?.currentRound).toBe(0);
+    expect(cancelled.season?.currentRound).toBe(1);
 
-    // Committing after scoreboard FT advances round to 1
+    // Committing after scoreboard FT also advances round to 1 cleanly
     const committed = gameReducer(streaming, { type: 'COMMIT_LIVE_MATCH' });
     expect(committed.season?.liveHalftime).toBeNull();
     expect(committed.season?.currentRound).toBe(1);

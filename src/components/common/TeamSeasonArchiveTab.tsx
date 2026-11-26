@@ -1,5 +1,6 @@
 import {
   Award,
+  BookOpen,
   Crown,
   Flame,
   ShieldAlert,
@@ -10,7 +11,7 @@ import {
   UserCheck,
   Zap,
 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   evaluateManagerTeamEffect,
   MANAGER_TRAITS,
@@ -29,6 +30,7 @@ import {
 } from '../../engine/chemistryEngine';
 import { STAFF_COACHES } from '../../engine/staffCoachEngine';
 import { TACTICS } from '../../engine/tacticEngine';
+import { generateMpClubTeamStory } from '../../engine/teamStoryEngine';
 import type {
   FormationId,
   ManagerAvatarConfig,
@@ -42,11 +44,13 @@ import type {
   StandingRow,
   TacticId,
 } from '../../types/league';
+import type { TeamSeasonStory } from '../../types/legacy';
 import { formatPlayerRecordName } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
 import { JerseySvg } from './JerseySvg';
 import { PitchBoard } from './PitchBoard';
 import { PixelManagerAvatar } from './PixelManagerAvatar';
+import { TeamIntroBanner, TeamStoryTab } from './TeamStoryTab';
 
 export interface TeamArchiveHonorBadge {
   label: string;
@@ -78,6 +82,10 @@ export interface TeamSeasonArchiveTabProps {
   honors?: TeamArchiveHonorBadge[];
   /** Season stats rows belonging to this team's players (league or merged league+cup+ucl) */
   teamStats: PlayerSeasonStats[];
+  /** Optional pre-built rich solo/MP TeamSeasonStory (auto-synthesized if omitted) */
+  teamStory?: TeamSeasonStory | null;
+  /** Optional MP H2H record for richer auto-generated MP team story */
+  h2hSummary?: { wins: number; draws: number; losses: number } | null;
   onInspectPlayer?: (player: Player, slotSubPosition?: SubPosition) => void;
   onInspectStats?: (stats: PlayerSeasonStats) => void;
 }
@@ -117,9 +125,12 @@ export function TeamSeasonArchiveTab({
   seasonScore,
   honors = [],
   teamStats,
+  teamStory = null,
+  h2hSummary = null,
   onInspectPlayer,
   onInspectStats,
 }: TeamSeasonArchiveTabProps) {
+  const [archiveSubTab, setArchiveSubTab] = useState<'squad' | 'story'>('squad');
   const filledStarters = useMemo(
     () => starters.filter((p): p is Player => p !== null),
     [starters],
@@ -445,9 +456,131 @@ export function TeamSeasonArchiveTab({
             )}
           </div>
         </div>
+
+        {/* Compact 1~2 line Team Identity Intro */}
+        {(() => {
+          const starterBaseAvg =
+            filledStarters.length > 0
+              ? Math.round(
+                  (filledStarters.reduce((acc, p) => acc + p.ovr, 0) /
+                    filledStarters.length) *
+                    10,
+                ) / 10
+              : 0;
+          const effectiveTotalOvr =
+            Math.round(
+              ((ratings.effectiveAtt +
+                ratings.effectiveMid +
+                ratings.effectiveDef) /
+                3) *
+                10,
+            ) / 10;
+          const resolvedStory =
+            teamStory ??
+            generateMpClubTeamStory({
+              clubName: club.name,
+              managerName,
+              managerTraitId,
+              staffCoachId,
+              formation,
+              tactic,
+              leagueName,
+              leagueRank,
+              standingRow,
+              cupResultLabel: cupResultLabel ?? undefined,
+              uclResultLabel: uclResultLabel ?? undefined,
+              starters,
+              bench,
+              baseAvgOvr: starterBaseAvg,
+              effectiveOvr: effectiveTotalOvr,
+              chemistry: chemistry.total,
+              ffpTier: budgetState?.ffpTier,
+              teamStats,
+              h2hSummary,
+            });
+          return <TeamIntroBanner intro={resolvedStory.intro} compact />;
+        })()}
       </section>
 
-      {/* 2) Formation Pitch View (Left) + Record / Leaders / Awakened / Honors (Right) */}
+      {/* Lightweight Sub-Tab Bar: Squad & Metrics vs Team Story */}
+      <div className="flex items-center gap-1.5 border-b border-slate-800/90 pb-2">
+        <button
+          type="button"
+          onClick={() => setArchiveSubTab('squad')}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
+            archiveSubTab === 'squad'
+              ? 'bg-emerald-500/18 text-emerald-200 border border-emerald-500/40'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          <Zap className="h-3.5 w-3.5" />
+          스쿼드 · 시즌 지표
+        </button>
+        <button
+          type="button"
+          onClick={() => setArchiveSubTab('story')}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
+            archiveSubTab === 'story'
+              ? 'bg-amber-500/18 text-amber-200 border border-amber-400/40'
+              : 'text-slate-400 hover:text-slate-200 border border-transparent'
+          }`}
+        >
+          <BookOpen className="h-3.5 w-3.5" />
+          팀 스토리
+        </button>
+      </div>
+
+      {archiveSubTab === 'story' ? (
+        (() => {
+          const starterBaseAvg =
+            filledStarters.length > 0
+              ? Math.round(
+                  (filledStarters.reduce((acc, p) => acc + p.ovr, 0) /
+                    filledStarters.length) *
+                    10,
+                ) / 10
+              : 0;
+          const effectiveTotalOvr =
+            Math.round(
+              ((ratings.effectiveAtt +
+                ratings.effectiveMid +
+                ratings.effectiveDef) /
+                3) *
+                10,
+            ) / 10;
+          const resolvedStory =
+            teamStory ??
+            generateMpClubTeamStory({
+              clubName: club.name,
+              managerName,
+              managerTraitId,
+              staffCoachId,
+              formation,
+              tactic,
+              leagueName,
+              leagueRank,
+              standingRow,
+              cupResultLabel: cupResultLabel ?? undefined,
+              uclResultLabel: uclResultLabel ?? undefined,
+              starters,
+              bench,
+              baseAvgOvr: starterBaseAvg,
+              effectiveOvr: effectiveTotalOvr,
+              chemistry: chemistry.total,
+              ffpTier: budgetState?.ffpTier,
+              teamStats,
+              h2hSummary,
+            });
+          return (
+            <TeamStoryTab
+              story={resolvedStory}
+              clubName={club.name}
+              showIntroBanner={false}
+            />
+          );
+        })()
+      ) : (
+      /* 2) Formation Pitch View (Left) + Record / Leaders / Awakened / Honors (Right) */
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-start">
         {/* Left: Read-Only PitchBoard with Starting XI + Bench */}
         <div className="lg:col-span-7">
@@ -699,6 +832,7 @@ export function TeamSeasonArchiveTab({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

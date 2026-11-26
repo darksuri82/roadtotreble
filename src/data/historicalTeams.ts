@@ -1661,10 +1661,11 @@ export function buildHistoricalClubForMatch(team: HistoricalTeamEntry): {
     .slice(0, 3)
     .map((p) => p.name);
 
-  // Legendary era prestige lift (+1.4 base + up to +0.7 for 91..99 iconic managers)
-  // keeps all 24 Historical HOF squads clearly above buffed current top-4 league AI (87.2~89.1).
+  // Legendary era prestige lift (+0.9 base + up to +0.5 for 91..99 iconic managers)
+  // keeps all 24 Historical HOF squads as clear Final Bosses above top-4 league AI (87~89)
+  // while remaining realistically challengeable by high-chemistry, awakened user squads.
   const eraPrestigeLift =
-    1.4 + Math.min(0.7, Math.max(0, (team.managerRating - 90) * 0.09));
+    0.9 + Math.min(0.5, Math.max(0, (team.managerRating - 90) * 0.06));
   const club: Club = {
     id: team.id,
     name: team.displayName,

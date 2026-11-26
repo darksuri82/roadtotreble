@@ -539,11 +539,15 @@ export function SeasonDashboard() {
                             ? '컵 우승 축하'
                             : null;
 
+  const isAutoSimBottomLocked =
+    liveAutoActive || skipFlowState === 'running' || liveTickerPlaying;
+
   const controlsBlocked =
     hasPendingFfpNotice ||
     hasPendingStaffCoach ||
     season.transferMarket.isOpen ||
     Boolean(season.liveHalftime) ||
+    liveAutoActive ||
     skipFlowState === 'running' ||
     quickSkipModalOpen ||
     liveTickerPlaying;
@@ -826,7 +830,26 @@ export function SeasonDashboard() {
 
       {/* TAB 1: 경기장/일정 */}
       {activeTab === 'match' && (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <div className="relative">
+          {isAutoSimBottomLocked && (
+            <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-slate-700/80 bg-[#0d1420]/95 px-3 py-2 text-[11px] font-bold text-slate-300">
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                자동진행 중 · 하단 매치 프리뷰 및 스쿼드 조작이 잠금되었습니다
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400 whitespace-nowrap">
+                상단 스코어보드에서 제어
+              </span>
+            </div>
+          )}
+          <div
+            aria-disabled={isAutoSimBottomLocked}
+            className={`grid grid-cols-1 gap-5 lg:grid-cols-12 transition-opacity ${
+              isAutoSimBottomLocked
+                ? 'pointer-events-none select-none opacity-55'
+                : ''
+            }`}
+          >
           {/* Left: Next Match Preview & Live Controls (7 cols) */}
           <div className="lg:col-span-7 space-y-5">
             {nextOpponent && (
@@ -834,6 +857,7 @@ export function SeasonDashboard() {
                 opponent={nextOpponent}
                 opponentRoster={nextOpponentRoster}
                 isHome={isNextHome}
+                locked={isAutoSimBottomLocked}
                 headerBadge={
                   isNextCupMatch && season.cup && pendingCupStage
                     ? `🏆 ${season.cup.meta.koreanName} ${CUP_STAGE_LABELS[pendingCupStage]} (단판 승부 · 동점 시 연장/PK)`
@@ -1042,6 +1066,7 @@ export function SeasonDashboard() {
                 />
               );
             })()}
+          </div>
           </div>
         </div>
       )}

@@ -121,11 +121,20 @@ describe('v8.16 — Unified UCL Auto-Sim Popup, Solo Pause/Takeover, KO Boundari
     expect(streaming.season?.ucl?.leaguePhaseRound).toBe(0);
     expect(streaming.season?.userUclMatchHistory.length).toBe(0);
 
-    // Abort mid-stream and take over directly into 2D broadcast
-    const takeover = gameReducer(streaming, { type: 'ABORT_STREAM_AND_START_LIVE_2D' });
+    // Anti-save-scum (v9.5.0): switching mid-stream into 2D resumes the exact existing match (no 0' re-roll)
+    const takeover = gameReducer(streaming, {
+      type: 'ABORT_STREAM_AND_START_LIVE_2D',
+      payload: { minute: 62, inPenalties: false },
+    });
     expect(takeover.season?.liveHalftime).not.toBeNull();
     expect(takeover.season?.liveHalftime?.streamAutoMode).toBeFalsy();
-    expect(takeover.season?.liveHalftime?.phase).toBe('first_half');
+    expect(takeover.season?.liveHalftime?.phase).toBe('second_half');
+    expect(takeover.season?.liveHalftime?.homeGoals).toBe(
+      streaming.season?.liveHalftime?.homeGoals,
+    );
+    expect(takeover.season?.liveHalftime?.awayGoals).toBe(
+      streaming.season?.liveHalftime?.awayGoals,
+    );
     // Standings & history must remain strictly uncommitted until 2D match finishes
     expect(takeover.season?.ucl?.leaguePhaseRound).toBe(0);
     expect(takeover.season?.userUclMatchHistory.length).toBe(0);

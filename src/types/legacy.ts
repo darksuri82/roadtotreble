@@ -62,7 +62,7 @@ export interface SeasonScoreBreakdown {
   squadCraftDetails?: string[];
   awardsBonus?: number; // Ballon d'Or, World Best XI, League MVP, League Best XI
   awardsBonusDetails?: string[];
-  /** FFP overspend score reduction (e.g. 6 for Tier 1 -6%, 20 for Tier 2 -20%) */
+  /** FFP overspend score reduction (e.g. 6 for Tier 1 -6%, 12 for Tier 2 -12%) */
   ffpTier?: 0 | 1 | 2;
   ffpPenaltyPct?: number;
   ffpPenaltyPoints?: number;
@@ -70,6 +70,32 @@ export interface SeasonScoreBreakdown {
   ruleEra?: string;
   totalScore: number;
   grade: 'S+' | 'S' | 'A+' | 'A' | 'B+' | 'B' | 'C';
+}
+
+export type TeamStoryHighlightKind =
+  | 'overachieve'
+  | 'title_match'
+  | 'comeback'
+  | 'ucl_final'
+  | 'cup_final'
+  | 'awakening'
+  | 'best_match'
+  | 'streak'
+  | 'ace';
+
+export interface TeamStoryHighlight {
+  kind: TeamStoryHighlightKind;
+  tag: string;
+  title: string;
+  detail: string;
+  metric?: string;
+}
+
+export interface TeamSeasonStory {
+  /** Compact 1~2 line team identity intro (manager trait, coach, squad/awakening/tactics) */
+  intro: string;
+  /** Short data-backed seasonal narrative cards (overachievement, comebacks, finals, awakening) */
+  highlights: TeamStoryHighlight[];
 }
 
 export interface HallOfFameSquadMember {
@@ -109,6 +135,7 @@ export interface HallOfFameEntry {
   managerAvatar?: ManagerAvatarConfig;
   managerTraitId: ManagerTraitId | null;
   managerRating?: number;
+  staffCoachId?: import('./game').StaffCoachId | null;
   leagueId: LeagueId;
   leagueKoreanName: string;
   formation: FormationId;
@@ -137,6 +164,8 @@ export interface HallOfFameEntry {
   worldBestXiUserCount?: number;
   leagueBestXiUserCount?: number;
   matchHistory?: HallOfFameMatchSummary[];
+  /** Serialized compact team intro & season story timeline */
+  teamStory?: TeamSeasonStory;
   starters: HallOfFameSquadMember[];
   bench: HallOfFameSquadMember[];
   /** Full player snapshots (with sub-attributes & playstyles) for Dream Match replay */
@@ -172,6 +201,8 @@ export interface GlobalSquadSnapshotPlayer {
 
 export interface GlobalSquadSnapshot {
   ruleEra?: string;
+  staffCoachId?: import('./game').StaffCoachId | null;
+  teamStory?: TeamSeasonStory;
   starters: GlobalSquadSnapshotPlayer[];
   bench: GlobalSquadSnapshotPlayer[];
 }
@@ -180,7 +211,11 @@ export interface GlobalHofRankingEntry {
   id: string;
   runId: string;
   ruleEra?: string;
-  rank: number; // 1..15
+  /** KST YYYY-MM-DD date bucket */
+  rankingDate?: string;
+  /** KST Monday YYYY-MM-DD weekly cycle bucket */
+  rankingWeekStart?: string;
+  rank: number; // 1..10 (today) or 1..3 (past days archive)
   seasonScore: number;
   grade: SeasonScoreBreakdown['grade'];
   clubName: string;
@@ -203,6 +238,7 @@ export interface GlobalHofRankingEntry {
   defaultTactic: TacticId;
   managerTraitId: ManagerTraitId | null;
   managerRating: number;
+  staffCoachId?: import('./game').StaffCoachId | null;
   teamAvgOvr: number;
   chemistry: number;
   avgSynergyOvrBonus: number;
@@ -212,6 +248,7 @@ export interface GlobalHofRankingEntry {
   managerAvatar: ManagerAvatarConfig;
   scoreBreakdown: SeasonScoreBreakdown;
   squadSnapshot: GlobalSquadSnapshot;
+  teamStory?: TeamSeasonStory;
   achievedAt: string;
 }
 
@@ -223,6 +260,7 @@ export interface GlobalRankingSubmitResult {
   cutoffScore: number | null;
   totalCount: number;
   prunedCount: number;
+  rankingDate?: string;
   error?: string;
 }
 

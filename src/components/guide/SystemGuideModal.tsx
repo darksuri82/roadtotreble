@@ -1000,7 +1000,7 @@ export function SystemGuideContent({
                   4명째+ ×{AWAKENING_FOURTH_PLUS_MULT}
                 </strong>
               </span>
-              <span>정적 DB 무오염 · 세이브·명전·글로벌 TOP 15 영구 보존</span>
+              <span>정적 DB 무오염 · 세이브·명전·일일 랭킹 영구 보존</span>
             </div>
           </div>
         </div>
@@ -1226,7 +1226,7 @@ export function SystemGuideContent({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-white">
                 <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                명예의 전당 ({historicalCount}팀) · 글로벌 TOP 15 · 년도별 베스트 11 ({eraBestXiCount}팀)
+                명예의 전당 ({historicalCount}팀) · 일일 랭킹 TOP 10 · 년도별 베스트 11 ({eraBestXiCount}팀)
               </div>
               <span className="rounded bg-amber-500/15 border border-amber-400/35 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-200 whitespace-nowrap">
                 자동 등재 {HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}+ · S+ 7,200+
@@ -1234,18 +1234,20 @@ export function SystemGuideContent({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] tabular-nums">
               <div className="rounded-lg border border-slate-800 bg-[#0f1622] p-2.5 space-y-1">
-                <div className="font-bold text-white">시즌 스코어 &amp; FFP 감점</div>
+                <div className="font-bold text-white">시즌 스코어 · 팀 스토리 &amp; FFP 감점</div>
                 <div className="text-slate-300">
-                  리그 환산·리그 난이도 보정 순위·컵·UCL·영예(트레블/무패)·언더독·스쿼드 완성도·개인상 8항목 합산.
+                  리그 환산·리그 난이도 보정 순위·컵·UCL·영예(트레블/무패)·언더독·스쿼드 완성도·개인상 8항목 합산 + 1~2줄 팀 소개 및 시즌 팀 스토리 자동 기록.
                   FFP 1단계 <strong className="text-amber-300">-{FFP_TIER1_SCORE_PENALTY_PCT}%</strong> ·
                   2단계 <strong className="text-rose-300">-{FFP_TIER2_SCORE_PENALTY_PCT}%</strong> 감점.
                 </div>
               </div>
               <div className="rounded-lg border border-sky-500/25 bg-sky-950/15 p-2.5 space-y-1">
-                <div className="font-bold text-sky-300">글로벌 TOP 15 &amp; 드림 매치</div>
+                <div className="font-bold text-sky-300">KST 일일 랭킹 &amp; 드림 매치</div>
                 <div className="text-slate-300">
-                  상위 15팀만 원자적 유지(16위 즉시 삭제) · 중복 선수/클래식 상한 검증 ·
-                  역대 클럽 {historicalCount}팀·글로벌 TOP 15·<strong className="text-cyan-300">년도별 베스트 11 (1960s~2010s · {eraBestXiCount}팀)</strong> 2D 대결 지원
+                  당일 <strong className="text-sky-200">TOP 10</strong> 실시간 경쟁 · 지난 날짜는{' '}
+                  <strong className="text-amber-300">TOP 3</strong> 아카이브 ·{' '}
+                  <strong className="text-slate-200">매주 월요일 00:00(KST)</strong> 주간 초기화.
+                  역대 클럽 {historicalCount}팀·일일 랭킹·<strong className="text-cyan-300">년도별 베스트 11 (1960s~2010s · {eraBestXiCount}팀)</strong> 2D 대결 지원
                 </div>
               </div>
             </div>
@@ -1257,7 +1259,7 @@ export function SystemGuideContent({
                   5대 리그 난이도별 리그 우승·순위 점수 보정 (기준 평균 {LEAGUE_STRENGTH_BASELINE.toFixed(1)})
                 </span>
                 <span className="text-[10px] text-slate-400">
-                  개인 명전 · 역대 24팀 · 글로벌 TOP 15 일괄 반영
+                  개인 명전 · 역대 24팀 · 일일 랭킹 일괄 반영
                 </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center text-[10.5px] tabular-nums">
@@ -1282,28 +1284,27 @@ export function SystemGuideContent({
               </div>
               <div className="text-[10.5px] text-slate-400 leading-relaxed">
                 • 2026-27 현행 리그 평균 강도(전체 평균 60% + 상위 6팀 40%)에 따라 리그 순위 보너스(1위 기본 1,200)에 난이도 배율이 곱해집니다.
-                단, <strong className="text-amber-200">역대 명전 {historicalCount}팀은 현대가 아닌 해당 시즌 당시 리그의 평균 강도</strong>(예: 88-89 세리에 A 81.0 · 14-15 라리가 80.8 · 22-23 EPL 80.8 · 24-25 리그 1 75.8)로 공정 산출되며, 기존 개인 명전·글로벌 TOP 15 기록에도 자동 보정됩니다.
+                단, <strong className="text-amber-200">역대 명전 {historicalCount}팀은 현대가 아닌 해당 시즌 당시 리그의 평균 강도</strong>(예: 88-89 세리에 A 81.0 · 14-15 라리가 80.8 · 22-23 EPL 80.8 · 24-25 리그 1 75.8)로 공정 산출되며, 기존 개인 명전·일일 랭킹 기록에도 자동 보정됩니다.
               </div>
             </div>
           </div>
 
-          {/* 6-3. v9.0 Reset Policy */}
+          {/* 6-3. v9.0 Reset & Weekly Daily Ranking Policy */}
           <div
             id="guide-legacy-reset"
             className="scroll-mt-2 rounded-xl border border-amber-500/30 bg-amber-950/12 p-3.5 space-y-1.5"
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="font-bold text-amber-200">
-                {HOF_RULE_ERA_V9}+ 기록 초기화 및 집계 기준
+                {HOF_RULE_ERA_V9}+ 기록 집계 &amp; 주간 일일 랭킹 초기화 기준
               </div>
               <span className="rounded border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-200 whitespace-nowrap">
-                {HOF_RULE_ERA_V9}+ 전용 집계
+                {HOF_RULE_ERA_V9}+ · 주간 순환
               </span>
             </div>
             <p className="text-[11px] text-slate-300">{HOF_RESET_NOTICE_TEXT}</p>
             <div className="text-[10.5px] text-slate-400">
-              • 로컬 명전은 앱 로드 시 1회성 마이그레이션으로 구버전 기록을 자동 정리하며,
-              글로벌 TOP 15는 {HOF_RULE_ERA_V9}+ 마커 기록만 조회·컷오프에 반영합니다(히든 업적·드림매치 전적은 보존).
+              • 로컬 명전은 개인 시즌 기록을 영구 보존하며, 일일 랭킹은 <strong className="text-slate-200">KST 기준 당일 TOP 10 · 지난 날짜 TOP 3 아카이브 · 매주 월요일 00:00 주간 전체 초기화</strong>로 공정한 최신 메타 경쟁을 유지합니다(히든 업적·드림매치 전적 보존).
             </div>
           </div>
 

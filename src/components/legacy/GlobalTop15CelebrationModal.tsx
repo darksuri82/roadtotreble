@@ -18,7 +18,7 @@ function getRankStyle(rank: number): {
       badgeClass:
         'bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 text-slate-950 shadow-lg shadow-amber-500/25',
       ringClass: 'border-amber-400/50',
-      label: '역대 글로벌 1위 신기록',
+      label: '오늘의 일일 랭킹 1위',
     };
   }
   if (rank === 2) {
@@ -26,7 +26,7 @@ function getRankStyle(rank: number): {
       badgeClass:
         'bg-gradient-to-br from-slate-200 via-slate-300 to-slate-400 text-slate-950 shadow-lg shadow-slate-400/20',
       ringClass: 'border-slate-300/45',
-      label: '역대 글로벌 2위 등극',
+      label: '오늘의 일일 랭킹 2위',
     };
   }
   if (rank === 3) {
@@ -34,14 +34,14 @@ function getRankStyle(rank: number): {
       badgeClass:
         'bg-gradient-to-br from-amber-600 via-orange-400 to-amber-700 text-slate-950 shadow-lg shadow-orange-500/20',
       ringClass: 'border-amber-500/45',
-      label: '역대 글로벌 3위 등극',
+      label: '오늘의 일일 랭킹 3위',
     };
   }
   return {
     badgeClass:
       'bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/20',
     ringClass: 'border-emerald-400/45',
-    label: `역대 글로벌 TOP 15 진입`,
+    label: `오늘의 일일 랭킹 TOP 10 진입`,
   };
 }
 
@@ -67,7 +67,7 @@ export function GlobalTop15CelebrationModal({
           <div className="flex items-center gap-2">
             <Globe className="h-4 w-4 text-emerald-400 shrink-0" />
             <span className="text-xs font-extrabold tracking-wide text-emerald-300 uppercase">
-              Global Hall of Fame · TOP 15
+              Daily Ranking · TOP 10 (KST)
             </span>
           </div>
           <button
@@ -99,7 +99,7 @@ export function GlobalTop15CelebrationModal({
               id="global-top15-celebration-title"
               className="text-xl sm:text-2xl font-black text-white break-keep"
             >
-              역대 글로벌 #{payload.rank}위 등재!
+              오늘의 랭킹 #{payload.rank}위 등재!
             </h2>
             <p className="text-xs font-semibold text-slate-300">
               {payload.clubName} · {payload.managerName} 감독
@@ -152,7 +152,7 @@ export function GlobalTop15CelebrationModal({
               className="inline-flex w-full sm:w-auto items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-black text-slate-950 hover:bg-emerald-400 cursor-pointer touch-manipulation"
             >
               <Globe className="h-4 w-4" />
-              <span>역대 TOP 15 랭킹 보기</span>
+              <span>일일 랭킹 보기</span>
             </button>
             <button
               type="button"

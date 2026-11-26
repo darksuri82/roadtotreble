@@ -34,8 +34,8 @@ export const FFP_TIER2_LOSS_MORALE_EXTRA = 2; // +2 extra morale drop on losses
 export const FFP_TIER2_WINDOW1_MAX_ATTEMPTS = 0; // Window 1 signings frozen
 export const FFP_TIER2_WINDOW2_MAX_ATTEMPTS = 1; // 3 -> 1 attempt in Window 2
 export const FFP_TIER2_WINDOW3_MAX_ATTEMPTS = 0; // Window 3 signings frozen
-export const FFP_TIER2_SCORE_MULTIPLIER = 0.8; // -20% HOF / Global TOP 15 score
-export const FFP_TIER2_SCORE_PENALTY_PCT = 20;
+export const FFP_TIER2_SCORE_MULTIPLIER = 0.88; // -12% HOF / Daily Ranking score
+export const FFP_TIER2_SCORE_PENALTY_PCT = 12;
 
 /** UCL Special Transfer Window (Window 4) is exempt from FFP attempt caps */
 export const FFP_UCL_SPECIAL_MAX_ATTEMPTS = 3;
@@ -61,7 +61,7 @@ export interface SquadBudgetEvaluation {
   window1MaxAttempts: number; // 3, 1, or 0
   window2MaxAttempts: number; // 3, 1, or 1
   window3MaxAttempts: number; // 3, 1, or 0
-  scoreMultiplier: number; // 1.0, 0.94, or 0.80
+  scoreMultiplier: number; // 1.0, 0.94, or 0.88
   extraLossMoraleDrop: number; // 0, 1, or 2
   previewDeltaM?: number;
 }
@@ -396,7 +396,7 @@ export function buildFfpPenaltyHelpItems(budget: SeasonBudgetState): string[] {
       `이월 현금 €0M · 팀 케미 상시 -${FFP_TIER2_CHEM_PENALTY} 적용`,
       `정규 이적시장: 1차 동결(${FFP_TIER2_WINDOW1_MAX_ATTEMPTS}회) · 2차 ${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회 · 3차 동결(${FFP_TIER2_WINDOW3_MAX_ATTEMPTS}회) · UCL 특별 ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회`,
       `경기 패배 시 선수단 사기 추가 하락 (-${FFP_TIER2_LOSS_MORALE_EXTRA}단계)`,
-      `명예의 전당 · 글로벌 TOP 15 최종 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}% 감점`,
+      `명예의 전당 · 일일 랭킹 최종 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}% 감점`,
     ];
   }
   if (budget.ffpTier === 1) {
@@ -405,7 +405,7 @@ export function buildFfpPenaltyHelpItems(budget: SeasonBudgetState): string[] {
       `이월 현금 €0M · 팀 케미 상시 -${FFP_TIER1_CHEM_PENALTY} 적용`,
       `정규 이적시장: 1·2·3차 각 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회 제한 · UCL 특별 ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회`,
       `경기 패배 시 선수단 사기 추가 하락 (-${FFP_TIER1_LOSS_MORALE_EXTRA}단계)`,
-      `명예의 전당 · 글로벌 TOP 15 최종 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}% 감점`,
+      `명예의 전당 · 일일 랭킹 최종 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}% 감점`,
     ];
   }
   return [

@@ -215,31 +215,31 @@ describe('v8.12 Global TOP 15 Ranking, Auto-Prune & 1v1 Challenge', () => {
     ).toBe(true);
   });
 
-  it('maintains strict TOP 15 cap, prunes 16th immediately, and respects tie-breakers', () => {
-    const initial15 = Array.from({ length: 15 }, (_, i) =>
+  it('maintains strict daily TOP 10 cap, prunes 11th immediately, and respects tie-breakers', () => {
+    const initial10 = Array.from({ length: GLOBAL_TOP15_LIMIT }, (_, i) =>
       makeRankingEntry(i + 1, 10000 - i * 100),
     );
-    // 15th currently has score 8600
-    expect(initial15[14].seasonScore).toBe(8600);
+    // 10th currently has score 9100
+    expect(initial10[GLOBAL_TOP15_LIMIT - 1].seasonScore).toBe(9100);
 
-    // 1) Entry scoring 8500 -> rejected, list stays 15
-    const belowCutoff = makeRankingEntry(16, 8500);
-    const resFail = applyTop15RankingLogic(initial15, belowCutoff);
+    // 1) Entry scoring 9000 -> rejected, list stays 10
+    const belowCutoff = makeRankingEntry(11, 9000);
+    const resFail = applyTop15RankingLogic(initial10, belowCutoff);
     expect(resFail.result.entered).toBe(false);
     expect(resFail.result.rank).toBeNull();
     expect(resFail.result.prunedCount).toBe(0);
     expect(resFail.nextEntries.length).toBe(GLOBAL_TOP15_LIMIT);
-    expect(resFail.nextEntries.some((e) => e.runId === 'run-16')).toBe(false);
+    expect(resFail.nextEntries.some((e) => e.runId === 'run-11')).toBe(false);
 
-    // 2) Entry scoring 9550 -> enters at #6, pushes 8600 out (prunedCount = 1), stays exactly 15
-    const qualifier = makeRankingEntry(17, 9550);
-    const resEnter = applyTop15RankingLogic(initial15, qualifier);
+    // 2) Entry scoring 9550 -> enters at #6, pushes 9100 out (prunedCount = 1), stays exactly 10
+    const qualifier = makeRankingEntry(12, 9550);
+    const resEnter = applyTop15RankingLogic(initial10, qualifier);
     expect(resEnter.result.entered).toBe(true);
     expect(resEnter.result.rank).toBe(6);
     expect(resEnter.result.prunedCount).toBe(1);
     expect(resEnter.nextEntries.length).toBe(GLOBAL_TOP15_LIMIT);
-    expect(resEnter.nextEntries.some((e) => e.runId === 'run-15')).toBe(false);
-    expect(resEnter.result.cutoffScore).toBe(8700);
+    expect(resEnter.nextEntries.some((e) => e.runId === 'run-10')).toBe(false);
+    expect(resEnter.result.cutoffScore).toBe(9200);
 
     // 3) Duplicate runId guard -> does not insert twice
     const dupRes = applyTop15RankingLogic(resEnter.nextEntries, qualifier);
@@ -249,11 +249,11 @@ describe('v8.12 Global TOP 15 Ranking, Auto-Prune & 1v1 Challenge', () => {
     expect(dupRes.nextEntries.length).toBe(GLOBAL_TOP15_LIMIT);
 
     // 4) Tie-breaker: same score -> Treble beats non-Treble; same treble/ucl -> earlier achievedAt wins
-    const tieTreble = makeRankingEntry(18, 10000, {
+    const tieTreble = makeRankingEntry(13, 10000, {
       isTreble: true,
       achievedAt: '2026-11-28T00:00:00.000Z',
     });
-    const resTie = applyTop15RankingLogic(initial15, tieTreble);
+    const resTie = applyTop15RankingLogic(initial10, tieTreble);
     expect(resTie.result.entered).toBe(true);
     expect(resTie.result.rank).toBe(1);
   });
@@ -300,15 +300,20 @@ describe('v8.12 Global TOP 15 Ranking, Auto-Prune & 1v1 Challenge', () => {
     expect(matchBundle.club.att).toBeGreaterThanOrEqual(70);
   });
 
-  it('defines atomic TOP 15 table, read-only SELECT RLS, and SECURITY DEFINER prune RPC in supabase/schema.sql', () => {
+  it('defines KST weekly daily ranking table (TOP 10 today / TOP 3 past archive), SELECT RLS, and SECURITY DEFINER prune RPC in supabase/schema.sql', () => {
     expect(schemaSql).toContain('create table if not exists public.global_hof_rankings');
     expect(schemaSql).toContain('run_id text unique not null');
+    expect(schemaSql).toContain('ranking_date text not null');
+    expect(schemaSql).toContain('ranking_week_start text not null');
     expect(schemaSql).toContain('global_hof_rankings_public_select');
     expect(schemaSql).toContain('for select to anon, authenticated');
+    expect(schemaSql).toContain('create or replace function public.prune_global_daily_rankings');
     expect(schemaSql).toContain('create or replace function public.submit_global_hof_ranking');
     expect(schemaSql).toContain('security definer');
     expect(schemaSql).toContain('pg_advisory_xact_lock');
-    expect(schemaSql).toContain('limit 15');
+    expect(schemaSql).toContain('Asia/Seoul');
+    expect(schemaSql).toContain('limit 10');
+    expect(schemaSql).toContain('rk > 3');
     expect(schemaSql).toContain('rule_era');
     expect(schemaSql).toContain('delete from public.global_hof_rankings');
   });

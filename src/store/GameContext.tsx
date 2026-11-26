@@ -37,6 +37,7 @@ import {
   isFfpEmbargoWindow,
 } from '../engine/budgetEngine';
 import { calculateChemistry, calculateTeamRatings } from '../engine/chemistryEngine';
+import { generateSoloSeasonTeamStory } from '../engine/teamStoryEngine';
 import {
   applyConditionToPlayers,
   clampMorale,
@@ -1641,7 +1642,10 @@ type GameAction =
       payload: { minute: number; inPenalties?: boolean };
     }
   | { type: 'CANCEL_SOLO_STREAM_MATCH' }
-  | { type: 'ABORT_STREAM_AND_START_LIVE_2D' }
+  | {
+      type: 'ABORT_STREAM_AND_START_LIVE_2D';
+      payload?: { minute?: number; inPenalties?: boolean };
+    }
   | { type: 'SIMULATE_SINGLE_MATCH_INSTANT' }
   | {
       type: 'SIMULATE_ONE_FAST_ROUND';
@@ -4797,14 +4801,10 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'CANCEL_SOLO_STREAM_MATCH': {
+      // Anti-save-scum: once a stream match has kicked off, stopping mid-match settles
+      // the in-progress match result instead of wiping liveHalftime for infinite retries.
       if (!state.season?.liveHalftime?.streamAutoMode) return state;
-      return {
-        ...state,
-        season: {
-          ...state.season,
-          liveHalftime: null,
-        },
-      };
+      return gameReducer(state, { type: 'COMMIT_LIVE_MATCH' });
     }
 
     case 'ABORT_STREAM_AND_START_LIVE_2D': {
@@ -4817,17 +4817,22 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       if (existing && !existing.streamAutoMode) {
         return state;
       }
-      // Safely discard any uncommitted streamAutoMode preview, then launch a fresh 2D match
-      const clearedState: GameState = existing
-        ? {
-            ...state,
-            season: {
-              ...state.season,
-              liveHalftime: null,
-            },
-          }
-        : state;
-      return gameReducer(clearedState, { type: 'START_LIVE_MATCH' });
+      // Anti-save-scum: if a stream match is already in progress, transition directly
+      // into 2D broadcast preserving its pre-simulated score & events (never re-roll from 0').
+      if (existing && existing.streamAutoMode) {
+        const resumeMinute = Math.max(
+          0,
+          Math.floor(action.payload?.minute ?? 46),
+        );
+        return gameReducer(state, {
+          type: 'ENTER_LIVE_BROADCAST_FROM_STREAM',
+          payload: {
+            minute: resumeMinute,
+            inPenalties: Boolean(action.payload?.inPenalties),
+          },
+        });
+      }
+      return gameReducer(state, { type: 'START_LIVE_MATCH' });
     }
 
     case 'SIMULATE_SINGLE_MATCH_INSTANT': {
@@ -7526,9 +7531,9 @@ export function loadSavedGameState(): GameState {
           parsed.season.uclPlayerStats,
         );
 
-        // Anti-save-scum: if user refreshed during an in-progress live auto-sim match
-        // (`streamAutoMode === true`), immediately commit that match instead of rewinding!
-        if (parsed.season.liveHalftime?.streamAutoMode) {
+        // Anti-save-scum: if user refreshed or exited mid-match (whether auto-sim stream
+        // OR 2D live broadcast), immediately simulate remaining time and commit the result!
+        if (parsed.season.liveHalftime) {
           const committed = gameReducer(parsed, { type: 'COMMIT_LIVE_MATCH' });
           persistGameStateToStorage(committed);
           return committed;
@@ -7651,7 +7656,10 @@ interface GameContextValue {
   startSoloStreamMatch: () => void;
   enterLiveBroadcastFromStream: (minute: number, inPenalties?: boolean) => void;
   cancelSoloStreamMatch: () => void;
-  abortStreamAndStartLive2D: () => void;
+  abortStreamAndStartLive2D: (opts?: {
+    minute?: number;
+    inPenalties?: boolean;
+  }) => void;
   simulateSingleMatchInstant: () => void;
   simulateOneFastRound: (stopAtTransfer: boolean, stopAtCup?: boolean) => void;
   simulateToNextTransfer: () => void;
@@ -7978,6 +7986,39 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
 
     const effectiveRunId = state.season.runId || generateSeasonRunId();
+    const effectiveTotalOvr =
+      Math.round(
+        ((ratings.effectiveAtt + ratings.effectiveMid + ratings.effectiveDef) /
+          3) *
+          10,
+      ) / 10;
+    const staffCoachId = state.season.staffCoach?.hiredCoachId ?? null;
+    const teamStory = generateSoloSeasonTeamStory({
+      userClubName: state.userClub.name,
+      managerName: state.manager.name,
+      managerTraitId: state.manager.traitId,
+      managerRating,
+      staffCoachId,
+      formation: state.formation,
+      tactic: state.season.defaultTactic,
+      leagueName: getLeagueById(state.season.leagueId).koreanName,
+      clubs: state.season.clubs,
+      standings: state.season.standings,
+      fixtures: state.season.fixtures,
+      totalRounds: state.season.totalRounds,
+      userMatchHistory: state.season.userMatchHistory,
+      userCupMatchHistory: state.season.userCupMatchHistory,
+      userUclMatchHistory: state.season.userUclMatchHistory,
+      cup: state.season.cup,
+      ucl: state.season.ucl,
+      starters: state.starters,
+      bench: state.bench,
+      combinedStatsMap: combinedStats,
+      baseAvgOvr: ratings.rawOvr,
+      effectiveOvr: effectiveTotalOvr,
+      chemistry: chemistry.total,
+      ffpTier: state.season.budgetState?.ffpTier,
+    });
 
     const updated = archiveSeasonToHallOfFame({
       runId: effectiveRunId,
@@ -7986,6 +8027,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       managerAvatar: state.manager.avatar,
       managerTraitId: state.manager.traitId,
       managerRating,
+      staffCoachId,
       leagueId: state.season.leagueId,
       formation: state.formation,
       defaultTactic: state.season.defaultTactic,
@@ -8001,6 +8043,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       awards: state.season.awards,
       globalAwards: state.season.globalAwards ?? null,
       matchHistory,
+      teamStory,
       starters: state.starters,
       bench: state.bench,
       combinedPlayerStats: combinedStats,
@@ -8017,7 +8060,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         triggerCelebration: true,
       });
     }
-  }, [state, ratings.rawOvr, chemistry, submitHallOfFameEntryToGlobal]);
+  }, [state, ratings, chemistry, submitHallOfFameEntryToGlobal]);
 
   // Auto-archive completed runs into Hall of Fame ONLY when reaching historical-team caliber
   // (score >= 6,500, S+ grade, UCL title, or Treble). Other seasons can be manually registered from SeasonSummary.
@@ -8209,8 +8252,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
           payload: { minute, inPenalties },
         }),
       cancelSoloStreamMatch: () => dispatch({ type: 'CANCEL_SOLO_STREAM_MATCH' }),
-      abortStreamAndStartLive2D: () =>
-        dispatch({ type: 'ABORT_STREAM_AND_START_LIVE_2D' }),
+      abortStreamAndStartLive2D: (opts) =>
+        dispatch({ type: 'ABORT_STREAM_AND_START_LIVE_2D', payload: opts }),
       simulateSingleMatchInstant: () =>
         dispatch({ type: 'SIMULATE_SINGLE_MATCH_INSTANT' }),
       simulateOneFastRound: (stopAtTransfer, stopAtCup = false) =>

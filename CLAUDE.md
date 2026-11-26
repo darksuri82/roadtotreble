@@ -29,6 +29,7 @@
 2. 구현 후 `npm run build`(타입 체크 포함) 오류 0건, `npm run test`, `npm run lint`를 확인한다.
    - `balanceVerification.test.ts`는 난수 기반이라 가끔 실패한다. 실패하면 그 테스트만 다시 돌려 구분한다.
 3. 기존 버전을 덮어쓰지 말고 새 버전으로 `src/data/patchNotes.ts`(`CURRENT_APP_VERSION` + `PATCH_NOTES` 최상단), `CHANGELOG.md`, `PROJECT_HANDOFF.md`를 갱신한다.
+   - 첫 화면 업데이트 안내 팝업(`src/components/common/WhatsNewModal.tsx`)도 매 업데이트마다 최신 변경점으로 콘텐츠를 갱신하고 `CURRENT_APP_VERSION` 버전 키(`WHATS_NEW_DISMISSED_STORAGE_KEY`)가 함께 올라가 새 버전 배포 시 `다시 보지 않기`를 눌렀던 사용자에게도 자동 재노출되도록 유지한다.
 4. 커밋 후 푸시한다. `main`에 직접 푸시하지 않고 `claude/...` 브랜치에 올렸다면, 사용자가 GitHub에서 PR을 머지해야 반영·배포된다는 점을 마지막에 알린다.
 
 ## 5. 참고

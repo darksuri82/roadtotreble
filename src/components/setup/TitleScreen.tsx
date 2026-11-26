@@ -6,6 +6,7 @@ import {
   GraduationCap,
   Play,
   ScrollText,
+  Sparkles,
   Swords,
   Users,
 } from 'lucide-react';
@@ -15,11 +16,17 @@ import { getAchievementProgress } from '../../engine/legacyEngine';
 import { useGame } from '../../store/GameContext';
 import { PatchNotesModal } from '../common/PatchNotesModal';
 import {
+  isWhatsNewDismissed,
+  WhatsNewModal,
+} from '../common/WhatsNewModal';
+import {
   isSoloTutorialDismissed,
   SoloVisualTutorialModal,
 } from '../guide/SoloVisualTutorialModal';
 import { SystemGuideModal } from '../guide/SystemGuideModal';
 import { RoadToTrebleHeroSvg } from './RoadToTrebleHeroSvg';
+
+let whatsNewClosedThisSession = false;
 
 const ROAD_STAGES = [
   { label: '드래프트', accent: 'text-emerald-300' },
@@ -38,6 +45,9 @@ export function TitleScreen() {
   } = useGame();
   const [showGuide, setShowGuide] = useState(false);
   const [showPatchNotes, setShowPatchNotes] = useState(false);
+  const [showWhatsNew, setShowWhatsNew] = useState<boolean>(
+    () => !whatsNewClosedThisSession && !isWhatsNewDismissed(CURRENT_APP_VERSION),
+  );
   const [tutorialMode, setTutorialMode] = useState<
     'onboarding' | 'replay' | null
   >(null);
@@ -70,10 +80,12 @@ export function TitleScreen() {
               <button
                 id="hero-version-badge"
                 type="button"
-                onClick={() => setShowPatchNotes(true)}
-                className="font-mono font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                onClick={() => setShowWhatsNew(true)}
+                className="inline-flex items-center gap-1 font-mono font-bold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
+                title="주요 업데이트 안내 보기"
               >
-                {CURRENT_APP_VERSION}
+                <Sparkles className="h-3 w-3" />
+                <span>{CURRENT_APP_VERSION}</span>
               </button>
               <span className="text-slate-700">·</span>
               <button
@@ -187,10 +199,10 @@ export function TitleScreen() {
               <Globe className="h-4 w-4 shrink-0 text-sky-400 sm:h-5 sm:w-5" />
               <div className="min-w-0">
                 <div className="text-[11px] font-bold text-white sm:text-sm truncate">
-                  역대 TOP 15
+                  일일 랭킹
                 </div>
                 <div className="text-[10px] text-sky-300/90 truncate sm:text-[11px]">
-                  랭킹 · 1대1 도전
+                  오늘 TOP 10 · 1대1
                 </div>
               </div>
             </div>
@@ -259,6 +271,19 @@ export function TitleScreen() {
       )}
       {showPatchNotes && (
         <PatchNotesModal onClose={() => setShowPatchNotes(false)} />
+      )}
+      {showWhatsNew && (
+        <WhatsNewModal
+          onClose={() => {
+            whatsNewClosedThisSession = true;
+            setShowWhatsNew(false);
+          }}
+          onOpenPatchNotes={() => {
+            whatsNewClosedThisSession = true;
+            setShowWhatsNew(false);
+            setShowPatchNotes(true);
+          }}
+        />
       )}
     </>
   );

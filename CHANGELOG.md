@@ -5,6 +5,33 @@
 
 ---
 
+## v9.5.0 — 세부능력치 현실화 전수 보정 · KST 주간 일일 랭킹(TOP 10/TOP 3) · 팀 스토리 & 1~2줄 소개 · 라이브 리트라이/자동진행/이적시장 수정 · FFP -12% & 역사 팀 OVR 현실화 · 첫 화면 업데이트 팝업
+
+- **세부능력치 현실화 전수 점검 및 보정 (`src/engine/attributeEngine.ts`, `src/data/attributeOverrides.ts`, `src/data/legendPlayers.json`, `src/data/activePlayers.json`)**:
+  - `getPositionWeights(sub, playstyles?)`를 플레이스타일 유형별로 세분화해 딥 플레이메이커/피벗 미드필더가 OVR 정규화 과정에서 피지컬(`phy`)이 과대 팽창되던 구조적 원인을 제거하고, `eraBestXiTeams` 등 ID가 다른 클래식 선수도 `CURATED_CLASSIC_BY_NAME` 폴백으로 실제 스탯이 반영되도록 보강.
+  - 클래식 84명·현역 239명의 세부능력치를 실제 평가에 맞게 재보정해 `10s 부스케츠`(PHY 76 · PAS 97 · DEF 95)·`00s 피를로`(PHY 72 · PAS 99)·`00s 사비`(PHY 75 · PAS 99)·`10s 크로스`(PHY 74 · PAS 99)·현역 `페드리`(PHY 76 · PAS 96)와 `10s 판 다이크`(PHY 95 · AER 96)·`00s 드로그바`(PHY 97)·`00s 비에이라`(PHY 97)·현역 `라이스`(PHY 94) 등 피지컬형 선수를 확실히 차별화.
+- **라이브 중계 일시중지·중단 무한 리트라이(세이브 스컴) 원천 차단 (`src/store/GameContext.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/common/SoloLiveScoreboard.tsx`, `src/components/ucl/UclMulticastPopupBoard.tsx`, `src/__tests__/v817AntiExploitAndPersistence.test.ts`)**:
+  - `CANCEL_SOLO_STREAM_MATCH`가 경기를 초기화하지 않고 즉시 결과를 확정(`COMMIT_LIVE_MATCH`)하도록 변경하고, `ABORT_STREAM_AND_START_LIVE_2D`가 진행 분·스코어·이벤트를 그대로 2D 중계에 인계하도록 수정.
+  - `loadSavedGameState()`가 스트림뿐 아니라 일반 2D 라이브 중계 진행 중 새로고침(`liveHalftime` 존재) 시에도 경기를 자동 확정하도록 보강하고 단위 테스트를 추가.
+- **자동진행(Fast Sim) 중 하단 프리뷰·조작 잠금 (`src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/ucl/UclLeaguePhaseFastSimModal.tsx`)**:
+  - 리그·UCL 자동진행/패스트 심 실행 중 하단 프리뷰·전술실 패널(`MatchDayTacticsRoom`)과 36팀 전체 팝업·경기 행 클릭을 잠금(`pointer-events-none`, `disabled`, `locked` 가드 및 잠금 안내 배너) 처리해 상태 꼬임 방지.
+- **이적시장 클래식 선수 클릭 무반응 오류 수정 (`src/index.css`, `src/components/common/PitchBoard.tsx`, `src/components/transfer/TransferMarketModal.tsx`)**:
+  - Tailwind v4 `@layer utilities`를 덮어쓰던 비레이어드 클래식/각성 카드 CSS를 `@layer components`로 정리하고, `PitchBoard` 선택 슬롯에 아웃라인·애니메이션 중지·좌상단 `✓` 배지 추가 및 `TransferMarketModal` 클래식 FA 하단 고정 액션 바를 신설해 즉각적인 선택 피드백 제공.
+- **FFP 2단계 최종 점수 감점 완화: 20% → 12% (`src/engine/budgetEngine.ts`, `src/engine/legacyEngine.ts`, `src/types/game.ts`, `src/types/legacy.ts`)**:
+  - `FFP_TIER2_SCORE_MULTIPLIER = 0.88`, `FFP_TIER2_SCORE_PENALTY_PCT = 12`로 조정하고 드래프트 예산 바·개막 FFP 팝업·대시보드·결산·가이드북·테스트를 엔진 상수와 100% 통일.
+- **글로벌 랭킹 개편 — KST 주간 순환 일일 랭킹 (`src/services/globalRankingService.ts`, `supabase/schema.sql`, `src/components/legacy/LegacyHubModal.tsx`, `src/components/legacy/GlobalTop15CelebrationModal.tsx`, `src/components/league/SeasonSummary.tsx`, `src/components/setup/TitleScreen.tsx`, `src/components/common/HeaderNav.tsx`, `src/components/dream/DreamMatchArena.tsx`)**:
+  - KST(`Asia/Seoul`) 기준 **당일 TOP 10** 실시간 경쟁 · **지난 날짜 TOP 3** 아카이브 보존 · **매주 월요일 00:00(KST)** 주간 전체 초기화 구조로 전면 개편.
+  - 랭킹 모달 상단에 이번 주 날짜 탭(`오늘 / 어제 / MM.DD (요일)`) 추가 및 `supabase/schema.sql`에 `ranking_date`/`ranking_week_start` 컬럼·인덱스·`prune_global_daily_rankings()`·갱신된 `submit_global_hof_ranking` RPC 및 운영 마이그레이션 SQL 수록.
+- **명전 역사 팀 24팀(최종 보스) OVR 소폭 현실화 (`src/data/historicalSquadsData.ts`, `src/data/historicalTeams.ts`)**:
+  - 현역 OVR 압축 이후 과도하게 벌어졌던 역사 팀 선수 279명의 과대평가 OVR만 실제 평가 기반으로 소폭 현실화(예: `10-11 바르사 90.9→89.5`, `14-15 바르사 90.6→89.3`, `22-23 맨시티 89.8→87.8`, `24-25 PSG 89.6→88.5`) 및 `eraPrestigeLift` 소폭 완화(`1.4+0.7 → 0.9+0.5`)로 최종 보스 위상을 유지하며 전략·각성 도전 가능 격차 구현.
+- **내 팀 결산 · 일일 랭킹 · 명전 — ‘팀 소개(1~2줄)’ & ‘팀 스토리’ 탭 신설 (`src/engine/teamStoryEngine.ts`, `src/components/common/TeamStoryTab.tsx`, `src/components/common/TeamSeasonArchiveTab.tsx`, `src/components/league/SeasonSummary.tsx`, `src/components/legacy/LegacyHubModal.tsx`, `src/services/globalRankingService.ts`, `src/engine/legacyEngine.ts`, `src/store/GameContext.tsx`)**:
+  - 감독 특성·수석 코치·실효 OVR·포텐 각성·전술 색깔을 압축한 1~2줄 팀 소개(`TeamIntroBanner`)와 실제 시즌 경기 데이터(전력 대비 초과 성과·우승 확정전·UCL 결승 극장골·대역전승·각성 에이스 활약 등) 기반 타임라인/카드형 `팀 스토리` 탭(`TeamStoryTab`)을 신설하고 명전·일일 랭킹 스냅샷에 직렬화 저장.
+- **튜토리얼·가이드북·패치노트 동기화 & 첫 화면 업데이트 안내 팝업 신설 (`src/components/common/WhatsNewModal.tsx`, `src/components/setup/TitleScreen.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`, `src/components/guide/SystemGuideModal.tsx`, `src/data/patchNotes.ts`, `CLAUDE.md`, `src/__tests__/v95FixesDailyRankStoryWhatsNew.test.ts`)**:
+  - 첫 페이지 진입 시 `v9.3.0 ~ v9.5.0` 핵심 변경점을 실제 인게임 프리뷰(클래식 카드·세부 스탯 비교·`3-2-4-1` 미니 피치·각성 카드·일일 랭킹 날짜 탭)와 컴팩트 4탭으로 안내하는 `WhatsNewModal` 신설 및 하단 `다시 보지 않기` 체크박스(현재 버전 키 `localStorage` 저장 → 새 버전 배포 시 자동 재노출) 구현.
+  - `CLAUDE.md` 작업 워크플로우에 매 업데이트마다 `WhatsNewModal.tsx` 콘텐츠와 버전 키를 함께 갱신하는 규칙을 명문화하고 튜토리얼·가이드북을 100% 최신화.
+
+---
+
 ## v9.4.0 — 신규 3-2-4-1 포메이션 · 드래프트 프리뷰 연동 포텐 표시 · 각성 즉시 발동 · 전술 파훼/AI 실효 전력 상향 · 26-27 선수단 67명 정밀 재조정
 
 - **드래프트 프리뷰 위치 연동 `포텐↑`/`육성` 개편 & 각성 원리 가시성 강화 (`src/components/draft/RouletteReelsView.tsx`, `src/components/draft/DraftScreen.tsx`, `src/engine/awakeningEngine.ts`, `src/components/guide/SystemGuideModal.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`)**:

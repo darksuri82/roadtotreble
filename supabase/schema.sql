@@ -233,10 +233,23 @@ create table if not exists public.global_hof_rankings (
 );
 
 alter table public.global_hof_rankings
-  add column if not exists rule_era text;
+  add column if not exists rule_era text,
+  add column if not exists ranking_date text not null default to_char((now() at time zone 'Asia/Seoul'), 'YYYY-MM-DD'),
+  add column if not exists ranking_week_start text not null default to_char(date_trunc('week', (now() at time zone 'Asia/Seoul')), 'YYYY-MM-DD');
 
 create index if not exists idx_global_hof_rankings_order
   on public.global_hof_rankings (
+    season_score desc,
+    is_treble desc,
+    ucl_won desc,
+    achieved_at asc,
+    id asc
+  );
+
+create index if not exists idx_global_hof_rankings_week_day
+  on public.global_hof_rankings (
+    ranking_week_start,
+    ranking_date,
     season_score desc,
     is_treble desc,
     ucl_won desc,
@@ -252,6 +265,76 @@ create policy "global_hof_rankings_public_select"
   on public.global_hof_rankings for select to anon, authenticated
   using (true);
 
+create or replace function public.prune_global_daily_rankings()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_now_kst timestamp := now() at time zone 'Asia/Seoul';
+  v_today_kst text := to_char(v_now_kst, 'YYYY-MM-DD');
+  v_week_start_kst text := to_char(date_trunc('week', v_now_kst), 'YYYY-MM-DD');
+  v_deleted_weeks int := 0;
+  v_deleted_past_days int := 0;
+  v_deleted_today int := 0;
+begin
+  perform pg_advisory_xact_lock(hashtext('global_hof_rankings_daily_weekly'));
+
+  -- 1) Weekly Reset (Monday 00:00 KST): purge all previous weeks & pre-v9.0 rows
+  delete from public.global_hof_rankings
+  where ranking_week_start is distinct from v_week_start_kst
+     or lower(
+       coalesce(
+         nullif(trim(rule_era), ''),
+         nullif(trim(score_breakdown->>'ruleEra'), ''),
+         nullif(trim(squad_snapshot->>'ruleEra'), ''),
+         ''
+       )
+     ) !~ '^v(9|[1-9][0-9]+)(\.|$)';
+  get diagnostics v_deleted_weeks = row_count;
+
+  -- 2) Past days in current week: retain strictly TOP 3 per day
+  with ranked_past as (
+    select id,
+           row_number() over (
+             partition by ranking_date
+             order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
+           ) as rk
+    from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+      and ranking_date < v_today_kst
+  )
+  delete from public.global_hof_rankings
+  where id in (select id from ranked_past where rk > 3);
+  get diagnostics v_deleted_past_days = row_count;
+
+  -- 3) Today: retain strictly TOP 10
+  with ranked_today as (
+    select id,
+           row_number() over (
+             order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
+           ) as rk
+    from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+      and ranking_date = v_today_kst
+  )
+  delete from public.global_hof_rankings
+  where id in (select id from ranked_today where rk > 10);
+  get diagnostics v_deleted_today = row_count;
+
+  return jsonb_build_object(
+    'week_start_kst', v_week_start_kst,
+    'today_kst', v_today_kst,
+    'deleted_weeks', v_deleted_weeks,
+    'deleted_past_days', v_deleted_past_days,
+    'deleted_today', v_deleted_today
+  );
+end;
+$$;
+
+grant execute on function public.prune_global_daily_rankings() to anon, authenticated;
+
 create or replace function public.submit_global_hof_ranking(p_entry jsonb)
 returns jsonb
 language plpgsql
@@ -259,6 +342,9 @@ security definer
 set search_path = public
 as $$
 declare
+  v_now_kst timestamp := now() at time zone 'Asia/Seoul';
+  v_today_kst text := to_char(v_now_kst, 'YYYY-MM-DD');
+  v_week_start_kst text := to_char(date_trunc('week', v_now_kst), 'YYYY-MM-DD');
   v_run_id text;
   v_rule_era text;
   v_score int;
@@ -295,7 +381,7 @@ begin
     raise exception 'Invalid run_id';
   end if;
   if lower(v_rule_era) !~ '^v(9|[1-9][0-9]+)(\.|$)' then
-    raise exception 'Pre-v9.0 records are not eligible for global rankings';
+    raise exception 'Pre-v9.0 records are not eligible for daily rankings';
   end if;
   if v_score < 0 or v_score > 15000 then
     raise exception 'Invalid season_score';
@@ -308,7 +394,7 @@ begin
     raise exception 'Invalid squad_snapshot starters';
   end if;
 
-  -- v8.17 Anti-exploit server validation: reject duplicate player IDs and impossible Legend-spam squads
+  -- Anti-exploit server validation: reject duplicate player IDs and impossible Classic-spam squads
   select
     count(*) filter (where elem->>'isLegend' = 'true')
     into v_starter_legends
@@ -339,21 +425,36 @@ begin
     raise exception 'Invalid legend count in squad_snapshot';
   end if;
 
-  -- Serialize concurrent submissions to eliminate Top-15 race conditions
-  perform pg_advisory_xact_lock(hashtext('global_hof_rankings_top15'));
+  -- Serialize concurrent submissions to eliminate daily Top-10 race conditions
+  perform pg_advisory_xact_lock(hashtext('global_hof_rankings_daily_weekly'));
 
-  -- 0) Auto-purge any residual pre-v9.0 rows so cutoff and Top-15 remain strictly v9.0+
+  -- 0a) Weekly Reset (Monday 00:00 KST) & pre-v9.0 purge
   delete from public.global_hof_rankings
-  where lower(
-    coalesce(
-      nullif(trim(rule_era), ''),
-      nullif(trim(score_breakdown->>'ruleEra'), ''),
-      nullif(trim(squad_snapshot->>'ruleEra'), ''),
-      ''
-    )
-  ) !~ '^v(9|[1-9][0-9]+)(\.|$)';
+  where ranking_week_start is distinct from v_week_start_kst
+     or lower(
+       coalesce(
+         nullif(trim(rule_era), ''),
+         nullif(trim(score_breakdown->>'ruleEra'), ''),
+         nullif(trim(squad_snapshot->>'ruleEra'), ''),
+         ''
+       )
+     ) !~ '^v(9|[1-9][0-9]+)(\.|$)';
 
-  -- 1) Duplicate run_id guard (v9.0+ scope)
+  -- 0b) Past days within this week: retain strictly TOP 3 per date
+  with ranked_past as (
+    select id,
+           row_number() over (
+             partition by ranking_date
+             order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
+           ) as rk
+    from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+      and ranking_date < v_today_kst
+  )
+  delete from public.global_hof_rankings
+  where id in (select id from ranked_past where rk > 3);
+
+  -- 1) Duplicate run_id guard within current week/today
   select ranked.rk into v_existing_rank
   from (
     select run_id,
@@ -361,31 +462,60 @@ begin
              order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
            ) as rk
     from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+      and ranking_date = v_today_kst
   ) ranked
   where ranked.run_id = v_run_id;
 
   if v_existing_rank is not null then
     select count(*), min(season_score) into v_total_after, v_cutoff_score
-    from public.global_hof_rankings;
+    from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+      and ranking_date = v_today_kst;
 
     return jsonb_build_object(
-      'entered', v_existing_rank <= 15,
+      'entered', v_existing_rank <= 10,
       'rank', v_existing_rank,
       'already_exists', true,
       'cutoff_score', v_cutoff_score,
       'total_count', v_total_after,
-      'pruned_count', 0
+      'pruned_count', 0,
+      'ranking_date', v_today_kst
     );
   end if;
 
-  -- 2) Pre-check against 15th cutoff when table already has 15+ v9.0+ entries
-  select count(*) into v_total_before from public.global_hof_rankings;
-  if v_total_before >= 15 then
+  -- Also prevent duplicate run_id archived on an earlier day of the same week
+  if exists (select 1 from public.global_hof_rankings where run_id = v_run_id) then
+    select count(*), min(season_score) into v_total_after, v_cutoff_score
+    from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+      and ranking_date = v_today_kst;
+
+    return jsonb_build_object(
+      'entered', false,
+      'rank', null,
+      'already_exists', true,
+      'cutoff_score', v_cutoff_score,
+      'total_count', v_total_after,
+      'pruned_count', 0,
+      'ranking_date', v_today_kst
+    );
+  end if;
+
+  -- 2) Pre-check against today's 10th cutoff when today already has 10+ entries
+  select count(*) into v_total_before
+  from public.global_hof_rankings
+  where ranking_week_start = v_week_start_kst
+    and ranking_date = v_today_kst;
+
+  if v_total_before >= 10 then
     select season_score, is_treble, ucl_won, achieved_at
       into v_cutoff_row
     from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+      and ranking_date = v_today_kst
     order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
-    offset 14 limit 1;
+    offset 9 limit 1;
 
     if (
       v_score < v_cutoff_row.season_score
@@ -398,13 +528,14 @@ begin
         'rank', null,
         'already_exists', false,
         'cutoff_score', v_cutoff_row.season_score,
-        'total_count', least(v_total_before, 15),
-        'pruned_count', 0
+        'total_count', least(v_total_before, 10),
+        'pruned_count', 0,
+        'ranking_date', v_today_kst
       );
     end if;
   end if;
 
-  -- 3) Insert qualifying v9.0+ record
+  -- 3) Insert qualifying record into today's KST bucket
   insert into public.global_hof_rankings (
     run_id, season_score, grade, club_name, manager_name,
     league_id, league_korean_name, final_league_rank, league_points, league_total_rounds,
@@ -412,7 +543,8 @@ begin
     is_league_champion, is_treble, trophies, formation, default_tactic,
     manager_trait_id, manager_rating, team_avg_ovr, chemistry,
     avg_synergy_ovr_bonus, manager_synergy_count, top_scorer_summary,
-    club_profile, manager_avatar, score_breakdown, squad_snapshot, rule_era, achieved_at
+    club_profile, manager_avatar, score_breakdown, squad_snapshot,
+    rule_era, ranking_date, ranking_week_start, achieved_at
   ) values (
     v_run_id,
     v_score,
@@ -447,21 +579,27 @@ begin
     coalesce(p_entry->'score_breakdown', '{}'::jsonb),
     p_entry->'squad_snapshot',
     v_rule_era,
+    v_today_kst,
+    v_week_start_kst,
     v_achieved_at
   );
 
-  -- 4) Immediately prune all rows ranked 16th or lower in the same transaction
-  with top15 as (
+  -- 4) Immediately prune today's rows ranked 11th or lower in the same transaction
+  with today_top10 as (
     select id
     from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+      and ranking_date = v_today_kst
     order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
-    limit 15
+    limit 10
   )
   delete from public.global_hof_rankings
-  where id not in (select id from top15);
+  where ranking_week_start = v_week_start_kst
+    and ranking_date = v_today_kst
+    and id not in (select id from today_top10);
   get diagnostics v_pruned_count = row_count;
 
-  -- 5) Compute final rank & updated cutoff
+  -- 5) Compute final rank & updated cutoff for today
   select ranked.rk into v_new_rank
   from (
     select run_id,
@@ -469,19 +607,24 @@ begin
              order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
            ) as rk
     from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+      and ranking_date = v_today_kst
   ) ranked
   where ranked.run_id = v_run_id;
 
   select count(*), min(season_score) into v_total_after, v_cutoff_score
-  from public.global_hof_rankings;
+  from public.global_hof_rankings
+  where ranking_week_start = v_week_start_kst
+    and ranking_date = v_today_kst;
 
   return jsonb_build_object(
-    'entered', v_new_rank is not null and v_new_rank <= 15,
+    'entered', v_new_rank is not null and v_new_rank <= 10,
     'rank', v_new_rank,
     'already_exists', false,
     'cutoff_score', v_cutoff_score,
     'total_count', v_total_after,
-    'pruned_count', v_pruned_count
+    'pruned_count', v_pruned_count,
+    'ranking_date', v_today_kst
   );
 end;
 $$;
@@ -489,100 +632,19 @@ $$;
 grant execute on function public.submit_global_hof_ranking(jsonb) to anon, authenticated;
 
 -- =============================================================================
--- v9.2 Production One-Time Cleanup SQL (Run in Supabase SQL Editor)
--- Permanently deletes all pre-v9.0 legacy rows lacking a v9.0+ rule_era marker:
+-- v9.5.0 Production Migration SQL (Run ONCE in Supabase Dashboard -> SQL Editor)
+-- 1) Clears legacy all-time global_hof_rankings rows for clean Weekly-Daily launch
+-- 2) Adds KST daily/weekly columns & composite index
+-- 3) Re-run the `prune_global_daily_rankings` & `submit_global_hof_ranking` functions above
 -- =============================================================================
--- alter table public.global_hof_rankings add column if not exists rule_era text;
--- delete from public.global_hof_rankings
--- where lower(
---   coalesce(
---     nullif(trim(rule_era), ''),
---     nullif(trim(score_breakdown->>'ruleEra'), ''),
---     nullif(trim(squad_snapshot->>'ruleEra'), ''),
---     ''
---   )
--- ) !~ '^v(9|[1-9][0-9]+)(\.|$)';
+-- delete from public.global_hof_rankings;
+-- alter table public.global_hof_rankings
+--   add column if not exists ranking_date text not null default to_char((now() at time zone 'Asia/Seoul'), 'YYYY-MM-DD'),
+--   add column if not exists ranking_week_start text not null default to_char(date_trunc('week', (now() at time zone 'Asia/Seoul')), 'YYYY-MM-DD');
+-- create index if not exists idx_global_hof_rankings_week_day
+--   on public.global_hof_rankings (
+--     ranking_week_start, ranking_date, season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
+--   );
+-- select public.prune_global_daily_rankings();
 
--- =============================================================================
--- v9.3.1 Production Idempotent League-Difficulty Score Recalibration SQL
--- Applies modern 5-league difficulty multiplier (EPL 1.243 / Serie A 0.988 /
--- La Liga 0.962 / Bundesliga 0.903 / Ligue 1 0.815) to any existing global rows
--- lacking score_breakdown->>'leagueDifficultyFactor' so DB season_score matches
--- client-side recalibration 100%. Safe to run repeatedly (idempotent).
--- =============================================================================
--- with factors(league_id, strength_avg, factor) as (
---   values
---     ('epl',        80.86::numeric, 1.243::numeric),
---     ('seriea',     77.86::numeric, 0.988::numeric),
---     ('laliga',     77.55::numeric, 0.962::numeric),
---     ('bundesliga', 76.86::numeric, 0.903::numeric),
---     ('ligue1',     75.82::numeric, 0.815::numeric)
--- ),
--- calc as (
---   select
---     g.id,
---     f.strength_avg,
---     f.factor,
---     coalesce((g.score_breakdown->>'leagueRankBonus')::int, 0) as old_rank_bonus,
---     round(coalesce((g.score_breakdown->>'leagueRankBonus')::int, 0) * f.factor)::int as new_rank_bonus,
---     coalesce((g.score_breakdown->>'ffpPenaltyPct')::numeric, 0) as ffp_pct,
---     coalesce((g.score_breakdown->>'ffpPenaltyPoints')::int, 0) as old_ffp_pts,
---     g.season_score as old_total
---   from public.global_hof_rankings g
---   join factors f on f.league_id = g.league_id
---   where (g.score_breakdown->>'leagueDifficultyFactor') is null
--- ),
--- adjusted as (
---   select
---     id,
---     strength_avg,
---     factor,
---     old_rank_bonus,
---     new_rank_bonus,
---     ffp_pct,
---     case
---       when ffp_pct > 0 then
---         round(greatest(0, (old_total + old_ffp_pts) + (new_rank_bonus - old_rank_bonus)) * greatest(0.5, least(1, 1 - ffp_pct / 100.0)))::int
---       else
---         greatest(0, old_total + (new_rank_bonus - old_rank_bonus))
---     end as new_total,
---     case
---       when ffp_pct > 0 then
---         greatest(0, greatest(0, (old_total + old_ffp_pts) + (new_rank_bonus - old_rank_bonus)) - round(greatest(0, (old_total + old_ffp_pts) + (new_rank_bonus - old_rank_bonus)) * greatest(0.5, least(1, 1 - ffp_pct / 100.0)))::int)
---       else 0
---     end as new_ffp_pts
---   from calc
--- )
--- update public.global_hof_rankings g
--- set
---   season_score = a.new_total,
---   grade = case
---     when a.new_total >= 7200 then 'S+'
---     when a.new_total >= 5600 then 'S'
---     when a.new_total >= 4200 then 'A+'
---     when a.new_total >= 3200 then 'A'
---     when a.new_total >= 2300 then 'B+'
---     when a.new_total >= 1500 then 'B'
---     else 'C'
---   end,
---   score_breakdown = g.score_breakdown
---     || jsonb_build_object(
---       'leagueRankBonus', a.new_rank_bonus,
---       'leagueRankBaseBonus', a.old_rank_bonus,
---       'leagueStrengthAvg', a.strength_avg,
---       'leagueDifficultyFactor', a.factor,
---       'totalScore', a.new_total,
---       'grade', case
---         when a.new_total >= 7200 then 'S+'
---         when a.new_total >= 5600 then 'S'
---         when a.new_total >= 4200 then 'A+'
---         when a.new_total >= 3200 then 'A'
---         when a.new_total >= 2300 then 'B+'
---         when a.new_total >= 1500 then 'B'
---         else 'C'
---       end
---     )
---     || case when a.ffp_pct > 0 then jsonb_build_object('ffpPenaltyPoints', a.new_ffp_pts) else '{}'::jsonb end
--- from adjusted a
--- where g.id = a.id;
 

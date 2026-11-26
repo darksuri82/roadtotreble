@@ -272,10 +272,11 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
           <button
             type="button"
             onClick={onStop}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2.5 py-1 text-[11px] font-bold text-slate-400 hover:border-rose-500/40 hover:text-rose-200 cursor-pointer"
+            title="진행 중인 경기를 즉시 확정하고 자동진행을 중단합니다"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2.5 py-1 text-[11px] font-bold text-slate-400 hover:border-rose-500/40 hover:text-rose-200 cursor-pointer whitespace-nowrap"
           >
             <Square className="w-2.5 h-2.5 fill-current" />
-            중단
+            확정·중단
           </button>
         </div>
       </div>
