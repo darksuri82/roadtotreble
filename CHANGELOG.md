@@ -5,6 +5,18 @@
 
 ---
 
+## v9.2.4 — FFP 이적시장 페널티 1·2·3차/UCL 기준 통일 · 자동진행 전술 파훼 경고 수정 이동 버그 수정
+
+- **FFP 이적시장 페널티 1·2·3차/UCL 기준 통일 (`src/engine/budgetEngine.ts`, `src/types/game.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueEngine.ts`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`, `src/components/common/DraftBudgetBar.tsx`, `src/components/common/FfpOpeningNoticeModal.tsx`, `src/components/common/TeamSeasonArchiveTab.tsx`, `src/components/common/StaffCoachHireModal.tsx`, `src/components/guide/SystemGuideModal.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`)**:
+  - **FFP 1단계(+1~15%)**: 정규 1차·2차·3차 각 `1회` 제한 · UCL 특별 `3회` 정상 (기존 3차 미적용 누락 수정).
+  - **FFP 2단계(+15% 초과)**: 정규 1차·3차 영입 동결(`0회`) · 2차 `1회` 허용 · UCL 특별 `3회` 정상.
+  - `isFfpEmbargoWindow` · `isFfpTierEmbargoWindow` 단일 헬퍼로 싱글/멀티리그 동결 판정 및 `TRANSFER_SPIN_CLUBS`/`TRADE_ACCEPT_INCOMING` 리듀서 가드를 일원화하고, 드래프트 예산 바·FFP 개막 통지·이적시장 헤더/동결 카드·시스템 가이드북·튜토리얼·아카이브 문구를 모두 최신화.
+- **자동진행 중 전술 파훼 경고 `[전술 수정하러 가기]` 이동 버그 수정 (`src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - 정규 시즌 자동진행(`liveAutoActive`) 중 숨겨지는 `match` 탭 대신 `startTacticEdit()` + `setLiveAutoUserPaused(true)`로 즉시 일시정지·수정 모드를 열고 `squad`(스쿼드/전술) 탭으로 이동하도록 수정.
+  - UCL 대시보드에도 `rtt:go-to-tactics` 리스너를 추가해 자동진행 일시정지 후 `squad` 탭으로 즉시 이동하도록 보강.
+
+---
+
 ## v9.2.3 — 내 팀 결산 최고 GK·최우수 수비수 분리 · 명전 FFP 1/2단계 라벨 수정 · 이적시장 레전드 2.5% 고정 & 순위 비례 영입 제안 상향
 
 - **내 팀 결산 최고 GK 수비수 수상 버그 수정 & 최우수 수비수 신설 (`src/types/league.ts`, `src/engine/awardsEngine.ts`, `src/components/league/SeasonSummary.tsx`)**:
