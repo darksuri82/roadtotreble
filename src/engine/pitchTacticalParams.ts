@@ -814,7 +814,7 @@ export function buildTeamAgentProfiles(
       staminaStat,
       enteredAtMinute: enteredAt,
       isFreshSub,
-      isStar: Boolean(p?.isLegend || ovr >= 88),
+      isStar: Boolean(p?.isLegend || ovr >= 87),
       managerSynergy: mgrSynergy,
       synergyWithSlot: synergyMatrix[slotIndex],
       baseMaxSpeed,

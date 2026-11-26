@@ -5,6 +5,10 @@ import type {
   SquadPlayerAnalyticsRow,
   TeamSeasonAnalytics,
 } from '../../types/league';
+import {
+  getClassicEraMeta,
+  SUPERSTAR_MIN_OVR,
+} from '../../types/player';
 import { PlayerNameButton } from '../common/PlayerNameButton';
 
 interface TeamAnalyticsTabProps {
@@ -373,10 +377,22 @@ export function TeamAnalyticsTab({
                           {row.playerName}
                         </span>
                       )}
-                      {row.isLegend && (
-                        <Crown className="w-3 h-3 text-amber-400 shrink-0" />
-                      )}
-                      {!row.isLegend && row.ovr >= 91 && (
+                      {row.isLegend && (() => {
+                        const eraMeta = row.classicEra
+                          ? getClassicEraMeta(row.classicEra)
+                          : null;
+                        return eraMeta ? (
+                          <span
+                            className={`rounded px-1 py-px text-[9px] font-black shrink-0 ${eraMeta.badgeClass}`}
+                            title={eraMeta.fullLabel}
+                          >
+                            {eraMeta.shortLabel}
+                          </span>
+                        ) : (
+                          <Crown className="w-3 h-3 text-amber-400 shrink-0" />
+                        );
+                      })()}
+                      {!row.isLegend && row.ovr >= SUPERSTAR_MIN_OVR && (
                         <Diamond className="w-3 h-3 text-cyan-300 shrink-0" />
                       )}
                     </div>

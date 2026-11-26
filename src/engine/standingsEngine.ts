@@ -4,6 +4,7 @@ import type {
   PlayerSeasonStats,
   StandingRow,
 } from '../types/league';
+import { formatPlayerRecordName } from '../types/player';
 import type { Player } from '../types/player';
 import { USER_CLUB_ID } from './matchEngine';
 
@@ -146,7 +147,7 @@ export function createInitialPlayerStatsMap(params: {
     if (map[p.id] && map[p.id].isUserTeam && !isUserTeam) return;
     map[p.id] = {
       playerId: p.id,
-      playerName: p.name,
+      playerName: formatPlayerRecordName(p),
       teamId: club.id,
       teamName: club.name,
       teamShortName: club.shortName,
@@ -169,6 +170,7 @@ export function createInitialPlayerStatsMap(params: {
       avgRating: 0,
       positionCounts: {},
       isLegend: p.isLegend,
+      ...(p.classicEra ? { classicEra: p.classicEra } : {}),
     };
   };
 
@@ -287,6 +289,7 @@ export function applyRoundResults(
           avgRating: 0,
           positionCounts: {},
           isLegend: Boolean(pr.isLegend),
+          ...(pr.classicEra ? { classicEra: pr.classicEra } : {}),
         };
       }
 
@@ -396,6 +399,7 @@ export function accumulateCompetitionPlayerStats(
           avgRating: 0,
           positionCounts: {},
           isLegend: Boolean(pr.isLegend),
+          ...(pr.classicEra ? { classicEra: pr.classicEra } : {}),
         };
       }
 

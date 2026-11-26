@@ -203,7 +203,7 @@ describe('v5.0 — 9 Formations, Unified Tactical Engine, 4-Pillar Synergy & AI 
     expect(eliteLink.hasEliteLink).toBe(true);
     expect(eliteLink.activeLines).toContain('elite');
 
-    const nonEliteLink = evaluatePairLink({ ...pA, ovr: 87 }, eliteB);
+    const nonEliteLink = evaluatePairLink({ ...pA, ovr: 85 }, eliteB);
     expect(nonEliteLink.hasEliteLink).toBe(false);
 
     // Independent Manager Compatibility gives flat +1 to all matching players (decoupled from +3 player link cap)

@@ -103,8 +103,8 @@ export function OpponentPitchView({
   const oppManager = useMemo(() => getClubManager(opponent), [opponent]);
 
   const { expectedStarters, injuredPlayers } = useMemo(() => {
-    // Historical HOF dream match opponents have their fixed curated 11 starters (no season injuries)
-    if (opponent.id.startsWith('hist-')) {
+    // Historical HOF & Era Best XI dream match opponents have their fixed curated 11 starters (no season injuries)
+    if (opponent.id.startsWith('hist-') || opponent.id.startsWith('era-')) {
       return {
         expectedStarters: roster.slice(0, 11),
         injuredPlayers: [],

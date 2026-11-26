@@ -30,6 +30,7 @@ import type {
   ShotAngleType,
   TacticId,
 } from '../types/league';
+import { formatPlayerRecordName } from '../types/player';
 import type { Player, SubPosition } from '../types/player';
 import {
   computeTeamSubAttributeModifier,
@@ -1405,15 +1406,21 @@ function generateHalfGoalEvents(params: {
           scorer
         : undefined;
 
+    const scorerLabel = formatPlayerRecordName(scorer);
+    const assistLabel = assister ? formatPlayerRecordName(assister) : undefined;
     const desc = formatAttackChainDescription({
       pattern,
       attackRoute,
       finishType,
       outcome: 'goal',
-      scorerName: scorer.name,
-      assistName: assister?.name,
-      secondaryShooterName: firstShooter?.name,
-      contestDefenderName: contestDefender?.name,
+      scorerName: scorerLabel,
+      assistName: assistLabel,
+      secondaryShooterName: firstShooter
+        ? formatPlayerRecordName(firstShooter)
+        : undefined,
+      contestDefenderName: contestDefender
+        ? formatPlayerRecordName(contestDefender)
+        : undefined,
       dribbleBeatCount,
       reboundOrigin,
       pkDirection,
@@ -1430,9 +1437,9 @@ function generateHalfGoalEvents(params: {
       teamColor: club.primaryColor,
       isUserTeam: isUser,
       scorerId: scorer.id,
-      scorerName: scorer.name,
+      scorerName: scorerLabel,
       assistId: assister?.id,
-      assistName: assister?.name,
+      assistName: assistLabel,
       xgDelta:
         pattern === 'penalty_kick'
           ? 0.78
@@ -1585,6 +1592,10 @@ function generateHalfFlavorEvents(params: {
       minStart +
       Math.floor(((cIdx + rng() * 0.85) / (chanceCount + 0.3)) * span);
 
+    const shooterRecordName = formatPlayerRecordName(shooter);
+    const defenderRecordName = contestDefender
+      ? formatPlayerRecordName(contestDefender)
+      : undefined;
     events.push({
       minute: clamp(minute, minStart, maxMinute),
       half,
@@ -1594,7 +1605,7 @@ function generateHalfFlavorEvents(params: {
       teamColor: cClub.primaryColor,
       isUserTeam: cIsUser,
       scorerId: shooter.id,
-      scorerName: shooter.name,
+      scorerName: shooterRecordName,
       xgDelta:
         pattern === 'penalty_kick'
           ? 0.76
@@ -1604,7 +1615,7 @@ function generateHalfFlavorEvents(params: {
       attackRoute,
       finishType,
       dribbleBeatCount,
-      contestDefenderName: contestDefender?.name,
+      contestDefenderName: defenderRecordName,
       shotAngle,
       isPenalty: pattern === 'penalty_kick' ? true : undefined,
       pkDirection,
@@ -1613,8 +1624,8 @@ function generateHalfFlavorEvents(params: {
         attackRoute,
         finishType,
         outcome,
-        scorerName: shooter.name,
-        contestDefenderName: contestDefender?.name,
+        scorerName: shooterRecordName,
+        contestDefenderName: defenderRecordName,
         dribbleBeatCount,
         pkDirection,
         shotAngle,
@@ -1695,6 +1706,8 @@ function generateHalfFlavorEvents(params: {
           : sIdx === 0
             ? 0.2 + rng() * 0.3
             : 0.58 + rng() * 0.34;
+      const saveShooterName = formatPlayerRecordName(shooter);
+      const saveGkName = gk ? formatPlayerRecordName(gk) : undefined;
 
       events.push({
         minute: clamp(
@@ -1709,7 +1722,7 @@ function generateHalfFlavorEvents(params: {
         teamColor: defClub.primaryColor,
         isUserTeam: defIsHome ? isHomeUser : isAwayUser,
         scorerId: gk?.id,
-        scorerName: shooter.name,
+        scorerName: saveShooterName,
         highlightPattern: pattern,
         highlightOutcome: 'save',
         attackRoute,
@@ -1723,8 +1736,8 @@ function generateHalfFlavorEvents(params: {
           attackRoute,
           finishType,
           outcome: 'save',
-          scorerName: shooter.name,
-          gkName: gk?.name,
+          scorerName: saveShooterName,
+          gkName: saveGkName,
           dribbleBeatCount,
           pkDirection,
           shotAngle,
@@ -1766,6 +1779,7 @@ function generateHalfFlavorEvents(params: {
       minStart,
       maxMinute,
     );
+    const varScorerName = formatPlayerRecordName(scorer);
 
     events.push({
       minute,
@@ -1776,7 +1790,7 @@ function generateHalfFlavorEvents(params: {
       teamColor: vClub.primaryColor,
       isUserTeam: vIsUser,
       scorerId: scorer.id,
-      scorerName: scorer.name,
+      scorerName: varScorerName,
       highlightPattern: vPattern,
       highlightOutcome: 'var_offside',
       attackRoute: vRoute,
@@ -1785,7 +1799,7 @@ function generateHalfFlavorEvents(params: {
         pattern: vPattern,
         attackRoute: vRoute,
         outcome: 'var_offside',
-        scorerName: scorer.name,
+        scorerName: varScorerName,
       }),
     });
   }
@@ -1803,6 +1817,7 @@ function generateHalfFlavorEvents(params: {
         ? defenders[Math.floor(rng() * defenders.length)]
         : yRoster[0];
     if (booked) {
+      const bookedRecordName = formatPlayerRecordName(booked);
       events.push({
         minute: clamp(
           minStart + Math.floor(rng() * span),
@@ -1816,8 +1831,8 @@ function generateHalfFlavorEvents(params: {
         teamColor: yClub.primaryColor,
         isUserTeam: cardIsHome ? isHomeUser : isAwayUser,
         scorerId: booked.id,
-        scorerName: booked.name,
-        description: `${booked.name}, 거친 태클로 옐로카드를 받습니다.`,
+        scorerName: bookedRecordName,
+        description: `${bookedRecordName}, 거친 태클로 옐로카드를 받습니다.`,
       });
     }
   }
@@ -2034,7 +2049,7 @@ function buildPlayerRatings(params: {
 
         return {
           playerId: p.id,
-          playerName: p.name,
+          playerName: formatPlayerRecordName(p),
           teamId,
           position: p.position,
           subPosition,
@@ -2045,6 +2060,7 @@ function buildPlayerRatings(params: {
           minutesPlayed,
           isSub,
           isLegend: p.isLegend,
+          ...(p.classicEra ? { classicEra: p.classicEra } : {}),
         };
       },
     );
@@ -3756,7 +3772,7 @@ export function simulateExtraTimeAndPenalties(params: {
       const a = etAssistCounts.get(key) ?? 0;
       updatedRatings.push({
         playerId: p.id,
-        playerName: p.name,
+        playerName: formatPlayerRecordName(p),
         teamId: userContext.userClubId,
         position: p.position,
         subPosition: getPrimaryPosition(p),
@@ -3767,6 +3783,7 @@ export function simulateExtraTimeAndPenalties(params: {
         minutesPlayed: 30,
         isSub: true,
         isLegend: p.isLegend,
+        ...(p.classicEra ? { classicEra: p.classicEra } : {}),
       });
     }
   }
@@ -4255,7 +4272,7 @@ export function simulateExtraTimeSecondHalfAndPenalties(params: {
       const a = etAssistCounts.get(key) ?? 0;
       updatedRatings.push({
         playerId: p.id,
-        playerName: p.name,
+        playerName: formatPlayerRecordName(p),
         teamId: userContext.userClubId,
         position: p.position,
         subPosition: getPrimaryPosition(p),
@@ -4266,6 +4283,7 @@ export function simulateExtraTimeSecondHalfAndPenalties(params: {
         minutesPlayed: enteredAtMinute[subId] === 105 ? 15 : 30,
         isSub: true,
         isLegend: p.isLegend,
+        ...(p.classicEra ? { classicEra: p.classicEra } : {}),
       });
     }
   }

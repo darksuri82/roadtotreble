@@ -5,6 +5,26 @@
 
 ---
 
+## v9.3.0 — 시대별 클래식(60s~10s) 101명 개편 · 현역 OVR 압축 & 중위권 핵심 상향 · 저·중 OVR 포텐 각성(0~3명) & 드래프트 육성 지표
+
+- **시대별 클래식 카드(`60s`~`10s`) 101명 전면 개편 & 시대별 베스트 11 드림 매치 5팀 (`src/types/player.ts`, `src/data/legendPlayers.json`, `src/data/formerClubs.ts`, `src/data/eraBestXiTeams.ts`, `src/data/historicalTeams.ts`, `src/components/dream/DreamMatchArena.tsx`, `src/components/league/OpponentPitchView.tsx`)**:
+  - 기존 단일 레전드(33명)를 폐지하고 현대 팬들이 알 만한 유명 시대 아이콘 **101명**(`60s 3 / 70s 5 / 80s 12 / 90s 22 / 00s 26 / 10s 33`, `GK 10 / DF 30 / MF 28 / FW 33`)으로 확대(기존 33개 `leg-*` ID 보존으로 세이브/명전 호환 유지). `OVR 95+`는 역대 최정점 **7명(최고 96)**으로 엄격 제한(펠레·마라도나·메시·호날두 96, 크루이프·베켄바워·R9 95).
+  - 전체 시대 클래식이 통합 **2.5%/릴** 확률로 룰렛에 등장(`DEFAULT_ROULETTE_LEGEND_RATE = 0.025`, `TRANSFER_ROULETTE_LEGEND_RATE = 0.025`)하며, 드래프트 비용은 전원 **`€130M` 균일가**(`LEGEND_FLAT_DRAFT_COST_M = 130`)로 통일.
+  - `10s` 클래식과 현역이 겹치는 선수(모드리치·노이어·더 브라위너·살라·판 다이크 등)는 중복 제외 없이 고유 `id` 기준 별도 인물로 공존 가능. 차분한 다크 톤 시대 프레임·배지(`card-classic-60s`~`card-classic-10s`)와 기록표·경기 중계·시즌 요약·명전·글로벌 TOP 15의 `선수명 (10s)`(`formatPlayerRecordName`) 표기로 완벽 구분.
+  - 룰렛 미포함 전설(제프 마이어·보비 무어·카를루스 아우베르투·보비 찰턴·에우제비우·조지 베스트·소크라테스·미하엘 발락·야야 투레·메수트 외질 등)이 총출동하는 **시대별 베스트 11 (5팀)**을 `DreamMatchArena` 2탭 선택기로 추가.
+- **현역 OVR 압축(최고 92) · 중위권 핵심 상향 · 폼 부진 빅클럽 조정 (`src/data/activePlayers.json`, `src/data/leagues.json`)**:
+  - 현역 최고 OVR을 `94` → `92`로 압축(`92`: 음바페·야말, `91`: 케인·홀란·로드리, `90`: 페드리·벨링엄·비티냐·올리세·뎀벨레)하고 96개 구단 전력 지표를 연동 보정.
+  - 최근 활약 부진 빅클럽 자원 하향(요케레스 84, 포든 85, 엔소 85, 외데고르 86, TAA 85 등), 비빅클럽 최상위 자원 상한 미적용(슐로터베크 87, 니코 윌리엄스·코벨·우나이 시몬·스빌라르·기라시 86 등).
+  - 5대 리그 중위권 핵심 자원 상향(파스칼 그로스 85, 모건 깁스화이트 85, 브라이언 브로베이 84, 도니얼 말런 84, 초라키스 83, 담스고르 83, 칼벨트 레윈 82, 두비카스 82, 더 론 81 등) 및 계급 역전 차단·동일 OVR 세부 능력치 개별 차별화.
+- **저·중 OVR 포텐 각성 강화(시즌 0~3명) & 드래프트/상세 시각 가이드 (`src/engine/awakeningEngine.ts`, `src/components/common/PlayerCard.tsx`, `src/components/draft/RouletteReelsView.tsx`, `src/components/common/PlayerDetailModal.tsx`)**:
+  - OVR 구간별 확률 배율(`≤79 ×1.75 / 80~81 ×1.50 / 82~84 ×1.35 / 85~87 ×0.75 / 88+ ×0.04 / 클래식 0%`) 및 상승폭(`≤79 +5~+8`, 상한 `94`), 누적 감쇠(`1명째 ×1.00 / 2명째 ×0.78 / 3명째 ×0.48 / 4명째+ ×0.05`)로 개편(50시즌 시뮬: 저·중 OVR 육성 스쿼드 평균 `1.48~1.76명/시즌`, 3명 18~22%, 4명+ 0%, 고활용 87 vs 저활용 1).
+  - 드래프트 카드(`OVR ≤ 84`)에 절제된 단일 칩(`포텐↑`/`육성` + 조건 툴팁), `PlayerDetailModal`에 1줄 각성 준비도 체크바 추가.
+- **연동 시스템 전면 동기화 · 동명이인 버그 수정 · 최적화 (`src/engine/chemistryEngine.ts`, `src/data/managerTraits.ts`, `src/engine/pitchTacticalParams.ts`, `src/engine/transferEngine.ts`, `src/engine/legacyEngine.ts`, `src/engine/dataLoader.ts`, `src/services/globalRankingService.ts`, `src/components/guide/SystemGuideModal.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`, `src/__tests__/v93EraClassicsRebalance.test.ts`)**:
+  - 카드 티어(`90+` 슈퍼스타 / `86+` 월클 / `82+` 주전), `ELITE_PAIR_MIN_OVR = 86`, `galactico_manager`(`OVR 87+ · 클래식`), 2D `isStar >= 87`, 이적시장 가치·명전 언더독 기준·가이드북·튜토리얼·전 UI 컴포넌트(`PitchBoard`, `ClubSquadModal`, `TeamAnalyticsTab`, `TransferMarketModal`, `TeamSeasonArchiveTab` 등) 일괄 동기화.
+  - `PLAYER_BY_ID_MAP` O(1) 조회 및 `ACTIVE_BY_NAME_MAP`/`CLASSIC_BY_NAME_MAP` 분리로 `10s` 클래식↔현역 동명이인 AI 로스터·명전·글로벌 TOP 15 충돌 버그 근본 수정. 49개 테스트 파일(223개 테스트) 및 50시즌 밸런스 시뮬레이션 전수 검증 완료.
+
+---
+
 ## v9.2.5 — 드래프트·영입 선수 타 리그/챔피언스리그 AI 구단 중복 출전(도플갱어) 근본 수정
 
 - **라이브 2D·자동진행 후반전 상대 벤치 보충 중복 차단 (`src/store/GameContext.tsx`, `src/engine/conditionEngine.ts`, `src/engine/dataLoader.ts`)**:

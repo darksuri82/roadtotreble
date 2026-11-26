@@ -149,6 +149,43 @@ textarea {
   border: 1.5px solid #fbbf24;
 }
 
+/* Era Classic card frames (60s..10s): refined dark tones clearly separated from active cyan/sky/emerald */
+.card-classic-60s {
+  background: linear-gradient(155deg, #2a1e0c 0%, #151008 50%, #241808 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.85);
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.28), 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+.card-classic-70s {
+  background: linear-gradient(155deg, #28160c 0%, #150e09 50%, #221309 100%);
+  border: 1.5px solid rgba(234, 88, 12, 0.82);
+  box-shadow: 0 0 18px rgba(234, 88, 12, 0.26), 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+.card-classic-80s {
+  background: linear-gradient(155deg, #28200a 0%, #161208 50%, #221b08 100%);
+  border: 1.5px solid rgba(234, 179, 8, 0.82);
+  box-shadow: 0 0 18px rgba(234, 179, 8, 0.26), 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+.card-classic-90s {
+  background: linear-gradient(155deg, #28101c 0%, #150c12 50%, #230f18 100%);
+  border: 1.5px solid rgba(225, 29, 72, 0.76);
+  box-shadow: 0 0 18px rgba(225, 29, 72, 0.24), 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+.card-classic-00s {
+  background: linear-gradient(155deg, #1d2431 0%, #11151d 50%, #1a202c 100%);
+  border: 1.5px solid rgba(203, 213, 225, 0.78);
+  box-shadow: 0 0 18px rgba(203, 213, 225, 0.22), 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+.card-classic-10s {
+  background: linear-gradient(155deg, #1e1533 0%, #110d1e 50%, #1a122c 100%);
+  border: 1.5px solid rgba(167, 139, 250, 0.85);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.30), 0 8px 22px rgba(0, 0, 0, 0.52);
+}
+
 .card-superstar-glow {
   animation: superstarGlow 2.9s ease-in-out infinite;
   background: linear-gradient(155deg, #0b2634 0%, #0d1622 50%, #0f2532 100%);

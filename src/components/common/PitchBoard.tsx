@@ -1,4 +1,4 @@
-import { Crown, Diamond, Flame, Info } from 'lucide-react';
+import { Diamond, Flame, Info } from 'lucide-react';
 import { useState } from 'react';
 import { BENCH_SLOTS, FORMATIONS } from '../../data/formations';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
@@ -22,7 +22,12 @@ import type {
   ManagerTraitId,
 } from '../../types/game';
 import type { TacticId } from '../../types/league';
-import { getCardTier } from '../../types/player';
+import {
+  formatPlayerRecordName,
+  getCardTier,
+  getClassicEra,
+  getClassicEraMeta,
+} from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
 import { CountryFlagSvg } from './CountryFlagSvg';
 import { InfoHelpButton } from './InfoHelpButton';
@@ -656,6 +661,8 @@ export function PitchBoard({
           );
           const tier = player ? getCardTier(player) : null;
           const isLegend = tier === 'legend';
+          const classicEra = player && isLegend ? getClassicEra(player) : null;
+          const eraMeta = classicEra ? getClassicEraMeta(classicEra) : null;
           const isSuperstar = tier === 'superstar';
           const isWorldclass = tier === 'worldclass';
 
@@ -741,7 +748,7 @@ export function PitchBoard({
               style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
               title={
                 player && starterOvrBr
-                  ? `${player.name} (${formatMainPositions(player)}) · ${player.club}\n[${starterOvrBr.summaryLine}]${synTooltipText}${staminaPct !== null ? ` · 체력 ${staminaPct}%` : ''} (우클릭/ⓘ 상세)`
+                  ? `${formatPlayerRecordName(player)} (${formatMainPositions(player)}) · ${player.club}\n[${starterOvrBr.summaryLine}]${synTooltipText}${staminaPct !== null ? ` · 체력 ${staminaPct}%` : ''} (우클릭/ⓘ 상세)`
                   : `${slot.label} 빈 슬롯`
               }
               className={`group absolute -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center select-none touch-manipulation ${
@@ -762,7 +769,8 @@ export function PitchBoard({
                         ? player.awakening
                           ? 'card-awakened-ember'
                           : isLegend
-                            ? 'bg-gradient-to-b from-amber-950/95 via-stone-900/95 to-amber-950/95 border border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.38)]'
+                            ? (eraMeta?.cardClass ??
+                              'bg-gradient-to-b from-amber-950/95 via-stone-900/95 to-amber-950/95 border border-amber-400/90 shadow-[0_0_12px_rgba(251,191,36,0.38)]')
                             : isSuperstar
                               ? 'bg-gradient-to-b from-cyan-950/95 via-slate-900/95 to-cyan-950/95 border border-cyan-400/85 shadow-[0_0_12px_rgba(34,211,238,0.32)]'
                               : isWorldclass
@@ -795,8 +803,13 @@ export function PitchBoard({
                   </span>
                 ) : player?.awakening ? (
                   <Flame className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-orange-400 drop-shadow" />
-                ) : isLegend ? (
-                  <Crown className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-amber-300 drop-shadow" />
+                ) : isLegend && eraMeta ? (
+                  <span
+                    title={`${eraMeta.fullLabel} (${player?.classicSeasonTag ?? eraMeta.shortLabel})`}
+                    className={`absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded px-1 py-px text-[7.5px] font-black tracking-tight shadow ${eraMeta.badgeClass}`}
+                  >
+                    {eraMeta.shortLabel}
+                  </span>
                 ) : isSuperstar ? (
                   <Diamond className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-cyan-300 drop-shadow" />
                 ) : null}
@@ -812,7 +825,7 @@ export function PitchBoard({
                 {player && onInspectPlayer && (
                   <button
                     type="button"
-                    aria-label={`${player.name} 상세 정보`}
+                    aria-label={`${formatPlayerRecordName(player)} 상세 정보`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onInspectPlayer(player, slot.subPosition);
@@ -870,7 +883,7 @@ export function PitchBoard({
                                       ? 'text-amber-300/90'
                                       : 'text-rose-300'
                                     : isLegend
-                                      ? 'text-amber-300'
+                                      ? (eraMeta?.ovrTextClass ?? 'text-amber-300')
                                       : isSuperstar
                                         ? 'text-cyan-200'
                                         : isWorldclass
@@ -1203,6 +1216,8 @@ export function PitchBoard({
                 dragOverSlot.index === benchIdx;
               const tier = player ? getCardTier(player) : null;
               const isLegend = tier === 'legend';
+              const classicEra = player && isLegend ? getClassicEra(player) : null;
+              const eraMeta = classicEra ? getClassicEraMeta(classicEra) : null;
               const isSuperstar = tier === 'superstar';
               const benchStaminaPct =
                 player && staminaByPlayerId !== undefined
@@ -1254,7 +1269,7 @@ export function PitchBoard({
                           ? player.awakening
                             ? 'card-awakened-ember'
                             : isLegend
-                              ? 'bg-amber-950/45 border border-amber-400'
+                              ? (eraMeta?.cardClass ?? 'bg-amber-950/45 border border-amber-400')
                               : isSuperstar
                                 ? 'bg-cyan-950/45 border border-cyan-300'
                                 : 'bg-slate-900/90 border border-slate-700/80'
@@ -1277,15 +1292,22 @@ export function PitchBoard({
                     isDragOver ? 'ring-2 ring-sky-400' : ''
                   }`}
                 >
-                  {isPreview && player && (
+                  {isPreview && player ? (
                     <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-400 px-1 text-[7px] font-black text-slate-950">
                       프리뷰
                     </span>
-                  )}
+                  ) : isLegend && eraMeta ? (
+                    <span
+                      title={`${eraMeta.fullLabel} (${player?.classicSeasonTag ?? eraMeta.shortLabel})`}
+                      className={`absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded px-1 py-px text-[7px] font-black tracking-tight shadow ${eraMeta.badgeClass}`}
+                    >
+                      {eraMeta.shortLabel}
+                    </span>
+                  ) : null}
                   {player && onInspectPlayer && (
                     <button
                       type="button"
-                      aria-label={`${player.name} 상세 정보`}
+                      aria-label={`${formatPlayerRecordName(player)} 상세 정보`}
                       onClick={(e) => {
                         e.stopPropagation();
                         onInspectPlayer(player);
@@ -1323,7 +1345,7 @@ export function PitchBoard({
                       return (
                         <>
                           <div
-                            title={`${player.name} (${formatMainPositions(player)})\n[${benchOvrBr.summaryLine}]${benchMgrSyn.bonus > 0 && benchMgrSyn.reason ? `\n★ ${benchMgrSyn.reason}` : ''}`}
+                            title={`${formatPlayerRecordName(player)} (${formatMainPositions(player)})\n[${benchOvrBr.summaryLine}]${benchMgrSyn.bonus > 0 && benchMgrSyn.reason ? `\n★ ${benchMgrSyn.reason}` : ''}`}
                             className="flex flex-wrap items-center justify-center gap-0.5 tabular-nums"
                           >
                             <span
@@ -1331,7 +1353,7 @@ export function PitchBoard({
                                 benchOvrBr.injuryPenalty < 0
                                   ? 'text-rose-300'
                                   : isLegend
-                                    ? 'text-amber-300'
+                                    ? (eraMeta?.ovrTextClass ?? 'text-amber-300')
                                     : isSuperstar
                                       ? 'text-cyan-200'
                                       : 'text-white'

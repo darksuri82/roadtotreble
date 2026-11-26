@@ -375,7 +375,7 @@ export function FormationSelect() {
             </div>
 
             <p className="text-[11px] leading-relaxed text-slate-400">
-              초기 드래프트 및 시즌 중 이적시장 3구단 룰렛에 등장할 리그를 선택합니다. (레전드 칸 및 5대 리그 백그라운드 순위표·UCL은 영향 없음)
+              초기 드래프트 및 시즌 중 이적시장 3구단 룰렛에 등장할 리그를 선택합니다. (시대별 클래식(60s~10s) 칸 및 5대 리그 백그라운드 순위표·UCL은 영향 없음)
             </p>
 
             <div className="space-y-1.5">

@@ -504,7 +504,7 @@ export function ManagerRouletteScreen() {
                     ))}
                     {activeTrait.id === 'galactico_manager' && (
                       <span className="rounded border border-amber-400/35 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-200 whitespace-nowrap">
-                        OVR 88+ · 레전드
+                        OVR 87+ · 클래식
                       </span>
                     )}
                     {activeTrait.id === 'total_football' && (

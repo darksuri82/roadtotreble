@@ -23,6 +23,7 @@ import { FORMATION_LIST } from '../../data/formations';
 import { HISTORICAL_BENCHMARK_TEAMS } from '../../data/historicalTeams';
 import { MANAGER_TRAIT_LIST } from '../../data/managerTraits';
 import {
+  AWAKENING_FOURTH_PLUS_MULT,
   AWAKENING_MAX_GAIN,
   AWAKENING_MIN_APPEARANCES,
   AWAKENING_MIN_GAIN,
@@ -32,7 +33,7 @@ import {
   AWAKENING_SUPERSTAR_MAX_GAIN,
   AWAKENING_SUPERSTAR_OVR_THRESHOLD,
   AWAKENING_SUPERSTAR_RATE_MULT,
-  AWAKENING_THIRD_PLUS_MULT,
+  AWAKENING_THIRD_COUNT_MULT,
 } from '../../engine/awakeningEngine';
 import {
   CASH_LEGEND_CHANCE_MAX_BONUS,
@@ -298,7 +299,7 @@ export function SystemGuideContent({
                 예산 소프트 캡 €{DRAFT_BUDGET_CAP_M}M &amp; OVR 누진 몸값
               </div>
               <span className="rounded bg-amber-500/15 border border-amber-400/40 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
-                레전드 전원 €{LEGEND_FLAT_DRAFT_COST_M}M 균일가
+                시대별 클래식 전원 €{LEGEND_FLAT_DRAFT_COST_M}M 균일가
               </span>
             </div>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 text-center text-[10.5px] tabular-nums">
@@ -309,7 +310,7 @@ export function SystemGuideContent({
                   ['OVR 85', computePlayerDraftCostM({ ovr: 85, isLegend: false }), false],
                   ['OVR 88', computePlayerDraftCostM({ ovr: 88, isLegend: false }), false],
                   ['OVR 90', computePlayerDraftCostM({ ovr: 90, isLegend: false }), false],
-                  ['레전드 균일', LEGEND_FLAT_DRAFT_COST_M, true],
+                  ['클래식 균일', LEGEND_FLAT_DRAFT_COST_M, true],
                 ] as [string, number, boolean][]
               ).map(([label, cost, isLeg]) => (
                 <div
@@ -339,16 +340,15 @@ export function SystemGuideContent({
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/80 bg-[#0f1622] px-3 py-2 text-[11px] tabular-nums">
               <span className="text-slate-300">
-                현역 슈퍼스타(91~94):{' '}
+                현역 슈퍼스타(90~92):{' '}
                 <strong className="text-cyan-300">
-                  €{computePlayerDraftCostM({ ovr: 91, isLegend: false })}M / €
-                  {computePlayerDraftCostM({ ovr: 92, isLegend: false })}M / €
-                  {computePlayerDraftCostM({ ovr: 93, isLegend: false })}M / €
-                  {computePlayerDraftCostM({ ovr: 94, isLegend: false })}M
+                  €{computePlayerDraftCostM({ ovr: 90, isLegend: false })}M / €
+                  {computePlayerDraftCostM({ ovr: 91, isLegend: false })}M / €
+                  {computePlayerDraftCostM({ ovr: 92, isLegend: false })}M
                 </strong>
               </span>
               <span className="text-amber-200/90 font-semibold">
-                레전드 1명+알짜 주전은 예산 내 가능 · 다수 수집 시 FFP 압박
+                클래식 1명+알짜 주전은 예산 내 가능 · 다수 수집 시 FFP 압박
               </span>
             </div>
           </div>
@@ -861,14 +861,14 @@ export function SystemGuideContent({
                 선수 포텐 폭발 (영구 각성 · Crimson Ember)
               </div>
               <span className="rounded bg-rose-500/20 border border-rose-400/40 px-2 py-0.5 text-[10px] font-black text-rose-200 whitespace-nowrap">
-                시즌 0~2명 중심 · 레전드 0%
+                시즌 0~3명 · 시대별 클래식 0%
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
               <div className="rounded-lg border border-rose-500/25 bg-[#191116] p-2.5 space-y-1">
                 <div className="font-bold text-rose-200">실제 활약 반영 요소</div>
                 <div className="text-[10.5px] text-slate-300">
-                  경기 평점(7.4+ · 8.1+/8.5+ 급상승) · 골/도움/GK·DF 무실점 ·
+                  경기 평점(저·중 OVR 7.3+ / 고OVR 7.4+ · 8.1+/8.5+ 급상승) · 골/도움/GK·DF 무실점 ·
                   출전시간(45&apos;+, 풀타임 우대) · 시즌 누적 평점 및 공격포인트/클린시트 비율
                   ({AWAKENING_MIN_SEASON_MATCH}경기·개인 {AWAKENING_MIN_APPEARANCES}출전 이후)
                 </div>
@@ -893,22 +893,36 @@ export function SystemGuideContent({
                 </thead>
                 <tbody className="divide-y divide-rose-500/15 bg-[#110c10]">
                   <tr>
-                    <td className="px-2.5 py-1.5 font-bold text-white whitespace-nowrap">
-                      일반 현역 (OVR ≤{AWAKENING_SUPERSTAR_OVR_THRESHOLD - 1})
+                    <td className="px-2.5 py-1.5 font-bold text-emerald-200 whitespace-nowrap">
+                      원석·중위권 (OVR ≤79 / 80~81 / 82~84)
                     </td>
                     <td className="px-2.5 py-1.5 text-emerald-300 font-mono whitespace-nowrap">
-                      ×1.00 (기준)
+                      ×1.75 / ×1.50 / ×1.35
                     </td>
                     <td className="px-2.5 py-1.5 font-mono text-rose-200 whitespace-nowrap">
-                      +{AWAKENING_MIN_GAIN}~+{AWAKENING_MAX_GAIN} OVR
+                      +5~+{AWAKENING_MAX_GAIN} / +4~+7 / +3~+6
                     </td>
                     <td className="px-2.5 py-1.5 text-slate-400">
-                      낮은 OVR 유망주일수록 상승 천장 넓음
+                      드래프트 카드에 포텐↑·육성 지표 표시
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-2.5 py-1.5 font-bold text-white whitespace-nowrap">
+                      상위 주전 (OVR 85~{AWAKENING_SUPERSTAR_OVR_THRESHOLD - 1})
+                    </td>
+                    <td className="px-2.5 py-1.5 text-sky-300 font-mono whitespace-nowrap">
+                      ×0.75
+                    </td>
+                    <td className="px-2.5 py-1.5 font-mono text-rose-200 whitespace-nowrap">
+                      +{AWAKENING_MIN_GAIN}~+4 OVR
+                    </td>
+                    <td className="px-2.5 py-1.5 text-slate-400">
+                      이미 완성형 주전 · 완만한 성장폭
                     </td>
                   </tr>
                   <tr>
                     <td className="px-2.5 py-1.5 font-bold text-cyan-200 whitespace-nowrap">
-                      슈퍼스타 (OVR {AWAKENING_SUPERSTAR_OVR_THRESHOLD}+)
+                      최상위 현역 (OVR {AWAKENING_SUPERSTAR_OVR_THRESHOLD}+)
                     </td>
                     <td className="px-2.5 py-1.5 text-amber-300 font-mono whitespace-nowrap">
                       ×{AWAKENING_SUPERSTAR_RATE_MULT} (1/25)
@@ -917,19 +931,19 @@ export function SystemGuideContent({
                       최대 +{AWAKENING_SUPERSTAR_MAX_GAIN} (상한 {AWAKENING_OVR_HARD_CAP})
                     </td>
                     <td className="px-2.5 py-1.5 text-slate-400">
-                      극희박 발동 · 상승폭 엄격 제한
+                      극희박 발동 · 인플레 방지 상한 적용
                     </td>
                   </tr>
                   <tr>
                     <td className="px-2.5 py-1.5 font-bold text-amber-300 whitespace-nowrap">
-                      레전드
+                      시대별 클래식 (60s~10s)
                     </td>
                     <td className="px-2.5 py-1.5 text-rose-400 font-mono font-bold whitespace-nowrap">
                       0% (제외)
                     </td>
                     <td className="px-2.5 py-1.5 text-slate-500 whitespace-nowrap">-</td>
                     <td className="px-2.5 py-1.5 text-slate-400">
-                      레전드는 각성하지 않음
+                      시대별 클래식은 각성하지 않음
                     </td>
                   </tr>
                 </tbody>
@@ -939,12 +953,16 @@ export function SystemGuideContent({
               <span>
                 시즌 누적 감쇠:{' '}
                 <strong className="text-slate-200">1명째 ×1.00</strong> →{' '}
-                <strong className="text-amber-200">
+                <strong className="text-emerald-200">
                   2명째 ×{AWAKENING_SECOND_COUNT_MULT}
                 </strong>{' '}
                 →{' '}
+                <strong className="text-amber-200">
+                  3명째 ×{AWAKENING_THIRD_COUNT_MULT}
+                </strong>{' '}
+                →{' '}
                 <strong className="text-rose-300">
-                  3명째+ ×{AWAKENING_THIRD_PLUS_MULT} (극소화)
+                  4명째+ ×{AWAKENING_FOURTH_PLUS_MULT}
                 </strong>
               </span>
               <span>정적 DB 무오염 · 세이브·명전·글로벌 TOP 15 영구 보존</span>

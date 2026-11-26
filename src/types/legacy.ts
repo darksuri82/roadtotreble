@@ -71,6 +71,7 @@ export interface HallOfFameSquadMember {
   position: string;
   mainPositions: string[];
   isLegend: boolean;
+  classicEra?: import('./player').ClassicEra;
   goals: number;
   assists: number;
   avgRating: number;
@@ -143,6 +144,7 @@ export interface GlobalSquadSnapshotPlayer {
   position: string;
   mainPositions: string[];
   isLegend: boolean;
+  classicEra?: import('./player').ClassicEra;
   goals?: number;
   assists?: number;
   avgRating?: number;
@@ -284,6 +286,7 @@ export function buildHallOfFameMember(
     position: player.position,
     mainPositions: [...player.mainPositions],
     isLegend: player.isLegend,
+    ...(player.classicEra ? { classicEra: player.classicEra } : {}),
     goals,
     assists,
     avgRating,

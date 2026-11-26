@@ -9,21 +9,21 @@ import {
 import { getCardTier } from '../types/player';
 
 describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
-  it('has 220+ active players, exact 19 Superstars (91..94), 2026-27 clubs/transfers, and non-empty mainPositions[]', () => {
-    expect(ACTIVE_PLAYERS.length).toBeGreaterThanOrEqual(220);
+  it('has 2200+ active players, compressed Superstars (90..92), 2026-27 clubs/transfers, and non-empty mainPositions[]', () => {
+    expect(ACTIVE_PLAYERS.length).toBeGreaterThanOrEqual(2200);
 
     const validClubNames = new Set(
       LEAGUES.flatMap((l) => l.clubs.map((c) => c.name)),
     );
     const ids = new Set<string>();
-    const superstars = ACTIVE_PLAYERS.filter((p) => p.ovr >= 91);
+    const superstars = ACTIVE_PLAYERS.filter((p) => p.ovr >= 90);
 
-    expect(superstars.length).toBe(19);
+    expect(superstars.length).toBe(10);
     for (const st of superstars) {
       expect(st.isLegend).toBe(false);
       expect(getCardTier(st)).toBe('superstar');
-      expect(st.ovr).toBeGreaterThanOrEqual(91);
-      expect(st.ovr).toBeLessThanOrEqual(94);
+      expect(st.ovr).toBeGreaterThanOrEqual(90);
+      expect(st.ovr).toBeLessThanOrEqual(92);
     }
 
     // Verify 2026-27 mandatory transfers & multi mainPositions
@@ -38,16 +38,16 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
 
     const rodri = ACTIVE_PLAYERS.find((p) => p.name === '로드리')!;
     expect(rodri.club).toBe('FC 바르셀로나');
-    expect(rodri.ovr).toBe(93);
+    expect(rodri.ovr).toBe(91);
 
     const donnarumma = ACTIVE_PLAYERS.find((p) => p.name === '잔루이지 돈나룸마')!;
     expect(donnarumma.club).toBe('맨체스터 시티');
-    expect(donnarumma.ovr).toBe(91);
+    expect(donnarumma.ovr).toBe(89);
 
     const raya = ACTIVE_PLAYERS.find((p) => p.name === '다비드 라야')!;
     expect(raya.club).toBe('아스널');
     expect(raya.position).toBe('GK');
-    expect(raya.ovr).toBe(90);
+    expect(raya.ovr).toBe(88);
     expect(getCardTier(raya)).toBe('worldclass');
 
     const dembele = ACTIVE_PLAYERS.find((p) => p.name === '우스만 뎀벨레')!;
@@ -66,6 +66,7 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
       names.add(p.name);
       clubCounts.set(p.club, (clubCounts.get(p.club) ?? 0) + 1);
       expect(p.isLegend).toBe(false);
+      expect(p.ovr).toBeLessThanOrEqual(92);
       expect(Array.isArray(p.mainPositions)).toBe(true);
       expect(p.mainPositions.length).toBeGreaterThanOrEqual(1);
       expect([
@@ -93,8 +94,8 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
     expect(rice.stamina).toBeGreaterThanOrEqual(95);
   });
 
-  it('has exact 33 custom legends with multi mainPositions (including 레벤수 trio)', () => {
-    expect(LEGEND_PLAYERS.length).toBe(33);
+  it('has 101 Era Classics (60s~10s) with strict 95+ rarity (7 total, max 96) and multi mainPositions', () => {
+    expect(LEGEND_PLAYERS.length).toBe(101);
 
     const messi = LEGEND_PLAYERS.find((p) => p.name === '리오넬 메시')!;
     const cr7 = LEGEND_PLAYERS.find((p) => p.name === '크리스티아누 호날두')!;
@@ -106,32 +107,38 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
     const benz = LEGEND_PLAYERS.find((p) => p.name === '카림 벤제마')!;
     const suarez = LEGEND_PLAYERS.find((p) => p.name === '루이스 수아레스')!;
 
-    expect(messi.ovr).toBe(99);
+    expect(messi.ovr).toBe(96);
+    expect(messi.classicEra).toBe('10s');
     expect(messi.mainPositions).toEqual(['RW', 'CAM']);
-    expect(cr7.ovr).toBe(98);
+    expect(cr7.ovr).toBe(96);
+    expect(cr7.classicEra).toBe('10s');
     expect(cr7.mainPositions).toEqual(['LW', 'ST']);
-    expect(son.ovr).toBe(91);
+    expect(son.ovr).toBe(89);
     expect(son.mainPositions).toEqual(['LW', 'ST']);
     expect(park.mainPositions).toEqual(['CM', 'LW', 'RW']);
     expect(park.stamina).toBeGreaterThanOrEqual(96);
     expect(maldini.mainPositions).toEqual(['LB', 'CB']);
+    expect(cruyff.ovr).toBe(95);
     expect(cruyff.mainPositions).toEqual(['CAM', 'ST']);
-    expect(lewa.ovr).toBe(94);
+    expect(lewa.ovr).toBe(93);
     expect(lewa.mainPositions).toContain('ST');
-    expect(benz.ovr).toBe(93);
+    expect(benz.ovr).toBe(92);
     expect(benz.mainPositions).toContain('ST');
-    expect(suarez.ovr).toBe(94);
+    expect(suarez.ovr).toBe(93);
     expect(suarez.mainPositions).toContain('ST');
 
     const ids = new Set<string>();
+    const ninetyFivePlus = LEGEND_PLAYERS.filter((p) => p.ovr >= 95);
+    expect(ninetyFivePlus.length).toBe(7);
     for (const p of LEGEND_PLAYERS) {
       expect(ids.has(p.id)).toBe(false);
       ids.add(p.id);
       expect(p.isLegend).toBe(true);
+      expect(p.classicEra).toBeTruthy();
       expect(getCardTier(p)).toBe('legend');
       expect(p.mainPositions.length).toBeGreaterThanOrEqual(1);
-      expect(p.ovr).toBeGreaterThanOrEqual(91);
-      expect(p.ovr).toBeLessThanOrEqual(99);
+      expect(p.ovr).toBeGreaterThanOrEqual(88);
+      expect(p.ovr).toBeLessThanOrEqual(96);
       expect(p.stamina).toBeGreaterThanOrEqual(60);
       expect(p.stamina).toBeLessThanOrEqual(99);
     }

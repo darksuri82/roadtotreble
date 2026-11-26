@@ -224,6 +224,7 @@ export function spinClubRoulette(
         results.push({
           reelIndex,
           isLegendSlot: true,
+          classicEra: legends[0].classicEra,
           club: null,
           leagueId: 'LEGEND',
           candidates: legends,

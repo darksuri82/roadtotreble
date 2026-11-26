@@ -28,14 +28,14 @@ import {
  *   1) Playstyle Synergy (`style`): Authentic complementary football role pairs
  *   2) Same Nationality (`nation`): Identical nationalityCode
  *   3) Same Club incl. Verified Former Clubs (`club`): Current same club OR shared official career club
- *   4) Elite Pair (`elite`): Both adjacent players have base OVR >= 88
+ *   4) Elite Pair (`elite`): Both adjacent players have base OVR >= 86
  *
  * Every active line counts equally as 1 point (1 line = 1 pt).
  * - Individual Player Link Synergy (`neighborBonus`): 2+ lines -> +1, 4+ lines -> +2, 8+ lines -> +3 (max +3)
  * - Independent Manager Compatibility (`managerBonus`): flat +1 for every matching player (decoupled, total max +4)
  * - Team Chemistry (0..100): Monotonic formation-normalized total line count (more lines = strictly higher chemistry)
  */
-export const ELITE_PAIR_MIN_OVR = 88;
+export const ELITE_PAIR_MIN_OVR = 86;
 
 /**
  * Team Chemistry (0..100) line weights & OVR bonus constants.
@@ -141,7 +141,7 @@ export function evaluatePairLink(
   }
   if (hasNationLink) reasons.push('동일 국적');
   if (hasStyleLink) reasons.push('스타일 궁합');
-  if (hasEliteLink) reasons.push('엘리트 88+');
+  if (hasEliteLink) reasons.push(`엘리트 ${ELITE_PAIR_MIN_OVR}+`);
 
   const lineCount = activeLines.length;
   const clubContribution = hasClubLink ? 1 : 0;

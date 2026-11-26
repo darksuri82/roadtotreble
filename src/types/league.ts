@@ -151,6 +151,7 @@ export interface MatchPlayerRating {
   minutesPlayed: number;
   isSub?: boolean;
   isLegend?: boolean;
+  classicEra?: import('./player').ClassicEra;
 }
 
 export type MatchCompetitionType = 'league' | 'cup' | 'ucl';
@@ -371,6 +372,7 @@ export interface PlayerSeasonStats {
   avgRating: number;
   positionCounts: Partial<Record<SubPosition, number>>;
   isLegend: boolean;
+  classicEra?: import('./player').ClassicEra;
   transferHistory?: PlayerTransferRecord[];
 }
 
@@ -447,6 +449,7 @@ export interface SquadPlayerAnalyticsRow {
   ovr: number;
   stamina: number;
   isLegend: boolean;
+  classicEra?: import('./player').ClassicEra;
   position: Position;
   mainPositions: SubPosition[];
   primaryDeployedPosition: SubPosition;

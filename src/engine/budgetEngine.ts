@@ -8,12 +8,12 @@ import type { Player } from '../types/player';
  * - Prevents 90+ superstar & multi-Legend spam from effortlessly breaking records while
  *   keeping the cap comfortable for 1 Legend + smart value/manager-fit core to stay cleanly
  *   under budget and carry over transfer cash.
- * - Legends use a unified flat price (`LEGEND_FLAT_DRAFT_COST_M = 135`, matching lower-tier
- *   active Superstars like OVR 91 `€136M`, above OVR 90 `€118M` and below OVR 92..94 `€154M~€190M`).
- *   Drafting 1 Legend fits comfortably under cap; stacking 2~3+ Legends creates real FFP pressure.
+ * - Era Classics use a unified flat price (`LEGEND_FLAT_DRAFT_COST_M = 130`, sitting between
+ *   active OVR 90 `€122M` and OVR 91 `€138M` — Superstar lower tier).
+ *   Drafting 1 Classic fits comfortably under cap; stacking 2~3+ Classics creates real FFP pressure.
  */
 export const DRAFT_BUDGET_CAP_M = 950;
-export const LEGEND_FLAT_DRAFT_COST_M = 135;
+export const LEGEND_FLAT_DRAFT_COST_M = 130;
 export const FFP_TIER1_MAX_EXCESS_RATIO = 0.15; // +1% .. +15%
 export const FFP_TIER1_MAX_OVERRUN_PCT = Math.round(
   FFP_TIER1_MAX_EXCESS_RATIO * 100,
@@ -68,8 +68,8 @@ export interface SquadBudgetEvaluation {
 
 /**
  * Computes a player's non-linear progressive draft cost (€M).
- * - All Legends share a unified flat cost (`LEGEND_FLAT_DRAFT_COST_M = €135M`).
- * - Active players scale smoothly at 68..84 and steeply from 87..94.
+ * - All Era Classics share a unified flat cost (`LEGEND_FLAT_DRAFT_COST_M = €130M`).
+ * - Active players scale smoothly at 68..84 and steeply across Worldclass/Superstar 86..92.
  */
 export function computePlayerDraftCostM(
   player: Pick<Player, 'ovr' | 'isLegend'>,
@@ -84,15 +84,15 @@ export function computePlayerDraftCostM(
   } else if (ovr <= 78) {
     raw = 9 + (ovr - 73) * 2.2; // 74:11 .. 78:20
   } else if (ovr <= 82) {
-    raw = 20 + (ovr - 78) * 4.0; // 79:24 .. 82:36
+    raw = 20 + (ovr - 78) * 3.75; // 79:24, 80:28, 81:31, 82:35
   } else if (ovr <= 85) {
-    raw = 36 + (ovr - 82) * 6.5; // 83:43, 84:49, 85:56
-  } else if (ovr <= 88) {
-    raw = 56 + (ovr - 85) * 10.5; // 86:66, 87:77, 88:88
-  } else if (ovr <= 90) {
-    raw = 88 + (ovr - 88) * 15.0; // 89:103, 90:118
+    raw = 35 + (ovr - 82) * 7.33; // 83:42, 84:50, 85:57
+  } else if (ovr <= 87) {
+    raw = 57 + (ovr - 85) * 11.5; // 86:69, 87:80
+  } else if (ovr <= 89) {
+    raw = 80 + (ovr - 87) * 13.0; // 88:93, 89:106
   } else {
-    raw = 118 + (ovr - 90) * 18.0; // 91:136, 92:154, 93:172, 94:190
+    raw = 106 + (ovr - 89) * 16.0; // 90:122, 91:138, 92:154, 93:170
   }
   return Math.max(4, Math.round(raw));
 }

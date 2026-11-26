@@ -156,14 +156,14 @@ export function createOpenTransferState(
  */
 function computeBaseMarketValueM(player: Player): number {
   if (player.isLegend) {
-    return Math.round(145 + Math.max(0, player.ovr - 90) * 16);
+    return Math.round(140 + Math.max(0, player.ovr - 89) * 14);
   }
   const ovr = player.ovr;
   if (ovr <= 73) return Math.max(4, Math.round(4 + (ovr - 70) * 1.5));
   if (ovr <= 78) return Math.round(9 + (ovr - 73) * 3.0); // 12..24M
   if (ovr <= 83) return Math.round(25 + (ovr - 78) * 5.8); // 31..54M
-  if (ovr <= 87) return Math.round(56 + (ovr - 83) * 9.5); // 66..94M
-  return Math.round(98 + (ovr - 87) * 15.5); // 114..190M
+  if (ovr <= 86) return Math.round(56 + (ovr - 83) * 10.5); // 67..88M
+  return Math.round(92 + (ovr - 86) * 16.0); // 108..188M
 }
 
 /**
@@ -200,28 +200,28 @@ export function computePlayerMarketValueM(
 
 /**
  * Base signing probability before form, selling club rank, and user prestige adjustments.
- * Tuned so:
+ * Tuned for the compressed active OVR scale (max 92):
  * - Rotation (<=78): ~74-90%
- * - Key starter (79-84): ~48-66%
- * - Worldclass (85-88): ~30-42%
- * - Superstar (89+ / superstar): ~23-29% (minimum floor 20%)
- * - Legend FA: ~28-34% (minimum floor 20%)
+ * - Key starter (79-83): ~50-66%
+ * - Worldclass (84-87): ~30-45%
+ * - Superstar (88+ / superstar): ~23-29% (minimum floor 20%)
+ * - Classic FA: ~28-34% (minimum floor 22%)
  */
 function computeBaseSigningChance(player: Player): number {
   const tier = getCardTier(player);
   if (tier === 'legend') {
-    return clamp(Math.round(34 - Math.max(0, player.ovr - 91) * 0.7), 28, 34);
+    return clamp(Math.round(34 - Math.max(0, player.ovr - 90) * 0.8), 28, 34);
   }
-  if (tier === 'superstar' || player.ovr >= 89) {
-    return clamp(Math.round(29 - Math.max(0, player.ovr - 89) * 1.2), 23, 29);
+  if (tier === 'superstar' || player.ovr >= 88) {
+    return clamp(Math.round(29 - Math.max(0, player.ovr - 88) * 1.4), 23, 29);
   }
-  if (player.ovr >= 85) {
-    // 85 -> 42, 86 -> 38, 87 -> 34, 88 -> 30
-    return Math.round(42 - (player.ovr - 85) * 4);
+  if (player.ovr >= 84) {
+    // 84 -> 45, 85 -> 40, 86 -> 35, 87 -> 31
+    return Math.round(45 - (player.ovr - 84) * 4.6);
   }
   if (player.ovr >= 79) {
-    // 79 -> 66, 80 -> 62, 81 -> 59, 82 -> 55, 83 -> 52, 84 -> 48
-    return Math.round(66 - (player.ovr - 79) * 3.6);
+    // 79 -> 66, 80 -> 62, 81 -> 58, 82 -> 54, 83 -> 50
+    return Math.round(66 - (player.ovr - 79) * 4.0);
   }
   // 70..78 -> 90..76
   return clamp(Math.round(90 - Math.max(0, player.ovr - 70) * 1.75), 74, 92);
@@ -423,7 +423,7 @@ export function evaluateTransferTarget(
       ? championBonusActive
         ? 46
         : 42
-      : tier === 'superstar' || player.ovr >= 89
+      : tier === 'superstar' || player.ovr >= 88
         ? championBonusActive
           ? 41
           : 36
@@ -443,9 +443,10 @@ export function evaluateTransferTarget(
 
   let formSummary: string;
   if (isLegendFa) {
+    const eraPrefix = player.classicEra ? `${player.classicEra} 클래식` : '클래식';
     formSummary = championBonusActive
-      ? '자유계약 레전드 · 리그 우승 프리미엄 적용'
-      : '자유계약 레전드 · 특별 영입 협상';
+      ? `자유계약 ${eraPrefix} · 리그 우승 프리미엄 적용`
+      : `자유계약 ${eraPrefix} · 특별 영입 협상`;
   } else if (player.position === 'GK' || player.position === 'DF') {
     formSummary = `평점 ${formRating.toFixed(2)} · CS ${formCleanSheets}${formGoals + formAssists > 0 ? ` · ${formGoals}골 ${formAssists}도움` : ''}`;
   } else {
@@ -731,6 +732,7 @@ export function spinTransferClubs(
         offers.push({
           reelIndex,
           isLegendSlot: true,
+          classicEra: chosenLegend.classicEra,
           club: null,
           leagueId: 'LEGEND',
           clubRank: 1,

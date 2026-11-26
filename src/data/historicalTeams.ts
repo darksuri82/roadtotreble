@@ -26,6 +26,7 @@ import type {
 } from '../types/legacy';
 import type { Player } from '../types/player';
 import type { UclKnockoutStage, UclTournamentState } from '../types/ucl';
+import { ERA_BEST_XI_DREAM_TEAMS } from './eraBestXiTeams';
 import { FORMATIONS } from './formations';
 import { HISTORICAL_SQUADS } from './historicalSquadsData';
 import { evaluateManagerPlayerSynergy } from './managerTraits';
@@ -1569,13 +1570,19 @@ const RAW_HISTORICAL_TEAMS: RawHistoricalTeamSpec[] = [
   },
 ];
 
+export { ERA_BEST_XI_DREAM_TEAMS };
+
 export const HISTORICAL_BENCHMARK_TEAMS: HistoricalTeamEntry[] =
   RAW_HISTORICAL_TEAMS.map(buildHistoricalEntry).sort(
     (a, b) => b.seasonScore.totalScore - a.seasonScore.totalScore,
   );
 
 export function getHistoricalTeamById(id: string): HistoricalTeamEntry | null {
-  return HISTORICAL_BENCHMARK_TEAMS.find((t) => t.id === id) ?? null;
+  return (
+    HISTORICAL_BENCHMARK_TEAMS.find((t) => t.id === id) ??
+    ERA_BEST_XI_DREAM_TEAMS.find((t) => t.id === id) ??
+    null
+  );
 }
 
 /**

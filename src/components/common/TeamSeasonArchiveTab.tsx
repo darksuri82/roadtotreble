@@ -42,6 +42,7 @@ import type {
   StandingRow,
   TacticId,
 } from '../../types/league';
+import { formatPlayerRecordName } from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
 import { JerseySvg } from './JerseySvg';
 import { PitchBoard } from './PitchBoard';
@@ -629,12 +630,12 @@ export function TeamSeasonArchiveTab({
             <div className="flex items-center justify-between rounded-xl border border-amber-500/25 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-200">
               <span className="inline-flex items-center gap-1.5 font-bold">
                 <Crown className="w-3.5 h-3.5 text-amber-300" />
-                소속 레전드 선수
+                소속 클래식 선수
               </span>
               <span className="font-semibold text-amber-100 truncate max-w-[60%] text-right">
                 {allSquadPlayers
                   .filter((p) => p.isLegend)
-                  .map((p) => `${p.name}(${p.ovr})`)
+                  .map((p) => `${formatPlayerRecordName(p)}(${p.ovr})`)
                   .join(', ')}
               </span>
             </div>

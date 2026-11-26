@@ -187,9 +187,9 @@ export const MANAGER_TRAITS: Record<ManagerTraitId, ManagerTraitConfig> = {
     name: '갈락티코 매니저',
     tagline: '월드클래스 스타 군단을 하나로 묶는 카리스마',
     effectSummary:
-      '선발 OVR 89+ · 레전드 1~4명 A·M·D +0.80/명 (최대 +3.2) · 개인 OVR +1',
+      '선발 OVR 87+ · 클래식 1~4명 A·M·D +0.80/명 (최대 +3.2) · 개인 OVR +1',
     draftGuideTip:
-      'OVR 89+ 슈퍼스타와 레전드를 최대 4명까지 모으면 예산 내에서 개인 +1과 팀 A·M·D가 함께 폭발합니다.',
+      'OVR 87+ 월드클래스·슈퍼스타와 시대별 클래식을 최대 4명까지 모으면 예산 내에서 개인 +1과 팀 A·M·D가 함께 폭발합니다.',
     badgeColor: '#fbbf24',
     category: 'builder',
     philosophyTarget: 4,
@@ -320,13 +320,13 @@ export function evaluateManagerPlayerSynergy(
   // Special trait-specific criteria beyond playstyles
   if (
     managerTraitId === 'galactico_manager' &&
-    (player.isLegend || player.ovr >= 89)
+    (player.isLegend || player.ovr >= 87)
   ) {
     return {
       isMatch: true,
       bonus: 1,
       badgeLabel: '감독 궁합',
-      reason: `${trait.name}: ${player.isLegend ? '레전드' : `슈퍼스타(OVR ${player.ovr})`} (+1 OVR)`,
+      reason: `${trait.name}: ${player.isLegend ? `${player.classicEra ?? ''} 클래식`.trim() : `월드클래스+(OVR ${player.ovr})`} (+1 OVR)`,
       matchedPlaystyles,
     };
   }
@@ -960,7 +960,7 @@ function getCriteriaLabels(traitId: ManagerTraitId): string[] {
   const cfg = MANAGER_TRAITS[traitId];
   if (!cfg) return [];
   if (traitId === 'galactico_manager') {
-    return ['OVR 89+ · 레전드'];
+    return ['OVR 87+ · 클래식'];
   }
   if (traitId === 'total_football') {
     return ['3포지션+ 멀티'];

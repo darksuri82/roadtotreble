@@ -28,28 +28,29 @@ import type { TransferTargetPlayer } from '../types/game';
 import type { PlayerSeasonStats } from '../types/league';
 
 describe('v2.5 Core Requirements Verification', () => {
-  it('guarantees zero duplicate IDs and names worldwide across Active, Legend, and UCL External pools', () => {
+  it('guarantees zero duplicate IDs worldwide and unique names within Active+External and within Classics', () => {
     const allIds = new Set<string>();
-    const allNames = new Set<string>();
+    const activeAndExternalNames = new Set<string>();
+    const classicNames = new Set<string>();
 
     for (const p of ACTIVE_PLAYERS) {
       expect(allIds.has(p.id)).toBe(false);
-      expect(allNames.has(p.name)).toBe(false);
+      expect(activeAndExternalNames.has(p.name)).toBe(false);
       allIds.add(p.id);
-      allNames.add(p.name);
+      activeAndExternalNames.add(p.name);
     }
     for (const p of LEGEND_PLAYERS) {
       expect(allIds.has(p.id)).toBe(false);
-      expect(allNames.has(p.name)).toBe(false);
+      expect(classicNames.has(p.name)).toBe(false);
       allIds.add(p.id);
-      allNames.add(p.name);
+      classicNames.add(p.name);
     }
     for (const ext of UCL_EXTERNAL_TEAMS) {
       for (const p of ext.roster) {
         expect(allIds.has(p.id)).toBe(false);
-        expect(allNames.has(p.name)).toBe(false);
+        expect(activeAndExternalNames.has(p.name)).toBe(false);
         allIds.add(p.id);
-        allNames.add(p.name);
+        activeAndExternalNames.add(p.name);
       }
     }
 

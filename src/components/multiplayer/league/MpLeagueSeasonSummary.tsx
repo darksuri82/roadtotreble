@@ -36,6 +36,7 @@ import type {
   MpLeagueSummary,
   MpSquadInput,
 } from '../../../types/mpLeague';
+import { SUPERSTAR_MIN_OVR } from '../../../types/player';
 import type { Player } from '../../../types/player';
 import { getPlayerNationalityMeta, resolvePlayerById } from '../../../utils/playerLookup';
 import { ClubSquadModal } from '../../common/ClubSquadModal';
@@ -974,7 +975,7 @@ export function MpFriendSquadTab({
                           {r.isLegend && (
                             <Crown className="w-3 h-3 text-amber-400 shrink-0" />
                           )}
-                          {!r.isLegend && r.ovr >= 91 && (
+                          {!r.isLegend && r.ovr >= SUPERSTAR_MIN_OVR && (
                             <Diamond className="w-3 h-3 text-cyan-300 shrink-0" />
                           )}
                         </div>

@@ -57,14 +57,12 @@ const REAL_PLAYERS_BY_ID: Map<string, Player> = (() => {
   return map;
 })();
 
-const REAL_PLAYERS_BY_NAME: Map<string, Player> = (() => {
-  const map = new Map<string, Player>();
-  for (const p of LEGEND_PLAYERS) map.set(p.name, p);
-  for (const p of ACTIVE_PLAYERS) {
-    if (!map.has(p.name)) map.set(p.name, p);
-  }
-  return map;
-})();
+const REAL_ACTIVE_BY_NAME: Map<string, Player> = new Map(
+  ACTIVE_PLAYERS.map((p) => [p.name, p]),
+);
+const REAL_CLASSIC_BY_NAME: Map<string, Player> = new Map(
+  LEGEND_PLAYERS.map((p) => [p.name, p]),
+);
 
 const VALID_POSITIONS = new Set<Position>(['GK', 'DF', 'MF', 'FW']);
 const VALID_SUB_POSITIONS = new Set<SubPosition>([
@@ -234,6 +232,7 @@ function serializePlayerForSnapshot(
     position: player.position,
     mainPositions: [...player.mainPositions],
     isLegend: Boolean(player.isLegend),
+    ...(player.classicEra ? { classicEra: player.classicEra } : {}),
     ...(player.awakening ? { awakening: player.awakening } : {}),
     ...(stats && stats.goals > 0 ? { goals: stats.goals } : {}),
     ...(stats && stats.assists > 0 ? { assists: stats.assists } : {}),
@@ -301,7 +300,9 @@ function rebuildPlayerFromSnapshot(
       }
       return { ...byId, attrs: getPlayerAttributes(byId) };
     }
-    const byName = REAL_PLAYERS_BY_NAME.get(snap.name);
+    const byName = snap.isLegend
+      ? REAL_CLASSIC_BY_NAME.get(snap.name)
+      : REAL_ACTIVE_BY_NAME.get(snap.name);
     if (byName) {
       if (snap.awakening && isValidAwakeningRecord(byName, snap.awakening)) {
         return applyAwakeningToPlayer(byName, snap.awakening);

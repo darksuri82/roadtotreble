@@ -139,6 +139,7 @@ export function resolvePlayerById(params: {
       playstyles: fallbackPlaystylesForPosition(mainPos[0]),
       scoutNote: `${fallbackStats.teamName || '1군'} 핵심 스쿼드 자원`,
       isLegend: fallbackStats.isLegend,
+      ...(fallbackStats.classicEra ? { classicEra: fallbackStats.classicEra } : {}),
       isGenerated: true,
     };
   }

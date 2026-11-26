@@ -156,7 +156,7 @@ export function DraftBudgetBar({
             guideTab="budget"
             items={[
               `16인 총 예산 상한은 €${DRAFT_BUDGET_CAP_M}M입니다. 남은 예산은 시즌 이적시장 현금 협상 자금으로 100% 이월됩니다.`,
-              `레전드는 전원 €${LEGEND_FLAT_DRAFT_COST_M}M 균일가(슈퍼스타 하위권 수준)이며, 다수 수집 시 FFP 압박이 커집니다.`,
+              `시대별 클래식은 전원 €${LEGEND_FLAT_DRAFT_COST_M}M 통일 균일가(슈퍼스타 하위권 수준)이며, 다수 수집 시 FFP 압박이 커집니다.`,
               `1단계 초과 (+1%~+${FFP_TIER1_MAX_OVERRUN_PCT}%): 이월 €0 · 정규 1·2·3차 각 ${FFP_TIER1_WINDOW1_MAX_ATTEMPTS}회(UCL ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회) · 팀 케미 -${FFP_TIER1_CHEM_PENALTY} · 패배 사기 -${FFP_TIER1_LOSS_MORALE_EXTRA} 추가 · 점수 -${FFP_TIER1_SCORE_PENALTY_PCT}%.`,
               `2단계 초과 (+${FFP_TIER1_MAX_OVERRUN_PCT}% 초과): 이월 €0 · 1·3차 동결/2차 ${FFP_TIER2_WINDOW2_MAX_ATTEMPTS}회(UCL ${FFP_UCL_SPECIAL_MAX_ATTEMPTS}회) · 팀 케미 -${FFP_TIER2_CHEM_PENALTY} · 패배 사기 -${FFP_TIER2_LOSS_MORALE_EXTRA} 추가 · 점수 -${FFP_TIER2_SCORE_PENALTY_PCT}%.`,
             ]}

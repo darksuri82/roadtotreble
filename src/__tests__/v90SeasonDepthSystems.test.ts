@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { FORMATIONS } from '../data/formations';
 import {
   applyAwakeningToPlayer,
+  AWAKENING_FOURTH_PLUS_MULT,
   AWAKENING_OVR_HARD_CAP,
   AWAKENING_SECOND_COUNT_MULT,
   AWAKENING_SUPERSTAR_MAX_GAIN,
   AWAKENING_SUPERSTAR_OVR_THRESHOLD,
-  AWAKENING_THIRD_PLUS_MULT,
+  AWAKENING_THIRD_COUNT_MULT,
   evaluatePostMatchAwakening,
   isValidAwakeningRecord,
   rollAwakeningOvrGain,
@@ -90,8 +91,8 @@ function createSeededRng(seed: number): () => number {
 }
 
 describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
-  it('assigns every Legend player the exact unified flat cost (€135M), lower-Superstar tier', () => {
-    expect(LEGEND_FLAT_DRAFT_COST_M).toBe(135);
+  it('assigns every Era Classic player the exact unified flat cost (€130M), between OVR 90 and 91', () => {
+    expect(LEGEND_FLAT_DRAFT_COST_M).toBe(130);
     expect(LEGEND_PLAYERS.length).toBeGreaterThan(20);
 
     for (const legend of LEGEND_PLAYERS) {
@@ -103,7 +104,7 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
     const ovr92Cost = computePlayerDraftCostM({ ovr: 92, isLegend: false });
     const ovr94Cost = computePlayerDraftCostM({ ovr: 94, isLegend: false });
 
-    // Legend flat cost sits at lower-Superstar tier (above OVR 90, ~OVR 91, below OVR 92+)
+    // Era Classic flat cost sits between compressed OVR 90 (€122M) and OVR 91 (€138M)
     expect(LEGEND_FLAT_DRAFT_COST_M).toBeGreaterThan(ovr90Cost);
     expect(LEGEND_FLAT_DRAFT_COST_M).toBeLessThanOrEqual(ovr91Cost);
     expect(LEGEND_FLAT_DRAFT_COST_M).toBeLessThan(ovr92Cost);
@@ -678,9 +679,10 @@ describe('v9.0 Permanent Potential Awakening', () => {
     expect(JSON.stringify(dbPlayer.attrs ?? null)).toBe(origAttrsJson);
   });
 
-  it('keeps 2nd awakening accessible (x0.65) and sharply attenuates 3rd+ (x0.04)', () => {
-    expect(AWAKENING_SECOND_COUNT_MULT).toBe(0.65);
-    expect(AWAKENING_THIRD_PLUS_MULT).toBe(0.04);
+  it('keeps 2nd & 3rd awakenings accessible (x0.78 / x0.48) and sharply attenuates 4th+ (x0.05)', () => {
+    expect(AWAKENING_SECOND_COUNT_MULT).toBe(0.78);
+    expect(AWAKENING_THIRD_COUNT_MULT).toBe(0.48);
+    expect(AWAKENING_FOURTH_PLUS_MULT).toBe(0.05);
 
     const candidate = ACTIVE_PLAYERS.find(
       (p) => !p.isLegend && p.ovr >= 78 && p.ovr <= 84,
@@ -723,16 +725,20 @@ describe('v9.0 Permanent Potential Awakening', () => {
     const hits1st = runTrials(0);
     const hits2nd = runTrials(1);
     const hits3rd = runTrials(2);
+    const hits4th = runTrials(3);
 
     expect(hits1st).toBeGreaterThan(20);
-    // 2nd should be roughly 0.65x of 1st
-    expect(hits2nd / hits1st).toBeGreaterThan(0.45);
-    expect(hits2nd / hits1st).toBeLessThan(0.85);
-    // 3rd+ should be near-zero (~0.04x)
-    expect(hits3rd / hits1st).toBeLessThan(0.15);
+    // 2nd should be roughly 0.78x of 1st
+    expect(hits2nd / hits1st).toBeGreaterThan(0.55);
+    expect(hits2nd / hits1st).toBeLessThan(0.98);
+    // 3rd should be roughly 0.48x of 1st (still reachable!)
+    expect(hits3rd / hits1st).toBeGreaterThan(0.28);
+    expect(hits3rd / hits1st).toBeLessThan(0.70);
+    // 4th+ should be near-zero (~0.05x)
+    expect(hits4th / hits1st).toBeLessThan(0.15);
   });
 
-  it('verifies SystemGuideModal and DraftBudgetBar stay 100% synced with v9.2 constants including Legend flat €135M', async () => {
+  it('verifies SystemGuideModal and DraftBudgetBar stay 100% synced with v9.3 constants including Era Classic flat €130M', async () => {
     const [{ default: guideSrc }, { default: budgetBarSrc }, { default: tutorialSrc }] =
       await Promise.all([
         import('../components/guide/SystemGuideModal.tsx?raw'),
@@ -745,7 +751,8 @@ describe('v9.0 Permanent Potential Awakening', () => {
     expect(guideSrc).toContain('EXPOSURE_WARNING_THRESHOLD');
     expect(guideSrc).toContain('EXPOSURE_DANGER_THRESHOLD');
     expect(guideSrc).toContain('STAFF_COACH_LIST');
-    expect(guideSrc).toContain('AWAKENING_THIRD_PLUS_MULT');
+    expect(guideSrc).toContain('AWAKENING_THIRD_COUNT_MULT');
+    expect(guideSrc).toContain('AWAKENING_FOURTH_PLUS_MULT');
     expect(budgetBarSrc).toContain('LEGEND_FLAT_DRAFT_COST_M');
     expect(tutorialSrc).toContain('LEGEND_FLAT_DRAFT_COST_M');
     expect(tutorialSrc).toContain('DRAFT_BUDGET_CAP_M');

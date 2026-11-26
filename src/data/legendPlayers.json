@@ -1,5 +1,44 @@
 [
   {
+    "id": "leg-fw-03",
+    "name": "펠레",
+    "position": "FW",
+    "mainPositions": [
+      "ST",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "LW",
+      "RW"
+    ],
+    "ovr": 96,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "60s 클래식",
+    "att": 97,
+    "mid": 92,
+    "def": 58,
+    "playstyles": [
+      "complete_forward",
+      "playmaker_10"
+    ],
+    "scoutNote": "월드컵 3회 우승에 빛나는 축구 황제",
+    "isLegend": true,
+    "classicEra": "60s",
+    "classicSeasonTag": "1962",
+    "stamina": 90,
+    "attrs": {
+      "sho": 98,
+      "pas": 93,
+      "cro": 85,
+      "dri": 98,
+      "aer": 93,
+      "def": 56,
+      "phy": 95
+    }
+  },
+  {
     "id": "leg-gk-01",
     "name": "레프 야신",
     "position": "GK",
@@ -7,115 +46,115 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 94,
+    "ovr": 93,
     "nationality": "러시아",
     "nationalityCode": "RU",
     "leagueId": "LEGEND",
-    "club": "레전드",
+    "club": "60s 클래식",
     "att": 32,
     "mid": 68,
-    "def": 95,
+    "def": 94,
     "playstyles": [
       "shot_stopper",
       "sweeper_keeper"
     ],
     "scoutNote": "발롱도르를 수상한 축구사 유일의 골키퍼, 검은 거미",
     "isLegend": true,
-    "stamina": 82,
+    "classicEra": "60s",
+    "classicSeasonTag": "1963",
+    "stamina": 83,
     "attrs": {
-      "sho": 42,
-      "pas": 84,
-      "cro": 68,
-      "dri": 72,
+      "sho": 40,
+      "pas": 83,
+      "cro": 69,
+      "dri": 71,
       "aer": 95,
       "def": 95,
       "phy": 93,
       "gk": {
-        "div": 96,
-        "han": 94,
-        "ref": 96,
-        "kic": 88,
-        "pos": 95
-      }
-    }
-  },
-  {
-    "id": "leg-gk-02",
-    "name": "잔루이지 부폰",
-    "position": "GK",
-    "mainPositions": [
-      "GK"
-    ],
-    "secondaryPositions": [],
-    "ovr": 93,
-    "nationality": "이탈리아",
-    "nationalityCode": "IT",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 30,
-    "mid": 66,
-    "def": 94,
-    "playstyles": [
-      "shot_stopper"
-    ],
-    "scoutNote": "완벽한 위치 선정과 리더십을 겸비한 아주리 수호신",
-    "isLegend": true,
-    "stamina": 80,
-    "attrs": {
-      "sho": 40,
-      "pas": 80,
-      "cro": 64,
-      "dri": 68,
-      "aer": 94,
-      "def": 94,
-      "phy": 91,
-      "gk": {
-        "div": 94,
-        "han": 94,
-        "ref": 94,
-        "kic": 83,
-        "pos": 96
-      }
-    }
-  },
-  {
-    "id": "leg-gk-03",
-    "name": "이케르 카시야스",
-    "position": "GK",
-    "mainPositions": [
-      "GK"
-    ],
-    "secondaryPositions": [],
-    "ovr": 92,
-    "nationality": "스페인",
-    "nationalityCode": "ES",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 31,
-    "mid": 70,
-    "def": 93,
-    "playstyles": [
-      "shot_stopper",
-      "sweeper_keeper"
-    ],
-    "scoutNote": "결승전마다 기적의 반사신경을 뽐낸 성 이케르",
-    "isLegend": true,
-    "stamina": 81,
-    "attrs": {
-      "sho": 40,
-      "pas": 82,
-      "cro": 65,
-      "dri": 70,
-      "aer": 91,
-      "def": 93,
-      "phy": 90,
-      "gk": {
         "div": 95,
-        "han": 90,
-        "ref": 96,
-        "kic": 84,
-        "pos": 92
+        "han": 93,
+        "ref": 95,
+        "kic": 86,
+        "pos": 94
       }
+    }
+  },
+  {
+    "id": "leg-fw-07",
+    "name": "가린샤",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "RM"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 92,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "60s 클래식",
+    "att": 93,
+    "mid": 86,
+    "def": 46,
+    "playstyles": [
+      "classic_winger",
+      "inverted_winger"
+    ],
+    "scoutNote": "역대 최고 수준의 1대1 드리블 마술사, 국민들의 기쁨",
+    "isLegend": true,
+    "classicEra": "60s",
+    "classicSeasonTag": "1962",
+    "stamina": 86,
+    "attrs": {
+      "sho": 88,
+      "pas": 86,
+      "cro": 93,
+      "dri": 98,
+      "aer": 66,
+      "def": 45,
+      "phy": 89
+    }
+  },
+  {
+    "id": "leg-mf-02",
+    "name": "요한 크루이프",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "LW",
+      "CM"
+    ],
+    "ovr": 95,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "70s 클래식",
+    "att": 94,
+    "mid": 96,
+    "def": 66,
+    "playstyles": [
+      "playmaker_10",
+      "complete_forward"
+    ],
+    "scoutNote": "토탈 풋볼의 상징이자 발롱도르 3회 수상자",
+    "isLegend": true,
+    "classicEra": "70s",
+    "classicSeasonTag": "1974",
+    "stamina": 89,
+    "attrs": {
+      "sho": 92,
+      "pas": 96,
+      "cro": 88,
+      "dri": 98,
+      "aer": 76,
+      "def": 62,
+      "phy": 91
     }
   },
   {
@@ -133,61 +172,179 @@
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 78,
-    "mid": 92,
-    "def": 95,
+    "club": "70s 클래식",
+    "att": 80,
+    "mid": 93,
+    "def": 96,
     "playstyles": [
       "ball_playing_cb",
       "deep_playmaker"
     ],
-    "scoutNote": "리베로의 개념을 창시한 후방 빌드업의 황제",
+    "scoutNote": "리베로 포지션을 완성한 독일 축구의 카이저",
     "isLegend": true,
-    "stamina": 91,
+    "classicEra": "70s",
+    "classicSeasonTag": "1974",
+    "stamina": 89,
     "attrs": {
       "sho": 82,
-      "pas": 95,
+      "pas": 96,
       "cro": 84,
       "dri": 90,
-      "aer": 91,
-      "def": 96,
-      "phy": 92
+      "aer": 92,
+      "def": 97,
+      "phy": 93
     }
   },
   {
-    "id": "leg-df-02",
-    "name": "파올로 말디니",
-    "position": "DF",
+    "id": "cls-70s-st-01",
+    "name": "게르트 뮐러",
+    "position": "FW",
     "mainPositions": [
-      "LB",
-      "CB"
+      "ST"
     ],
-    "secondaryPositions": [
-      "LWB"
+    "secondaryPositions": [],
+    "ovr": 93,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "70s 클래식",
+    "att": 95,
+    "mid": 77,
+    "def": 48,
+    "playstyles": [
+      "poacher"
     ],
-    "ovr": 95,
+    "scoutNote": "박스 안에서 숨 쉴 틈 없이 골을 넣는 폭격기",
+    "isLegend": true,
+    "classicEra": "70s",
+    "classicSeasonTag": "1974",
+    "stamina": 85,
+    "attrs": {
+      "sho": 99,
+      "pas": 79,
+      "cro": 67,
+      "dri": 88,
+      "aer": 95,
+      "def": 47,
+      "phy": 91
+    }
+  },
+  {
+    "id": "cls-70s-gk-01",
+    "name": "디노 조프",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
     "nationality": "이탈리아",
     "nationalityCode": "IT",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 68,
-    "mid": 83,
-    "def": 96,
+    "club": "70s 클래식",
+    "att": 30,
+    "mid": 64,
+    "def": 92,
     "playstyles": [
-      "ball_playing_cb",
-      "stopper_cb"
+      "shot_stopper"
     ],
-    "scoutNote": "태클이 필요 없는 완벽한 수비 지능의 정점",
+    "scoutNote": "철벽 위치선정과 냉철한 안정감의 이탈리아 전설 수문장",
     "isLegend": true,
-    "stamina": 93,
+    "classicEra": "70s",
+    "classicSeasonTag": "1978",
+    "stamina": 82,
     "attrs": {
-      "sho": 71,
-      "pas": 92,
+      "sho": 40,
+      "pas": 76,
+      "cro": 62,
+      "dri": 64,
+      "aer": 93,
+      "def": 93,
+      "phy": 91,
+      "gk": {
+        "div": 91,
+        "han": 93,
+        "ref": 91,
+        "kic": 79,
+        "pos": 95
+      }
+    }
+  },
+  {
+    "id": "cls-70s-st-02",
+    "name": "케니 달글리시",
+    "position": "FW",
+    "mainPositions": [
+      "ST",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "RW"
+    ],
+    "ovr": 91,
+    "nationality": "스코틀랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "70s 클래식",
+    "att": 91,
+    "mid": 88,
+    "def": 52,
+    "playstyles": [
+      "complete_forward",
+      "playmaker_10"
+    ],
+    "scoutNote": "리버풀 황금기를 이끈 킹 케니, 지능적 연계와 마무리",
+    "isLegend": true,
+    "classicEra": "70s",
+    "classicSeasonTag": "1978",
+    "stamina": 86,
+    "attrs": {
+      "sho": 95,
+      "pas": 93,
+      "cro": 83,
+      "dri": 95,
+      "aer": 81,
+      "def": 51,
+      "phy": 87
+    }
+  },
+  {
+    "id": "leg-mf-01",
+    "name": "디에고 마라도나",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "RW",
+      "LW"
+    ],
+    "ovr": 96,
+    "nationality": "아르헨티나",
+    "nationalityCode": "AR",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 96,
+    "mid": 97,
+    "def": 54,
+    "playstyles": [
+      "playmaker_10",
+      "inverted_winger"
+    ],
+    "scoutNote": "1986 월드컵을 홀로 지배한 역대 최고의 천재 10번",
+    "isLegend": true,
+    "classicEra": "80s",
+    "classicSeasonTag": "1986",
+    "stamina": 88,
+    "attrs": {
+      "sho": 95,
+      "pas": 97,
       "cro": 91,
-      "dri": 89,
-      "aer": 94,
-      "def": 99,
-      "phy": 97
+      "dri": 99,
+      "aer": 68,
+      "def": 52,
+      "phy": 91
     }
   },
   {
@@ -204,92 +361,481 @@
     "nationality": "이탈리아",
     "nationalityCode": "IT",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 62,
-    "mid": 81,
+    "club": "80s 클래식",
+    "att": 64,
+    "mid": 84,
     "def": 96,
     "playstyles": [
       "ball_playing_cb",
       "stopper_cb"
     ],
-    "scoutNote": "밀란 제네레이션의 오프사이드 트랩을 지휘한 캡틴",
+    "scoutNote": "AC 밀란 영구 결번 6번, 오프사이드 트랩의 지휘자",
     "isLegend": true,
-    "stamina": 91,
+    "classicEra": "80s",
+    "classicSeasonTag": "1989",
+    "stamina": 88,
     "attrs": {
-      "sho": 66,
-      "pas": 88,
+      "sho": 65,
+      "pas": 89,
       "cro": 74,
       "dri": 83,
       "aer": 92,
-      "def": 97,
+      "def": 98,
       "phy": 91
     }
   },
   {
-    "id": "leg-df-04",
-    "name": "알레산드로 네스타",
-    "position": "DF",
+    "id": "leg-mf-04",
+    "name": "로타어 마테우스",
+    "position": "MF",
     "mainPositions": [
-      "CB"
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [
+      "CB",
+      "CAM"
+    ],
+    "ovr": 93,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 86,
+    "mid": 94,
+    "def": 91,
+    "playstyles": [
+      "box_to_box",
+      "ball_winner"
+    ],
+    "scoutNote": "공수 완벽 밸런스와 대포알 중거리 슛의 독일 발롱도르",
+    "isLegend": true,
+    "classicEra": "80s",
+    "classicSeasonTag": "1990",
+    "stamina": 96,
+    "attrs": {
+      "sho": 91,
+      "pas": 93,
+      "cro": 85,
+      "dri": 90,
+      "aer": 86,
+      "def": 94,
+      "phy": 96
+    }
+  },
+  {
+    "id": "cls-80s-cam-01",
+    "name": "미셸 플라티니",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "CM"
+    ],
+    "secondaryPositions": [
+      "ST"
+    ],
+    "ovr": 93,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 92,
+    "mid": 95,
+    "def": 62,
+    "playstyles": [
+      "playmaker_10",
+      "deep_playmaker"
+    ],
+    "scoutNote": "발롱도르 3연패와 유로 84 9골 신화의 프랑스 10번",
+    "isLegend": true,
+    "classicEra": "80s",
+    "classicSeasonTag": "1984",
+    "stamina": 86,
+    "attrs": {
+      "sho": 94,
+      "pas": 96,
+      "cro": 93,
+      "dri": 91,
+      "aer": 75,
+      "def": 60,
+      "phy": 82
+    }
+  },
+  {
+    "id": "cls-80s-st-01",
+    "name": "마르코 판 바스턴",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
     ],
     "secondaryPositions": [],
     "ovr": 93,
-    "nationality": "이탈리아",
-    "nationalityCode": "IT",
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 56,
-    "mid": 76,
-    "def": 95,
+    "club": "80s 클래식",
+    "att": 95,
+    "mid": 83,
+    "def": 50,
     "playstyles": [
-      "stopper_cb",
-      "ball_playing_cb"
+      "complete_forward",
+      "poacher"
     ],
-    "scoutNote": "우아하고 정확한 슬라이딩 태클의 예술가",
+    "scoutNote": "발롱도르 3회, 우아한 발리 슛과 완벽한 9번의 정석",
     "isLegend": true,
-    "stamina": 87,
+    "classicEra": "80s",
+    "classicSeasonTag": "1988",
+    "stamina": 84,
     "attrs": {
-      "sho": 60,
-      "pas": 84,
-      "cro": 70,
-      "dri": 81,
-      "aer": 93,
-      "def": 96,
-      "phy": 91
+      "sho": 98,
+      "pas": 85,
+      "cro": 78,
+      "dri": 90,
+      "aer": 95,
+      "def": 48,
+      "phy": 89
     }
   },
   {
-    "id": "leg-df-05",
-    "name": "세르히오 라모스",
+    "id": "cls-80s-mf-01",
+    "name": "뤼트 굴리트",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "CM",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "RW"
+    ],
+    "ovr": 92,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 91,
+    "mid": 92,
+    "def": 82,
+    "playstyles": [
+      "box_to_box",
+      "complete_forward"
+    ],
+    "scoutNote": "피지컬·헤더·드리블·패스를 모두 갖춘 오렌지 삼총사의 엔진",
+    "isLegend": true,
+    "classicEra": "80s",
+    "classicSeasonTag": "1987",
+    "stamina": 94,
+    "attrs": {
+      "sho": 92,
+      "pas": 92,
+      "cro": 87,
+      "dri": 93,
+      "aer": 93,
+      "def": 81,
+      "phy": 97
+    }
+  },
+  {
+    "id": "cls-80s-mf-02",
+    "name": "프랑크 레이카르트",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CB"
+    ],
+    "secondaryPositions": [
+      "CM"
+    ],
+    "ovr": 92,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 78,
+    "mid": 91,
+    "def": 93,
+    "playstyles": [
+      "ball_winner",
+      "deep_playmaker"
+    ],
+    "scoutNote": "밀란 제네레이션의 중원·수비 절대 축, 완벽한 홀딩",
+    "isLegend": true,
+    "classicEra": "80s",
+    "classicSeasonTag": "1989",
+    "stamina": 93,
+    "attrs": {
+      "sho": 78,
+      "pas": 90,
+      "cro": 78,
+      "dri": 84,
+      "aer": 92,
+      "def": 94,
+      "phy": 93
+    }
+  },
+  {
+    "id": "cls-80s-cam-02",
+    "name": "지쿠",
+    "position": "MF",
+    "mainPositions": [
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "CM",
+      "ST"
+    ],
+    "ovr": 92,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 91,
+    "mid": 94,
+    "def": 56,
+    "playstyles": [
+      "playmaker_10"
+    ],
+    "scoutNote": "하얀 펠레, 역대 최정상급 프리킥과 창의적 스루패스",
+    "isLegend": true,
+    "classicEra": "80s",
+    "classicSeasonTag": "1982",
+    "stamina": 85,
+    "attrs": {
+      "sho": 92,
+      "pas": 95,
+      "cro": 94,
+      "dri": 94,
+      "aer": 72,
+      "def": 54,
+      "phy": 80
+    }
+  },
+  {
+    "id": "cls-80s-rw-01",
+    "name": "카를하인츠 루메니게",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 92,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 93,
+    "mid": 84,
+    "def": 54,
+    "playstyles": [
+      "line_breaker",
+      "inverted_winger"
+    ],
+    "scoutNote": "발롱도르 2연패, 폭발적 돌파와 강력한 양발 피니시",
+    "isLegend": true,
+    "classicEra": "80s",
+    "classicSeasonTag": "1981",
+    "stamina": 89,
+    "attrs": {
+      "sho": 95,
+      "pas": 87,
+      "cro": 86,
+      "dri": 94,
+      "aer": 82,
+      "def": 52,
+      "phy": 94
+    }
+  },
+  {
+    "id": "cls-80s-cb-01",
+    "name": "로날드 쿠만",
     "position": "DF",
     "mainPositions": [
       "CB",
+      "CDM"
+    ],
+    "secondaryPositions": [
+      "CM"
+    ],
+    "ovr": 91,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 82,
+    "mid": 89,
+    "def": 91,
+    "playstyles": [
+      "ball_playing_cb",
+      "deep_playmaker"
+    ],
+    "scoutNote": "수비수 최다 득점 기록과 대포알 프리킥의 빌드업 센터백",
+    "isLegend": true,
+    "classicEra": "80s",
+    "classicSeasonTag": "1988",
+    "stamina": 86,
+    "attrs": {
+      "sho": 90,
+      "pas": 94,
+      "cro": 90,
+      "dri": 80,
+      "aer": 90,
+      "def": 92,
+      "phy": 88
+    }
+  },
+  {
+    "id": "cls-80s-lb-01",
+    "name": "안드레아스 브레메",
+    "position": "DF",
+    "mainPositions": [
+      "LB",
       "RB"
     ],
-    "secondaryPositions": [],
-    "ovr": 93,
-    "nationality": "스페인",
-    "nationalityCode": "ES",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 74,
-    "mid": 79,
-    "def": 94,
-    "playstyles": [
-      "stopper_cb",
-      "ball_playing_cb"
+    "secondaryPositions": [
+      "LWB",
+      "CDM"
     ],
-    "scoutNote": "92분 48초의 기적, 클러치 헤더와 투지의 화신",
+    "ovr": 91,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 80,
+    "mid": 87,
+    "def": 90,
+    "playstyles": [
+      "attacking_wingback"
+    ],
+    "scoutNote": "완벽한 양발 크로스와 90 월드컵 결승골의 전설 풀백",
     "isLegend": true,
-    "stamina": 90,
+    "classicEra": "80s",
+    "classicSeasonTag": "1990",
+    "stamina": 92,
     "attrs": {
       "sho": 82,
-      "pas": 85,
-      "cro": 80,
-      "dri": 82,
-      "aer": 97,
-      "def": 94,
-      "phy": 94
+      "pas": 90,
+      "cro": 95,
+      "dri": 86,
+      "aer": 80,
+      "def": 91,
+      "phy": 90
+    }
+  },
+  {
+    "id": "leg-fw-08",
+    "name": "차범근",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "LW",
+      "RM"
+    ],
+    "ovr": 89,
+    "nationality": "대한민국",
+    "nationalityCode": "KR",
+    "leagueId": "LEGEND",
+    "club": "80s 클래식",
+    "att": 90,
+    "mid": 82,
+    "def": 58,
+    "playstyles": [
+      "line_breaker",
+      "complete_forward"
+    ],
+    "scoutNote": "분데스리가 외국인 최다골 신화, 갈색 폭격기 차붐",
+    "isLegend": true,
+    "classicEra": "80s",
+    "classicSeasonTag": "1985",
+    "stamina": 93,
+    "attrs": {
+      "sho": 91,
+      "pas": 83,
+      "cro": 85,
+      "dri": 89,
+      "aer": 86,
+      "def": 56,
+      "phy": 95
+    }
+  },
+  {
+    "id": "leg-fw-04",
+    "name": "호나우두 (R9)",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 95,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 97,
+    "mid": 83,
+    "def": 46,
+    "playstyles": [
+      "line_breaker",
+      "complete_forward"
+    ],
+    "scoutNote": "최고 속도에서 나오는 완벽한 드리블과 결정력, 축구 외계인",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1997",
+    "stamina": 85,
+    "attrs": {
+      "sho": 99,
+      "pas": 86,
+      "cro": 78,
+      "dri": 99,
+      "aer": 86,
+      "def": 46,
+      "phy": 99
+    }
+  },
+  {
+    "id": "leg-df-02",
+    "name": "파올로 말디니",
+    "position": "DF",
+    "mainPositions": [
+      "LB",
+      "CB"
+    ],
+    "secondaryPositions": [
+      "LWB"
+    ],
+    "ovr": 94,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 72,
+    "mid": 85,
+    "def": 96,
+    "playstyles": [
+      "stopper_cb",
+      "attacking_wingback"
+    ],
+    "scoutNote": "수비의 예술 그 자체, AC 밀란 원클럽 영원한 캡틴",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1994",
+    "stamina": 92,
+    "attrs": {
+      "sho": 71,
+      "pas": 91,
+      "cro": 90,
+      "dri": 88,
+      "aer": 93,
+      "def": 99,
+      "phy": 96
     }
   },
   {
@@ -303,28 +849,30 @@
     "secondaryPositions": [
       "LM"
     ],
-    "ovr": 93,
+    "ovr": 92,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 86,
-    "mid": 85,
-    "def": 90,
+    "club": "90s 클래식",
+    "att": 85,
+    "mid": 86,
+    "def": 89,
     "playstyles": [
       "attacking_wingback"
     ],
-    "scoutNote": "UFO 프리킥과 폭발적 오버래핑의 악마의 왼발",
+    "scoutNote": "UFO 프리킥과 폭발적 오버래핑의 최강 공격형 레프트백",
     "isLegend": true,
-    "stamina": 96,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 95,
     "attrs": {
-      "sho": 92,
+      "sho": 89,
       "pas": 87,
-      "cro": 94,
+      "cro": 95,
       "dri": 89,
-      "aer": 78,
-      "def": 88,
-      "phy": 96
+      "aer": 74,
+      "def": 90,
+      "phy": 97
     }
   },
   {
@@ -338,143 +886,76 @@
     "secondaryPositions": [
       "RM"
     ],
-    "ovr": 93,
+    "ovr": 92,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "LEGEND",
-    "club": "레전드",
+    "club": "90s 클래식",
     "att": 82,
-    "mid": 86,
+    "mid": 88,
     "def": 91,
     "playstyles": [
-      "attacking_wingback",
-      "box_to_box"
+      "attacking_wingback"
     ],
-    "scoutNote": "90분 내내 측면을 지배하는 지치지 않는 고속 열차",
+    "scoutNote": "월드컵 3회 연속 결승 출전, 지치지 않는 엔진 카푸",
     "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
     "stamina": 97,
     "attrs": {
-      "sho": 80,
-      "pas": 89,
-      "cro": 94,
-      "dri": 90,
-      "aer": 80,
-      "def": 90,
-      "phy": 96
-    }
-  },
-  {
-    "id": "leg-df-08",
-    "name": "필립 람",
-    "position": "DF",
-    "mainPositions": [
-      "RB",
-      "LB",
-      "CDM"
-    ],
-    "secondaryPositions": [
-      "RWB",
-      "LWB"
-    ],
-    "ovr": 93,
-    "nationality": "독일",
-    "nationalityCode": "DE",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 76,
-    "mid": 90,
-    "def": 93,
-    "playstyles": [
-      "attacking_wingback",
-      "deep_playmaker"
-    ],
-    "scoutNote": "역대 가장 영리한 전술 지능의 멀티 풀백·수미",
-    "isLegend": true,
-    "stamina": 95,
-    "attrs": {
       "sho": 76,
-      "pas": 93,
+      "pas": 88,
       "cro": 93,
       "dri": 89,
       "aer": 78,
-      "def": 94,
-      "phy": 88
+      "def": 91,
+      "phy": 94
     }
   },
   {
-    "id": "leg-df-09",
-    "name": "카를레스 푸욜",
-    "position": "DF",
+    "id": "cls-90s-gk-01",
+    "name": "페테르 슈마이켈",
+    "position": "GK",
     "mainPositions": [
-      "CB",
-      "RB"
+      "GK"
     ],
-    "secondaryPositions": [
-      "LB"
-    ],
+    "secondaryPositions": [],
     "ovr": 92,
-    "nationality": "스페인",
-    "nationalityCode": "ES",
+    "nationality": "덴마크",
+    "nationalityCode": "DK",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 60,
-    "mid": 77,
-    "def": 94,
+    "club": "90s 클래식",
+    "att": 32,
+    "mid": 65,
+    "def": 93,
     "playstyles": [
-      "stopper_cb"
+      "shot_stopper"
     ],
-    "scoutNote": "몸을 사리지 않는 헌신과 카리스마의 바르사 심장",
+    "scoutNote": "유로 92 기적과 맨유 99 트레블을 지킨 위대한 덴마크 수문장",
     "isLegend": true,
-    "stamina": 94,
+    "classicEra": "90s",
+    "classicSeasonTag": "1999",
+    "stamina": 84,
     "attrs": {
-      "sho": 64,
+      "sho": 40,
       "pas": 80,
-      "cro": 72,
-      "dri": 76,
-      "aer": 95,
-      "def": 95,
-      "phy": 95
+      "cro": 66,
+      "dri": 68,
+      "aer": 93,
+      "def": 93,
+      "phy": 91,
+      "gk": {
+        "div": 93,
+        "han": 91,
+        "ref": 94,
+        "kic": 84,
+        "pos": 92
+      }
     }
   },
   {
-    "id": "leg-mf-01",
-    "name": "디에고 마라도나",
-    "position": "MF",
-    "mainPositions": [
-      "CAM",
-      "ST"
-    ],
-    "secondaryPositions": [
-      "RW"
-    ],
-    "ovr": 96,
-    "nationality": "아르헨티나",
-    "nationalityCode": "AR",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 96,
-    "mid": 96,
-    "def": 52,
-    "playstyles": [
-      "playmaker_10",
-      "inverted_winger"
-    ],
-    "scoutNote": "혼자서 월드컵을 들어 올린 불멸의 드리블 마법사",
-    "isLegend": true,
-    "stamina": 81,
-    "attrs": {
-      "sho": 95,
-      "pas": 97,
-      "cro": 94,
-      "dri": 99,
-      "aer": 68,
-      "def": 56,
-      "phy": 90
-    }
-  },
-  {
-    "id": "leg-mf-02",
-    "name": "요한 크루이프",
+    "id": "cls-90s-cam-01",
+    "name": "로베르토 바조",
     "position": "MF",
     "mainPositions": [
       "CAM",
@@ -483,29 +964,615 @@
     "secondaryPositions": [
       "LW"
     ],
-    "ovr": 95,
+    "ovr": 92,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 92,
+    "mid": 93,
+    "def": 48,
+    "playstyles": [
+      "playmaker_10"
+    ],
+    "scoutNote": "93 발롱도르, 말총머리의 판타지스타",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1993",
+    "stamina": 82,
+    "attrs": {
+      "sho": 92,
+      "pas": 93,
+      "cro": 88,
+      "dri": 96,
+      "aer": 70,
+      "def": 46,
+      "phy": 81
+    }
+  },
+  {
+    "id": "cls-90s-cam-02",
+    "name": "데니스 베르캄프",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
     "nationality": "네덜란드",
     "nationalityCode": "NL",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 94,
-    "mid": 95,
-    "def": 60,
+    "club": "90s 클래식",
+    "att": 91,
+    "mid": 93,
+    "def": 52,
     "playstyles": [
       "playmaker_10",
       "complete_forward"
     ],
-    "scoutNote": "현대 토탈 풋볼의 철학을 구현한 경기장의 지휘자",
+    "scoutNote": "역대 최고 퍼스트 터치와 예술적 칩슛의 넌플라잉 더치맨",
     "isLegend": true,
-    "stamina": 90,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 82,
     "attrs": {
-      "sho": 93,
-      "pas": 97,
-      "cro": 92,
-      "dri": 97,
+      "sho": 92,
+      "pas": 94,
+      "cro": 85,
+      "dri": 95,
       "aer": 76,
-      "def": 64,
+      "def": 50,
+      "phy": 81
+    }
+  },
+  {
+    "id": "cls-90s-rw-01",
+    "name": "루이스 피구",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "RM"
+    ],
+    "secondaryPositions": [
+      "LW",
+      "CAM"
+    ],
+    "ovr": 92,
+    "nationality": "포르투갈",
+    "nationalityCode": "PT",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 90,
+    "mid": 91,
+    "def": 58,
+    "playstyles": [
+      "classic_winger",
+      "playmaker_10"
+    ],
+    "scoutNote": "2000 발롱도르, 날카로운 1대1 페인트와 정교한 크로스",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "2000",
+    "stamina": 88,
+    "attrs": {
+      "sho": 88,
+      "pas": 92,
+      "cro": 95,
+      "dri": 95,
+      "aer": 74,
+      "def": 56,
+      "phy": 85
+    }
+  },
+  {
+    "id": "cls-90s-st-01",
+    "name": "호마리우",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 94,
+    "mid": 80,
+    "def": 44,
+    "playstyles": [
+      "poacher",
+      "line_breaker"
+    ],
+    "scoutNote": "94 월드컵 골든볼, 좁은 박스 안 토킥 마무리의 천재",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1994",
+    "stamina": 82,
+    "attrs": {
+      "sho": 99,
+      "pas": 84,
+      "cro": 75,
+      "dri": 97,
+      "aer": 81,
+      "def": 43,
+      "phy": 91
+    }
+  },
+  {
+    "id": "cls-90s-rb-01",
+    "name": "릴리앙 튀람",
+    "position": "DF",
+    "mainPositions": [
+      "RB",
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 70,
+    "mid": 82,
+    "def": 93,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "98 월드컵 우승의 철벽, 센터백·라이트백 모두 세계 최정상",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 92,
+    "attrs": {
+      "sho": 69,
+      "pas": 85,
+      "cro": 87,
+      "dri": 85,
+      "aer": 90,
+      "def": 97,
+      "phy": 96
+    }
+  },
+  {
+    "id": "cls-90s-cb-01",
+    "name": "마르셀 드사이",
+    "position": "DF",
+    "mainPositions": [
+      "CB",
+      "CDM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 64,
+    "mid": 82,
+    "def": 93,
+    "playstyles": [
+      "stopper_cb",
+      "ball_winner"
+    ],
+    "scoutNote": "압도적 피지컬과 대인 방어로 중원과 수비를 지배한 바위",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 91,
+    "attrs": {
+      "sho": 64,
+      "pas": 80,
+      "cro": 68,
+      "dri": 76,
+      "aer": 92,
+      "def": 93,
+      "phy": 94
+    }
+  },
+  {
+    "id": "cls-90s-cb-02",
+    "name": "페르난도 이에로",
+    "position": "DF",
+    "mainPositions": [
+      "CB",
+      "CDM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 76,
+    "mid": 86,
+    "def": 92,
+    "playstyles": [
+      "ball_playing_cb",
+      "stopper_cb"
+    ],
+    "scoutNote": "레알 마드리드의 위대한 주장, 롱패스와 세트피스 득점력 겸비",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 87,
+    "attrs": {
+      "sho": 82,
+      "pas": 89,
+      "cro": 80,
+      "dri": 78,
+      "aer": 92,
+      "def": 92,
       "phy": 88
+    }
+  },
+  {
+    "id": "cls-90s-cdm-01",
+    "name": "로이 킨",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "아일랜드",
+    "nationalityCode": "IE",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 76,
+    "mid": 90,
+    "def": 91,
+    "playstyles": [
+      "ball_winner",
+      "box_to_box"
+    ],
+    "scoutNote": "맨유 황금기의 심장, 투혼과 압도적 중원 장악력",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1999",
+    "stamina": 96,
+    "attrs": {
+      "sho": 79,
+      "pas": 90,
+      "cro": 78,
+      "dri": 84,
+      "aer": 86,
+      "def": 94,
+      "phy": 96
+    }
+  },
+  {
+    "id": "cls-90s-cm-01",
+    "name": "클라렌스 세이도르프",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "CDM"
+    ],
+    "ovr": 91,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 85,
+    "mid": 92,
+    "def": 84,
+    "playstyles": [
+      "box_to_box",
+      "deep_playmaker"
+    ],
+    "scoutNote": "3개 구단 UCL 우승 유일 기록, 우아한 탈압박과 중거리 포",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 92,
+    "attrs": {
+      "sho": 90,
+      "pas": 93,
+      "cro": 86,
+      "dri": 92,
+      "aer": 78,
+      "def": 86,
+      "phy": 93
+    }
+  },
+  {
+    "id": "cls-90s-lw-01",
+    "name": "라이언 긱스",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "LM"
+    ],
+    "secondaryPositions": [
+      "CM"
+    ],
+    "ovr": 91,
+    "nationality": "웨일스",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 88,
+    "mid": 89,
+    "def": 60,
+    "playstyles": [
+      "classic_winger"
+    ],
+    "scoutNote": "EPL 13회 우승·역대 최다 도움, 왼쪽 터치라인의 마법사",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1999",
+    "stamina": 91,
+    "attrs": {
+      "sho": 84,
+      "pas": 90,
+      "cro": 95,
+      "dri": 94,
+      "aer": 68,
+      "def": 58,
+      "phy": 90
+    }
+  },
+  {
+    "id": "cls-90s-st-02",
+    "name": "가브리엘 바티스투타",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "아르헨티나",
+    "nationalityCode": "AR",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 93,
+    "mid": 76,
+    "def": 48,
+    "playstyles": [
+      "poacher",
+      "complete_forward"
+    ],
+    "scoutNote": "피오렌티나의 사자왕, 파괴적인 오른발 캐논 슈팅과 헤더",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 87,
+    "attrs": {
+      "sho": 97,
+      "pas": 78,
+      "cro": 74,
+      "dri": 84,
+      "aer": 92,
+      "def": 48,
+      "phy": 93
+    }
+  },
+  {
+    "id": "cls-90s-gk-02",
+    "name": "에드윈 판 데르 사르",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 90,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 32,
+    "mid": 72,
+    "def": 91,
+    "playstyles": [
+      "sweeper_keeper",
+      "shot_stopper"
+    ],
+    "scoutNote": "아약스와 맨유에서 UCL을 제패한 장신 빌드업 수문장",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1995",
+    "stamina": 83,
+    "attrs": {
+      "sho": 40,
+      "pas": 84,
+      "cro": 70,
+      "dri": 72,
+      "aer": 91,
+      "def": 91,
+      "phy": 90,
+      "gk": {
+        "div": 90,
+        "han": 91,
+        "ref": 90,
+        "kic": 88,
+        "pos": 92
+      }
+    }
+  },
+  {
+    "id": "cls-90s-cb-03",
+    "name": "로랑 블랑",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [
+      "CDM"
+    ],
+    "ovr": 90,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 70,
+    "mid": 84,
+    "def": 91,
+    "playstyles": [
+      "ball_playing_cb"
+    ],
+    "scoutNote": "우아한 수비 리딩과 후방 빌드업의 프랑스 대통령",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 85,
+    "attrs": {
+      "sho": 72,
+      "pas": 88,
+      "cro": 72,
+      "dri": 80,
+      "aer": 91,
+      "def": 92,
+      "phy": 86
+    }
+  },
+  {
+    "id": "cls-90s-cb-04",
+    "name": "야프 스탐",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 90,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 58,
+    "mid": 76,
+    "def": 92,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "99 맨유 트레블의 거인, 대인 경합·스피드 최강 스토퍼",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1999",
+    "stamina": 88,
+    "attrs": {
+      "sho": 58,
+      "pas": 76,
+      "cro": 62,
+      "dri": 72,
+      "aer": 93,
+      "def": 92,
+      "phy": 94
+    }
+  },
+  {
+    "id": "cls-90s-cdm-02",
+    "name": "에드가 다비즈",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [
+      "LB"
+    ],
+    "ovr": 90,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 76,
+    "mid": 89,
+    "def": 90,
+    "playstyles": [
+      "ball_winner",
+      "box_to_box"
+    ],
+    "scoutNote": "무한 활동량과 끈질긴 압박·드리블의 핏불",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 96,
+    "attrs": {
+      "sho": 78,
+      "pas": 88,
+      "cro": 79,
+      "dri": 90,
+      "aer": 78,
+      "def": 93,
+      "phy": 96
+    }
+  },
+  {
+    "id": "cls-90s-lw-02",
+    "name": "알레산드로 델 피에로",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "ST",
+      "CAM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 90,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 91,
+    "mid": 89,
+    "def": 48,
+    "playstyles": [
+      "inverted_winger",
+      "playmaker_10"
+    ],
+    "scoutNote": "델 피에로 존 감아차기와 프리킥의 유벤투스 판타지스타",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1998",
+    "stamina": 84,
+    "attrs": {
+      "sho": 92,
+      "pas": 90,
+      "cro": 88,
+      "dri": 93,
+      "aer": 68,
+      "def": 46,
+      "phy": 79
+    }
+  },
+  {
+    "id": "cls-90s-st-03",
+    "name": "앨런 시어러",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 90,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "90s 클래식",
+    "att": 92,
+    "mid": 76,
+    "def": 50,
+    "playstyles": [
+      "poacher",
+      "complete_forward"
+    ],
+    "scoutNote": "EPL 역대 최다 득점(260골), 완벽한 정통 9번 골잡이",
+    "isLegend": true,
+    "classicEra": "90s",
+    "classicSeasonTag": "1996",
+    "stamina": 87,
+    "attrs": {
+      "sho": 95,
+      "pas": 78,
+      "cro": 76,
+      "dri": 80,
+      "aer": 93,
+      "def": 50,
+      "phy": 91
     }
   },
   {
@@ -519,384 +1586,31 @@
     "secondaryPositions": [
       "LM"
     ],
-    "ovr": 95,
+    "ovr": 94,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "LEGEND",
-    "club": "레전드",
+    "club": "00s 클래식",
     "att": 90,
-    "mid": 96,
-    "def": 74,
-    "playstyles": [
-      "playmaker_10",
-      "deep_playmaker"
-    ],
-    "scoutNote": "마르세유 턴과 압도적 탈압박의 중원 마에스트로",
-    "isLegend": true,
-    "stamina": 84,
-    "attrs": {
-      "sho": 91,
-      "pas": 97,
-      "cro": 92,
-      "dri": 97,
-      "aer": 86,
-      "def": 76,
-      "phy": 89
-    }
-  },
-  {
-    "id": "leg-mf-04",
-    "name": "로타어 마테우스",
-    "position": "MF",
-    "mainPositions": [
-      "CDM",
-      "CM"
-    ],
-    "secondaryPositions": [
-      "CB"
-    ],
-    "ovr": 94,
-    "nationality": "독일",
-    "nationalityCode": "DE",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 85,
-    "mid": 94,
-    "def": 91,
-    "playstyles": [
-      "box_to_box",
-      "ball_winner"
-    ],
-    "scoutNote": "공수 모든 구역을 파괴하는 역대 최강 박스투박스",
-    "isLegend": true,
-    "stamina": 98,
-    "attrs": {
-      "sho": 91,
-      "pas": 93,
-      "cro": 86,
-      "dri": 89,
-      "aer": 88,
-      "def": 93,
-      "phy": 95
-    }
-  },
-  {
-    "id": "leg-mf-05",
-    "name": "사비 에르난데스",
-    "position": "MF",
-    "mainPositions": [
-      "CM",
-      "CDM"
-    ],
-    "secondaryPositions": [
-      "CAM"
-    ],
-    "ovr": 94,
-    "nationality": "스페인",
-    "nationalityCode": "ES",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 82,
-    "mid": 96,
-    "def": 78,
-    "playstyles": [
-      "deep_playmaker"
-    ],
-    "scoutNote": "360도 시야와 95% 패스 정확도의 티키타카 두뇌",
-    "isLegend": true,
-    "stamina": 92,
-    "attrs": {
-      "sho": 86,
-      "pas": 99,
-      "cro": 96,
-      "dri": 98,
-      "aer": 67,
-      "def": 84,
-      "phy": 86
-    }
-  },
-  {
-    "id": "leg-mf-06",
-    "name": "안드레스 이니에스타",
-    "position": "MF",
-    "mainPositions": [
-      "CM",
-      "CAM"
-    ],
-    "secondaryPositions": [
-      "LW",
-      "LM"
-    ],
-    "ovr": 94,
-    "nationality": "스페인",
-    "nationalityCode": "ES",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 86,
     "mid": 96,
     "def": 72,
     "playstyles": [
       "playmaker_10",
-      "deep_playmaker"
-    ],
-    "scoutNote": "좁은 공간을 물 흐르듯 빠져나오는 라 크로케타의 달인",
-    "isLegend": true,
-    "stamina": 86,
-    "attrs": {
-      "sho": 91,
-      "pas": 99,
-      "cro": 95,
-      "dri": 99,
-      "aer": 65,
-      "def": 79,
-      "phy": 88
-    }
-  },
-  {
-    "id": "leg-mf-07",
-    "name": "파트리크 비에이라",
-    "position": "MF",
-    "mainPositions": [
-      "CDM",
-      "CM"
-    ],
-    "secondaryPositions": [],
-    "ovr": 93,
-    "nationality": "프랑스",
-    "nationalityCode": "FR",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 79,
-    "mid": 91,
-    "def": 92,
-    "playstyles": [
-      "ball_winner",
       "box_to_box"
     ],
-    "scoutNote": "무패 우승을 이끈 압도적 피지컬과 전진성의 중원 지배자",
+    "scoutNote": "마르세유 턴과 02 UCL 결승 발리의 전설적 마에스트로",
     "isLegend": true,
-    "stamina": 94,
+    "classicEra": "00s",
+    "classicSeasonTag": "2002",
+    "stamina": 88,
     "attrs": {
-      "sho": 82,
-      "pas": 89,
-      "cro": 78,
-      "dri": 86,
-      "aer": 93,
-      "def": 95,
-      "phy": 96
-    }
-  },
-  {
-    "id": "leg-mf-08",
-    "name": "안드레아 피를로",
-    "position": "MF",
-    "mainPositions": [
-      "CDM",
-      "CM"
-    ],
-    "secondaryPositions": [
-      "CAM"
-    ],
-    "ovr": 92,
-    "nationality": "이탈리아",
-    "nationalityCode": "IT",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 79,
-    "mid": 95,
-    "def": 75,
-    "playstyles": [
-      "deep_playmaker"
-    ],
-    "scoutNote": "레지스타의 교과서, 한 번의 롱패스로 경기를 여는 건축가",
-    "isLegend": true,
-    "stamina": 79,
-    "attrs": {
-      "sho": 91,
-      "pas": 99,
-      "cro": 99,
-      "dri": 99,
-      "aer": 80,
-      "def": 88,
-      "phy": 90
-    }
-  },
-  {
-    "id": "leg-mf-09",
-    "name": "박지성",
-    "position": "MF",
-    "mainPositions": [
-      "CM",
-      "LW",
-      "RW"
-    ],
-    "secondaryPositions": [
-      "CDM",
-      "LM",
-      "RM"
-    ],
-    "ovr": 91,
-    "nationality": "대한민국",
-    "nationalityCode": "KR",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 82,
-    "mid": 90,
-    "def": 86,
-    "playstyles": [
-      "box_to_box",
-      "ball_winner"
-    ],
-    "scoutNote": "두 개의 심장, 빅매치 전술 이해도와 압박의 정석",
-    "isLegend": true,
-    "stamina": 99,
-    "attrs": {
-      "sho": 85,
-      "pas": 90,
+      "sho": 90,
+      "pas": 96,
       "cro": 89,
-      "dri": 89,
-      "aer": 81,
-      "def": 91,
-      "phy": 98
-    }
-  },
-  {
-    "id": "leg-fw-01",
-    "name": "리오넬 메시",
-    "position": "FW",
-    "mainPositions": [
-      "RW",
-      "CAM"
-    ],
-    "secondaryPositions": [
-      "ST"
-    ],
-    "ovr": 99,
-    "nationality": "아르헨티나",
-    "nationalityCode": "AR",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 99,
-    "mid": 98,
-    "def": 44,
-    "playstyles": [
-      "inverted_winger",
-      "playmaker_10"
-    ],
-    "scoutNote": "득점·플레이메이킹·드리블 모두 역사를 초월한 축구의 신",
-    "isLegend": true,
-    "stamina": 78,
-    "attrs": {
-      "sho": 99,
-      "pas": 99,
-      "cro": 97,
-      "dri": 99,
-      "aer": 73,
-      "def": 52,
-      "phy": 94
-    }
-  },
-  {
-    "id": "leg-fw-02",
-    "name": "크리스티아누 호날두",
-    "position": "FW",
-    "mainPositions": [
-      "LW",
-      "ST"
-    ],
-    "secondaryPositions": [
-      "RW"
-    ],
-    "ovr": 98,
-    "nationality": "포르투갈",
-    "nationalityCode": "PT",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 99,
-    "mid": 86,
-    "def": 45,
-    "playstyles": [
-      "complete_forward",
-      "poacher"
-    ],
-    "scoutNote": "압도적 신체능력과 결정력을 갖춘 역대 최다 득점자",
-    "isLegend": true,
-    "stamina": 86,
-    "attrs": {
-      "sho": 99,
-      "pas": 92,
-      "cro": 93,
-      "dri": 99,
-      "aer": 99,
-      "def": 55,
-      "phy": 99
-    }
-  },
-  {
-    "id": "leg-fw-03",
-    "name": "펠레",
-    "position": "FW",
-    "mainPositions": [
-      "ST",
-      "CAM"
-    ],
-    "secondaryPositions": [],
-    "ovr": 96,
-    "nationality": "브라질",
-    "nationalityCode": "BR",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 97,
-    "mid": 92,
-    "def": 60,
-    "playstyles": [
-      "complete_forward",
-      "playmaker_10"
-    ],
-    "scoutNote": "월드컵 3회 우승, 모든 공격 기술의 완성형 황제",
-    "isLegend": true,
-    "stamina": 90,
-    "attrs": {
-      "sho": 98,
-      "pas": 94,
-      "cro": 88,
-      "dri": 97,
-      "aer": 92,
-      "def": 62,
-      "phy": 95
-    }
-  },
-  {
-    "id": "leg-fw-04",
-    "name": "호나우두 (R9)",
-    "position": "FW",
-    "mainPositions": [
-      "ST"
-    ],
-    "secondaryPositions": [],
-    "ovr": 95,
-    "nationality": "브라질",
-    "nationalityCode": "BR",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 97,
-    "mid": 84,
-    "def": 44,
-    "playstyles": [
-      "line_breaker",
-      "poacher"
-    ],
-    "scoutNote": "수비수들을 무력화시키는 폭발적 가속력과 골 결정력",
-    "isLegend": true,
-    "stamina": 77,
-    "attrs": {
-      "sho": 98,
-      "pas": 85,
-      "cro": 78,
       "dri": 97,
       "aer": 84,
-      "def": 48,
-      "phy": 97
+      "def": 70,
+      "phy": 86
     }
   },
   {
@@ -912,25 +1626,27 @@
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "LEGEND",
-    "club": "레전드",
+    "club": "00s 클래식",
     "att": 95,
     "mid": 86,
-    "def": 50,
+    "def": 52,
     "playstyles": [
       "line_breaker",
-      "complete_forward"
+      "inverted_winger"
     ],
-    "scoutNote": "왼쪽 하프스페이스 감아차기의 교과서, 킹 앙리",
+    "scoutNote": "아스널 무패 우승의 왕, 폭발적 가속도와 파포스트 감아차기",
     "isLegend": true,
-    "stamina": 88,
+    "classicEra": "00s",
+    "classicSeasonTag": "2004",
+    "stamina": 90,
     "attrs": {
-      "sho": 96,
-      "pas": 89,
-      "cro": 88,
-      "dri": 95,
-      "aer": 82,
-      "def": 54,
-      "phy": 96
+      "sho": 97,
+      "pas": 90,
+      "cro": 86,
+      "dri": 97,
+      "aer": 81,
+      "def": 50,
+      "phy": 98
     }
   },
   {
@@ -942,101 +1658,2080 @@
       "CAM"
     ],
     "secondaryPositions": [
-      "LM"
+      "RW"
     ],
     "ovr": 94,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "LEGEND",
-    "club": "레전드",
+    "club": "00s 클래식",
     "att": 93,
     "mid": 94,
-    "def": 50,
+    "def": 48,
     "playstyles": [
       "inverted_winger",
       "playmaker_10"
     ],
-    "scoutNote": "상상을 현실로 바꾸는 외계인의 드리블과 노룩 패스",
+    "scoutNote": "축구를 예술로 승화시킨 외계인 판타지스타",
     "isLegend": true,
-    "stamina": 78,
+    "classicEra": "00s",
+    "classicSeasonTag": "2005",
+    "stamina": 86,
     "attrs": {
-      "sho": 91,
-      "pas": 95,
-      "cro": 93,
+      "sho": 90,
+      "pas": 94,
+      "cro": 90,
       "dri": 99,
-      "aer": 70,
-      "def": 52,
+      "aer": 72,
+      "def": 46,
       "phy": 89
     }
   },
   {
-    "id": "leg-fw-07",
-    "name": "가린샤",
-    "position": "FW",
+    "id": "leg-gk-02",
+    "name": "잔루이지 부폰",
+    "position": "GK",
     "mainPositions": [
-      "RW",
-      "RM"
+      "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 94,
+    "ovr": 93,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 30,
+    "mid": 64,
+    "def": 94,
+    "playstyles": [
+      "shot_stopper"
+    ],
+    "scoutNote": "06 월드컵 우승과 세리에 A 전설, 압도적 안정감의 수문장",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2006",
+    "stamina": 83,
+    "attrs": {
+      "sho": 40,
+      "pas": 79,
+      "cro": 65,
+      "dri": 67,
+      "aer": 95,
+      "def": 95,
+      "phy": 93,
+      "gk": {
+        "div": 93,
+        "han": 94,
+        "ref": 93,
+        "kic": 82,
+        "pos": 96
+      }
+    }
+  },
+  {
+    "id": "leg-mf-05",
+    "name": "사비 에르난데스",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CDM"
+    ],
+    "secondaryPositions": [
+      "CAM"
+    ],
+    "ovr": 93,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 80,
+    "mid": 96,
+    "def": 78,
+    "playstyles": [
+      "deep_playmaker",
+      "playmaker_10"
+    ],
+    "scoutNote": "티키타카와 바르사 트레블의 두뇌, 패스 정확도의 절대 기준",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2009",
+    "stamina": 92,
+    "attrs": {
+      "sho": 86,
+      "pas": 99,
+      "cro": 97,
+      "dri": 99,
+      "aer": 65,
+      "def": 84,
+      "phy": 86
+    }
+  },
+  {
+    "id": "leg-gk-03",
+    "name": "이케르 카시야스",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 30,
+    "mid": 66,
+    "def": 93,
+    "playstyles": [
+      "shot_stopper"
+    ],
+    "scoutNote": "성 이케르, 초인적 반사신경으로 레알과 스페인을 지킨 주장",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2008",
+    "stamina": 83,
+    "attrs": {
+      "sho": 40,
+      "pas": 81,
+      "cro": 67,
+      "dri": 69,
+      "aer": 93,
+      "def": 93,
+      "phy": 91,
+      "gk": {
+        "div": 94,
+        "han": 90,
+        "ref": 95,
+        "kic": 83,
+        "pos": 91
+      }
+    }
+  },
+  {
+    "id": "cls-00s-gk-01",
+    "name": "올리버 칸",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 30,
+    "mid": 62,
+    "def": 93,
+    "playstyles": [
+      "shot_stopper"
+    ],
+    "scoutNote": "02 월드컵 골든볼, 1대1 상황 최강의 카리스마 수문장",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2002",
+    "stamina": 83,
+    "attrs": {
+      "sho": 40,
+      "pas": 76,
+      "cro": 62,
+      "dri": 64,
+      "aer": 93,
+      "def": 94,
+      "phy": 92,
+      "gk": {
+        "div": 93,
+        "han": 92,
+        "ref": 95,
+        "kic": 79,
+        "pos": 93
+      }
+    }
+  },
+  {
+    "id": "leg-df-04",
+    "name": "알레산드로 네스타",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 58,
+    "mid": 80,
+    "def": 95,
+    "playstyles": [
+      "stopper_cb",
+      "ball_playing_cb"
+    ],
+    "scoutNote": "우아한 슬라이딩 태클과 완벽한 대인 수비의 정점",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2005",
+    "stamina": 87,
+    "attrs": {
+      "sho": 58,
+      "pas": 83,
+      "cro": 68,
+      "dri": 80,
+      "aer": 92,
+      "def": 96,
+      "phy": 90
+    }
+  },
+  {
+    "id": "leg-df-08",
+    "name": "필립 람",
+    "position": "DF",
+    "mainPositions": [
+      "RB",
+      "LB",
+      "CDM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 74,
+    "mid": 90,
+    "def": 92,
+    "playstyles": [
+      "attacking_wingback",
+      "deep_playmaker"
+    ],
+    "scoutNote": "퇴장 0회의 축구 지능, 풀백과 수미를 지배한 작은 거인",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2010",
+    "stamina": 94,
+    "attrs": {
+      "sho": 72,
+      "pas": 93,
+      "cro": 92,
+      "dri": 90,
+      "aer": 70,
+      "def": 95,
+      "phy": 90
+    }
+  },
+  {
+    "id": "leg-mf-07",
+    "name": "파트리크 비에이라",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 80,
+    "mid": 91,
+    "def": 92,
+    "playstyles": [
+      "ball_winner",
+      "box_to_box"
+    ],
+    "scoutNote": "아스널 무패 우승의 주장, 피지컬과 전진성을 겸비한 중원 괴물",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2004",
+    "stamina": 95,
+    "attrs": {
+      "sho": 80,
+      "pas": 89,
+      "cro": 78,
+      "dri": 86,
+      "aer": 91,
+      "def": 93,
+      "phy": 95
+    }
+  },
+  {
+    "id": "leg-mf-08",
+    "name": "안드레아 피를로",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 80,
+    "mid": 95,
+    "def": 74,
+    "playstyles": [
+      "deep_playmaker"
+    ],
+    "scoutNote": "레지스타의 교과서, 절묘한 롱패스와 프리킥의 마에스트로",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2006",
+    "stamina": 86,
+    "attrs": {
+      "sho": 87,
+      "pas": 99,
+      "cro": 98,
+      "dri": 99,
+      "aer": 78,
+      "def": 90,
+      "phy": 90
+    }
+  },
+  {
+    "id": "cls-00s-cam-01",
+    "name": "카카",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 92,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 94,
-    "mid": 89,
-    "def": 46,
+    "club": "00s 클래식",
+    "att": 92,
+    "mid": 92,
+    "def": 56,
     "playstyles": [
-      "classic_winger",
-      "inverted_winger"
+      "playmaker_10",
+      "line_breaker"
     ],
-    "scoutNote": "오른쪽 측면을 홀로 초토화시킨 역대 최고 드리블러",
+    "scoutNote": "07 발롱도르, 치고 달리는 폭발적 스피드 드리블의 엄친아",
     "isLegend": true,
-    "stamina": 84,
+    "classicEra": "00s",
+    "classicSeasonTag": "2007",
+    "stamina": 89,
     "attrs": {
-      "sho": 89,
-      "pas": 90,
-      "cro": 96,
-      "dri": 99,
-      "aer": 66,
+      "sho": 91,
+      "pas": 92,
+      "cro": 86,
+      "dri": 95,
+      "aer": 74,
+      "def": 54,
+      "phy": 94
+    }
+  },
+  {
+    "id": "cls-00s-cm-01",
+    "name": "스티븐 제라드",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "CDM",
+      "RM"
+    ],
+    "ovr": 92,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 88,
+    "mid": 92,
+    "def": 83,
+    "playstyles": [
+      "box_to_box",
+      "deep_playmaker"
+    ],
+    "scoutNote": "이스탄불의 기적, 대포알 중거리 슛과 롱패스의 리버풀 심장",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2005",
+    "stamina": 95,
+    "attrs": {
+      "sho": 94,
+      "pas": 95,
+      "cro": 94,
+      "dri": 88,
+      "aer": 83,
+      "def": 87,
+      "phy": 95
+    }
+  },
+  {
+    "id": "leg-df-09",
+    "name": "카를레스 푸욜",
+    "position": "DF",
+    "mainPositions": [
+      "CB",
+      "RB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 62,
+    "mid": 78,
+    "def": 94,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "바르셀로나와 스페인 황금기를 이끈 투혼의 사자 캡틴",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2009",
+    "stamina": 93,
+    "attrs": {
+      "sho": 60,
+      "pas": 78,
+      "cro": 72,
+      "dri": 74,
+      "aer": 91,
+      "def": 94,
+      "phy": 92
+    }
+  },
+  {
+    "id": "cls-00s-cb-01",
+    "name": "파비오 칸나바로",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [
+      "RB"
+    ],
+    "ovr": 91,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 56,
+    "mid": 76,
+    "def": 94,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "06 월드컵 우승·발롱도르 수상, 단신을 초월한 점프력과 대인 수비",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2006",
+    "stamina": 89,
+    "attrs": {
+      "sho": 54,
+      "pas": 76,
+      "cro": 66,
+      "dri": 74,
+      "aer": 94,
+      "def": 95,
+      "phy": 91
+    }
+  },
+  {
+    "id": "cls-00s-cb-02",
+    "name": "리오 퍼디난드",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 58,
+    "mid": 82,
+    "def": 92,
+    "playstyles": [
+      "ball_playing_cb",
+      "stopper_cb"
+    ],
+    "scoutNote": "침착한 수비 리딩·스피드·빌드업을 겸비한 맨유 황금기 센터백",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2008",
+    "stamina": 88,
+    "attrs": {
+      "sho": 56,
+      "pas": 84,
+      "cro": 66,
+      "dri": 77,
+      "aer": 91,
+      "def": 92,
+      "phy": 91
+    }
+  },
+  {
+    "id": "cls-00s-cb-03",
+    "name": "네마냐 비디치",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "세르비아",
+    "nationalityCode": "RS",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 60,
+    "mid": 74,
+    "def": 93,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "EPL 올해의 선수 2회, 몸을 사리지 않는 제공권 최강 파이터",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2009",
+    "stamina": 90,
+    "attrs": {
+      "sho": 60,
+      "pas": 73,
+      "cro": 60,
+      "dri": 68,
+      "aer": 95,
+      "def": 93,
+      "phy": 92
+    }
+  },
+  {
+    "id": "cls-00s-lb-01",
+    "name": "애슐리 콜",
+    "position": "DF",
+    "mainPositions": [
+      "LB",
+      "LWB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 74,
+    "mid": 84,
+    "def": 91,
+    "playstyles": [
+      "attacking_wingback"
+    ],
+    "scoutNote": "세계 최강 윙어들을 봉쇄한 대인 수비와 오버래핑의 정석 레프트백",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2006",
+    "stamina": 94,
+    "attrs": {
+      "sho": 68,
+      "pas": 86,
+      "cro": 90,
+      "dri": 88,
+      "aer": 74,
+      "def": 94,
+      "phy": 95
+    }
+  },
+  {
+    "id": "cls-00s-rb-01",
+    "name": "하비에르 사네티",
+    "position": "DF",
+    "mainPositions": [
+      "RB",
+      "CDM"
+    ],
+    "secondaryPositions": [
+      "LB",
+      "CM"
+    ],
+    "ovr": 91,
+    "nationality": "아르헨티나",
+    "nationalityCode": "AR",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 76,
+    "mid": 89,
+    "def": 91,
+    "playstyles": [
+      "attacking_wingback",
+      "box_to_box"
+    ],
+    "scoutNote": "인테르 트레블의 불멸 주장, 철강 체력과 공수 멀티 능력",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2010",
+    "stamina": 97,
+    "attrs": {
+      "sho": 72,
+      "pas": 89,
+      "cro": 89,
+      "dri": 89,
+      "aer": 78,
+      "def": 92,
+      "phy": 94
+    }
+  },
+  {
+    "id": "cls-00s-cm-02",
+    "name": "프랭크 램파드",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CAM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 90,
+    "mid": 91,
+    "def": 76,
+    "playstyles": [
+      "box_to_box",
+      "playmaker_10"
+    ],
+    "scoutNote": "미드필더 최다 득점 신화, 2선 침투와 중거리 슈팅의 교과서",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2005",
+    "stamina": 94,
+    "attrs": {
+      "sho": 97,
+      "pas": 95,
+      "cro": 90,
+      "dri": 89,
+      "aer": 79,
+      "def": 80,
+      "phy": 91
+    }
+  },
+  {
+    "id": "cls-00s-cm-03",
+    "name": "폴 스콜스",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CDM"
+    ],
+    "secondaryPositions": [
+      "CAM"
+    ],
+    "ovr": 91,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 85,
+    "mid": 94,
+    "def": 75,
+    "playstyles": [
+      "deep_playmaker",
+      "playmaker_10"
+    ],
+    "scoutNote": "지단과 사비가 극찬한 천재적 패스 시야와 대포알 발리 슛",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2008",
+    "stamina": 88,
+    "attrs": {
+      "sho": 93,
+      "pas": 99,
+      "cro": 95,
+      "dri": 93,
+      "aer": 71,
+      "def": 79,
+      "phy": 84
+    }
+  },
+  {
+    "id": "cls-00s-st-01",
+    "name": "안드리 셰우첸코",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 91,
+    "nationality": "우크라이나",
+    "nationalityCode": "UA",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 93,
+    "mid": 81,
+    "def": 50,
+    "playstyles": [
+      "line_breaker",
+      "complete_forward"
+    ],
+    "scoutNote": "04 발롱도르, 날카로운 침투와 양발 중거리 결정력의 우크라이나 화살",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2004",
+    "stamina": 88,
+    "attrs": {
+      "sho": 95,
+      "pas": 83,
+      "cro": 78,
+      "dri": 89,
+      "aer": 87,
       "def": 48,
       "phy": 92
     }
   },
   {
-    "id": "leg-fw-08",
-    "name": "차범근",
+    "id": "cls-00s-st-02",
+    "name": "디디에 드로그바",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "코트디부아르",
+    "nationalityCode": "CI",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 92,
+    "mid": 79,
+    "def": 54,
+    "playstyles": [
+      "complete_forward",
+      "poacher"
+    ],
+    "scoutNote": "결승전의 사나이, 압도적 몸싸움·헤더·클러치 피니시",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2010",
+    "stamina": 90,
+    "attrs": {
+      "sho": 93,
+      "pas": 80,
+      "cro": 76,
+      "dri": 83,
+      "aer": 95,
+      "def": 52,
+      "phy": 95
+    }
+  },
+  {
+    "id": "cls-00s-st-03",
+    "name": "웨인 루니",
+    "position": "FW",
+    "mainPositions": [
+      "ST",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "LW",
+      "CM"
+    ],
+    "ovr": 91,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 91,
+    "mid": 88,
+    "def": 66,
+    "playstyles": [
+      "complete_forward",
+      "box_to_box"
+    ],
+    "scoutNote": "폭발적 에너지·연계·중거리·오버헤드킥의 맨유 역대 최다골",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2010",
+    "stamina": 94,
+    "attrs": {
+      "sho": 93,
+      "pas": 89,
+      "cro": 85,
+      "dri": 89,
+      "aer": 85,
+      "def": 65,
+      "phy": 93
+    }
+  },
+  {
+    "id": "cls-00s-rw-01",
+    "name": "데이비드 베컴",
+    "position": "FW",
+    "mainPositions": [
+      "RM",
+      "RW"
+    ],
+    "secondaryPositions": [
+      "CM"
+    ],
+    "ovr": 90,
+    "nationality": "잉글랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 84,
+    "mid": 91,
+    "def": 70,
+    "playstyles": [
+      "classic_winger",
+      "deep_playmaker"
+    ],
+    "scoutNote": "세계 축구 역사상 최강의 택배 크로스와 바나나 프리킥",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2001",
+    "stamina": 94,
+    "attrs": {
+      "sho": 87,
+      "pas": 95,
+      "cro": 99,
+      "dri": 85,
+      "aer": 70,
+      "def": 68,
+      "phy": 85
+    }
+  },
+  {
+    "id": "leg-mf-09",
+    "name": "박지성",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "LW",
+      "RW"
+    ],
+    "secondaryPositions": [
+      "LM",
+      "RM",
+      "CDM"
+    ],
+    "ovr": 88,
+    "nationality": "대한민국",
+    "nationalityCode": "KR",
+    "leagueId": "LEGEND",
+    "club": "00s 클래식",
+    "att": 81,
+    "mid": 88,
+    "def": 84,
+    "playstyles": [
+      "box_to_box",
+      "ball_winner"
+    ],
+    "scoutNote": "두 개의 심장, 빅매치 맨마킹과 헌신적 활동량의 아이콘",
+    "isLegend": true,
+    "classicEra": "00s",
+    "classicSeasonTag": "2009",
+    "stamina": 99,
+    "attrs": {
+      "sho": 81,
+      "pas": 87,
+      "cro": 86,
+      "dri": 87,
+      "aer": 76,
+      "def": 87,
+      "phy": 97
+    }
+  },
+  {
+    "id": "leg-fw-01",
+    "name": "리오넬 메시",
     "position": "FW",
     "mainPositions": [
       "RW",
+      "CAM"
+    ],
+    "secondaryPositions": [
       "ST"
+    ],
+    "ovr": 96,
+    "nationality": "아르헨티나",
+    "nationalityCode": "AR",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 98,
+    "mid": 97,
+    "def": 45,
+    "playstyles": [
+      "inverted_winger",
+      "playmaker_10"
+    ],
+    "scoutNote": "발롱도르 8회 · 월드컵 우승, 드리블·패스·결정력 모든 영역의 신",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2015",
+    "stamina": 86,
+    "attrs": {
+      "sho": 98,
+      "pas": 98,
+      "cro": 94,
+      "dri": 99,
+      "aer": 70,
+      "def": 44,
+      "phy": 88
+    }
+  },
+  {
+    "id": "leg-fw-02",
+    "name": "크리스티아누 호날두",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "ST"
+    ],
+    "secondaryPositions": [
+      "RW"
+    ],
+    "ovr": 96,
+    "nationality": "포르투갈",
+    "nationalityCode": "PT",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 98,
+    "mid": 87,
+    "def": 48,
+    "playstyles": [
+      "line_breaker",
+      "complete_forward"
+    ],
+    "scoutNote": "UCL 역대 최다 득점·발롱도르 5회, 완벽한 득점 기계",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2017",
+    "stamina": 93,
+    "attrs": {
+      "sho": 99,
+      "pas": 89,
+      "cro": 90,
+      "dri": 97,
+      "aer": 98,
+      "def": 47,
+      "phy": 99
+    }
+  },
+  {
+    "id": "leg-mf-06",
+    "name": "안드레스 이니에스타",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 93,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 86,
+    "mid": 95,
+    "def": 70,
+    "playstyles": [
+      "playmaker_10",
+      "deep_playmaker"
+    ],
+    "scoutNote": "10 월드컵 결승골, 좁은 공간 탈압박과 라 크로케타의 예술가",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2012",
+    "stamina": 88,
+    "attrs": {
+      "sho": 90,
+      "pas": 99,
+      "cro": 95,
+      "dri": 99,
+      "aer": 63,
+      "def": 78,
+      "phy": 89
+    }
+  },
+  {
+    "id": "cls-10s-gk-01",
+    "name": "마누엘 노이어",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 93,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 38,
+    "mid": 80,
+    "def": 94,
+    "playstyles": [
+      "sweeper_keeper",
+      "shot_stopper"
+    ],
+    "scoutNote": "스위퍼 키퍼의 혁명을 일으킨 14 월드컵·바이에른 트레블 수문장",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2014",
+    "stamina": 86,
+    "attrs": {
+      "sho": 40,
+      "pas": 90,
+      "cro": 76,
+      "dri": 78,
+      "aer": 94,
+      "def": 94,
+      "phy": 92,
+      "gk": {
+        "div": 94,
+        "han": 92,
+        "ref": 94,
+        "kic": 93,
+        "pos": 94
+      }
+    }
+  },
+  {
+    "id": "cls-10s-cm-01",
+    "name": "루카 모드리치",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "CDM"
+    ],
+    "ovr": 93,
+    "nationality": "크로아티아",
+    "nationalityCode": "HR",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 84,
+    "mid": 95,
+    "def": 80,
+    "playstyles": [
+      "deep_playmaker",
+      "playmaker_10"
+    ],
+    "scoutNote": "18 발롱도르·UCL 6회, 아웃프런트 패스와 중원 조율의 절대자",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2018",
+    "stamina": 93,
+    "attrs": {
+      "sho": 86,
+      "pas": 99,
+      "cro": 96,
+      "dri": 98,
+      "aer": 65,
+      "def": 84,
+      "phy": 88
+    }
+  },
+  {
+    "id": "leg-fw-10",
+    "name": "로베르트 레반도프스키",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 93,
+    "nationality": "폴란드",
+    "nationalityCode": "PL",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 95,
+    "mid": 83,
+    "def": 52,
+    "playstyles": [
+      "complete_forward",
+      "poacher"
+    ],
+    "scoutNote": "분데스리가 단일 시즌 41골, 완벽한 위치선정과 양발 결정력",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2020",
+    "stamina": 90,
+    "attrs": {
+      "sho": 97,
+      "pas": 85,
+      "cro": 76,
+      "dri": 89,
+      "aer": 94,
+      "def": 50,
+      "phy": 92
+    }
+  },
+  {
+    "id": "leg-fw-12",
+    "name": "루이스 수아레스",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [
+      "RW"
+    ],
+    "ovr": 93,
+    "nationality": "우루과이",
+    "nationalityCode": "UY",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 95,
+    "mid": 86,
+    "def": 54,
+    "playstyles": [
+      "complete_forward",
+      "poacher"
+    ],
+    "scoutNote": "메호 시대에 유러피언 골든슈 2회를 거머쥔 천재적 스트라이커",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2016",
+    "stamina": 90,
+    "attrs": {
+      "sho": 97,
+      "pas": 89,
+      "cro": 83,
+      "dri": 93,
+      "aer": 87,
+      "def": 52,
+      "phy": 91
+    }
+  },
+  {
+    "id": "leg-df-05",
+    "name": "세르히오 라모스",
+    "position": "DF",
+    "mainPositions": [
+      "CB",
+      "RB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 74,
+    "mid": 83,
+    "def": 93,
+    "playstyles": [
+      "stopper_cb",
+      "ball_playing_cb"
+    ],
+    "scoutNote": "92분 48초의 기적, 레알 UCL 3연패의 철벽 리더",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2017",
+    "stamina": 90,
+    "attrs": {
+      "sho": 76,
+      "pas": 85,
+      "cro": 78,
+      "dri": 80,
+      "aer": 95,
+      "def": 93,
+      "phy": 91
+    }
+  },
+  {
+    "id": "cls-10s-cb-01",
+    "name": "버질 판 다이크",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 66,
+    "mid": 82,
+    "def": 94,
+    "playstyles": [
+      "stopper_cb",
+      "ball_playing_cb"
+    ],
+    "scoutNote": "19 발롱도르 2위·UCL 우승, 1대1 돌파를 허락하지 않는 통곡의 벽",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2019",
+    "stamina": 89,
+    "attrs": {
+      "sho": 65,
+      "pas": 85,
+      "cro": 72,
+      "dri": 78,
+      "aer": 95,
+      "def": 94,
+      "phy": 92
+    }
+  },
+  {
+    "id": "cls-10s-cm-02",
+    "name": "토니 크로스",
+    "position": "MF",
+    "mainPositions": [
+      "CM",
+      "CDM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "독일",
+    "nationalityCode": "DE",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 82,
+    "mid": 95,
+    "def": 78,
+    "playstyles": [
+      "deep_playmaker"
+    ],
+    "scoutNote": "95% 패스 정확도와 대각선 롱패스의 인간 메트로놈",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2017",
+    "stamina": 88,
+    "attrs": {
+      "sho": 90,
+      "pas": 99,
+      "cro": 99,
+      "dri": 93,
+      "aer": 71,
+      "def": 84,
+      "phy": 82
+    }
+  },
+  {
+    "id": "cls-10s-cam-01",
+    "name": "케빈 더 브라위너",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "CM"
+    ],
+    "secondaryPositions": [
+      "RW"
+    ],
+    "ovr": 92,
+    "nationality": "벨기에",
+    "nationalityCode": "BE",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 90,
+    "mid": 95,
+    "def": 70,
+    "playstyles": [
+      "playmaker_10",
+      "deep_playmaker"
+    ],
+    "scoutNote": "EPL 단일 시즌 20도움, 예술적 얼리 크로스와 킬패스의 제왕",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2019",
+    "stamina": 90,
+    "attrs": {
+      "sho": 90,
+      "pas": 97,
+      "cro": 97,
+      "dri": 89,
+      "aer": 70,
+      "def": 70,
+      "phy": 86
+    }
+  },
+  {
+    "id": "cls-10s-cdm-01",
+    "name": "세르히오 부스케츠",
+    "position": "MF",
+    "mainPositions": [
+      "CDM"
+    ],
+    "secondaryPositions": [
+      "CM"
+    ],
+    "ovr": 92,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 70,
+    "mid": 93,
+    "def": 91,
+    "playstyles": [
+      "deep_playmaker",
+      "ball_winner"
+    ],
+    "scoutNote": "경기를 보면 안 보이지만 그를 보면 경기가 보이는 역대 최고 원볼란치",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2015",
+    "stamina": 89,
+    "attrs": {
+      "sho": 69,
+      "pas": 97,
+      "cro": 79,
+      "dri": 91,
+      "aer": 87,
+      "def": 95,
+      "phy": 85
+    }
+  },
+  {
+    "id": "cls-10s-cdm-02",
+    "name": "은골로 캉테",
+    "position": "MF",
+    "mainPositions": [
+      "CDM",
+      "CM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 92,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 74,
+    "mid": 89,
+    "def": 93,
+    "playstyles": [
+      "ball_winner",
+      "box_to_box"
+    ],
+    "scoutNote": "지구의 70%는 물, 나머지 30%는 캉테가 커버하는 인터셉트 괴물",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2018",
+    "stamina": 99,
+    "attrs": {
+      "sho": 73,
+      "pas": 89,
+      "cro": 77,
+      "dri": 89,
+      "aer": 75,
+      "def": 98,
+      "phy": 98
+    }
+  },
+  {
+    "id": "cls-10s-lw-01",
+    "name": "네이마르",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "CAM"
+    ],
+    "secondaryPositions": [
+      "ST"
+    ],
+    "ovr": 92,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 92,
+    "mid": 91,
+    "def": 44,
+    "playstyles": [
+      "inverted_winger",
+      "playmaker_10"
+    ],
+    "scoutNote": "MSN 트레블의 마술사, 화려한 드리블·찬스메이킹·결정력",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2015",
+    "stamina": 84,
+    "attrs": {
+      "sho": 90,
+      "pas": 92,
+      "cro": 88,
+      "dri": 98,
+      "aer": 66,
+      "def": 44,
+      "phy": 86
+    }
+  },
+  {
+    "id": "leg-fw-11",
+    "name": "카림 벤제마",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [
+      "CAM"
+    ],
+    "ovr": 92,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 93,
+    "mid": 89,
+    "def": 52,
+    "playstyles": [
+      "complete_forward",
+      "playmaker_10"
+    ],
+    "scoutNote": "최정상급 연계·퍼스트 터치와 빅매치 해결 능력의 9번",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2018",
+    "stamina": 87,
+    "attrs": {
+      "sho": 96,
+      "pas": 92,
+      "cro": 82,
+      "dri": 93,
+      "aer": 88,
+      "def": 50,
+      "phy": 88
+    }
+  },
+  {
+    "id": "cls-10s-rw-01",
+    "name": "모하메드 살라",
+    "position": "FW",
+    "mainPositions": [
+      "RW"
+    ],
+    "secondaryPositions": [
+      "ST"
+    ],
+    "ovr": 92,
+    "nationality": "이집트",
+    "nationalityCode": "EG",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 94,
+    "mid": 86,
+    "def": 52,
+    "playstyles": [
+      "inverted_winger",
+      "line_breaker"
+    ],
+    "scoutNote": "17-18 EPL 32골 신화·UCL 우승, 파라오의 왼발 감아차기",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2018",
+    "stamina": 92,
+    "attrs": {
+      "sho": 94,
+      "pas": 87,
+      "cro": 86,
+      "dri": 94,
+      "aer": 68,
+      "def": 52,
+      "phy": 93
+    }
+  },
+  {
+    "id": "cls-10s-lb-01",
+    "name": "마르셀루",
+    "position": "DF",
+    "mainPositions": [
+      "LB",
+      "LWB"
+    ],
+    "secondaryPositions": [
+      "LM"
+    ],
+    "ovr": 91,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 85,
+    "mid": 89,
+    "def": 86,
+    "playstyles": [
+      "attacking_wingback"
+    ],
+    "scoutNote": "공격수급 볼 컨트롤과 크로스로 레알 UCL 3연패를 연 마법사 풀백",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2017",
+    "stamina": 90,
+    "attrs": {
+      "sho": 79,
+      "pas": 91,
+      "cro": 94,
+      "dri": 95,
+      "aer": 72,
+      "def": 87,
+      "phy": 89
+    }
+  },
+  {
+    "id": "cls-10s-rb-01",
+    "name": "다니 알베스",
+    "position": "DF",
+    "mainPositions": [
+      "RB",
+      "RWB"
     ],
     "secondaryPositions": [
       "RM"
     ],
-    "ovr": 92,
-    "nationality": "대한민국",
-    "nationalityCode": "KR",
+    "ovr": 91,
+    "nationality": "브라질",
+    "nationalityCode": "BR",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 93,
-    "mid": 82,
-    "def": 58,
+    "club": "10s 클래식",
+    "att": 84,
+    "mid": 89,
+    "def": 87,
     "playstyles": [
-      "line_breaker",
+      "attacking_wingback"
+    ],
+    "scoutNote": "역대 최다 우승 트로피, 메시와 완벽한 호흡을 맞춘 공격형 우풀백",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2011",
+    "stamina": 94,
+    "attrs": {
+      "sho": 80,
+      "pas": 91,
+      "cro": 94,
+      "dri": 92,
+      "aer": 74,
+      "def": 88,
+      "phy": 91
+    }
+  },
+  {
+    "id": "cls-10s-rw-02",
+    "name": "아르연 로번",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "RM"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 91,
+    "nationality": "네덜란드",
+    "nationalityCode": "NL",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 92,
+    "mid": 85,
+    "def": 48,
+    "playstyles": [
+      "inverted_winger",
+      "line_breaker"
+    ],
+    "scoutNote": "알고도 못 막는 매크로 컷인 왼발 감아차기, 13 UCL 결승골",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2013",
+    "stamina": 84,
+    "attrs": {
+      "sho": 92,
+      "pas": 86,
+      "cro": 87,
+      "dri": 95,
+      "aer": 62,
+      "def": 46,
+      "phy": 94
+    }
+  },
+  {
+    "id": "cls-10s-lw-02",
+    "name": "프랑크 리베리",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "LM"
+    ],
+    "secondaryPositions": [
+      "CAM"
+    ],
+    "ovr": 91,
+    "nationality": "프랑스",
+    "nationalityCode": "FR",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 90,
+    "mid": 90,
+    "def": 56,
+    "playstyles": [
+      "inverted_winger",
       "classic_winger"
     ],
-    "scoutNote": "분데스리가를 호령한 갈색 폭격기, 폭발적 돌파와 양발 슈팅",
+    "scoutNote": "12-13 바이에른 트레블의 핵심, 로베리 듀오의 폭발적 크랙",
     "isLegend": true,
-    "stamina": 93,
+    "classicEra": "10s",
+    "classicSeasonTag": "2013",
+    "stamina": 88,
     "attrs": {
-      "sho": 94,
+      "sho": 86,
+      "pas": 91,
+      "cro": 91,
+      "dri": 96,
+      "aer": 62,
+      "def": 54,
+      "phy": 89
+    }
+  },
+  {
+    "id": "cls-10s-lw-03",
+    "name": "에덴 아자르",
+    "position": "FW",
+    "mainPositions": [
+      "LW",
+      "CAM"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "벨기에",
+    "nationalityCode": "BE",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 90,
+    "mid": 90,
+    "def": 48,
+    "playstyles": [
+      "inverted_winger",
+      "playmaker_10"
+    ],
+    "scoutNote": "18 월드컵 실버볼·첼시 에이스, 낮은 무게중심의 무결점 드리블러",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2018",
+    "stamina": 86,
+    "attrs": {
+      "sho": 88,
+      "pas": 90,
+      "cro": 86,
+      "dri": 97,
+      "aer": 62,
+      "def": 46,
+      "phy": 90
+    }
+  },
+  {
+    "id": "cls-10s-rw-03",
+    "name": "가레스 베일",
+    "position": "FW",
+    "mainPositions": [
+      "RW",
+      "LW"
+    ],
+    "secondaryPositions": [
+      "ST",
+      "LB"
+    ],
+    "ovr": 91,
+    "nationality": "웨일스",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 92,
+    "mid": 84,
+    "def": 60,
+    "playstyles": [
+      "line_breaker",
+      "inverted_winger"
+    ],
+    "scoutNote": "초음속 치달과 UCL 결승 바이시클 킥의 빅매치 스페셜리스트",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2016",
+    "stamina": 87,
+    "attrs": {
+      "sho": 92,
       "pas": 84,
       "cro": 89,
-      "dri": 91,
+      "dri": 90,
+      "aer": 86,
+      "def": 60,
+      "phy": 97
+    }
+  },
+  {
+    "id": "cls-10s-st-01",
+    "name": "세르히오 아구에로",
+    "position": "FW",
+    "mainPositions": [
+      "ST"
+    ],
+    "secondaryPositions": [],
+    "ovr": 91,
+    "nationality": "아르헨티나",
+    "nationalityCode": "AR",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 93,
+    "mid": 81,
+    "def": 46,
+    "playstyles": [
+      "poacher",
+      "line_breaker"
+    ],
+    "scoutNote": "93분 20초의 영웅, 맨시티 역대 최다골의 치명적 박스 피니셔",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2015",
+    "stamina": 85,
+    "attrs": {
+      "sho": 97,
+      "pas": 84,
+      "cro": 77,
+      "dri": 94,
+      "aer": 80,
+      "def": 45,
+      "phy": 92
+    }
+  },
+  {
+    "id": "cls-10s-gk-02",
+    "name": "얀 오블락",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 90,
+    "nationality": "슬로베니아",
+    "nationalityCode": "SI",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 30,
+    "mid": 64,
+    "def": 91,
+    "playstyles": [
+      "shot_stopper"
+    ],
+    "scoutNote": "라리가 사모라상 4연패, 압도적 선방률의 아틀레티코 수호신",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2018",
+    "stamina": 83,
+    "attrs": {
+      "sho": 40,
+      "pas": 77,
+      "cro": 63,
+      "dri": 65,
+      "aer": 92,
+      "def": 93,
+      "phy": 91,
+      "gk": {
+        "div": 91,
+        "han": 92,
+        "ref": 92,
+        "kic": 79,
+        "pos": 93
+      }
+    }
+  },
+  {
+    "id": "cls-10s-cb-02",
+    "name": "조르조 키엘리니",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [
+      "LB"
+    ],
+    "ovr": 90,
+    "nationality": "이탈리아",
+    "nationalityCode": "IT",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 56,
+    "mid": 75,
+    "def": 93,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "유벤투스 BBC 수비진의 리더, 끈질긴 대인 마크의 교과서",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2017",
+    "stamina": 88,
+    "attrs": {
+      "sho": 54,
+      "pas": 74,
+      "cro": 62,
+      "dri": 70,
+      "aer": 92,
+      "def": 94,
+      "phy": 91
+    }
+  },
+  {
+    "id": "cls-10s-cb-03",
+    "name": "제라르 피케",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 90,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 64,
+    "mid": 84,
+    "def": 91,
+    "playstyles": [
+      "ball_playing_cb",
+      "stopper_cb"
+    ],
+    "scoutNote": "바르사 2회 트레블의 빌드업 센터백, 장신 제공권과 패스 감각",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2015",
+    "stamina": 86,
+    "attrs": {
+      "sho": 64,
+      "pas": 87,
+      "cro": 70,
+      "dri": 77,
+      "aer": 92,
+      "def": 91,
+      "phy": 86
+    }
+  },
+  {
+    "id": "cls-10s-cb-04",
+    "name": "디에고 고딘",
+    "position": "DF",
+    "mainPositions": [
+      "CB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 89,
+    "nationality": "우루과이",
+    "nationalityCode": "UY",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 60,
+    "mid": 75,
+    "def": 91,
+    "playstyles": [
+      "stopper_cb"
+    ],
+    "scoutNote": "시메오네 철벽 수비의 심장, 결정적 세트피스 헤더의 대명사",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2016",
+    "stamina": 88,
+    "attrs": {
+      "sho": 60,
+      "pas": 75,
+      "cro": 64,
+      "dri": 70,
+      "aer": 94,
+      "def": 92,
+      "phy": 88
+    }
+  },
+  {
+    "id": "cls-10s-gk-03",
+    "name": "다비드 데 헤아",
+    "position": "GK",
+    "mainPositions": [
+      "GK"
+    ],
+    "secondaryPositions": [],
+    "ovr": 89,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 30,
+    "mid": 66,
+    "def": 90,
+    "playstyles": [
+      "shot_stopper"
+    ],
+    "scoutNote": "17-18 EPL 골든글러브, 불가능을 막아내는 동물적 반사신경",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2018",
+    "stamina": 82,
+    "attrs": {
+      "sho": 40,
+      "pas": 78,
+      "cro": 64,
+      "dri": 66,
       "aer": 90,
-      "def": 62,
-      "phy": 95
+      "def": 92,
+      "phy": 88,
+      "gk": {
+        "div": 91,
+        "han": 87,
+        "ref": 95,
+        "kic": 81,
+        "pos": 89
+      }
+    }
+  },
+  {
+    "id": "cls-10s-lb-02",
+    "name": "다비드 알라바",
+    "position": "DF",
+    "mainPositions": [
+      "LB",
+      "CB",
+      "CDM"
+    ],
+    "secondaryPositions": [
+      "CM"
+    ],
+    "ovr": 89,
+    "nationality": "오스트리아",
+    "nationalityCode": "AT",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 78,
+    "mid": 87,
+    "def": 89,
+    "playstyles": [
+      "attacking_wingback",
+      "ball_playing_cb"
+    ],
+    "scoutNote": "바이에른 트레블의 핵심, 왼발 프리킥과 멀티 포지션 천재",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2013",
+    "stamina": 91,
+    "attrs": {
+      "sho": 78,
+      "pas": 88,
+      "cro": 90,
+      "dri": 86,
+      "aer": 78,
+      "def": 89,
+      "phy": 89
+    }
+  },
+  {
+    "id": "cls-10s-rb-02",
+    "name": "다니 카르바할",
+    "position": "DF",
+    "mainPositions": [
+      "RB",
+      "RWB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 89,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 76,
+    "mid": 84,
+    "def": 90,
+    "playstyles": [
+      "attacking_wingback"
+    ],
+    "scoutNote": "레알 마드리드 UCL 왕조의 붙박이 우풀백, 공수 완벽 밸런스",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2017",
+    "stamina": 93,
+    "attrs": {
+      "sho": 72,
+      "pas": 85,
+      "cro": 89,
+      "dri": 84,
+      "aer": 76,
+      "def": 90,
+      "phy": 91
+    }
+  },
+  {
+    "id": "cls-10s-lb-03",
+    "name": "앤드류 로버트슨",
+    "position": "DF",
+    "mainPositions": [
+      "LB",
+      "LWB"
+    ],
+    "secondaryPositions": [],
+    "ovr": 89,
+    "nationality": "스코틀랜드",
+    "nationalityCode": "GB",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 76,
+    "mid": 85,
+    "def": 88,
+    "playstyles": [
+      "attacking_wingback"
+    ],
+    "scoutNote": "18-19 리버풀 UCL 우승의 무한 오버래핑과 칼날 얼리 크로스",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2019",
+    "stamina": 96,
+    "attrs": {
+      "sho": 68,
+      "pas": 86,
+      "cro": 93,
+      "dri": 84,
+      "aer": 72,
+      "def": 88,
+      "phy": 92
+    }
+  },
+  {
+    "id": "cls-10s-cam-02",
+    "name": "다비드 실바",
+    "position": "MF",
+    "mainPositions": [
+      "CAM",
+      "CM"
+    ],
+    "secondaryPositions": [
+      "LW"
+    ],
+    "ovr": 90,
+    "nationality": "스페인",
+    "nationalityCode": "ES",
+    "leagueId": "LEGEND",
+    "club": "10s 클래식",
+    "att": 84,
+    "mid": 93,
+    "def": 62,
+    "playstyles": [
+      "playmaker_10"
+    ],
+    "scoutNote": "엘 마고, 좁은 하프스페이스에서 마법 같은 스루패스를 찌르는 마법사",
+    "isLegend": true,
+    "classicEra": "10s",
+    "classicSeasonTag": "2018",
+    "stamina": 84,
+    "attrs": {
+      "sho": 82,
+      "pas": 95,
+      "cro": 89,
+      "dri": 94,
+      "aer": 58,
+      "def": 60,
+      "phy": 76
     }
   },
   {
@@ -1048,138 +3743,34 @@
       "ST"
     ],
     "secondaryPositions": [
-      "RW"
+      "RW",
+      "LM"
     ],
-    "ovr": 91,
+    "ovr": 89,
     "nationality": "대한민국",
     "nationalityCode": "KR",
     "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 92,
-    "mid": 84,
+    "club": "10s 클래식",
+    "att": 91,
+    "mid": 82,
     "def": 52,
     "playstyles": [
       "line_breaker",
       "inverted_winger"
     ],
-    "scoutNote": "아시아 최초 EPL 득점왕, 역대 최고 양발 감아차기 스나이퍼",
+    "scoutNote": "EPL 득점왕·푸스카스상, 양발 감아차기와 폭발적 역습 침투",
     "isLegend": true,
-    "stamina": 90,
+    "classicEra": "10s",
+    "classicSeasonTag": "2020",
+    "stamina": 92,
     "attrs": {
-      "sho": 94,
-      "pas": 86,
-      "cro": 87,
-      "dri": 91,
-      "aer": 78,
-      "def": 58,
-      "phy": 93
-    }
-  },
-  {
-    "id": "leg-fw-10",
-    "name": "로베르트 레반도프스키",
-    "position": "FW",
-    "mainPositions": [
-      "ST"
-    ],
-    "secondaryPositions": [
-      "CAM"
-    ],
-    "ovr": 94,
-    "nationality": "폴란드",
-    "nationalityCode": "PL",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 96,
-    "mid": 80,
-    "def": 48,
-    "playstyles": [
-      "poacher",
-      "complete_forward"
-    ],
-    "scoutNote": "9분 5골의 전설, 완벽한 위치 선정과 양발 결정력을 갖춘 현대 최고 9번",
-    "isLegend": true,
-    "stamina": 87,
-    "attrs": {
-      "sho": 97,
-      "pas": 83,
-      "cro": 75,
-      "dri": 87,
-      "aer": 94,
-      "def": 54,
-      "phy": 92
-    }
-  },
-  {
-    "id": "leg-fw-11",
-    "name": "카림 벤제마",
-    "position": "FW",
-    "mainPositions": [
-      "ST"
-    ],
-    "secondaryPositions": [
-      "CAM",
-      "LW"
-    ],
-    "ovr": 93,
-    "nationality": "프랑스",
-    "nationalityCode": "FR",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 94,
-    "mid": 86,
-    "def": 46,
-    "playstyles": [
-      "complete_forward",
-      "playmaker_10"
-    ],
-    "scoutNote": "발롱도르 위너, 9번과 10번을 결합한 우아한 연계와 클러치 결정력의 대가",
-    "isLegend": true,
-    "stamina": 84,
-    "attrs": {
-      "sho": 94,
-      "pas": 91,
-      "cro": 82,
-      "dri": 91,
-      "aer": 90,
-      "def": 54,
-      "phy": 89
-    }
-  },
-  {
-    "id": "leg-fw-12",
-    "name": "루이스 수아레스",
-    "position": "FW",
-    "mainPositions": [
-      "ST"
-    ],
-    "secondaryPositions": [
-      "RW",
-      "CAM"
-    ],
-    "ovr": 94,
-    "nationality": "우루과이",
-    "nationalityCode": "UY",
-    "leagueId": "LEGEND",
-    "club": "레전드",
-    "att": 95,
-    "mid": 82,
-    "def": 52,
-    "playstyles": [
-      "complete_forward",
-      "line_breaker"
-    ],
-    "scoutNote": "MSN의 심장, 야성적 투쟁심과 어떤 각도에서도 골망을 찢는 천재 골잡이",
-    "isLegend": true,
-    "stamina": 87,
-    "attrs": {
-      "sho": 96,
-      "pas": 89,
-      "cro": 83,
-      "dri": 92,
-      "aer": 87,
-      "def": 58,
-      "phy": 91
+      "sho": 93,
+      "pas": 84,
+      "cro": 85,
+      "dri": 89,
+      "aer": 72,
+      "def": 50,
+      "phy": 94
     }
   }
 ]

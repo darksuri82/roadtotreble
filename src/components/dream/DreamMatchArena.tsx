@@ -19,6 +19,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { BENCH_SLOTS, FORMATION_LIST, FORMATIONS } from '../../data/formations';
 import {
   buildHistoricalClubForMatch,
+  ERA_BEST_XI_DREAM_TEAMS,
   getHistoricalTeamById,
   HISTORICAL_BENCHMARK_TEAMS,
 } from '../../data/historicalTeams';
@@ -125,6 +126,13 @@ export function DreamMatchArena() {
   );
   const [selectedOpponentId, setSelectedOpponentId] = useState<string>(
     initialOpponent?.id ?? HISTORICAL_BENCHMARK_TEAMS[0].id,
+  );
+  const [opponentCategory, setOpponentCategory] = useState<'historical' | 'era_xi'>(
+    () =>
+      initialOpponent &&
+      ERA_BEST_XI_DREAM_TEAMS.some((t) => t.id === initialOpponent.id)
+        ? 'era_xi'
+        : 'historical',
   );
   const [knockoutRules, setKnockoutRules] = useState<boolean>(true);
   const [challengerSourceLabel, setChallengerSourceLabel] =
@@ -1243,25 +1251,61 @@ export function DreamMatchArena() {
       {/* ================================================================= */}
       {stage === 'select_opponent' && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-sm sm:text-base font-extrabold text-white">
-                1단계 · 도전할 역대 최강팀 선택
+                1단계 · 도전할 드림 매치 상대 선택
               </h2>
               <p className="text-xs text-slate-400">
-                모든 역대 강팀은 실제 전성기 선발 11명 + 핵심 벤치(17인 풀스쿼드)와 명장 전술·세부 능력치로 구현되어 있습니다.
+                {opponentCategory === 'historical'
+                  ? '모든 역대 강팀은 실제 전성기 선발 11명 + 핵심 벤치와 명장 전술·세부 능력치로 구현되어 있습니다.'
+                  : '룰렛에 등장하지 않는 전설들(마이어·무어·카를로스 알베르투·보비 찰턴·에우제비우·베스트·소크라치스·발락·야야 투레 등)까지 총출동하는 시대별 올스타 베스트 11입니다.'}
               </p>
+            </div>
+
+            <div className="inline-flex rounded-xl border border-slate-800 bg-[#0b1018] p-1 gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setOpponentCategory('historical')}
+                className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition cursor-pointer ${
+                  opponentCategory === 'historical'
+                    ? 'bg-amber-400 text-slate-950 shadow'
+                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                }`}
+              >
+                역대 최강 클럽 ({HISTORICAL_BENCHMARK_TEAMS.length}팀)
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpponentCategory('era_xi')}
+                className={`rounded-lg px-3 py-1.5 text-xs font-extrabold transition cursor-pointer ${
+                  opponentCategory === 'era_xi'
+                    ? 'bg-cyan-400 text-slate-950 shadow'
+                    : 'text-slate-300 hover:bg-slate-800/80 hover:text-white'
+                }`}
+              >
+                시대별 베스트 11 ({ERA_BEST_XI_DREAM_TEAMS.length}팀)
+              </button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {HISTORICAL_BENCHMARK_TEAMS.map((team, idx) => {
+            {(opponentCategory === 'historical'
+              ? HISTORICAL_BENCHMARK_TEAMS
+              : ERA_BEST_XI_DREAM_TEAMS
+            ).map((team, idx) => {
               const rec = dreamRecords[team.id];
               const trait = MANAGER_TRAITS[team.managerTraitId];
+              const isEraXi = opponentCategory === 'era_xi';
+              const squadCount = team.starters.length + team.bench.length;
               return (
                 <div
                   key={team.id}
-                  className="flex flex-col justify-between rounded-2xl border border-amber-500/25 bg-gradient-to-br from-[#161512] via-[#101620] to-[#0c1118] p-4 transition hover:border-amber-400/65"
+                  className={`flex flex-col justify-between rounded-2xl border p-4 transition ${
+                    isEraXi
+                      ? 'border-cyan-500/30 bg-gradient-to-br from-[#0f1722] via-[#101620] to-[#0c1118] hover:border-cyan-400/70'
+                      : 'border-amber-500/25 bg-gradient-to-br from-[#161512] via-[#101620] to-[#0c1118] hover:border-amber-400/65'
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
@@ -1273,7 +1317,11 @@ export function DreamMatchArena() {
                           label={team.userClub.shortName}
                           size={34}
                         />
-                        <span className="absolute -top-2 -left-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-400 px-1 text-[10px] font-black text-slate-950">
+                        <span
+                          className={`absolute -top-2 -left-2 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-black text-slate-950 ${
+                            isEraXi ? 'bg-cyan-400' : 'bg-amber-400'
+                          }`}
+                        >
                           {idx + 1}
                         </span>
                       </div>
@@ -1292,7 +1340,12 @@ export function DreamMatchArena() {
                           <h3 className="text-sm font-black text-white truncate">
                             {team.displayName}
                           </h3>
-                          {team.isTreble && (
+                          {isEraXi && (
+                            <span className="rounded bg-cyan-400/20 px-1.5 py-0.5 text-[9px] font-black text-cyan-200 border border-cyan-400/35">
+                              {team.seasonLabel}
+                            </span>
+                          )}
+                          {team.isTreble && !isEraXi && (
                             <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-black text-amber-300">
                               👑 트레블
                             </span>
@@ -1309,7 +1362,7 @@ export function DreamMatchArena() {
                         <p className="mt-0.5 text-[10px] text-slate-400 truncate">
                           {team.formation} · {TACTICS[team.defaultTactic].name} · 평균 OVR{' '}
                           <strong className="text-white">{team.teamAvgOvr}</strong> · 케미{' '}
-                          <strong className="text-emerald-300">{team.chemistry}</strong> · 17인 풀스쿼드
+                          <strong className="text-emerald-300">{team.chemistry}</strong> · {squadCount}인 풀스쿼드
                         </p>
                       </div>
                     </div>
@@ -1348,7 +1401,11 @@ export function DreamMatchArena() {
                         setSelectedOpponentId(team.id);
                         setStage('select_challenger');
                       }}
-                      className="inline-flex items-center gap-1 rounded-lg bg-amber-400 px-3 py-1.5 text-xs font-black text-slate-950 hover:bg-amber-300 cursor-pointer shrink-0"
+                      className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-black text-slate-950 cursor-pointer shrink-0 ${
+                        isEraXi
+                          ? 'bg-cyan-400 hover:bg-cyan-300'
+                          : 'bg-amber-400 hover:bg-amber-300'
+                      }`}
                     >
                       <Swords className="h-3.5 w-3.5" />
                       <span>도전하기</span>
@@ -1577,7 +1634,7 @@ export function DreamMatchArena() {
                   <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 space-y-2 text-xs text-slate-300">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                      <span>드림 매치 전용 레전드 ICON 출현 확률 상향 (4.0%)</span>
+                      <span>드림 매치 전용 시대별 클래식 카드 출현 확률 상향 (4.0%)</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Users className="h-3.5 w-3.5 text-emerald-400 shrink-0" />

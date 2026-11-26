@@ -154,13 +154,13 @@ describe('v6.0 Stage 1 & Stage 2: HoF Scoring, 24 Historical Teams & 2026-27 Ros
     expect(psg25.subtitle).toContain('점 우승');
   });
 
-  it('upgrades Brighton Pascal Groß, adds Chelsea Jordan Henderson, removes 3 global duplicates, and preserves 96-club depth + 33 legends', () => {
+  it('upgrades Brighton Pascal Groß, adds Chelsea Jordan Henderson, removes 3 global duplicates, and preserves 96-club depth + 101 Era Classics', () => {
     // 1. Brighton Pascal Groß
     const gross = ACTIVE_PLAYERS.find((p) => p.id === 'act-263')!;
     expect(gross).toBeDefined();
     expect(gross.name).toBe('파스칼 그로스');
     expect(gross.club).toBe('브라이튼');
-    expect(gross.ovr).toBe(83);
+    expect(gross.ovr).toBe(85);
     expect(gross.attrs?.pas).toBeGreaterThanOrEqual(88);
     expect(gross.attrs?.cro).toBeGreaterThanOrEqual(87);
     const grossFormer = getPlayerFormerClubs(gross);
@@ -206,11 +206,14 @@ describe('v6.0 Stage 1 & Stage 2: HoF Scoring, 24 Historical Teams & 2026-27 Ros
       expect(fw, `${c.name} FW`).toBeGreaterThanOrEqual(4);
     }
 
-    // 6. 33 Legends preserved (including 레벤수 trio) with 0 overlap against active players
-    expect(LEGEND_PLAYERS).toHaveLength(33);
-    const activeNames = new Set(ACTIVE_PLAYERS.map((p) => p.name));
+    // 6. 101 Era Classics preserved with unique IDs and intra-pool unique names (10s twins coexist distinctly from Active)
+    expect(LEGEND_PLAYERS).toHaveLength(101);
+    const activeIds = new Set(ACTIVE_PLAYERS.map((p) => p.id));
+    const classicNames = new Set<string>();
     for (const leg of LEGEND_PLAYERS) {
-      expect(activeNames.has(leg.name), `legend ${leg.name} duplicated in active`).toBe(false);
+      expect(activeIds.has(leg.id), `classic id ${leg.id} duplicated in active`).toBe(false);
+      expect(classicNames.has(leg.name), `classic ${leg.name} duplicated within classics`).toBe(false);
+      classicNames.add(leg.name);
     }
   });
 });

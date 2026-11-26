@@ -1,6 +1,7 @@
 import { Crown, Diamond, Flame, Link2, Lock, Star } from 'lucide-react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
+import type { DraftAwakeningPotentialHint } from '../../engine/awakeningEngine';
 import {
   computeFullPlayerOvrBreakdown,
   getInjuryTooltip,
@@ -14,7 +15,14 @@ import {
 } from '../../engine/positionEngine';
 import type { PlayerConditionState } from '../../types/condition';
 import type { ManagerTraitId } from '../../types/game';
-import { getCardTier, LEAGUE_LABELS, TIER_LABELS } from '../../types/player';
+import {
+  getCardTier,
+  getClassicClubSubtitle,
+  getClassicEra,
+  getClassicEraMeta,
+  LEAGUE_LABELS,
+  TIER_LABELS,
+} from '../../types/player';
 import type { CardTier, Player, SubPosition } from '../../types/player';
 import { CountryFlagSvg } from './CountryFlagSvg';
 import { PixelStatusIcon } from './PixelStatusIcon';
@@ -42,6 +50,8 @@ interface PlayerCardProps {
   expectedLinkCount?: number;
   /** Optional progressive draft budget cost (€M) displayed in draft selection cards */
   draftCostM?: number;
+  /** Optional restrained draft awakening-potential hint for low/mid OVR gems */
+  awakeningHint?: DraftAwakeningPotentialHint | null;
 }
 
 const TIER_STYLES: Record<
@@ -104,11 +114,25 @@ export function PlayerCard({
   disabledActionLabel = null,
   expectedLinkCount,
   draftCostM,
+  awakeningHint = null,
 }: PlayerCardProps) {
   const tier = getCardTier(player);
-  const style = TIER_STYLES[tier];
   const isLegend = tier === 'legend';
   const isSuperstar = tier === 'superstar';
+  const classicEra = isLegend ? getClassicEra(player) : null;
+  const eraMeta = classicEra ? getClassicEraMeta(classicEra) : null;
+  const baseStyle = TIER_STYLES[tier];
+  const style =
+    isLegend && eraMeta
+      ? {
+          wrapper: eraMeta.cardClass,
+          badge: eraMeta.badgeClass,
+          ovrText: eraMeta.ovrTextClass,
+          posBadge: eraMeta.posBadgeClass,
+        }
+      : baseStyle;
+  const classicBadgeText = eraMeta ? eraMeta.badgeLabel : 'CLASSIC';
+  const classicSubtitle = getClassicClubSubtitle(player);
   const isAwakened = Boolean(player.awakening);
   const effectiveWrapper = isAwakened ? 'card-awakened-ember' : style.wrapper;
   const mainPosText = formatMainPositions(player);
@@ -162,8 +186,12 @@ export function PlayerCard({
                 <span className="truncate text-sm font-bold text-slate-100">
                   {player.name}
                 </span>
-                {isLegend && (
-                  <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                {isLegend && eraMeta && (
+                  <span
+                    className={`rounded px-1 py-px text-[9px] font-black leading-none shrink-0 ${eraMeta.inlineChipClass}`}
+                  >
+                    {classicBadgeText}
+                  </span>
                 )}
                 {isSuperstar && (
                   <Diamond className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
@@ -216,7 +244,9 @@ export function PlayerCard({
                   nationality={player.nationality}
                   size="xs"
                 />
-                <span className="truncate">{player.club}</span>
+                <span className="truncate">
+                  {isLegend ? classicSubtitle : player.club}
+                </span>
                 {player.secondaryPositions.length > 0 && (
                   <span className="text-[10px] text-slate-500">
                     · 부 {player.secondaryPositions.slice(0, 2).join('/')}
@@ -277,7 +307,7 @@ export function PlayerCard({
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
             <div
               className={`legend-shimmer-bar absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent ${
-                isLegend ? 'via-amber-200/20' : 'via-cyan-200/18'
+                isLegend ? (eraMeta?.shimmerViaClass ?? 'via-amber-200/20') : 'via-cyan-200/18'
               } to-transparent`}
             />
           </div>
@@ -321,7 +351,7 @@ export function PlayerCard({
                 {isLegend ? (
                   <>
                     <Crown className="w-2.5 h-2.5" />
-                    LEGEND
+                    {classicBadgeText}
                   </>
                 ) : (
                   <>
@@ -338,7 +368,7 @@ export function PlayerCard({
           </div>
         </div>
 
-        {/* Row 2: Flag + Name + Compact Playstyles/Manager Synergy */}
+        {/* Row 2: Flag + Name + Compact Playstyles/Manager Synergy/Restrained Awakening Hint */}
         <div className="relative z-10 space-y-1 min-w-0">
           <div className="flex items-center gap-1 min-w-0">
             <CountryFlagSvg
@@ -349,6 +379,11 @@ export function PlayerCard({
             <h3 className="truncate text-xs font-bold text-slate-100 group-hover:text-white leading-tight">
               {player.name}
             </h3>
+            {isLegend && player.classicSeasonTag && (
+              <span className="shrink-0 text-[8.5px] font-bold text-slate-400 tabular-nums">
+                '{player.classicSeasonTag.slice(-2)}
+              </span>
+            )}
             {mgrSynergy.isMatch && (
               <span
                 title={`감독 궁합 일치 (${mgrSynergy.reason}) · 개인 ★+1 OVR`}
@@ -369,6 +404,19 @@ export function PlayerCard({
               >
                 <Link2 className="w-2 h-2 shrink-0" />
                 {expectedLinkCount}선
+              </span>
+            )}
+            {awakeningHint && !isLegend && !isAwakened && (
+              <span
+                title={awakeningHint.tooltip}
+                className={`inline-flex shrink-0 items-center gap-0.5 rounded border px-1 py-px text-[8px] font-extrabold leading-none whitespace-nowrap ${
+                  awakeningHint.level === 'high'
+                    ? 'border-rose-400/45 bg-rose-500/15 text-rose-200'
+                    : 'border-slate-600/70 bg-slate-900/85 text-rose-300/85'
+                }`}
+              >
+                <Flame className="w-2 h-2 text-rose-300 shrink-0" />
+                {awakeningHint.shortLabel}
               </span>
             )}
           </div>
@@ -424,7 +472,7 @@ export function PlayerCard({
                 }}
                 className={`rounded px-2 py-0.5 text-[10px] font-extrabold transition-colors cursor-pointer shrink-0 ${
                   isLegend
-                    ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                    ? (eraMeta?.confirmBtnClass ?? 'bg-amber-400 text-slate-950 hover:bg-amber-300')
                     : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
                 }`}
               >
@@ -461,12 +509,12 @@ export function PlayerCard({
         onClick && !disabled ? 'cursor-pointer' : 'cursor-default'
       } ${lockedBadgeLabel ? 'opacity-45 grayscale-[35%]' : disabled ? 'opacity-50' : ''}`}
     >
-      {/* Hologram Shimmer ONLY for Legend & Active Superstar */}
+      {/* Hologram Shimmer ONLY for Era Classics & Active Superstar */}
       {(isLegend || isSuperstar) && !lockedBadgeLabel && (
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div
             className={`legend-shimmer-bar absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent ${
-              isLegend ? 'via-amber-200/20' : 'via-cyan-200/18'
+              isLegend ? (eraMeta?.shimmerViaClass ?? 'via-amber-200/20') : 'via-cyan-200/18'
             } to-transparent`}
           />
         </div>
@@ -528,7 +576,7 @@ export function PlayerCard({
               {isLegend ? (
                 <>
                   <Crown className="w-3 h-3" />
-                  LEGEND
+                  {classicBadgeText} CLASSIC
                 </>
               ) : (
                 <>
@@ -587,7 +635,7 @@ export function PlayerCard({
           <span className="truncate">{player.nationality}</span>
           <span className="text-slate-600">·</span>
           <span className="truncate text-slate-300">
-            {isLegend ? 'ICON 와일드카드' : player.club}
+            {isLegend ? classicSubtitle : player.club}
           </span>
           {!isLegend && (
             <span className="text-[10px] text-slate-500 shrink-0">
@@ -597,7 +645,7 @@ export function PlayerCard({
         </div>
       </div>
 
-      {/* Playstyles + Manager Synergy Badge */}
+      {/* Playstyles + Manager Synergy Badge + Restrained Awakening Hint */}
       <div className="relative z-10 mb-2.5 flex flex-wrap gap-1">
         {mgrSynergy.isMatch && (
           <span
@@ -606,6 +654,19 @@ export function PlayerCard({
           >
             <Star className="w-2.5 h-2.5 fill-amber-300 text-amber-300" />
             감독 시너지 +1
+          </span>
+        )}
+        {awakeningHint && !isLegend && !isAwakened && (
+          <span
+            title={awakeningHint.tooltip}
+            className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-extrabold ${
+              awakeningHint.level === 'high'
+                ? 'border-rose-400/45 bg-rose-500/15 text-rose-200'
+                : 'border-slate-600/75 bg-slate-900/85 text-rose-300/85'
+            }`}
+          >
+            <Flame className="w-2.5 h-2.5 text-rose-300" />
+            {awakeningHint.shortLabel} ({awakeningHint.expectedGainText})
           </span>
         )}
         {player.playstyles.map((ps) => {
@@ -666,7 +727,7 @@ export function PlayerCard({
               }}
               className={`relative z-10 mt-2.5 w-full rounded-lg py-2 text-center text-xs font-extrabold transition-colors cursor-pointer ${
                 isLegend
-                  ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                  ? (eraMeta?.confirmBtnClass ?? 'bg-amber-400 text-slate-950 hover:bg-amber-300')
                   : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
               }`}
             >
@@ -683,7 +744,7 @@ export function PlayerCard({
           <div
             className={`relative z-10 mt-2.5 w-full rounded-lg py-1.5 text-center text-xs font-bold transition-colors ${
               isLegend
-                ? 'bg-amber-400 text-slate-950 group-hover:bg-amber-300'
+                ? (eraMeta?.confirmBtnClass ?? 'bg-amber-400 text-slate-950 group-hover:bg-amber-300')
                 : isSuperstar
                   ? 'bg-cyan-300 text-slate-950 group-hover:bg-cyan-200'
                   : 'bg-slate-800 text-slate-200 group-hover:bg-emerald-500 group-hover:text-slate-950'

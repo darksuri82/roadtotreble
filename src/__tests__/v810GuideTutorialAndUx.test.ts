@@ -92,7 +92,7 @@ describe('v8.10 Guidebook 100% Engine Sync, Visual Tutorial & Contextual UX', ()
     expect(MANAGER_TRAIT_LIST.length).toBe(14);
     expect(HISTORICAL_BENCHMARK_TEAMS.length).toBe(24);
     expect(COMPLEMENTARY_STYLE_PAIRS.length).toBe(21);
-    expect(ELITE_PAIR_MIN_OVR).toBe(88);
+    expect(ELITE_PAIR_MIN_OVR).toBe(86);
     expect(TEAM_CHEMISTRY_LINE_WEIGHTS).toEqual({
       club: 1.25,
       nation: 1.0,
@@ -116,7 +116,7 @@ describe('v8.10 Guidebook 100% Engine Sync, Visual Tutorial & Contextual UX', ()
     expect(TACTIC_STAMINA_MULT.counter).toBe(0.9);
     expect(SEVERITY_LABELS.severe).toBe('치명적 중상');
     expect(ALL_MANAGER_EVENTS.length).toBe(72);
-    expect(ACTIVE_PLAYERS.length + LEGEND_PLAYERS.length).toBe(2237);
+    expect(ACTIVE_PLAYERS.length + LEGEND_PLAYERS.length).toBe(2305);
 
     // Total Football exact penalties: 0 / -2 / -8 (GK remains -15)
     const testMid = {

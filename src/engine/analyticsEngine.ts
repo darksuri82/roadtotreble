@@ -6,6 +6,7 @@ import type {
   StandingRow,
   TeamSeasonAnalytics,
 } from '../types/league';
+import { formatPlayerRecordName } from '../types/player';
 import type { Player, SubPosition } from '../types/player';
 import { USER_CLUB_ID } from './matchEngine';
 import { getPrimaryPosition } from './positionEngine';
@@ -191,10 +192,11 @@ export function computeSquadPlayerAnalytics(params: {
 
     return {
       playerId: player.id,
-      playerName: player.name,
+      playerName: formatPlayerRecordName(player),
       ovr: player.ovr,
       stamina: getPlayerStaminaStat(player),
       isLegend: player.isLegend,
+      classicEra: player.classicEra,
       position: player.position,
       mainPositions: [...player.mainPositions],
       primaryDeployedPosition,

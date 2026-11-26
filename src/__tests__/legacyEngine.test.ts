@@ -231,7 +231,7 @@ describe('Season Score Fairness & All 24 Hidden Achievements', () => {
       userUclMatchHistory: [makeMatch(3, 1), makeMatch(2, 1)],
       starters: nonLegendSquad,
       bench: nonLegendBench,
-      teamAvgOvr: 81.5,
+      teamAvgOvr: 80.5,
       chemistry: 96,
       trackers: {
         comebackFrom2DownCount: 1,

@@ -2,6 +2,7 @@ import { ArrowRight, Crown, Diamond, Flame, Shield, Sparkles, Star, TrendingUp, 
 import { useEffect } from 'react';
 import { evaluateManagerPlayerSynergy } from '../../data/managerTraits';
 import { PLAYSTYLES } from '../../data/playstyles';
+import { evaluateSquadAwakeningReadiness } from '../../engine/awakeningEngine';
 import {
   computeFullPlayerOvrBreakdown,
   getInjuryOvrPenalty,
@@ -24,6 +25,9 @@ import type { ManagerTraitId, PlayerSlotSynergy } from '../../types/game';
 import type { PlayerSeasonStats } from '../../types/league';
 import {
   getCardTier,
+  getClassicClubSubtitle,
+  getClassicEra,
+  getClassicEraMeta,
   LEAGUE_LABELS,
   POSITION_LABELS,
 } from '../../types/player';
@@ -73,6 +77,8 @@ export function PlayerDetailModal({
 
   const tier = getCardTier(player);
   const isLegend = tier === 'legend';
+  const classicEra = isLegend ? getClassicEra(player) : null;
+  const eraMeta = classicEra ? getClassicEraMeta(classicEra) : null;
   const isSuperstar = tier === 'superstar';
 
   const fit = slotSubPosition
@@ -93,6 +99,13 @@ export function PlayerDetailModal({
     managerBonus: managerSynBonus,
     condition,
   });
+  const awakeningReadiness = evaluateSquadAwakeningReadiness({
+    player,
+    managerTraitId,
+    slotSynergy,
+    condition,
+    positionPenalty: fit?.penalty ?? 0,
+  });
   const displayOvr = ovrBr.finalEffectiveOvr;
   const hasAnyOvrMod =
     ovrBr.positionPenalty !== 0 ||
@@ -105,10 +118,11 @@ export function PlayerDetailModal({
     competitionStats?.transferHistory ??
     seasonStats?.transferHistory ??
     [];
-  const displayClub =
-    competitionStats?.currentClubName ??
-    seasonStats?.teamName ??
-    player.club;
+  const displayClub = isLegend
+    ? getClassicClubSubtitle(player)
+    : (competitionStats?.currentClubName ??
+      seasonStats?.teamName ??
+      player.club);
 
   const hasBreakdown = Boolean(
     competitionStats &&
@@ -170,9 +184,14 @@ export function PlayerDetailModal({
                 </span>
               )}
               {isLegend && (
-                <span className="inline-flex items-center gap-1 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-black text-slate-950">
+                <span
+                  className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-black ${
+                    eraMeta?.badgeClass ?? 'bg-amber-400 text-slate-950'
+                  }`}
+                >
                   <Crown className="w-3 h-3" />
-                  LEGEND
+                  {eraMeta ? eraMeta.fullLabel : 'CLASSIC'}
+                  {player.classicSeasonTag ? ` · ${player.classicSeasonTag}` : ''}
                 </span>
               )}
               {isSuperstar && (
@@ -426,6 +445,35 @@ export function PlayerDetailModal({
               </div>
             )}
           </div>
+
+          {/* Compact Awakening Readiness Strip (eligible unawakened active players < 88) */}
+          {awakeningReadiness && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/25 bg-emerald-950/15 px-3 py-2 text-[11px]">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-300 shrink-0" />
+                <span className="font-bold text-emerald-200 whitespace-nowrap">
+                  포텐 각성 {awakeningReadiness.expectedGainText}
+                </span>
+                <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                  · {awakeningReadiness.tierLabel}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1">
+                {awakeningReadiness.checks.map((chk) => (
+                  <span
+                    key={chk.label}
+                    className={`rounded px-1.5 py-0.5 text-[9.5px] font-bold ${
+                      chk.ok
+                        ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/35'
+                        : 'bg-slate-900/80 text-slate-500 border border-slate-800'
+                    }`}
+                  >
+                    {chk.ok ? '✓' : '·'} {chk.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Condition: Morale & Injury */}
           {condition && (

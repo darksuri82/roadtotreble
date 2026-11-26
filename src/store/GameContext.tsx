@@ -198,6 +198,7 @@ import {
   type LegacyStorageState,
   type SeasonAchievementTrackers,
 } from '../types/legacy';
+import { formatPlayerRecordName } from '../types/player';
 import type { Player, PlayerAwakeningRecord } from '../types/player';
 import {
   hasCelebratedGlobalTop15,
@@ -2531,7 +2532,7 @@ function executeBidirectionalTrade(params: {
     } else {
       nextMap[player.id] = {
         playerId: player.id,
-        playerName: player.name,
+        playerName: formatPlayerRecordName(player),
         teamId: toClub.id,
         teamName: toClub.name,
         teamShortName: toClub.shortName,
@@ -2554,6 +2555,7 @@ function executeBidirectionalTrade(params: {
         avgRating: 0,
         positionCounts: {},
         isLegend: player.isLegend,
+        classicEra: player.classicEra,
         transferHistory: [record],
       };
     }
@@ -5586,7 +5588,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         } else {
           nextMap[player.id] = {
             playerId: player.id,
-            playerName: player.name,
+            playerName: formatPlayerRecordName(player),
             teamId: toClub.id,
             teamName: toClub.name,
             teamShortName: toClub.shortName,
@@ -5609,6 +5611,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             avgRating: 0,
             positionCounts: {},
             isLegend: player.isLegend,
+            classicEra: player.classicEra,
             transferHistory: [record],
           };
         }

@@ -29,29 +29,58 @@ import { STAFF_COACH_DEV_AWAKENING_MULT } from './staffCoachEngine';
  * Permanent Potential Breakthrough (Awakening) Engine
  *
  * Strict Balance & Integrity Rules:
- * - Legends (`isLegend === true`): 0% (NEVER awaken).
- * - Superstars / Worldclass (`baseOvr >= 89`): ultra-rare (`x0.04` = 1/25), fixed `+2` OVR cap (max 96).
+ * - Era Classics (`isLegend === true`): 0% (NEVER awaken).
+ * - Superstars / Top Worldclass (`baseOvr >= 88`): ultra-rare (`x0.04` = 1/25), fixed `+2` OVR cap (max 94).
+ * - Low & Mid OVR Gems (`baseOvr <= 84`): meaningfully boosted trigger rate (`x1.35..x1.75`) and wider
+ *   permanent growth (`+3..+8`) so developing mid-table aces & underrated gems is a genuine winning strategy.
  * - Comprehensive Performance + Utilization Model:
  *   Rewards players who deliver strong match/season output (rating, goals, assists, clean sheets,
  *   appearances/minutes) AND are utilized effectively by the manager (neighbor synergy, manager fit,
  *   morale, condition/rotation care without overload/injury, natural position fit).
- * - Season Target Distribution: 0~2 players/season (1st x1.00, 2nd x0.65, 3rd+ x0.04 near-zero attenuation).
- * - Permanent pure OVR +2..+7 growth + position-tailored sub-attribute growth applied ONLY to
+ * - Season Target Distribution: 0~3 players/season (1st x1.00, 2nd x0.78, 3rd x0.48, 4th+ x0.05).
+ * - Permanent pure OVR +2..+8 growth + position-tailored sub-attribute growth applied ONLY to
  *   freshly cloned player instances — static DB is NEVER mutated.
  */
 export const AWAKENING_MIN_GAIN = 2;
-export const AWAKENING_MAX_GAIN = 7;
-export const AWAKENING_SUPERSTAR_OVR_THRESHOLD = 89;
+export const AWAKENING_MAX_GAIN = 8;
+export const AWAKENING_SUPERSTAR_OVR_THRESHOLD = 88;
 export const AWAKENING_SUPERSTAR_MAX_GAIN = 2;
 export const AWAKENING_SUPERSTAR_RATE_MULT = 0.04; // 1/25th of normal rate
-export const AWAKENING_OVR_HARD_CAP = 96;
+export const AWAKENING_OVR_HARD_CAP = 94;
 export const AWAKENING_MIN_SEASON_MATCH = 6;
 export const AWAKENING_MIN_APPEARANCES = 4;
-export const AWAKENING_SECOND_COUNT_MULT = 0.65;
-export const AWAKENING_THIRD_PLUS_MULT = 0.04;
+export const AWAKENING_SECOND_COUNT_MULT = 0.78;
+export const AWAKENING_THIRD_COUNT_MULT = 0.48;
+export const AWAKENING_THIRD_PLUS_MULT = 0.05; // 4th+ strong attenuation (kept exported name for backward compatibility)
+export const AWAKENING_FOURTH_PLUS_MULT = AWAKENING_THIRD_PLUS_MULT;
 export const AWAKENING_MAX_VALID_PER_TEAM = 4;
-export const AWAKENING_BASE_ELIGIBLE_PROB = 0.0026;
-export const AWAKENING_MAX_CANDIDATE_PROB = 0.028;
+export const AWAKENING_BASE_ELIGIBLE_PROB = 0.0033;
+export const AWAKENING_MAX_CANDIDATE_PROB = 0.042;
+
+export function getAwakeningTierRateMultiplier(baseOvr: number): number {
+  if (baseOvr >= AWAKENING_SUPERSTAR_OVR_THRESHOLD) {
+    return AWAKENING_SUPERSTAR_RATE_MULT; // 88+: 0.04 (1/25)
+  }
+  if (baseOvr >= 85) return 0.75; // 85..87: solid starter
+  if (baseOvr >= 82) return 1.35; // 82..84: mid-table core / key gem
+  if (baseOvr >= 80) return 1.5; // 80..81: high-upside rotation gem
+  return 1.75; // <=79: raw diamond gem
+}
+
+export function getAwakeningExpectedGainRange(
+  baseOvr: number,
+): { min: number; max: number } {
+  const maxAllowed = Math.max(0, AWAKENING_OVR_HARD_CAP - baseOvr);
+  if (maxAllowed < AWAKENING_MIN_GAIN) return { min: 0, max: 0 };
+  if (baseOvr >= AWAKENING_SUPERSTAR_OVR_THRESHOLD) {
+    const cap = Math.min(AWAKENING_SUPERSTAR_MAX_GAIN, maxAllowed);
+    return { min: cap, max: cap };
+  }
+  if (baseOvr <= 79) return { min: 5, max: Math.min(8, maxAllowed) };
+  if (baseOvr <= 81) return { min: 4, max: Math.min(7, maxAllowed) };
+  if (baseOvr <= 84) return { min: 3, max: Math.min(6, maxAllowed) };
+  return { min: 2, max: Math.min(4, maxAllowed) };
+}
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -71,9 +100,9 @@ function pickWeightedInt(
 }
 
 /**
- * Rolls the permanent OVR gain (+2..+7) conditioned on the player's base OVR.
- * - baseOvr >= 89: strictly +2 (capped at 96)
- * - Lower OVR gems have wider ceiling up to +7; 85..88 stars grow +2..+4.
+ * Rolls the permanent OVR gain (+2..+8) conditioned on the player's base OVR.
+ * - baseOvr >= 88: strictly +2 (capped at 94)
+ * - Low/mid OVR gems (<=84) enjoy substantially larger breakthrough ceilings (+3..+8).
  */
 export function rollAwakeningOvrGain(
   baseOvr: number,
@@ -88,38 +117,33 @@ export function rollAwakeningOvrGain(
   }
 
   let table: [number, number][];
-  if (baseOvr <= 77) {
+  if (baseOvr <= 79) {
+    table = [
+      [5, 20],
+      [6, 35],
+      [7, 30],
+      [8, 15],
+    ];
+  } else if (baseOvr <= 81) {
     table = [
       [4, 24],
       [5, 36],
       [6, 26],
       [7, 14],
     ];
-  } else if (baseOvr <= 81) {
-    table = [
-      [3, 28],
-      [4, 38],
-      [5, 24],
-      [6, 10],
-    ];
   } else if (baseOvr <= 84) {
     table = [
-      [2, 26],
-      [3, 40],
-      [4, 24],
-      [5, 10],
-    ];
-  } else if (baseOvr <= 86) {
-    table = [
-      [2, 48],
-      [3, 38],
-      [4, 14],
+      [3, 22],
+      [4, 38],
+      [5, 28],
+      [6, 12],
     ];
   } else {
-    // 87..88
+    // 85..87
     table = [
-      [2, 72],
-      [3, 28],
+      [2, 35],
+      [3, 45],
+      [4, 20],
     ];
   }
 
@@ -443,20 +467,20 @@ export function computeAwakeningCandidateProbability(params: {
 
   // 2a. Neighbor synergy links
   if (syn) {
-    if (syn.neighborBonus >= 3) utilMult *= 1.42;
-    else if (syn.neighborBonus >= 2) utilMult *= 1.2;
-    else if (syn.neighborBonus === 1) utilMult *= 0.96;
-    else utilMult *= 0.55;
+    if (syn.neighborBonus >= 3) utilMult *= 1.45;
+    else if (syn.neighborBonus >= 2) utilMult *= 1.25;
+    else if (syn.neighborBonus === 1) utilMult *= 0.98;
+    else utilMult *= 0.5;
   } else if (hasSynergyContext) {
-    utilMult *= 0.55;
+    utilMult *= 0.5;
   }
 
   // 2b. Manager trait compatibility
   const mgrFit = evaluateManagerPlayerSynergy(player, managerTraitId);
   if (mgrFit.isMatch) {
-    utilMult *= 1.36;
+    utilMult *= 1.4;
   } else if (managerTraitId !== null) {
-    utilMult *= 0.78;
+    utilMult *= 0.75;
   }
 
   // 2c. Morale
@@ -482,20 +506,17 @@ export function computeAwakeningCandidateProbability(params: {
 
   // 2e. Position fit (natural role vs forced out-of-position)
   if (positionPenalty === 0) {
-    utilMult *= 1.2;
+    utilMult *= 1.22;
   } else if (positionPenalty >= -3) {
     utilMult *= 0.85;
   } else if (positionPenalty >= -8) {
-    utilMult *= 0.38;
+    utilMult *= 0.35;
   } else {
     utilMult *= 0.14;
   }
 
-  // 3) Tier rarity (OVR 89+ ultra-rare <= 1/25)
-  const tierMult =
-    player.ovr >= AWAKENING_SUPERSTAR_OVR_THRESHOLD
-      ? AWAKENING_SUPERSTAR_RATE_MULT
-      : 1.0;
+  // 3) Tier multiplier (<=79 x1.75, 80..81 x1.50, 82..84 x1.35, 85..87 x0.75, 88+ x0.04)
+  const tierMult = getAwakeningTierRateMultiplier(player.ovr);
 
   const finalProb = clamp(
     AWAKENING_BASE_ELIGIBLE_PROB *
@@ -560,13 +581,16 @@ export function evaluatePostMatchAwakening(
   const alreadyCount = Object.keys(existingAwakenedPlayers).length;
   if (alreadyCount >= AWAKENING_MAX_VALID_PER_TEAM) return none;
 
-  // Team-level count scaling: 1st x1.00, 2nd x0.75, 3rd+ x0.06 near-zero attenuation
+  // Team-level count scaling for 0~3 players/season:
+  // 1st x1.00, 2nd x0.78, 3rd x0.48, 4th+ x0.05 strong attenuation
   const teamCountMult =
     alreadyCount === 0
       ? 1.0
       : alreadyCount === 1
         ? AWAKENING_SECOND_COUNT_MULT
-        : AWAKENING_THIRD_PLUS_MULT;
+        : alreadyCount === 2
+          ? AWAKENING_THIRD_COUNT_MULT
+          : AWAKENING_FOURTH_PLUS_MULT;
 
   const coachMult =
     staffCoachId === 'sys_potential_dev' ? STAFF_COACH_DEV_AWAKENING_MULT : 1.0;
@@ -605,13 +629,14 @@ export function evaluatePostMatchAwakening(
   // Evaluate candidates in order of highest match rating so top performer gets first crack
   const candidates = allPlayers
     .filter((p) => {
-      if (p.isLegend) return false; // Hard guard: Legends 0%
+      if (p.isLegend) return false; // Hard guard: Era Classics 0%
       if (p.awakening || existingAwakenedPlayers[p.id]) return false;
       if (p.ovr >= AWAKENING_OVR_HARD_CAP) return false;
       const mins = minutesByPlayerId[p.id] ?? 0;
       if (mins < 45) return false;
       const rating = ratingsByPlayerId[p.id] ?? 0;
-      if (rating < 7.4) return false;
+      const minRating = p.ovr <= 81 ? 7.3 : 7.4;
+      if (rating < minRating) return false;
       const st = allPlayerStats[p.id];
       const apps = st?.appearances ?? matchPlayedNumber;
       if (apps < AWAKENING_MIN_APPEARANCES) return false;
@@ -712,3 +737,133 @@ export function evaluatePostMatchAwakening(
 
   return none;
 }
+
+export interface DraftAwakeningPotentialHint {
+  level: 'high' | 'good';
+  shortLabel: string; // '포텐↑' | '육성'
+  expectedGainText: string; // e.g. '+3~+6'
+  tooltip: string;
+}
+
+/**
+ * Computes a concise, restrained awakening-potential hint for draft candidate cards.
+ * Returns null for Classics (`isLegend`), already-awakened players, or high-OVR stars (`>= 85`)
+ * so cards stay clean and clutter-free.
+ */
+export function evaluateDraftAwakeningPotential(
+  player: Pick<
+    Player,
+    | 'ovr'
+    | 'isLegend'
+    | 'awakening'
+    | 'position'
+    | 'mainPositions'
+    | 'secondaryPositions'
+    | 'playstyles'
+  >,
+  options: {
+    managerTraitId: ManagerTraitId | null;
+    targetSubPosition?: import('../types/player').SubPosition;
+    expectedLinkCount?: number;
+  },
+): DraftAwakeningPotentialHint | null {
+  if (player.isLegend || player.awakening || player.ovr > 84) return null;
+
+  const { managerTraitId, targetSubPosition, expectedLinkCount = 0 } = options;
+  const mgrFit = evaluateManagerPlayerSynergy(
+    player as Player,
+    managerTraitId,
+  );
+  const posFit = targetSubPosition
+    ? evaluatePositionFit(player as Player, targetSubPosition, managerTraitId)
+    : null;
+  const naturalFit = !posFit || posFit.penalty === 0;
+  if (!naturalFit) return null;
+
+  const range = getAwakeningExpectedGainRange(player.ovr);
+  const expectedGainText =
+    range.min === range.max ? `+${range.min}` : `+${range.min}~+${range.max}`;
+
+  const reasons: string[] = [];
+  if (player.ovr <= 79) reasons.push('원석 구간(×1.75)');
+  else if (player.ovr <= 81) reasons.push('고잠재 구간(×1.50)');
+  else reasons.push('중위권 유망(×1.35)');
+  if (mgrFit.isMatch) reasons.push('감독 궁합 ✓');
+  if (expectedLinkCount >= 2) reasons.push(`인접 ${expectedLinkCount}선 ✓`);
+  if (posFit) reasons.push('주포지션 ✓');
+
+  // High tier: low/mid OVR + natural fit + manager match + (2+ links or <=81 raw gem)
+  if (mgrFit.isMatch && (expectedLinkCount >= 2 || player.ovr <= 81)) {
+    return {
+      level: 'high',
+      shortLabel: '포텐↑',
+      expectedGainText,
+      tooltip: `포텐 각성 유망 (예상 ${expectedGainText}) · ${reasons.join(' · ')}`,
+    };
+  }
+
+  // Good tier: low/mid OVR + natural fit + (manager match OR 2+ synergy links OR <=79 raw gem)
+  if (mgrFit.isMatch || expectedLinkCount >= 2 || player.ovr <= 79) {
+    return {
+      level: 'good',
+      shortLabel: '육성',
+      expectedGainText,
+      tooltip: `육성 적합 (예상 ${expectedGainText}) · ${reasons.join(' · ')}`,
+    };
+  }
+
+  return null;
+}
+
+export interface SquadAwakeningReadinessSummary {
+  eligible: boolean;
+  tierLabel: string;
+  expectedGainText: string;
+  checks: { label: string; ok: boolean }[];
+}
+
+/**
+ * Compact 1-line awakening readiness breakdown for PlayerDetailModal.
+ */
+export function evaluateSquadAwakeningReadiness(params: {
+  player: Player;
+  managerTraitId: ManagerTraitId | null;
+  slotSynergy?: PlayerSlotSynergy | null;
+  condition?: PlayerConditionMap[string] | null;
+  positionPenalty?: number;
+}): SquadAwakeningReadinessSummary | null {
+  const { player, managerTraitId, slotSynergy, condition, positionPenalty = 0 } = params;
+  if (player.isLegend || player.awakening || player.ovr >= AWAKENING_SUPERSTAR_OVR_THRESHOLD) {
+    return null;
+  }
+
+  const range = getAwakeningExpectedGainRange(player.ovr);
+  const expectedGainText =
+    range.min === range.max ? `+${range.min}` : `+${range.min}~+${range.max}`;
+  const mgrFit = evaluateManagerPlayerSynergy(player, managerTraitId);
+  const synOk = (slotSynergy?.neighborBonus ?? 0) >= 2;
+  const posOk = positionPenalty === 0;
+  const moraleOk = (condition?.morale ?? 0) >= 0 && !condition?.injury;
+
+  const tierLabel =
+    player.ovr <= 79
+      ? '최고 잠재력 (×1.75)'
+      : player.ovr <= 81
+        ? '높은 잠재력 (×1.50)'
+        : player.ovr <= 84
+          ? '유망 잠재력 (×1.35)'
+          : '표준 잠재력 (×0.75)';
+
+  return {
+    eligible: true,
+    tierLabel,
+    expectedGainText,
+    checks: [
+      { label: '감독 궁합', ok: mgrFit.isMatch },
+      { label: '시너지 +2↑', ok: synOk },
+      { label: '주포지션', ok: posOk },
+      { label: '컨디션·사기', ok: moraleOk },
+    ],
+  };
+}
+

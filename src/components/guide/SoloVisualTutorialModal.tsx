@@ -211,7 +211,7 @@ function Step3Visual() {
               €{sampleBaseM}M <span className="text-slate-400 font-bold">/ €{DRAFT_BUDGET_CAP_M}M</span>
             </span>
             <span className="rounded border border-sky-400/55 bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-black text-sky-200 whitespace-nowrap">
-              프리뷰 레전드 +€{LEGEND_FLAT_DRAFT_COST_M}M → €{sampleProjectedM}M
+              프리뷰 클래식 +€{LEGEND_FLAT_DRAFT_COST_M}M → €{sampleProjectedM}M
             </span>
           </div>
           <span className="inline-flex items-center gap-1 rounded border border-emerald-400/40 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-extrabold text-emerald-200 whitespace-nowrap">
@@ -249,7 +249,7 @@ function Step3Visual() {
           </div>
           <span className="inline-flex items-center gap-1 font-bold text-amber-300 whitespace-nowrap">
             <Crown className="w-3 h-3" />
-            레전드 전원 €{LEGEND_FLAT_DRAFT_COST_M}M 균일가
+            시대별 클래식 전원 €{LEGEND_FLAT_DRAFT_COST_M}M 균일가
           </span>
         </div>
       </div>
@@ -524,10 +524,10 @@ const TUTORIAL_STEPS: TutorialStepSpec[] = [
   {
     id: 'draft',
     shortLabel: '3. 예산·FFP',
-    headline: `예산 €${DRAFT_BUDGET_CAP_M}M · 레전드 €${LEGEND_FLAT_DRAFT_COST_M}M · FFP 주의`,
+    headline: `예산 €${DRAFT_BUDGET_CAP_M}M · 클래식 €${LEGEND_FLAT_DRAFT_COST_M}M · FFP 주의`,
     bullets: [
       `후보를 클릭하면 예산 바와 남은 한도를 실시간 확인할 수 있으며, 아낀 예산은 시즌 이적 자금으로 이월됩니다.`,
-      '레전드·슈퍼스타를 과도하게 모아 예산을 초과하면 FFP 1·2단계 제재(케미·사기·이적 제한·점수 감점)가 적용되니 균형 있게 구성하세요.',
+      '시대별 클래식(60s~10s)·슈퍼스타를 과도하게 모아 예산을 초과하면 FFP 1·2단계 제재가 적용되니 균형 있게 구성하세요.',
     ],
     visual: <Step3Visual />,
   },
@@ -544,10 +544,10 @@ const TUTORIAL_STEPS: TutorialStepSpec[] = [
   {
     id: 'growth',
     shortLabel: '5. 코치·각성',
-    headline: '반환점 수석 코치 & 잘 살려 쓴 선수의 포텐 각성',
+    headline: '반환점 수석 코치 & 저·중 OVR 포텐 각성(시즌 0~3명)',
     bullets: [
       '2차 이적시장 진입 시 추천 수석 코치 3명 중 1명을 선임해 후반기 전력을 보강할 수 있습니다(FFP 제재와 무관하게 선임 가능).',
-      '실전 활약과 시너지·감독 궁합·컨디션·제 포지션 기용을 잘 챙긴 선수(레전드 제외)는 영구 포텐 각성이 발동합니다.',
+      '실전 활약과 시너지·감독 궁합·컨디션·제 포지션 기용을 잘 챙긴 저·중 OVR 현역(클래식 제외)은 시즌 최대 3명까지 영구 포텐 각성이 발동합니다.',
     ],
     visual: <Step5Visual />,
   },

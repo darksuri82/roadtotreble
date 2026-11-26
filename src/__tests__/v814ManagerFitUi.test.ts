@@ -180,12 +180,12 @@ describe('v8.14 Manager Fit Detail (Single Source of Truth across all 14 traits)
     expect(direct.effect.baseAttDelta).toBeCloseTo(3.0, 2);
   });
 
-  it('unifies personal +1 and team scaling criteria for galactico_manager (OVR 89+/Legend, max 4) and total_football (3+ positions, max 5)', () => {
+  it('unifies personal +1 and team scaling criteria for galactico_manager (OVR 87+/Classic, max 4) and total_football (3+ positions, max 5)', () => {
     const galacticoStarters: (Player | null)[] = [
-      makePlayer({ id: 'g1', ovr: 92, playstyles: ['poacher'] }), // match (89+)
-      makePlayer({ id: 'g2', ovr: 89, playstyles: ['stopper_cb'] }), // match (89+)
-      makePlayer({ id: 'g3', ovr: 88, playstyles: ['complete_forward'] }), // NO match (<89)
-      makePlayer({ id: 'g4', ovr: 85, isLegend: true, playstyles: ['stopper_cb'] }), // match (legend)
+      makePlayer({ id: 'g1', ovr: 92, playstyles: ['poacher'] }), // match (87+)
+      makePlayer({ id: 'g2', ovr: 87, playstyles: ['stopper_cb'] }), // match (87+)
+      makePlayer({ id: 'g3', ovr: 86, playstyles: ['complete_forward'] }), // NO match (<87)
+      makePlayer({ id: 'g4', ovr: 85, isLegend: true, playstyles: ['stopper_cb'] }), // match (classic)
     ];
     const gDetail = evaluateManagerFitDetail({
       traitId: 'galactico_manager',

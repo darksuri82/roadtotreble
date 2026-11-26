@@ -26,6 +26,22 @@ export const LEGEND_PLAYERS: Player[] = (legendPlayersRaw as Player[]).map((p) =
   };
 });
 export const ALL_PLAYERS: Player[] = [...ACTIVE_PLAYERS, ...LEGEND_PLAYERS];
+
+/** O(1) canonical lookup maps separating active and classic pools to avoid name collisions (e.g. active Modric vs 10s Modric). */
+export const PLAYER_BY_ID_MAP: Map<string, Player> = new Map(
+  ALL_PLAYERS.map((p) => [p.id, p]),
+);
+export const ACTIVE_BY_NAME_MAP: Map<string, Player> = new Map(
+  ACTIVE_PLAYERS.map((p) => [p.name, p]),
+);
+export const CLASSIC_BY_NAME_MAP: Map<string, Player> = new Map(
+  LEGEND_PLAYERS.map((p) => [p.name, p]),
+);
+
+export function getPlayerById(id: string): Player | undefined {
+  return PLAYER_BY_ID_MAP.get(id);
+}
+
 export const LEAGUES: LeagueData[] = (leaguesRaw as LeagueData[]).map((league) => ({
   ...league,
   clubs: league.clubs.map((club) => ({
@@ -320,8 +336,10 @@ export function buildAiClubRoster(
   const blockedIds = excludeIds ?? new Set<string>();
   const blockedNames = new Set<string>();
   if (blockedIds.size > 0) {
-    for (const p of ALL_PLAYERS) {
-      if (blockedIds.has(p.id)) blockedNames.add(p.name);
+    for (const id of blockedIds) {
+      const p = PLAYER_BY_ID_MAP.get(id);
+      // Only active player names block AI generated fallback names (10s classic twins remain separate players)
+      if (p && !p.isLegend) blockedNames.add(p.name);
     }
   }
 
@@ -425,8 +443,9 @@ export function pickReplacementForAiClub(params: {
   const blockedIds = new Set<string>([...excludeIds, ...rosterIds, departedPlayer.id]);
   const blockedNames = new Set<string>(currentRoster.map((p) => p.name));
   blockedNames.add(departedPlayer.name);
-  for (const p of ALL_PLAYERS) {
-    if (blockedIds.has(p.id)) blockedNames.add(p.name);
+  for (const id of blockedIds) {
+    const p = PLAYER_BY_ID_MAP.get(id);
+    if (p && !p.isLegend) blockedNames.add(p.name);
   }
 
   const targetSub = departedPlayer.mainPositions[0] ?? 'CM';
@@ -574,10 +593,13 @@ export function buildAiClubSquad16(params: {
 
   const poolMap = new Map<string, Player>();
   const usedNames = new Set<string>();
-  for (const p of ALL_PLAYERS) {
-    if (globalBlocked.has(p.id) || userOwned.has(p.id)) {
-      usedNames.add(p.name);
-    }
+  for (const id of globalBlocked) {
+    const p = PLAYER_BY_ID_MAP.get(id);
+    if (p && !p.isLegend) usedNames.add(p.name);
+  }
+  for (const id of userOwned) {
+    const p = PLAYER_BY_ID_MAP.get(id);
+    if (p && !p.isLegend) usedNames.add(p.name);
   }
 
   // 1) Include live season roster players first (reflects mid-season trade arrivals!)

@@ -192,9 +192,10 @@ export interface ChemistryResult {
 export interface RouletteReelResult {
   reelIndex: number; // 0, 1, 2
   isLegendSlot: boolean;
+  classicEra?: import('./player').ClassicEra;
   club: Club | null;
   leagueId: LeagueId | 'LEGEND';
-  candidates: Player[]; // 2..3 position-compatible players per rolled club or Legend slot
+  candidates: Player[]; // 2..3 position-compatible players per rolled club or Classic slot
 }
 
 export type ManagerGenderId = 'male' | 'female';
@@ -368,6 +369,7 @@ export interface TradeHistoryRecord {
 export interface TransferClubOffer {
   reelIndex: number; // 0, 1, 2
   isLegendSlot: boolean;
+  classicEra?: import('./player').ClassicEra;
   club: Club | null;
   leagueId: LeagueId | 'LEGEND';
   clubRank: number;

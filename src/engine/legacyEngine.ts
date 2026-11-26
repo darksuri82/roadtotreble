@@ -33,7 +33,13 @@ import { getPlayerAttributes } from './attributeEngine';
 import { applyAwakeningToPlayer, isValidAwakeningRecord } from './awakeningEngine';
 import { resolveFfpPenaltyTier } from './budgetEngine';
 import { didUserWinCup, getUserCupResultLabel } from './cupEngine';
-import { ACTIVE_PLAYERS, getLeagueById, LEGEND_PLAYERS } from './dataLoader';
+import {
+  ACTIVE_BY_NAME_MAP,
+  ACTIVE_PLAYERS,
+  CLASSIC_BY_NAME_MAP,
+  getLeagueById,
+  PLAYER_BY_ID_MAP,
+} from './dataLoader';
 import { USER_CLUB_ID } from './matchEngine';
 import { getUserRank } from './standingsEngine';
 import { didUserWinUcl, getUserUclResultLabel } from './uclEngine';
@@ -382,14 +388,14 @@ export function computeSeasonScore(
 
   // Underdog Bonus (lower avg OVR achieving Top 4 / Title / UCL deep run)
   let underdogBonus = 0;
-  if (teamAvgOvr < 85 && (finalLeagueRank <= 4 || wonCup || wonUcl)) {
-    const ovrGap = Math.max(0, 85 - teamAvgOvr);
+  if (teamAvgOvr < 84 && (finalLeagueRank <= 4 || wonCup || wonUcl)) {
+    const ovrGap = Math.max(0, 84 - teamAvgOvr);
     const achievementMult =
       wonUcl || wonLeague ? 145 : finalLeagueRank <= 4 ? 55 : 35;
     const baseUnderdog = Math.round(ovrGap * achievementMult);
     const miracleBonus =
-      (wonUcl || wonLeague) && teamAvgOvr <= 82
-        ? Math.round((82 - teamAvgOvr) * 220)
+      (wonUcl || wonLeague) && teamAvgOvr <= 81
+        ? Math.round((81 - teamAvgOvr) * 220)
         : 0;
     underdogBonus = Math.min(1750, baseUnderdog + miracleBonus);
   }
@@ -413,8 +419,8 @@ export function computeSeasonScore(
     Math.min(
       3400,
       Math.round(
-        Math.max(0, teamAvgOvr - 80) * 165 +
-          Math.max(0, effectiveStarterOvr - 82) * 105,
+        Math.max(0, teamAvgOvr - 81) * 165 +
+          Math.max(0, effectiveStarterOvr - 83) * 105,
       ),
     ),
   );
@@ -695,7 +701,7 @@ export function evaluateAchievements(
   }
 
   // 16-17: Fairytale
-  if (wonLeague && teamAvgOvr <= 82) {
+  if (wonLeague && teamAvgOvr <= 81) {
     earned.add('fairytale_leicester');
   }
   const fullSquad = [...starters, ...bench].filter(
@@ -1111,18 +1117,16 @@ function rebuildPlayerFromLegacyMember(
   leagueId: LeagueId,
   clubName: string,
 ): Player {
-  const byId =
-    LEGEND_PLAYERS.find((p) => p.id === m.id) ??
-    ACTIVE_PLAYERS.find((p) => p.id === m.id);
+  const byId = PLAYER_BY_ID_MAP.get(m.id);
   if (byId) {
     if (m.awakening && isValidAwakeningRecord(byId, m.awakening)) {
       return applyAwakeningToPlayer(byId, m.awakening);
     }
     return { ...byId, attrs: getPlayerAttributes(byId) };
   }
-  const byName =
-    LEGEND_PLAYERS.find((p) => p.name === m.name) ??
-    ACTIVE_PLAYERS.find((p) => p.name === m.name);
+  const byName = m.isLegend
+    ? CLASSIC_BY_NAME_MAP.get(m.name)
+    : ACTIVE_BY_NAME_MAP.get(m.name);
   if (byName) {
     if (m.awakening && isValidAwakeningRecord(byName, m.awakening)) {
       return applyAwakeningToPlayer(byName, m.awakening);
@@ -1166,6 +1170,7 @@ function rebuildPlayerFromLegacyMember(
             : ['box_to_box'],
     scoutNote: '명예의 전당 레거시 스쿼드 복원 선수',
     isLegend: m.isLegend,
+    ...(m.classicEra ? { classicEra: m.classicEra } : {}),
   };
   return { ...synthetic, attrs: getPlayerAttributes(synthetic) };
 }

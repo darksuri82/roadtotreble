@@ -5,8 +5,9 @@ import staffCoachModalSrc from '../components/common/StaffCoachHireModal.tsx?raw
 import tacticAdaptModalSrc from '../components/common/TacticalAdaptationModal.tsx?raw';
 import systemGuideSrc from '../components/guide/SystemGuideModal.tsx?raw';
 import {
+  AWAKENING_FOURTH_PLUS_MULT,
   AWAKENING_SECOND_COUNT_MULT,
-  AWAKENING_THIRD_PLUS_MULT,
+  AWAKENING_THIRD_COUNT_MULT,
   computeAwakeningCandidateProbability,
   evaluatePostMatchAwakening,
 } from '../engine/awakeningEngine';
@@ -73,11 +74,11 @@ function makeSeededRng(seed: number): () => number {
 }
 
 describe('v9.2 Balance Calibration, Mobile Scroll & Pre-v9.0 Reset', () => {
-  it('1 & 2) prices Legends at lower-Superstar tier (€135M) and enforces strengthened FFP Tier 1 & Tier 2 penalties', () => {
+  it('1 & 2) prices Era Classics at unified €130M and enforces strengthened FFP Tier 1 & Tier 2 penalties', () => {
     const ovr90 = computePlayerDraftCostM({ ovr: 90, isLegend: false });
     const ovr91 = computePlayerDraftCostM({ ovr: 91, isLegend: false });
     const ovr92 = computePlayerDraftCostM({ ovr: 92, isLegend: false });
-    expect(LEGEND_FLAT_DRAFT_COST_M).toBe(135);
+    expect(LEGEND_FLAT_DRAFT_COST_M).toBe(130);
     expect(LEGEND_FLAT_DRAFT_COST_M).toBeGreaterThan(ovr90);
     expect(LEGEND_FLAT_DRAFT_COST_M).toBeLessThanOrEqual(ovr91);
     expect(LEGEND_FLAT_DRAFT_COST_M).toBeLessThan(ovr92);
@@ -531,7 +532,7 @@ describe('v9.2 Balance Calibration, Mobile Scroll & Pre-v9.0 Reset', () => {
 
     // 50-season simulation across realistic 42-match seasons (38R + 4 Cup/UCL matches)
     const SEASONS = 50;
-    const dist = { zero: 0, one: 0, two: 0, threePlus: 0 };
+    const dist = { zero: 0, one: 0, two: 0, three: 0, fourPlus: 0 };
     let totalAwakened = 0;
     let highUtilAwakenedCount = 0;
     let lowUtilAwakenedCount = 0;
@@ -657,17 +658,20 @@ describe('v9.2 Balance Calibration, Mobile Scroll & Pre-v9.0 Reset', () => {
       if (cnt === 0) dist.zero += 1;
       else if (cnt === 1) dist.one += 1;
       else if (cnt === 2) dist.two += 1;
-      else dist.threePlus += 1;
+      else if (cnt === 3) dist.three += 1;
+      else dist.fourPlus += 1;
     }
 
     console.log(
-      `[v9.2 Awakening 50-Season Sim] 0명=${dist.zero}(${(dist.zero * 2).toFixed(0)}%) | 1명=${dist.one}(${(dist.one * 2).toFixed(0)}%) | 2명=${dist.two}(${(dist.two * 2).toFixed(0)}%) | 3명+=${dist.threePlus}(${(dist.threePlus * 2).toFixed(0)}%) | 평균=${(totalAwakened / SEASONS).toFixed(2)}명/시즌 | 고활용=${highUtilAwakenedCount} vs 저활용=${lowUtilAwakenedCount}`,
+      `[v9.3 Awakening 50-Season Sim] 0명=${dist.zero}(${(dist.zero * 2).toFixed(0)}%) | 1명=${dist.one}(${(dist.one * 2).toFixed(0)}%) | 2명=${dist.two}(${(dist.two * 2).toFixed(0)}%) | 3명=${dist.three}(${(dist.three * 2).toFixed(0)}%) | 4명+=${dist.fourPlus}(${(dist.fourPlus * 2).toFixed(0)}%) | 평균=${(totalAwakened / SEASONS).toFixed(2)}명/시즌 | 고활용=${highUtilAwakenedCount} vs 저활용=${lowUtilAwakenedCount}`,
     );
 
     expect(AWAKENING_SECOND_COUNT_MULT).toBeLessThan(1);
-    expect(AWAKENING_THIRD_PLUS_MULT).toBeLessThanOrEqual(0.1);
-    expect(dist.threePlus).toBeLessThanOrEqual(4); // <= 8% (near-zero)
-    expect(dist.zero + dist.one + dist.two).toBeGreaterThanOrEqual(46);
+    expect(AWAKENING_THIRD_COUNT_MULT).toBeGreaterThanOrEqual(0.4);
+    expect(AWAKENING_FOURTH_PLUS_MULT).toBeLessThanOrEqual(0.1);
+    expect(dist.three).toBeGreaterThanOrEqual(3); // 3rd awakening genuinely reachable
+    expect(dist.fourPlus).toBeLessThanOrEqual(3); // <= 6% (4+ near-zero)
+    expect(dist.zero + dist.one + dist.two + dist.three).toBeGreaterThanOrEqual(47);
     expect(highUtilAwakenedCount).toBeGreaterThan(lowUtilAwakenedCount * 3);
   });
 

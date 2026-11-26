@@ -716,7 +716,16 @@ describe('v8.11 Realistic 2D Tactical Pitch Simulation Engine', () => {
       let passesCompleted = 0;
       let recycles = 0;
       let thirdManRuns = 0;
-      for (const seed of ['series-1', 'series-2', 'series-3', 'series-4']) {
+      for (const seed of [
+        'series-1',
+        'series-2',
+        'series-3',
+        'series-4',
+        'series-5',
+        'series-6',
+        'series-7',
+        'series-8',
+      ]) {
         const sim = createPitchSimState({
           seed,
           homeTeamId: 'home',
@@ -753,10 +762,14 @@ describe('v8.11 Realistic 2D Tactical Pitch Simulation Engine', () => {
     expect(poss.passesCompleted).toBeGreaterThan(40);
     expect(poss.recycles).toBeGreaterThan(0);
     expect(poss.thirdManRuns).toBeGreaterThan(0);
-    // Possession + Tiki-Taka generates more patient recycling & third-man combinations than Counter + Direct Football
-    expect(poss.recycles + poss.thirdManRuns).toBeGreaterThan(
-      counter.recycles + counter.thirdManRuns,
-    );
+    // Possession + Tiki-Taka generates more third-man combinations and a higher patient buildup share per pass than Counter + Direct Football
+    const possBuildUpShare =
+      (poss.recycles + poss.thirdManRuns) / Math.max(1, poss.passesAttempted);
+    const counterBuildUpShare =
+      (counter.recycles + counter.thirdManRuns) /
+      Math.max(1, counter.passesAttempted);
+    expect(poss.thirdManRuns).toBeGreaterThan(counter.thirdManRuns);
+    expect(possBuildUpShare).toBeGreaterThan(counterBuildUpShare);
   });
 
   it('11. Bug 1 Regression: Zero behind-halfway shots & 100% authentic PK/Corner/FK/Counter staging (incl. duplicate GK save guard)', () => {

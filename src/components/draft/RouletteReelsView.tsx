@@ -1,6 +1,9 @@
-import { CheckCircle2, Crown, Dices, Link2, Sparkles, Star, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CheckCircle2, Crown, Dices, Flame, Link2, Sparkles, Star, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { PLAYSTYLES } from '../../data/playstyles';
+import { evaluateDraftAwakeningPotential } from '../../engine/awakeningEngine';
+import type { DraftAwakeningPotentialHint } from '../../engine/awakeningEngine';
+import { computePlayerDraftCostM } from '../../engine/budgetEngine';
 import { ALL_CLUBS_WITH_LEAGUE } from '../../engine/dataLoader';
 import {
   evaluatePositionFit,
@@ -12,11 +15,15 @@ import type {
   RouletteReelResult,
 } from '../../types/game';
 import type { LeagueId } from '../../types/league';
-import { LEAGUE_LABELS } from '../../types/player';
+import {
+  getClassicClubSubtitle,
+  getClassicEra,
+  getClassicEraMeta,
+  LEAGUE_LABELS,
+} from '../../types/player';
 import type { Player, SubPosition } from '../../types/player';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { JerseySvg } from '../common/JerseySvg';
-import { computePlayerDraftCostM } from '../../engine/budgetEngine';
 import { PlayerCard } from '../common/PlayerCard';
 
 interface RouletteReelsViewProps {
@@ -168,6 +175,24 @@ export function RouletteReelsView({
   );
   const reelIndices = Array.from({ length: effectiveReelCount }, (_, i) => i);
 
+  const awakeningHintsByPlayerId = useMemo(() => {
+    const map: Record<string, DraftAwakeningPotentialHint | null> = {};
+    for (const reel of reels) {
+      for (const cand of reel.candidates) {
+        map[cand.id] = evaluateDraftAwakeningPotential(cand, {
+          managerTraitId,
+          targetSubPosition,
+          expectedLinkCount: expectedLinksByPlayerId?.[cand.id] ?? 0,
+        });
+      }
+    }
+    return map;
+  }, [reels, managerTraitId, targetSubPosition, expectedLinksByPlayerId]);
+
+  const selectedAwakeningHint = selectedCandidate
+    ? (awakeningHintsByPlayerId[selectedCandidate.id] ?? null)
+    : null;
+
   return (
     <div className="space-y-2">
       {/* Compact Club Roulette Machine */}
@@ -177,9 +202,12 @@ export function RouletteReelsView({
             <Dices className="w-3.5 h-3.5 text-emerald-400" />
             {effectiveReelCount}구단 룰렛 · 구단당 3명
           </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-px text-[10px] font-bold text-amber-300">
+          <span
+            title="60s·70s·80s·90s·00s·10s 시대별 클래식 통합 출현 확률"
+            className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-px text-[10px] font-bold text-amber-300"
+          >
             <Crown className="w-2.5 h-2.5" />
-            LEGEND {legendRatePercent.toFixed(1)}%
+            CLASSIC {legendRatePercent.toFixed(1)}%
           </span>
         </div>
 
@@ -193,6 +221,13 @@ export function RouletteReelsView({
             const isLocked =
               hasSpun && effectiveLockedCount > reelIdx && reels[reelIdx];
             const reelData = isLocked ? reels[reelIdx] : null;
+            const reelClassicEra =
+              reelData && reelData.isLegendSlot
+                ? (reelData.classicEra ?? getClassicEra(reelData.candidates[0]))
+                : null;
+            const reelEraMeta = reelClassicEra
+              ? getClassicEraMeta(reelClassicEra)
+              : null;
             const spinningEntry =
               activePreviewPool[
                 (tick * 7 + reelIdx * 31) % activePreviewPool.length
@@ -205,7 +240,7 @@ export function RouletteReelsView({
                 className={`relative flex flex-col items-center justify-center rounded-lg border px-2 py-1.5 text-center min-h-[54px] sm:min-h-[60px] transition-all duration-200 ${
                   reelData
                     ? reelData.isLegendSlot
-                      ? 'card-legend-glow'
+                      ? (reelEraMeta?.cardClass ?? 'card-legend-glow')
                       : 'border-emerald-500/35 bg-[#121a25]'
                     : animating
                       ? showGoldFlash
@@ -221,11 +256,18 @@ export function RouletteReelsView({
                 {reelData ? (
                   reelData.isLegendSlot ? (
                     <div className="flex flex-col items-center gap-0.5">
-                      <Crown className="w-4 h-4 text-amber-300" />
-                      <span className="font-display text-xs font-bold tracking-wider text-amber-300 leading-none">
-                        LEGEND
+                      <Crown
+                        className="w-4 h-4"
+                        style={{ color: reelEraMeta?.accentHex ?? '#fcd34d' }}
+                      />
+                      <span
+                        className={`font-display text-xs font-bold tracking-wider leading-none ${
+                          reelEraMeta?.ovrTextClass ?? 'text-amber-300'
+                        }`}
+                      >
+                        {reelEraMeta ? `${reelEraMeta.badgeLabel} CLASSIC` : 'CLASSIC'}
                       </span>
-                      <span className="text-[9px] font-semibold text-amber-200/90 leading-none">
+                      <span className="text-[9px] font-semibold text-slate-300 leading-none">
                         단독 1명
                       </span>
                     </div>
@@ -253,7 +295,7 @@ export function RouletteReelsView({
                     <div className="flex flex-col items-center gap-0.5">
                       <Crown className="w-4 h-4 text-amber-300 animate-pulse" />
                       <span className="font-display text-[11px] font-bold text-amber-300">
-                        LEGEND?!
+                        CLASSIC?!
                       </span>
                     </div>
                   ) : (
@@ -319,6 +361,16 @@ export function RouletteReelsView({
                   <span className="truncate text-xs font-extrabold text-white">
                     {selectedCandidate.name}
                   </span>
+                  {selectedCandidate.isLegend && (
+                    <span
+                      className={`rounded px-1 py-px text-[9px] font-black ${
+                        getClassicEraMeta(getClassicEra(selectedCandidate))
+                          .inlineChipClass
+                      }`}
+                    >
+                      {getClassicEra(selectedCandidate) ?? 'CLASSIC'}
+                    </span>
+                  )}
                   <span className="rounded bg-slate-950/85 border border-slate-700/80 px-1.5 py-px text-[10px] font-bold text-slate-200 tabular-nums">
                     {targetSubPosition}{' '}
                     <strong
@@ -346,6 +398,15 @@ export function RouletteReelsView({
                     <span className="inline-flex items-center gap-0.5 rounded border border-emerald-400/45 bg-emerald-500/15 px-1 py-px text-[9px] font-extrabold text-emerald-200">
                       <Link2 className="w-2.5 h-2.5 text-emerald-300" />
                       인접+{previewSlotSynergy.neighborBonus}
+                    </span>
+                  )}
+                  {selectedAwakeningHint && (
+                    <span
+                      title={selectedAwakeningHint.tooltip}
+                      className="inline-flex items-center gap-0.5 rounded border border-rose-400/45 bg-rose-500/15 px-1 py-px text-[9px] font-extrabold text-rose-200"
+                    >
+                      <Flame className="w-2.5 h-2.5 text-rose-300" />
+                      각성 유망 {selectedAwakeningHint.expectedGainText}
                     </span>
                   )}
                   <span
@@ -406,7 +467,9 @@ export function RouletteReelsView({
                 </span>
                 <span className="text-slate-600">·</span>
                 <span className="text-slate-300">
-                  {selectedCandidate.isLegend ? 'ICON' : selectedCandidate.club}
+                  {selectedCandidate.isLegend
+                    ? getClassicClubSubtitle(selectedCandidate)
+                    : selectedCandidate.club}
                 </span>
                 {selectedCandidate.playstyles.map((ps) => (
                   <span
@@ -452,6 +515,9 @@ export function RouletteReelsView({
             </button>
             {reels.map((reel) => {
               const active = activeClubTab === reel.reelIndex;
+              const reelEra = reel.isLegendSlot
+                ? (reel.classicEra ?? getClassicEra(reel.candidates[0]))
+                : null;
               return (
                 <button
                   key={reel.reelIndex}
@@ -470,7 +536,7 @@ export function RouletteReelsView({
                   {reel.isLegendSlot ? (
                     <>
                       <Crown className="w-2.5 h-2.5" />
-                      LEGEND
+                      {reelEra ? `${reelEra} CLASSIC` : 'CLASSIC'}
                     </>
                   ) : (
                     <>
@@ -488,86 +554,73 @@ export function RouletteReelsView({
 
           {/* Ultra-Compact Grouped Club Candidate Sections */}
           <div className="space-y-1.5">
-            {visibleReels.map((reel) => (
-              <div
-                key={reel.reelIndex}
-                className={`rounded-xl border p-1.5 sm:p-2 space-y-1.5 ${
-                  reel.isLegendSlot
-                    ? 'border-amber-400/60 bg-gradient-to-br from-amber-950/35 via-[#15120c] to-amber-950/20 shadow-[0_0_16px_rgba(251,191,36,0.12)]'
-                    : 'border-slate-800 bg-[#0d131c]'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-1.5 px-0.5">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    {reel.isLegendSlot ? (
-                      <Crown className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                    ) : (
-                      reel.club && (
-                        <JerseySvg
-                          primaryColor={reel.club.primaryColor}
-                          secondaryColor={reel.club.secondaryColor}
-                          pattern={reel.club.pattern}
-                          size={16}
+            {visibleReels.map((reel) => {
+              const reelEra = reel.isLegendSlot
+                ? (reel.classicEra ?? getClassicEra(reel.candidates[0]))
+                : null;
+              const eraMeta = reelEra ? getClassicEraMeta(reelEra) : null;
+              return (
+                <div
+                  key={reel.reelIndex}
+                  className={`rounded-xl border p-1.5 sm:p-2 space-y-1.5 ${
+                    reel.isLegendSlot
+                      ? (eraMeta?.reelSectionClass ??
+                        'border-amber-400/60 bg-gradient-to-br from-amber-950/35 via-[#15120c] to-amber-950/20')
+                      : 'border-slate-800 bg-[#0d131c]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1.5 px-0.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {reel.isLegendSlot ? (
+                        <Crown
+                          className="w-3.5 h-3.5 shrink-0"
+                          style={{ color: eraMeta?.accentHex ?? '#fcd34d' }}
                         />
-                      )
-                    )}
+                      ) : (
+                        reel.club && (
+                          <JerseySvg
+                            primaryColor={reel.club.primaryColor}
+                            secondaryColor={reel.club.secondaryColor}
+                            pattern={reel.club.pattern}
+                            size={16}
+                          />
+                        )
+                      )}
+                      <span
+                        className={`truncate text-[11px] font-bold ${
+                          reel.isLegendSlot
+                            ? (eraMeta?.ovrTextClass ?? 'text-amber-300')
+                            : 'text-white'
+                        }`}
+                      >
+                        {reel.isLegendSlot
+                          ? `${eraMeta?.fullLabel ?? '시대별 클래식'} 단독 출현`
+                          : reel.club?.name}
+                      </span>
+                      <span className="text-[9.5px] text-slate-500">
+                        {reel.isLegendSlot
+                          ? (reel.candidates[0]?.classicSeasonTag ?? 'CLASSIC')
+                          : LEAGUE_LABELS[reel.leagueId]}
+                      </span>
+                    </div>
                     <span
-                      className={`truncate text-[11px] font-bold ${
-                        reel.isLegendSlot ? 'text-amber-300' : 'text-white'
+                      className={`text-[9.5px] font-semibold shrink-0 ${
+                        reel.isLegendSlot
+                          ? (eraMeta?.ovrTextClass ?? 'text-amber-300/90')
+                          : 'text-slate-500'
                       }`}
                     >
-                      {reel.isLegendSlot
-                        ? '황금 LEGEND 단독 출현'
-                        : reel.club?.name}
-                    </span>
-                    <span className="text-[9.5px] text-slate-500">
-                      {LEAGUE_LABELS[reel.leagueId]}
+                      {reel.isLegendSlot ? '1명' : `${reel.candidates.length}명`}
                     </span>
                   </div>
-                  <span
-                    className={`text-[9.5px] font-semibold shrink-0 ${
-                      reel.isLegendSlot ? 'text-amber-300/90' : 'text-slate-500'
-                    }`}
-                  >
-                    {reel.isLegendSlot ? '1명' : `${reel.candidates.length}명`}
-                  </span>
-                </div>
 
-                {reel.isLegendSlot ? (
-                  <div className="mx-auto max-w-xs">
-                    {reel.candidates.map((player) => {
-                      const pickedBy = takenByPlayerId?.[player.id] ?? null;
-                      return (
-                        <PlayerCard
-                          key={player.id}
-                          player={player}
-                          targetSubPosition={targetSubPosition}
-                          managerTraitId={managerTraitId}
-                          selected={!pickedBy && selectedCandidate?.id === player.id}
-                          disabled={Boolean(pickedBy)}
-                          dense
-                          lockedBadgeLabel={pickedBy}
-                          disableConfirmAction={!canPick}
-                          disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
-                          expectedLinkCount={expectedLinksByPlayerId?.[player.id]}
-                          draftCostM={computePlayerDraftCostM(player)}
-                          onClick={() => handleCandidateCardClick(player)}
-                          onConfirmAction={() => handleConfirmPick(player)}
-                          actionLabel={pickActionLabel}
-                        />
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex gap-1.5 overflow-x-auto pb-0.5 snap-x sm:grid sm:grid-cols-3 sm:gap-1.5 sm:overflow-visible sm:pb-0">
-                    {reel.candidates.map((player) => {
-                      const pickedBy = takenByPlayerId?.[player.id] ?? null;
-                      return (
-                        <div
-                          key={player.id}
-                          className="w-[176px] shrink-0 snap-start sm:w-auto sm:shrink"
-                        >
+                  {reel.isLegendSlot ? (
+                    <div className="mx-auto max-w-xs">
+                      {reel.candidates.map((player) => {
+                        const pickedBy = takenByPlayerId?.[player.id] ?? null;
+                        return (
                           <PlayerCard
+                            key={player.id}
                             player={player}
                             targetSubPosition={targetSubPosition}
                             managerTraitId={managerTraitId}
@@ -579,17 +632,48 @@ export function RouletteReelsView({
                             disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
                             expectedLinkCount={expectedLinksByPlayerId?.[player.id]}
                             draftCostM={computePlayerDraftCostM(player)}
+                            awakeningHint={awakeningHintsByPlayerId[player.id]}
                             onClick={() => handleCandidateCardClick(player)}
                             onConfirmAction={() => handleConfirmPick(player)}
                             actionLabel={pickActionLabel}
                           />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            ))}
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex gap-1.5 overflow-x-auto pb-0.5 snap-x sm:grid sm:grid-cols-3 sm:gap-1.5 sm:overflow-visible sm:pb-0">
+                      {reel.candidates.map((player) => {
+                        const pickedBy = takenByPlayerId?.[player.id] ?? null;
+                        return (
+                          <div
+                            key={player.id}
+                            className="w-[176px] shrink-0 snap-start sm:w-auto sm:shrink"
+                          >
+                            <PlayerCard
+                              player={player}
+                              targetSubPosition={targetSubPosition}
+                              managerTraitId={managerTraitId}
+                              selected={!pickedBy && selectedCandidate?.id === player.id}
+                              disabled={Boolean(pickedBy)}
+                              dense
+                              lockedBadgeLabel={pickedBy}
+                              disableConfirmAction={!canPick}
+                              disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
+                              expectedLinkCount={expectedLinksByPlayerId?.[player.id]}
+                              draftCostM={computePlayerDraftCostM(player)}
+                              awakeningHint={awakeningHintsByPlayerId[player.id]}
+                              onClick={() => handleCandidateCardClick(player)}
+                              onConfirmAction={() => handleConfirmPick(player)}
+                              actionLabel={pickActionLabel}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

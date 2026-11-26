@@ -1,4 +1,4 @@
-import { Crown, Diamond, LayoutGrid, List, Users, X } from 'lucide-react';
+import { Diamond, LayoutGrid, List, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { getClubManager } from '../../data/aiManagers';
 import { FORMATIONS } from '../../data/formations';
@@ -29,6 +29,11 @@ import type {
   PlayerSlotSynergy,
 } from '../../types/game';
 import type { Club, PlayerSeasonStats, TacticId } from '../../types/league';
+import {
+  getCardTier,
+  getClassicEra,
+  getClassicEraMeta,
+} from '../../types/player';
 import type { Player } from '../../types/player';
 import { CountryFlagSvg } from './CountryFlagSvg';
 import { JerseySvg } from './JerseySvg';
@@ -543,10 +548,18 @@ export function ClubSquadModal({
                                 ★
                               </span>
                             )}
-                            {p.isLegend && (
-                              <Crown className="h-3 w-3 text-amber-400 shrink-0" />
-                            )}
-                            {!p.isLegend && p.ovr >= 91 && (
+                            {p.isLegend && (() => {
+                              const eraMeta = getClassicEraMeta(getClassicEra(p));
+                              return (
+                                <span
+                                  className={`rounded px-1 py-px text-[9px] font-black shrink-0 ${eraMeta.badgeClass}`}
+                                  title={eraMeta.fullLabel}
+                                >
+                                  {eraMeta.shortLabel}
+                                </span>
+                              );
+                            })()}
+                            {getCardTier(p) === 'superstar' && (
                               <Diamond className="h-3 w-3 text-cyan-300 shrink-0" />
                             )}
                             {injured && cond?.injury && (

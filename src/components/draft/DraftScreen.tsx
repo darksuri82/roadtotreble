@@ -321,7 +321,7 @@ export function DraftScreen() {
                 ))}
                 {activeTrait.id === 'galactico_manager' && (
                   <span className="rounded border border-cyan-400/40 bg-cyan-500/15 px-1.5 py-0.5 text-[10px] font-bold text-cyan-200">
-                    OVR 90+ · 레전드
+                    OVR 87+ · 클래식
                   </span>
                 )}
                 {activeTrait.id === 'total_football' && (
@@ -345,7 +345,7 @@ export function DraftScreen() {
             align="right"
             guideTab="squad"
             items={[
-              '🟢 구단·전소속 / 🔵 국적 / 🟡 스타일 / 🟣 엘리트 88+ — 모든 연결선 1선 = 1점 통일',
+              '🟢 구단·전소속 / 🔵 국적 / 🟡 스타일 / 🟣 엘리트 86+ — 모든 연결선 1선 = 1점 통일',
               '개인 인접 시너지: 2선(+1) · 4선(+2) · 8선(+3)',
               '★ 감독 궁합(독립): 일치 선수 모두 별도 +1 → 개인 합산 최대 +4 OVR',
               '팀 케미(0~100): 연결선 단조 증가(-1.5~+2.5, 개별 시너지와 중복 차단 후 팀 조직력 최대 +0.8 추가)',

@@ -60,7 +60,10 @@ import type {
   TransferTargetPlayer,
 } from '../../types/game';
 import {
+  formatPlayerRecordName,
   getCardTier,
+  getClassicEra,
+  getClassicEraMeta,
   LEAGUE_LABELS,
   type Player,
   type Position,
@@ -1490,20 +1493,33 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                             </div>
                           </div>
                         ) : offer.isLegendSlot ? (
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-400 text-slate-950">
-                              <Crown className="h-5 w-5" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-black text-amber-300">
-                                👑 LEGEND FA 특별 슬롯
+                          (() => {
+                            const classicP = offer.squad[0]?.player;
+                            const eraMeta = classicP
+                              ? getClassicEraMeta(getClassicEra(classicP))
+                              : null;
+                            return (
+                              <div className="flex items-center gap-2.5">
+                                <div
+                                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[11px] font-black ${
+                                    eraMeta?.badgeClass ?? 'bg-amber-400 text-slate-950'
+                                  }`}
+                                >
+                                  {eraMeta ? eraMeta.shortLabel : <Crown className="h-5 w-5" />}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-black text-amber-300">
+                                    👑 {eraMeta ? `${eraMeta.shortLabel} CLASSIC FA` : 'CLASSIC FA'} 특별 슬롯
+                                  </div>
+                                  <div className="truncate text-[11px] text-amber-100 font-bold">
+                                    {classicP
+                                      ? `${formatPlayerRecordName(classicP)} (OVR ${classicP.ovr})`
+                                      : '클래식 FA'}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="truncate text-[11px] text-amber-100 font-bold">
-                                {offer.squad[0]?.player.name ?? '레전드'} (OVR{' '}
-                                {offer.squad[0]?.player.ovr})
-                              </div>
-                            </div>
-                          </div>
+                            );
+                          })()
                         ) : (
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-2.5">
@@ -1564,11 +1580,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
                 {/* Counter-offer active club indicator is handled cleanly in header & negotiation table */}
 
-                {/* LEGEND FA 1:1 SPECIAL NEGOTIATION PANEL */}
+                {/* CLASSIC FA 1:1 SPECIAL NEGOTIATION PANEL */}
                 {activeClubOffer?.isLegendSlot &&
                   activeClubOffer.squad[0] &&
                   (() => {
                     const legTarget = activeClubOffer.squad[0];
+                    const legEraMeta = getClassicEraMeta(
+                      getClassicEra(legTarget.player),
+                    );
                     const alreadySigned = tm.signedPlayerIds.includes(
                       legTarget.player.id,
                     );
@@ -1576,8 +1595,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                       <div className="rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-950/35 via-[#131926] to-[#0d1320] p-4 sm:p-5 space-y-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-400 text-slate-950 shadow">
-                              <Crown className="h-6 w-6" />
+                            <div
+                              className={`flex h-12 w-12 items-center justify-center rounded-xl text-xs font-black shadow ${legEraMeta.badgeClass}`}
+                            >
+                              {legEraMeta.shortLabel}
                             </div>
                             <div>
                               <div className="flex flex-wrap items-center gap-2">
@@ -1594,6 +1615,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                 >
                                   {legTarget.player.name}
                                 </PlayerNameButton>
+                                <span
+                                  className={`whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-black ${legEraMeta.badgeClass}`}
+                                >
+                                  {legEraMeta.fullLabel}
+                                  {legTarget.player.classicSeasonTag
+                                    ? ` · ${legTarget.player.classicSeasonTag}`
+                                    : ''}
+                                </span>
                                 <span className="whitespace-nowrap rounded bg-amber-400 px-2 py-0.5 text-xs font-black text-slate-950">
                                   OVR {legTarget.player.ovr}
                                 </span>
@@ -1636,7 +1665,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                           >
                             {alreadySigned
                               ? '영입 완료'
-                              : `👑 레전드 FA 영입 제안 (${Math.min(
+                              : `👑 ${legEraMeta.shortLabel} 클래식 FA 영입 제안 (${Math.min(
                                   95,
                                   Math.round(
                                     legTarget.successChance +
