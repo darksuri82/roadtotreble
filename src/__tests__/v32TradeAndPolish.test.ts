@@ -381,9 +381,14 @@ describe('v3.2 / v3.3 NBA-Style Trade System, 16-Player AI Squad (11 Starters + 
 
       let windowsHandled = 0;
       let guard = 0;
-      while (st.phase === 'season' && guard < 12) {
+      while (st.phase === 'season' && guard < 18) {
         guard += 1;
         st = gameReducer(st, { type: 'SIMULATE_TO_NEXT_TRANSFER' });
+        if (st.phase !== 'season' || !st.season) break;
+
+        while ((st.season?.pendingAwakeningAlerts?.length ?? 0) > 0) {
+          st = gameReducer(st, { type: 'DISMISS_AWAKENING_ALERT' });
+        }
         if (st.phase !== 'season' || !st.season) break;
 
         if (st.season.staffCoach?.pendingSelection) {

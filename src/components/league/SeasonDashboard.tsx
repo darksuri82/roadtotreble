@@ -273,8 +273,9 @@ export function SeasonDashboard() {
 
   const handleLiveAutoMatchDone = useCallback(() => {
     // Commit the streamed match result now → updates standings/stats/events/injuries/transfers with zero spoilers
+    setSoloTickerPlaying(false);
     commitLiveMatch();
-  }, [commitLiveMatch]);
+  }, [commitLiveMatch, setSoloTickerPlaying]);
 
   const handleEnterLive2DFromStream = useCallback(
     (minute: number, inPenalties: boolean) => {

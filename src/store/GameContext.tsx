@@ -4640,7 +4640,10 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       if (
         state.season.transferMarket.isOpen ||
         state.season.liveHalftime ||
+        Boolean(state.season.staffCoach?.pendingSelection) ||
         (state.season.pendingInjuryAlerts?.length ?? 0) > 0 ||
+        (state.season.pendingAwakeningAlerts?.length ?? 0) > 0 ||
+        Boolean(state.season.tacticalAdaptation?.pendingAlert) ||
         Boolean(state.season.managerEvents?.activeEvent) ||
         Boolean(state.season.managerEvents?.lastResolution)
       ) {
@@ -5208,6 +5211,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         state.season.transferMarket.isOpen ||
         state.season.liveHalftime ||
         Boolean(state.season.staffCoach?.pendingSelection) ||
+        (state.season.pendingAwakeningAlerts?.length ?? 0) > 0 ||
         Boolean(state.season.managerEvents?.activeEvent) ||
         Boolean(state.season.managerEvents?.lastResolution)
       ) {
@@ -5236,6 +5240,14 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           workingBenchSlots,
           currentSeason.awakenedPlayers,
         );
+        if ((currentSeason.pendingAwakeningAlerts?.length ?? 0) > 0) {
+          return finalizeSeasonIfEnded({
+            ...state,
+            starters: workingStartersSlots,
+            bench: workingBenchSlots,
+            season: currentSeason,
+          });
+        }
       }
 
       while (currentSeason.currentRound < currentSeason.totalRounds) {
@@ -5296,6 +5308,10 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             userRank: getUserRank(currentSeason.standings, USER_CLUB_ID),
             allowedLeagueIds: state.draftLeaguePool,
           });
+          break;
+        }
+
+        if ((currentSeason.pendingAwakeningAlerts?.length ?? 0) > 0) {
           break;
         }
       }

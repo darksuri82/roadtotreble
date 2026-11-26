@@ -470,6 +470,7 @@ export function UclDashboard() {
         tieId: activeKoInfo?.tie.id,
       });
 
+      setSoloTickerPlaying(false);
       commitLiveMatch();
 
       if (mode === 'lp' && playedStage === 'league_phase' && ucl.leaguePhaseRound + 1 < 8) {
@@ -478,7 +479,7 @@ export function UclDashboard() {
         setLpNextRoundRemainingMs(null);
       }
     },
-    [autoPopupMode, ucl, streamCast, commitLiveMatch],
+    [autoPopupMode, ucl, streamCast, commitLiveMatch, setSoloTickerPlaying],
   );
 
   // League Phase round-to-round countdown (pauses cleanly when liveAutoUserPaused or popup blocked)

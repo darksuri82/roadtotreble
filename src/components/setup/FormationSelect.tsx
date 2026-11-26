@@ -479,7 +479,7 @@ export function FormationSelect() {
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-emerald-400" />
                 <h2 className="text-base font-extrabold text-white">
-                  9종 포메이션 선택 (포백 4종 · 쓰리백 5종)
+                  10종 포메이션 선택 (포백 4종 · 쓰리백 6종)
                 </h2>
               </div>
               <span className="text-xs text-slate-400">

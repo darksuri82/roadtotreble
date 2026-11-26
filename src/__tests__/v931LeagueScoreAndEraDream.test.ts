@@ -222,15 +222,19 @@ describe('v9.3.1 League Difficulty Score Calibration, 6-Decade Era Best XI & Gui
       const loaded1 = loadLegacyState();
       const eplLocal = loaded1.hallOfFame.find((e) => e.id === 'local-epl')!;
       const l1Local = loaded1.hallOfFame.find((e) => e.id === 'local-l1')!;
-      // EPL 9500 + 292 = 9792 overtakes Ligue 1 9700 - 222 = 9478!
-      expect(eplLocal.seasonScore.totalScore).toBe(9792);
-      expect(l1Local.seasonScore.totalScore).toBe(9478);
-      expect(loaded1.hofSummaryCache?.bestScore).toBe(9792);
+      const bonusTable = getModernLeagueRankBonusTable();
+      const expectedEpl = 9500 + (bonusTable.find((r) => r.leagueId === 'epl')!.firstPlaceBonus - 1200);
+      const expectedL1 = 9700 + (bonusTable.find((r) => r.leagueId === 'ligue1')!.firstPlaceBonus - 1200);
+      // EPL overtakes Ligue 1 cleanly after league-difficulty recalibration!
+      expect(eplLocal.seasonScore.totalScore).toBe(expectedEpl);
+      expect(l1Local.seasonScore.totalScore).toBe(expectedL1);
+      expect(expectedEpl).toBeGreaterThan(expectedL1);
+      expect(loaded1.hofSummaryCache?.bestScore).toBe(expectedEpl);
 
       // Reloading again stays identical (idempotent)
       const loaded2 = loadLegacyState();
-      expect(loaded2.hallOfFame.find((e) => e.id === 'local-epl')!.seasonScore.totalScore).toBe(9792);
-      expect(loaded2.hallOfFame.find((e) => e.id === 'local-l1')!.seasonScore.totalScore).toBe(9478);
+      expect(loaded2.hallOfFame.find((e) => e.id === 'local-epl')!.seasonScore.totalScore).toBe(expectedEpl);
+      expect(loaded2.hallOfFame.find((e) => e.id === 'local-l1')!.seasonScore.totalScore).toBe(expectedL1);
     } finally {
       (globalThis as unknown as { window?: unknown }).window = prevWindow;
     }
@@ -294,9 +298,15 @@ describe('v9.3.1 League Difficulty Score Calibration, 6-Decade Era Best XI & Gui
     ]);
     expect(ranked.entries[0].id).toBe('global-epl');
     expect(ranked.entries[0].rank).toBe(1);
-    expect(ranked.entries[0].seasonScore).toBe(9842);
+    const bonusTableGlobal = getModernLeagueRankBonusTable();
+    const expectedGlobalEpl =
+      9550 + (bonusTableGlobal.find((r) => r.leagueId === 'epl')!.firstPlaceBonus - 1200);
+    const expectedGlobalL1 =
+      9800 + (bonusTableGlobal.find((r) => r.leagueId === 'ligue1')!.firstPlaceBonus - 1200);
+    expect(ranked.entries[0].seasonScore).toBe(expectedGlobalEpl);
     expect(ranked.entries[1].id).toBe('global-l1');
-    expect(ranked.entries[1].seasonScore).toBe(9578);
+    expect(ranked.entries[1].seasonScore).toBe(expectedGlobalL1);
+    expect(expectedGlobalEpl).toBeGreaterThan(expectedGlobalL1);
   });
 
   it('4) provides 6 dedicated Decade Best XI teams (1960s~2010s) with 0 starter penalty and dedicated Dream Match / HOF access', () => {

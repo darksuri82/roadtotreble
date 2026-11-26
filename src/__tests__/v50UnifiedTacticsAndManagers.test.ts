@@ -46,7 +46,7 @@ function findPlayerByName(name: string): Player {
 
 describe('v5.0 — 9 Formations, Unified Tactical Engine, 4-Pillar Synergy & AI Managers', () => {
   it('1) supports all 9 formations including 4-4-2 Diamond, 3-3-3-1, and 3-5-2 DM with valid slots, links, alternateSubPositions & 2D movement', () => {
-    expect(FORMATION_LIST).toHaveLength(9);
+    expect(FORMATION_LIST).toHaveLength(10);
     const newIds: FormationId[] = ['4-4-2-diamond', '3-3-3-1', '3-5-2-dm'];
 
     for (const id of newIds) {

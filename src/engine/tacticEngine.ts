@@ -218,6 +218,7 @@ const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
     '3-4-3': 0,
     '3-4-2-1': -0.8,
     '3-3-3-1': 0.5,
+    '3-2-4-1': -0.7,
   },
   '4-4-2': {
     '4-3-3': -0.5,
@@ -229,6 +230,7 @@ const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
     '3-4-3': 0.9,
     '3-4-2-1': 0.8,
     '3-3-3-1': 0.6,
+    '3-2-4-1': 0.7,
   },
   '4-4-2-diamond': {
     '4-3-3': -0.8,
@@ -240,6 +242,7 @@ const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
     '3-4-3': -0.9,
     '3-4-2-1': 0.2,
     '3-3-3-1': 0.4,
+    '3-2-4-1': -0.6,
   },
   '4-2-3-1': {
     '4-3-3': -0.8,
@@ -251,6 +254,7 @@ const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
     '3-4-3': 0.8,
     '3-4-2-1': 0,
     '3-3-3-1': 0.6,
+    '3-2-4-1': -0.4,
   },
   '3-5-2': {
     '4-3-3': -0.8,
@@ -262,6 +266,7 @@ const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
     '3-4-3': -0.9,
     '3-4-2-1': 0.8,
     '3-3-3-1': 0.5,
+    '3-2-4-1': 0.3,
   },
   '3-5-2-dm': {
     '4-3-3': -0.4,
@@ -273,6 +278,7 @@ const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
     '3-4-3': -0.5,
     '3-4-2-1': 0.6,
     '3-3-3-1': 1.0,
+    '3-2-4-1': 0.5,
   },
   '3-4-3': {
     '4-3-3': 0,
@@ -284,6 +290,7 @@ const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
     '3-4-3': 0,
     '3-4-2-1': -0.4,
     '3-3-3-1': -0.3,
+    '3-2-4-1': 0.6,
   },
   '3-4-2-1': {
     '4-3-3': 0.8,
@@ -295,6 +302,7 @@ const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
     '3-4-3': 0.4,
     '3-4-2-1': 0,
     '3-3-3-1': 0.3,
+    '3-2-4-1': -0.2,
   },
   '3-3-3-1': {
     '4-3-3': -0.5,
@@ -306,6 +314,19 @@ const FORMATION_MATRIX: Record<FormationId, Record<FormationId, number>> = {
     '3-4-3': 0.3,
     '3-4-2-1': -0.3,
     '3-3-3-1': 0,
+    '3-2-4-1': -0.5,
+  },
+  '3-2-4-1': {
+    '4-3-3': 0.7,
+    '4-4-2': -0.7,
+    '4-4-2-diamond': 0.6,
+    '4-2-3-1': 0.4,
+    '3-5-2': -0.3,
+    '3-5-2-dm': -0.5,
+    '3-4-3': -0.6,
+    '3-4-2-1': 0.2,
+    '3-3-3-1': 0.5,
+    '3-2-4-1': 0,
   },
 };
 
@@ -321,13 +342,13 @@ export function evaluateFormationMatchup(
 
   let possessionDelta = 0;
   if (
-    (myFormation === '3-5-2' || myFormation === '4-4-2-diamond' || myFormation === '3-3-3-1') &&
+    (myFormation === '3-5-2' || myFormation === '4-4-2-diamond' || myFormation === '3-3-3-1' || myFormation === '3-2-4-1') &&
     (oppFormation === '4-3-3' || oppFormation === '4-4-2')
   ) {
     possessionDelta = 3;
   } else if (
     (myFormation === '4-3-3' || myFormation === '4-4-2') &&
-    (oppFormation === '3-5-2' || oppFormation === '4-4-2-diamond' || oppFormation === '3-3-3-1')
+    (oppFormation === '3-5-2' || oppFormation === '4-4-2-diamond' || oppFormation === '3-3-3-1' || oppFormation === '3-2-4-1')
   ) {
     possessionDelta = -3;
   } else if (myFormation === '4-2-3-1' && oppFormation === '4-4-2') {
@@ -417,6 +438,8 @@ export function getBestCounterFormation(oppFormation: FormationId): FormationId 
       return '3-5-2';
     case '3-3-3-1':
       return '3-5-2-dm';
+    case '3-2-4-1':
+      return '4-4-2';
   }
 }
 

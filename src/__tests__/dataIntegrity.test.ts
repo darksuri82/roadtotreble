@@ -18,7 +18,7 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
     const ids = new Set<string>();
     const superstars = ACTIVE_PLAYERS.filter((p) => p.ovr >= 90);
 
-    expect(superstars.length).toBe(10);
+    expect(superstars.length).toBe(11);
     for (const st of superstars) {
       expect(st.isLegend).toBe(false);
       expect(getCardTier(st)).toBe('superstar');
@@ -38,7 +38,7 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
 
     const rodri = ACTIVE_PLAYERS.find((p) => p.name === '로드리')!;
     expect(rodri.club).toBe('FC 바르셀로나');
-    expect(rodri.ovr).toBe(91);
+    expect(rodri.ovr).toBe(90);
 
     const donnarumma = ACTIVE_PLAYERS.find((p) => p.name === '잔루이지 돈나룸마')!;
     expect(donnarumma.club).toBe('맨체스터 시티');
@@ -145,7 +145,7 @@ describe('V4 2026-27 Data Integrity & Multi MainPositions', () => {
   });
 
   it('has 9 formations, 14 manager traits, and exact 96 2026-27 European Top-5 clubs (20/20/20/18/18)', () => {
-    expect(FORMATION_LIST.length).toBe(9);
+    expect(FORMATION_LIST.length).toBe(10);
     expect(MANAGER_TRAIT_LIST.length).toBe(14);
     expect(LEAGUES.length).toBe(5);
 

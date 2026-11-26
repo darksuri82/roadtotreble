@@ -1058,6 +1058,19 @@ export function computeDynamicFormationTarget(params: {
       } else if (isST) {
         x += dir * 0.085;
       }
+    } else if (form === '3-2-4-1') {
+      // Guardiola/W-M box midfield: 3 CB + 2 CDM rest-defense, 2 CAM half-spaces, pure touchline wingers
+      if (isCB) x += dir * (slotIndex === 2 ? -0.01 : 0.025);
+      else if (isCDM) x += dir * (isDeep ? -0.015 : 0.02);
+      else if (isWinger) {
+        x += dir * (isDeep ? 0.035 : 0.08);
+        y += sideSign * 0.05;
+      } else if (isCAM) {
+        x += dir * (isDeep ? 0.02 : 0.065);
+        y += -sideSign * 0.02;
+      } else if (isST) {
+        x += dir * 0.075;
+      }
     }
 
     // Tactic-specific in-possession refinements
@@ -1144,6 +1157,17 @@ export function computeDynamicFormationTarget(params: {
         y += sideSign * 0.015;
       } else if (isWinger || isCAM) {
         x += -dir * 0.065;
+      }
+    } else if (form === '3-2-4-1') {
+      // Morphs into compact 3-2-4-1 / 5-4-1 mid-block as wingers track back & box shields center
+      if (isWinger) {
+        x += -dir * 0.095;
+        y += sideSign * 0.02;
+      } else if (isCDM) {
+        x += -dir * 0.025;
+        y += (0.5 - y) * 0.12;
+      } else if (isCAM) {
+        x += -dir * 0.05;
       }
     } else if (form === '4-3-3') {
       // Morphs into 4-5-1 / 4-1-4-1 defensive block

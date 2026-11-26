@@ -22,7 +22,7 @@ import {
 
 describe('v7.2 Bugfixes & Multiplayer Customization / Reveal / Post-Match Popups', () => {
   it('1) enforces unified position fit penalty across all 9 formations (e.g. RW Lamine Yamal in 3-3-3-1 RAM slot)', () => {
-    expect(FORMATION_LIST).toHaveLength(9);
+    expect(FORMATION_LIST).toHaveLength(10);
 
     for (const fmt of FORMATION_LIST) {
       for (const slot of fmt.slots) {

@@ -5,6 +5,25 @@
 
 ---
 
+## v9.4.0 — 신규 3-2-4-1 포메이션 · 드래프트 프리뷰 연동 포텐 표시 · 각성 즉시 발동 · 전술 파훼/AI 실효 전력 상향 · 26-27 선수단 67명 정밀 재조정
+
+- **드래프트 프리뷰 위치 연동 `포텐↑`/`육성` 개편 & 각성 원리 가시성 강화 (`src/components/draft/RouletteReelsView.tsx`, `src/components/draft/DraftScreen.tsx`, `src/engine/awakeningEngine.ts`, `src/components/guide/SystemGuideModal.tsx`, `src/components/guide/SoloVisualTutorialModal.tsx`)**:
+  - 미선택 후보 카드의 `포텐↑`/`육성` 사전 스포일러 노출을 제거하고, 후보를 클릭해 피치 슬롯에 프리뷰 배치(또는 프리뷰 스왑 이동)했을 때 해당 선발 슬롯의 실제 주포지션 적합도·인접 연결선·감독 궁합 기준으로만 동적 평가·표시되도록 개편(벤치 프리뷰 시 미표시).
+  - 드래프트 상단 바에 `? 각성` 원리 팝오버를 신설하고 시스템 가이드북·비주얼 튜토리얼에 각성 발동 조건(현역 OVR ≤84 · 주포지션 · 인접 2선+ · 감독 궁합 · 평점 7.3+ · 시즌 0~3명 · 클래식 0%)과 프리뷰 판정 기준을 명확히 정리.
+- **신규 10번째 포메이션 `3-2-4-1` (W-M / 박스 미드필드) 추가 (`src/types/game.ts`, `src/data/formations.ts`, `src/engine/tacticEngine.ts`, `src/engine/unifiedTacticsEngine.ts`, `src/engine/pitchTacticalParams.ts`, `src/engine/tacticalMovement.ts`, `src/data/aiManagers.ts`, `src/components/setup/FormationSelect.tsx`)**:
+  - `GK / LCB·CB·RCB / LCDM·RCDM / LW·LAM·RAM·RW / ST` 구조 + 21개 비교차 연결선 + 10×10 대칭 상성표 + 통합 5구역 프로필(중원 밀도 96 · 점유 구조 98) + 2D 피치 공수 전환 움직임 + 빅클럽 AI 감독(마레스카·아르테타·알론소·데 제르비·플릭·콤파니·루이스 엔리케) 선호 포메이션까지 전역 연동(총 10종: 포백 4종 · 쓰리백 6종).
+- **각성 팝업 경기 직후 즉시 노출 수정 (`src/App.tsx`, `src/store/GameContext.tsx`, `src/components/league/SeasonDashboard.tsx`, `src/components/ucl/UclDashboard.tsx`)**:
+  - `AwakeningCelebrationModal`을 FFP 개막 공지 직후 최우선 순위(이적시장·수석 코치·부상 알림보다 우선, `season_end` 페이즈 포함)로 승격하고, `START_SOLO_STREAM_MATCH` 가드 보강·`commitLiveMatch` 시 `soloTickerPlaying` 동기 해제·`SIMULATE_TO_NEXT_TRANSFER` 각성 즉시 중단 처리로 지연 원인을 근본 제거.
+- **내 팀 결산 총 OVR · 실효 OVR 추가 (`src/components/common/TeamSeasonArchiveTab.tsx`)**:
+  - 상단 요약 바에 선발 11인 기본 평균 OVR(16인 스쿼드 평균 툴팁) → 시너지·케미·감독·코치 반영 최종 실효 OVR 및 상승분(`+Δ`) 표시 추가.
+- **전술 파훼 장기 경직성 강화 & AI 빅클럽/중상위권 실효 전력 상향 (`src/engine/tacticalAdaptationEngine.ts`, `src/engine/matchEngine.ts`)**:
+  - 중·하위권 AI 감독 최소 대응력(`0.14 → 0.30`) 및 최대 파훼 타격(`ATT/MID/DEF -3.0/-3.2/-2.8`, `aiXg +0.34`, `userXg -0.30`, 상성 `-1.8`)을 상향하고, 10경기+ 연속 고정 `×1.20` · 14경기+ 연속 고정 `×1.35` 장기 경직성 가중(`ADAPTATION_STREAK_HISTORY_LIMIT = 18`)을 신설.
+  - AI 구단의 깡 OVR은 유지한 채 빅클럽·중상위권(`clubBaseAvg >= 76.5`)의 원클럽 조직력 시너지·AI 감독 코칭·AI 감독 특성 반영률(`14~42% → 24~58%`)·UCL 강팀 보정(`+0.45 → +0.75`)을 상향해 난이도를 소폭 더 팽팽하게 조정(50시즌 EPL 시뮬: 고정 풀오토 57.3점/7.68위 vs 변주 로테이션 70.8점/3.82위 vs 로테이션+코치+각성2인 75.0점/3.02위).
+- **2026-27 시즌 FotMob·실제 평가 기반 5대 리그 67명 정밀 재조정 (`src/data/activePlayers.json`, `src/data/leagues.json`, `src/engine/attributeEngine.ts`, `src/__tests__/v94RebalanceAndUx.test.ts`)**:
+  - 엘리엇 앤더슨(85→87) > 소보슬라이(86) > 흐라벤베르흐(86→84)·수비멘디(86→84)를 비롯해 데클런 라이스(89→90)·하피냐(87→89)·올리세(90→91)·주앙 페드루(84→86)·아르다 귈러(84→86)·파블로비치(85→87)·도니얼 말런(84→86)·페르브뤼헌(84→86)·비카리오(78→84)·만다스(78→83)·시크(79→83)·토뱅(79→83)·카세레스(74→80)·클로스(73→79) 등 5대 리그 67명 OVR·세부 스탯(`attrs`) 및 19개 구단 기본 전력 동기화. 전체 51개 테스트 파일(235개 테스트)·빌드·린트 100% 통과.
+
+---
+
 ## v9.3.1 — 5대 리그·시대별 리그 난이도 우승 점수 보정 · 드림 매치 년도별 베스트 11(60s~10s) 독립 개편 · 가이드북·튜토리얼 전수 동기화
 
 - **5대 리그·시대별 리그 난이도 우승·순위 점수 공정 보정 (`src/types/legacy.ts`, `src/engine/legacyEngine.ts`, `src/data/historicalTeams.ts`, `src/store/GameContext.tsx`, `src/engine/mpLeagueScore.ts`, `src/services/globalRankingService.ts`, `supabase/schema.sql`, `src/components/league/SeasonSummary.tsx`, `src/components/legacy/LegacyHubModal.tsx`, `src/components/multiplayer/league/MpLeagueFinalBoard.tsx`)**:

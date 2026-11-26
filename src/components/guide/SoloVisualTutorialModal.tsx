@@ -528,7 +528,7 @@ const TUTORIAL_STEPS: TutorialStepSpec[] = [
     shortLabel: '3. 예산·FFP',
     headline: `예산 €${DRAFT_BUDGET_CAP_M}M · 클래식 €${LEGEND_FLAT_DRAFT_COST_M}M · FFP 주의`,
     bullets: [
-      `후보를 클릭하면 예산 바·시너지·각성 잠재(포텐↑/육성)를 실시간 확인할 수 있으며, 아낀 예산은 시즌 이적 자금으로 이월됩니다.`,
+      `후보를 클릭해 피치에 프리뷰 배치하면 그 위치의 시너지·예산 변화·각성 잠재(포텐↑/육성)가 즉시 계산되며, 아낀 예산은 이적 자금으로 이월됩니다.`,
       '시대별 클래식(60s~10s)·슈퍼스타를 과도하게 모아 예산을 초과하면 FFP 1·2단계 제재가 적용되니 균형 있게 구성하세요(10s 클래식은 현역과 별도 표기로 공존).',
     ],
     visual: <Step3Visual />,
@@ -538,8 +538,8 @@ const TUTORIAL_STEPS: TutorialStepSpec[] = [
     shortLabel: '4. 전술·파훼',
     headline: `5구역 수싸움 & ${ADAPTATION_HISTORY_WINDOW}경기 반복 시 전술 파훼 타격`,
     bullets: [
-      `같은 포메이션·전술을 약 ${ADAPTATION_HISTORY_WINDOW}경기 연속 반복하면 파훼 경계(${EXPOSURE_DANGER_THRESHOLD}+)에 도달해 상위권·명장 AI에게 큰 경기 타격을 입습니다.`,
-      '상대 스타일에 맞춰 포메이션이나 전술을 한 번만 변주해도 노출도가 즉시 해소됩니다.',
+      `같은 포메이션·전술을 약 ${ADAPTATION_HISTORY_WINDOW}경기 연속 반복하면 파훼 경계(${EXPOSURE_DANGER_THRESHOLD}+)에 도달하며, 10경기·14경기 이상 고집할수록 AI 파훼 타격이 최대 +35%까지 가중됩니다.`,
+      '상대 스타일에 맞춰 10종 포메이션(신규 3-2-4-1 포함)이나 팀 전술을 한 번만 변주해도 노출도가 즉시 완화됩니다.',
     ],
     visual: <Step4Visual />,
   },
@@ -549,7 +549,7 @@ const TUTORIAL_STEPS: TutorialStepSpec[] = [
     headline: '반환점 수석 코치 & 저·중 OVR 포텐 각성(시즌 0~3명)',
     bullets: [
       '2차 이적시장 진입 시 추천 수석 코치 3명 중 1명을 선임해 후반기 전력을 보강할 수 있습니다(FFP 제재와 무관하게 선임 가능).',
-      '실전 활약과 시너지·감독 궁합·컨디션·제 포지션 기용을 잘 챙긴 저·중 OVR 현역(클래식 제외)은 시즌 최대 3명까지 영구 포텐 각성이 발동합니다.',
+      '포텐 각성 원리: 현역 OVR ≤84가 주포지션·인접 시너지 2선+·감독 궁합·좋은 컨디션으로 실전 활약(평점 7.3+·공격포인트/무실점)을 쌓으면 경기 직후 즉시 영구 각성합니다(클래식 0%).',
     ],
     visual: <Step5Visual />,
   },

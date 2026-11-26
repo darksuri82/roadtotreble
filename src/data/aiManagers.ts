@@ -14,12 +14,12 @@ export const AI_MANAGERS_BY_CLUB_ID: Record<string, AiManagerProfile> = {
   // =========================================================================
   // PREMIER LEAGUE (20 clubs — 2026-27 verified)
   // =========================================================================
-  'epl-ars': { name: '미켈 아르테타', ovr: 91, traitId: 'defensive_architect', preferredFormations: ['4-3-3', '4-2-3-1', '3-4-2-1'], preferredTactics: ['possession', 'gegenpressing'] },
-  'epl-mci': { name: '엔초 마레스카', ovr: 88, traitId: 'tiki_taka', preferredFormations: ['4-2-3-1', '4-3-3', '3-4-2-1'], preferredTactics: ['possession', 'balanced'] },
+  'epl-ars': { name: '미켈 아르테타', ovr: 91, traitId: 'defensive_architect', preferredFormations: ['4-3-3', '3-2-4-1', '4-2-3-1'], preferredTactics: ['possession', 'gegenpressing'] },
+  'epl-mci': { name: '엔초 마레스카', ovr: 88, traitId: 'tiki_taka', preferredFormations: ['3-2-4-1', '4-2-3-1', '4-3-3'], preferredTactics: ['possession', 'balanced'] },
   'epl-liv': { name: '안도니 이라올라', ovr: 87, traitId: 'gegenpress_guru', preferredFormations: ['4-2-3-1', '4-3-3', '3-3-3-1'], preferredTactics: ['gegenpressing', 'wingplay'] },
-  'epl-che': { name: '사비 알론소', ovr: 92, traitId: 'total_football', preferredFormations: ['4-2-3-1', '3-4-2-1', '4-4-2-diamond'], preferredTactics: ['possession', 'gegenpressing'] },
+  'epl-che': { name: '사비 알론소', ovr: 92, traitId: 'total_football', preferredFormations: ['3-4-2-1', '3-2-4-1', '4-2-3-1'], preferredTactics: ['possession', 'gegenpressing'] },
   'epl-mun': { name: '마이클 캐릭', ovr: 83, traitId: 'midfield_maestro', preferredFormations: ['4-2-3-1', '3-4-2-1', '4-3-3'], preferredTactics: ['counter', 'possession'] },
-  'epl-tot': { name: '로베르토 데 제르비', ovr: 86, traitId: 'tiki_taka', preferredFormations: ['4-2-3-1', '3-3-3-1', '3-4-2-1'], preferredTactics: ['possession', 'gegenpressing'] },
+  'epl-tot': { name: '로베르토 데 제르비', ovr: 86, traitId: 'tiki_taka', preferredFormations: ['4-2-3-1', '3-2-4-1', '3-3-3-1'], preferredTactics: ['possession', 'gegenpressing'] },
   'epl-new': { name: '마티아스 야이슬레', ovr: 82, traitId: 'gegenpress_guru', preferredFormations: ['4-3-3', '4-4-2-diamond'], preferredTactics: ['gegenpressing', 'counter'] },
   'epl-avl': { name: '우나이 에메리', ovr: 90, traitId: 'halftime_wizard', preferredFormations: ['4-2-3-1', '4-4-2', '3-5-2-dm'], preferredTactics: ['counter', 'balanced'] },
   'epl-bha': { name: '파비안 휘르첼러', ovr: 83, traitId: 'total_football', preferredFormations: ['4-2-3-1', '3-4-3', '3-4-2-1'], preferredTactics: ['possession', 'gegenpressing'] },
@@ -38,7 +38,7 @@ export const AI_MANAGERS_BY_CLUB_ID: Record<string, AiManagerProfile> = {
   // =========================================================================
   // LA LIGA (20 clubs — 2026-27 verified)
   // =========================================================================
-  'lal-bar': { name: '한지 플릭', ovr: 93, traitId: 'gegenpress_guru', preferredFormations: ['4-2-3-1', '4-3-3', '3-3-3-1'], preferredTactics: ['possession', 'gegenpressing'] },
+  'lal-bar': { name: '한지 플릭', ovr: 93, traitId: 'gegenpress_guru', preferredFormations: ['4-2-3-1', '3-2-4-1', '4-3-3'], preferredTactics: ['possession', 'gegenpressing'] },
   'lal-rma': { name: '조제 무리뉴', ovr: 93, traitId: 'big_game_hunter', preferredFormations: ['4-3-3', '4-2-3-1', '4-4-2-diamond'], preferredTactics: ['balanced', 'counter'] },
   'lal-atm': { name: '디에고 시메오네', ovr: 91, traitId: 'catenaccio', preferredFormations: ['4-4-2', '3-5-2-dm', '3-5-2'], preferredTactics: ['counter', 'balanced'] },
   'lal-ath': { name: '에딘 테르지치', ovr: 84, traitId: 'wing_bomber', preferredFormations: ['4-2-3-1', '4-3-3'], preferredTactics: ['wingplay', 'gegenpressing'] },
@@ -86,7 +86,7 @@ export const AI_MANAGERS_BY_CLUB_ID: Record<string, AiManagerProfile> = {
   // =========================================================================
   // BUNDESLIGA (18 clubs — 2026-27 verified)
   // =========================================================================
-  'bun-bay': { name: '뱅상 콤파니', ovr: 88, traitId: 'gegenpress_guru', preferredFormations: ['4-2-3-1', '4-3-3', '3-3-3-1'], preferredTactics: ['gegenpressing', 'possession'] },
+  'bun-bay': { name: '뱅상 콤파니', ovr: 88, traitId: 'gegenpress_guru', preferredFormations: ['4-2-3-1', '3-2-4-1', '4-3-3'], preferredTactics: ['gegenpressing', 'possession'] },
   'bun-bvb': { name: '니코 코바치', ovr: 85, traitId: 'direct_football', preferredFormations: ['4-2-3-1', '3-4-2-1', '4-4-2'], preferredTactics: ['gegenpressing', 'counter'] },
   'bun-lev': { name: '카를레스 마르티네스', ovr: 82, traitId: 'total_football', preferredFormations: ['3-4-2-1', '3-4-3'], preferredTactics: ['possession', 'wingplay'] },
   'bun-rbl': { name: '마르틴 데미첼리스', ovr: 81, traitId: 'gegenpress_guru', preferredFormations: ['4-4-2', '4-4-2-diamond'], preferredTactics: ['gegenpressing', 'counter'] },
@@ -108,7 +108,7 @@ export const AI_MANAGERS_BY_CLUB_ID: Record<string, AiManagerProfile> = {
   // =========================================================================
   // LIGUE 1 (18 clubs — 2026-27 verified)
   // =========================================================================
-  'lig-psg': { name: '루이스 엔리케', ovr: 93, traitId: 'tiki_taka', preferredFormations: ['4-3-3', '3-3-3-1', '4-2-3-1'], preferredTactics: ['possession', 'gegenpressing'] },
+  'lig-psg': { name: '루이스 엔리케', ovr: 93, traitId: 'tiki_taka', preferredFormations: ['4-3-3', '3-2-4-1', '4-2-3-1'], preferredTactics: ['possession', 'gegenpressing'] },
   'lig-om': { name: '브루노 제네시오', ovr: 84, traitId: 'midfield_maestro', preferredFormations: ['3-4-2-1', '4-2-3-1', '4-3-3'], preferredTactics: ['possession', 'balanced'] },
   'lig-asm': { name: '필리페 루이스', ovr: 84, traitId: 'gegenpress_guru', preferredFormations: ['4-2-3-1', '4-4-2-diamond'], preferredTactics: ['gegenpressing', 'possession'] },
   'lig-lil': { name: '다비데 안첼로티', ovr: 82, traitId: 'halftime_wizard', preferredFormations: ['4-2-3-1', '4-4-2-diamond'], preferredTactics: ['balanced', 'possession'] },

@@ -416,7 +416,7 @@ export function getPlayerAttributes(player: Player): PlayerAttributes {
 
   const curated = CURATED_ATTRIBUTE_OVERRIDES[player.id];
   const computed = curated
-    ? normalizeToTargetOvr(player, curated, 2.1)
+    ? normalizeToTargetOvr(player, curated, 1.5)
     : deriveAttributesFromArchetype(player);
 
   ATTRIBUTE_CACHE.set(cacheKey, computed);

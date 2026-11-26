@@ -175,6 +175,22 @@ export const FORMATION_PROFILES: Record<FormationId, FormationStructureProfile> 
       balanced: 74,
     },
   },
+  '3-2-4-1': {
+    midfieldDensity: 96, // 2 CDM + 2 CAM box midfield dominates central half-spaces
+    flankWidth: 88, // Pure touchline LW & RW pin opposing fullbacks wide
+    flankProtection: 64, // High wingers leave wide defensive channels exposed on quick switches
+    lineHeight: 78, // Rest-defense 3+2 structure pushing high
+    boxAttackNumbers: 82, // Lone ST supported by dual 10s + inverted/cutting wingers
+    boxDefenseDensity: 82, // 3 CB + double pivot central shield
+    pressTrapShape: 90, // Strong counter-press cage around central box
+    tacticStructureFit: {
+      possession: 98,
+      gegenpressing: 92,
+      wingplay: 86,
+      counter: 72,
+      balanced: 86,
+    },
+  },
 };
 
 // ============================================================================

@@ -252,6 +252,27 @@ export function computeTacticalPlayerOffset(
         dx += -dir * 0.045; // Drop into 5-man backline out of possession
       }
     }
+  } else if (formation === '3-2-4-1') {
+    // Box midfield (2 CDM + 2 CAM) controls half-spaces while LW/RW hold touchline width
+    if (hasBall) {
+      if (isCDM) {
+        dx += -dir * 0.01;
+        dy += (0.5 - base.y) * 0.08;
+      } else if (isCAM) {
+        dx += dir * (attackPhase >= 2 ? 0.055 : 0.03);
+        dy += (0.5 - base.y) * 0.1;
+      } else if (isWinger) {
+        dx += dir * (attackPhase >= 1 ? 0.07 : 0.035);
+        dy += sideSign * 0.045;
+      }
+    } else {
+      if (isWinger) {
+        dx += -dir * 0.06; // Track wide runners to protect 3CB flanks
+      } else if (isCDM) {
+        dx += -dir * 0.025;
+        dy += (0.5 - base.y) * 0.14;
+      }
+    }
   }
 
   // =========================================================================

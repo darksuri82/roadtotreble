@@ -185,7 +185,7 @@ describe('v8.11 Realistic 2D Tactical Pitch Simulation Engine', () => {
   });
 
   it('3. Layer 1 (All 9 Formations): 3-phase structural transformation (buildup vs defend vs transition)', () => {
-    expect(FORMATION_LIST.length).toBe(9);
+    expect(FORMATION_LIST.length).toBe(10);
 
     for (const formCfg of FORMATION_LIST) {
       const starters = makeSquadForFormation(formCfg.id, 0);

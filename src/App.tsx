@@ -47,6 +47,14 @@ function GameRouter() {
     !soloTickerPlaying &&
     !state.season?.liveHalftime &&
     (state.phase === 'season' || state.phase === 'ucl');
+  const canShowAwakeningPhase =
+    !dreamMatchOpen &&
+    !multiplayerOpen &&
+    !soloTickerPlaying &&
+    !state.season?.liveHalftime &&
+    (state.phase === 'season' ||
+      state.phase === 'ucl' ||
+      state.phase === 'season_end');
   const isTransferOpen = Boolean(state.season?.transferMarket.isOpen);
   const hasPendingFfpNotice = Boolean(
     isPlayableSeason &&
@@ -55,52 +63,54 @@ function GameRouter() {
       state.season?.budgetState &&
       state.season.budgetState.ffpTier >= 1,
   );
+  // Awakening pops IMMEDIATELY after the match in which it occurred (even before transfer/coach/injury modals or on season_end)
+  const pendingAwakeningAlert =
+    canShowAwakeningPhase && !hasPendingFfpNotice
+      ? (state.season?.pendingAwakeningAlerts?.[0] ?? null)
+      : null;
   const hasPendingStaffCoach = Boolean(
     isPlayableSeason &&
       !hasPendingFfpNotice &&
+      !pendingAwakeningAlert &&
       state.season?.staffCoach?.pendingSelection &&
       state.season.staffCoach.offeredCoachIds.length > 0,
   );
   const pendingInjuryAlerts =
-    isPlayableSeason && !hasPendingFfpNotice && !hasPendingStaffCoach && !isTransferOpen
+    isPlayableSeason &&
+    !hasPendingFfpNotice &&
+    !pendingAwakeningAlert &&
+    !hasPendingStaffCoach &&
+    !isTransferOpen
       ? (state.season?.pendingInjuryAlerts ?? [])
       : [];
   const injuryReturnToasts =
     isPlayableSeason ? (state.season?.injuryReturnToasts ?? []) : [];
-  const pendingAwakeningAlert =
-    isPlayableSeason &&
-    !hasPendingFfpNotice &&
-    !hasPendingStaffCoach &&
-    !isTransferOpen &&
-    pendingInjuryAlerts.length === 0
-      ? (state.season?.pendingAwakeningAlerts?.[0] ?? null)
-      : null;
   const pendingAdaptationAlert =
     isPlayableSeason &&
     !hasPendingFfpNotice &&
+    !pendingAwakeningAlert &&
     !hasPendingStaffCoach &&
     !isTransferOpen &&
-    pendingInjuryAlerts.length === 0 &&
-    !pendingAwakeningAlert
+    pendingInjuryAlerts.length === 0
       ? (state.season?.tacticalAdaptation?.pendingAlert ?? null)
       : null;
   const activeManagerEvent =
     isPlayableSeason &&
     !hasPendingFfpNotice &&
+    !pendingAwakeningAlert &&
     !hasPendingStaffCoach &&
     !isTransferOpen &&
     pendingInjuryAlerts.length === 0 &&
-    !pendingAwakeningAlert &&
     !pendingAdaptationAlert
       ? (state.season?.managerEvents?.activeEvent ?? null)
       : null;
   const lastManagerResolution =
     isPlayableSeason &&
     !hasPendingFfpNotice &&
+    !pendingAwakeningAlert &&
     !hasPendingStaffCoach &&
     !isTransferOpen &&
     pendingInjuryAlerts.length === 0 &&
-    !pendingAwakeningAlert &&
     !pendingAdaptationAlert
       ? (state.season?.managerEvents?.lastResolution ?? null)
       : null;

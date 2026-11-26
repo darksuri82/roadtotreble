@@ -52,6 +52,10 @@ interface RouletteReelsViewProps {
   takenByPlayerId?: Record<string, string>;
   /** Optional map of playerId -> expected adjacent 4-color chemistry links at active draft slot */
   expectedLinksByPlayerId?: Record<string, number>;
+  /** Actual subPosition where the selected previewCandidate is currently placed (tracks live preview swaps) */
+  previewTargetSubPosition?: SubPosition | null;
+  /** Whether the selected previewCandidate is currently placed on a starter or bench slot */
+  previewSlotArea?: 'starter' | 'bench' | null;
 }
 
 export function RouletteReelsView({
@@ -74,6 +78,8 @@ export function RouletteReelsView({
   waitingStatusLabel = null,
   takenByPlayerId,
   expectedLinksByPlayerId,
+  previewTargetSubPosition = null,
+  previewSlotArea = null,
 }: RouletteReelsViewProps) {
   const effectiveReelCount = Math.max(reelCount, reels.length || 0);
   const [lockedCount, setLockedCount] = useState(hasSpun ? effectiveReelCount : 0);
@@ -163,8 +169,14 @@ export function RouletteReelsView({
       ? reels
       : reels.filter((r) => r.reelIndex === activeClubTab);
 
+  const effectivePreviewSubPosition =
+    previewTargetSubPosition ?? targetSubPosition;
   const selectedFit = selectedCandidate
-    ? evaluatePositionFit(selectedCandidate, targetSubPosition, managerTraitId)
+    ? evaluatePositionFit(
+        selectedCandidate,
+        effectivePreviewSubPosition,
+        managerTraitId,
+      )
     : null;
   const synBonus = previewSlotSynergy?.totalBonus ?? 0;
   const finalBoostedOvr = selectedFit ? selectedFit.effectiveOvr + synBonus : 0;
@@ -175,23 +187,28 @@ export function RouletteReelsView({
   );
   const reelIndices = Array.from({ length: effectiveReelCount }, (_, i) => i);
 
-  const awakeningHintsByPlayerId = useMemo(() => {
-    const map: Record<string, DraftAwakeningPotentialHint | null> = {};
-    for (const reel of reels) {
-      for (const cand of reel.candidates) {
-        map[cand.id] = evaluateDraftAwakeningPotential(cand, {
-          managerTraitId,
-          targetSubPosition,
-          expectedLinkCount: expectedLinksByPlayerId?.[cand.id] ?? 0,
-        });
-      }
-    }
-    return map;
-  }, [reels, managerTraitId, targetSubPosition, expectedLinksByPlayerId]);
-
-  const selectedAwakeningHint = selectedCandidate
-    ? (awakeningHintsByPlayerId[selectedCandidate.id] ?? null)
-    : null;
+  const selectedAwakeningHint: DraftAwakeningPotentialHint | null = useMemo(() => {
+    if (!selectedCandidate) return null;
+    const isBenchSlot = previewSlotArea === 'bench';
+    const previewLinkCount = isBenchSlot
+      ? 0
+      : (previewSlotSynergy?.lineCount ??
+          expectedLinksByPlayerId?.[selectedCandidate.id] ??
+          0);
+    return evaluateDraftAwakeningPotential(selectedCandidate, {
+      managerTraitId,
+      targetSubPosition: effectivePreviewSubPosition,
+      expectedLinkCount: previewLinkCount,
+      isBenchSlot,
+    });
+  }, [
+    selectedCandidate,
+    previewSlotArea,
+    previewSlotSynergy,
+    expectedLinksByPlayerId,
+    managerTraitId,
+    effectivePreviewSubPosition,
+  ]);
 
   return (
     <div className="space-y-2">
@@ -372,7 +389,9 @@ export function RouletteReelsView({
                     </span>
                   )}
                   <span className="rounded bg-slate-950/85 border border-slate-700/80 px-1.5 py-px text-[10px] font-bold text-slate-200 tabular-nums">
-                    {targetSubPosition}{' '}
+                    {previewSlotArea === 'bench'
+                      ? `벤치(${effectivePreviewSubPosition})`
+                      : effectivePreviewSubPosition}{' '}
                     <strong
                       className={
                         selectedFit.penalty < 0
@@ -403,10 +422,21 @@ export function RouletteReelsView({
                   {selectedAwakeningHint && (
                     <span
                       title={selectedAwakeningHint.tooltip}
-                      className="inline-flex items-center gap-0.5 rounded border border-rose-400/45 bg-rose-500/15 px-1 py-px text-[9px] font-extrabold text-rose-200"
+                      className={`inline-flex items-center gap-0.5 rounded border px-1.5 py-px text-[9px] font-extrabold ${
+                        selectedAwakeningHint.level === 'high'
+                          ? 'border-amber-400/55 bg-amber-500/18 text-amber-200'
+                          : 'border-rose-400/45 bg-rose-500/15 text-rose-200'
+                      }`}
                     >
-                      <Flame className="w-2.5 h-2.5 text-rose-300" />
-                      각성 유망 {selectedAwakeningHint.expectedGainText}
+                      <Flame
+                        className={`w-2.5 h-2.5 ${
+                          selectedAwakeningHint.level === 'high'
+                            ? 'text-amber-300'
+                            : 'text-rose-300'
+                        }`}
+                      />
+                      {selectedAwakeningHint.shortLabel}{' '}
+                      {selectedAwakeningHint.expectedGainText}
                     </span>
                   )}
                   <span
@@ -618,21 +648,33 @@ export function RouletteReelsView({
                     <div className="mx-auto max-w-xs">
                       {reel.candidates.map((player) => {
                         const pickedBy = takenByPlayerId?.[player.id] ?? null;
+                        const isPreviewing = !pickedBy && selectedCandidate?.id === player.id;
                         return (
                           <PlayerCard
                             key={player.id}
                             player={player}
-                            targetSubPosition={targetSubPosition}
+                            targetSubPosition={
+                              isPreviewing
+                                ? effectivePreviewSubPosition
+                                : targetSubPosition
+                            }
                             managerTraitId={managerTraitId}
-                            selected={!pickedBy && selectedCandidate?.id === player.id}
+                            selected={isPreviewing}
                             disabled={Boolean(pickedBy)}
                             dense
                             lockedBadgeLabel={pickedBy}
                             disableConfirmAction={!canPick}
                             disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
-                            expectedLinkCount={expectedLinksByPlayerId?.[player.id]}
+                            expectedLinkCount={
+                              isPreviewing
+                                ? previewSlotArea === 'bench'
+                                  ? undefined
+                                  : (previewSlotSynergy?.lineCount ??
+                                      expectedLinksByPlayerId?.[player.id])
+                                : expectedLinksByPlayerId?.[player.id]
+                            }
                             draftCostM={computePlayerDraftCostM(player)}
-                            awakeningHint={awakeningHintsByPlayerId[player.id]}
+                            awakeningHint={isPreviewing ? selectedAwakeningHint : null}
                             onClick={() => handleCandidateCardClick(player)}
                             onConfirmAction={() => handleConfirmPick(player)}
                             actionLabel={pickActionLabel}
@@ -644,6 +686,7 @@ export function RouletteReelsView({
                     <div className="flex gap-1.5 overflow-x-auto pb-0.5 snap-x sm:grid sm:grid-cols-3 sm:gap-1.5 sm:overflow-visible sm:pb-0">
                       {reel.candidates.map((player) => {
                         const pickedBy = takenByPlayerId?.[player.id] ?? null;
+                        const isPreviewing = !pickedBy && selectedCandidate?.id === player.id;
                         return (
                           <div
                             key={player.id}
@@ -651,17 +694,28 @@ export function RouletteReelsView({
                           >
                             <PlayerCard
                               player={player}
-                              targetSubPosition={targetSubPosition}
+                              targetSubPosition={
+                                isPreviewing
+                                  ? effectivePreviewSubPosition
+                                  : targetSubPosition
+                              }
                               managerTraitId={managerTraitId}
-                              selected={!pickedBy && selectedCandidate?.id === player.id}
+                              selected={isPreviewing}
                               disabled={Boolean(pickedBy)}
                               dense
                               lockedBadgeLabel={pickedBy}
                               disableConfirmAction={!canPick}
                               disabledActionLabel={waitingStatusLabel ?? '상대 지명 중'}
-                              expectedLinkCount={expectedLinksByPlayerId?.[player.id]}
+                              expectedLinkCount={
+                                isPreviewing
+                                  ? previewSlotArea === 'bench'
+                                    ? undefined
+                                    : (previewSlotSynergy?.lineCount ??
+                                        expectedLinksByPlayerId?.[player.id])
+                                  : expectedLinksByPlayerId?.[player.id]
+                              }
                               draftCostM={computePlayerDraftCostM(player)}
-                              awakeningHint={awakeningHintsByPlayerId[player.id]}
+                              awakeningHint={isPreviewing ? selectedAwakeningHint : null}
                               onClick={() => handleCandidateCardClick(player)}
                               onConfirmAction={() => handleConfirmPick(player)}
                               actionLabel={pickActionLabel}

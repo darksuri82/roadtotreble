@@ -765,9 +765,12 @@ export function evaluateDraftAwakeningPotential(
     managerTraitId: ManagerTraitId | null;
     targetSubPosition?: import('../types/player').SubPosition;
     expectedLinkCount?: number;
+    /** True when the candidate is currently previewed on a bench slot (no active starter synergy lines) */
+    isBenchSlot?: boolean;
   },
 ): DraftAwakeningPotentialHint | null {
   if (player.isLegend || player.awakening || player.ovr > 84) return null;
+  if (options.isBenchSlot) return null;
 
   const { managerTraitId, targetSubPosition, expectedLinkCount = 0 } = options;
   const mgrFit = evaluateManagerPlayerSynergy(

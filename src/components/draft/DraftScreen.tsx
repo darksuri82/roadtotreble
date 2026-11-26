@@ -169,6 +169,16 @@ export function DraftScreen() {
     previewCandidate && previewCurrentSlot?.area === 'starter'
       ? (displayedChemistry.slotSynergies[previewCurrentSlot.index] ?? null)
       : null;
+  const previewTargetSubPosition =
+    previewCandidate && previewCurrentSlot
+      ? previewCurrentSlot.area === 'starter'
+        ? (formationConfig.slots[previewCurrentSlot.index]?.subPosition ??
+          currentSlot.subPosition)
+        : (BENCH_SLOTS[previewCurrentSlot.index]?.subPosition ??
+          currentSlot.subPosition)
+      : null;
+  const previewSlotArea =
+    previewCandidate && previewCurrentSlot ? previewCurrentSlot.area : null;
   const previewChemDelta = previewCandidate
     ? displayedChemistry.total - chemistry.total
     : 0;
@@ -339,6 +349,20 @@ export function DraftScreen() {
           )}
 
           <InfoHelpButton
+            title="포텐 각성 원리 (영구 성장 · 시즌 0~3명)"
+            label="각성"
+            size="xs"
+            align="right"
+            guideTab="squad"
+            items={[
+              '대상: 현역 선수만 가능 (시대별 클래식 0%). OVR ≤84 원석·중위권이 핵심 대상(×1.35~×1.75, +3~+8 영구 상승)',
+              '발동 조건: 시즌 6경기·개인 4출전 이후, 경기 평점 7.3+·공격포인트/무실점 등 실제 활약과 기용 완성도가 높을수록 확률 상승',
+              '기용 핵심: 주포지션 배치(페널티 0) · 인접 시너지 2선+ · ★ 감독 궁합 · 높은 사기·체력 관리 (벤치/비적합/혹사 시 급감)',
+              '프리뷰 지표: 후보를 클릭해 피치에 올려본 위치 기준으로 포텐↑(감독 궁합+2선↑/≤81) · 육성 배지가 표시되며, 경기 직후 즉시 발동합니다',
+            ]}
+          />
+
+          <InfoHelpButton
             title="시너지 4원칙 · 감독 궁합 · 팀 케미"
             label="공식"
             size="xs"
@@ -428,6 +452,8 @@ export function DraftScreen() {
               previewCandidate={previewCandidate}
               onSelectPreviewCandidate={handleSelectPreviewCandidate}
               previewSlotSynergy={previewSlotSynergy}
+              previewTargetSubPosition={previewTargetSubPosition}
+              previewSlotArea={previewSlotArea}
               previewChemDelta={previewChemDelta}
               expectedLinksByPlayerId={expectedLinksByPlayerId}
               onSpin={() => {

@@ -24,7 +24,7 @@
         "formation": "4-2-3-1",
         "defaultTactic": "possession",
         "att": 85,
-        "mid": 82,
+        "mid": 83,
         "def": 84,
         "topScorers": [
           "엘링 홀란",
@@ -59,7 +59,7 @@
         "pattern": "solid",
         "formation": "4-2-3-1",
         "defaultTactic": "gegenpressing",
-        "att": 85,
+        "att": 84,
         "mid": 84,
         "def": 83,
         "topScorers": [
@@ -203,7 +203,7 @@
         "pattern": "stripes",
         "formation": "4-2-3-1",
         "defaultTactic": "gegenpressing",
-        "att": 79,
+        "att": 80,
         "mid": 79,
         "def": 79,
         "topScorers": [
@@ -293,7 +293,7 @@
         "pattern": "stripes",
         "formation": "4-2-3-1",
         "defaultTactic": "gegenpressing",
-        "att": 78,
+        "att": 77,
         "mid": 79,
         "def": 78,
         "topScorers": [
@@ -400,7 +400,7 @@
         "pattern": "stripes",
         "formation": "4-2-3-1",
         "defaultTactic": "possession",
-        "att": 86,
+        "att": 87,
         "mid": 86,
         "def": 83,
         "topScorers": [
@@ -418,7 +418,7 @@
         "pattern": "solid",
         "formation": "4-3-3",
         "defaultTactic": "balanced",
-        "att": 87,
+        "att": 86,
         "mid": 85,
         "def": 84,
         "topScorers": [
@@ -813,8 +813,8 @@
         "pattern": "stripes",
         "formation": "4-2-3-1",
         "defaultTactic": "wingplay",
-        "att": 80,
-        "mid": 79,
+        "att": 81,
+        "mid": 80,
         "def": 80,
         "topScorers": [
           "곤살루 하무스",
@@ -833,7 +833,7 @@
         "defaultTactic": "possession",
         "att": 81,
         "mid": 78,
-        "def": 80,
+        "def": 81,
         "topScorers": [
           "케난 일디즈",
           "닉 볼테마데",
@@ -851,7 +851,7 @@
         "defaultTactic": "gegenpressing",
         "att": 78,
         "mid": 80,
-        "def": 79,
+        "def": 78,
         "topScorers": [
           "샤를 더 케텔라러",
           "조너선 로우",
@@ -867,7 +867,7 @@
         "pattern": "solid",
         "formation": "3-4-2-1",
         "defaultTactic": "balanced",
-        "att": 79,
+        "att": 80,
         "mid": 80,
         "def": 80,
         "topScorers": [
@@ -887,7 +887,7 @@
         "defaultTactic": "wingplay",
         "att": 80,
         "mid": 80,
-        "def": 76,
+        "def": 77,
         "topScorers": [
           "다비데 프라테시",
           "알베르트 구드문드손",
@@ -903,7 +903,7 @@
         "pattern": "solid",
         "formation": "4-2-3-1",
         "defaultTactic": "possession",
-        "att": 77,
+        "att": 76,
         "mid": 76,
         "def": 76,
         "topScorers": [
@@ -939,9 +939,9 @@
         "pattern": "solid",
         "formation": "4-2-3-1",
         "defaultTactic": "possession",
-        "att": 81,
+        "att": 80,
         "mid": 80,
-        "def": 78,
+        "def": 79,
         "topScorers": [
           "니코 파스",
           "마르틴 바투리나",
@@ -1154,8 +1154,8 @@
         "pattern": "solid",
         "formation": "4-2-3-1",
         "defaultTactic": "gegenpressing",
-        "att": 87,
-        "mid": 84,
+        "att": 88,
+        "mid": 85,
         "def": 82,
         "topScorers": [
           "해리 케인",
@@ -1190,7 +1190,7 @@
         "pattern": "sash",
         "formation": "3-4-2-1",
         "defaultTactic": "possession",
-        "att": 78,
+        "att": 79,
         "mid": 78,
         "def": 79,
         "topScorers": [
@@ -1513,7 +1513,7 @@
         "pattern": "solid",
         "formation": "3-4-2-1",
         "defaultTactic": "possession",
-        "att": 78,
+        "att": 79,
         "mid": 75,
         "def": 77,
         "topScorers": [
@@ -1587,7 +1587,7 @@
         "defaultTactic": "counter",
         "att": 76,
         "mid": 72,
-        "def": 72,
+        "def": 73,
         "topScorers": [
           "엘리 와히",
           "모하메드 아무라",
@@ -1604,7 +1604,7 @@
         "formation": "3-4-2-1",
         "defaultTactic": "gegenpressing",
         "att": 73,
-        "mid": 72,
+        "mid": 73,
         "def": 78,
         "topScorers": [
           "프라뇨 이바노비치",
@@ -1676,7 +1676,7 @@
         "formation": "3-4-3",
         "defaultTactic": "counter",
         "att": 71,
-        "mid": 72,
+        "mid": 74,
         "def": 72,
         "topScorers": [
           "산티아고 이달고",

@@ -254,6 +254,34 @@ export const FORMATIONS: Record<FormationId, FormationConfig> = {
       [5, 8], [6, 8], [4, 9], [7, 10], [8, 9], [8, 10], [9, 10],
     ],
   },
+  '3-2-4-1': {
+    id: '3-2-4-1',
+    name: '3-2-4-1',
+    shortTag: '박스 미드필드·현대 점유',
+    description: '쓰리백 위 더블 피벗(2 CDM)과 2명의 공미(2 CAM)가 중앙 박스 미드필드를 형성하고 양 윙어와 원톱이 폭을 벌리는 현대 최상위 점유 전형',
+    strengthSummary: '2 CDM+2 CAM 박스 미드필드 중앙 장악·양 윙어 터치라인 폭 확보·하프스페이스 침투 극대화',
+    weaknessSummary: '양 윙어가 높은 위치에 머물러 전환 수비 시 쓰리백 측면 뒷공간 노출 위험 존재',
+    slots: [
+      { index: 0, label: 'GK', subPosition: 'GK', position: 'GK', x: 50, y: 90 },
+      { index: 1, label: 'LCB', subPosition: 'CB', position: 'DF', x: 24, y: 76 },
+      { index: 2, label: 'CB', subPosition: 'CB', position: 'DF', x: 50, y: 78 },
+      { index: 3, label: 'RCB', subPosition: 'CB', position: 'DF', x: 76, y: 76 },
+      { index: 4, label: 'LCDM', subPosition: 'CDM', position: 'MF', x: 36, y: 57 },
+      { index: 5, label: 'RCDM', subPosition: 'CDM', position: 'MF', x: 64, y: 57 },
+      { index: 6, label: 'LW', subPosition: 'LW', position: 'FW', x: 14, y: 33 },
+      { index: 7, label: 'LAM', subPosition: 'CAM', position: 'MF', x: 36, y: 36 },
+      { index: 8, label: 'RAM', subPosition: 'CAM', position: 'MF', x: 64, y: 36 },
+      { index: 9, label: 'RW', subPosition: 'RW', position: 'FW', x: 86, y: 33 },
+      { index: 10, label: 'ST', subPosition: 'ST', position: 'FW', x: 50, y: 14 },
+    ],
+    links: [
+      [0, 1], [0, 2], [0, 3], [1, 2], [2, 3],
+      [1, 4], [2, 4], [2, 5], [3, 5], [4, 5],
+      [1, 6], [4, 7], [5, 8], [3, 9],
+      [6, 7], [7, 8], [8, 9],
+      [6, 10], [7, 10], [8, 10], [9, 10],
+    ],
+  },
 };
 
 export const FORMATION_LIST: FormationConfig[] = [
@@ -266,4 +294,5 @@ export const FORMATION_LIST: FormationConfig[] = [
   FORMATIONS['3-4-3'],
   FORMATIONS['3-4-2-1'],
   FORMATIONS['3-3-3-1'],
+  FORMATIONS['3-2-4-1'],
 ];

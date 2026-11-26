@@ -141,14 +141,14 @@
       "CM"
     ],
     "secondaryPositions": [],
-    "ovr": 91,
+    "ovr": 90,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "FC 바르셀로나",
-    "att": 80,
-    "mid": 92,
-    "def": 90,
+    "att": 79,
+    "mid": 91,
+    "def": 89,
     "stamina": 85,
     "playstyles": [
       "deep_playmaker",
@@ -175,13 +175,13 @@
       "CAM"
     ],
     "secondaryPositions": [],
-    "ovr": 90,
+    "ovr": 91,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "bundesliga",
     "club": "바이에른 뮌헨",
-    "att": 91,
-    "mid": 82,
+    "att": 92,
+    "mid": 83,
     "def": 55,
     "stamina": 85,
     "playstyles": [
@@ -191,13 +191,13 @@
     "scoutNote": "정교한 왼발 킥과 하프스페이스 창의성의 측면 마법사",
     "isLegend": false,
     "attrs": {
-      "sho": 86,
-      "pas": 92,
-      "cro": 93,
-      "dri": 92,
-      "aer": 56,
-      "def": 54,
-      "phy": 81
+      "sho": 88,
+      "pas": 94,
+      "cro": 95,
+      "dri": 94,
+      "aer": 57,
+      "def": 55,
+      "phy": 83
     }
   },
   {
@@ -457,14 +457,14 @@
       "CM"
     ],
     "secondaryPositions": [],
-    "ovr": 89,
+    "ovr": 90,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "아스널",
-    "att": 78,
-    "mid": 90,
-    "def": 88,
+    "att": 79,
+    "mid": 91,
+    "def": 89,
     "stamina": 96,
     "playstyles": [
       "ball_winner",
@@ -473,13 +473,13 @@
     "scoutNote": "넓은 커버 범위와 강력한 인터셉트의 철강 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 78,
-      "pas": 87,
-      "cro": 87,
-      "dri": 82,
-      "aer": 86,
-      "def": 91,
-      "phy": 92
+      "sho": 79,
+      "pas": 89,
+      "cro": 88,
+      "dri": 84,
+      "aer": 88,
+      "def": 93,
+      "phy": 94
     }
   },
   {
@@ -703,14 +703,14 @@
     "secondaryPositions": [
       "ST"
     ],
-    "ovr": 88,
+    "ovr": 87,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "epl",
     "club": "리버풀",
-    "att": 87,
-    "mid": 89,
-    "def": 73,
+    "att": 86,
+    "mid": 88,
+    "def": 72,
     "stamina": 83,
     "playstyles": [
       "playmaker_10",
@@ -736,13 +736,13 @@
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 88,
+    "ovr": 87,
     "nationality": "스웨덴",
     "nationalityCode": "SE",
     "leagueId": "epl",
     "club": "리버풀",
-    "att": 89,
-    "mid": 80,
+    "att": 88,
+    "mid": 79,
     "def": 53,
     "stamina": 81,
     "playstyles": [
@@ -1013,14 +1013,14 @@
       "RB"
     ],
     "secondaryPositions": [],
-    "ovr": 87,
+    "ovr": 88,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "bundesliga",
     "club": "바이에른 뮌헨",
-    "att": 76,
-    "mid": 88,
-    "def": 86,
+    "att": 77,
+    "mid": 89,
+    "def": 87,
     "stamina": 94,
     "playstyles": [
       "deep_playmaker"
@@ -1121,14 +1121,14 @@
     "secondaryPositions": [
       "LW"
     ],
-    "ovr": 87,
+    "ovr": 88,
     "nationality": "포르투갈",
     "nationalityCode": "PT",
     "leagueId": "epl",
     "club": "맨체스터 유나이티드",
-    "att": 86,
-    "mid": 88,
-    "def": 72,
+    "att": 87,
+    "mid": 89,
+    "def": 73,
     "stamina": 78,
     "playstyles": [
       "playmaker_10"
@@ -1225,14 +1225,14 @@
       "RW",
       "LM"
     ],
-    "ovr": 87,
+    "ovr": 89,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "laliga",
     "club": "FC 바르셀로나",
-    "att": 88,
-    "mid": 79,
-    "def": 52,
+    "att": 90,
+    "mid": 81,
+    "def": 53,
     "stamina": 83,
     "playstyles": [
       "line_breaker",
@@ -1241,13 +1241,13 @@
     "scoutNote": "폭발적 침투와 압박, 클러치 득점력의 바르사 에이스",
     "isLegend": false,
     "attrs": {
-      "sho": 87,
-      "pas": 85,
-      "cro": 89,
-      "dri": 87,
-      "aer": 67,
-      "def": 63,
-      "phy": 89
+      "sho": 89,
+      "pas": 87,
+      "cro": 91,
+      "dri": 89,
+      "aer": 68,
+      "def": 64,
+      "phy": 91
     }
   },
   {
@@ -1301,13 +1301,13 @@
       "ST",
       "CM"
     ],
-    "ovr": 87,
+    "ovr": 86,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "ligue1",
     "club": "파리 생제르맹",
-    "att": 88,
-    "mid": 79,
+    "att": 87,
+    "mid": 78,
     "def": 52,
     "stamina": 85,
     "playstyles": [
@@ -1400,14 +1400,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 86,
+    "ovr": 87,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "bundesliga",
     "club": "바이에른 뮌헨",
-    "att": 65,
-    "mid": 77,
-    "def": 87,
+    "att": 66,
+    "mid": 78,
+    "def": 88,
     "stamina": 80,
     "playstyles": [
       "ball_playing_cb",
@@ -1467,13 +1467,13 @@
       "LW"
     ],
     "secondaryPositions": [],
-    "ovr": 86,
+    "ovr": 87,
     "nationality": "콜롬비아",
     "nationalityCode": "CO",
     "leagueId": "bundesliga",
     "club": "바이에른 뮌헨",
-    "att": 87,
-    "mid": 78,
+    "att": 88,
+    "mid": 79,
     "def": 51,
     "stamina": 83,
     "playstyles": [
@@ -1571,14 +1571,14 @@
       "CM"
     ],
     "secondaryPositions": [],
-    "ovr": 86,
+    "ovr": 84,
     "nationality": "네덜란드",
     "nationalityCode": "NL",
     "leagueId": "epl",
     "club": "리버풀",
-    "att": 75,
-    "mid": 87,
-    "def": 85,
+    "att": 73,
+    "mid": 85,
+    "def": 83,
     "stamina": 87,
     "playstyles": [
       "ball_winner"
@@ -1586,13 +1586,13 @@
     "scoutNote": "리버풀을 이끄는 월드클래스 CDM/CM 핵심 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 68,
-      "pas": 83,
-      "cro": 75,
-      "dri": 79,
-      "aer": 82,
-      "def": 92,
-      "phy": 91
+      "sho": 67,
+      "pas": 80,
+      "cro": 74,
+      "dri": 76,
+      "aer": 79,
+      "def": 89,
+      "phy": 88
     }
   },
   {
@@ -1642,13 +1642,13 @@
     "secondaryPositions": [
       "ST"
     ],
-    "ovr": 86,
+    "ovr": 85,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "epl",
     "club": "리버풀",
-    "att": 87,
-    "mid": 78,
+    "att": 86,
+    "mid": 77,
     "def": 51,
     "stamina": 85,
     "playstyles": [
@@ -1783,14 +1783,14 @@
       "LW",
       "ST"
     ],
-    "ovr": 85,
+    "ovr": 86,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "맨체스터 시티",
-    "att": 85,
-    "mid": 86,
-    "def": 70,
+    "att": 86,
+    "mid": 87,
+    "def": 71,
     "stamina": 81,
     "playstyles": [
       "playmaker_10",
@@ -1950,13 +1950,13 @@
       "LW"
     ],
     "secondaryPositions": [],
-    "ovr": 86,
+    "ovr": 85,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "아틀레틱 빌바오",
-    "att": 87,
-    "mid": 78,
+    "att": 86,
+    "mid": 77,
     "def": 51,
     "stamina": 85,
     "playstyles": [
@@ -1965,13 +1965,13 @@
     "scoutNote": "아틀레틱 빌바오을 이끄는 월드클래스 LW 핵심 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 82,
-      "pas": 82,
-      "cro": 87,
-      "dri": 91,
-      "aer": 61,
-      "def": 51,
-      "phy": 92
+      "sho": 80,
+      "pas": 80,
+      "cro": 85,
+      "dri": 89,
+      "aer": 60,
+      "def": 50,
+      "phy": 90
     }
   },
   {
@@ -2113,14 +2113,14 @@
       "CM"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 87,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "bundesliga",
     "club": "바이에른 뮌헨",
-    "att": 74,
-    "mid": 86,
-    "def": 84,
+    "att": 76,
+    "mid": 88,
+    "def": 86,
     "stamina": 87,
     "playstyles": [
       "deep_playmaker"
@@ -2184,14 +2184,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 86,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "맨체스터 시티",
-    "att": 64,
-    "mid": 76,
-    "def": 86,
+    "att": 65,
+    "mid": 77,
+    "def": 87,
     "stamina": 80,
     "playstyles": [
       "ball_playing_cb",
@@ -2291,14 +2291,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 84,
     "nationality": "이탈리아",
     "nationalityCode": "IT",
     "leagueId": "epl",
     "club": "아스널",
     "att": 71,
-    "mid": 79,
-    "def": 86,
+    "mid": 78,
+    "def": 85,
     "stamina": 87,
     "playstyles": [
       "ball_playing_cb",
@@ -2327,14 +2327,14 @@
     "secondaryPositions": [
       "RB"
     ],
-    "ovr": 86,
+    "ovr": 84,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "epl",
     "club": "아스널",
-    "att": 75,
-    "mid": 87,
-    "def": 84,
+    "att": 73,
+    "mid": 85,
+    "def": 82,
     "stamina": 85,
     "playstyles": [
       "deep_playmaker",
@@ -2343,13 +2343,13 @@
     "scoutNote": "지적인 위치 선정과 빌드업의 아스널 후방 사령관",
     "isLegend": false,
     "attrs": {
-      "sho": 68,
-      "pas": 91,
-      "cro": 76,
-      "dri": 80,
-      "aer": 82,
-      "def": 88,
-      "phy": 86
+      "sho": 67,
+      "pas": 88,
+      "cro": 75,
+      "dri": 77,
+      "aer": 79,
+      "def": 85,
+      "phy": 83
     }
   },
   {
@@ -2614,14 +2614,14 @@
     "secondaryPositions": [
       "LWB"
     ],
-    "ovr": 85,
+    "ovr": 84,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "레알 마드리드",
     "att": 71,
-    "mid": 79,
-    "def": 86,
+    "mid": 78,
+    "def": 85,
     "stamina": 85,
     "playstyles": [
       "attacking_wingback",
@@ -2630,13 +2630,13 @@
     "scoutNote": "집요한 대인 방어와 오버래핑의 스페인 주전 좌풀백",
     "isLegend": false,
     "attrs": {
-      "sho": 68,
-      "pas": 81,
-      "cro": 87,
-      "dri": 80,
-      "aer": 75,
-      "def": 88,
-      "phy": 90
+      "sho": 67,
+      "pas": 79,
+      "cro": 85,
+      "dri": 78,
+      "aer": 74,
+      "def": 86,
+      "phy": 88
     }
   },
   {
@@ -2822,14 +2822,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 86,
+    "ovr": 85,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "ligue1",
     "club": "파리 생제르맹",
     "att": 65,
-    "mid": 76,
-    "def": 87,
+    "mid": 75,
+    "def": 86,
     "stamina": 77,
     "playstyles": [
       "ball_playing_cb"
@@ -2858,14 +2858,14 @@
       "LB",
       "CDM"
     ],
-    "ovr": 85,
+    "ovr": 84,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "ligue1",
     "club": "파리 생제르맹",
-    "att": 80,
-    "mid": 86,
-    "def": 77,
+    "att": 79,
+    "mid": 85,
+    "def": 76,
     "stamina": 87,
     "playstyles": [
       "box_to_box"
@@ -3005,13 +3005,13 @@
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 86,
+    "ovr": 85,
     "nationality": "기니",
     "nationalityCode": "GN",
     "leagueId": "bundesliga",
     "club": "보루시아 도르트문트",
-    "att": 87,
-    "mid": 77,
+    "att": 86,
+    "mid": 76,
     "def": 50,
     "stamina": 81,
     "playstyles": [
@@ -3146,13 +3146,13 @@
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 84,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "epl",
     "club": "리버풀",
-    "att": 86,
-    "mid": 76,
+    "att": 85,
+    "mid": 75,
     "def": 50,
     "stamina": 83,
     "playstyles": [
@@ -3180,14 +3180,14 @@
       "CM"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 87,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "맨체스터 시티",
-    "att": 74,
-    "mid": 86,
-    "def": 83,
+    "att": 76,
+    "mid": 88,
+    "def": 85,
     "stamina": 87,
     "playstyles": [
       "box_to_box",
@@ -3196,13 +3196,13 @@
     "scoutNote": "왕성한 활동량과 탈압박의 맨시티 초대형 영입 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 71,
-      "pas": 87,
-      "cro": 74,
-      "dri": 80,
-      "aer": 82,
-      "def": 88,
-      "phy": 85
+      "sho": 72,
+      "pas": 89,
+      "cro": 75,
+      "dri": 82,
+      "aer": 84,
+      "def": 90,
+      "phy": 87
     }
   },
   {
@@ -3353,14 +3353,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 84,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "아스널",
     "att": 64,
-    "mid": 75,
-    "def": 86,
+    "mid": 74,
+    "def": 85,
     "stamina": 80,
     "playstyles": [
       "ball_playing_cb",
@@ -3420,14 +3420,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 84,
     "nationality": "에콰도르",
     "nationalityCode": "EC",
     "leagueId": "epl",
     "club": "아스널",
     "att": 71,
-    "mid": 78,
-    "def": 86,
+    "mid": 77,
+    "def": 85,
     "stamina": 87,
     "playstyles": [
       "stopper_cb"
@@ -3559,14 +3559,14 @@
       "CAM"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 86,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "epl",
     "club": "첼시",
-    "att": 85,
-    "mid": 76,
-    "def": 49,
+    "att": 87,
+    "mid": 78,
+    "def": 50,
     "stamina": 81,
     "playstyles": [
       "complete_forward",
@@ -3575,13 +3575,13 @@
     "scoutNote": "연계와 드리블, PK 결정력을 갖춘 첼시 9번",
     "isLegend": false,
     "attrs": {
-      "sho": 85,
-      "pas": 81,
-      "cro": 70,
-      "dri": 84,
-      "aer": 84,
-      "def": 48,
-      "phy": 86
+      "sho": 87,
+      "pas": 83,
+      "cro": 71,
+      "dri": 86,
+      "aer": 86,
+      "def": 49,
+      "phy": 88
     }
   },
   {
@@ -3764,14 +3764,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 86,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "레알 마드리드",
-    "att": 64,
-    "mid": 75,
-    "def": 86,
+    "att": 65,
+    "mid": 76,
+    "def": 87,
     "stamina": 82,
     "playstyles": [
       "ball_playing_cb"
@@ -3801,14 +3801,14 @@
       "LM",
       "CDM"
     ],
-    "ovr": 84,
+    "ovr": 86,
     "nationality": "튀르키예",
     "nationalityCode": "TR",
     "leagueId": "laliga",
     "club": "레알 마드리드",
-    "att": 83,
-    "mid": 85,
-    "def": 69,
+    "att": 85,
+    "mid": 87,
+    "def": 71,
     "stamina": 83,
     "playstyles": [
       "playmaker_10",
@@ -3817,13 +3817,13 @@
     "scoutNote": "마법 같은 왼발 킥과 창의성의 레알 차세대 10번",
     "isLegend": false,
     "attrs": {
-      "sho": 80,
-      "pas": 90,
-      "cro": 85,
-      "dri": 84,
-      "aer": 64,
-      "def": 66,
-      "phy": 73
+      "sho": 82,
+      "pas": 92,
+      "cro": 87,
+      "dri": 86,
+      "aer": 65,
+      "def": 67,
+      "phy": 75
     }
   },
   {
@@ -3838,14 +3838,14 @@
       "LM",
       "LB"
     ],
-    "ovr": 84,
+    "ovr": 83,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "laliga",
     "club": "레알 마드리드",
-    "att": 73,
-    "mid": 85,
-    "def": 83,
+    "att": 72,
+    "mid": 84,
+    "def": 82,
     "stamina": 87,
     "playstyles": [
       "box_to_box",
@@ -3854,13 +3854,13 @@
     "scoutNote": "유연한 탈압박과 왕성한 태클의 멀티 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 71,
-      "pas": 81,
-      "cro": 74,
-      "dri": 79,
-      "aer": 82,
-      "def": 87,
-      "phy": 91
+      "sho": 70,
+      "pas": 79,
+      "cro": 73,
+      "dri": 77,
+      "aer": 80,
+      "def": 85,
+      "phy": 89
     }
   },
   {
@@ -3875,14 +3875,14 @@
       "RM",
       "LM"
     ],
-    "ovr": 85,
+    "ovr": 82,
     "nationality": "코트디부아르",
     "nationalityCode": "CI",
     "leagueId": "laliga",
     "club": "레알 마드리드",
-    "att": 86,
-    "mid": 76,
-    "def": 50,
+    "att": 83,
+    "mid": 74,
+    "def": 49,
     "stamina": 85,
     "playstyles": [
       "classic_winger"
@@ -3890,13 +3890,13 @@
     "scoutNote": "레알 마드리드의 확고한 주전 RW/LW 전력",
     "isLegend": false,
     "attrs": {
-      "sho": 81,
-      "pas": 80,
-      "cro": 87,
-      "dri": 92,
-      "aer": 65,
-      "def": 47,
-      "phy": 87
+      "sho": 77,
+      "pas": 76,
+      "cro": 83,
+      "dri": 88,
+      "aer": 63,
+      "def": 45,
+      "phy": 83
     }
   },
   {
@@ -4118,14 +4118,14 @@
       "CM"
     ],
     "secondaryPositions": [],
-    "ovr": 86,
+    "ovr": 84,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "seriea",
     "club": "AS 로마",
-    "att": 75,
-    "mid": 87,
-    "def": 84,
+    "att": 73,
+    "mid": 85,
+    "def": 82,
     "stamina": 85,
     "playstyles": [
       "box_to_box",
@@ -4134,13 +4134,13 @@
     "scoutNote": "강력한 드리블 탈압박과 태클의 역동적 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 73,
-      "pas": 82,
-      "cro": 76,
-      "dri": 81,
-      "aer": 84,
-      "def": 89,
-      "phy": 90
+      "sho": 72,
+      "pas": 80,
+      "cro": 75,
+      "dri": 79,
+      "aer": 82,
+      "def": 87,
+      "phy": 88
     }
   },
   {
@@ -4221,14 +4221,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 86,
+    "ovr": 83,
     "nationality": "이탈리아",
     "nationalityCode": "IT",
     "leagueId": "seriea",
     "club": "아탈란타",
-    "att": 64,
-    "mid": 76,
-    "def": 87,
+    "att": 63,
+    "mid": 74,
+    "def": 84,
     "stamina": 82,
     "playstyles": [
       "ball_playing_cb"
@@ -4236,13 +4236,13 @@
     "scoutNote": "아탈란타의 후방 빌드업과 대인 수비를 이끄는 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 59,
-      "pas": 83,
-      "cro": 64,
-      "dri": 74,
-      "aer": 87,
-      "def": 90,
-      "phy": 85
+      "sho": 57,
+      "pas": 79,
+      "cro": 62,
+      "dri": 72,
+      "aer": 83,
+      "def": 86,
+      "phy": 81
     }
   },
   {
@@ -4253,14 +4253,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 83,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "seriea",
     "club": "인테르 밀란",
-    "att": 64,
-    "mid": 75,
-    "def": 86,
+    "att": 63,
+    "mid": 73,
+    "def": 84,
     "stamina": 80,
     "playstyles": [
       "ball_playing_cb"
@@ -4268,13 +4268,13 @@
     "scoutNote": "인테르 밀란의 확고한 주전 CB 전력",
     "isLegend": false,
     "attrs": {
-      "sho": 58,
-      "pas": 83,
-      "cro": 61,
-      "dri": 75,
-      "aer": 86,
-      "def": 84,
-      "phy": 86
+      "sho": 57,
+      "pas": 81,
+      "cro": 60,
+      "dri": 74,
+      "aer": 84,
+      "def": 82,
+      "phy": 84
     }
   },
   {
@@ -4289,14 +4289,14 @@
       "RW",
       "RM"
     ],
-    "ovr": 86,
+    "ovr": 85,
     "nationality": "아르헨티나",
     "nationalityCode": "AR",
     "leagueId": "seriea",
     "club": "코모 1907",
-    "att": 85,
-    "mid": 87,
-    "def": 70,
+    "att": 84,
+    "mid": 86,
+    "def": 69,
     "stamina": 83,
     "playstyles": [
       "playmaker_10"
@@ -4326,14 +4326,14 @@
       "LM",
       "CAM"
     ],
-    "ovr": 85,
+    "ovr": 83,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "bundesliga",
     "club": "바이에른 뮌헨",
-    "att": 70,
-    "mid": 78,
-    "def": 86,
+    "att": 69,
+    "mid": 76,
+    "def": 84,
     "stamina": 87,
     "playstyles": [
       "attacking_wingback"
@@ -4341,13 +4341,13 @@
     "scoutNote": "바이에른 뮌헨의 측면 오버래핑과 수비 밸런스를 갖춘 레프트백",
     "isLegend": false,
     "attrs": {
-      "sho": 69,
-      "pas": 83,
-      "cro": 89,
-      "dri": 86,
-      "aer": 76,
-      "def": 83,
-      "phy": 90
+      "sho": 68,
+      "pas": 80,
+      "cro": 86,
+      "dri": 83,
+      "aer": 75,
+      "def": 80,
+      "phy": 87
     }
   },
   {
@@ -4358,14 +4358,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 86,
     "nationality": "독일",
     "nationalityCode": "DE",
     "leagueId": "bundesliga",
     "club": "바이에른 뮌헨",
-    "att": 63,
-    "mid": 75,
-    "def": 86,
+    "att": 64,
+    "mid": 76,
+    "def": 87,
     "stamina": 80,
     "playstyles": [
       "stopper_cb",
@@ -4489,13 +4489,13 @@
       "RW"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 84,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "epl",
     "club": "첼시",
-    "att": 86,
-    "mid": 76,
+    "att": 85,
+    "mid": 75,
     "def": 49,
     "stamina": 85,
     "playstyles": [
@@ -4504,13 +4504,13 @@
     "scoutNote": "첼시의 확고한 주전 RW 전력",
     "isLegend": false,
     "attrs": {
-      "sho": 85,
-      "pas": 82,
-      "cro": 84,
-      "dri": 90,
-      "aer": 61,
-      "def": 48,
-      "phy": 84
+      "sho": 84,
+      "pas": 81,
+      "cro": 83,
+      "dri": 89,
+      "aer": 60,
+      "def": 47,
+      "phy": 83
     }
   },
   {
@@ -4895,14 +4895,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 81,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "epl",
     "club": "리버풀",
-    "att": 62,
-    "mid": 74,
-    "def": 85,
+    "att": 61,
+    "mid": 72,
+    "def": 82,
     "stamina": 82,
     "playstyles": [
       "ball_playing_cb"
@@ -4910,13 +4910,13 @@
     "scoutNote": "리버풀의 후방 빌드업과 대인 수비를 이끄는 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 60,
-      "pas": 84,
-      "cro": 60,
-      "dri": 74,
-      "aer": 84,
-      "def": 86,
-      "phy": 85
+      "sho": 58,
+      "pas": 80,
+      "cro": 58,
+      "dri": 72,
+      "aer": 80,
+      "def": 82,
+      "phy": 81
     }
   },
   {
@@ -5071,14 +5071,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 83,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "레알 마드리드",
     "att": 69,
-    "mid": 77,
-    "def": 85,
+    "mid": 76,
+    "def": 84,
     "stamina": 87,
     "playstyles": [
       "attacking_wingback"
@@ -5104,14 +5104,14 @@
       "RB"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 82,
     "nationality": "스페인",
     "nationalityCode": "ES",
     "leagueId": "laliga",
     "club": "아틀레티코 마드리드",
-    "att": 69,
-    "mid": 77,
-    "def": 85,
+    "att": 68,
+    "mid": 75,
+    "def": 83,
     "stamina": 82,
     "playstyles": [
       "attacking_wingback"
@@ -5119,13 +5119,13 @@
     "scoutNote": "아틀레티코 마드리드의 왕성한 활동량으로 우측면을 커버하는 라이트백",
     "isLegend": false,
     "attrs": {
-      "sho": 61,
-      "pas": 75,
-      "cro": 66,
-      "dri": 71,
-      "aer": 86,
-      "def": 86,
-      "phy": 86
+      "sho": 60,
+      "pas": 73,
+      "cro": 65,
+      "dri": 70,
+      "aer": 84,
+      "def": 84,
+      "phy": 84
     }
   },
   {
@@ -5308,14 +5308,14 @@
       "CB"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 84,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "bundesliga",
     "club": "RB 라이프치히",
     "att": 62,
-    "mid": 75,
-    "def": 86,
+    "mid": 74,
+    "def": 85,
     "stamina": 82,
     "playstyles": [
       "ball_playing_cb"
@@ -5323,13 +5323,13 @@
     "scoutNote": "RB 라이프치히의 후방 빌드업과 대인 수비를 이끄는 센터백",
     "isLegend": false,
     "attrs": {
-      "sho": 54,
-      "pas": 81,
-      "cro": 64,
-      "dri": 76,
-      "aer": 85,
-      "def": 87,
-      "phy": 87
+      "sho": 53,
+      "pas": 79,
+      "cro": 63,
+      "dri": 75,
+      "aer": 83,
+      "def": 85,
+      "phy": 85
     }
   },
   {
@@ -5611,14 +5611,14 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 85,
     "nationality": "잉글랜드",
     "nationalityCode": "GB",
     "leagueId": "epl",
     "club": "리즈 유나이티드",
     "att": 32,
-    "mid": 62,
-    "def": 85,
+    "mid": 63,
+    "def": 86,
     "stamina": 77,
     "playstyles": [
       "shot_stopper"
@@ -5963,14 +5963,14 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 86,
     "nationality": "네덜란드",
     "nationalityCode": "NL",
     "leagueId": "epl",
     "club": "브라이튼",
-    "att": 32,
-    "mid": 62,
-    "def": 85,
+    "att": 33,
+    "mid": 63,
+    "def": 87,
     "stamina": 77,
     "playstyles": [
       "sweeper_keeper"
@@ -5982,15 +5982,15 @@
       "pas": 80,
       "cro": 70,
       "dri": 68,
-      "aer": 84,
-      "def": 84,
-      "phy": 80,
+      "aer": 85,
+      "def": 85,
+      "phy": 81,
       "gk": {
-        "div": 82,
-        "han": 84,
-        "ref": 85,
-        "kic": 88,
-        "pos": 84
+        "div": 84,
+        "han": 86,
+        "ref": 87,
+        "kic": 89,
+        "pos": 86
       }
     }
   },
@@ -6633,14 +6633,14 @@
     "secondaryPositions": [
       "CAM"
     ],
-    "ovr": 83,
+    "ovr": 85,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "seriea",
     "club": "AC 밀란",
-    "att": 78,
-    "mid": 84,
-    "def": 74,
+    "att": 80,
+    "mid": 86,
+    "def": 76,
     "stamina": 82,
     "playstyles": [
       "deep_playmaker"
@@ -6648,13 +6648,13 @@
     "scoutNote": "AC 밀란의 확고한 주전 CM/CDM 전력",
     "isLegend": false,
     "attrs": {
-      "sho": 71,
-      "pas": 89,
-      "cro": 81,
-      "dri": 82,
-      "aer": 75,
-      "def": 80,
-      "phy": 83
+      "sho": 73,
+      "pas": 91,
+      "cro": 83,
+      "dri": 84,
+      "aer": 76,
+      "def": 82,
+      "phy": 85
     }
   },
   {
@@ -6666,14 +6666,14 @@
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 85,
+    "ovr": 86,
     "nationality": "아르헨티나",
     "nationalityCode": "AR",
     "leagueId": "seriea",
     "club": "AS 로마",
-    "att": 84,
-    "mid": 86,
-    "def": 69,
+    "att": 85,
+    "mid": 87,
+    "def": 70,
     "stamina": 75,
     "playstyles": [
       "playmaker_10",
@@ -6700,14 +6700,14 @@
       "CAM"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 82,
     "nationality": "크로아티아",
     "nationalityCode": "HR",
     "leagueId": "seriea",
     "club": "코모 1907",
-    "att": 85,
-    "mid": 75,
-    "def": 47,
+    "att": 83,
+    "mid": 73,
+    "def": 46,
     "stamina": 85,
     "playstyles": [
       "classic_winger"
@@ -6715,13 +6715,13 @@
     "scoutNote": "코모 1907의 창의적인 키패스로 공격을 조율하는 플레이메이커",
     "isLegend": false,
     "attrs": {
-      "sho": 80,
-      "pas": 83,
-      "cro": 87,
-      "dri": 87,
-      "aer": 60,
-      "def": 45,
-      "phy": 84
+      "sho": 78,
+      "pas": 81,
+      "cro": 85,
+      "dri": 85,
+      "aer": 59,
+      "def": 44,
+      "phy": 82
     }
   },
   {
@@ -7439,14 +7439,14 @@
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 82,
     "nationality": "네덜란드",
     "nationalityCode": "NL",
     "leagueId": "epl",
     "club": "선덜랜드",
-    "att": 85,
-    "mid": 75,
-    "def": 47,
+    "att": 83,
+    "mid": 73,
+    "def": 46,
     "stamina": 83,
     "playstyles": [
       "poacher"
@@ -7454,13 +7454,13 @@
     "scoutNote": "선덜랜드 1군 로테이션의 핵심 ST 선수",
     "isLegend": false,
     "attrs": {
-      "sho": 85,
-      "pas": 72,
-      "cro": 63,
-      "dri": 80,
-      "aer": 86,
-      "def": 48,
-      "phy": 92
+      "sho": 83,
+      "pas": 70,
+      "cro": 62,
+      "dri": 78,
+      "aer": 84,
+      "def": 47,
+      "phy": 90
     }
   },
   {
@@ -8225,14 +8225,14 @@
       "RB"
     ],
     "secondaryPositions": [],
-    "ovr": 82,
+    "ovr": 84,
     "nationality": "우크라이나",
     "nationalityCode": "UA",
     "leagueId": "ligue1",
     "club": "파리 생제르맹",
-    "att": 67,
-    "mid": 75,
-    "def": 83,
+    "att": 68,
+    "mid": 77,
+    "def": 85,
     "stamina": 82,
     "playstyles": [
       "ball_playing_cb"
@@ -8362,14 +8362,14 @@
       "LM",
       "LWB"
     ],
-    "ovr": 82,
+    "ovr": 84,
     "nationality": "벨기에",
     "nationalityCode": "BE",
     "leagueId": "seriea",
     "club": "AC 밀란",
-    "att": 83,
-    "mid": 73,
-    "def": 46,
+    "att": 85,
+    "mid": 75,
+    "def": 47,
     "stamina": 85,
     "playstyles": [
       "classic_winger"
@@ -8431,14 +8431,14 @@
       "RW"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 86,
     "nationality": "네덜란드",
     "nationalityCode": "NL",
     "leagueId": "seriea",
     "club": "AS 로마",
-    "att": 85,
-    "mid": 75,
-    "def": 47,
+    "att": 87,
+    "mid": 77,
+    "def": 48,
     "stamina": 81,
     "playstyles": [
       "line_breaker"
@@ -8446,13 +8446,13 @@
     "scoutNote": "AS 로마의 박스 안 위치 선정과 마무리 능력을 갖춘 최전방 공격수",
     "isLegend": false,
     "attrs": {
-      "sho": 87,
-      "pas": 77,
-      "cro": 76,
-      "dri": 89,
-      "aer": 71,
-      "def": 49,
-      "phy": 91
+      "sho": 89,
+      "pas": 79,
+      "cro": 77,
+      "dri": 91,
+      "aer": 73,
+      "def": 50,
+      "phy": 93
     }
   },
   {
@@ -8972,14 +8972,14 @@
       "RM"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 81,
     "nationality": "아르헨티나",
     "nationalityCode": "AR",
     "leagueId": "seriea",
     "club": "피오렌티나",
-    "att": 85,
-    "mid": 75,
-    "def": 47,
+    "att": 82,
+    "mid": 73,
+    "def": 46,
     "stamina": 85,
     "playstyles": [
       "playmaker_10",
@@ -8988,13 +8988,13 @@
     "scoutNote": "피오렌티나의 우측면 돌파와 찬스 메이킹에 능한 공격 자원",
     "isLegend": false,
     "attrs": {
-      "sho": 82,
-      "pas": 85,
-      "cro": 83,
-      "dri": 89,
-      "aer": 59,
-      "def": 45,
-      "phy": 81
+      "sho": 78,
+      "pas": 81,
+      "cro": 79,
+      "dri": 85,
+      "aer": 58,
+      "def": 44,
+      "phy": 77
     }
   },
   {
@@ -10213,14 +10213,14 @@
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 81,
+    "ovr": 84,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "epl",
     "club": "본머스",
-    "att": 82,
-    "mid": 72,
-    "def": 45,
+    "att": 85,
+    "mid": 74,
+    "def": 46,
     "stamina": 81,
     "playstyles": [
       "complete_forward",
@@ -10229,13 +10229,13 @@
     "scoutNote": "왕성한 전방 압박과 문전 마무리의 본머스 9번",
     "isLegend": false,
     "attrs": {
-      "sho": 88,
-      "pas": 69,
-      "cro": 60,
-      "dri": 78,
-      "aer": 84,
-      "def": 40,
-      "phy": 79
+      "sho": 91,
+      "pas": 72,
+      "cro": 61,
+      "dri": 81,
+      "aer": 87,
+      "def": 41,
+      "phy": 82
     }
   },
   {
@@ -11350,13 +11350,13 @@
       "ST"
     ],
     "secondaryPositions": [],
-    "ovr": 84,
+    "ovr": 83,
     "nationality": "조지아",
     "nationalityCode": "GE",
     "leagueId": "laliga",
     "club": "비야레알",
-    "att": 85,
-    "mid": 74,
+    "att": 84,
+    "mid": 73,
     "def": 46,
     "stamina": 81,
     "playstyles": [
@@ -11365,13 +11365,13 @@
     "scoutNote": "비야레알 1군 로테이션의 핵심 ST 선수",
     "isLegend": false,
     "attrs": {
-      "sho": 92,
-      "pas": 73,
-      "cro": 64,
-      "dri": 81,
-      "aer": 84,
-      "def": 41,
-      "phy": 83
+      "sho": 91,
+      "pas": 72,
+      "cro": 63,
+      "dri": 80,
+      "aer": 83,
+      "def": 40,
+      "phy": 82
     }
   },
   {
@@ -11596,14 +11596,14 @@
     "secondaryPositions": [
       "RB"
     ],
-    "ovr": 81,
+    "ovr": 83,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "ligue1",
     "club": "파리 생제르맹",
-    "att": 76,
-    "mid": 82,
-    "def": 72,
+    "att": 78,
+    "mid": 84,
+    "def": 74,
     "stamina": 87,
     "playstyles": [
       "box_to_box"
@@ -11611,13 +11611,13 @@
     "scoutNote": "파리 생제르맹의 공수 연결과 전진 패스를 주도하는 중앙 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 77,
-      "pas": 83,
-      "cro": 76,
-      "dri": 78,
-      "aer": 69,
-      "def": 79,
-      "phy": 85
+      "sho": 79,
+      "pas": 85,
+      "cro": 78,
+      "dri": 80,
+      "aer": 70,
+      "def": 81,
+      "phy": 87
     }
   },
   {
@@ -12299,13 +12299,13 @@
       "LM"
     ],
     "secondaryPositions": [],
-    "ovr": 83,
+    "ovr": 84,
     "nationality": "노르웨이",
     "nationalityCode": "NO",
     "leagueId": "bundesliga",
     "club": "RB 라이프치히",
-    "att": 84,
-    "mid": 73,
+    "att": 85,
+    "mid": 74,
     "def": 45,
     "stamina": 85,
     "playstyles": [
@@ -15823,14 +15823,14 @@
       "CAM"
     ],
     "secondaryPositions": [],
-    "ovr": 79,
+    "ovr": 83,
     "nationality": "체코",
     "nationalityCode": "CZ",
     "leagueId": "bundesliga",
     "club": "바이어 레버쿠젠",
-    "att": 80,
-    "mid": 70,
-    "def": 43,
+    "att": 84,
+    "mid": 73,
+    "def": 45,
     "stamina": 81,
     "playstyles": [
       "poacher",
@@ -15839,13 +15839,13 @@
     "scoutNote": "정교한 왼발과 헤더 마무리의 레버쿠젠 클러치 9번",
     "isLegend": false,
     "attrs": {
-      "sho": 85,
-      "pas": 64,
-      "cro": 56,
-      "dri": 76,
-      "aer": 79,
-      "def": 42,
-      "phy": 80
+      "sho": 89,
+      "pas": 68,
+      "cro": 58,
+      "dri": 80,
+      "aer": 83,
+      "def": 44,
+      "phy": 84
     }
   },
   {
@@ -19475,14 +19475,14 @@
       "CAM"
     ],
     "secondaryPositions": [],
-    "ovr": 83,
+    "ovr": 85,
     "nationality": "알제리",
     "nationalityCode": "DZ",
     "leagueId": "ligue1",
     "club": "올랭피크 마르세유",
-    "att": 84,
-    "mid": 73,
-    "def": 44,
+    "att": 86,
+    "mid": 75,
+    "def": 45,
     "stamina": 81,
     "playstyles": [
       "complete_forward"
@@ -19490,13 +19490,13 @@
     "scoutNote": "올랭피크 마르세유의 박스 안 위치 선정과 마무리 능력을 갖춘 최전방 공격수",
     "isLegend": false,
     "attrs": {
-      "sho": 85,
-      "pas": 75,
-      "cro": 65,
-      "dri": 78,
-      "aer": 85,
-      "def": 43,
-      "phy": 85
+      "sho": 88,
+      "pas": 78,
+      "cro": 66,
+      "dri": 81,
+      "aer": 88,
+      "def": 44,
+      "phy": 88
     }
   },
   {
@@ -20288,14 +20288,14 @@
       "RM",
       "LWB"
     ],
-    "ovr": 79,
+    "ovr": 83,
     "nationality": "브라질",
     "nationalityCode": "BR",
     "leagueId": "seriea",
     "club": "인테르 밀란",
-    "att": 57,
-    "mid": 69,
-    "def": 80,
+    "att": 59,
+    "mid": 72,
+    "def": 84,
     "stamina": 80,
     "playstyles": [
       "stopper_cb"
@@ -20303,13 +20303,13 @@
     "scoutNote": "인테르 밀란 1군 로테이션의 핵심 CB/LM 선수",
     "isLegend": false,
     "attrs": {
-      "sho": 53,
-      "pas": 69,
-      "cro": 58,
-      "dri": 62,
-      "aer": 81,
-      "def": 81,
-      "phy": 81
+      "sho": 55,
+      "pas": 73,
+      "cro": 60,
+      "dri": 64,
+      "aer": 85,
+      "def": 85,
+      "phy": 85
     }
   },
   {
@@ -20352,14 +20352,14 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 82,
+    "ovr": 84,
     "nationality": "알바니아",
     "nationalityCode": "AL",
     "leagueId": "seriea",
     "club": "칼리아리",
-    "att": 30,
-    "mid": 60,
-    "def": 83,
+    "att": 31,
+    "mid": 61,
+    "def": 85,
     "stamina": 76,
     "playstyles": [
       "shot_stopper"
@@ -24972,14 +24972,14 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 78,
+    "ovr": 83,
     "nationality": "그리스",
     "nationalityCode": "GR",
     "leagueId": "seriea",
     "club": "라치오",
-    "att": 30,
-    "mid": 58,
-    "def": 79,
+    "att": 32,
+    "mid": 61,
+    "def": 84,
     "stamina": 76,
     "playstyles": [
       "shot_stopper"
@@ -24991,15 +24991,15 @@
       "pas": 65,
       "cro": 56,
       "dri": 54,
-      "aer": 77,
-      "def": 79,
-      "phy": 73,
+      "aer": 80,
+      "def": 82,
+      "phy": 75,
       "gk": {
-        "div": 79,
-        "han": 79,
-        "ref": 81,
-        "kic": 71,
-        "pos": 78
+        "div": 84,
+        "han": 84,
+        "ref": 86,
+        "kic": 74,
+        "pos": 83
       }
     }
   },
@@ -25607,14 +25607,14 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 78,
+    "ovr": 84,
     "nationality": "이탈리아",
     "nationalityCode": "IT",
     "leagueId": "seriea",
     "club": "유벤투스",
-    "att": 30,
-    "mid": 58,
-    "def": 79,
+    "att": 32,
+    "mid": 62,
+    "def": 85,
     "stamina": 76,
     "playstyles": [
       "shot_stopper",
@@ -25627,15 +25627,15 @@
       "pas": 74,
       "cro": 64,
       "dri": 62,
-      "aer": 79,
-      "def": 77,
-      "phy": 74,
+      "aer": 83,
+      "def": 81,
+      "phy": 77,
       "gk": {
-        "div": 77,
-        "han": 75,
-        "ref": 80,
-        "kic": 81,
-        "pos": 78
+        "div": 83,
+        "han": 81,
+        "ref": 86,
+        "kic": 85,
+        "pos": 84
       }
     }
   },
@@ -25818,14 +25818,14 @@
       "GK"
     ],
     "secondaryPositions": [],
-    "ovr": 78,
+    "ovr": 82,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "seriea",
     "club": "코모 1907",
-    "att": 30,
-    "mid": 58,
-    "def": 79,
+    "att": 31,
+    "mid": 60,
+    "def": 83,
     "stamina": 73,
     "playstyles": [
       "shot_stopper"
@@ -25837,15 +25837,15 @@
       "pas": 65,
       "cro": 56,
       "dri": 54,
-      "aer": 75,
-      "def": 77,
-      "phy": 76,
+      "aer": 77,
+      "def": 79,
+      "phy": 78,
       "gk": {
-        "div": 81,
-        "han": 78,
-        "ref": 81,
-        "kic": 74,
-        "pos": 77
+        "div": 84,
+        "han": 81,
+        "ref": 84,
+        "kic": 76,
+        "pos": 80
       }
     }
   },
@@ -43782,14 +43782,14 @@
       "RW"
     ],
     "secondaryPositions": [],
-    "ovr": 79,
+    "ovr": 83,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "ligue1",
     "club": "RC 랑스",
-    "att": 77,
-    "mid": 79,
-    "def": 62,
+    "att": 80,
+    "mid": 83,
+    "def": 65,
     "stamina": 75,
     "playstyles": [
       "playmaker_10"
@@ -43797,13 +43797,13 @@
     "scoutNote": "RC 랑스 공격의 창조자이자 2026-27시즌 리그1 빅찬스 창출 선두를 달리는 왼발 테크니션",
     "isLegend": false,
     "attrs": {
-      "sho": 72,
-      "pas": 88,
-      "cro": 78,
-      "dri": 80,
-      "aer": 56,
-      "def": 57,
-      "phy": 67
+      "sho": 76,
+      "pas": 92,
+      "cro": 82,
+      "dri": 84,
+      "aer": 58,
+      "def": 59,
+      "phy": 71
     }
   },
   {
@@ -44425,14 +44425,14 @@
       "CM"
     ],
     "secondaryPositions": [],
-    "ovr": 74,
+    "ovr": 80,
     "nationality": "베네수엘라",
     "nationalityCode": "VE",
     "leagueId": "ligue1",
     "club": "툴루즈 FC",
-    "att": 63,
-    "mid": 75,
-    "def": 72,
+    "att": 68,
+    "mid": 81,
+    "def": 77,
     "stamina": 85,
     "playstyles": [
       "box_to_box"
@@ -44440,13 +44440,13 @@
     "scoutNote": "툴루즈 FC의 공수 연결과 전진 패스를 주도하는 중앙 미드필더",
     "isLegend": false,
     "attrs": {
-      "sho": 63,
-      "pas": 75,
-      "cro": 65,
-      "dri": 72,
-      "aer": 69,
-      "def": 75,
-      "phy": 79
+      "sho": 65,
+      "pas": 80,
+      "cro": 67,
+      "dri": 77,
+      "aer": 74,
+      "def": 80,
+      "phy": 84
     }
   },
   {
@@ -49066,14 +49066,14 @@
     "secondaryPositions": [
       "RM"
     ],
-    "ovr": 73,
+    "ovr": 79,
     "nationality": "프랑스",
     "nationalityCode": "FR",
     "leagueId": "ligue1",
     "club": "OGC 니스",
-    "att": 58,
-    "mid": 66,
-    "def": 74,
+    "att": 61,
+    "mid": 71,
+    "def": 80,
     "stamina": 79,
     "playstyles": [
       "attacking_wingback"
@@ -49081,13 +49081,13 @@
     "scoutNote": "OGC 니스의 왕성한 활동량으로 우측면을 커버하는 라이트백",
     "isLegend": false,
     "attrs": {
-      "sho": 60,
-      "pas": 69,
-      "cro": 79,
-      "dri": 71,
-      "aer": 62,
-      "def": 72,
-      "phy": 76
+      "sho": 62,
+      "pas": 74,
+      "cro": 84,
+      "dri": 76,
+      "aer": 64,
+      "def": 77,
+      "phy": 81
     }
   },
   {

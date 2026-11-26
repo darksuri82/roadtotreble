@@ -36,7 +36,8 @@ export type FormationId =
   | '3-5-2-dm'
   | '3-4-3'
   | '3-4-2-1'
-  | '3-3-3-1';
+  | '3-3-3-1'
+  | '3-2-4-1';
 
 export type ManagerTraitId =
   | 'tiki_taka'

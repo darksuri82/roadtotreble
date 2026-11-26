@@ -87,8 +87,8 @@ describe('v8.10 Guidebook 100% Engine Sync, Visual Tutorial & Contextual UX', ()
   });
 
   it('matches all live engine constants referenced by the synchronized guidebook', () => {
-    expect(FORMATION_LIST.length).toBe(9);
-    expect(Object.keys(FORMATIONS).length).toBe(9);
+    expect(FORMATION_LIST.length).toBe(10);
+    expect(Object.keys(FORMATIONS).length).toBe(10);
     expect(MANAGER_TRAIT_LIST.length).toBe(14);
     expect(HISTORICAL_BENCHMARK_TEAMS.length).toBe(24);
     expect(COMPLEMENTARY_STYLE_PAIRS.length).toBe(21);

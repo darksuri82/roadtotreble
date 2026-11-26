@@ -151,7 +151,7 @@ const TAB_SECTIONS: Record<GuideTabId, { id: string; label: string }[]> = {
   ],
   tactics: [
     { id: 'guide-tactics-5zone', label: '5대 전술·5구역 상성' },
-    { id: 'guide-tactics-formations', label: '9종 포메이션' },
+    { id: 'guide-tactics-formations', label: '10종 포메이션' },
     { id: 'guide-tactics-exposure', label: '8경기 노출도·경고' },
     { id: 'guide-tactics-impact', label: 'AI 등급별 파훼 타격' },
   ],
@@ -662,22 +662,22 @@ export function SystemGuideContent({
                 <tbody className="divide-y divide-slate-800/80 bg-[#0a1019]">
                   <tr>
                     <td className="px-2.5 py-2 font-bold text-slate-300 whitespace-nowrap">
-                      하위권 (OVR ≤80)
+                      하위권 (OVR ≤79)
                     </td>
                     <td className="px-2.5 py-2 text-slate-400 whitespace-nowrap">제한적</td>
-                    <td className="px-2.5 py-2 text-slate-400 whitespace-nowrap">6~24% (낮음)</td>
+                    <td className="px-2.5 py-2 text-slate-400 whitespace-nowrap">16~48%</td>
                     <td className="px-2.5 py-2 text-slate-400">
-                      경미한 라인 감점 · 전력 우세 시 돌파 가능
+                      기본 대응 (최소 30% 반영) · 10경기+ 고정 시 체감 상승
                     </td>
                   </tr>
                   <tr>
                     <td className="px-2.5 py-2 font-bold text-amber-200 whitespace-nowrap">
-                      중상위권 (OVR 81~84)
+                      중상위권 (OVR 80~84)
                     </td>
                     <td className="px-2.5 py-2 text-amber-300 whitespace-nowrap">맞춤 대응</td>
-                    <td className="px-2.5 py-2 text-amber-200 whitespace-nowrap">28~74%</td>
+                    <td className="px-2.5 py-2 text-amber-200 whitespace-nowrap">36~82%</td>
                     <td className="px-2.5 py-2 text-slate-300">
-                      실효 라인 약 -1.3~-1.8 · 찬스/점유 점진 압박
+                      실효 라인 약 -1.8~-2.6 · 찬스/점유 점진 압박
                     </td>
                   </tr>
                   <tr>
@@ -688,7 +688,7 @@ export function SystemGuideContent({
                       정밀 파훼
                     </td>
                     <td className="px-2.5 py-2 font-bold text-rose-200 whitespace-nowrap">
-                      72~98% (킥오프·전반 18&apos;~28&apos;)
+                      78~98% (킥오프·전반 18&apos;~28&apos;)
                     </td>
                     <td className="px-2.5 py-2 text-rose-100">
                       실효 A-{ADAPTATION_MAX_ATT_PENALTY} / M-{ADAPTATION_MAX_MID_PENALTY} / D-
@@ -700,9 +700,18 @@ export function SystemGuideContent({
                 </tbody>
               </table>
             </div>
-            <div className="text-[10.5px] text-slate-400">
-              • 2D 중계에서도 파훼 발동 시 상대 AI의 압박 반경·라인 규율·역습 가속이 즉시 상승하고,
-              상단 <strong className="text-rose-200">[전술 파훼 발동]</strong> 배너와 경기 리포트에 기록됩니다.
+            <div className="space-y-1 text-[10.5px] text-slate-400">
+              <div>
+                • <strong className="text-rose-200">장기 고정 가중:</strong> 동일 포메이션·전술을{' '}
+                <strong className="text-white">10경기+ 연속</strong> 고집하면 파훼 타격{' '}
+                <strong className="text-amber-300">×1.20</strong>,{' '}
+                <strong className="text-white">14경기+ 연속</strong> 고집하면{' '}
+                <strong className="text-rose-300">×1.35</strong>로 추가 증폭됩니다.
+              </div>
+              <div>
+                • 2D 중계에서도 파훼 발동 시 상대 AI의 압박 반경·라인 규율·역습 가속이 즉시 상승하고,
+                상단 <strong className="text-rose-200">[전술 파훼 발동]</strong> 배너와 경기 리포트에 기록됩니다.
+              </div>
             </div>
           </div>
         </div>
@@ -894,6 +903,19 @@ export function SystemGuideContent({
                 </div>
               </div>
             </div>
+            <div className="rounded-lg border border-slate-800 bg-[#0f1622] px-3 py-2 text-[10.5px] text-slate-300 space-y-0.5">
+              <div>
+                <strong className="text-amber-200">드래프트 프리뷰 표기 기준:</strong>{' '}
+                미선택 카드에는 미리 노출되지 않으며, 후보를 클릭해 <strong className="text-white">선발 슬롯에 프리뷰 배치</strong>했을 때
+                해당 위치의 주포지션 적합(0) · 감독 궁합(★) · 인접 시너지(2선+)를 실시간 판정해{' '}
+                <strong className="text-amber-200">포텐↑</strong> 또는{' '}
+                <strong className="text-rose-200">육성</strong>으로 표시됩니다(벤치 프리뷰 시 미표시).
+              </div>
+              <div>
+                <strong className="text-emerald-300">발동 시점:</strong>{' '}
+                각성이 성사된 경기 종료 직후(이적시장·코치·부상 알림보다 우선) 즉시 축하 팝업과 함께 영구 반영됩니다.
+              </div>
+            </div>
             <div className="overflow-x-auto rounded-lg border border-rose-500/25">
               <table className="w-full text-left text-[11px] tabular-nums">
                 <thead className="bg-[#1b1116] text-rose-200/80">
@@ -916,7 +938,7 @@ export function SystemGuideContent({
                       +5~+{AWAKENING_MAX_GAIN} / +4~+7 / +3~+6
                     </td>
                     <td className="px-2.5 py-1.5 text-slate-400">
-                      드래프트 카드에 포텐↑·육성 지표 표시
+                      선발 프리뷰 배치 시 포텐↑·육성 지표 표시
                     </td>
                   </tr>
                   <tr>

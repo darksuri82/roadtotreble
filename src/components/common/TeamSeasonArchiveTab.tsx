@@ -265,28 +265,85 @@ export function TeamSeasonArchiveTab({
           </div>
 
           {/* Effective Team Ratings Summary */}
-          <div className="flex flex-wrap items-center gap-2 tabular-nums">
-            <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-[#090e15] px-3 py-2 text-xs">
-              <Zap className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="text-slate-400">ATT</span>
-              <strong className="font-display text-sm text-white">
-                {ratings.effectiveAtt.toFixed(1)}
-              </strong>
-              <span className="text-slate-600">/</span>
-              <span className="text-slate-400">MID</span>
-              <strong className="font-display text-sm text-white">
-                {ratings.effectiveMid.toFixed(1)}
-              </strong>
-              <span className="text-slate-600">/</span>
-              <span className="text-slate-400">DEF</span>
-              <strong className="font-display text-sm text-white">
-                {ratings.effectiveDef.toFixed(1)}
-              </strong>
-            </div>
-            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-extrabold text-emerald-200 whitespace-nowrap">
-              케미 {chemistry.total}
-            </div>
-          </div>
+          {(() => {
+            const starterBaseAvg =
+              filledStarters.length > 0
+                ? Math.round(
+                    (filledStarters.reduce((acc, p) => acc + p.ovr, 0) /
+                      filledStarters.length) *
+                      10,
+                  ) / 10
+                : 0;
+            const squadBaseAvg =
+              allSquadPlayers.length > 0
+                ? Math.round(
+                    (allSquadPlayers.reduce((acc, p) => acc + p.ovr, 0) /
+                      allSquadPlayers.length) *
+                      10,
+                  ) / 10
+                : 0;
+            const effectiveTotalOvr =
+              Math.round(
+                ((ratings.effectiveAtt +
+                  ratings.effectiveMid +
+                  ratings.effectiveDef) /
+                  3) *
+                  10,
+              ) / 10;
+            const effectiveDelta =
+              Math.round((effectiveTotalOvr - starterBaseAvg) * 10) / 10;
+            return (
+              <div className="flex flex-wrap items-center gap-2 tabular-nums">
+                <div
+                  title={`선발 11인 기본 평균 OVR ${starterBaseAvg.toFixed(1)} · 전체 ${allSquadPlayers.length}인 스쿼드 평균 ${squadBaseAvg.toFixed(1)}`}
+                  className="flex items-center gap-2 rounded-xl border border-slate-700/90 bg-[#090e15] px-3 py-2 text-xs"
+                >
+                  <span className="text-slate-400">총 OVR</span>
+                  <strong className="font-display text-sm text-slate-100">
+                    {starterBaseAvg.toFixed(1)}
+                  </strong>
+                  <span className="text-slate-600">→</span>
+                  <span className="text-emerald-400 font-bold">실효</span>
+                  <strong className="font-display text-sm text-emerald-300">
+                    {effectiveTotalOvr.toFixed(1)}
+                  </strong>
+                  {effectiveDelta !== 0 && (
+                    <span
+                      className={`rounded px-1 py-px text-[10px] font-black ${
+                        effectiveDelta > 0
+                          ? 'bg-emerald-500/15 text-emerald-300'
+                          : 'bg-rose-500/15 text-rose-300'
+                      }`}
+                    >
+                      {effectiveDelta > 0
+                        ? `+${effectiveDelta.toFixed(1)}`
+                        : effectiveDelta.toFixed(1)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-[#090e15] px-3 py-2 text-xs">
+                  <Zap className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="text-slate-400">ATT</span>
+                  <strong className="font-display text-sm text-white">
+                    {ratings.effectiveAtt.toFixed(1)}
+                  </strong>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-slate-400">MID</span>
+                  <strong className="font-display text-sm text-white">
+                    {ratings.effectiveMid.toFixed(1)}
+                  </strong>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-slate-400">DEF</span>
+                  <strong className="font-display text-sm text-white">
+                    {ratings.effectiveDef.toFixed(1)}
+                  </strong>
+                </div>
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs font-extrabold text-emerald-200 whitespace-nowrap">
+                  케미 {chemistry.total}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Coaching Staff & FFP Row */}

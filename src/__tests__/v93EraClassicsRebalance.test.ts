@@ -176,7 +176,7 @@ describe('v9.3 Era Classics, Active OVR Rebalance & 50-Season Simulation Verific
     expect(byName.get('라민 야말')?.ovr).toBe(92);
     expect(byName.get('해리 케인')?.ovr).toBe(91);
     expect(byName.get('엘링 홀란')?.ovr).toBe(91);
-    expect(byName.get('로드리')?.ovr).toBe(91);
+    expect(byName.get('로드리')?.ovr).toBe(90);
 
     // Underperforming big-club form trims
     expect(byName.get('빅토르 요케레스')?.ovr).toBeLessThanOrEqual(85);
@@ -186,7 +186,8 @@ describe('v9.3 Era Classics, Active OVR Rebalance & 50-Season Simulation Verific
 
     // Non-big-club real-world elites NOT capped at 85
     expect(byName.get('니코 슐로터베크')?.ovr).toBeGreaterThanOrEqual(87);
-    expect(byName.get('니코 윌리엄스')?.ovr).toBeGreaterThanOrEqual(86);
+    expect(byName.get('도니얼 말런')?.ovr).toBeGreaterThanOrEqual(86);
+    expect(byName.get('바르트 페르브뤼헌')?.ovr).toBeGreaterThanOrEqual(86);
     expect(byName.get('그레고어 코벨')?.ovr).toBeGreaterThanOrEqual(86);
     expect(byName.get('우나이 시몬')?.ovr).toBeGreaterThanOrEqual(86);
 
@@ -203,8 +204,8 @@ describe('v9.3 Era Classics, Active OVR Rebalance & 50-Season Simulation Verific
 
     expect(gross.ovr).toBe(85);
     expect(mgw.ovr).toBe(85);
-    expect(brobbey.ovr).toBe(84);
-    expect(malen.ovr).toBe(84);
+    expect(brobbey.ovr).toBe(82);
+    expect(malen.ovr).toBe(86);
     expect(tzolakis.ovr).toBe(83);
     expect(damsgaard.ovr).toBe(83);
     expect(dcl.ovr).toBe(82);

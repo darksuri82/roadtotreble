@@ -485,24 +485,26 @@ function resolveMatchStrengths(params: {
         ? chem.chemistryOvrBonus * 0.45
         : Math.min(0.5, Math.max(0, chem.chemistryOvrBonus - avgSynBonus * 0.75));
 
-    // Scale genuine one-club cohesion & elite manager coaching by club caliber so top 1-4 AI contenders
-    // reach authentic 87.2~89.1 effective OVR (tight 1~4 title race) without inflating mid/bottom clubs
-    // or mismatched zero-synergy synthetic teams.
+    // v9.4: Lift authentic effective OVR (cohesion + synergy + manager coaching) for big clubs
+    // and upper-midtable contenders without inflating raw base OVR, keeping title races and UCL
+    // genuinely demanding even when the user stacks manager traits, staff coaches, and awakenings.
     const clubBaseAvg = (club.att + club.mid + club.def) / 3;
-    const contenderScale = clamp((clubBaseAvg - 79) / 7.5, 0, 1);
-    const hasRealCohesion = avgSynBonus >= 1.85 && chem.total >= 88;
+    const contenderScale = clamp((clubBaseAvg - 76.5) / 8.5, 0, 1);
+    const hasRealCohesion = avgSynBonus >= 1.75 && chem.total >= 86;
     const cohesionSynLift = hasRealCohesion
-      ? (clamp((avgSynBonus - 1.75) * 0.65, 0, 0.75) + (chem.total >= 95 ? 0.35 : 0.15)) *
-        contenderScale
-      : clamp((avgSynBonus - 2.3) * 0.12, -0.2, 0);
+      ? (clamp((avgSynBonus - 1.65) * 0.78, 0, 0.95) +
+          (chem.total >= 95 ? 0.45 : 0.22)) *
+        (0.18 + 0.82 * contenderScale)
+      : clamp((avgSynBonus - 2.2) * 0.12, -0.2, 0);
     const mgrCoachingBonus =
-      clamp((manager.ovr - 81) * 0.085, -0.15, 1.15) * (0.2 + 0.8 * contenderScale);
+      clamp((manager.ovr - 80) * 0.105, -0.15, 1.45) *
+      (0.28 + 0.72 * contenderScale);
     const uclPrestigeBonus =
-      userContext?.competition === 'ucl' && clubBaseAvg >= 82
-        ? 0.45
+      userContext?.competition === 'ucl' && clubBaseAvg >= 81
+        ? 0.75
         : 0;
     const totalAiLift =
-      cohesionSynLift + chemOrgBonus * 0.22 + mgrCoachingBonus + uclPrestigeBonus;
+      cohesionSynLift + chemOrgBonus * 0.26 + mgrCoachingBonus + uclPrestigeBonus;
 
     if (aiClubSynergyLiftCache.size >= MAX_AI_SYNERGY_CACHE) {
       aiClubSynergyLiftCache.clear();
@@ -682,9 +684,9 @@ function resolveMatchStrengths(params: {
       })
     : null;
 
-  // AI Manager tactical trait modifiers (14%..42% scaled by manager OVR: gives top AI managers authentic tactical identity & title-race tension)
+  // v9.4: AI Manager tactical trait modifiers (24%..58% scaled by manager OVR: gives top & upper-midtable AI managers authentic effective strength)
   const computeAiTraitScale = (mgrOvr: number) =>
-    clamp(0.14 + ((mgrOvr - 75) / 19) * 0.28, 0.14, 0.42);
+    clamp(0.24 + ((mgrOvr - 74) / 19) * 0.34, 0.24, 0.58);
 
   const homeAiTraitMod =
     !homeIsHuman && homeManager && effectiveHomeRoster.length > 0
