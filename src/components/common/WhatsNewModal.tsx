@@ -28,7 +28,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.7.1';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.7.2';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,

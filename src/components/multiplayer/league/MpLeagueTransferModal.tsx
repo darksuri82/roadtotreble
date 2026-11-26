@@ -481,10 +481,10 @@ export function MpLeagueTransferModal({
       .filter((p): p is Player => Boolean(p));
   }, [userRosterEntries, selectedUserSlots]);
 
-  const neededFillerCount = Math.max(
-    0,
-    selectedUserPlayers.length - selectedAiPlayers.length,
-  );
+  const neededFillerCount =
+    selectedAiPlayers.length > 0
+      ? Math.max(0, selectedUserPlayers.length - selectedAiPlayers.length)
+      : 0;
 
   const optionalFillerPool = useMemo(() => {
     if (!activeClubOffer) return [];
@@ -581,10 +581,10 @@ export function MpLeagueTransferModal({
         starters: myStarters,
         bench: myBench,
         outSlots: selectedUserSlots,
-        inItems: [
-          ...selectedAiPlayers.map((player) => ({ player, isFiller: false })),
-          ...autoFillerPlayers.map((player) => ({ player, isFiller: true })),
-        ],
+        inItems: selectedAiPlayers.map((player) => ({
+          player,
+          isFiller: false,
+        })),
         tactic: myTactic,
         managerTraitId,
         beforeChemistry: myChemistry,
@@ -598,7 +598,6 @@ export function MpLeagueTransferModal({
       myBench,
       selectedUserSlots,
       selectedAiPlayers,
-      autoFillerPlayers,
       myTactic,
       managerTraitId,
       myChemistry,

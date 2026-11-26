@@ -5,6 +5,14 @@
 
 ---
 
+## v9.7.2 — 이적시장 가상 교체 프리뷰 양쪽 선수 직접 선택 시에만 발동
+
+- **이적시장 가상 교체 프리뷰 발동 조건 개선 (`src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`, `src/engine/chemistryEngine.ts`)**:
+  - 우리 팀 선수만 클릭했을 때 `autoFillerPlayers`가 미리 계산되어 시스템이 임의로 고른 상대 선수와 위치가 바뀌던 문제를 수정했습니다.
+  - 사용자가 **양쪽 팀에서 트레이드 대상 선수를 직접 모두 클릭했을 때만** 해당 선수들끼리 양방향 가상 교체 프리뷰가 표시되며, 2:1 비대칭 선택 시에도 `computeTradeSwapPreview`가 선택한 내 슬롯 전체에서 가장 적합한 선발 슬롯에 영입 대상을 매칭합니다.
+
+---
+
 ## v9.7.1 — 이적시장 가상 교체(스왑) 프리뷰 양방향 반영 (상대 팀 피치·벤치·리스트 동시 교체 표시)
 
 - **이적시장 양방향 가상 교체 프리뷰 (`src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`)**:

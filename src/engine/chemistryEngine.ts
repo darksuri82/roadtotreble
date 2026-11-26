@@ -718,18 +718,6 @@ export interface TradeSwapPreviewResult {
   cashDeltaM?: number;
 }
 
-function getPermutations<T>(arr: T[]): T[][] {
-  if (arr.length <= 1) return [arr];
-  const res: T[][] = [];
-  for (let i = 0; i < arr.length; i += 1) {
-    const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
-    for (const perm of getPermutations(rest)) {
-      res.push([arr[i], ...perm]);
-    }
-  }
-  return res;
-}
-
 function round1(v: number): number {
   return Math.round(v * 10) / 10;
 }
@@ -855,19 +843,37 @@ export function computeTradeSwapPreview(params: {
     };
   }
 
-  // Pair up to 3 incoming players into outgoing slots by best positional fit
-  // (prioritizing non-filler primary targets for starter slots)
-  const chosenOut = validOutSlots.slice(0, pairCount);
+  // Pair up to 3 incoming players into the best-fitting outgoing slots
+  // (even when outSlots.length > inItems.length, e.g. 2:1 or 3:1 deals)
+  const poolOut = validOutSlots.slice(0, 3);
   const chosenIn = inItems.slice(0, pairCount);
 
-  const inPerms = getPermutations(chosenIn);
-  let bestPerm = chosenIn;
+  // Generate all ordered pairCount-selections from poolOut (at most P(3,3) = 6)
+  const outAssignments: Array<typeof poolOut> = [];
+  const buildAssignments = (
+    current: typeof poolOut,
+    usedIdx: Set<number>,
+  ) => {
+    if (current.length === pairCount) {
+      outAssignments.push(current);
+      return;
+    }
+    for (let i = 0; i < poolOut.length; i += 1) {
+      if (usedIdx.has(i)) continue;
+      usedIdx.add(i);
+      buildAssignments([...current, poolOut[i]], usedIdx);
+      usedIdx.delete(i);
+    }
+  };
+  buildAssignments([], new Set<number>());
+
+  let bestOut: typeof poolOut = poolOut.slice(0, pairCount);
   let bestScore = Number.NEGATIVE_INFINITY;
-  for (const perm of inPerms) {
+  for (const assignedOut of outAssignments) {
     let score = 0;
     for (let i = 0; i < pairCount; i += 1) {
-      const outEntry = chosenOut[i];
-      const inEntry = perm[i];
+      const outEntry = assignedOut[i];
+      const inEntry = chosenIn[i];
       if (outEntry.ref.area === 'starter') {
         const slot = formation.slots[outEntry.ref.index];
         if (slot) {
@@ -887,9 +893,12 @@ export function computeTradeSwapPreview(params: {
     }
     if (score > bestScore) {
       bestScore = score;
-      bestPerm = perm;
+      bestOut = assignedOut;
     }
   }
+
+  const chosenOut = bestOut;
+  const bestPerm = chosenIn;
 
   const previewStarters = [...starters];
   const previewBench = [...bench];

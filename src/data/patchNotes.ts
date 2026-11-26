@@ -12,14 +12,31 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v9.7.1';
+export const CURRENT_APP_VERSION = 'v9.7.2';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v9.7.2',
+    codename: '이적시장 가상 교체 프리뷰 — 양쪽 팀 대상 선수 직접 선택 시에만 발동하도록 개선',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '우리 팀 선수만 클릭했을 때 시스템 자동 필러 선수와 의도치 않게 교체 프리뷰가 발동하던 문제를 수정해, 사용자가 양쪽 팀에서 트레이드 대상 선수를 직접 모두 클릭했을 때만 가상 교체 프리뷰가 표시되도록 개편했습니다.',
+    sections: [
+      {
+        category: '이적시장 가상 교체 프리뷰 발동 조건 개선',
+        items: [
+          '싱글(`TransferMarketModal`)·멀티리그(`MpLeagueTransferModal`)에서 상대 선수를 고르지 않은 상태에서 자동 필러가 계산되지 않도록 수정하고, 가상 교체 프리뷰에는 사용자가 직접 클릭한 양쪽 트레이드 대상 선수만 반영되도록 변경했습니다.',
+          '2:1 등 비대칭 선택 시에도 시스템 임의 필러가 끼어들지 않고, 내가 직접 고른 영입 대상이 선택한 내 슬롯 중 가장 적합한 포지션(선발 우선)에 배치되어 비교됩니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v9.7.1',
     codename: '이적시장 가상 교체(스왑) 프리뷰 양방향 반영 (상대 팀 피치·벤치·리스트 동시 교체 표시)',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'MAJOR',
     summary:
       '이적시장 가상 교체 프리뷰 시 내 팀 피치뿐 아니라 상대 구단 피치(선발·벤치)·리스트 및 클래식 FA 카드에도 내가 보내는 선수가 상호 교체되어 보이도록 양방향 미러 프리뷰를 적용했습니다.',
     sections: [

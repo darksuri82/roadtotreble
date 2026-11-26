@@ -163,7 +163,28 @@ describe('v9.7.0 Trade Virtual Swap Preview, Diverse Team Intros, Crisis/Rebound
       preview1v1.managerFitAfter - preview1v1.managerFitBefore,
     );
 
-    // 2:1 + filler swap: primary target MUST land in starter slot, filler in bench slot
+    // Asymmetric 2:1 explicit preview (2 outgoing slots + 1 clicked target, no auto-filler):
+    // starStriker must land in the starter ST slot, NOT blindly bench:0
+    const preview2to1Explicit = computeTradeSwapPreview({
+      formationId: '4-3-3',
+      starters,
+      bench,
+      outSlots: [
+        { area: 'bench', index: 0 },
+        { area: 'starter', index: stSlotIdx },
+      ],
+      inItems: [{ player: starStriker, isFiller: false }],
+      tactic: 'possession',
+      managerTraitId: 'tiki_taka',
+    });
+    expect(preview2to1Explicit.isActive).toBe(true);
+    expect(preview2to1Explicit.swapPairs).toHaveLength(1);
+    expect(preview2to1Explicit.previewStarters[stSlotIdx]?.id).toBe(
+      starStriker.id,
+    );
+    expect(preview2to1Explicit.previewBench[0]?.id).toBe(bench[0].id);
+
+    // 2:2 swap: primary target MUST land in starter slot, second piece in bench slot
     const preview2v2 = computeTradeSwapPreview({
       formationId: '4-3-3',
       starters,
@@ -857,8 +878,8 @@ describe('v9.7.0 Trade Virtual Swap Preview, Diverse Team Intros, Crisis/Rebound
     expect(90 + gain90).toBeLessThanOrEqual(AWAKENING_OVR_HARD_CAP);
 
     // Release version sync
-    expect(CURRENT_APP_VERSION).toBe('v9.7.1');
-    expect(PATCH_NOTES[0].version).toBe('v9.7.1');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.7.1');
+    expect(CURRENT_APP_VERSION).toBe('v9.7.2');
+    expect(PATCH_NOTES[0].version).toBe('v9.7.2');
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.7.2');
   });
 });

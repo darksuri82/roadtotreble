@@ -478,11 +478,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       .filter((p): p is Player => p !== null);
   }, [selectedUserSlots, state.starters, state.bench]);
 
-  // Option 3: Auto-selected rotation fillers for 2:1 / 3:1 deals
-  const neededAutoFillers = Math.max(
-    0,
-    selectedUserPlayers.length - selectedAiPlayers.length,
-  );
+  // Option 3: Auto-selected rotation fillers for 2:1 / 3:1 deals (only once user picks opponent target)
+  const neededAutoFillers =
+    selectedAiPlayers.length > 0
+      ? Math.max(0, selectedUserPlayers.length - selectedAiPlayers.length)
+      : 0;
 
   const autoFillerPlayers = useMemo(() => {
     if (
@@ -594,10 +594,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         starters: state.starters,
         bench: state.bench,
         outSlots: selectedUserSlots,
-        inItems: [
-          ...selectedAiPlayers.map((player) => ({ player, isFiller: false })),
-          ...autoFillerPlayers.map((player) => ({ player, isFiller: true })),
-        ],
+        inItems: selectedAiPlayers.map((player) => ({
+          player,
+          isFiller: false,
+        })),
         tactic: state.defaultTactic,
         managerTraitId: state.manager.traitId,
         staffCoachId,
@@ -613,7 +613,6 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       state.bench,
       selectedUserSlots,
       selectedAiPlayers,
-      autoFillerPlayers,
       state.defaultTactic,
       state.manager.traitId,
       staffCoachId,
