@@ -15,6 +15,7 @@ import {
 } from '../../../engine/mpLeagueDraft';
 import {
   acknowledgeMpLeagueInjuries,
+  applyMpLeagueTacticsUpdate,
   buildMpLeagueLive,
   closeMpLeagueSummary,
   closeMpLeagueTransferWindow,
@@ -28,6 +29,7 @@ import {
   getMpTickerExtraPkMs,
   grantMpLeagueConsent,
   hireMpLeagueStaffCoach,
+  hydrateMpSquadWithAwakenings,
   mpHumanClubId,
   rejectMpLeagueOffer,
   resolveMpLeagueEvent,
@@ -154,6 +156,7 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
   const draftDoneAtRef = useRef(0);
   const handledActionsRef = useRef<Set<string>>(new Set());
   const lastActionCounterRef = useRef(-1);
+  const lastActionPollAtRef = useRef(0);
   const flowSinceRef = useRef<{ key: string; at: number }>({ key: '', at: 0 });
   const publishedRevRef = useRef(0);
   const rewriteAtRef = useRef<Record<string, number>>({});
@@ -193,15 +196,22 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       squads: Record<string, MpSquadInput>,
       roomId: string,
     ) => {
+      const hydratedSquads: Record<string, MpSquadInput> = {};
+      for (const [cid, sq] of Object.entries(squads)) {
+        hydratedSquads[cid] = hydrateMpSquadWithAwakenings(
+          sq,
+          next.perHuman[cid]?.awakenedPlayers,
+        );
+      }
       const stamped: MpLeagueHostState = {
         ...next,
-        squads,
+        squads: hydratedSquads,
         rev: Math.max(next.rev, hostRef.current?.rev ?? 0, publishedRevRef.current) + 1,
       };
       hostRef.current = stamped;
       publishedRevRef.current = stamped.rev;
       void saveHostLeagueState(stamped);
-      const nextLive = buildMpLeagueLive(stamped, squads);
+      const nextLive = buildMpLeagueLive(stamped, hydratedSquads);
       const res = await publishLeagueLive(roomId, nextLive);
       setHostError(res.error);
       if (!res.error) {
@@ -224,18 +234,22 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       for (const human of st.humans) {
         const row = p.players.find((r) => r.player_id === human.playerId);
         const known = st.squads[human.clubId];
+        const awakened = st.perHuman[human.clubId]?.awakenedPlayers;
         const fromRow = payloadToSquad(row);
         if (fromRow && known && sameRoster(fromRow, known)) {
-          squads[human.clubId] = fromRow;
+          squads[human.clubId] = hydrateMpSquadWithAwakenings(fromRow, awakened);
           continue;
         }
-        squads[human.clubId] = known;
+        const hydratedKnown = known
+          ? hydrateMpSquadWithAwakenings(known, awakened)
+          : known;
+        squads[human.clubId] = hydratedKnown;
         // A stale client write replaced the roster (e.g. right after a trade): restore the valid one
         const lastRewrite = rewriteAtRef.current[human.clubId] ?? 0;
-        if (row && known && Date.now() - lastRewrite > 4000) {
+        if (row && hydratedKnown && Date.now() - lastRewrite > 4000) {
           rewriteAtRef.current[human.clubId] = Date.now();
           await updateLeaguePayload(p.room.id, human.playerId, {
-            ...known,
+            ...hydratedKnown,
             rev: (row.league_payload?.rev ?? 0) + 1,
             by: 'host',
           });
@@ -411,20 +425,38 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
     ): MpH2HSideInput | null => {
       const human = st.humans.find((h) => h.clubId === clubId);
       if (!human) return null;
-      const teamMorale = st.perHuman[clubId]?.events.teamMorale ?? 0;
+      const hs = st.perHuman[clubId];
+      const teamMorale = hs?.events.teamMorale ?? 0;
+      const staffCoachId = hs?.staffCoach?.hiredCoachId ?? null;
+      const ffpChemPenalty = hs?.budget?.chemPenalty ?? 0;
+      const tacticalHistory = hs?.tacticalAdaptation?.history;
       if (match) {
         const isHome = match.hostTeamId === clubId;
+        const hydrated = hydrateMpSquadWithAwakenings(
+          {
+            managerTraitId: human.managerTraitId,
+            formation: isHome ? match.hostFormation : match.guestFormation,
+            tactic: isHome ? match.hostTactic : match.guestTactic,
+            starters: isHome ? match.hostStarters : match.guestStarters,
+            bench: isHome ? match.hostBench : match.guestBench,
+          },
+          hs?.awakenedPlayers,
+        );
         return {
           human,
-          formation: isHome ? match.hostFormation : match.guestFormation,
-          tactic: isHome ? match.hostTactic : match.guestTactic,
-          starters: isHome ? match.hostStarters : match.guestStarters,
-          bench: isHome ? match.hostBench : match.guestBench,
+          formation: hydrated.formation,
+          tactic: hydrated.tactic,
+          starters: hydrated.starters,
+          bench: hydrated.bench,
           teamMorale,
+          staffCoachId,
+          ffpChemPenalty,
+          tacticalHistory,
         };
       }
-      const squad = squads[clubId];
-      if (!squad) return null;
+      const rawSquad = squads[clubId];
+      if (!rawSquad) return null;
+      const squad = hydrateMpSquadWithAwakenings(rawSquad, hs?.awakenedPlayers);
       return {
         human,
         formation: squad.formation,
@@ -432,6 +464,9 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         starters: squad.starters,
         bench: squad.bench,
         teamMorale,
+        staffCoachId,
+        ffpChemPenalty,
+        tacticalHistory,
       };
     };
 
@@ -448,14 +483,28 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       if (!human) return null;
       const row = p.players.find((r) => r.player_id === human.playerId);
       const sub: MpTacticSubmission | null | undefined = row?.tactic_submission;
+      const hs = st.perHuman[clubId];
       if (sub && sub.barrierKey === barrierKey && sub.starters?.length === 11) {
+        const hydrated = hydrateMpSquadWithAwakenings(
+          {
+            managerTraitId: human.managerTraitId,
+            formation: sub.formation,
+            tactic: sub.tactic,
+            starters: sub.starters,
+            bench: sub.bench,
+          },
+          hs?.awakenedPlayers,
+        );
         return {
           human,
-          formation: sub.formation,
-          tactic: sub.tactic,
-          starters: sub.starters,
-          bench: sub.bench,
-          teamMorale: st.perHuman[clubId]?.events.teamMorale ?? 0,
+          formation: hydrated.formation,
+          tactic: hydrated.tactic,
+          starters: hydrated.starters,
+          bench: hydrated.bench,
+          teamMorale: hs?.events.teamMorale ?? 0,
+          staffCoachId: hs?.staffCoach?.hiredCoachId ?? null,
+          ffpChemPenalty: hs?.budget?.chemPenalty ?? 0,
+          tacticalHistory: hs?.tacticalAdaptation?.history,
         };
       }
       const offline = !p.onlinePlayerIds.includes(human.playerId);
@@ -623,9 +672,15 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
       st: MpLeagueHostState,
       squads: Record<string, MpSquadInput>,
       p: HostInputs,
+      force = false,
     ): Promise<boolean> => {
-      if (lastActionCounterRef.current === p.changeRef.current) return false;
+      const now = Date.now();
+      const pollDue = now - lastActionPollAtRef.current >= 1800;
+      if (!force && lastActionCounterRef.current === p.changeRef.current && !pollDue) {
+        return false;
+      }
       lastActionCounterRef.current = p.changeRef.current;
+      lastActionPollAtRef.current = now;
       const rows = await fetchPendingLeagueActions(p.room.id);
       let current = st;
       let nextSquads = squads;
@@ -709,7 +764,37 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
         } else if (action.kind === 'adaptation_dismiss') {
           current = dismissMpLeagueAdaptationAlert(current, human.clubId);
         } else if (action.kind === 'awakening_dismiss') {
-          current = dismissMpLeagueAwakeningAlert(current, human.clubId);
+          const dismissedPid =
+            typeof action.payload.playerId === 'string'
+              ? action.payload.playerId
+              : undefined;
+          current = dismissMpLeagueAwakeningAlert(current, human.clubId, dismissedPid);
+        } else if (action.kind === 'tactics_update') {
+          const toIdList = (val: unknown): string[] | undefined =>
+            Array.isArray(val) ? val.map(String).filter(Boolean) : undefined;
+          const updatedSquad = applyMpLeagueTacticsUpdate({
+            state: current,
+            squads: nextSquads,
+            clubId: human.clubId,
+            formation:
+              typeof action.payload.formation === 'string'
+                ? action.payload.formation
+                : undefined,
+            tactic:
+              typeof action.payload.tactic === 'string'
+                ? action.payload.tactic
+                : undefined,
+            starterIds: toIdList(action.payload.starterIds),
+            benchIds: toIdList(action.payload.benchIds),
+          });
+          if (updatedSquad) {
+            nextSquads = { ...nextSquads, [human.clubId]: updatedSquad };
+            rewriteAtRef.current[human.clubId] = Date.now();
+            squadUpdates.set(human.clubId, {
+              playerId: human.playerId,
+              squad: updatedSquad,
+            });
+          }
         }
         completionTasks.push(completeLeagueAction(action.id, { ok: true }));
         batchHandledIds.push(action.id);
@@ -908,15 +993,26 @@ export function useMpLeagueHost(inputs: HostInputs): MpLeagueHostApi {
           );
         }
         if (!ready) return;
-        const next = runMpLeague(grantMpLeagueConsent(st), { squads });
+        // Guarantee any last-millisecond guest tactics_update action is applied before simulating the match
+        let effectiveSt = st;
+        let effectiveSquads = squads;
+        if (await handleActions(st, squads, p, true)) {
+          if (hostRef.current) {
+            effectiveSt = hostRef.current;
+            effectiveSquads = hostRef.current.squads;
+          }
+        }
+        const next = runMpLeague(grantMpLeagueConsent(effectiveSt), {
+          squads: effectiveSquads,
+        });
         nextAutoAtRef.current =
           next.flow.kind === 'consent'
             ? 0
-            : Date.now() + st.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
+            : Date.now() + effectiveSt.settings.autoMs + getMpTickerExtraPkMs(next.ticker?.matches);
         if (next.flow.kind === 'cast') {
           castUntilRef.current = Date.now() + getMpCastDurationMs(next);
         }
-        await commit(next, squads, p.room.id);
+        await commit(next, effectiveSquads, p.room.id);
         return;
       }
 

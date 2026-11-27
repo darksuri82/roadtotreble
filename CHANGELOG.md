@@ -5,6 +5,25 @@
 
 ---
 
+## v9.8.0 — 멀티리그 드래프트 빠른 선발 · UCL 프리뷰 전술 수정 · 각성 결산 반영 & 중복 팝업 수정 · 방장/참가자 전수 점검 및 싱글 UI/기능 통일
+
+- **1. 멀티리그 드래프트 `[빠른 선발]` 추가 & 중복 픽 방지 (`src/engine/mpLeagueDraft.ts`, `src/components/multiplayer/league/MpLeagueDraftBoard.tsx`)**:
+  - 싱글 `DraftScreen`의 `optimizeBestLineup`을 활용한 `buildQuickLineupOverrides()`를 신설해, 방장·참가자 모두 드래프트 중 `mp_league_picks`를 변형하지 않고 원클릭으로 최적 선발/벤치 배치를 적용할 수 있습니다.
+  - 동기식 중복 제출 가드(`submittingRef` · `submittedTurnKeyRef`)와 0ms `player_signal` 브로드캐스트를 추가해 턴 꼬임·중복 픽을 차단하고, 룰렛 카드에 싱글 v9.4 기준 `previewTargetSubPosition`/`previewSlotArea`(`포텐↑`/`육성`)·`expectedLinksByPlayerId`(`🔗 N선`)·`InfoHelpButton`·`PitchBoard(showChemBreakdown)`를 통일 적용했습니다.
+- **2. 시즌 종료 '각자 팀 결산' 각성 반영·표시 누락 수정 (`src/types/mpLeague.ts`, `src/engine/mpLeagueEngine.ts`, `src/engine/mpLeagueScore.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `MpLeagueRoot.tsx`, `MpLeagueDashboard.tsx`, `MpLeagueSeasonSummary.tsx`, `MpLeagueFinalBoard.tsx`)**:
+  - `hydrateMpSquadWithAwakenings()`를 신설해 호스트 엔진(`buildHumanMatchSetup` · `stepFinishLeague` `summary.squads` · `finalizeMpLeagueSeason` `final.squads` · `computeMpHumanSeasonScore`)과 클라이언트(`mySquad` · `publicSquads` · `finalSquads` · 결산 컴포넌트 방어 수화) 전역에서 각성 선수의 상승 OVR·붉은 불꽃 카드·각성 목록이 방장·참가자 전원에게 100% 반영되도록 수정했습니다.
+  - `MpLeagueSeasonSummary`/`MpLeagueFinalBoard` 선수단 세부 기록 표에 시대 클래식 배지(`60s`~`10s`) 및 각성 불꽃 배지(`🔥 +N`)를 추가하고 `h2hSummary`를 `TeamSeasonArchiveTab`으로 전달해 팀 소개·팀 스토리 서사를 보강했습니다.
+- **3. 멀티리그 각성 팝업 중복 노출 버그 수정 (`src/engine/mpLeagueEngine.ts`, `src/components/multiplayer/league/useMpLeagueHost.ts`, `MpLeagueRoot.tsx`, `MpLeagueDashboard.tsx`)**:
+  - `buildMpAwakeningSeenKey(seasonKey, clubId, playerId)` + `hasMpPopupBeenSeen`/`markMpPopupSeen` + 로컬 낙관적 해제(`dismissedAwakeningKeys`) 기반 **1회 노출 가드**를 방장·참가자 모두에게 적용하고, 호스트 `dismissMpLeagueAwakeningAlert(state, clubId, playerId)`를 대상 `playerId` 지정 멱등 제거로 개선해 리얼타임 재수신·더블 클릭 시 재노출을 원천 차단했습니다.
+- **4. UCL 토너먼트 프리뷰 실시간 전술 수정 & 싱글 디자인 통일 (`src/components/multiplayer/league/MpUclMatchPreviewModal.tsx`, `MpLeagueDashboard.tsx`, `MpLeagueRoot.tsx`, `useMpLeagueHost.ts`, `mpLeagueEngine.ts`)**:
+  - 1·2차전 및 각 토너먼트 라운드(~강) 사이 프리뷰 모달에 싱글 `MatchDayTacticsRoom` 양식의 인라인 전술 패널(10종 포메이션 `3-2-4-1` 포함 · 5대 전술 적합도 % · `[빠른 선발]` · 공용 `PitchBoard` · `StaffCoachBadge` · 전술 노출도 · `TacticsGuideModal`)을 통합하고, 읽기 전용 비교 뷰도 공용 `PitchBoard` + 5구역 `UnifiedTacticsStrip`으로 일원화했습니다.
+  - `tactics_update` 액션(`applyMpLeagueTacticsUpdate` 16인 로스터 무결성 검증)과 `league_payload` 이중 저장을 도입하고, 호스트 `consent` 배리어 통과 직전 대기 액션을 강제 플러시(`handleActions(..., true)`)해 참가자 전술 수정이 시뮬레이션 전 100% 반영되도록 동기화 레이스를 제거했습니다.
+- **5. 방장/참가자 전수 점검 · 단일 팝업 큐 · 싱글 최신(v9.x) 기능/최적화 (`MpLeagueDashboard.tsx`, `MpLeagueSquadEditor.tsx`, `MpLeagueTransferModal.tsx`, `MpLeagueH2HView.tsx`, `mpLeagueH2H.ts`, `src/__tests__/v98MpLeaguePolish.test.ts`)**:
+  - `MpLeagueDashboard`에 단일 순차 오버레이 큐(`activeOverlayModal`)를 도입해 모든 모달 중첩을 차단하고, 대시보드 FFP 케미 페널티 버그(구 `-4` 하드코딩·인자 위치 오류)를 `mine.budget.chemPenalty`(-8/-14) 6번째 옵션 인자로 교정했습니다.
+  - 멀티리그 H2H(`mpLeagueH2H.ts` · `MpLeagueH2HView.tsx`)·스쿼드 에디터·이적시장에 각성 수화·수석 코치·FFP 케미 페널티·전술 노출도를 반영하고, 인라인 모달 `max-h-[90dvh] overscroll-contain touch-pan-y` 스크롤 안전성 및 신규 회귀 테스트 `v98MpLeaguePolish.test.ts`(5건)를 추가했습니다.
+
+---
+
 ## v9.7.2 — 이적시장 가상 교체 프리뷰 양쪽 선수 직접 선택 시에만 발동
 
 - **이적시장 가상 교체 프리뷰 발동 조건 개선 (`src/components/transfer/TransferMarketModal.tsx`, `src/components/multiplayer/league/MpLeagueTransferModal.tsx`, `src/engine/chemistryEngine.ts`)**:

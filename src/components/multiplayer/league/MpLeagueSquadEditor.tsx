@@ -8,9 +8,19 @@ import {
   remapStartersForFormation,
 } from '../../../engine/lineupOptimizer';
 import { TACTIC_LIST } from '../../../engine/tacticEngine';
+import {
+  evaluateTacticalExposure,
+  EXPOSURE_DANGER_THRESHOLD,
+  EXPOSURE_WARNING_THRESHOLD,
+} from '../../../engine/tacticalAdaptationEngine';
 import { useBodyScrollLock } from '../../../hooks/useBodyScrollLock';
 import type { PlayerConditionMap } from '../../../types/condition';
-import type { FormationId, ManagerTraitId } from '../../../types/game';
+import type {
+  FormationId,
+  ManagerTraitId,
+  StaffCoachId,
+  TacticalHistoryEntry,
+} from '../../../types/game';
 import type { TacticId } from '../../../types/league';
 import type { MpSquadInput } from '../../../types/mpLeague';
 import type { Player, SubPosition } from '../../../types/player';
@@ -18,11 +28,15 @@ import { ManagerTraitBadgeCard } from '../../common/ManagerTraitBadgeCard';
 import { PitchBoard } from '../../common/PitchBoard';
 import type { SlotRef } from '../../common/PitchBoard';
 import { PlayerDetailModal } from '../../common/PlayerDetailModal';
+import { StaffCoachBadge } from '../../common/StaffCoachBadge';
 
 interface MpLeagueSquadEditorProps {
   squad: MpSquadInput;
   managerTraitId: ManagerTraitId;
   conditions: PlayerConditionMap;
+  staffCoachId?: StaffCoachId | null;
+  ffpChemPenalty?: number;
+  tacticalHistory?: readonly TacticalHistoryEntry[];
   onSave: (next: MpSquadInput) => void;
   onClose: () => void;
 }
@@ -31,6 +45,9 @@ export function MpLeagueSquadEditor({
   squad,
   managerTraitId,
   conditions,
+  staffCoachId = null,
+  ffpChemPenalty = 0,
+  tacticalHistory,
   onSave,
   onClose,
 }: MpLeagueSquadEditorProps) {
@@ -46,8 +63,12 @@ export function MpLeagueSquadEditor({
   } | null>(null);
 
   const chemistry = useMemo(
-    () => calculateChemistry(formation, starters, tactic, managerTraitId),
-    [formation, starters, tactic, managerTraitId],
+    () =>
+      calculateChemistry(formation, starters, tactic, managerTraitId, undefined, {
+        staffCoachId,
+        ffpChemPenalty,
+      }),
+    [formation, starters, tactic, managerTraitId, staffCoachId, ffpChemPenalty],
   );
   const ratings = useMemo(
     () =>
@@ -58,9 +79,20 @@ export function MpLeagueSquadEditor({
         managerTraitId,
         chemistry.slotSynergies,
         tactic,
+        staffCoachId,
       ),
-    [formation, starters, chemistry, managerTraitId, tactic],
+    [formation, starters, chemistry, managerTraitId, tactic, staffCoachId],
   );
+
+  const tacticalExposure = useMemo(() => {
+    if (!tacticalHistory || tacticalHistory.length === 0) return null;
+    return evaluateTacticalExposure({
+      history: tacticalHistory,
+      formation,
+      tactic,
+      staffCoachId,
+    });
+  }, [tacticalHistory, formation, tactic, staffCoachId]);
 
   const swap = (from: SlotRef, to: SlotRef) => {
     if (from.area === to.area && from.index === to.index) return;
@@ -98,23 +130,37 @@ export function MpLeagueSquadEditor({
 
   return (
     <div className="modal-backdrop fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/85 p-2 sm:p-4">
-      <div className="modal-panel flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0e141d] shadow-2xl">
+      <div className="modal-panel flex w-full max-w-3xl max-h-[92dvh] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-[#0e141d] shadow-2xl">
         {/* Top Header — matches single-player SquadManagerModal with real-time A / M / D on top right */}
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 px-3 py-2.5 sm:px-4">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-sm font-extrabold text-white">스쿼드 · 전술</span>
-            <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-bold text-emerald-300 tabular-nums">
+            <span className="text-sm font-extrabold text-white whitespace-nowrap">
+              스쿼드 · 전술
+            </span>
+            <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-bold text-emerald-300 tabular-nums whitespace-nowrap">
               케미 {chemistry.total} ({chemistry.chemistryOvrBonus >= 0 ? '+' : ''}
               {chemistry.chemistryOvrBonus.toFixed(1)})
             </span>
-            <span className="rounded border border-sky-400/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-200">
+            <span className="rounded border border-sky-400/30 bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-200 whitespace-nowrap">
               다음 경기부터 적용
             </span>
+            {tacticalExposure &&
+              tacticalExposure.exposureScore >= EXPOSURE_WARNING_THRESHOLD && (
+                <span
+                  className={`rounded border px-1.5 py-0.5 text-[10px] font-bold whitespace-nowrap ${
+                    tacticalExposure.exposureScore >= EXPOSURE_DANGER_THRESHOLD
+                      ? 'border-rose-500/45 bg-rose-500/15 text-rose-200'
+                      : 'border-amber-400/40 bg-amber-500/12 text-amber-200'
+                  }`}
+                >
+                  노출 {tacticalExposure.exposureScore}%
+                </span>
+              )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span
               id="mp-squad-line-ovr"
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2.5 py-1 text-xs font-bold text-slate-300 tabular-nums"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2.5 py-1 text-xs font-bold text-slate-300 tabular-nums whitespace-nowrap"
             >
               <Zap className="w-3.5 h-3.5 text-emerald-400" />
               A <strong className="text-white">{ratings.effectiveAtt}</strong> / M{' '}
@@ -125,7 +171,7 @@ export function MpLeagueSquadEditor({
               id="mpl-save-squad-btn"
               type="button"
               onClick={handleSave}
-              className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3.5 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+              className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3.5 py-1.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer whitespace-nowrap"
             >
               <Check className="w-3.5 h-3.5" />
               저장
@@ -141,118 +187,130 @@ export function MpLeagueSquadEditor({
           </div>
         </div>
 
-        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 space-y-3">
-          <ManagerTraitBadgeCard
-            traitId={managerTraitId}
-            starters={starters}
-            tactic={tactic}
-            formation={formation}
-            compact
-          />
-
-        {/* Formation & Tactic Controls — identical to single-player SquadManagerModal */}
-        <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-slate-400">포메이션</span>
-            <button
-              type="button"
-              onClick={() => {
-                setSelected(null);
-                const opt = optimizeBestLineup(starters, bench, formation, tactic, managerTraitId);
-                setStarters(opt.starters);
-                setBench(opt.bench);
-              }}
-              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/45 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25 transition-colors cursor-pointer"
-            >
-              <Wand2 className="w-3 h-3" />
-              빠른 선발
-            </button>
+        <div className="modal-scroll flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y p-3 sm:p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <ManagerTraitBadgeCard
+                traitId={managerTraitId}
+                starters={starters}
+                tactic={tactic}
+                formation={formation}
+                compact
+              />
+            </div>
+            {staffCoachId && (
+              <StaffCoachBadge
+                coachId={staffCoachId}
+                activeTactic={tactic}
+                compact
+              />
+            )}
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
-            {FORMATION_LIST.map((f) => (
+
+          {/* Formation & Tactic Controls — identical to single-player SquadManagerModal */}
+          <div className="rounded-xl border border-slate-800 bg-[#0b1018] p-3 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold text-slate-400">포메이션</span>
               <button
-                key={f.id}
                 type="button"
                 onClick={() => {
                   setSelected(null);
-                  setStarters((prev) =>
-                    remapStartersForFormation(prev, formation, f.id, managerTraitId),
-                  );
-                  setFormation(f.id);
+                  const opt = optimizeBestLineup(starters, bench, formation, tactic, managerTraitId);
+                  setStarters(opt.starters);
+                  setBench(opt.bench);
                 }}
-                className={`rounded-lg border py-1.5 px-1 text-[10px] sm:text-[11px] font-bold transition-colors cursor-pointer truncate ${
-                  formation === f.id
-                    ? 'border-sky-400/55 bg-sky-500/18 text-white'
-                    : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                }`}
+                className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/45 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25 transition-colors cursor-pointer whitespace-nowrap"
               >
-                {f.id === '4-4-2-diamond' ? '4-4-2◇' : f.id === '3-5-2-dm' ? '3-5-2 DM' : f.id}
+                <Wand2 className="w-3 h-3" />
+                빠른 선발
               </button>
-            ))}
-          </div>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
+              {FORMATION_LIST.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => {
+                    setSelected(null);
+                    setStarters((prev) =>
+                      remapStartersForFormation(prev, formation, f.id, managerTraitId),
+                    );
+                    setFormation(f.id);
+                  }}
+                  className={`rounded-lg border py-1.5 px-1 text-[10px] sm:text-[11px] font-bold transition-colors cursor-pointer truncate ${
+                    formation === f.id
+                      ? 'border-sky-400/55 bg-sky-500/18 text-white'
+                      : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                  }`}
+                >
+                  {f.id === '4-4-2-diamond' ? '4-4-2◇' : f.id === '3-5-2-dm' ? '3-5-2 DM' : f.id}
+                </button>
+              ))}
+            </div>
 
-          <div>
-            <div className="mb-1.5 text-[11px] font-semibold text-slate-400">기본 전술</div>
-            <div className="grid grid-cols-5 gap-1">
-              {TACTIC_LIST.map((t) => {
-                const isMgrPreferred =
-                  MANAGER_TRAITS[managerTraitId]?.synergyTactic === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    title={isMgrPreferred ? `${t.name} · 감독 추천 전술` : t.name}
-                    onClick={() => setTactic(t.id)}
-                    className={`rounded-lg border py-1.5 text-[11px] font-bold transition-colors cursor-pointer truncate ${
-                      tactic === t.id
-                        ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
-                        : isMgrPreferred
-                          ? 'border-slate-700 bg-[#111822] text-slate-200 hover:border-slate-500 hover:text-white'
-                          : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                    }`}
-                  >
-                    {isMgrPreferred && (
-                      <span className="text-amber-300 mr-0.5">★</span>
-                    )}
-                    {t.shortName}
-                  </button>
-                );
-              })}
+            <div>
+              <div className="mb-1.5 text-[11px] font-semibold text-slate-400">기본 전술</div>
+              <div className="grid grid-cols-5 gap-1">
+                {TACTIC_LIST.map((t) => {
+                  const isMgrPreferred =
+                    MANAGER_TRAITS[managerTraitId]?.synergyTactic === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      title={isMgrPreferred ? `${t.name} · 감독 추천 전술` : t.name}
+                      onClick={() => setTactic(t.id)}
+                      className={`rounded-lg border py-1.5 text-[11px] font-bold transition-colors cursor-pointer truncate ${
+                        tactic === t.id
+                          ? 'border-emerald-400/55 bg-emerald-500/18 text-white'
+                          : isMgrPreferred
+                            ? 'border-slate-700 bg-[#111822] text-slate-200 hover:border-slate-500 hover:text-white'
+                            : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                      }`}
+                    >
+                      {isMgrPreferred && (
+                        <span className="text-amber-300 mr-0.5">★</span>
+                      )}
+                      {t.shortName}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Pitch Controls Strip — identical to SquadManagerModal */}
-        <div className="mx-auto w-full max-w-[520px] space-y-2">
-          <div className="flex items-center justify-between text-xs">
-            <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300">
-              <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
-              {selected ? '교체할 선수를 클릭하세요' : '클릭·드래그 교환 / 우클릭·ⓘ 상세'}
-            </span>
-            <span className="text-[11px] font-bold text-slate-400 tabular-nums">
-              OVR {Math.round(ratings.ovr)}
-            </span>
+          {/* Pitch Controls Strip — identical to SquadManagerModal */}
+          <div className="mx-auto w-full max-w-[520px] space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="inline-flex items-center gap-1.5 font-semibold text-slate-300">
+                <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-400" />
+                {selected ? '교체할 선수를 클릭하세요' : '클릭·드래그 교환 / 우클릭·ⓘ 상세'}
+              </span>
+              <span className="text-[11px] font-bold text-slate-400 tabular-nums whitespace-nowrap">
+                OVR {Math.round(ratings.ovr)}
+              </span>
+            </div>
+
+            <PitchBoard
+              formation={formation}
+              starters={starters}
+              bench={bench}
+              chemistry={chemistry}
+              managerTraitId={managerTraitId}
+              staffCoachId={staffCoachId}
+              tactic={tactic}
+              conditionByPlayerId={conditions}
+              selectedSlot={selected}
+              onSlotClick={handleSlotClick}
+              onSlotSwap={swap}
+              onInspectPlayer={(player, slotSubPosition) =>
+                setInspected({ player, slotSubPosition })
+              }
+              showBench
+              showChemBreakdown
+              compact
+            />
           </div>
-
-          <PitchBoard
-            formation={formation}
-            starters={starters}
-            bench={bench}
-            chemistry={chemistry}
-            managerTraitId={managerTraitId}
-            tactic={tactic}
-            conditionByPlayerId={conditions}
-            selectedSlot={selected}
-            onSlotClick={handleSlotClick}
-            onSlotSwap={swap}
-            onInspectPlayer={(player, slotSubPosition) =>
-              setInspected({ player, slotSubPosition })
-            }
-            showBench
-            showChemBreakdown
-            compact
-          />
-        </div>
         </div>
       </div>
 
@@ -260,6 +318,12 @@ export function MpLeagueSquadEditor({
         <PlayerDetailModal
           player={inspected.player}
           slotSubPosition={inspected.slotSubPosition}
+          slotSynergy={
+            Object.values(chemistry.slotSynergies).find(
+              (s) => s.playerId === inspected.player.id,
+            ) ?? null
+          }
+          managerTraitId={managerTraitId}
           onClose={() => setInspected(null)}
         />
       )}

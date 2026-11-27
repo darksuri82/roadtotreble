@@ -9,13 +9,14 @@ import {
   Swords,
   Trophy,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { HISTORICAL_BENCHMARK_TEAMS } from '../../../data/historicalTeams';
 import {
   formatFfpScorePenaltyLabel,
   resolveFfpPenaltyTier,
 } from '../../../engine/budgetEngine';
 import { buildAiClubRoster, getLeagueById } from '../../../engine/dataLoader';
+import { hydrateMpSquadWithAwakenings } from '../../../engine/mpLeagueEngine';
 import { formatMainPositions } from '../../../engine/positionEngine';
 import type { DomesticCupState } from '../../../types/cup';
 import type {
@@ -450,7 +451,22 @@ export function MpLeagueFinalBoard({
 
   const uclView = ucl ? buildUclViewForViewer(ucl, myClubId) : null;
 
-  const allSquadPlayers = Object.values(squads).flatMap((s) => [
+  const hydratedSquads = useMemo(() => {
+    const map: Record<string, MpSquadInput> = {};
+    const clubIds = new Set<string>([
+      ...Object.keys(squads),
+      ...Object.keys(final.squads ?? {}),
+      ...humans.map((h) => h.clubId),
+    ]);
+    for (const cid of clubIds) {
+      const base = final.squads?.[cid] ?? squads[cid];
+      if (!base) continue;
+      map[cid] = hydrateMpSquadWithAwakenings(base, byClub[cid]?.awakenedPlayers);
+    }
+    return map;
+  }, [squads, final.squads, humans, byClub]);
+
+  const allSquadPlayers = Object.values(hydratedSquads).flatMap((s) => [
     ...s.starters,
     ...s.bench,
   ]);
@@ -1184,7 +1200,7 @@ export function MpLeagueFinalBoard({
                 rank={hRank}
                 row={hRank ? standings[hRank - 1] : undefined}
                 stats={final.squadStats?.[selectedSquadHuman.clubId] ?? []}
-                squad={squads[selectedSquadHuman.clubId]}
+                squad={hydratedSquads[selectedSquadHuman.clubId]}
                 leagueName={leagueName}
                 milestoneLabel="UCL 포함 통합 최종 스쿼드"
                 staffCoachId={hMeta?.staffCoach?.hiredCoachId ?? null}
@@ -1200,6 +1216,15 @@ export function MpLeagueFinalBoard({
                     : null
                 }
                 honors={honors}
+                h2hSummary={
+                  fRow && fRow.h2h.played > 0
+                    ? {
+                        wins: fRow.h2h.won,
+                        draws: fRow.h2h.drawn,
+                        losses: fRow.h2h.lost,
+                      }
+                    : null
+                }
                 onSelectPlayerId={openPlayerById}
                 onOpenFormation={() =>
                   setInspectedClubId(selectedSquadHuman.clubId)
@@ -1216,9 +1241,9 @@ export function MpLeagueFinalBoard({
           clubsById[inspectedClubId] ??
           uclView?.clubsById?.[inspectedClubId] ??
           null;
-        const targetSquad = squads[inspectedClubId];
+        const targetSquad = hydratedSquads[inspectedClubId];
         const humanOwnedIds = new Set(
-          Object.values(squads).flatMap((s) => [
+          Object.values(hydratedSquads).flatMap((s) => [
             ...s.starters.map((p) => p.id),
             ...s.bench.map((p) => p.id),
           ]),
@@ -1267,6 +1292,14 @@ export function MpLeagueFinalBoard({
         <PlayerDetailModal
           player={inspected.player}
           seasonStats={inspected.stats ?? null}
+          managerTraitId={
+            selectedSquadHuman
+              ? hydratedSquads[selectedSquadHuman.clubId]?.managerTraitId ??
+                selectedSquadHuman.managerTraitId
+              : myClubId
+                ? hydratedSquads[myClubId]?.managerTraitId
+                : undefined
+          }
           onClose={() => setInspected(null)}
         />
       )}

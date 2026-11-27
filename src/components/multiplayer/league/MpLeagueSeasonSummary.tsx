@@ -5,6 +5,7 @@ import {
   BarChart3,
   Crown,
   Diamond,
+  Flame,
   Globe,
   Hourglass,
   LayoutGrid,
@@ -15,11 +16,12 @@ import {
   X,
 } from 'lucide-react';
 import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { FORMATIONS } from '../../../data/formations';
 import { computeSquadPlayerAnalytics } from '../../../engine/analyticsEngine';
 import { buildAiClubRoster, getLeagueById } from '../../../engine/dataLoader';
+import { hydrateMpSquadWithAwakenings } from '../../../engine/mpLeagueEngine';
 import { formatMainPositions } from '../../../engine/positionEngine';
 import type { DomesticCupState } from '../../../types/cup';
 import type {
@@ -36,7 +38,11 @@ import type {
   MpLeagueSummary,
   MpSquadInput,
 } from '../../../types/mpLeague';
-import { SUPERSTAR_MIN_OVR } from '../../../types/player';
+import {
+  getClassicEra,
+  getClassicEraMeta,
+  SUPERSTAR_MIN_OVR,
+} from '../../../types/player';
 import type { Player } from '../../../types/player';
 import { getPlayerNationalityMeta, resolvePlayerById } from '../../../utils/playerLookup';
 import { ClubSquadModal } from '../../common/ClubSquadModal';
@@ -98,6 +104,7 @@ type MpSquadRow = Omit<SquadPlayerAnalyticsRow, 'stamina'> & {
   stamina: number | null;
   lineupIndex: number;
   isStarter: boolean;
+  awakeningGain?: number;
 };
 
 interface Ownership {
@@ -604,6 +611,13 @@ function buildSquadRows(
   const statsById: Record<string, PlayerSeasonStats> = {};
   for (const st of stats) statsById[st.playerId] = st;
 
+  const squadPlayerById: Record<string, Player> = {};
+  if (squad) {
+    for (const p of [...squad.starters, ...squad.bench]) {
+      squadPlayerById[p.id] = p;
+    }
+  }
+
   const rows: MpSquadRow[] = [];
   const seen = new Set<string>();
   if (squad) {
@@ -615,8 +629,12 @@ function buildSquadRows(
     base.forEach((row, i) => {
       if (seen.has(row.playerId)) return;
       seen.add(row.playerId);
+      const pl = squadPlayerById[row.playerId];
       rows.push({
         ...row,
+        ovr: pl?.ovr ?? row.ovr,
+        awakeningGain: pl?.awakening?.ovrGain ?? 0,
+        classicEra: (pl ? getClassicEra(pl) : null) ?? undefined,
         lineupIndex: i,
         isStarter: i < squad.starters.length,
       });
@@ -633,6 +651,7 @@ function buildSquadRows(
         primaryDeployedPosition = pos as typeof primaryDeployedPosition;
       }
     }
+    const resolved = resolvePlayerById({ playerId: st.playerId, fallbackStats: st });
     rows.push({
       playerId: st.playerId,
       playerName: st.playerName,
@@ -653,6 +672,8 @@ function buildSquadRows(
       cleanSheets: st.cleanSheets,
       momCount: st.momCount,
       avgRating: st.avgRating,
+      awakeningGain: resolved?.awakening?.ovrGain ?? 0,
+      classicEra: (resolved ? getClassicEra(resolved) : null) ?? undefined,
       lineupIndex: rows.length,
       isStarter: !squad && rows.length < 11,
     });
@@ -674,6 +695,7 @@ export function MpFriendSquadTab({
   uclResultLabel = null,
   seasonScore = null,
   honors = [],
+  h2hSummary = null,
   onSelectPlayerId,
   onOpenFormation,
 }: {
@@ -690,6 +712,7 @@ export function MpFriendSquadTab({
   uclResultLabel?: string | null;
   seasonScore?: { totalScore: number; grade: string } | null;
   honors?: TeamArchiveHonorBadge[];
+  h2hSummary?: { wins: number; draws: number; losses: number } | null;
   onSelectPlayerId?: (playerId: string) => void;
   onOpenFormation?: () => void;
 }) {
@@ -757,6 +780,7 @@ export function MpFriendSquadTab({
           seasonScore={seasonScore}
           honors={honors}
           teamStats={stats}
+          h2hSummary={h2hSummary}
           onInspectPlayer={(p) => onSelectPlayerId?.(p.id)}
           onInspectStats={(st) => onSelectPlayerId?.(st.playerId)}
         />
@@ -959,7 +983,7 @@ export function MpFriendSquadTab({
                     )}
                     <tr className="hover:bg-slate-800/30">
                       <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {onSelectPlayerId ? (
                             <PlayerNameButton
                               onClick={() => onSelectPlayerId(r.playerId)}
@@ -975,12 +999,31 @@ export function MpFriendSquadTab({
                           {r.isLegend && (
                             <Crown className="w-3 h-3 text-amber-400 shrink-0" />
                           )}
-                          {!r.isLegend && r.ovr >= SUPERSTAR_MIN_OVR && (
+                          {!r.isLegend && r.classicEra && (() => {
+                            const meta = getClassicEraMeta(r.classicEra);
+                            return (
+                              <span
+                                className={`inline-flex items-center rounded px-1 py-px text-[9px] font-black leading-none shrink-0 ${meta.inlineChipClass}`}
+                              >
+                                {meta.shortLabel}
+                              </span>
+                            );
+                          })()}
+                          {!r.isLegend && !r.classicEra && r.ovr >= SUPERSTAR_MIN_OVR && (
                             <Diamond className="w-3 h-3 text-cyan-300 shrink-0" />
+                          )}
+                          {(r.awakeningGain ?? 0) > 0 && (
+                            <span className="inline-flex items-center gap-0.5 rounded border border-rose-500/50 bg-rose-500/20 px-1 py-px text-[9px] font-black leading-none text-rose-200 shrink-0">
+                              <Flame className="w-2.5 h-2.5 text-orange-400" />
+                              +{r.awakeningGain}
+                            </span>
                           )}
                         </div>
                         <div className="text-[10px] text-slate-500">
                           OVR {r.ovr}
+                          {(r.awakeningGain ?? 0) > 0 ? (
+                            <span className="text-rose-300 font-bold"> (각성)</span>
+                          ) : null}
                           {r.stamina !== null ? ` · STA ${r.stamina}` : ''} ·{' '}
                           {formatMainPositions({ mainPositions: r.mainPositions })}
                         </div>
@@ -1095,7 +1138,22 @@ export function MpLeagueSeasonSummary({
   const cupHuman = cupChampionId ? humanByClub[cupChampionId] : undefined;
   const cupName = cupClub?.name ?? cupHuman?.profile.name;
 
-  const allSquadPlayers = Object.values(squads).flatMap((s) => [
+  const hydratedSquads = useMemo(() => {
+    const map: Record<string, MpSquadInput> = {};
+    const clubIds = new Set<string>([
+      ...Object.keys(squads),
+      ...Object.keys(summary.squads ?? {}),
+      ...humans.map((h) => h.clubId),
+    ]);
+    for (const cid of clubIds) {
+      const base = summary.squads?.[cid] ?? squads[cid];
+      if (!base) continue;
+      map[cid] = hydrateMpSquadWithAwakenings(base, byClub[cid]?.awakenedPlayers);
+    }
+    return map;
+  }, [squads, summary.squads, humans, byClub]);
+
+  const allSquadPlayers = Object.values(hydratedSquads).flatMap((s) => [
     ...s.starters,
     ...s.bench,
   ]);
@@ -1140,7 +1198,7 @@ export function MpLeagueSeasonSummary({
   return (
     <div className="modal-backdrop fixed inset-0 z-[65] bg-slate-950/90">
       <ModalBodyLock />
-      <div className="modal-scroll h-full w-full overflow-y-auto">
+      <div className="modal-scroll h-full w-full overflow-y-auto overscroll-contain touch-pan-y">
       <div className="mx-auto max-w-6xl px-3 py-4 sm:px-5 sm:py-6 space-y-5">
         {/* Main Season Result Hero — aligned with solo SeasonSummary.tsx */}
         <section className="rounded-2xl border border-slate-800 bg-[#0e141d] p-4 sm:p-6 space-y-4">
@@ -1362,6 +1420,7 @@ export function MpLeagueSeasonSummary({
 
         {squadHuman && (() => {
           const hMeta = byClub[squadHuman.clubId];
+          const h2hRec = h2hByClub?.[squadHuman.clubId] ?? hMeta?.h2h;
           const honors: TeamArchiveHonorBadge[] = [];
           if (squadRank === 1) {
             honors.push({ label: `🏆 ${leagueName} 우승`, tone: 'gold' });
@@ -1378,7 +1437,7 @@ export function MpLeagueSeasonSummary({
               rank={squadRank}
               row={squadRank ? standings[squadRank - 1] : undefined}
               stats={summary.squadStats[squadHuman.clubId] ?? []}
-              squad={squads[squadHuman.clubId]}
+              squad={hydratedSquads[squadHuman.clubId]}
               leagueName={leagueName}
               milestoneLabel="정규리그 종료 시점 스쿼드"
               staffCoachId={hMeta?.staffCoach?.hiredCoachId ?? null}
@@ -1387,6 +1446,11 @@ export function MpLeagueSeasonSummary({
                 cupChampionId === squadHuman.clubId ? '우승' : cup ? '참가' : null
               }
               honors={honors}
+              h2hSummary={
+                h2hRec && h2hRec.played > 0
+                  ? { wins: h2hRec.won, draws: h2hRec.drawn, losses: h2hRec.lost }
+                  : null
+              }
               onSelectPlayerId={openPlayerById}
               onOpenFormation={() => setInspectedClubId(squadHuman.clubId)}
             />
@@ -1398,9 +1462,9 @@ export function MpLeagueSeasonSummary({
       {inspectedClubId && (() => {
         const targetHuman = humans.find((h) => h.clubId === inspectedClubId);
         const targetClub = clubsById[inspectedClubId] ?? null;
-        const targetSquad = squads[inspectedClubId];
+        const targetSquad = hydratedSquads[inspectedClubId];
         const humanOwnedIds = new Set(
-          Object.values(squads).flatMap((s) => [
+          Object.values(hydratedSquads).flatMap((s) => [
             ...s.starters.map((p) => p.id),
             ...s.bench.map((p) => p.id),
           ]),
@@ -1449,6 +1513,14 @@ export function MpLeagueSeasonSummary({
         <PlayerDetailModal
           player={inspected.player}
           seasonStats={inspected.stats ?? null}
+          managerTraitId={
+            squadHuman
+              ? hydratedSquads[squadHuman.clubId]?.managerTraitId ??
+                squadHuman.managerTraitId
+              : myClubId
+                ? hydratedSquads[myClubId]?.managerTraitId
+                : undefined
+          }
           onClose={() => setInspected(null)}
         />
       )}

@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { applyAwakeningToPlayer } from '../../../engine/awakeningEngine';
+import { hydrateMpSquadWithAwakenings } from '../../../engine/mpLeagueEngine';
 import {
   clearMyTacticBarrier,
   submitTacticBarrier,
@@ -362,18 +363,52 @@ export function MpLeagueRoot({
     [room.id, playerId, wakeHostLocally],
   );
 
-  const saveSquad = useCallback(
-    (next: MpSquadInput) => {
+  const saveSquadAsync = useCallback(
+    async (next: MpSquadInput): Promise<void> => {
       const nextRev = Math.max(remoteRev, optimisticSquad?.rev ?? 0) + 1;
       setOptimisticSquad({ rev: nextRev, squad: next });
-      void savePayload({
+      const payloadTask = savePayload({
         ...next,
         setupReady: true,
         rev: nextRev,
         by: 'player',
       });
+      const inActiveSeason =
+        stageRef.current === 'league' || stageRef.current === 'ucl';
+      if (inActiveSeason) {
+        const actionTask = enqueueLeagueAction({
+          roomId: room.id,
+          playerId,
+          kind: 'tactics_update',
+          payload: {
+            formation: next.formation,
+            tactic: next.tactic,
+            starterIds: next.starters.map((p) => p.id),
+            benchIds: next.bench.map((p) => p.id),
+          },
+        }).then((res) => {
+          if (!res.error) {
+            broadcastLeagueEvent(room.id, {
+              type: 'player_signal',
+              playerId,
+              reason: 'action',
+            });
+            wakeHostLocally();
+          }
+        });
+        await Promise.all([payloadTask, actionTask]);
+      } else {
+        await payloadTask;
+      }
     },
-    [savePayload, remoteRev, optimisticSquad?.rev],
+    [savePayload, remoteRev, optimisticSquad?.rev, room.id, playerId, wakeHostLocally],
+  );
+
+  const saveSquad = useCallback(
+    (next: MpSquadInput) => {
+      void saveSquadAsync(next);
+    },
+    [saveSquadAsync],
   );
 
   const [tickerDoneKey, setTickerDoneKey] = useState<string | null>(null);
@@ -502,14 +537,18 @@ export function MpLeagueRoot({
 
   const sendAction = useCallback(
     async (kind: MpLeagueActionKind, payload: Record<string, unknown>) => {
-      setPendingActionId('sending');
+      const isDismissOnly =
+        kind === 'awakening_dismiss' ||
+        kind === 'ffp_notice_dismiss' ||
+        kind === 'adaptation_dismiss';
+      if (!isDismissOnly) setPendingActionId('sending');
       const res = await enqueueLeagueAction({ roomId: room.id, playerId, kind, payload });
       if (res.error || !res.data) {
         setErrorMsg(res.error ?? '요청 전송 실패');
-        setPendingActionId(null);
+        if (!isDismissOnly) setPendingActionId(null);
         if (kind === 'event_choice') setAnsweredEventKey(null);
       } else {
-        setPendingActionId(res.data);
+        if (!isDismissOnly) setPendingActionId(res.data);
         broadcastLeagueEvent(room.id, {
           type: 'player_signal',
           playerId,
@@ -617,15 +656,25 @@ export function MpLeagueRoot({
     for (const c of live.clubs) finalClubsById[c.id] = c;
     const finalSquads: Record<string, MpSquadInput> = {};
     for (const h of live.humans) {
+      const fromSnapshot = live.final.squads?.[h.clubId];
       const p = players.find((r) => r.player_id === h.playerId)?.league_payload;
-      if (p && p.starters?.length === 11) {
-        finalSquads[h.clubId] = {
-          managerTraitId: p.managerTraitId,
-          formation: p.formation,
-          tactic: p.tactic,
-          starters: p.starters,
-          bench: p.bench,
-        };
+      const baseSquad: MpSquadInput | null =
+        fromSnapshot && fromSnapshot.starters?.length === 11
+          ? fromSnapshot
+          : p && p.starters?.length === 11
+            ? {
+                managerTraitId: p.managerTraitId,
+                formation: p.formation,
+                tactic: p.tactic,
+                starters: p.starters,
+                bench: p.bench,
+              }
+            : null;
+      if (baseSquad) {
+        finalSquads[h.clubId] = hydrateMpSquadWithAwakenings(
+          baseSquad,
+          live.byClub[h.clubId]?.awakenedPlayers,
+        );
       }
     }
     return (
@@ -673,6 +722,7 @@ export function MpLeagueRoot({
         seasonKey={live.seasonKey}
         humans={live.humans}
         players={players}
+        byClub={live.byClub}
         myClubId={myClubId}
         ackKeys={activity.ackKeys ?? []}
         onSubmitBarrier={async (submission: MpTacticSubmission) => {
@@ -750,6 +800,7 @@ export function MpLeagueRoot({
           setTacticSavedScope(currentRoundScope);
         }
       }}
+      onSaveSquadAsync={saveSquadAsync}
       onAck={ack}
       hiddenEventKey={answeredEventKey}
       activeEventKey={activeEventScopeKey}
@@ -776,7 +827,12 @@ export function MpLeagueRoot({
       onSkipStaffCoach={() => void sendAction('coach_skip', {})}
       onDismissFfpNotice={() => void sendAction('ffp_notice_dismiss', {})}
       onDismissAdaptationAlert={() => void sendAction('adaptation_dismiss', {})}
-      onDismissAwakeningAlert={() => void sendAction('awakening_dismiss', {})}
+      onDismissAwakeningAlert={(awakenedPlayerId) =>
+        void sendAction(
+          'awakening_dismiss',
+          awakenedPlayerId ? { playerId: awakenedPlayerId } : {},
+        )
+      }
       onSetAutoMs={host.setAutoMs}
       onForceResume={host.forceResume}
       onLeaveRoom={onLeaveRoom}

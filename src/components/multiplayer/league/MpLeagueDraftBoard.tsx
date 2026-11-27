@@ -8,14 +8,22 @@ import {
   Users,
   Volume2,
   VolumeX,
+  Wand2,
   Zap,
 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FORMATIONS } from '../../../data/formations';
 import { MANAGER_TRAITS } from '../../../data/managerTraits';
-import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemistryEngine';
+import { PLAYSTYLES } from '../../../data/playstyles';
+import {
+  calculateChemistry,
+  calculateTeamRatings,
+  evaluatePairLink,
+} from '../../../engine/chemistryEngine';
 import { DEFAULT_ROULETTE_LEGEND_RATE } from '../../../engine/draftEngine';
 import {
   buildAutoPick,
+  buildQuickLineupOverrides,
   chooseSlotForPlayer,
   collectTakenIds,
   draftRoundOf,
@@ -29,7 +37,7 @@ import {
   spinSharedRoll,
 } from '../../../engine/mpLeagueDraft';
 import { DEFAULT_MP_LEAGUE_POOL } from '../../../services/multiplayerService';
-import { insertLeaguePick } from '../../../services/mpLeagueService';
+import { broadcastLeagueEvent, insertLeaguePick } from '../../../services/mpLeagueService';
 import type { FormationId, ManagerTraitId } from '../../../types/game';
 import type { LeagueId, TacticId } from '../../../types/league';
 import type {
@@ -40,8 +48,9 @@ import type {
 } from '../../../types/mpLeague';
 import type { MpRoomPlayerRow, MpRoomRow } from '../../../types/multiplayer';
 import type { Player, SubPosition } from '../../../types/player';
-import { ManagerFitBadge } from '../../common/ManagerFitBadge';
 import { DraftBudgetBar } from '../../common/DraftBudgetBar';
+import { InfoHelpButton } from '../../common/InfoHelpButton';
+import { ManagerFitBadge } from '../../common/ManagerFitBadge';
 import { PitchBoard } from '../../common/PitchBoard';
 import type { SlotRef } from '../../common/PitchBoard';
 import { PixelManagerAvatar } from '../../common/PixelManagerAvatar';
@@ -224,6 +233,8 @@ export function MpLeagueDraftBoard({
   const finalSavedRef = useRef<string | null>(null);
   const autoActedRef = useRef<string | null>(null);
   const prevTurnCueRef = useRef<string | null>(null);
+  const submittingRef = useRef(false);
+  const submittedTurnKeyRef = useRef<string | null>(null);
 
   const draft = live.draft;
   const order = useMemo(() => draft?.order ?? [], [draft?.order]);
@@ -424,25 +435,54 @@ export function MpLeagueDraftBoard({
 
   const submitPick = useCallback(
     async (player: Player, auto: boolean) => {
-      if (!draft || submitting) return;
+      if (!draft || draftFinished || !isMyTurn || submittingRef.current) return;
+      if (takenIds.has(player.id)) return;
+      const turnKey = `${generation}:${pickNo}`;
+      if (submittedTurnKeyRef.current === turnKey) return;
       const slot = chooseSlotForPlayer(formation, board.starters, board.bench, player);
       if (!slot) return;
+      submittingRef.current = true;
+      submittedTurnKeyRef.current = turnKey;
       setSubmitting(true);
-      await insertLeaguePick({
-        roomId: room.id,
-        draftGeneration: generation,
-        pickNo,
-        pickerId: playerId,
-        pick: { player, area: slot.area, index: slot.index, auto },
-      });
-      setPreviewCandidate(null);
-      setSubmitting(false);
+      try {
+        const res = await insertLeaguePick({
+          roomId: room.id,
+          draftGeneration: generation,
+          pickNo,
+          pickerId: playerId,
+          pick: { player, area: slot.area, index: slot.index, auto },
+        });
+        if (res.outcome === 'ok') {
+          broadcastLeagueEvent(room.id, {
+            type: 'player_signal',
+            playerId,
+            reason: 'pick',
+          });
+        } else if (res.outcome === 'error') {
+          submittedTurnKeyRef.current = null;
+        }
+        setPreviewCandidate(null);
+      } finally {
+        submittingRef.current = false;
+        setSubmitting(false);
+      }
     },
-    [draft, submitting, formation, board, room.id, generation, pickNo, playerId],
+    [
+      draft,
+      draftFinished,
+      isMyTurn,
+      takenIds,
+      formation,
+      board,
+      room.id,
+      generation,
+      pickNo,
+      playerId,
+    ],
   );
 
   const autoAct = useCallback(() => {
-    if (!isMyTurn || submitting) return;
+    if (!isMyTurn || draftFinished || submittingRef.current) return;
     const usedRoll = roll ?? doSpin();
     const pick = buildAutoPick({
       formation,
@@ -453,7 +493,7 @@ export function MpLeagueDraftBoard({
       shownCandidates: usedRoll ? rollCandidates(usedRoll.reels, takenIds) : [],
     });
     if (pick) void submitPick(pick.player, true);
-  }, [isMyTurn, submitting, roll, doSpin, formation, board, takenIds, draftPool, submitPick]);
+  }, [isMyTurn, draftFinished, roll, doSpin, formation, board, takenIds, draftPool, submitPick]);
 
   const handleExpire = useCallback(
     (turnKey: string) => {
@@ -534,6 +574,50 @@ export function MpLeagueDraftBoard({
     activePreview && previewSlot?.area === 'starter'
       ? displayChemistry.total - baseChemistry.total
       : 0;
+
+  // Match solo DraftScreen [🔗 N선] expected link badge per roulette candidate
+  const expectedLinksByPlayerId = useMemo(() => {
+    const out: Record<string, number> = {};
+    if (!roll || roll.reels.length === 0) return out;
+    const cfg = FORMATIONS[formation] ?? FORMATIONS['4-3-3'];
+    for (const reel of roll.reels) {
+      for (const cand of reel.candidates) {
+        if (takenIds.has(cand.id)) continue;
+        const slot = chooseSlotForPlayer(formation, board.starters, board.bench, cand);
+        if (!slot || slot.area !== 'starter') continue;
+        let sum = 0;
+        for (const [fromIdx, toIdx] of cfg.links) {
+          const otherIdx =
+            fromIdx === slot.index ? toIdx : toIdx === slot.index ? fromIdx : -1;
+          if (otherIdx === -1) continue;
+          const neighbor = board.starters[otherIdx];
+          if (neighbor) {
+            sum += evaluatePairLink(cand, neighbor, tactic, managerTraitId).score;
+          }
+        }
+        if (sum > 0) out[cand.id] = sum;
+      }
+    }
+    return out;
+  }, [roll, formation, board, takenIds, tactic, managerTraitId]);
+
+  const myPickCount = useMemo(
+    () => picks.filter((x) => x.picker_id === playerId).length,
+    [picks, playerId],
+  );
+
+  const handleQuickLineup = useCallback(() => {
+    if (draftFinished || submittingRef.current || myPickCount < 2) return;
+    const nextOverrides = buildQuickLineupOverrides({
+      formation,
+      starters: board.starters,
+      bench: board.bench,
+      tactic,
+      managerTraitId,
+    });
+    setSelectedSlot(null);
+    setOverrides(nextOverrides);
+  }, [draftFinished, myPickCount, formation, board, tactic, managerTraitId]);
 
   const handleSwap = (from: SlotRef, to: SlotRef) => {
     if (from.area === to.area && from.index === to.index) return;
@@ -657,6 +741,51 @@ export function MpLeagueDraftBoard({
               formation={formation}
               variant="pill"
               align="left"
+            />
+            {MANAGER_TRAITS[managerTraitId] && (
+              <InfoHelpButton
+                title={`${meRow?.nickname ?? '감독'} · ${MANAGER_TRAITS[managerTraitId].name}`}
+                label="감독 팁"
+                size="xs"
+                align="left"
+                guideTab="squad"
+              >
+                <p className="text-[11px] leading-relaxed text-slate-300 mb-2 break-keep">
+                  {MANAGER_TRAITS[managerTraitId].draftGuideTip}
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {MANAGER_TRAITS[managerTraitId].synergyPlaystyles.map((ps) => (
+                    <span
+                      key={ps}
+                      className="rounded border border-amber-400/35 bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-bold text-amber-200 whitespace-nowrap"
+                    >
+                      {PLAYSTYLES[ps]?.name ?? ps}
+                    </span>
+                  ))}
+                  {managerTraitId === 'galactico_manager' && (
+                    <span className="rounded border border-cyan-400/40 bg-cyan-500/15 px-1.5 py-0.5 text-[10px] font-bold text-cyan-200 whitespace-nowrap">
+                      OVR 87+ · 클래식
+                    </span>
+                  )}
+                  {managerTraitId === 'total_football' && (
+                    <span className="rounded border border-sky-400/40 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-200 whitespace-nowrap">
+                      3포지션+ 멀티
+                    </span>
+                  )}
+                </div>
+              </InfoHelpButton>
+            )}
+            <InfoHelpButton
+              title="포텐 각성 원리 (영구 성장 · 시즌 0~3명)"
+              label="각성"
+              size="xs"
+              align="left"
+              guideTab="squad"
+              items={[
+                '대상: 현역 선수만 가능 (시대별 클래식 0%). OVR ≤84 원석·중위권이 핵심 대상(+3~+8 영구 상승)',
+                '기용 핵심: 주포지션 배치 · 인접 시너지 2선+ · ★ 감독 궁합 · 높은 사기·체력 관리',
+                '후보를 클릭해 프리뷰하면 배치 슬롯 기준으로 포텐↑ · 육성 배지와 [🔗 N선] 연결선이 표시됩니다',
+              ]}
             />
           </div>
 
@@ -850,7 +979,10 @@ export function MpLeagueDraftBoard({
               previewCandidate={activePreview}
               onSelectPreviewCandidate={handleSelectPreview}
               previewSlotSynergy={previewSlotSynergy}
+              previewTargetSubPosition={previewSlot?.subPosition ?? null}
+              previewSlotArea={previewSlot?.area ?? null}
               previewChemDelta={previewChemDelta}
+              expectedLinksByPlayerId={expectedLinksByPlayerId}
               canPick={isMyTurn && !draftFinished && !submitting}
               canSpin={isMyTurn && iAmSpinner && !draftFinished}
               waitingStatusLabel={waitingLabel}
@@ -941,7 +1073,7 @@ export function MpLeagueDraftBoard({
           {/* Single Original Formation PitchBoard */}
           {activeView && (
             <div className="rounded-xl border border-slate-800/90 bg-[#0d131c] p-2 space-y-1.5">
-              <div className="flex items-center justify-between gap-2 px-0.5 text-[11px]">
+              <div className="flex flex-wrap items-center justify-between gap-1.5 px-0.5 text-[11px]">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="truncate font-extrabold text-white">
                     {activeView.row.nickname}
@@ -955,12 +1087,29 @@ export function MpLeagueDraftBoard({
                     <button
                       type="button"
                       onClick={() => setSelectedSlot(null)}
-                      className="rounded border border-amber-400/40 bg-amber-500/15 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-200 cursor-pointer"
+                      className="rounded border border-amber-400/40 bg-amber-500/15 px-1.5 py-0.5 text-[9.5px] font-bold text-amber-200 cursor-pointer whitespace-nowrap"
                     >
                       스왑 취소
                     </button>
                   )}
-                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-slate-300">
+                  {activeView.isMe && myPickCount >= 2 && !draftFinished && (
+                    <button
+                      id="mpl-quick-lineup-btn"
+                      type="button"
+                      disabled={submitting}
+                      onClick={handleQuickLineup}
+                      title="현재 보유 선수들의 실효 OVR과 케미를 자동 최적화합니다"
+                      className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-bold transition-colors whitespace-nowrap touch-manipulation ${
+                        submitting
+                          ? 'border-slate-700/70 bg-slate-900/60 text-slate-500 cursor-not-allowed'
+                          : 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 cursor-pointer'
+                      }`}
+                    >
+                      <Wand2 className="w-3 h-3" />
+                      빠른 선발
+                    </button>
+                  )}
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-slate-300 whitespace-nowrap">
                     <Zap className="w-3 h-3 text-emerald-400" />
                     A {activeView.ratings.effectiveAtt} / M {activeView.ratings.effectiveMid} / D{' '}
                     {activeView.ratings.effectiveDef}
@@ -1007,7 +1156,7 @@ export function MpLeagueDraftBoard({
                 }
                 showBench
                 draftBenchHints={!draftFinished}
-                showChemBreakdown={false}
+                showChemBreakdown={activeView.isMe}
                 showChemLegend
                 compact
               />
@@ -1060,6 +1209,14 @@ export function MpLeagueDraftBoard({
         <PlayerDetailModal
           player={inspected.player}
           slotSubPosition={inspected.slotSubPosition}
+          slotSynergy={
+            activeView
+              ? Object.values(activeView.chemistry.slotSynergies).find(
+                  (s) => s.playerId === inspected.player.id,
+                ) ?? null
+              : null
+          }
+          managerTraitId={activeView?.traitId ?? managerTraitId}
           onClose={() => setInspected(null)}
         />
       )}

@@ -54,6 +54,7 @@ import type {
   FormationId,
   IncomingTradeOffer,
   ManagerTraitId,
+  StaffCoachId,
   TransferClubOffer,
   TransferTargetPlayer,
 } from '../../../types/game';
@@ -108,6 +109,8 @@ export interface MpLeagueTransferModalProps {
   managerTraitId?: ManagerTraitId | null;
   availableCashM?: number;
   ffpTier?: 0 | 1 | 2;
+  ffpChemPenalty?: number;
+  staffCoachId?: StaffCoachId | null;
 }
 
 type MpTransferTab = 'offers' | 'tactics';
@@ -251,6 +254,8 @@ export function MpLeagueTransferModal({
   managerTraitId = null,
   availableCashM = 0,
   ffpTier = 0,
+  ffpChemPenalty = 0,
+  staffCoachId = null,
 }: MpLeagueTransferModalProps) {
   useBodyScrollLock(true);
   const scrollBodyRef = useRef<HTMLDivElement | null>(null);
@@ -353,8 +358,12 @@ export function MpLeagueTransferModal({
   const formationSlots = (FORMATIONS[myFormation] ?? FORMATIONS['4-3-3']).slots;
 
   const myChemistry = useMemo(
-    () => calculateChemistry(myFormation, myStarters, myTactic, managerTraitId),
-    [myFormation, myStarters, myTactic, managerTraitId],
+    () =>
+      calculateChemistry(myFormation, myStarters, myTactic, managerTraitId, undefined, {
+        staffCoachId,
+        ffpChemPenalty,
+      }),
+    [myFormation, myStarters, myTactic, managerTraitId, staffCoachId, ffpChemPenalty],
   );
   const myRatings = useMemo(
     () =>
@@ -365,6 +374,7 @@ export function MpLeagueTransferModal({
         managerTraitId,
         myChemistry.slotSynergies,
         myTactic,
+        staffCoachId,
       ),
     [
       myFormation,
@@ -373,6 +383,7 @@ export function MpLeagueTransferModal({
       myChemistry.slotSynergies,
       managerTraitId,
       myTactic,
+      staffCoachId,
     ],
   );
   const selectedUserSlotKeys = useMemo(
@@ -587,6 +598,8 @@ export function MpLeagueTransferModal({
         })),
         tactic: myTactic,
         managerTraitId,
+        staffCoachId,
+        ffpChemPenalty,
         beforeChemistry: myChemistry,
         beforeRatings: myRatings,
         cashBeforeM: availableCashM,
@@ -600,6 +613,8 @@ export function MpLeagueTransferModal({
       selectedAiPlayers,
       myTactic,
       managerTraitId,
+      staffCoachId,
+      ffpChemPenalty,
       myChemistry,
       myRatings,
       availableCashM,
@@ -1362,6 +1377,8 @@ export function MpLeagueTransferModal({
                             })),
                             tactic: myTactic,
                             managerTraitId,
+                            staffCoachId,
+                            ffpChemPenalty,
                             beforeChemistry: myChemistry,
                             beforeRatings: myRatings,
                           });

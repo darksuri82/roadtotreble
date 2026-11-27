@@ -1,6 +1,6 @@
 import { BENCH_SLOTS, FORMATIONS } from '../data/formations';
-import type { FormationId, RouletteReelResult } from '../types/game';
-import type { LeagueId } from '../types/league';
+import type { FormationId, ManagerTraitId, RouletteReelResult } from '../types/game';
+import type { LeagueId, TacticId } from '../types/league';
 import type {
   MpDraftLive,
   MpLeagueLive,
@@ -12,6 +12,7 @@ import { MP_LEAGUE_DRAFT_PICKS } from '../types/mpLeague';
 import type { Player, Position, SubPosition } from '../types/player';
 import { getLeagueById } from './dataLoader';
 import { DEFAULT_ROULETTE_LEGEND_RATE, spinClubRoulette } from './draftEngine';
+import { optimizeBestLineup } from './lineupOptimizer';
 
 /**
  * Rotating round-start draft order so every player (2/3/4P) gets equal first-pick & roulette turns:
@@ -355,4 +356,34 @@ export function shuffleDraftOrder(playerIds: string[], rng: () => number = Math.
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+/**
+ * Multi-league Draft `[빠른 선발]` helper (identical optimization engine as solo `DraftScreen`):
+ * Optimizes all currently picked players into the best starter/bench slots for the manager's
+ * formation, tactic, and manager trait, returning a pure `playerId -> slot` override map without
+ * mutating `mp_league_picks`.
+ */
+export function buildQuickLineupOverrides(params: {
+  formation: FormationId;
+  starters: (Player | null)[];
+  bench: (Player | null)[];
+  tactic: TacticId;
+  managerTraitId: ManagerTraitId | null;
+}): Record<string, { area: 'starter' | 'bench'; index: number }> {
+  const optimized = optimizeBestLineup(
+    params.starters,
+    params.bench,
+    params.formation,
+    params.tactic,
+    params.managerTraitId,
+  );
+  const overrides: Record<string, { area: 'starter' | 'bench'; index: number }> = {};
+  optimized.starters.forEach((p, index) => {
+    if (p) overrides[p.id] = { area: 'starter', index };
+  });
+  optimized.bench.forEach((p, index) => {
+    if (p) overrides[p.id] = { area: 'bench', index };
+  });
+  return overrides;
 }

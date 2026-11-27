@@ -3,6 +3,7 @@ import { pickNextManagerEvent, resolveManagerEventChoice } from '../data/manager
 import type { InjuryAlertItem, PlayerConditionMap } from '../types/condition';
 import type { CupStageId, DomesticCupState } from '../types/cup';
 import type {
+  FormationId,
   IncomingTradeOffer,
   StaffCoachId,
   TransferClubOffer,
@@ -14,6 +15,7 @@ import type {
   MatchResult,
   PlayerSeasonStats,
   StandingRow,
+  TacticId,
 } from '../types/league';
 import type {
   MpCastMatch,
@@ -32,7 +34,7 @@ import type {
   MpTradeResultNote,
   MpUclLive,
 } from '../types/mpLeague';
-import type { Player, SubPosition } from '../types/player';
+import type { Player, PlayerAwakeningRecord, SubPosition } from '../types/player';
 import type { UclKnockoutStage, UclKnockoutTie, UclPhaseStage } from '../types/ucl';
 import {
   applyAwakeningToPlayer,
@@ -90,6 +92,7 @@ import {
   createInitialTacticalAdaptationState,
   recordMatchTacticalAdaptation,
 } from './tacticalAdaptationEngine';
+import { TACTICS } from './tacticEngine';
 import {
   analyzeClubPositionNeeds,
   ATTEMPTS_PER_WINDOW,
@@ -190,6 +193,41 @@ export interface MpHumanMatchSetup {
   rawBench: Player[];
 }
 
+/**
+ * Deterministic 1-time seen key for multiplayer awakening celebration popups
+ * (unique per season + club + player so realtime re-broadcasts never re-open a seen modal).
+ */
+export function buildMpAwakeningSeenKey(
+  seasonKey: string,
+  clubId: string,
+  playerId: string,
+): string {
+  return `mp-awk:${seasonKey}:${clubId}:${playerId}`;
+}
+
+/**
+ * Hydrates a club's 11+5 squad with all permanent potential awakening records.
+ * Idempotent and immutable — safe to call in engine, scoring, and UI components.
+ */
+export function hydrateMpSquadWithAwakenings(
+  squad: MpSquadInput,
+  awakenedPlayers?: Record<string, PlayerAwakeningRecord> | null,
+): MpSquadInput {
+  if (!awakenedPlayers || Object.keys(awakenedPlayers).length === 0) return squad;
+  let changed = false;
+  const applyList = (list: Player[]) =>
+    list.map((p) => {
+      const rec = awakenedPlayers[p.id];
+      if (!rec) return p;
+      if (p.awakening && p.awakening.ovrGain === rec.ovrGain) return p;
+      changed = true;
+      return applyAwakeningToPlayer(p, rec);
+    });
+  const starters = applyList(squad.starters);
+  const bench = applyList(squad.bench);
+  return changed ? { ...squad, starters, bench } : squad;
+}
+
 /** Builds a human club's live Club entry + match context from its current squad, conditions & morale. */
 export function buildHumanMatchSetup(params: {
   human: MpLeagueHuman;
@@ -202,21 +240,7 @@ export function buildHumanMatchSetup(params: {
   humanSeason?: MpHumanSeasonState;
 }): MpHumanMatchSetup {
   const { human, squad, conditions, teamMorale, competition, opponentRank, humanSeason } = params;
-  const awakenedMap = humanSeason?.awakenedPlayers;
-  const applyAwakened = (list: Player[]) =>
-    awakenedMap && Object.keys(awakenedMap).length > 0
-      ? list.map((p) => {
-          const rec = awakenedMap[p.id];
-          return rec && !p.awakening ? applyAwakeningToPlayer(p, rec) : p;
-        })
-      : list;
-  const hydratedSquad: MpSquadInput = awakenedMap
-    ? {
-        ...squad,
-        starters: applyAwakened(squad.starters),
-        bench: applyAwakened(squad.bench),
-      }
-    : squad;
+  const hydratedSquad = hydrateMpSquadWithAwakenings(squad, humanSeason?.awakenedPlayers);
   const lineup = resolveAvailableLineup(hydratedSquad, conditions);
   const effStarters = applyConditionToPlayers(lineup.starters, conditions, teamMorale);
   const effBench = applyConditionToPlayers(lineup.bench, conditions, teamMorale);
@@ -666,16 +690,20 @@ function applyPostHumanMatch(params: {
     awakeningResult.triggered &&
     awakeningResult.awakenedPlayer &&
     awakeningResult.record &&
-    awakeningResult.alert
+    awakeningResult.alert &&
+    !prevAwakened[awakeningResult.awakenedPlayer.id]
   ) {
+    const pid = awakeningResult.awakenedPlayer.id;
     nextAwakenedPlayers = {
       ...prevAwakened,
-      [awakeningResult.awakenedPlayer.id]: awakeningResult.record,
+      [pid]: awakeningResult.record,
     };
-    nextPendingAwakeningAlerts = [
-      ...nextPendingAwakeningAlerts,
-      awakeningResult.alert,
-    ];
+    if (!nextPendingAwakeningAlerts.some((a) => a.playerId === pid)) {
+      nextPendingAwakeningAlerts = [
+        ...nextPendingAwakeningAlerts,
+        awakeningResult.alert,
+      ];
+    }
   }
 
   let baseMorale = prev.events.teamMorale;
@@ -2208,18 +2236,86 @@ export function dismissMpLeagueAdaptationAlert(
 export function dismissMpLeagueAwakeningAlert(
   state: MpLeagueHostState,
   clubId: string,
+  playerId?: string,
 ): MpLeagueHostState {
   const hs = state.perHuman[clubId];
   if (!hs?.pendingAwakeningAlerts?.length) return state;
+  const nextAlerts = playerId
+    ? hs.pendingAwakeningAlerts.filter((a) => a.playerId !== playerId)
+    : hs.pendingAwakeningAlerts.slice(1);
+  if (nextAlerts.length === hs.pendingAwakeningAlerts.length) return state;
   return {
     ...state,
     perHuman: {
       ...state.perHuman,
       [clubId]: {
         ...hs,
-        pendingAwakeningAlerts: hs.pendingAwakeningAlerts.slice(1),
+        pendingAwakeningAlerts: nextAlerts,
       },
     },
+  };
+}
+
+/**
+ * Validates and applies an authoritative tactics/formation/lineup update from a human manager
+ * (e.g. from the UCL knockout preview modal or squad editor). Enforces exact 16-man roster
+ * membership against the host's authoritative squad so no player spoofing or duplication can occur.
+ */
+export function applyMpLeagueTacticsUpdate(params: {
+  state: MpLeagueHostState;
+  squads: Record<string, MpSquadInput>;
+  clubId: string;
+  formation?: string;
+  tactic?: string;
+  starterIds?: string[];
+  benchIds?: string[];
+}): MpSquadInput | null {
+  const { state, squads, clubId, formation, tactic, starterIds, benchIds } = params;
+  const base = squads[clubId] ?? state.squads[clubId];
+  if (!base) return null;
+
+  const hydratedBase = hydrateMpSquadWithAwakenings(
+    base,
+    state.perHuman[clubId]?.awakenedPlayers,
+  );
+  const nextFormation: FormationId =
+    formation && formation in FORMATIONS
+      ? (formation as FormationId)
+      : hydratedBase.formation;
+  const nextTactic: TacticId =
+    tactic && tactic in TACTICS ? (tactic as TacticId) : hydratedBase.tactic;
+
+  let nextStarters = hydratedBase.starters;
+  let nextBench = hydratedBase.bench;
+
+  if (
+    Array.isArray(starterIds) &&
+    Array.isArray(benchIds) &&
+    starterIds.length === 11 &&
+    benchIds.length === 5
+  ) {
+    const byId = new Map<string, Player>();
+    for (const p of [...hydratedBase.starters, ...hydratedBase.bench]) {
+      byId.set(p.id, p);
+    }
+    const allSubmitted = [...starterIds, ...benchIds];
+    const uniqueSubmitted = new Set(allSubmitted);
+    if (
+      uniqueSubmitted.size === byId.size &&
+      allSubmitted.length === byId.size &&
+      allSubmitted.every((id) => byId.has(id))
+    ) {
+      nextStarters = starterIds.map((id) => byId.get(id)!);
+      nextBench = benchIds.map((id) => byId.get(id)!);
+    }
+  }
+
+  return {
+    ...hydratedBase,
+    formation: nextFormation,
+    tactic: nextTactic,
+    starters: nextStarters,
+    bench: nextBench,
   };
 }
 
@@ -2266,10 +2362,18 @@ function stepFinishLeague(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueH
     ? state.humans.map((h) => h.clubId).filter((id) => top4.includes(id))
     : [];
 
+  const hydratedSummarySquads: Record<string, MpSquadInput> = {};
   const uclRosters: Record<string, Player[]> = { ...state.aiRosters };
   for (const h of state.humans) {
-    const squad = env.squads[h.clubId];
-    if (squad) uclRosters[h.clubId] = squad.starters;
+    const rawSquad = env.squads[h.clubId];
+    if (rawSquad) {
+      const hydrated = hydrateMpSquadWithAwakenings(
+        rawSquad,
+        state.perHuman[h.clubId]?.awakenedPlayers,
+      );
+      hydratedSummarySquads[h.clubId] = hydrated;
+      uclRosters[h.clubId] = hydrated.starters;
+    }
   }
 
   const humanOwnedIds = new Set<string>(allHumanPlayerIds(env.squads));
@@ -2292,7 +2396,7 @@ function stepFinishLeague(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueH
 
   const squadStats: Record<string, PlayerSeasonStats[]> = {};
   for (const h of state.humans) {
-    const squad = env.squads[h.clubId];
+    const squad = hydratedSummarySquads[h.clubId] ?? env.squads[h.clubId];
     squadStats[h.clubId] = squad
       ? [...squad.starters, ...squad.bench]
           .map((p) => state.allPlayerStats[p.id])
@@ -2309,6 +2413,7 @@ function stepFinishLeague(state: MpLeagueHostState, env: MpLeagueEnv): MpLeagueH
       awards,
       squadStats,
       cupChampionId: state.cup?.championTeamId ?? null,
+      squads: hydratedSummarySquads,
     },
   };
 

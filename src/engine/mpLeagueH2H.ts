@@ -1,5 +1,11 @@
 import type { PlayerConditionMap } from '../types/condition';
-import type { FormationId, ManagerTraitId, UserClubProfile } from '../types/game';
+import type {
+  FormationId,
+  ManagerTraitId,
+  StaffCoachId,
+  TacticalHistoryEntry,
+  UserClubProfile,
+} from '../types/game';
 import type {
   Club,
   Fixture,
@@ -28,6 +34,9 @@ export interface MpH2HSideInput {
   starters: Player[];
   bench: Player[];
   teamMorale: number;
+  staffCoachId?: StaffCoachId | null;
+  ffpChemPenalty?: number;
+  tacticalHistory?: readonly TacticalHistoryEntry[];
 }
 
 export function mpH2HMatchId(spec: MpH2HSpec, seasonKey: string): string {
@@ -54,6 +63,11 @@ export function sideFromSubmission(
   human: MpLeagueHuman,
   sub: MpTacticSubmission,
   teamMorale: number,
+  options?: {
+    staffCoachId?: StaffCoachId | null;
+    ffpChemPenalty?: number;
+    tacticalHistory?: readonly TacticalHistoryEntry[];
+  },
 ): MpH2HSideInput {
   return {
     human,
@@ -62,6 +76,9 @@ export function sideFromSubmission(
     starters: sub.starters,
     bench: sub.bench,
     teamMorale,
+    staffCoachId: options?.staffCoachId ?? null,
+    ffpChemPenalty: options?.ffpChemPenalty ?? 0,
+    tacticalHistory: options?.tacticalHistory,
   };
 }
 
@@ -72,8 +89,12 @@ function buildClub(
   tactic: TacticId,
   starters: Player[],
   traitId: ManagerTraitId,
+  options?: { staffCoachId?: StaffCoachId | null; ffpChemPenalty?: number },
 ): Club {
-  const chem = calculateChemistry(formation, starters, tactic, traitId);
+  const chem = calculateChemistry(formation, starters, tactic, traitId, undefined, {
+    staffCoachId: options?.staffCoachId ?? null,
+    ffpChemPenalty: options?.ffpChemPenalty ?? 0,
+  });
   const ratings = calculateTeamRatings(
     formation,
     starters,
@@ -81,6 +102,7 @@ function buildClub(
     traitId,
     chem.slotSynergies,
     tactic,
+    options?.staffCoachId ?? null,
   );
   return {
     id,
@@ -111,6 +133,9 @@ function buildCtx(params: {
   bench: Player[];
   traitId: ManagerTraitId;
   competition: 'league' | 'cup' | 'ucl';
+  staffCoachId?: StaffCoachId | null;
+  ffpChemPenalty?: number;
+  tacticalHistory?: readonly TacticalHistoryEntry[];
   halftimeAdjusted?: boolean;
   halftimeSubsMade?: number;
   halftimeSubIds?: string[];
@@ -121,6 +146,11 @@ function buildCtx(params: {
     params.starters,
     params.tactic,
     params.traitId,
+    undefined,
+    {
+      staffCoachId: params.staffCoachId ?? null,
+      ffpChemPenalty: params.ffpChemPenalty ?? 0,
+    },
   );
   const ratings = calculateTeamRatings(
     params.formation,
@@ -129,6 +159,7 @@ function buildCtx(params: {
     params.traitId,
     chem.slotSynergies,
     params.tactic,
+    params.staffCoachId ?? null,
   );
   return {
     userClubId: params.clubId,
@@ -140,6 +171,8 @@ function buildCtx(params: {
     ratings,
     slotSynergies: chem.slotSynergies,
     managerTraitId: params.traitId,
+    staffCoachId: params.staffCoachId ?? null,
+    tacticalHistory: params.tacticalHistory,
     halftimeAdjusted: params.halftimeAdjusted ?? false,
     halftimeSubsMade: params.halftimeSubsMade ?? 0,
     halftimeSubIds: params.halftimeSubIds ?? [],
@@ -196,6 +229,7 @@ function prepareSide(side: MpH2HSideInput, conditions: PlayerConditionMap): Prep
       side.tactic,
       eff,
       side.human.managerTraitId,
+      { staffCoachId: side.staffCoachId, ffpChemPenalty: side.ffpChemPenalty },
     ),
   };
 }
@@ -237,6 +271,9 @@ export function kickoffMpH2H(params: {
       bench: h.effBench,
       traitId: home.human.managerTraitId,
       competition,
+      staffCoachId: home.staffCoachId,
+      ffpChemPenalty: home.ffpChemPenalty,
+      tacticalHistory: home.tacticalHistory,
     }),
     opponentUserContext: buildCtx({
       clubId: away.human.clubId,
@@ -246,6 +283,9 @@ export function kickoffMpH2H(params: {
       bench: a.effBench,
       traitId: away.human.managerTraitId,
       competition,
+      staffCoachId: away.staffCoachId,
+      ffpChemPenalty: away.ffpChemPenalty,
+      tacticalHistory: away.tacticalHistory,
     }),
     rng: params.rng,
   });
@@ -318,6 +358,9 @@ export function secondHalfMpH2H(params: {
       bench: h.effBench,
       traitId: home.human.managerTraitId,
       competition,
+      staffCoachId: home.staffCoachId,
+      ffpChemPenalty: home.ffpChemPenalty,
+      tacticalHistory: home.tacticalHistory,
       halftimeAdjusted:
         home.tactic !== match.hostTactic ||
         home.formation !== match.hostFormation ||
@@ -334,6 +377,9 @@ export function secondHalfMpH2H(params: {
       bench: a.effBench,
       traitId: away.human.managerTraitId,
       competition,
+      staffCoachId: away.staffCoachId,
+      ffpChemPenalty: away.ffpChemPenalty,
+      tacticalHistory: away.tacticalHistory,
       halftimeAdjusted:
         away.tactic !== match.guestTactic ||
         away.formation !== match.guestFormation ||
@@ -414,6 +460,9 @@ function etContexts(params: {
       bench: h.effBench,
       traitId: home.human.managerTraitId,
       competition,
+      staffCoachId: home.staffCoachId,
+      ffpChemPenalty: home.ffpChemPenalty,
+      tacticalHistory: home.tacticalHistory,
       halftimeAdjusted: true,
       halftimeSubsMade: match.hostHalftimeSubIds.length + params.homeEtSubCount,
       halftimeSubIds: match.hostHalftimeSubIds,
@@ -427,6 +476,9 @@ function etContexts(params: {
       bench: a.effBench,
       traitId: away.human.managerTraitId,
       competition,
+      staffCoachId: away.staffCoachId,
+      ffpChemPenalty: away.ffpChemPenalty,
+      tacticalHistory: away.tacticalHistory,
       halftimeAdjusted: true,
       halftimeSubsMade: match.guestHalftimeSubIds.length + params.awayEtSubCount,
       halftimeSubIds: match.guestHalftimeSubIds,

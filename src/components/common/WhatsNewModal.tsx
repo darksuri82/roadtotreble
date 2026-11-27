@@ -7,8 +7,11 @@ import {
   Flame,
   Globe,
   ScrollText,
+  Shield,
   Sparkles,
   TrendingDown,
+  Users,
+  Wand2,
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -28,7 +31,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.7.2';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.8.0';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -63,7 +66,7 @@ export function clearWhatsNewDismissal(): void {
   }
 }
 
-type WhatsNewTabId = 'v97' | 'story' | 'ranking' | 'classics';
+type WhatsNewTabId = 'v98' | 'v97' | 'story' | 'ranking' | 'classics';
 
 const TABS: Array<{
   id: WhatsNewTabId;
@@ -71,8 +74,9 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
-  { id: 'v97', label: '이적 프리뷰 · 각성', badge: '9.7 NEW', icon: ArrowLeftRight },
-  { id: 'story', label: '팀 소개 · 위기 서사', badge: '9.7 NEW', icon: BookOpen },
+  { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8 NEW', icon: Users },
+  { id: 'v97', label: '이적 프리뷰 · 각성', badge: '9.7', icon: ArrowLeftRight },
+  { id: 'story', label: '팀 소개 · 위기 서사', badge: '9.7', icon: BookOpen },
   { id: 'ranking', label: '일일 랭킹 · 공정성', badge: '9.5~9.6', icon: Globe },
   { id: 'classics', label: '3-2-4-1 · 클래식', badge: '9.4~9.5', icon: Crown },
 ];
@@ -89,7 +93,7 @@ export function WhatsNewModal({
   onOpenPatchNotes,
 }: WhatsNewModalProps) {
   useBodyScrollLock(true);
-  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v97');
+  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v98');
   const [dontShowAgain, setDontShowAgain] = useState<boolean>(false);
 
   const previewPlayers = useMemo(() => {
@@ -201,7 +205,72 @@ export function WhatsNewModal({
         </div>
 
         {/* Single Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 break-keep">
+        <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y p-4 sm:p-5 space-y-4 break-keep">
+          {activeTab === 'v98' && (
+            <div className="space-y-3.5">
+              {/* 1. Draft Quick Lineup + UCL Preview Inline Tactics */}
+              <div className="rounded-2xl border border-emerald-500/30 bg-[#0d1522] p-3.5 sm:p-4 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-300">
+                    <Wand2 className="h-3.5 w-3.5" />
+                    멀티리그 드래프트 [빠른 선발] &amp; UCL 프리뷰 실시간 전술 수정
+                  </span>
+                  <span className="rounded bg-emerald-500/15 border border-emerald-400/35 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-200 whitespace-nowrap">
+                    방장 · 참가자 전원 지원
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-300">
+                  <div className="rounded-xl border border-slate-800 bg-[#090f19] p-3 space-y-1">
+                    <div className="font-extrabold text-emerald-200">
+                      드래프트 원클릭 [빠른 선발]
+                    </div>
+                    <p className="leading-relaxed text-slate-400">
+                      싱글과 동일한 최적 라인업 엔진으로 11선발·5벤치를 원클릭 자동 배치하고, 중복 픽·턴 꼬임 가드와 v9.4 룰렛 포텐/시너지 프리뷰를 통일했습니다.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-800 bg-[#090f19] p-3 space-y-1">
+                    <div className="font-extrabold text-sky-200">
+                      UCL 1·2차전 프리뷰 직접 전술 정비
+                    </div>
+                    <p className="leading-relaxed text-slate-400">
+                      토너먼트 매 라운드(~강) 프리뷰에서 10종 포메이션(3-2-4-1 포함)·5대 전술·공용 피치보드 라인업을 직접 수정하고 시뮬 전 호스트에 즉시 동기화합니다.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Awakening Summary Fix & Dedup + Popup Queue & v9.x Parity */}
+              <div className="rounded-2xl border border-orange-500/25 bg-[#0d1522] p-3.5 sm:p-4 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-black text-orange-300">
+                    <Flame className="h-3.5 w-3.5" />
+                    각성 결산 반영 · 중복 팝업 차단 · 싱글 v9.x 디자인/기능 통일
+                  </span>
+                </div>
+                <ul className="space-y-1.5 text-[11px] text-slate-300">
+                  <li className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                    <span>
+                      <strong className="text-white">각자 팀 결산 각성 완벽 반영:</strong> 방장·참가자 전원 결산 피치·카드·표·점수에 각성 상승 OVR, 붉은 불꽃 효과, 각성 목록이 정상 표시됩니다.
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                    <span>
+                      <strong className="text-white">각성 팝업 1회 노출 가드 &amp; 단일 팝업 큐:</strong> 시즌·선수 고유 키 기반 1회 가드로 중복 노출을 차단하고, 모든 모달이 겹치지 않고 순차 표시됩니다.
+                    </span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Shield className="mt-0.5 h-3.5 w-3.5 shrink-0 text-sky-400" />
+                    <span>
+                      <strong className="text-white">싱글 v9.x 완전 동기화:</strong> FFP 케미 페널티(-8/-14) 교정, 수석 코치·전술 노출도·시대 클래식 배지·H2H 팀 스토리까지 멀티리그 전역 통일.
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'v97' && (
             <div className="space-y-4">
               {/* Transfer Market Virtual Swap Preview Mockup */}

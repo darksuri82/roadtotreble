@@ -14,6 +14,7 @@ import type {
 } from '../types/mpLeague';
 import type { UclKnockoutStage, UclPhaseStage, UclTournamentState } from '../types/ucl';
 import { mergePlayerStatsMaps } from './analyticsEngine';
+import { applyAwakeningToPlayer } from './awakeningEngine';
 import { computeGlobalSeasonAwards } from './awardsEngine';
 import { calculateChemistry, calculateTeamRatings } from './chemistryEngine';
 import { getUserCupResultLabel } from './cupEngine';
@@ -112,6 +113,26 @@ function uclRunFlags(
   return { unbeaten, perfect };
 }
 
+function hydrateSquadAwakeningsLocal(
+  squad: MpSquadInput,
+  humanSeason: MpHumanSeasonState | undefined,
+): MpSquadInput {
+  const awakened = humanSeason?.awakenedPlayers;
+  if (!awakened || Object.keys(awakened).length === 0) return squad;
+  const apply = (list: MpSquadInput['starters']) =>
+    list.map((p) => {
+      const rec = awakened[p.id];
+      if (!rec) return p;
+      if (p.awakening && p.awakening.ovrGain === rec.ovrGain) return p;
+      return applyAwakeningToPlayer(p, rec);
+    });
+  return {
+    ...squad,
+    starters: apply(squad.starters),
+    bench: apply(squad.bench),
+  };
+}
+
 /**
  * The exact single-player / Hall of Fame season score for one friend's club.
  * Head-to-head points are deliberately NOT part of this number.
@@ -122,7 +143,8 @@ export function computeMpHumanSeasonScore(params: {
   squad: MpSquadInput;
   humanSeason: MpHumanSeasonState;
 }): SeasonScoreBreakdown {
-  const { state, human, squad, humanSeason } = params;
+  const { state, human, humanSeason } = params;
+  const squad = hydrateSquadAwakeningsLocal(params.squad, humanSeason);
   const clubId = human.clubId;
   const staffCoachId = humanSeason.staffCoach?.hiredCoachId ?? null;
   const ffpChemPenalty = humanSeason.budget?.chemPenalty ?? 0;
@@ -312,9 +334,17 @@ export function finalizeMpLeagueSeason(
     state.cupPlayerStats,
     state.uclPlayerStats,
   );
+  const hydratedFinalSquads: Record<string, MpSquadInput> = {};
   const squadStats: Record<string, PlayerSeasonStats[]> = {};
   for (const h of state.humans) {
-    const sq = squads[h.clubId];
+    const rawSq = squads[h.clubId];
+    if (rawSq) {
+      hydratedFinalSquads[h.clubId] = hydrateSquadAwakeningsLocal(
+        rawSq,
+        state.perHuman[h.clubId],
+      );
+    }
+    const sq = hydratedFinalSquads[h.clubId] ?? rawSq;
     squadStats[h.clubId] = sq
       ? [...sq.starters, ...sq.bench]
           .map((p) => combinedStats[p.id])
@@ -336,6 +366,7 @@ export function finalizeMpLeagueSeason(
       cupChampionId: state.cup?.championTeamId ?? null,
       uclChampionId: state.ucl?.championTeamId ?? null,
       squadStats,
+      squads: hydratedFinalSquads,
     },
   };
 }

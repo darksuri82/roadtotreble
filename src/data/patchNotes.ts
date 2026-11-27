@@ -12,14 +12,53 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v9.7.2';
+export const CURRENT_APP_VERSION = 'v9.8.0';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v9.8.0',
+    codename:
+      '멀티리그 드래프트 빠른 선발 · UCL 토너먼트 프리뷰 실시간 전술 수정 · 각성 결산 반영 & 중복 팝업 차단 · 방장/참가자 전수 점검 및 싱글 디자인 통일',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '멀티리그 전 구간(로비·드래프트·리그/컵·이적시장·수석 코치·UCL·시즌 결산)을 방장/참가자 관점에서 전수 점검하고 싱글 최신(v9.x) 디자인·기능과 일관 통일했습니다. 드래프트 [빠른 선발] 이식, UCL 토너먼트 프리뷰 내 포메이션·전술·라인업 직접 수정 및 호스트 동기화 보장, 시즌 결산 각성 선수 누락 및 각성 팝업 중복 노출 수정, FFP 페널티·전술 파훼·수석 코치·단일 순차 팝업 큐까지 전면 정비했습니다.',
+    sections: [
+      {
+        category: '1. 멀티리그 드래프트 [빠른 선발] 추가 & 중복 픽 가드',
+        items: [
+          '싱글 드래프트와 동일한 `optimizeBestLineup` 기반 `[빠른 선발]` 버튼을 멀티리그 드래프트(`MpLeagueDraftBoard`)에 추가해 방장·참가자 모두 자신의 스쿼드를 원클릭으로 최적 배치할 수 있습니다(`mp_league_picks` 원본 무변형 · 턴 꼬임 방지).',
+          '동기식 중복 픽 가드(`submittingRef` · `submittedTurnKeyRef`)와 0ms 브로드캐스트 신호를 보강해 더블 클릭·지연 시 중복 픽 제출을 차단하고, 룰렛 카드에 싱글 v9.4의 `포텐↑`/`육성` 동적 프리뷰 및 `[🔗 N선]` 예상 시너지 표시를 동일 적용했습니다.',
+        ],
+      },
+      {
+        category: '2. 시즌 결산 각성 선수 반영·표시 누락 수정 & 각성 팝업 중복 노출 차단',
+        items: [
+          '멀티리그 시즌 중 포텐 각성 결과(`awakenedPlayers`)가 `summary.squads` · `final.squads` · 시즌 점수(`computeMpHumanSeasonScore`) 및 `MpLeagueDashboard`/`MpLeagueSeasonSummary`/`MpLeagueFinalBoard` 전 화면에 자동 수화되도록 수정해 방장·참가자 전원 결산에서 상승 OVR·붉은 불꽃 카드·각성 목록이 정확히 표시됩니다.',
+          '고유 키(`roomCode:seasonKey:clubId:playerId`) 기반 1회 노출 가드 + 낙관적 즉시 닫기 + 호스트 `playerId` 지정 멱등 제거를 적용해 호스트 재브로드캐스트·리얼타임 재수신 시 동일 선수 각성 팝업이 반복 노출되는 버그를 근본 수정했습니다.',
+        ],
+      },
+      {
+        category: '3. UCL 토너먼트 프리뷰 — 실시간 전술 수정 & 싱글 디자인 통일',
+        items: [
+          '1·2차전 및 각 토너먼트 라운드(~강) 사이 `MpUclMatchPreviewModal`에서 방장·참가자 생존자 모두가 10종 포메이션(`3-2-4-1` 포함)·5대 전술(적합도 %)·[빠른 선발]·실제 공용 `PitchBoard` 드래그/클릭 교체를 직접 수행할 수 있습니다.',
+          '`전술 반영 · 준비 완료` 시 `league_payload`와 `mp_league_actions(tactics_update)`에 비동기 저장 완료 후 준비 신호를 전송하고, 호스트는 경기 시뮬레이션 직전 대기 중인 `tactics_update` 액션을 강제 플러시해 참가자의 마지막 순간 전술 변경도 100% 반영합니다.',
+        ],
+      },
+      {
+        category: '4. 방장·참가자 전수 점검 & 싱글 최신(v9.x) 디자인·기능 통일',
+        items: [
+          '단일 순차 오버레이 큐(`activeOverlayModal`)를 도입해 UCL 중계·FFP 개막 감사·각성·컵 우승·결산·인터뷰·부상·수석 코치·이적시장·전술 파훼·UCL 프리뷰 모달이 동시에 2개 이상 겹치지 않도록 정리했습니다.',
+          '대시보드 FFP 케미 페널티 오적용 버그(구 `-4` 하드코딩 및 인자 위치 오류)를 `mine.budget.chemPenalty`(-8/-14)로 교정하고, H2H 2D·스쿼드 에디터·이적시장·결산 테이블에 수석 코치·전술 노출도·시대 클래식 배지·H2H 팀 스토리를 싱글 기준으로 완전 통일했습니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v9.7.2',
     codename: '이적시장 가상 교체 프리뷰 — 양쪽 팀 대상 선수 직접 선택 시에만 발동하도록 개선',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'FEATURE',
     summary:
       '우리 팀 선수만 클릭했을 때 시스템 자동 필러 선수와 의도치 않게 교체 프리뷰가 발동하던 문제를 수정해, 사용자가 양쪽 팀에서 트레이드 대상 선수를 직접 모두 클릭했을 때만 가상 교체 프리뷰가 표시되도록 개편했습니다.',
     sections: [

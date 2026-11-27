@@ -877,9 +877,9 @@ describe('v9.7.0 Trade Virtual Swap Preview, Diverse Team Intros, Crisis/Rebound
     expect(gain90).toBeLessThanOrEqual(AWAKENING_SUPERSTAR_MAX_GAIN);
     expect(90 + gain90).toBeLessThanOrEqual(AWAKENING_OVR_HARD_CAP);
 
-    // Release version sync
-    expect(CURRENT_APP_VERSION).toBe('v9.7.2');
-    expect(PATCH_NOTES[0].version).toBe('v9.7.2');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.7.2');
+    // Release version sync (v9.7.2 preserved in patch history, latest release stays synchronized)
+    expect(PATCH_NOTES.some((entry) => entry.version === 'v9.7.2')).toBe(true);
+    expect(PATCH_NOTES[0].version).toBe(CURRENT_APP_VERSION);
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain(CURRENT_APP_VERSION);
   });
 });

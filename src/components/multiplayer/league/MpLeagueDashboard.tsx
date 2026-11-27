@@ -28,6 +28,14 @@ import {
 import { calculateChemistry, calculateTeamRatings } from '../../../engine/chemistryEngine';
 import { getMoraleLabel } from '../../../engine/conditionEngine';
 import { getLeagueById } from '../../../engine/dataLoader';
+import {
+  buildMpAwakeningSeenKey,
+  hydrateMpSquadWithAwakenings,
+} from '../../../engine/mpLeagueEngine';
+import {
+  evaluateTacticalExposure,
+  EXPOSURE_WARNING_THRESHOLD,
+} from '../../../engine/tacticalAdaptationEngine';
 import { getNextTransferWindowRound } from '../../../engine/transferEngine';
 import { UCL_STAGE_LABELS } from '../../../engine/uclEngine';
 import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
@@ -169,6 +177,7 @@ interface MpLeagueDashboardProps {
   onOpenEditor: () => void;
   onCloseEditor: () => void;
   onSaveSquad: (next: MpSquadInput) => void;
+  onSaveSquadAsync?: (next: MpSquadInput) => Promise<void>;
   onAck: (key: string) => void;
   onEventChoice: (choiceId: string) => void;
   onDismissResolution: (key: string) => void;
@@ -180,7 +189,7 @@ interface MpLeagueDashboardProps {
   onSkipStaffCoach?: () => void;
   onDismissFfpNotice?: () => void;
   onDismissAdaptationAlert?: () => void;
-  onDismissAwakeningAlert?: () => void;
+  onDismissAwakeningAlert?: (playerId?: string) => void;
   onSetAutoMs: (ms: number) => void;
   onForceResume: () => void;
   onLeaveRoom: () => void;
@@ -375,7 +384,7 @@ export function MpLeagueDashboard({
   isHost,
   onlinePlayerIds,
   connectionStatus,
-  mySquad,
+  mySquad: rawMySquad,
   ackKeys,
   optimisticAcks,
   actionBusy,
@@ -391,6 +400,7 @@ export function MpLeagueDashboard({
   onOpenEditor,
   onCloseEditor,
   onSaveSquad,
+  onSaveSquadAsync,
   onAck,
   onEventChoice,
   onDismissResolution,
@@ -414,6 +424,9 @@ export function MpLeagueDashboard({
   const [openMilestoneKey, setOpenMilestoneKey] = useState<string | null>(null);
   const [summaryReviewOpen, setSummaryReviewOpen] = useState(false);
   const [showPastUclRound, setShowPastUclRound] = useState(false);
+  const [dismissedAwakeningKeys, setDismissedAwakeningKeys] = useState<string[]>([]);
+  const [dismissedFfpKeys, setDismissedFfpKeys] = useState<string[]>([]);
+  const [dismissedAdaptationKeys, setDismissedAdaptationKeys] = useState<string[]>([]);
   const [castLive, setCastLive] = useState<{
     castKey: string;
     overlays: Record<string, LiveTieOverlay>;
@@ -524,8 +537,15 @@ export function MpLeagueDashboard({
 
   const mine: MpHumanLive | null = myClubId ? live.byClub[myClubId] ?? null : null;
 
-  const ffpChemPenalty =
-    mine?.budget && mine.budget.ffpTier >= 1 ? 4 : 0;
+  const mySquad = useMemo(
+    () =>
+      rawMySquad
+        ? hydrateMpSquadWithAwakenings(rawMySquad, mine?.awakenedPlayers)
+        : null,
+    [rawMySquad, mine?.awakenedPlayers],
+  );
+
+  const ffpChemPenalty = mine?.budget?.chemPenalty ?? 0;
   const hiredStaffCoachId = mine?.staffCoach?.hiredCoachId ?? null;
 
   const chemistry = useMemo(
@@ -536,10 +556,14 @@ export function MpLeagueDashboard({
             mySquad.starters,
             mySquad.tactic,
             mySquad.managerTraitId,
-            ffpChemPenalty,
+            undefined,
+            {
+              staffCoachId: hiredStaffCoachId,
+              ffpChemPenalty,
+            },
           )
         : null,
-    [mySquad, ffpChemPenalty],
+    [mySquad, hiredStaffCoachId, ffpChemPenalty],
   );
   const ratings = useMemo(
     () =>
@@ -557,22 +581,43 @@ export function MpLeagueDashboard({
     [mySquad, chemistry, hiredStaffCoachId],
   );
 
+  const myTacticalExposure = useMemo(() => {
+    const history = mine?.tacticalAdaptation?.history;
+    if (!mySquad || !history || history.length === 0) return null;
+    return evaluateTacticalExposure({
+      history,
+      formation: mySquad.formation,
+      tactic: mySquad.tactic,
+      staffCoachId: hiredStaffCoachId,
+    });
+  }, [mine?.tacticalAdaptation?.history, mySquad, hiredStaffCoachId]);
+
   const publicSquads = useMemo(() => {
     const map: Record<string, MpSquadInput> = {};
     for (const h of live.humans) {
+      const fromSummary = live.summary?.squads?.[h.clubId];
       const p = players.find((r) => r.player_id === h.playerId)?.league_payload;
-      if (p && p.starters?.length === 11) {
-        map[h.clubId] = {
-          managerTraitId: p.managerTraitId,
-          formation: p.formation,
-          tactic: p.tactic,
-          starters: p.starters,
-          bench: p.bench,
-        };
+      const baseSquad: MpSquadInput | null =
+        p && p.starters?.length === 11
+          ? {
+              managerTraitId: p.managerTraitId,
+              formation: p.formation,
+              tactic: p.tactic,
+              starters: p.starters,
+              bench: p.bench,
+            }
+          : fromSummary && fromSummary.starters?.length === 11
+            ? fromSummary
+            : null;
+      if (baseSquad) {
+        map[h.clubId] = hydrateMpSquadWithAwakenings(
+          baseSquad,
+          live.byClub[h.clubId]?.awakenedPlayers,
+        );
       }
     }
     return map;
-  }, [live.humans, players]);
+  }, [live.humans, live.byClub, live.summary?.squads, players]);
 
   const h2hByClub = useMemo(() => {
     const map: Record<string, MpH2HRecord> = {};
@@ -796,6 +841,84 @@ export function MpLeagueDashboard({
   const popupsAllowed = !live.cast && !tickerPlaying && flow.kind !== 'cast';
   const summaryActive = flow.kind === 'summary' && live.summary !== null;
 
+  // 1-time FFP opening notice guard (prevents re-open on realtime re-broadcast)
+  const ffpNoticeKey =
+    mine?.pendingFfpOpeningNotice && mine.budget && mine.budget.ffpTier >= 1
+      ? `${roomCode}:${live.seasonKey}:${playerId}:ffp-open`
+      : null;
+  const visibleFfpNotice = Boolean(
+    ffpNoticeKey &&
+      !dismissedFfpKeys.includes(ffpNoticeKey) &&
+      !hasMpPopupBeenSeen(ffpNoticeKey),
+  );
+
+  // 1-time Awakening popup guard per (roomCode, seasonKey, clubId, playerId)
+  // Prevents duplicate awakening popups on host broadcasts or realtime re-receives for both host and guests.
+  const visibleAwakeningEntry = useMemo(() => {
+    if (!mine?.pendingAwakeningAlerts?.length || !myClubId) return null;
+    for (const alert of mine.pendingAwakeningAlerts) {
+      const seenKey = `${roomCode}:${buildMpAwakeningSeenKey(
+        live.seasonKey,
+        myClubId,
+        alert.playerId,
+      )}`;
+      if (
+        dismissedAwakeningKeys.includes(seenKey) ||
+        hasMpPopupBeenSeen(seenKey)
+      ) {
+        continue;
+      }
+      return { alert, seenKey };
+    }
+    return null;
+  }, [
+    mine?.pendingAwakeningAlerts,
+    myClubId,
+    roomCode,
+    live.seasonKey,
+    dismissedAwakeningKeys,
+  ]);
+
+  // Optimistic tactical adaptation alert guard
+  const pendingAdaptation = mine?.tacticalAdaptation?.pendingAlert ?? null;
+  const adaptationAlertKey = pendingAdaptation
+    ? `${roomCode}:${live.seasonKey}:${playerId}:adapt:${pendingAdaptation.id}`
+    : null;
+  const visibleAdaptationEntry =
+    pendingAdaptation &&
+    adaptationAlertKey &&
+    !dismissedAdaptationKeys.includes(adaptationAlertKey)
+      ? { alert: pendingAdaptation, key: adaptationAlertKey }
+      : null;
+
+  const handleDismissFfp = useCallback(() => {
+    if (ffpNoticeKey) {
+      markMpPopupSeen(ffpNoticeKey);
+      setDismissedFfpKeys((prev) =>
+        prev.includes(ffpNoticeKey) ? prev : [...prev, ffpNoticeKey],
+      );
+    }
+    onDismissFfpNotice?.();
+  }, [ffpNoticeKey, onDismissFfpNotice]);
+
+  const handleDismissAwakening = useCallback(() => {
+    if (!visibleAwakeningEntry) return;
+    const { alert, seenKey } = visibleAwakeningEntry;
+    markMpPopupSeen(seenKey);
+    setDismissedAwakeningKeys((prev) =>
+      prev.includes(seenKey) ? prev : [...prev, seenKey],
+    );
+    onDismissAwakeningAlert?.(alert.playerId);
+  }, [visibleAwakeningEntry, onDismissAwakeningAlert]);
+
+  const handleDismissAdaptation = useCallback(() => {
+    if (visibleAdaptationEntry) {
+      const k = visibleAdaptationEntry.key;
+      setDismissedAdaptationKeys((prev) => (prev.includes(k) ? prev : [...prev, k]));
+    }
+    onDismissAdaptationAlert?.();
+  }, [visibleAdaptationEntry, onDismissAdaptationAlert]);
+
   // Spoiler-free Domestic Cup Champion popup: ONLY triggers once during domestic league stage after live stream finishes
   const cupChampKey =
     live.stage === 'league' && view.cup?.completed && view.cup.championTeamId
@@ -803,6 +926,8 @@ export function MpLeagueDashboard({
       : null;
   const canTriggerCupChampion = Boolean(
     popupsAllowed &&
+      !visibleFfpNotice &&
+      !visibleAwakeningEntry &&
       !showTransfer &&
       !visibleEvent &&
       !showResolution &&
@@ -817,17 +942,32 @@ export function MpLeagueDashboard({
 
   // League season summary popup: ALSO strictly gated behind !tickerPlaying & !showCupChampion!
   const showSummary =
-    ((summaryActive && popupsAllowed && !showCupChampion && !cupPending) || summaryReviewOpen) &&
+    ((summaryActive &&
+      popupsAllowed &&
+      !visibleFfpNotice &&
+      !visibleAwakeningEntry &&
+      !showCupChampion &&
+      !cupPending) ||
+      summaryReviewOpen) &&
     live.summary !== null;
 
   const canTriggerLpTable = Boolean(
-    popupsAllowed && !showSummary && !showCupChampion && !cupPending && lpKey && uclView,
+    popupsAllowed &&
+      !visibleFfpNotice &&
+      !visibleAwakeningEntry &&
+      !showSummary &&
+      !showCupChampion &&
+      !cupPending &&
+      lpKey &&
+      uclView,
   );
   const lpPending = Boolean(canTriggerLpTable && lpKey && !hasMpPopupBeenSeen(lpKey));
   const showLpTable = Boolean(openLpPopupKey && uclView);
 
   const canTriggerMilestone = Boolean(
     popupsAllowed &&
+      !visibleFfpNotice &&
+      !visibleAwakeningEntry &&
       !showSummary &&
       !showCupChampion &&
       !cupPending &&
@@ -844,22 +984,64 @@ export function MpLeagueDashboard({
   const isUclKnockoutConsent = Boolean(
     isUclStage && isUclKnockout && live.ucl && flow.kind === 'consent',
   );
-  const hasPendingMineInjury = Boolean(mine && mine.alerts.length > 0);
-  const showKnockoutPreviewModal = Boolean(
-    isUclKnockoutConsent &&
-      !tickerPlaying &&
-      !live.cast &&
-      !showSummary &&
-      !showCupChampion &&
-      !cupPending &&
-      !showLpTable &&
-      !lpPending &&
-      !showMilestone &&
-      !milestonePending &&
-      !visibleEvent &&
-      !showResolution &&
-      !hasPendingMineInjury,
+  const hasPendingMineInjury = Boolean(
+    mine && mine.alerts.length > 0 && mySquad && chemistry && ratings,
   );
+  const hasPendingStaffCoach = Boolean(
+    mine &&
+      mine.staffCoach?.pendingSelection &&
+      mine.staffCoach.offeredCoachIds.length > 0 &&
+      mySquad,
+  );
+  const hasPendingEvent = Boolean(mine && (visibleEvent || showResolution) && myHuman);
+  const hasPendingLeagueStartConsent = Boolean(!isUclStage && flow.kind === 'consent');
+  const hasPendingUclLpTickerModal = Boolean(
+    isUclStage && tickerPlaying && live.ticker && live.ticker.matches.length > 0,
+  );
+
+  // Single sequential overlay queue: guarantees at most ONE overlay modal is visible at any time
+  type ActiveOverlayModal =
+    | 'cast'
+    | 'lp_ticker'
+    | 'ffp_notice'
+    | 'awakening'
+    | 'cup_champ'
+    | 'summary'
+    | 'lp_table'
+    | 'milestone'
+    | 'event'
+    | 'injury'
+    | 'staff_coach'
+    | 'transfer'
+    | 'adaptation'
+    | 'editor'
+    | 'league_start_consent'
+    | 'ucl_preview'
+    | null;
+
+  const activeOverlayModal: ActiveOverlayModal = (() => {
+    if (live.cast) return 'cast';
+    if (hasPendingUclLpTickerModal) return 'lp_ticker';
+    if (!popupsAllowed) return null;
+    if (visibleFfpNotice) return 'ffp_notice';
+    if (visibleAwakeningEntry) return 'awakening';
+    if (showCupChampion) return 'cup_champ';
+    if (cupPending) return null;
+    if (showSummary) return 'summary';
+    if (showLpTable) return 'lp_table';
+    if (lpPending) return null;
+    if (showMilestone) return 'milestone';
+    if (milestonePending) return null;
+    if (hasPendingEvent) return 'event';
+    if (hasPendingMineInjury) return 'injury';
+    if (hasPendingStaffCoach) return 'staff_coach';
+    if (showTransfer && mine && mySquad && flow.kind === 'transfer') return 'transfer';
+    if (visibleAdaptationEntry) return 'adaptation';
+    if (editorOpen && mySquad && !isUclKnockoutConsent) return 'editor';
+    if (hasPendingLeagueStartConsent) return 'league_start_consent';
+    if (isUclKnockoutConsent && live.ucl) return 'ucl_preview';
+    return null;
+  })();
 
   // Latch domestic cup champion popup strictly once (persisted in localStorage + memory)
   useEffect(() => {
@@ -1149,6 +1331,20 @@ export function MpLeagueDashboard({
                   compact
                 />
               )}
+              {myTacticalExposure &&
+                myTacticalExposure.exposureScore >= EXPOSURE_WARNING_THRESHOLD && (
+                  <span
+                    className={`inline-flex items-center rounded border px-1.5 py-px text-[10px] font-bold whitespace-nowrap tabular-nums ${
+                      myTacticalExposure.tier === 'danger'
+                        ? 'border-rose-500/45 bg-rose-500/18 text-rose-200'
+                        : 'border-amber-400/45 bg-amber-500/15 text-amber-200'
+                    }`}
+                  >
+                    {myTacticalExposure.tier === 'danger'
+                      ? `전술 파훼 ${myTacticalExposure.exposureScore}%`
+                      : `전술 노출 ${myTacticalExposure.exposureScore}%`}
+                  </span>
+                )}
             </div>
           </div>
 
@@ -1413,7 +1609,7 @@ export function MpLeagueDashboard({
       })()}
 
       {/* Pre-Season Match 1 Readiness Popup Modal (before Round 1 auto-progress starts) */}
-      {!isUclStage && flow.kind === 'consent' && !editorOpen && !tickerPlaying && !live.cast && (() => {
+      {activeOverlayModal === 'league_start_consent' && flow.kind === 'consent' && (() => {
         const requiredClubIds =
           flow.requiredClubIds && flow.requiredClubIds.length > 0
             ? flow.requiredClubIds
@@ -1429,7 +1625,7 @@ export function MpLeagueDashboard({
             className="modal-backdrop fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/85 p-3 sm:p-4"
           >
             <ModalBodyLock />
-            <div className="modal-panel w-full max-w-md overflow-hidden rounded-2xl border border-emerald-500/35 bg-[#0d1420] shadow-2xl">
+            <div className="modal-panel modal-scroll w-full max-w-md max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y rounded-2xl border border-emerald-500/35 bg-[#0d1420] shadow-2xl">
               <div className="border-b border-slate-800 bg-[#090e17] px-4 py-3.5 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <Trophy className="h-4 w-4 shrink-0 text-emerald-400" />
@@ -1437,13 +1633,13 @@ export function MpLeagueDashboard({
                     {flow.label}
                   </h2>
                 </div>
-                <span className="shrink-0 rounded-md border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-black tabular-nums text-emerald-300">
+                <span className="shrink-0 whitespace-nowrap rounded-md border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-black tabular-nums text-emerald-300">
                   준비 {readyCount}/{participants.length}
                 </span>
               </div>
 
               <div className="p-4 space-y-3.5">
-                <div className="text-xs font-semibold text-slate-300">
+                <div className="text-xs font-semibold text-slate-300 break-keep">
                   첫 경기 개막 전 전술·라인업을 정비하세요. 전원 준비 완료 시 1R이 시작됩니다.
                 </div>
 
@@ -1482,7 +1678,7 @@ export function MpLeagueDashboard({
                           </div>
                         </div>
                         <span
-                          className={`inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-extrabold ${
+                          className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-2 py-0.5 text-[10px] font-extrabold ${
                             ok
                               ? 'border-emerald-400/45 bg-emerald-500/18 text-emerald-200'
                               : 'border-slate-700 bg-slate-900 text-slate-400'
@@ -1520,7 +1716,7 @@ export function MpLeagueDashboard({
                       type="button"
                       disabled={!mySquad}
                       onClick={onOpenEditor}
-                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-700 bg-[#0b1018] px-3 py-2 text-xs font-bold text-slate-200 hover:border-sky-400/50 hover:text-sky-200 disabled:opacity-40 cursor-pointer"
+                      className="w-full inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-slate-700 bg-[#0b1018] px-3 py-2 text-xs font-bold text-slate-200 hover:border-sky-400/50 hover:text-sky-200 disabled:opacity-40 cursor-pointer"
                     >
                       <Shield className="w-3.5 h-3.5" />
                       대기 중 전술 수정
@@ -1533,7 +1729,7 @@ export function MpLeagueDashboard({
                       type="button"
                       disabled={!mySquad}
                       onClick={onOpenEditor}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-2.5 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 disabled:opacity-40 cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-sky-400/45 bg-sky-500/15 px-3 py-2.5 text-xs font-extrabold text-sky-200 hover:bg-sky-500/25 disabled:opacity-40 cursor-pointer"
                     >
                       <Shield className="w-3.5 h-3.5" />
                       전술 수정
@@ -1542,7 +1738,7 @@ export function MpLeagueDashboard({
                       id="mpl-consent-btn"
                       type="button"
                       onClick={() => onAck(flow.key)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-emerald-500 px-3 py-2.5 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer"
                     >
                       <Check className="w-3.5 h-3.5" />
                       준비 완료
@@ -1556,7 +1752,7 @@ export function MpLeagueDashboard({
       })()}
 
       {/* Centered Popup Modal — UCL Knockout Live Multicast Board */}
-      {live.cast && (
+      {activeOverlayModal === 'cast' && live.cast && (
         <MpUclMulticastBoard
           cast={live.cast}
           clubsById={clubsById}
@@ -1574,13 +1770,13 @@ export function MpLeagueDashboard({
       {/* Live Scoreboard: Centered Popup Modal during UCL League Phase playback; collapsible past results when settled; inline during domestic league */}
       {live.ticker && live.ticker.matches.length > 0 && (
         isUclStage ? (
-          tickerPlaying ? (
+          activeOverlayModal === 'lp_ticker' ? (
             <div
               id="mp-ucl-lp-cast-modal"
               className="modal-backdrop fixed inset-0 z-[75] flex items-center justify-center bg-slate-950/86 p-3 sm:p-4"
             >
               <ModalBodyLock />
-              <div className="modal-panel modal-scroll w-full max-w-3xl overflow-y-auto overflow-x-hidden rounded-2xl border border-sky-500/35 bg-[#0b1322] shadow-2xl">
+              <div className="modal-panel modal-scroll w-full max-w-3xl max-h-[90dvh] overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y rounded-2xl border border-sky-500/35 bg-[#0b1322] shadow-2xl">
                 <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
                   <div className="flex items-center gap-2 min-w-0">
                     <Star className="h-4 w-4 shrink-0 fill-current text-sky-300" />
@@ -2108,17 +2304,20 @@ export function MpLeagueDashboard({
         </div>
       </div>
 
-      {editorOpen && mySquad && !isUclKnockoutConsent && (
+      {activeOverlayModal === 'editor' && mySquad && (
         <MpLeagueSquadEditor
           squad={mySquad}
           managerTraitId={mySquad.managerTraitId}
+          staffCoachId={hiredStaffCoachId}
+          ffpChemPenalty={ffpChemPenalty}
+          tacticalHistory={mine?.tacticalAdaptation?.history}
           conditions={mine?.conditions ?? {}}
           onSave={onSaveSquad}
           onClose={onCloseEditor}
         />
       )}
 
-      {showKnockoutPreviewModal && live.ucl && flow.kind === 'consent' && (() => {
+      {activeOverlayModal === 'ucl_preview' && live.ucl && flow.kind === 'consent' && (() => {
         const allEliminated = Boolean(flow.allEliminated);
         const requiredClubIds =
           flow.requiredClubIds && flow.requiredClubIds.length > 0
@@ -2132,8 +2331,13 @@ export function MpLeagueDashboard({
             clubsById={clubsById}
             humans={live.humans}
             publicSquads={publicSquads}
+            byClub={live.byClub}
             myClubId={myClubId}
             mySquad={mySquad}
+            myConditions={mine?.conditions}
+            myStaffCoachId={hiredStaffCoachId}
+            myFfpChemPenalty={ffpChemPenalty}
+            myTacticalHistory={mine?.tacticalAdaptation?.history}
             isHost={isHost}
             flowKey={flow.key}
             flowLabel={flow.label}
@@ -2142,13 +2346,14 @@ export function MpLeagueDashboard({
             hasPlayerAck={hasPlayerAck}
             iAcked={ackKeys.includes(flow.key)}
             waitingSurvivors={pendingAckNames(flow.key, requiredClubIds)}
+            onSaveSquad={onSaveSquadAsync ?? onSaveSquad}
             onAck={onAck}
             onInspectPlayer={(player) => setInspected({ player })}
           />
         );
       })()}
 
-      {showCupChampion && live.cup && (
+      {activeOverlayModal === 'cup_champ' && live.cup && (
         <MpCupChampionPopup
           cup={live.cup}
           leagueId={live.leagueId}
@@ -2159,7 +2364,7 @@ export function MpLeagueDashboard({
         />
       )}
 
-      {showSummary && live.summary && (
+      {activeOverlayModal === 'summary' && live.summary && (
         <MpLeagueSeasonSummary
           leagueLabel={LEAGUE_LABEL[live.leagueId]}
           leagueId={live.leagueId}
@@ -2184,60 +2389,38 @@ export function MpLeagueDashboard({
         />
       )}
 
-      {mine &&
-        (visibleEvent || showResolution) &&
-        myHuman &&
-        !tickerPlaying &&
-        !showTransfer &&
-        !showSummary &&
-        !showCupChampion &&
-        !cupPending && (
-          <ManagerEventModal
-            activeEvent={visibleEvent}
-            lastResolution={showResolution ? mine.resolution : null}
-            managerAvatar={myHuman.avatar}
-            managerName={myHuman.nickname}
-            userClub={myHuman.profile}
-            onSelectChoice={onEventChoice}
-            onDismissResolution={() => {
-              if (resolutionKey) onDismissResolution(resolutionKey);
-            }}
-          />
-        )}
+      {activeOverlayModal === 'event' && mine && myHuman && (
+        <ManagerEventModal
+          activeEvent={visibleEvent}
+          lastResolution={showResolution ? mine.resolution : null}
+          managerAvatar={myHuman.avatar}
+          managerName={myHuman.nickname}
+          userClub={myHuman.profile}
+          onSelectChoice={onEventChoice}
+          onDismissResolution={() => {
+            if (resolutionKey) onDismissResolution(resolutionKey);
+          }}
+        />
+      )}
 
-      {mine &&
-        mine.alerts.length > 0 &&
-        mySquad &&
-        chemistry &&
-        ratings &&
-        !mine.event &&
-        !tickerPlaying &&
-        !showTransfer &&
-        !showSummary &&
-        !showCupChampion &&
-        !cupPending && (
-          <InjuryAlertModal
-            alerts={mine.alerts}
-            formation={mySquad.formation}
-            starters={mySquad.starters}
-            bench={mySquad.bench}
-            chemistry={chemistry}
-            ratings={ratings}
-            managerTraitId={mySquad.managerTraitId}
-            conditionMap={mine.conditions}
-            onSwapSlots={handleInjurySwap}
-            onConfirmClose={onInjuryAck}
-          />
-        )}
+      {activeOverlayModal === 'injury' && mine && mySquad && chemistry && ratings && (
+        <InjuryAlertModal
+          alerts={mine.alerts}
+          formation={mySquad.formation}
+          starters={mySquad.starters}
+          bench={mySquad.bench}
+          chemistry={chemistry}
+          ratings={ratings}
+          managerTraitId={mySquad.managerTraitId}
+          conditionMap={mine.conditions}
+          onSwapSlots={handleInjurySwap}
+          onConfirmClose={onInjuryAck}
+        />
+      )}
 
-      {mine &&
-        mine.staffCoach?.pendingSelection &&
-        mine.staffCoach.offeredCoachIds.length > 0 &&
-        mySquad &&
-        !tickerPlaying &&
-        !showSummary &&
-        !showCupChampion &&
-        !cupPending && (
+      {activeOverlayModal === 'staff_coach' &&
+        mine?.staffCoach &&
+        mySquad && (
           <StaffCoachHireModal
             offeredCoachIds={mine.staffCoach.offeredCoachIds}
             activeTactic={mySquad.tactic}
@@ -2246,11 +2429,10 @@ export function MpLeagueDashboard({
           />
         )}
 
-      {showTransfer &&
+      {activeOverlayModal === 'transfer' &&
         mine &&
         mySquad &&
-        flow.kind === 'transfer' &&
-        !mine.staffCoach?.pendingSelection && (
+        flow.kind === 'transfer' && (
           <MpLeagueTransferModal
             windowIndex={live.transferWindowIndex ?? 1}
             offers={mine.offers}
@@ -2262,6 +2444,8 @@ export function MpLeagueDashboard({
             myFormation={mySquad.formation}
             myTactic={mySquad.tactic}
             managerTraitId={mySquad.managerTraitId}
+            staffCoachId={hiredStaffCoachId}
+            ffpChemPenalty={ffpChemPenalty}
             myRank={myRank}
             leagueSize={live.standings.length || 20}
             conditionMap={mine.conditions}
@@ -2278,71 +2462,38 @@ export function MpLeagueDashboard({
           />
         )}
 
-      {mine &&
-        mine.pendingFfpOpeningNotice &&
-        mine.budget &&
-        mine.budget.ffpTier >= 1 &&
-        !tickerPlaying &&
-        !mine.staffCoach?.pendingSelection &&
-        !showTransfer &&
-        !showSummary &&
-        !showCupChampion &&
-        !cupPending &&
-        !mine.event &&
-        mine.alerts.length === 0 && (
-          <FfpOpeningNoticeModal
-            budgetState={mine.budget}
-            managerAvatar={myHuman?.avatar}
-            managerName={myHuman?.nickname}
-            userClub={myHuman?.profile}
-            onDismiss={() => onDismissFfpNotice?.()}
-          />
-        )}
+      {activeOverlayModal === 'ffp_notice' && mine?.budget && (
+        <FfpOpeningNoticeModal
+          budgetState={mine.budget}
+          managerAvatar={myHuman?.avatar}
+          managerName={myHuman?.nickname}
+          userClub={myHuman?.profile}
+          onDismiss={handleDismissFfp}
+        />
+      )}
 
-      {mine &&
-        !(mine.pendingFfpOpeningNotice && mine.budget && mine.budget.ffpTier >= 1) &&
-        mine.pendingAwakeningAlerts &&
-        mine.pendingAwakeningAlerts.length > 0 &&
-        !tickerPlaying &&
-        !mine.staffCoach?.pendingSelection &&
-        !showTransfer &&
-        !showSummary &&
-        !showCupChampion &&
-        !cupPending &&
-        !mine.event &&
-        mine.alerts.length === 0 && (
-          <AwakeningCelebrationModal
-            alert={mine.pendingAwakeningAlerts[0]}
-            onDismiss={() => onDismissAwakeningAlert?.()}
-          />
-        )}
+      {activeOverlayModal === 'awakening' && visibleAwakeningEntry && (
+        <AwakeningCelebrationModal
+          alert={visibleAwakeningEntry.alert}
+          onDismiss={handleDismissAwakening}
+        />
+      )}
 
-      {mine &&
-        !(mine.pendingFfpOpeningNotice && mine.budget && mine.budget.ffpTier >= 1) &&
-        mine.tacticalAdaptation?.pendingAlert &&
-        !(mine.pendingAwakeningAlerts && mine.pendingAwakeningAlerts.length > 0) &&
-        !tickerPlaying &&
-        !mine.staffCoach?.pendingSelection &&
-        !showTransfer &&
-        !showSummary &&
-        !showCupChampion &&
-        !cupPending &&
-        !mine.event &&
-        mine.alerts.length === 0 && (
-          <TacticalAdaptationModal
-            alert={mine.tacticalAdaptation.pendingAlert}
-            managerAvatar={myHuman?.avatar}
-            managerName={myHuman?.nickname}
-            userClub={myHuman?.profile}
-            onDismiss={() => onDismissAdaptationAlert?.()}
-            onGoToTactics={() => {
-              onDismissAdaptationAlert?.();
-              onOpenEditor();
-            }}
-          />
-        )}
+      {activeOverlayModal === 'adaptation' && visibleAdaptationEntry && (
+        <TacticalAdaptationModal
+          alert={visibleAdaptationEntry.alert}
+          managerAvatar={myHuman?.avatar}
+          managerName={myHuman?.nickname}
+          userClub={myHuman?.profile}
+          onDismiss={handleDismissAdaptation}
+          onGoToTactics={() => {
+            handleDismissAdaptation();
+            onOpenEditor();
+          }}
+        />
+      )}
 
-      {showLpTable && uclView && (
+      {activeOverlayModal === 'lp_table' && uclView && (
         <UclLeaguePhaseStandingsModal
           ucl={uclView.ucl}
           clubsById={uclView.clubsById}
@@ -2351,7 +2502,7 @@ export function MpLeagueDashboard({
         />
       )}
 
-      {showMilestone && uclView && milestone && myHuman && (
+      {activeOverlayModal === 'milestone' && uclView && milestone && myHuman && (
         <UclMilestoneModal
           milestone={milestone}
           ucl={uclView.ucl}
@@ -2428,6 +2579,7 @@ export function MpLeagueDashboard({
         <PlayerDetailModal
           player={inspected.player}
           seasonStats={inspected.stats ?? null}
+          managerTraitId={mySquad?.managerTraitId}
           onClose={() => setInspected(null)}
         />
       )}

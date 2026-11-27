@@ -6,6 +6,7 @@ import {
   optimizeCurrentStartersForFormation,
   remapStartersForFormation,
 } from '../../../engine/lineupOptimizer';
+import { applyAwakeningToPlayer } from '../../../engine/awakeningEngine';
 import {
   buildMpH2HClubs,
   mpH2HDoneKey,
@@ -16,7 +17,7 @@ import {
 import { ModalBodyLock } from '../../../hooks/useBodyScrollLock';
 import type { FormationId, ManagerRouletteState } from '../../../types/game';
 import type { Club, LiveHalftimeState, TacticId } from '../../../types/league';
-import type { MpH2HLive, MpLeagueHuman } from '../../../types/mpLeague';
+import type { MpH2HLive, MpHumanLive, MpLeagueHuman } from '../../../types/mpLeague';
 import type {
   MpMatchPhase,
   MpMatchState,
@@ -38,6 +39,7 @@ interface MpLeagueH2HViewProps {
   seasonKey: string;
   humans: MpLeagueHuman[];
   players: MpRoomPlayerRow[];
+  byClub?: Record<string, MpHumanLive>;
   myClubId: string | null;
   ackKeys: string[];
   onSubmitBarrier: (submission: MpTacticSubmission) => Promise<void>;
@@ -100,6 +102,7 @@ function MpLeagueH2HInner({
   seasonKey,
   humans,
   players,
+  byClub,
   myClubId,
   ackKeys,
   onSubmitBarrier,
@@ -118,6 +121,23 @@ function MpLeagueH2HInner({
     players.find((p) => p.player_id === human?.playerId) ?? null;
   const viewRow = rowOf(viewHuman);
   const oppRow = rowOf(oppHuman);
+  const viewLive = viewHuman ? byClub?.[viewHuman.clubId] : undefined;
+  const oppLive = oppHuman ? byClub?.[oppHuman.clubId] : undefined;
+  const viewStaffCoachId = viewLive?.staffCoach?.hiredCoachId ?? null;
+  const viewFfpChemPenalty = viewLive?.budget?.chemPenalty ?? 0;
+
+  const hydrateList = (
+    list: Player[],
+    awakened: MpHumanLive['awakenedPlayers'],
+  ): Player[] => {
+    if (!awakened || Object.keys(awakened).length === 0) return list;
+    return list.map((p) => {
+      const rec = awakened[p.id];
+      return rec && (!p.awakening || p.awakening.ovrGain !== rec.ovrGain)
+        ? applyAwakeningToPlayer(p, rec)
+        : p;
+    });
+  };
 
   const [edit, setEdit] = useState<EditState | null>(null);
   const [localPhase, setLocalPhase] = useState<{
@@ -145,16 +165,16 @@ function MpLeagueH2HInner({
         return {
           formation: s.formation,
           tactic: s.tactic,
-          starters: [...s.starters],
-          bench: [...s.bench],
+          starters: hydrateList([...s.starters], viewLive?.awakenedPlayers),
+          bench: hydrateList([...s.bench], viewLive?.awakenedPlayers),
         };
       })()
     : basePayload
       ? {
           formation: basePayload.formation,
           tactic: basePayload.tactic,
-          starters: [...basePayload.starters],
-          bench: [...basePayload.bench],
+          starters: hydrateList([...basePayload.starters], viewLive?.awakenedPlayers),
+          bench: hydrateList([...basePayload.bench], viewLive?.awakenedPlayers),
         }
       : null;
 
@@ -177,8 +197,17 @@ function MpLeagueH2HInner({
         current?.starters ?? [],
         current?.tactic ?? 'balanced',
         traitId,
+        undefined,
+        { staffCoachId: viewStaffCoachId, ffpChemPenalty: viewFfpChemPenalty },
       ),
-    [current?.formation, current?.starters, current?.tactic, traitId],
+    [
+      current?.formation,
+      current?.starters,
+      current?.tactic,
+      traitId,
+      viewStaffCoachId,
+      viewFfpChemPenalty,
+    ],
   );
 
   const clubsById = useMemo<Record<string, Club>>(
@@ -305,7 +334,7 @@ function MpLeagueH2HInner({
     }
 
     const oppPayload = oppRow?.league_payload;
-    const oppStarters = oppPayload?.starters ?? [];
+    const oppStarters = hydrateList(oppPayload?.starters ?? [], oppLive?.awakenedPlayers);
     const oppClub: Club = {
       id: oppHuman.clubId,
       name: oppHuman.profile.name,
@@ -352,6 +381,8 @@ function MpLeagueH2HInner({
           bench={current.bench}
           chemistry={chemistry}
           managerTraitId={traitId}
+          staffCoachId={viewStaffCoachId}
+          tacticalHistory={viewLive?.tacticalAdaptation?.history}
           locked={myLocked}
           blindOpponentStatus={myLocked && oppLocked ? null : oppLocked ? 'locked' : 'editing'}
           firstLegBanner={

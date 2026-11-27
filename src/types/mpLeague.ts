@@ -154,7 +154,8 @@ export type MpLeagueActionKind =
   | 'coach_skip'
   | 'ffp_notice_dismiss'
   | 'adaptation_dismiss'
-  | 'awakening_dismiss';
+  | 'awakening_dismiss'
+  | 'tactics_update';
 
 export interface MpLeagueActionRow {
   id: string;
@@ -319,6 +320,8 @@ export interface MpLeagueSummary {
   awards: SeasonAwards;
   squadStats: Record<string, PlayerSeasonStats[]>;
   cupChampionId: string | null;
+  /** Authoritative per-friend squads at league end (with permanent awakenings hydrated) */
+  squads?: Record<string, MpSquadInput>;
 }
 
 export interface MpCastLive {
@@ -369,6 +372,8 @@ export interface MpLeagueFinal {
   uclChampionId: string | null;
   /** Combined season stats (league + cup + UCL) per friend club for the final squad tab */
   squadStats?: Record<string, PlayerSeasonStats[]>;
+  /** Authoritative per-friend final squads (with permanent awakenings hydrated) */
+  squads?: Record<string, MpSquadInput>;
 }
 
 /** Slim UCL snapshot published to every client */
