@@ -1489,6 +1489,8 @@ export interface GenerateIncomingTradeOffersParams {
   excludeClubIds?: string[];
   /** Minimum offer count floor (default 0; multiplayer sets 1 so every manager opens the window with offers) */
   minOfferCount?: number;
+  /** Optional Story Mode era club pool (Domestic 19 + Other 4 Leagues Top 4) — prevents 26-27 club leaks */
+  storyTransferPool?: { club: Club; leagueId: LeagueId; roster: Player[] }[];
   rng?: () => number;
 }
 
@@ -1576,6 +1578,7 @@ export function generateIncomingTradeOffers(
     allowedLeagueIds,
     excludeClubIds = [],
     minOfferCount = 0,
+    storyTransferPool,
     rng = Math.random,
   } = params;
 
@@ -1611,11 +1614,19 @@ export function generateIncomingTradeOffers(
       ? new Set<LeagueId>(allowedLeagueIds)
       : null;
   const excludedClubs = new Set<string>(excludeClubIds);
-  const candidateClubs = (
-    allowedSet
-      ? ALL_CLUBS_WITH_LEAGUE.filter((c) => allowedSet.has(c.leagueId))
-      : ALL_CLUBS_WITH_LEAGUE
-  ).filter((c) => !c.club.isUser && !excludedClubs.has(c.club.id));
+  const storyRosterByClubId = new Map<string, Player[]>();
+  const basePool =
+    storyTransferPool && storyTransferPool.length > 0
+      ? storyTransferPool.map((item) => {
+          storyRosterByClubId.set(item.club.id, item.roster);
+          return { club: item.club, leagueId: item.leagueId };
+        })
+      : allowedSet
+        ? ALL_CLUBS_WITH_LEAGUE.filter((c) => allowedSet.has(c.leagueId))
+        : ALL_CLUBS_WITH_LEAGUE;
+  const candidateClubs = basePool.filter(
+    (c) => !c.club.isUser && !excludedClubs.has(c.club.id),
+  );
 
   // Shuffle clubs (slight preference for user's own league so rivalries feel alive)
   const shuffled = [...candidateClubs].sort((a, b) => {
@@ -1635,8 +1646,9 @@ export function generateIncomingTradeOffers(
 
     const isUserLeague = entry.leagueId === userLeagueId;
     const liveRoster = isUserLeague
-      ? aiRosters[entry.club.id]
-      : otherLeagues?.[entry.leagueId]?.aiRosters?.[entry.club.id];
+      ? aiRosters[entry.club.id] ?? storyRosterByClubId.get(entry.club.id)
+      : storyRosterByClubId.get(entry.club.id) ??
+        otherLeagues?.[entry.leagueId]?.aiRosters?.[entry.club.id];
     const squad16 = buildAiClubSquad16({
       club: entry.club,
       leagueId: entry.leagueId,

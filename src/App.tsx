@@ -17,6 +17,8 @@ import { MultiplayerArena } from './components/multiplayer/MultiplayerArena';
 import { FormationSelect } from './components/setup/FormationSelect';
 import { ManagerRouletteScreen } from './components/setup/ManagerRouletteScreen';
 import { TitleScreen } from './components/setup/TitleScreen';
+import { StoryModeHub } from './components/story/StoryModeHub';
+import { StorySetupScreen } from './components/story/StorySetupScreen';
 import { UclDashboard } from './components/ucl/UclDashboard';
 import { GameProvider, useGame } from './store/GameContext';
 
@@ -126,6 +128,8 @@ function GameRouter() {
         ) : (
           <>
             {state.phase === 'title' && <TitleScreen />}
+            {state.phase === 'story_hub' && <StoryModeHub />}
+            {state.phase === 'story_setup' && <StorySetupScreen />}
             {state.phase === 'manager_roulette' && <ManagerRouletteScreen />}
             {state.phase === 'setup' && <FormationSelect />}
             {state.phase === 'draft' && <DraftScreen />}

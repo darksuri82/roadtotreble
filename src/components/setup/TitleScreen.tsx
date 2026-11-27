@@ -8,12 +8,15 @@ import {
   ScrollText,
   SlidersHorizontal,
   Sparkles,
+  Star,
   Swords,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import { CURRENT_APP_VERSION } from '../../data/patchNotes';
+import { STORY_SCENARIOS } from '../../data/story/storyRegistry';
 import { getAchievementProgress } from '../../engine/legacyEngine';
+import { getTotalStoryStars } from '../../engine/storyModeEngine';
 import { useGame } from '../../store/GameContext';
 import { JerseySvg } from '../common/JerseySvg';
 import { PatchNotesModal } from '../common/PatchNotesModal';
@@ -45,6 +48,8 @@ export function TitleScreen() {
     startNewCareer,
     applyUserProfile,
     legacyState,
+    storyCodex,
+    openStoryHub,
     openLegacyModal,
     openDreamMatch,
     openMultiplayer,
@@ -60,6 +65,8 @@ export function TitleScreen() {
   >(null);
   const achProgress = getAchievementProgress(legacyState);
   const seasonCount = legacyState.hallOfFame.length;
+  const storyStars = getTotalStoryStars(storyCodex);
+  const maxStoryStars = STORY_SCENARIOS.length * 3;
 
   const handleStartSoloClick = () => {
     if (!isSoloTutorialDismissed()) {
@@ -217,43 +224,58 @@ export function TitleScreen() {
             </div>
 
             {/* Primary CTAs — Clear Game-Title Hierarchy */}
-            <div className="mx-auto mt-3 sm:mt-4 max-w-xl grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:items-center sm:justify-center sm:gap-2.5">
+            <div className="mx-auto mt-3 sm:mt-4 max-w-xl space-y-2">
               <button
                 id="title-start-btn"
                 type="button"
                 onClick={handleStartSoloClick}
-                className="col-span-2 sm:col-span-1 sm:flex-1 group inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-300/60 bg-gradient-to-b from-emerald-400 to-emerald-500 px-4 py-3 sm:px-6 sm:py-3.5 text-sm font-extrabold text-slate-950 shadow-[0_3px_0_0_#047857,0_10px_24px_-6px_rgba(16,185,129,0.38)] transition-all hover:from-emerald-300 hover:to-emerald-400 active:translate-y-[1px] active:shadow-[0_1px_0_0_#047857] cursor-pointer touch-manipulation sm:text-base"
+                className="w-full group inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-300/60 bg-gradient-to-b from-emerald-400 to-emerald-500 px-4 py-3 sm:px-6 sm:py-3.5 text-sm font-extrabold text-slate-950 shadow-[0_3px_0_0_#047857,0_10px_24px_-6px_rgba(16,185,129,0.38)] transition-all hover:from-emerald-300 hover:to-emerald-400 active:translate-y-[1px] active:shadow-[0_1px_0_0_#047857] cursor-pointer touch-manipulation sm:text-base"
               >
                 <Play className="h-4 w-4 fill-current shrink-0" />
                 <span className="whitespace-nowrap">새 시즌 시작</span>
                 <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
               </button>
 
-              <button
-                id="title-multiplayer-btn"
-                type="button"
-                onClick={() => openMultiplayer(null)}
-                className="group inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-sky-400/40 bg-[#0d1928] px-3 py-2.5 sm:px-4 sm:py-3.5 text-xs font-extrabold text-sky-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors hover:border-sky-300/70 hover:bg-sky-500/18 cursor-pointer touch-manipulation sm:w-auto sm:text-sm"
-              >
-                <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-300 shrink-0" />
-                <span className="whitespace-nowrap">멀티플레이</span>
-                <span className="hidden sm:inline rounded bg-sky-400/18 px-1.5 py-0.5 text-[10px] font-bold text-sky-300 whitespace-nowrap">
-                  1v1 · 리그
-                </span>
-              </button>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  id="title-story-mode-btn"
+                  type="button"
+                  onClick={openStoryHub}
+                  className="group inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-xl border border-rose-400/40 bg-[#1a1019] px-2 py-2.5 sm:px-3 sm:py-3 text-[11px] sm:text-xs font-extrabold text-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors hover:border-rose-300/70 hover:bg-rose-500/18 cursor-pointer touch-manipulation"
+                >
+                  <Star className="h-3.5 w-3.5 text-amber-300 fill-amber-400/80 shrink-0" />
+                  <span className="whitespace-nowrap">스토리 모드</span>
+                  <span className="hidden sm:inline rounded bg-amber-400/18 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amber-200 whitespace-nowrap">
+                    ★ {storyStars}/{maxStoryStars}
+                  </span>
+                </button>
 
-              <button
-                id="title-dream-match-btn"
-                type="button"
-                onClick={() => openDreamMatch(null)}
-                className="group inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-amber-400/40 bg-[#1a160c] px-3 py-2.5 sm:px-4 sm:py-3.5 text-xs font-extrabold text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors hover:border-amber-300/70 hover:bg-amber-500/18 cursor-pointer touch-manipulation sm:w-auto sm:text-sm"
-              >
-                <Swords className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-300 shrink-0" />
-                <span className="whitespace-nowrap">드림 매치</span>
-                <span className="hidden sm:inline rounded bg-amber-400/18 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 whitespace-nowrap">
-                  역대·시대별 XI
-                </span>
-              </button>
+                <button
+                  id="title-multiplayer-btn"
+                  type="button"
+                  onClick={() => openMultiplayer(null)}
+                  className="group inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-xl border border-sky-400/40 bg-[#0d1928] px-2 py-2.5 sm:px-3 sm:py-3 text-[11px] sm:text-xs font-extrabold text-sky-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors hover:border-sky-300/70 hover:bg-sky-500/18 cursor-pointer touch-manipulation"
+                >
+                  <Users className="h-3.5 w-3.5 text-sky-300 shrink-0" />
+                  <span className="whitespace-nowrap">멀티플레이</span>
+                  <span className="hidden sm:inline rounded bg-sky-400/18 px-1.5 py-0.5 text-[10px] font-bold text-sky-300 whitespace-nowrap">
+                    1v1 · 리그
+                  </span>
+                </button>
+
+                <button
+                  id="title-dream-match-btn"
+                  type="button"
+                  onClick={() => openDreamMatch(null)}
+                  className="group inline-flex items-center justify-center gap-1 sm:gap-1.5 rounded-xl border border-amber-400/40 bg-[#1a160c] px-2 py-2.5 sm:px-3 sm:py-3 text-[11px] sm:text-xs font-extrabold text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors hover:border-amber-300/70 hover:bg-amber-500/18 cursor-pointer touch-manipulation"
+                >
+                  <Swords className="h-3.5 w-3.5 text-amber-300 shrink-0" />
+                  <span className="whitespace-nowrap">드림 매치</span>
+                  <span className="hidden sm:inline rounded bg-amber-400/18 px-1.5 py-0.5 text-[10px] font-bold text-amber-300 whitespace-nowrap">
+                    역대 XI
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
         </section>

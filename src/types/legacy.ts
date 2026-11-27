@@ -141,6 +141,8 @@ export interface HallOfFameEntry {
   draftLeaguePool?: LeagueId[];
   /** Explicit flag indicating whether all 5 European major leagues were enabled in the draft pool */
   fullFiveLeaguePool?: boolean;
+  /** Non-empty only if an entry originated from Story Mode (always blocked from global daily rankings) */
+  storyScenarioId?: string;
   userClub: UserClubProfile;
   managerName?: string;
   managerAvatar?: ManagerAvatarConfig;

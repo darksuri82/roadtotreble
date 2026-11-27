@@ -258,6 +258,14 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
 
   const season = state.season!;
   const tm = season.transferMarket;
+  const isStoryMode = Boolean(state.storyMode);
+  const missionKeySet = useMemo(
+    () => new Set(state.storyMode?.missionKeyPlayerIds ?? []),
+    [state.storyMode?.missionKeyPlayerIds],
+  );
+  const [storyLeagueFilter, setStoryLeagueFilter] = useState<
+    import('../../types/league').LeagueId
+  >(season.leagueId);
 
   const incomingOffers = tm.incomingOffers ?? [];
   const pendingIncomingCount = incomingOffers.filter(
@@ -813,6 +821,49 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     setActiveTab(dest);
   };
 
+  const handleSelectStoryClub = (
+    entry: import('../../types/storyMode').StoryTransferPoolClub,
+  ) => {
+    const ownedIds = new Set(userSquadPlayers.map((p) => p.id));
+    const excludeIds = new Set<string>([
+      ...ownedIds,
+      ...(season.departedPlayerIds ?? []),
+    ]);
+    const isUserLeague = entry.leagueId === season.leagueId;
+    const liveRoster = isUserLeague
+      ? season.aiRosters[entry.club.id] ?? entry.roster
+      : entry.roster;
+    const standIdx = isUserLeague
+      ? season.standings.findIndex((s) => s.teamId === entry.club.id)
+      : -1;
+    const clubRank = standIdx !== -1 ? standIdx + 1 : 2;
+    const clubOffer = buildTradeClubOfferForClub({
+      club: entry.club,
+      leagueId: entry.leagueId,
+      clubRank,
+      leagueSize: isUserLeague ? season.standings.length || 20 : 20,
+      currentRound: season.currentRound,
+      totalRounds: season.totalRounds,
+      windowIndex: tm.windowIndex,
+      userRank: getUserRank(season.standings, USER_CLUB_ID),
+      userLeagueSize: season.standings.length || 20,
+      isUserLeague,
+      aiRoster: liveRoster,
+      allPlayerStats: season.allPlayerStats,
+      ownedIds,
+      excludeIds,
+      championBonusActive: false,
+    });
+    setCounterOfferOrigin('explore');
+    setCounterOfferClub(clubOffer);
+    setSelectedAiPlayerIds([]);
+    setSelectedUserSlots([]);
+    setCustomFillerIds(null);
+    setCashOfferM(0);
+    setPosFilter('ALL');
+    setActiveTab('explore');
+  };
+
   const handleSubmitTrade = () => {
     if (
       ffpEmbargoActive ||
@@ -1062,17 +1113,19 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                   <span className="text-xs font-bold text-slate-300">
                     포메이션 · 전술 설정
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTacticsSelectedSlot(null);
-                      autoOptimizeLineup();
-                    }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-sky-500/35 bg-sky-500/12 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/20 transition-colors cursor-pointer"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    빠른 선발
-                  </button>
+                  {!isStoryMode && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTacticsSelectedSlot(null);
+                        autoOptimizeLineup();
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-sky-500/35 bg-sky-500/12 px-2.5 py-1 text-[11px] font-bold text-sky-200 hover:bg-sky-500/20 transition-colors cursor-pointer"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      빠른 선발
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-1">
@@ -1544,6 +1597,118 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                   </button>
                 </div>
               </div>
+            ) : isStoryMode && !counterOfferClub ? (
+              <div
+                id="story-direct-scout-browser"
+                className="rounded-2xl border border-amber-500/35 bg-[#0c1320] p-4 sm:p-5 space-y-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[10.5px] font-extrabold text-amber-300">
+                      <Sparkles className="h-3 w-3" />
+                      {state.storyMode?.seasonLabel} 시대 5대 리그 직접 스카우팅 (운빨 0%)
+                    </div>
+                    <h3 className="text-base sm:text-lg font-black text-white">
+                      협상할 구단을 직접 지목하세요
+                    </h3>
+                    <p
+                      className="text-[11.5px] text-slate-400"
+                      style={{ wordBreak: 'keep-all' }}
+                    >
+                      {state.storyMode?.transferRuleReason}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-right shrink-0">
+                    <div className="text-[10px] font-bold text-emerald-300/80">
+                      보유 현금 예산
+                    </div>
+                    <div className="font-mono text-base font-black text-emerald-300">
+                      €{availableCashM}M
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5-League Tabs */}
+                <div className="grid grid-cols-5 gap-1.5 rounded-xl border border-slate-800 bg-[#080e18] p-1">
+                  {(
+                    [
+                      ['epl', 'EPL'],
+                      ['laliga', '라리가'],
+                      ['seriea', '세리에 A'],
+                      ['bundesliga', '분데스리가'],
+                      ['ligue1', '리그 1'],
+                    ] as [import('../../types/league').LeagueId, string][]
+                  ).map(([lid, label]) => {
+                    const count = (
+                      state.storyMode?.transferPoolClubs ?? []
+                    ).filter((c) => c.leagueId === lid).length;
+                    const active = storyLeagueFilter === lid;
+                    return (
+                      <button
+                        key={lid}
+                        type="button"
+                        onClick={() => setStoryLeagueFilter(lid)}
+                        className={`rounded-lg px-2 py-2 text-[11px] sm:text-xs font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
+                          active
+                            ? 'bg-sky-500/20 text-sky-200 border border-sky-400/50'
+                            : 'text-slate-400 border border-transparent hover:bg-slate-800/70 hover:text-white'
+                        }`}
+                      >
+                        {label}{' '}
+                        <span className="font-mono text-[10px] opacity-75">
+                          ({count})
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Era Club Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                  {(state.storyMode?.transferPoolClubs ?? [])
+                    .filter((c) => c.leagueId === storyLeagueFilter)
+                    .map((entry) => {
+                      const avgOvr = Math.round(
+                        (entry.club.att + entry.club.mid + entry.club.def) / 3,
+                      );
+                      const standIdx =
+                        entry.leagueId === season.leagueId
+                          ? season.standings.findIndex(
+                              (s) => s.teamId === entry.club.id,
+                            )
+                          : -1;
+                      return (
+                        <button
+                          key={entry.club.id}
+                          type="button"
+                          onClick={() => handleSelectStoryClub(entry)}
+                          className="group flex items-center gap-2.5 rounded-xl border border-slate-800 bg-[#101827] p-2.5 text-left hover:border-sky-400/65 hover:bg-[#142036] transition-colors cursor-pointer"
+                        >
+                          <JerseySvg
+                            primaryColor={entry.club.primaryColor}
+                            secondaryColor={entry.club.secondaryColor}
+                            pattern={entry.club.pattern}
+                            label={entry.club.shortName}
+                            size={34}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-xs font-extrabold text-white group-hover:text-sky-200">
+                              {entry.club.name}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400">
+                              <span>OVR {avgOvr}</span>
+                              {standIdx !== -1 && (
+                                <span className="text-amber-300">
+                                  · {standIdx + 1}위
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
             ) : !tm.hasSpunClubs && !counterOfferClub ? (
               <div className="rounded-2xl border border-slate-800 bg-[#0c1320] p-5 sm:p-6 text-center space-y-4">
                 <div className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[11px] font-bold text-sky-200">
@@ -1611,7 +1776,27 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
               </div>
             ) : (
               <>
+                {isStoryMode && counterOfferClub && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/35 bg-[#101827] px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => handleExitCounterOffer('explore')}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-200 hover:border-sky-400/60 hover:text-white cursor-pointer whitespace-nowrap"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      5대 리그 다른 구단 지목하기
+                    </button>
+                    {selectedUserPlayers.some((p) => missionKeySet.has(p.id)) && (
+                      <span className="inline-flex items-center gap-1 rounded-lg border border-rose-400/50 bg-rose-500/15 px-2.5 py-1 text-[11px] font-extrabold text-rose-200">
+                        <ShieldAlert className="h-3.5 w-3.5 text-rose-300 shrink-0" />
+                        ★ 미션 핵심 선수 방출 주의 — 트레이드 시 ★★★ 달성 불가 위험!
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Partner Club Selector Strip */}
+                {!isStoryMode && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {tm.rolledClubs.map((offer, idx) => {
                     const isSelected =
@@ -1734,6 +1919,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                     );
                   })}
                 </div>
+                )}
 
                 {/* Counter-offer active club indicator is handled cleanly in header & negotiation table */}
 

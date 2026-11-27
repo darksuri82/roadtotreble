@@ -151,6 +151,7 @@ import {
 import {
   advanceUclKnockoutLeg,
   advanceUclPlayoffToCompletion,
+  createStoryUclR16State,
   createUclTournamentState,
   didUserWinUcl,
   findNextUserUclLeaguePhaseFixture,
@@ -160,6 +161,23 @@ import {
   simulateUclToCompletion,
   UCL_EXTERNAL_TEAMS,
 } from '../engine/uclEngine';
+import {
+  clearActiveStorySave,
+  evaluateStoryChecklist,
+  hasActiveStorySave,
+  hydrateStoryScenarioBundle,
+  loadStoryCodex,
+  recordStoryCompletionInCodex,
+  STORY_ACTIVE_SAVE_KEY,
+  type HydratedStoryScenario,
+} from '../engine/storyModeEngine';
+import { getStoryScenarioMeta } from '../data/story/storyRegistry';
+import type {
+  StoryChecklistSummary,
+  StoryCodexStorage,
+  StoryModeRuntimeState,
+  StoryScenarioDataBundle,
+} from '../types/storyMode';
 import type {
   InjuryAlertItem,
   InjuryAutoReturnEntry,
@@ -801,6 +819,7 @@ function applyPostUserMatchConditionAndEvents(params: {
     managerTraitId,
     staffCoachId,
     existingAwakenedPlayers: prevAwakened,
+    storyFocusPlayerIds: season.storyFocusPlayerIds,
   });
   if (
     awakeningResult.triggered &&
@@ -1488,21 +1507,26 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
     ...(finalSeason.departedPlayerIds ?? []),
   ]);
 
-  const finalOtherLeagues = advanceOtherLeaguesToProgress(
-    finalSeason.otherLeagues ??
-      createOtherLeaguesState(finalSeason.leagueId, excludeIds),
-    finalSeason.totalRounds,
-    finalSeason.totalRounds,
-    Math.random,
-    excludeIds,
-  );
+  const isStoryMode = Boolean(state.storyMode);
+  const finalOtherLeagues = isStoryMode
+    ? {}
+    : advanceOtherLeaguesToProgress(
+        finalSeason.otherLeagues ??
+          createOtherLeaguesState(finalSeason.leagueId, excludeIds),
+        finalSeason.totalRounds,
+        finalSeason.totalRounds,
+        Math.random,
+        excludeIds,
+      );
 
-  const uclQualifiedSummary = buildFiveLeagueUclQualifiers({
-    userLeagueId: finalSeason.leagueId,
-    userLeagueClubs: finalSeason.clubs,
-    userLeagueStandings: finalSeason.standings,
-    otherLeagues: finalOtherLeagues,
-  });
+  const uclQualifiedSummary = isStoryMode
+    ? []
+    : buildFiveLeagueUclQualifiers({
+        userLeagueId: finalSeason.leagueId,
+        userLeagueClubs: finalSeason.clubs,
+        userLeagueStandings: finalSeason.standings,
+        otherLeagues: finalOtherLeagues,
+      });
 
   const awards = computeSeasonAwards(
     finalSeason.allPlayerStats,
@@ -1516,7 +1540,7 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
   let finalUclPlayerStats = finalSeason.uclPlayerStats;
   let globalAwards: SeasonState['globalAwards'] = null;
 
-  if (finalRank > 4) {
+  if (!isStoryMode && finalRank > 4) {
     // Non-UCL user: run background 36-team AI-only UCL to completion so Ballon d'Or & World Best XI
     // are awarded ONCE with full European results finalized!
     const chem = calculateChemistry(
@@ -1579,22 +1603,24 @@ function finalizeSeasonIfEnded(state: GameState): GameState {
   }
   // If finalRank <= 4: globalAwards stays null until UCL completes (awarded ONCE after UCL!)
 
-  const handoff = buildPhase2HandoffState({
-    userClub: state.userClub,
-    managerTraitId: state.manager.traitId,
-    leagueId: finalSeason.leagueId,
-    formation: state.formation,
-    defaultTactic: finalSeason.defaultTactic,
-    starters: filledStarters,
-    bench: filledBench,
-    standings: finalSeason.standings,
-    clubsInUserLeague: finalSeason.clubs,
-    otherLeagues: finalOtherLeagues,
-    playerStats: finalSeason.allPlayerStats,
-    awards,
-  });
+  const handoff = isStoryMode
+    ? null
+    : buildPhase2HandoffState({
+        userClub: state.userClub,
+        managerTraitId: state.manager.traitId,
+        leagueId: finalSeason.leagueId,
+        formation: state.formation,
+        defaultTactic: finalSeason.defaultTactic,
+        starters: filledStarters,
+        bench: filledBench,
+        standings: finalSeason.standings,
+        clubsInUserLeague: finalSeason.clubs,
+        otherLeagues: finalOtherLeagues,
+        playerStats: finalSeason.allPlayerStats,
+        awards,
+      });
 
-  if (handoff) {
+  if (handoff && !isStoryMode) {
     savePhase2Handoff(handoff);
   }
 
@@ -1767,6 +1793,19 @@ type GameAction =
   | { type: 'SKIP_STAFF_COACH' }
   | { type: 'DISMISS_FFP_OPENING_NOTICE' }
   | { type: 'DISMISS_ADAPTATION_ALERT' }
+  | { type: 'OPEN_STORY_HUB' }
+  | {
+      type: 'ENTER_STORY_SETUP';
+      payload: { bundle: StoryScenarioDataBundle };
+    }
+  | {
+      type: 'SET_STORY_MANAGER_TRAIT';
+      payload: { traitId: ManagerTraitId };
+    }
+  | { type: 'START_STORY_SEASON'; payload: { bundle: StoryScenarioDataBundle } }
+  | { type: 'RESUME_STORY_SAVE'; payload: { savedState: GameState } }
+  | { type: 'EXIT_STORY_TO_TITLE' }
+  | { type: 'MARK_STORY_CODEX_RECORDED' }
   | { type: 'DISMISS_AWAKENING_ALERT' }
   | { type: 'MARK_CUP_CELEBRATED' }
   | { type: 'ENTER_UCL_MODE' }
@@ -2303,6 +2342,7 @@ function commitLiveMatchResult(
       triggerRound: trigger.triggerRound,
       userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
       allowedLeagueIds: state.draftLeaguePool,
+      storyMode: state.storyMode,
     });
   }
 
@@ -2312,6 +2352,14 @@ function commitLiveMatchResult(
     starters: restoredStarters,
     bench: restoredBench,
     season: nextSeason,
+    ...(trigger && state.storyMode
+      ? {
+          storyMode: {
+            ...state.storyMode,
+            signingsThisWindow: 0,
+          },
+        }
+      : {}),
   });
 }
 
@@ -2323,6 +2371,7 @@ function openTransferWindowWithIncomingOffers(params: {
   triggerRound: number;
   userRank: number;
   allowedLeagueIds?: LeagueId[];
+  storyMode?: StoryModeRuntimeState | null;
   options?: { isUclSpecial?: boolean; championBonusActive?: boolean };
 }) {
   const {
@@ -2333,15 +2382,20 @@ function openTransferWindowWithIncomingOffers(params: {
     triggerRound,
     userRank,
     allowedLeagueIds,
+    storyMode,
     options,
   } = params;
   const isRegularWindow = !options?.isUclSpecial;
-  const ffpEmbargoActive = isFfpEmbargoWindow(season.budgetState, windowIndex, {
-    isUclSpecial: options?.isUclSpecial,
-  });
-  const maxAttemptsOverride = isRegularWindow
-    ? getFfpWindowMaxAttempts(season.budgetState, windowIndex, 3)
-    : undefined;
+  const ffpEmbargoActive = storyMode
+    ? false
+    : isFfpEmbargoWindow(season.budgetState, windowIndex, {
+        isUclSpecial: options?.isUclSpecial,
+      });
+  const maxAttemptsOverride = storyMode
+    ? storyMode.winterMaxSignings ?? 3
+    : isRegularWindow
+      ? getFfpWindowMaxAttempts(season.budgetState, windowIndex, 3)
+      : undefined;
 
   const incomingOffers = ffpEmbargoActive
     ? []
@@ -2359,6 +2413,7 @@ function openTransferWindowWithIncomingOffers(params: {
         conditionMap: season.playerConditions,
         departedPlayerIds: season.departedPlayerIds ?? [],
         allowedLeagueIds,
+        ...(storyMode ? { storyTransferPool: storyMode.transferPoolClubs } : {}),
       });
   return createOpenTransferState(
     windowIndex,
@@ -2382,6 +2437,7 @@ function openTransferAndMidSeasonCoach(params: {
   triggerRound: number;
   userRank: number;
   allowedLeagueIds?: LeagueId[];
+  storyMode?: StoryModeRuntimeState | null;
   options?: { isUclSpecial?: boolean; championBonusActive?: boolean };
 }): SeasonState {
   const { season, windowIndex, options } = params;
@@ -2955,8 +3011,82 @@ function executeBidirectionalTrade(params: {
       (!isIncomingOffer && acceptanceChance > 0 && acceptanceChance <= 20),
   };
 
+  let nextStoryMode = state.storyMode;
+  let effectiveNextAttempts = nextAttempts;
+  if (state.storyMode) {
+    const incomingIdSet = new Set(allIncomingRaw.map((p) => p.id));
+    const updatedTransferPool = state.storyMode.transferPoolClubs.map((entry) => {
+      if (entry.club.id !== partnerClub.id) return entry;
+      const updatedRoster = [
+        ...entry.roster.filter((p) => !incomingIdSet.has(p.id)),
+        ...userSentPlayers.map((p) => ({
+          ...p,
+          club: entry.club.name,
+          leagueId: entry.leagueId,
+        })),
+      ];
+      const optimized = reoptimizeAiClubRoster({
+        roster: updatedRoster,
+        formation: entry.club.formation,
+        managerTraitId: entry.club.manager?.traitId ?? null,
+      });
+      const updatedClub = adjustAiClubRatingsForRosterChange(
+        entry.club,
+        entry.roster,
+        optimized,
+      );
+      return {
+        ...entry,
+        club: updatedClub,
+        roster: optimized,
+      };
+    });
+
+    let updatedUclR16 = state.storyMode.uclR16Prepared;
+    if (updatedUclR16) {
+      const updatedUclAiRosters = { ...updatedUclR16.aiRosters };
+      const partnerEntry = updatedTransferPool.find(
+        (c) => c.club.id === partnerClub.id,
+      );
+      if (partnerEntry && updatedUclAiRosters[partnerClub.id]) {
+        updatedUclAiRosters[partnerClub.id] = partnerEntry.roster;
+      }
+      // Also strip any newly signed user players from all other UCL R16 rosters
+      for (const [cid, list] of Object.entries(updatedUclAiRosters)) {
+        if (cid === partnerClub.id) continue;
+        if (list.some((p) => incomingIdSet.has(p.id))) {
+          updatedUclAiRosters[cid] = list.filter((p) => !incomingIdSet.has(p.id));
+        }
+      }
+      updatedUclR16 = {
+        ...updatedUclR16,
+        clubs: updatedUclR16.clubs.map((c) => {
+          const matched = updatedTransferPool.find((t) => t.club.id === c.id);
+          return matched ? matched.club : c;
+        }),
+        aiRosters: updatedUclAiRosters,
+      };
+    }
+
+    const nextSignings = state.storyMode.signingsThisWindow + 1;
+    if (
+      typeof state.storyMode.winterMaxSignings === 'number' &&
+      nextSignings >= state.storyMode.winterMaxSignings
+    ) {
+      effectiveNextAttempts = 0;
+    }
+
+    nextStoryMode = {
+      ...state.storyMode,
+      signingsThisWindow: nextSignings,
+      transferPoolClubs: updatedTransferPool,
+      uclR16Prepared: updatedUclR16,
+    };
+  }
+
   return {
     ...state,
+    ...(nextStoryMode ? { storyMode: nextStoryMode } : {}),
     starters: nextStarters,
     bench: nextBench,
     season: {
@@ -2974,7 +3104,7 @@ function executeBidirectionalTrade(params: {
       achievementTrackers: nextTrackers,
       transferMarket: {
         ...tm,
-        attemptsRemaining: nextAttempts,
+        attemptsRemaining: effectiveNextAttempts,
         attemptedPlayerIds: [
           ...tm.attemptedPlayerIds,
           ...aiTargetPlayers.map((p) => p.id),
@@ -3230,6 +3360,10 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'AUTO_OPTIMIZE_LINEUP': {
+      // Story Mode removes Quick Lineup entirely so tactical selection is 100% player skill
+      if (state.storyMode) {
+        return state;
+      }
       // Anti-exploit: never allow quick lineup optimize to reset an already-spun draft roulette
       if (state.phase === 'draft' && !state.draft.completed && state.draft.hasSpun) {
         return state;
@@ -5212,6 +5346,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           triggerRound: trigger.triggerRound,
           userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
           allowedLeagueIds: state.draftLeaguePool,
+          storyMode: state.storyMode,
         });
       }
 
@@ -5318,6 +5453,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             triggerRound: trigger.triggerRound,
             userRank: getUserRank(nextSeason.standings, USER_CLUB_ID),
             allowedLeagueIds: state.draftLeaguePool,
+            storyMode: state.storyMode,
           });
         } else {
           // Skipping to season end: mark passed windows as completed without opening modal
@@ -5457,6 +5593,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             triggerRound: trigger.triggerRound,
             userRank: getUserRank(currentSeason.standings, USER_CLUB_ID),
             allowedLeagueIds: state.draftLeaguePool,
+            storyMode: state.storyMode,
           });
           break;
         }
@@ -6040,12 +6177,17 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         ...ownedIds,
         ...(state.season.departedPlayerIds ?? []),
       ]);
+      const storyPartnerRoster = state.storyMode?.transferPoolClubs.find(
+        (c) => c.club.id === partnerClub.id,
+      )?.roster;
       const liveAiRoster =
         partnerLeagueId === state.season.leagueId
-          ? state.season.aiRosters[partnerClub.id] ?? []
-          : state.season.otherLeagues?.[partnerLeagueId]?.aiRosters?.[
+          ? state.season.aiRosters[partnerClub.id] ?? storyPartnerRoster ?? []
+          : storyPartnerRoster ??
+            state.season.otherLeagues?.[partnerLeagueId]?.aiRosters?.[
               partnerClub.id
-            ] ?? [];
+            ] ??
+            [];
       const partnerSquad16 = buildAiClubSquad16({
         club: partnerClub,
         leagueId: partnerLeagueId,
@@ -6385,7 +6527,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     case 'ENTER_UCL_MODE': {
       if (!state.season || state.phase !== 'season_end') return state;
       const userRank = getUserRank(state.season.standings, USER_CLUB_ID);
-      if (userRank > 4) return state;
+      if (!state.storyMode && userRank > 4) return state;
 
       // If UCL already created, just switch back into UCL phase
       if (state.season.ucl) {
@@ -6421,6 +6563,46 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         filledBench,
         state.season.departedPlayerIds,
       );
+
+      // Story Mode: jump directly to authentic 16-team UCL Round of 16 (no league phase, no special transfer)
+      if (state.storyMode) {
+        const prep = state.storyMode.uclR16Prepared;
+        if (!state.storyMode.hasUcl || !prep) return state;
+        const mergedAiRosters: Record<string, Player[]> = { ...prep.aiRosters };
+        // Keep latest post-transfer rosters for domestic league rivals in UCL R16
+        for (const c of prep.clubs) {
+          if (c.id !== USER_CLUB_ID && state.season.aiRosters[c.id]) {
+            mergedAiRosters[c.id] = state.season.aiRosters[c.id];
+          }
+        }
+        const { ucl, uclPlayerStats } = createStoryUclR16State({
+          seasonLabel: prep.seasonLabel,
+          userClub: userClubEntry,
+          userSquad: [...filledStarters, ...filledBench],
+          clubs: prep.clubs,
+          aiRosters: mergedAiRosters,
+          pairings: prep.pairings,
+          originLabels: prep.originLabels,
+          excludeIds,
+          ownedIds,
+        });
+        return {
+          ...state,
+          phase: 'ucl',
+          season: {
+            ...state.season,
+            ucl,
+            uclPlayerStats,
+            userUclMatchHistory: [],
+            transferMarket: createClosedTransferState(
+              state.season.transferMarket.completedWindows,
+              state.season.transferMarket.history,
+              state.season.transferMarket.tradeHistory ?? [],
+            ),
+            liveHalftime: null,
+          },
+        };
+      }
 
       const { ucl, uclPlayerStats } = createUclTournamentState({
         userLeagueId: state.season.leagueId,
@@ -7139,7 +7321,212 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       };
     }
 
+    case 'OPEN_STORY_HUB': {
+      return {
+        ...state,
+        phase: 'story_hub',
+      };
+    }
+
+    case 'ENTER_STORY_SETUP': {
+      const hydrated: HydratedStoryScenario = hydrateStoryScenarioBundle(
+        action.payload.bundle,
+      );
+      const meta = hydrated.meta;
+      const paddedBench: (Player | null)[] = [...hydrated.userBench];
+      while (paddedBench.length < 7) paddedBench.push(null);
+      return {
+        ...createInitialState(),
+        phase: 'story_setup',
+        userClub: { ...meta.clubProfile },
+        manager: {
+          name: meta.managerName,
+          avatar: { ...meta.managerAvatar },
+          traitId: meta.managerTraitOptions[0]?.traitId ?? null,
+          rerollsRemaining: 0,
+          hasSpun: true,
+        },
+        formation: meta.defaultFormation,
+        defaultTactic: meta.defaultTactic,
+        starters: hydrated.userStarters.slice(0, 11),
+        bench: paddedBench.slice(0, 7),
+        storyMode: hydrated.runtimeState,
+      };
+    }
+
+    case 'SET_STORY_MANAGER_TRAIT': {
+      if (!state.storyMode || state.phase !== 'story_setup') return state;
+      return {
+        ...state,
+        manager: {
+          ...state.manager,
+          traitId: action.payload.traitId,
+        },
+      };
+    }
+
+    case 'START_STORY_SEASON': {
+      const hydrated = hydrateStoryScenarioBundle(action.payload.bundle);
+      const meta = hydrated.meta;
+      const filledStarters = state.starters.filter(
+        (p): p is Player => p !== null,
+      );
+      const filledBench = state.bench.filter((p): p is Player => p !== null);
+      if (filledStarters.length < 11) return state;
+
+      // Story Mode uses era cash budget with zero FFP penalties
+      const storyBudgetState = {
+        ...createDefaultSeasonBudgetState(),
+        capM: 9999,
+        initialSpentM: 0,
+        excessM: 0,
+        excessPct: 0,
+        ffpTier: 0 as const,
+        transferCashM: meta.cashBudgetM,
+        chemPenalty: 0,
+        window1MaxAttempts: meta.transferRule === 'winter_1_only' ? 0 : 3,
+        window2MaxAttempts: meta.winterMaxSignings ?? 3,
+        window3MaxAttempts: meta.transferRule === 'winter_1_only' ? 0 : 3,
+        scoreMultiplier: 1.0,
+        extraLossMoraleDrop: 0,
+      };
+
+      const chem = calculateChemistry(
+        state.formation,
+        filledStarters,
+        state.defaultTactic,
+        state.manager.traitId,
+      );
+      const ratings = calculateTeamRatings(
+        state.formation,
+        filledStarters,
+        chem.total,
+        state.manager.traitId,
+        chem.slotSynergies,
+        state.defaultTactic,
+      );
+      const userClubEntry = buildUserClubEntry(
+        state.userClub,
+        state.formation,
+        state.defaultTactic,
+        filledStarters,
+        ratings,
+      );
+
+      const clubs = hydrated.domesticClubs.map((c) =>
+        c.id === USER_CLUB_ID ? userClubEntry : c,
+      );
+      const aiRosters = { ...hydrated.domesticAiRosters };
+      const fixtures = generateDoubleRoundRobin(clubs);
+      const standings = createInitialStandings(clubs);
+      const allPlayerStats = createInitialPlayerStatsMap({
+        clubs,
+        userClub: userClubEntry,
+        userSquad: [...filledStarters, ...filledBench],
+        aiRosters,
+      });
+      const totalRounds = (clubs.length - 1) * 2;
+      const cup = createDomesticCupState(meta.leagueId, clubs, totalRounds);
+      const cupPlayerStats = createInitialPlayerStatsMap({
+        clubs,
+        userClub: userClubEntry,
+        userSquad: [...filledStarters, ...filledBench],
+        aiRosters,
+      });
+
+      const transferWindows: [number, number, number] =
+        meta.transferRule === 'winter_1_only' ? [99, 19, 99] : [10, 19, 28];
+
+      const season: SeasonState = {
+        runId: `story_${meta.id}_${Date.now()}`,
+        leagueId: meta.leagueId,
+        replacedClubName: meta.clubName,
+        defaultTactic: state.defaultTactic,
+        nextMatchTactic: null,
+        clubs,
+        aiRosters,
+        fixtures,
+        currentRound: 0,
+        totalRounds,
+        transferWindows,
+        standings,
+        otherLeagues: {},
+        lastUserMatch: null,
+        liveHalftime: null,
+        userMatchHistory: [],
+        allPlayerStats,
+        transferMarket: createClosedTransferState(),
+        awards: null,
+        globalAwards: null,
+        cup,
+        cupPlayerStats,
+        userCupMatchHistory: [],
+        ucl: null,
+        uclPlayerStats: {},
+        userUclMatchHistory: [],
+        achievementTrackers: createInitialTrackers(),
+        seasonScore: null,
+        legacyArchived: false,
+        departedPlayerIds: [],
+        playerConditions: {},
+        managerEvents: createDefaultManagerEventsState(),
+        pendingInjuryAlerts: [],
+        budgetState: storyBudgetState,
+        pendingFfpOpeningNotice: false,
+        tacticalAdaptation: createInitialTacticalAdaptationState(),
+        staffCoach: createInitialStaffCoachState(),
+        awakenedPlayers: {},
+        pendingAwakeningAlerts: [],
+        storyFocusPlayerIds: hydrated.runtimeState.awakeningFocusPlayerIds,
+      };
+
+      return {
+        ...state,
+        phase: 'season',
+        season,
+        phase2Handoff: null,
+        storyMode: {
+          ...hydrated.runtimeState,
+          signingsThisWindow: 0,
+          codexRecorded: false,
+        },
+      };
+    }
+
+    case 'RESUME_STORY_SAVE': {
+      return action.payload.savedState;
+    }
+
+    case 'EXIT_STORY_TO_TITLE': {
+      const normalSaved = loadSavedGameState();
+      if (normalSaved.phase !== 'title' && !normalSaved.storyMode) {
+        return {
+          ...hydrateWithPersistedProfile(createInitialState()),
+          phase: 'title',
+        };
+      }
+      return hydrateWithPersistedProfile(createInitialState());
+    }
+
+    case 'MARK_STORY_CODEX_RECORDED': {
+      if (!state.storyMode) return state;
+      return {
+        ...state,
+        storyMode: {
+          ...state.storyMode,
+          codexRecorded: true,
+        },
+      };
+    }
+
     case 'RESET_GAME': {
+      if (state.storyMode) {
+        clearActiveStorySave();
+        return {
+          ...hydrateWithPersistedProfile(createInitialState()),
+          phase: 'story_hub',
+        };
+      }
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
           window.localStorage.removeItem(GAME_STORAGE_KEY);
@@ -7528,18 +7915,58 @@ export function compactGameStateForStorage(
 
 export function persistGameStateToStorage(state: GameState): boolean {
   if (typeof window === 'undefined' || !window.localStorage) return false;
+  // Never clobber normal career save when browsing Story Hub or Setup
+  if (state.phase === 'story_hub' || state.phase === 'story_setup') {
+    return true;
+  }
+  const targetKey = state.storyMode ? STORY_ACTIVE_SAVE_KEY : GAME_STORAGE_KEY;
   try {
     const compact = compactGameStateForStorage(state);
-    window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(compact));
+    window.localStorage.setItem(targetKey, JSON.stringify(compact));
     return true;
   } catch {
     try {
       const aggressive = compactGameStateForStorage(state, { aggressive: true });
-      window.localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(aggressive));
+      window.localStorage.setItem(targetKey, JSON.stringify(aggressive));
       return true;
     } catch {
       return false;
     }
+  }
+}
+
+export function loadSavedStoryGameState(): GameState | null {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(STORY_ACTIVE_SAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as GameState;
+    if (!parsed || !parsed.storyMode || !parsed.season) return null;
+    parsed.manager.avatar = normalizeManagerAvatar(parsed.manager.avatar);
+    // Hydrate any missing player attrs cleanly without mapping to 26-27 static DB
+    const ensureAttrs = (p: Player | null): Player | null => {
+      if (!p) return null;
+      return p.attrs ? p : { ...p, attrs: getPlayerAttributes(p) };
+    };
+    parsed.starters = parsed.starters.map(ensureAttrs);
+    parsed.bench = parsed.bench.map(ensureAttrs);
+    if (parsed.season.aiRosters) {
+      const nextAi: Record<string, Player[]> = {};
+      for (const [cid, list] of Object.entries(parsed.season.aiRosters)) {
+        nextAi[cid] = list
+          .map((pl) => ensureAttrs(pl))
+          .filter((pl): pl is Player => pl !== null);
+      }
+      parsed.season.aiRosters = nextAi;
+    }
+    if (parsed.season.liveHalftime) {
+      const committed = gameReducer(parsed, { type: 'COMMIT_LIVE_MATCH' });
+      persistGameStateToStorage(committed);
+      return committed;
+    }
+    return parsed;
+  } catch {
+    return null;
   }
 }
 
@@ -7888,6 +8315,18 @@ interface GameContextValue {
   ) => void;
   dismissInjuryReturnToast: (id?: string) => void;
   resetGame: () => void;
+  // Story Mode state & actions (fully isolated from normal career & global ranking)
+  storyCodex: StoryCodexStorage;
+  storyChecklist: StoryChecklistSummary | null;
+  storyLastNewBest: boolean;
+  activeStorySaveAvailable: boolean;
+  openStoryHub: () => void;
+  enterStorySetup: (bundle: StoryScenarioDataBundle) => void;
+  setStoryManagerTrait: (traitId: ManagerTraitId) => void;
+  startStorySeason: () => void;
+  resumeStorySave: () => boolean;
+  exitStoryToTitle: () => void;
+  abandonStorySave: () => void;
 }
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -7901,6 +8340,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [legacyState, setLegacyState] = useState<LegacyStorageState>(() =>
     loadLegacyState(),
   );
+  const [storyCodex, setStoryCodex] = useState<StoryCodexStorage>(() =>
+    loadStoryCodex(),
+  );
+  const [storyLastNewBest, setStoryLastNewBest] = useState(false);
+  const [activeStorySaveAvailable, setActiveStorySaveAvailable] = useState<boolean>(() =>
+    hasActiveStorySave(),
+  );
+  const activeStoryBundleRef = useRef<StoryScenarioDataBundle | null>(null);
   const [legacyModalOpen, setLegacyModalOpen] = useState(false);
   const [legacyModalInitialTab, setLegacyModalInitialTab] =
     useState<LegacyModalTab>('hof');
@@ -7932,6 +8379,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
     latestStateRef.current = state;
     persistGameStateToStorage(state);
+    if (state.storyMode && state.season) {
+      setActiveStorySaveAvailable(true);
+    }
   }, [state]);
 
   // Safety flush on tab close / mobile browser refresh / backgrounding
@@ -8103,7 +8553,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   );
 
   const archiveCurrentSeasonNow = useCallback(() => {
-    if (!state.season || state.season.legacyArchived) return;
+    // Hard isolation: Story Mode runs NEVER archive to regular Hall of Fame or submit to Global Daily Rankings
+    if (state.storyMode || !state.season || state.season.legacyArchived) return;
     const score =
       state.season.seasonScore ?? computeSeasonScoreFromState(state);
     if (!score) return;
@@ -8254,6 +8705,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // (score >= 6,500, S+ grade, UCL title, or Treble). Other seasons can be manually registered from SeasonSummary.
   useEffect(() => {
     if (
+      state.storyMode ||
       state.phase !== 'season_end' ||
       !state.season ||
       state.season.legacyArchived
@@ -8286,6 +8738,99 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return () => window.clearTimeout(timer);
     }
   }, [state, archiveCurrentSeasonNow]);
+
+  const storyChecklist = useMemo<StoryChecklistSummary | null>(() => {
+    if (!state.storyMode || !state.season) return null;
+    return evaluateStoryChecklist({
+      storyMode: state.storyMode,
+      season: state.season,
+      starters: state.starters,
+      bench: state.bench,
+    });
+  }, [state.storyMode, state.season, state.starters, state.bench]);
+
+  // Automatically record Story Mode completion & stars into isolated Story Codex (NEVER global rankings)
+  useEffect(() => {
+    if (
+      !state.storyMode ||
+      !state.season ||
+      state.phase !== 'season_end' ||
+      state.storyMode.codexRecorded ||
+      !storyChecklist
+    ) {
+      return;
+    }
+    const uclFinalized = !state.storyMode.hasUcl || Boolean(state.season.ucl?.completed);
+    if (!uclFinalized) return;
+
+    const rank = getUserRank(state.season.standings, USER_CLUB_ID);
+    const userRow = state.season.standings.find((r) => r.teamId === USER_CLUB_ID);
+    const wonCup = didUserWinCup(state.season.cup, USER_CLUB_ID);
+    const wonUcl = didUserWinUcl(state.season.ucl, USER_CLUB_ID);
+    const meta = getStoryScenarioMeta(state.storyMode.scenarioId);
+    const parts: string[] = [
+      `${meta.leagueLabel} ${rank}위 (${userRow?.points ?? 0}점)`,
+    ];
+    if (wonCup) parts.push(`${meta.cupLabel} 우승`);
+    if (wonUcl && meta.uclLabel) parts.push(`${meta.uclLabel} 우승`);
+
+    const timer = window.setTimeout(() => {
+      const { nextCodex, isNewBest } = recordStoryCompletionInCodex({
+        codex: loadStoryCodex(),
+        summary: storyChecklist,
+        bestSummaryText: parts.join(' · '),
+      });
+      setStoryCodex(nextCodex);
+      setStoryLastNewBest(isNewBest);
+      dispatch({ type: 'MARK_STORY_CODEX_RECORDED' });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [state.storyMode, state.season, state.phase, storyChecklist]);
+
+  const openStoryHub = useCallback(() => {
+    setActiveStorySaveAvailable(hasActiveStorySave());
+    setStoryCodex(loadStoryCodex());
+    setStoryLastNewBest(false);
+    dispatch({ type: 'OPEN_STORY_HUB' });
+  }, []);
+
+  const enterStorySetup = useCallback((bundle: StoryScenarioDataBundle) => {
+    activeStoryBundleRef.current = bundle;
+    setStoryLastNewBest(false);
+    dispatch({ type: 'ENTER_STORY_SETUP', payload: { bundle } });
+  }, []);
+
+  const setStoryManagerTrait = useCallback((traitId: ManagerTraitId) => {
+    dispatch({ type: 'SET_STORY_MANAGER_TRAIT', payload: { traitId } });
+  }, []);
+
+  const startStorySeason = useCallback(() => {
+    const bundle = activeStoryBundleRef.current;
+    if (!bundle) return;
+    setStoryLastNewBest(false);
+    dispatch({ type: 'START_STORY_SEASON', payload: { bundle } });
+  }, []);
+
+  const resumeStorySave = useCallback((): boolean => {
+    const saved = loadSavedStoryGameState();
+    if (!saved) {
+      setActiveStorySaveAvailable(false);
+      return false;
+    }
+    setStoryLastNewBest(false);
+    dispatch({ type: 'RESUME_STORY_SAVE', payload: { savedState: saved } });
+    return true;
+  }, []);
+
+  const exitStoryToTitle = useCallback(() => {
+    setStoryLastNewBest(false);
+    dispatch({ type: 'EXIT_STORY_TO_TITLE' });
+  }, []);
+
+  const abandonStorySave = useCallback(() => {
+    clearActiveStorySave();
+    setActiveStorySaveAvailable(false);
+  }, []);
 
   const dismissUnlockToast = useCallback((achievementId: string) => {
     setRecentUnlocks((prev) => prev.filter((id) => id !== achievementId));
@@ -8519,6 +9064,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setLastGlobalSubmitResult(null);
         dispatch({ type: 'RESET_GAME' });
       },
+      storyCodex,
+      storyChecklist,
+      storyLastNewBest,
+      activeStorySaveAvailable,
+      openStoryHub,
+      enterStorySetup,
+      setStoryManagerTrait,
+      startStorySeason,
+      resumeStorySave,
+      exitStoryToTitle,
+      abandonStorySave,
     }),
     [
       state,
@@ -8550,6 +9106,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
       dismissUnlockToast,
       removeHallOfFameEntry,
       archiveCurrentSeasonNow,
+      storyCodex,
+      storyChecklist,
+      storyLastNewBest,
+      activeStorySaveAvailable,
+      openStoryHub,
+      enterStorySetup,
+      setStoryManagerTrait,
+      startStorySeason,
+      resumeStorySave,
+      exitStoryToTitle,
+      abandonStorySave,
     ],
   );
 

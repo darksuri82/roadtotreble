@@ -73,6 +73,7 @@ import {
   TeamSeasonArchiveTab,
 } from '../common/TeamSeasonArchiveTab';
 import { GlobalTop15CelebrationModal } from '../legacy/GlobalTop15CelebrationModal';
+import { StorySummaryCard } from '../story/StorySummaryCard';
 import { UclBracketTree } from '../ucl/UclBracketTree';
 import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
@@ -496,10 +497,13 @@ export function SeasonSummary() {
       otherLeagues: season.otherLeagues,
     });
 
+  const isStoryMode = Boolean(state.storyMode);
   const finalRank = getUserRank(season.standings, USER_CLUB_ID);
   const userRow = season.standings[finalRank - 1];
   const fourthRow = season.standings[3];
-  const qualifiedForUcl = finalRank <= 4;
+  const qualifiedForUcl = isStoryMode
+    ? Boolean(state.storyMode?.hasUcl)
+    : finalRank <= 4;
   const canStartUcl = qualifiedForUcl && !season.ucl;
   const wonCup = didUserWinCup(season.cup, USER_CLUB_ID);
   const wonUcl = didUserWinUcl(season.ucl, USER_CLUB_ID);
@@ -524,6 +528,7 @@ export function SeasonSummary() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 space-y-5">
+      {isStoryMode && <StorySummaryCard />}
       {/* Domestic Cup Victory Pixel Trophy Celebration (fires even when reached via Skip-to-Season-End!) */}
       {season.cup?.completed &&
         wonCup &&
@@ -564,7 +569,8 @@ export function SeasonSummary() {
         )}
 
       {/* Global TOP 15 Induction Celebration Modal (sequential after cup/league finale modals) */}
-      {globalTop15Celebration &&
+      {!isStoryMode &&
+        globalTop15Celebration &&
         !(
           season.cup?.completed &&
           wonCup &&
@@ -659,11 +665,13 @@ export function SeasonSummary() {
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-extrabold text-slate-950 shadow-lg hover:bg-emerald-400 cursor-pointer"
                 >
                   <Sparkles className="w-4 h-4" />
-                  36팀 챔피언스리그 도전하기 (특별 이적시장 1회)
+                  {isStoryMode
+                    ? `${state.storyMode?.uclLabel ?? 'UCL 16강'} 토너먼트 도전하기`
+                    : '36팀 챔피언스리그 도전하기 (특별 이적시장 1회)'}
                 </button>
               )}
 
-              {canStartUcl && !season.legacyArchived && (
+              {!isStoryMode && canStartUcl && !season.legacyArchived && (
                 <button
                   type="button"
                   onClick={skipUclToFinalSummary}
@@ -674,36 +682,39 @@ export function SeasonSummary() {
                 </button>
               )}
 
-              {season.legacyArchived ? (
-                <button
-                  type="button"
-                  onClick={() => setLegacyModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/45 bg-amber-500/15 px-4 py-2.5 text-xs font-bold text-amber-300 hover:bg-amber-500/25 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  명예의 전당 등재 완료 · 보기 →
-                </button>
-              ) : !canStartUcl && Boolean(season.ucl?.completed) ? (
-                <button
-                  id="manual-hof-register-btn"
-                  type="button"
-                  onClick={archiveCurrentSeasonNow}
-                  title={`자동 등재 기준(${HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}점 이상 · 역대 강팀급) 미만 시즌도 원하면 직접 명예의 전당에 등록할 수 있습니다`}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/50 bg-amber-500/15 px-4 py-2.5 text-xs font-extrabold text-amber-200 hover:bg-amber-500/25 cursor-pointer"
-                >
-                  <Crown className="w-3.5 h-3.5 text-amber-300" />
-                  명예의 전당 수동 등록
-                </button>
-              ) : null}
+              {!isStoryMode &&
+                (season.legacyArchived ? (
+                  <button
+                    type="button"
+                    onClick={() => setLegacyModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/45 bg-amber-500/15 px-4 py-2.5 text-xs font-bold text-amber-300 hover:bg-amber-500/25 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    명예의 전당 등재 완료 · 보기 →
+                  </button>
+                ) : !canStartUcl && Boolean(season.ucl?.completed) ? (
+                  <button
+                    id="manual-hof-register-btn"
+                    type="button"
+                    onClick={archiveCurrentSeasonNow}
+                    title={`자동 등재 기준(${HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}점 이상 · 역대 강팀급) 미만 시즌도 원하면 직접 명예의 전당에 등록할 수 있습니다`}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/50 bg-amber-500/15 px-4 py-2.5 text-xs font-extrabold text-amber-200 hover:bg-amber-500/25 cursor-pointer"
+                  >
+                    <Crown className="w-3.5 h-3.5 text-amber-300" />
+                    명예의 전당 수동 등록
+                  </button>
+                ) : null)}
 
-              <button
-                type="button"
-                onClick={resetGame}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-[#121923] px-4 py-2.5 text-xs font-bold text-slate-300 hover:border-slate-600 hover:text-white cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                새 커리어 시작
-              </button>
+              {!isStoryMode && (
+                <button
+                  type="button"
+                  onClick={resetGame}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-[#121923] px-4 py-2.5 text-xs font-bold text-slate-300 hover:border-slate-600 hover:text-white cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  새 커리어 시작
+                </button>
+              )}
             </div>
           </div>
 
@@ -909,7 +920,7 @@ export function SeasonSummary() {
             );
           })()}
 
-          {isSupabaseConfigured && uclCompleted && (() => {
+          {!isStoryMode && isSupabaseConfigured && uclCompleted && (() => {
             const fullPoolEligible = isFullFiveLeagueDraftPool(
               state.draftLeaguePool,
             );

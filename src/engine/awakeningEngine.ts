@@ -381,6 +381,8 @@ export interface CheckPostMatchAwakeningParams {
   managerTraitId: ManagerTraitId | null;
   staffCoachId?: StaffCoachId | null;
   existingAwakenedPlayers?: Record<string, PlayerAwakeningRecord>;
+  /** Optional Story Mode mission focus player IDs (e.g. Park Ji-sung, Leicester trio) */
+  storyFocusPlayerIds?: string[];
   rng?: () => number;
 }
 
@@ -627,8 +629,14 @@ export function evaluatePostMatchAwakening(
     managerTraitId,
     staffCoachId = null,
     existingAwakenedPlayers = {},
+    storyFocusPlayerIds,
     rng = Math.random,
   } = params;
+
+  const storyFocusSet =
+    storyFocusPlayerIds && storyFocusPlayerIds.length > 0
+      ? new Set(storyFocusPlayerIds)
+      : null;
 
   const none: PostMatchAwakeningResult = {
     triggered: false,
@@ -703,7 +711,11 @@ export function evaluatePostMatchAwakening(
       const mgrFit = evaluateManagerPlayerSynergy(p, managerTraitId);
       const wellUtilized =
         mgrFit.isMatch && (syn?.neighborBonus ?? 0) >= 1 && posPen === 0;
-      const minRating = getAwakeningMinMatchRating(p.ovr, wellUtilized);
+      const isStoryFocus = Boolean(storyFocusSet?.has(p.id) && posPen === 0);
+      const baseMinRating = getAwakeningMinMatchRating(p.ovr, wellUtilized);
+      const minRating = isStoryFocus
+        ? Math.max(6.6, baseMinRating - 0.15)
+        : baseMinRating;
       if (rating < minRating) return false;
       const st = allPlayerStats[p.id];
       const apps = st?.appearances ?? matchPlayedNumber;
@@ -740,7 +752,14 @@ export function evaluatePostMatchAwakening(
       coachMult,
     });
 
-    if (rng() < evalRes.finalProb) {
+    const isStoryFocus = Boolean(
+      storyFocusSet?.has(player.id) && positionPenalty === 0,
+    );
+    const effectiveProb = isStoryFocus
+      ? clamp(evalRes.finalProb * 1.75, 0, 0.085)
+      : evalRes.finalProb;
+
+    if (rng() < effectiveProb) {
       const ovrGain = rollAwakeningOvrGain(player.ovr, rng);
       if (ovrGain < AWAKENING_MIN_GAIN) continue;
       const draftRecord: PlayerAwakeningRecord = {

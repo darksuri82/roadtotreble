@@ -71,6 +71,7 @@ import {
 import type { SoloLiveDurationMs } from '../common/SoloLiveScoreboard';
 import { StaffCoachBadge } from '../common/StaffCoachBadge';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
+import { StoryChecklistTracker } from '../story/StoryChecklistTracker';
 import { CupBracketView } from './CupBracketView';
 import { CupChampionModal } from './CupChampionModal';
 import { FastSimModal } from './FastSimModal';
@@ -577,6 +578,7 @@ export function SeasonDashboard() {
 
   return (
     <div className="mx-auto max-w-6xl px-2.5 sm:px-4 py-2.5 sm:py-5 space-y-3 sm:space-y-5">
+      {state.storyMode && <StoryChecklistTracker />}
       {/* Compact Season Status + Clean Top 5-Tab Navigation */}
       <section className="rounded-xl sm:rounded-2xl border border-slate-800 bg-[#111822] p-2.5 sm:p-4 space-y-2 sm:space-y-3.5">
         <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-center md:justify-between">
@@ -861,7 +863,13 @@ export function SeasonDashboard() {
                 headerBadge={
                   isNextCupMatch && season.cup && pendingCupStage
                     ? `🏆 ${season.cup.meta.koreanName} ${CUP_STAGE_LABELS[pendingCupStage]} (단판 승부 · 동점 시 연장/PK)`
-                    : `매치 데이 전술실 · ROUND ${nextRoundNumber}`
+                    : state.storyMode &&
+                        nextOpponent &&
+                        state.storyMode.bigMatchClubIds.includes(
+                          nextOpponent.id,
+                        )
+                      ? `⭐ 빅매치 · ROUND ${nextRoundNumber} (${nextOpponent.name})`
+                      : `매치 데이 전술실 · ROUND ${nextRoundNumber}`
                 }
                 headerAccent={isNextCupMatch ? 'cup' : 'league'}
                 activeTactic={activeTactic}
@@ -878,7 +886,7 @@ export function SeasonDashboard() {
                 }
                 onChangeFormation={changeFormation}
                 onSwapSquad={swapSquadPositions}
-                onAutoOptimize={autoOptimizeLineup}
+                onAutoOptimize={state.storyMode ? undefined : autoOptimizeLineup}
                 onInspectPlayer={(p) =>
                   setInspectedPlayer({ playerId: p.id })
                 }

@@ -25,6 +25,7 @@ import {
   HISTORICAL_BENCHMARK_TEAMS,
 } from '../../data/historicalTeams';
 import { MANAGER_TRAIT_LIST } from '../../data/managerTraits';
+import { STORY_SCENARIOS } from '../../data/story/storyRegistry';
 import {
   AWAKENING_FOURTH_PLUS_MULT,
   AWAKENING_MAX_GAIN,
@@ -172,6 +173,7 @@ const TAB_SECTIONS: Record<GuideTabId, { id: string; label: string }[]> = {
   ],
   legacy: [
     { id: 'guide-legacy-competitions', label: '5대 리그·컵·UCL' },
+    { id: 'guide-legacy-story', label: '스토리 모드 (5종)' },
     { id: 'guide-legacy-hof', label: '명전·리그 보정·시대 XI' },
     { id: 'guide-legacy-reset', label: 'v9.0 기록 초기화' },
     { id: 'guide-legacy-multi', label: '멀티 리그·1대1' },
@@ -1321,7 +1323,55 @@ export function SystemGuideContent({
             </div>
           </div>
 
-          {/* 6-4. Multiplayer League & 1v1 */}
+          {/* 6-4. History Story Mode (5 Scenarios) */}
+          <div
+            id="guide-legacy-story"
+            className="scroll-mt-2 rounded-xl border border-amber-500/30 bg-[#0b1018] p-3.5 space-y-2.5"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 font-bold text-amber-200">
+                <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                스토리 모드 (History Story Mode · 5종 시나리오)
+              </div>
+              <span className="rounded bg-amber-500/15 border border-amber-400/35 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300 whitespace-nowrap">
+                별 도감 ★★★ × 5 (최대 15★)
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-300 space-y-1">
+              <div>
+                • <strong className="text-white">드래프트 생략 · 수동 지휘 전용:</strong> 실제 그 시절 20개 자국 리그 팀 로스터와 감독·전술로 즉시 개막하며, <strong className="text-rose-300">[빠른 선발]이 전면 제거</strong>되어 유저가 직접 선발·전술·로테이션을 운영합니다.
+              </div>
+              <div>
+                • <strong className="text-white">5대 리그 35구단 직접 지목 이적시장:</strong> 룰렛 대신 자국 리그 19팀 + 타 4대 리그 당시 상위 4팀씩 16팀을 직접 지목해 현금 협상합니다(아스널은 신구장 긴축·원년 고증으로 겨울 19R 1회 · 최대 1명 제한).
+              </div>
+              <div>
+                • <strong className="text-white">UCL 16강 직행 &amp; 랭킹 완전 격리:</strong> UCL 진출 4종은 36팀 리그 페이즈 없이 실제 그 해 16강 토너먼트로 직행하며, 스토리 모드 세이브·별 도감은 일반 드래프트 세이브 및 <strong className="text-amber-200">일일 글로벌 랭킹과 완전히 분리</strong>됩니다.
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[10.5px] tabular-nums">
+              {STORY_SCENARIOS.map((sc) => (
+                <div
+                  key={sc.id}
+                  className="rounded-lg border border-slate-800 bg-[#0f1622] px-2.5 py-2 space-y-0.5"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-white truncate">
+                      {sc.seasonLabel} {sc.clubName} 《{sc.title}》
+                    </span>
+                    <span className="font-mono text-[10px] font-bold text-amber-300 whitespace-nowrap">
+                      €{sc.cashBudgetM}M
+                    </span>
+                  </div>
+                  <div className="text-slate-400">
+                    {sc.leagueLabel} · {sc.cupLabel}
+                    {sc.uclLabel ? ` · ${sc.uclLabel}` : ''} · {sc.transferRuleLabel}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 6-5. Multiplayer League & 1v1 */}
           <div
             id="guide-legacy-multi"
             className="scroll-mt-2 rounded-xl border border-slate-800 bg-[#0b1018] p-3.5 space-y-2"

@@ -26,6 +26,7 @@ import {
   DRAFT_BUDGET_CAP_M,
 } from '../../engine/budgetEngine';
 import { BIG_CLUB_RANDOM_DRAFT_MIN_AVG } from '../../engine/draftEngine';
+import { STORY_SCENARIOS } from '../../data/story/storyRegistry';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import {
   GLOBAL_DAILY_TOP_LIMIT,
@@ -33,13 +34,14 @@ import {
 } from '../../services/globalRankingService';
 import type { Player } from '../../types/player';
 import { RoadToTrebleHeroSvg } from '../setup/RoadToTrebleHeroSvg';
+import { StoryPixelSceneSvg } from '../story/StoryPixelSceneSvg';
 import { PlayerCard } from './PlayerCard';
 
 export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.10.0';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.0.0';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -74,7 +76,15 @@ export function clearWhatsNewDismissal(): void {
   }
 }
 
-type WhatsNewTabId = 'v910' | 'v99' | 'v98' | 'v97' | 'story' | 'ranking' | 'classics';
+type WhatsNewTabId =
+  | 'v100'
+  | 'v910'
+  | 'v99'
+  | 'v98'
+  | 'v97'
+  | 'story'
+  | 'ranking'
+  | 'classics';
 
 const TABS: Array<{
   id: WhatsNewTabId;
@@ -82,11 +92,12 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
-  { id: 'v910', label: '난이도 상승!', badge: '9.10 NEW', icon: Flame },
+  { id: 'v100', label: '스토리 모드 출시!', badge: '10.0 NEW', icon: BookOpen },
+  { id: 'v910', label: '난이도 상승!', badge: '9.10', icon: Flame },
   { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9', icon: SlidersHorizontal },
   { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8', icon: Users },
   { id: 'v97', label: '이적 프리뷰 · 각성', badge: '9.7', icon: ArrowLeftRight },
-  { id: 'story', label: '팀 소개 · 위기 서사', badge: '9.7', icon: BookOpen },
+  { id: 'story', label: '팀 소개 · 위기 서사', badge: '9.7', icon: ScrollText },
   { id: 'ranking', label: '일일 랭킹 · 공정성', badge: '9.5~9.6', icon: Globe },
   { id: 'classics', label: '3-2-4-1 · 클래식', badge: '9.4~9.5', icon: Crown },
 ];
@@ -103,7 +114,7 @@ export function WhatsNewModal({
   onOpenPatchNotes,
 }: WhatsNewModalProps) {
   useBodyScrollLock(true);
-  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v910');
+  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v100');
   const [dontShowAgain, setDontShowAgain] = useState<boolean>(false);
 
   const previewPlayers = useMemo(() => {
@@ -216,6 +227,95 @@ export function WhatsNewModal({
 
         {/* Single Scrollable Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y p-4 sm:p-5 space-y-4 break-keep">
+          {activeTab === 'v100' && (
+            <div className="space-y-3.5">
+              {/* Hero Story Banner + Live Pixel Scene */}
+              <div className="rounded-2xl border border-amber-400/35 bg-gradient-to-br from-amber-950/30 via-[#0d1420] to-emerald-950/25 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-sm sm:text-base font-black text-amber-200">
+                    <BookOpen className="h-4.5 w-4.5 text-amber-400 shrink-0" />
+                    대형 신규 콘텐츠 「스토리 모드」 5종 전격 출시!
+                  </span>
+                  <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
+                    v10.0.0 MAJOR
+                  </span>
+                </div>
+                <p className="text-[11.5px] leading-relaxed text-slate-300">
+                  드래프트를 생략하고{' '}
+                  <strong className="text-white">
+                    그 시절 실제 스쿼드 · 감독 · 전술 · UCL 16강 토너먼트
+                  </strong>
+                  로 곧장 뛰어들어 ★★★ 미션에 도전하세요. 시작 시 감독과 에이스들이 등장하는{' '}
+                  <strong className="text-amber-200">
+                    탭형 도트 일러스트 문학 프롤로그
+                  </strong>
+                  가 펼쳐집니다.
+                </p>
+                <div className="overflow-hidden rounded-xl border border-slate-800/90 bg-[#070b12]">
+                  <StoryPixelSceneSvg
+                    backdrop="three_lungs_engine"
+                    accentColor="#ef4444"
+                    characters={STORY_SCENARIOS[1].introSlides[1].characters}
+                  />
+                </div>
+              </div>
+
+              {/* 5 Scenarios Compact Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] tabular-nums">
+                {STORY_SCENARIOS.map((sc) => (
+                  <div
+                    key={sc.id}
+                    className="rounded-xl border border-slate-800 bg-[#090f19] p-3 space-y-1"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-extrabold text-white truncate">
+                        {sc.seasonLabel} {sc.clubName}
+                      </span>
+                      <span className="rounded border border-amber-400/35 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[9.5px] font-black text-amber-300 whitespace-nowrap">
+                        €{sc.cashBudgetM}M
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-bold text-emerald-300">
+                      《{sc.title}》
+                    </div>
+                    <div className="text-[10.5px] text-slate-400">
+                      {sc.leagueLabel} · {sc.cupLabel}
+                      {sc.uclLabel ? ` · ${sc.uclLabel}` : ''} · {sc.transferRuleLabel}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* 3 Core Design Highlights */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3 space-y-1">
+                  <div className="font-extrabold text-rose-200">
+                    [빠른 선발] 전면 제거
+                  </div>
+                  <p className="text-slate-400 leading-relaxed">
+                    자동 최적이 아닌 유저가 직접 라인업·전술·로테이션을 짜는 순수 실력 플레이.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-3 space-y-1">
+                  <div className="font-extrabold text-sky-200">
+                    5대 리그 35구단 직접 지목
+                  </div>
+                  <p className="text-slate-400 leading-relaxed">
+                    룰렛 대신 자국 19팀 + 타 4대 리그 상위 4팀씩 16팀을 직접 골라 현금 협상(아스널은 겨울 1회 한정).
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-1">
+                  <div className="font-extrabold text-emerald-200">
+                    일일 랭킹 · 세이브 완전 분리
+                  </div>
+                  <p className="text-slate-400 leading-relaxed">
+                    일반 커리어와 세이브·랭킹이 섞이지 않으며 전용 ★★★ 별 도감(최대 15★)으로 기록됩니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'v910' && (
             <div className="space-y-3.5">
               {/* Hero Difficulty Banner */}

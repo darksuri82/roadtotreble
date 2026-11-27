@@ -185,11 +185,11 @@ describe('v9.10.0 Difficulty & Balance Patch', () => {
     expect(champUser.successChance).toBe(34);
   });
 
-  it('4) synchronizes v9.10.0 patch notes and WhatsNewModal "난이도 상승!" default tab', () => {
-    expect(CURRENT_APP_VERSION).toBe('v9.10.0');
-    expect(PATCH_NOTES[0].version).toBe('v9.10.0');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.10.0');
-    expect(whatsNewSrc).toContain("useState<WhatsNewTabId>('v910')");
+  it('4) synchronizes v9.10.0 patch notes and WhatsNewModal "난이도 상승!" tab', () => {
+    expect(PATCH_NOTES[0].version).toBe(CURRENT_APP_VERSION);
+    expect(PATCH_NOTES.some((p) => p.version === 'v9.10.0')).toBe(true);
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain(CURRENT_APP_VERSION);
+    expect(whatsNewSrc).toContain("id: 'v910'");
     expect(whatsNewSrc).toContain('난이도 상승!');
   });
 });

@@ -54,4 +54,8 @@ export interface UclTournamentState {
   lastUserMatch: MatchResult | null;
   completed: boolean;
   userParticipated?: boolean; // false when background AI-only UCL runs for 5th+ user
+  /** True for Story Mode direct 16-team knockout (skips 36-team league phase & playoff) */
+  isDirectR16?: boolean;
+  /** Optional historical UCL season label (e.g. '07-08 UCL') */
+  seasonLabel?: string;
 }

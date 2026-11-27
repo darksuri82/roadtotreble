@@ -2585,16 +2585,18 @@ export function LiveMatchBroadcast({
                           )
                         </span>
                       </span>
-                      <button
-                        type="button"
-                        disabled={Boolean(override?.waitingForOpponentLabel)}
-                        onClick={handleHalftimeQuickBestXi}
-                        title="현재 그라운드의 선발 11명(교체 아웃 선수 제외)을 선택한 포메이션에 맞춰 최적 포지션으로 자동 재배치합니다"
-                        className="inline-flex items-center gap-1 rounded-md border border-emerald-500/45 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer transition-colors"
-                      >
-                        <Wand2 className="w-3 h-3" />
-                        빠른 선발
-                      </button>
+                      {!('storyMode' in state && state.storyMode) && (
+                        <button
+                          type="button"
+                          disabled={Boolean(override?.waitingForOpponentLabel)}
+                          onClick={handleHalftimeQuickBestXi}
+                          title="현재 그라운드의 선발 11명(교체 아웃 선수 제외)을 선택한 포메이션에 맞춰 최적 포지션으로 자동 재배치합니다"
+                          className="inline-flex items-center gap-1 rounded-md border border-emerald-500/45 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                        >
+                          <Wand2 className="w-3 h-3" />
+                          빠른 선발
+                        </button>
+                      )}
                     </div>
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
                       {FORMATION_LIST.map((f) => {

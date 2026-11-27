@@ -70,7 +70,9 @@ export function HeaderNav() {
 
   const currentStepIdx = STEPS.findIndex((s) => s.phase === state.phase);
   const achProgress = getAchievementProgress(legacyState);
-  const isTitle = state.phase === 'title' || multiplayerOpen;
+  const isStoryMode = Boolean(state.storyMode);
+  const isTitle =
+    state.phase === 'title' || state.phase === 'story_hub' || multiplayerOpen;
 
   return (
     <>
@@ -105,6 +107,11 @@ export function HeaderNav() {
                 <span className="font-display text-xs sm:text-base font-bold tracking-wider text-white whitespace-nowrap">
                   ROAD TO TREBLE
                 </span>
+                {isStoryMode && !isTitle && (
+                  <span className="rounded border border-amber-400/45 bg-amber-500/15 px-1.5 py-0.5 font-mono text-[9.5px] font-extrabold text-amber-300 whitespace-nowrap shrink-0">
+                    STORY {state.storyMode?.seasonLabel}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => setShowPatchNotes(true)}
@@ -123,7 +130,7 @@ export function HeaderNav() {
           </div>
 
           {/* Minimal Phase Stepper (xl desktop only so right buttons never wrap) */}
-          {!isTitle && (
+          {!isTitle && !isStoryMode && (
             <nav
               aria-label="게임 진행 단계"
               className="hidden xl:flex items-center gap-0.5 text-[11px] shrink-0"
@@ -153,7 +160,8 @@ export function HeaderNav() {
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
             {!isTitle &&
               state.phase !== 'manager_roulette' &&
-              state.phase !== 'setup' && (
+              state.phase !== 'setup' &&
+              state.phase !== 'story_setup' && (
                 <div className="hidden sm:flex items-center gap-1.5 rounded-lg border border-slate-800 bg-[#0e141d] px-2 py-1 text-[11px] tabular-nums whitespace-nowrap shrink-0">
                   <span className="inline-flex items-center gap-1 text-slate-300">
                     <Trophy className="w-3 h-3 text-amber-400 shrink-0" />

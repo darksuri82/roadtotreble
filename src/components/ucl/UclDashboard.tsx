@@ -77,6 +77,7 @@ import {
 } from '../league/LiveMatchBroadcast';
 import { MatchDayTacticsRoom } from '../league/MatchDayTacticsRoom';
 import { TransferMarketModal } from '../transfer/TransferMarketModal';
+import { StoryChecklistTracker } from '../story/StoryChecklistTracker';
 import { UclBracketTree, type LiveTieOverlay } from './UclBracketTree';
 import { UclLeaguePhaseFastSimModal } from './UclLeaguePhaseFastSimModal';
 import { UclLeaguePhaseStandingsModal } from './UclLeaguePhaseStandingsModal';
@@ -841,6 +842,8 @@ export function UclDashboard() {
         />
       )}
 
+      {state.storyMode && <StoryChecklistTracker />}
+
       {/* Modern Phase 2 UCL Header */}
       <div className="rounded-2xl border border-slate-800/90 bg-[#0d1422] p-3.5 sm:p-5 shadow-xl">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -851,7 +854,9 @@ export function UclDashboard() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="rounded bg-sky-500/15 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-sky-300">
-                  UCL · 36 TEAMS
+                  {ucl.isDirectR16
+                    ? `${ucl.seasonLabel ?? 'UCL'} · 16강 토너먼트`
+                    : 'UCL · 36 TEAMS'}
                 </span>
                 <span className="rounded bg-slate-800/80 px-2 py-0.5 text-[10px] font-bold text-slate-300">
                   {UCL_STAGE_LABELS[ucl.stage]}
@@ -867,33 +872,47 @@ export function UclDashboard() {
                   title="챔피언스리그 진행 방식"
                   align="left"
                   guideTab="legacy"
-                  items={[
-                    '리그 페이즈 8경기: 1~8위 16강 직행 · 9~24위 플레이오프 · 25~36위 탈락',
-                    '토너먼트(PO~4강): 홈·원정 2차전 합산 스코어 (매 차전·강 경계마다 계속 진행 확인 · 동률 시 연장/PK)',
-                    '결승전: 단판 승부 (무승부 시 연장/PK) · 자동진행 중 일시중지 및 직접 2D 전환 지원',
-                  ]}
+                  items={
+                    ucl.isDirectR16
+                      ? [
+                          '스토리 모드 직행 토너먼트: 해당 시즌 실제 UCL 16강 16팀이 16강 → 8강 → 4강 → 결승으로 바로 격돌합니다',
+                          '16강~4강: 홈·원정 2차전 합산 스코어 (동률 시 연장/PK)',
+                          '결승전: 단판 승부 (무승부 시 연장/PK) · 자동진행 중 일시중지 및 직접 2D 전환 지원',
+                        ]
+                      : [
+                          '리그 페이즈 8경기: 1~8위 16강 직행 · 9~24위 플레이오프 · 25~36위 탈락',
+                          '토너먼트(PO~4강): 홈·원정 2차전 합산 스코어 (매 차전·강 경계마다 계속 진행 확인 · 동률 시 연장/PK)',
+                          '결승전: 단판 승부 (무승부 시 연장/PK) · 자동진행 중 일시중지 및 직접 2D 전환 지원',
+                        ]
+                  }
                 />
               </div>
               <h1 className="mt-1 truncate text-base sm:text-xl font-black text-white">
-                {state.userClub.name} 챔피언스리그
+                {state.userClub.name} {ucl.seasonLabel ?? '챔피언스리그'}
               </h1>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 shrink-0 tabular-nums">
-            <button
-              type="button"
-              onClick={() => setLpStandingsModalOpen(true)}
-              title="클릭하여 36팀 리그 페이즈 순위표 팝업 열기"
-              className="rounded-xl border border-slate-800 bg-[#090e18] px-2.5 py-2 text-center sm:px-3.5 hover:border-sky-400/50 transition-colors cursor-pointer"
-            >
-              <div className="text-[10px] text-slate-400">리그 페이즈 ↗</div>
-              <div className="font-mono text-xs sm:text-sm font-black text-sky-300">
-                {ucl.leaguePhaseRound > 0
-                  ? `${ucl.userLeaguePhaseRank ?? userUclRank}위/36`
-                  : '순위표'}
-              </div>
-            </button>
+          <div
+            className={`grid gap-2 shrink-0 tabular-nums ${
+              ucl.isDirectR16 ? 'grid-cols-2' : 'grid-cols-3'
+            }`}
+          >
+            {!ucl.isDirectR16 && (
+              <button
+                type="button"
+                onClick={() => setLpStandingsModalOpen(true)}
+                title="클릭하여 36팀 리그 페이즈 순위표 팝업 열기"
+                className="rounded-xl border border-slate-800 bg-[#090e18] px-2.5 py-2 text-center sm:px-3.5 hover:border-sky-400/50 transition-colors cursor-pointer"
+              >
+                <div className="text-[10px] text-slate-400">리그 페이즈 ↗</div>
+                <div className="font-mono text-xs sm:text-sm font-black text-sky-300">
+                  {ucl.leaguePhaseRound > 0
+                    ? `${ucl.userLeaguePhaseRank ?? userUclRank}위/36`
+                    : '순위표'}
+                </div>
+              </button>
+            )}
             <div className="rounded-xl border border-slate-800 bg-[#090e18] px-2.5 py-2 text-center sm:px-3.5">
               <div className="text-[10px] text-slate-400">현재 성적</div>
               <div className="truncate text-xs sm:text-sm font-black text-amber-300">
@@ -919,30 +938,44 @@ export function UclDashboard() {
         </div>
 
         {/* Clean Unified Navigation Tabs */}
-        <div className="mt-3.5 grid grid-cols-5 gap-1 rounded-xl border border-slate-800/90 bg-[#090e18] p-1">
-          {(
-            [
-              ['match', '경기'],
-              ['standings', '리그페이즈 순위'],
-              ['bracket', '대진표'],
-              ['stats', '개인기록'],
-              ['squad', '스쿼드'],
-            ] as [UclTab, string][]
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTab(id)}
-              className={`rounded-lg px-2 py-2 text-[11px] sm:text-xs font-bold transition-colors cursor-pointer touch-manipulation truncate ${
-                tab === id
-                  ? 'bg-slate-800 text-white border border-sky-400/50 shadow-sm'
-                  : 'text-slate-400 border border-transparent hover:bg-slate-800/60 hover:text-slate-200'
+        {(() => {
+          const uclNavTabs: [UclTab, string][] = ucl.isDirectR16
+            ? [
+                ['match', '경기'],
+                ['bracket', '대진표'],
+                ['stats', '개인기록'],
+                ['squad', '스쿼드'],
+              ]
+            : [
+                ['match', '경기'],
+                ['standings', '리그페이즈 순위'],
+                ['bracket', '대진표'],
+                ['stats', '개인기록'],
+                ['squad', '스쿼드'],
+              ];
+          return (
+            <div
+              className={`mt-3.5 grid gap-1 rounded-xl border border-slate-800/90 bg-[#090e18] p-1 ${
+                ucl.isDirectR16 ? 'grid-cols-4' : 'grid-cols-5'
               }`}
             >
-              {label}
-            </button>
-          ))}
-        </div>
+              {uclNavTabs.map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTab(id)}
+                  className={`rounded-lg px-2 py-2 text-[11px] sm:text-xs font-bold transition-colors cursor-pointer touch-manipulation truncate ${
+                    tab === id
+                      ? 'bg-slate-800 text-white border border-sky-400/50 shadow-sm'
+                      : 'text-slate-400 border border-transparent hover:bg-slate-800/60 hover:text-slate-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Unified Centered UCL Auto-Advance Popup Modal (Shared Design + PK Visual + Solo Pause/Takeover + Boundary Confirmation) */}
@@ -1809,7 +1842,7 @@ export function UclDashboard() {
                     onSelectTactic={(tId) => setNextMatchTactic(tId)}
                     onChangeFormation={changeFormation}
                     onSwapSquad={swapSquadPositions}
-                    onAutoOptimize={autoOptimizeLineup}
+                    onAutoOptimize={state.storyMode ? undefined : autoOptimizeLineup}
                     onInspectPlayer={(player, slotSubPosition) =>
                       setInspected({ player, slotSubPosition })
                     }
@@ -2308,14 +2341,16 @@ export function UclDashboard() {
                         <strong className="text-white">{ratings.effectiveMid}</strong> / D{' '}
                         <strong className="text-white">{ratings.effectiveDef}</strong>
                       </span>
-                      <button
-                        type="button"
-                        disabled={uclEditLocked}
-                        onClick={autoOptimizeLineup}
-                        className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                      >
-                        자동 최적 배치
-                      </button>
+                      {!state.storyMode && (
+                        <button
+                          type="button"
+                          disabled={uclEditLocked}
+                          onClick={autoOptimizeLineup}
+                          className="rounded-lg bg-emerald-500/20 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        >
+                          자동 최적 배치
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">

@@ -73,7 +73,7 @@ interface MatchDayTacticsRoomProps {
   onSelectTactic: (tactic: TacticId) => void;
   onChangeFormation: (formation: FormationId) => void;
   onSwapSquad: (from: SlotRef, to: SlotRef) => void;
-  onAutoOptimize: () => void;
+  onAutoOptimize?: () => void;
   onInspectPlayer?: (player: Player, slotSubPosition?: SubPosition) => void;
   onClickOpponentPlayerName?: (playerId: string) => void;
   locked?: boolean;
@@ -918,19 +918,21 @@ export function MatchDayTacticsRoom({
               <Shield className="w-3.5 h-3.5 text-sky-400" />
               포메이션
             </span>
-            <button
-              type="button"
-              disabled={locked}
-              onClick={() => {
-                if (locked) return;
-                setSelectedSlot(null);
-                onAutoOptimize();
-              }}
-              className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 border border-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-200 hover:border-emerald-400/50 hover:text-emerald-200 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
-            >
-              <Wand2 className="w-3 h-3 text-emerald-400" />
-              빠른 최적 선발
-            </button>
+            {onAutoOptimize && (
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => {
+                  if (locked) return;
+                  setSelectedSlot(null);
+                  onAutoOptimize();
+                }}
+                className="inline-flex items-center gap-1 rounded-md bg-slate-800/90 border border-slate-700 px-2 py-0.5 text-[10px] font-bold text-slate-200 hover:border-emerald-400/50 hover:text-emerald-200 disabled:opacity-45 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+              >
+                <Wand2 className="w-3 h-3 text-emerald-400" />
+                빠른 최적 선발
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1">
             {FORMATION_LIST.map((f) => (

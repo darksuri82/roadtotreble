@@ -65,6 +65,8 @@ export interface AiManagerProfile {
 
 export type GamePhase =
   | 'title'
+  | 'story_hub'
+  | 'story_setup'
   | 'manager_roulette'
   | 'setup'
   | 'draft'
@@ -565,6 +567,8 @@ export interface SeasonState {
   pendingAwakeningAlerts?: AwakeningAlertItem[];
   // v9.7: Compact chronological adversity log for documentary season storytelling
   storyCrisisLog?: SeasonStoryCrisisLog;
+  /** Optional Story Mode mission development focus player IDs */
+  storyFocusPlayerIds?: string[];
 }
 
 export interface SeasonStoryInjuryLogEntry {
@@ -602,4 +606,5 @@ export interface GameState {
   draft: DraftState;
   season: SeasonState | null;
   phase2Handoff: Phase2HandoffState | null;
+  storyMode?: import('./storyMode').StoryModeRuntimeState | null;
 }

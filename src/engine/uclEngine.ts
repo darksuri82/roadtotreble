@@ -437,6 +437,116 @@ export function createUclTournamentState(params: {
   return { ucl, uclPlayerStats };
 }
 
+/**
+ * Builds a Story Mode direct 16-team UCL Knockout tournament starting immediately at Round of 16
+ * (skipping the 36-team Swiss league phase, playoffs, and special transfer window).
+ */
+export function createStoryUclR16State(params: {
+  seasonLabel: string;
+  userClub: Club;
+  userSquad: Player[];
+  clubs: Club[];
+  aiRosters: Record<string, Player[]>;
+  pairings: [string, string][];
+  originLabels: Record<string, string>;
+  excludeIds?: Set<string>;
+  ownedIds?: Set<string>;
+}): {
+  ucl: UclTournamentState;
+  uclPlayerStats: Record<string, PlayerSeasonStats>;
+} {
+  const {
+    seasonLabel,
+    userClub,
+    userSquad,
+    clubs,
+    aiRosters: rawAiRosters,
+    pairings,
+    originLabels,
+    excludeIds,
+    ownedIds,
+  } = params;
+
+  const effectiveOwned = new Set<string>(ownedIds ?? []);
+  for (const p of userSquad) effectiveOwned.add(p.id);
+  const effectiveExclude = new Set<string>([
+    ...(excludeIds ?? []),
+    ...effectiveOwned,
+  ]);
+
+  const clubsWithUser = clubs.map((c) => (c.id === USER_CLUB_ID ? userClub : c));
+  const aiRosters: Record<string, Player[]> = {};
+  for (const c of clubsWithUser) {
+    if (c.id === USER_CLUB_ID) {
+      aiRosters[c.id] = userSquad;
+    } else {
+      const base = rawAiRosters[c.id] ?? [];
+      aiRosters[c.id] = sanitizeAiClubRoster({
+        club: c,
+        leagueId: 'epl',
+        roster: base,
+        excludeIds: effectiveExclude,
+        ownedIds: effectiveOwned,
+      });
+    }
+  }
+
+  const teams: UclTeamEntry[] = clubsWithUser.map((c, idx) => ({
+    club: c,
+    pot: ((idx % 4) + 1) as 1 | 2 | 3 | 4,
+    originLabel: originLabels[c.id] ?? seasonLabel,
+    originLeagueId: 'other',
+    isLeagueChampion: false,
+  }));
+
+  const r16Ties: UclKnockoutTie[] = pairings.map(([teamAId, teamBId], idx) => ({
+    id: `ucl-r16-${idx}`,
+    stage: 'r16',
+    tieIndex: idx,
+    teamAId,
+    teamBId,
+    aggTeamA: 0,
+    aggTeamB: 0,
+    winnerId: null,
+  }));
+
+  const uclPlayerStats = createInitialPlayerStatsMap({
+    clubs: clubsWithUser,
+    userClub,
+    userSquad,
+    aiRosters,
+  });
+
+  const ucl: UclTournamentState = {
+    stage: 'r16',
+    teams,
+    clubs: clubsWithUser,
+    aiRosters,
+    leaguePhaseFixtures: [],
+    leaguePhaseRound: 8,
+    standings: [],
+    userLeaguePhaseRank: null,
+    enteredViaPlayoff: false,
+    knockoutLeg: 1,
+    ties: {
+      playoff: [],
+      r16: r16Ties,
+      qf: [],
+      sf: [],
+      final: [],
+    },
+    userEliminatedAt: null,
+    championTeamId: null,
+    lastUserMatch: null,
+    completed: false,
+    userParticipated: true,
+    isDirectR16: true,
+    seasonLabel,
+  };
+
+  return { ucl, uclPlayerStats };
+}
+
 export function findNextUserUclLeaguePhaseFixture(
   ucl: UclTournamentState,
   userClubId = USER_CLUB_ID,

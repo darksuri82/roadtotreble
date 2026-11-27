@@ -455,8 +455,18 @@ export function UclBracketTree({
       {/* Mobile (<md) Quick Round Switcher + Full Tree Toggle */}
       <div className="md:hidden space-y-2.5">
         <div className="flex items-center justify-between gap-1.5">
-          <div className="grid flex-1 grid-cols-5 gap-1 rounded-xl border border-sky-500/25 bg-[#08101f] p-1">
-            {KO_STAGES.map((st) => {
+          {(() => {
+            const visibleStages =
+              playoffTies.length === 0 && ucl.stage !== 'playoff'
+                ? KO_STAGES.filter((s) => s.id !== 'playoff')
+                : KO_STAGES;
+            return (
+          <div
+            className={`grid flex-1 gap-1 rounded-xl border border-sky-500/25 bg-[#08101f] p-1 ${
+              visibleStages.length === 4 ? 'grid-cols-4' : 'grid-cols-5'
+            }`}
+          >
+            {visibleStages.map((st) => {
               const active = mobileViewMode === 'round' && activeMobileStage === st.id;
               const isCurrent = ucl.stage === st.id;
               return (
@@ -483,6 +493,8 @@ export function UclBracketTree({
               );
             })}
           </div>
+            );
+          })()}
           <button
             type="button"
             onClick={() =>

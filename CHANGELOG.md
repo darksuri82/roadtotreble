@@ -5,6 +5,28 @@
 
 ---
 
+## v10.0.0 — 대형 신규 콘텐츠 「스토리 모드 (History Story Mode)」 5종 출시 · 도트 문학 프롤로그 · 5대 리그 직접 지목 이적시장 & UCL 16강 직행
+
+- **1. 스토리 모드 프레임워크 · 전용 UI · 탭형 도트 문학 프롤로그 (`src/types/storyMode.ts`, `src/data/story/storyRegistry.ts`, `src/engine/storyModeEngine.ts`, `src/components/story/StoryPixelSceneSvg.tsx`, `src/components/story/StoryIntroModal.tsx`, `src/components/story/StoryModeHub.tsx`, `src/components/story/StorySetupScreen.tsx`, `src/components/story/StoryChecklistTracker.tsx`, `src/components/story/StorySummaryCard.tsx`, `src/components/setup/TitleScreen.tsx`, `src/App.tsx`)**:
+  - 첫 화면(`TitleScreen.tsx`)에 기존 도트 톤 균형을 유지한 `스토리 모드` 진입 버튼과 진행 중 세이브/총 별 배지를 배치하고, 5종 역사 시나리오 허브(`StoryModeHub`) 및 드래프트 생략 개막 준비 화면(`StorySetupScreen`, 감독 철학 3택·포메이션·전술·수동 라인업)을 구축했습니다.
+  - 각 시나리오 진입 시 그 시절 감독(라니에리·퍼거슨·포체티노·벵거·시메오네)과 핵심 선수들을 `260×112` 레트로 픽셀 SVG 씬과 3챕터 문학 내레이션으로 감상하는 탭형 프롤로그(`StoryIntroModal`)를 구현했습니다.
+  - 대시보드 상단 실시간 ★★★ 체크리스트 트래커(`StoryChecklistTracker`)와 시즌 종료 별 결산(`StorySummaryCard`)을 추가했습니다.
+- **2. 역사 시나리오 5종 동적 로스터 JSON (Vite 지연 로딩 청크 `19~21 kB gzip`, 총 200개 구단 · 2,844명 · 현역 압축 OVR `≤ 92` 통일)**:
+  - **15-16 레스터 시티 《5000분의 1의 기적》** (`1516_leicester.json`, 36구단 513명, 초기 예산 `€25M`, 3차 이적창, EPL+FA컵): ① EPL 우승 / ② 바디·마레즈·캉테 1명+ 각성 & 바디 20골+ / ③ FA컵 더블 또는 승점 85+.
+  - **07-08 맨체스터 유나이티드 《세 개의 폐, 박지성 에이스 프로젝트》** (`0708_manutd.json`, 42구단 594명, 초기 예산 `€100M`, EPL+FA컵+07-08 UCL 16강): ① 리그+UCL 더블 / ② 박지성 각성 & 공격P 15+ / ③ 박지성 UCL 결승 선발 & 팀 평점 TOP 3 우승.
+  - **18-19 토트넘 홋스퍼 《DESK의 마지막 춤》** (`1819_tottenham.json`, 40구단 574명, 초기 예산 `€55M`, EPL+FA컵+18-19 UCL 16강): ① EPL 우승 / ② DESK 4인 리그 공격P 60+ / ③ UCL 포함 더블/트레블.
+  - **03-04 아스널 《무패의 전설》** (`0304_arsenal.json`, 41구단 580명, 초기 예산 `€30M`, 에미레이츠 신구장 긴축·원년 고증으로 **겨울 19R 1회·최대 1명 한정** 및 사유 UI 명시, EPL+FA컵+03-04 UCL 16강): ① EPL 우승 / ② 38경기 무패 우승 / ③ 무패 리그+UCL 동시 우승.
+  - **13-14 아틀레티코 마드리드 《메호대전 시대의 반란》** (`1314_atletico.json`, 41구단 583명, 초기 예산 `€45M`, 라리가+코파 델 레이+13-14 UCL 16강): ① 라리가 우승 / ② 리그 최소 실점 1위(28실점 이하) / ③ 라리가+UCL 동시 우승.
+- **3. 실력 중심 플레이 규칙 · UCL 16강 직행 · 일일 랭킹/세이브 완전 격리 (`src/store/GameContext.tsx`, `src/engine/uclEngine.ts`, `src/engine/awakeningEngine.ts`, `src/engine/transferEngine.ts`, `src/services/globalRankingService.ts`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/ucl/UclDashboard.tsx`, `src/components/ucl/UclBracketTree.tsx`)**:
+  - 스토리 모드 전 구간에서 **`[빠른 선발]` 제거** (UI 숨김 + `AUTO_OPTIMIZE_LINEUP` 리듀서 차단).
+  - 방안 B 이적시장: 룰렛 없이 **자국 19개 AI 구단 + 타 4대 리그 당시 상위 4팀씩 16개 구단(총 35개 구단)**을 리그 탭으로 직접 지목해 현금+트레이드 협상(미션 핵심 선수 방출 경고 포함).
+  - `createStoryUclR16State()`로 36팀 리그 페이즈 없이 실제 그 해 UCL 16강 16팀 대진 직행, `storyFocusPlayerIds` 각성 공명 보정 연동.
+  - 스토리 전용 세이브(`rtt_story_mode_active_save_v1`)와 15★ 별 도감(`rtt_story_mode_codex_v1`)을 일반 세이브·명전과 완전 분리하고, `validateDailyRankingEligibility`에서 `story_mode` 제출을 원천 차단했습니다.
+- **4. 문서·안내 & 단위 테스트 동기화 (`src/components/common/WhatsNewModal.tsx`, `src/components/guide/SystemGuideModal.tsx`, `src/data/patchNotes.ts`, `src/__tests__/storyModePhase1.test.ts`, `src/__tests__/storyModePhase2.test.ts`)**:
+  - `CURRENT_APP_VERSION = 'v10.0.0'` 갱신, `WhatsNewModal` 스토리 모드 출시 탭·`SystemGuideModal` 스토리 모드 가이드 추가 및 16건의 전담 단위 테스트 통과.
+
+---
+
 ## v9.10.0 — 난이도 상승! 드래프트 예산 €900M · 빅클럽 12팀 균등 랜덤 추출 & 시대별 클래식 FA 성사율 하향 밸런스 패치
 
 - **드래프트 예산 소프트 캡 축소 (`src/engine/budgetEngine.ts`, `src/components/guide/SystemGuideModal.tsx`)**:

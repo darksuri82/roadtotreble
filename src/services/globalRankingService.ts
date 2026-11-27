@@ -1344,6 +1344,7 @@ export function validateGlobalHofEntryIntegrity(entry: HallOfFameEntry): {
 }
 
 export type DailyRankingIneligibleCode =
+  | 'story_mode'
   | 'missing_date'
   | 'past_date'
   | 'partial_pool'
@@ -1351,6 +1352,7 @@ export type DailyRankingIneligibleCode =
 
 /**
  * Complete eligibility check for submitting a Hall of Fame entry to today's KST Daily Ranking:
+ * 0) Story Mode runs are strictly isolated and NEVER eligible
  * 1) Valid completion date
  * 2) Completed today (KST) — past records cannot be submitted today
  * 3) Full 5-league draft pool enabled — partial pools are personal HOF only
@@ -1364,6 +1366,13 @@ export function validateDailyRankingEligibility(
   code?: DailyRankingIneligibleCode;
   reason?: string;
 } {
+  if (entry.storyScenarioId) {
+    return {
+      eligible: false,
+      code: 'story_mode',
+      reason: '스토리 모드 기록은 일일 글로벌 랭킹에 제출되지 않습니다.',
+    };
+  }
   if (!isValidIsoTimestamp(entry.completedAt)) {
     return {
       eligible: false,

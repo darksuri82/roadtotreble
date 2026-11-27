@@ -228,20 +228,22 @@ export function SquadManagerModal({
             <span className="text-[11px] font-semibold text-slate-400">
               포메이션
             </span>
-            <button
-              id="quick-best-xi-btn"
-              type="button"
-              disabled={editLocked}
-              onClick={() => {
-                setSelectedSlot(null);
-                autoOptimizeLineup();
-              }}
-              title="16명 전체 선수 대상으로 실효 OVR과 케미스트리를 극대화하는 베스트 11을 자동 배치합니다"
-              className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/45 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            >
-              <Wand2 className="w-3 h-3" />
-              빠른 선발
-            </button>
+            {!state.storyMode && (
+              <button
+                id="quick-best-xi-btn"
+                type="button"
+                disabled={editLocked}
+                onClick={() => {
+                  setSelectedSlot(null);
+                  autoOptimizeLineup();
+                }}
+                title="16명 전체 선수 대상으로 실효 OVR과 케미스트리를 극대화하는 베스트 11을 자동 배치합니다"
+                className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/45 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              >
+                <Wand2 className="w-3 h-3" />
+                빠른 선발
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-1">
             {FORMATION_LIST.map((f) => (
