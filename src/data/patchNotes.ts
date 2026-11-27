@@ -12,15 +12,34 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v10.1.5';
+export const CURRENT_APP_VERSION = 'v10.1.6';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v10.1.6',
+    codename:
+      '스토리 모드 시나리오별 익명 도전 · 완주 · ★★★ 달성률 집계 (Supabase RPC & 스토리 허브 연동)',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '스토리 모드 7종 시나리오의 전 세계 누적 도전 수, 완주 수, ★★★ 달성률을 익명으로 집계하는 경량 Supabase 통계 RPC(`record_story_mode_event`)와 스토리 허브 실시간 표기 기능을 추가했습니다. 기존 일일·주간 글로벌 랭킹(`global_hof_rankings`)과는 100% 분리 유지됩니다.',
+    sections: [
+      {
+        category: '1. 스토리 모드 익명 도전 · 클리어 통계 (`storyStatsService.ts`, `supabase/schema.sql`, `GameContext.tsx`, `StoryModeHub.tsx`)',
+        items: [
+          '**경량 익명 카운터 테이블 & 중복 방지 RPC (`supabase/schema.sql`)**: 개인정보 없이 시나리오별 `started_count` · `completed_count` · `cleared_any_count` · `star3_count`만 누적하는 `story_mode_stats`와 `run_id` 기준 중복 집계를 원천 차단하는 `story_mode_run_events` 및 `SECURITY DEFINER` RPC(`record_story_mode_event`)를 추가했습니다.',
+          '**자동 시작/완주 기록 & 오프라인 안전 폴백 (`src/services/storyStatsService.ts`, `src/store/GameContext.tsx`)**: 스토리 모드 시즌 개막 시 `start`, 시즌(및 UCL) 최종 종료 시 `complete`(획득 별 개수 포함) 이벤트를 1회만 익명 기록하며, 클라이언트 `localStorage` 중복 전송 차단과 오프라인 무중단 폴백을 적용했습니다.',
+          '**스토리 허브 실시간 집계 표기 (`src/components/story/StoryModeHub.tsx`)**: 스토리 모드 허브 헤더에 전체 누적 도전 수·★★★ 총합 배지를, 각 시나리오 카드 하단에 `도전 N · 완주 M · ★★★ X%` 컴팩트 통계를 표시합니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v10.1.5',
     codename:
       '글로벌 일일 랭킹 TOP 20 확대 · 주간 랭킹(월~일) TOP 10 병행 운영',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'FEATURE',
     summary:
       '일일 랭킹(오늘) 등재 정원을 기존 TOP 10에서 TOP 20으로 확대해 더 많은 유저가 실시간 순위 경쟁과 드림 매치 도전에 참여할 수 있도록 개편했습니다. 주간 랭킹(월~일)은 기존대로 TOP 10 정예 순위로 일주일 내내 유지됩니다.',
     sections: [

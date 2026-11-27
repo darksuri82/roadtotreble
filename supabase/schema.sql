@@ -706,6 +706,145 @@ grant execute on function public.submit_global_hof_ranking(jsonb) to anon, authe
 -- pruning until the Monday 00:00 KST weekly reset.
 -- =============================================================================
 
+-- =============================================================================
+-- v10.1.6 Story Mode Anonymous Challenge & Clear Telemetry (Idempotent)
+-- Copy-paste this section ONCE into Supabase Dashboard -> SQL Editor.
+-- Zero PII: tracks only anonymous per-scenario starts, completions, 1★+ clears,
+-- and 3★ all-clears, completely isolated from `global_hof_rankings`.
+-- =============================================================================
+
+create table if not exists public.story_mode_stats (
+  scenario_id text primary key,
+  started_count integer not null default 0 check (started_count >= 0),
+  completed_count integer not null default 0 check (completed_count >= 0),
+  cleared_any_count integer not null default 0 check (cleared_any_count >= 0),
+  star3_count integer not null default 0 check (star3_count >= 0),
+  last_played_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.story_mode_run_events (
+  run_id text not null,
+  event_type text not null check (event_type in ('start', 'complete')),
+  scenario_id text not null,
+  stars_earned smallint not null default 0 check (stars_earned between 0 and 3),
+  created_at timestamptz not null default now(),
+  primary key (run_id, event_type)
+);
+
+create index if not exists idx_story_mode_run_events_created_at
+  on public.story_mode_run_events (created_at desc);
+
+alter table public.story_mode_stats enable row level security;
+alter table public.story_mode_run_events enable row level security;
+
+-- Public read-only access to aggregate counts; all writes go strictly through RPC
+drop policy if exists "Public can read story_mode_stats" on public.story_mode_stats;
+create policy "Public can read story_mode_stats"
+  on public.story_mode_stats for select
+  using (true);
+
+-- Pre-seed all 7 official Story Mode scenarios so Table Editor displays every row immediately
+insert into public.story_mode_stats (scenario_id)
+values
+  ('1516_leicester'),
+  ('0708_manutd'),
+  ('1819_tottenham'),
+  ('0304_arsenal'),
+  ('1314_atletico'),
+  ('2324_leverkusen'),
+  ('0910_inter')
+on conflict (scenario_id) do nothing;
+
+-- Atomic, deduplicated counter increment RPC
+create or replace function public.record_story_mode_event(
+  p_scenario_id text,
+  p_event_type text,
+  p_run_id text,
+  p_stars integer default 0
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_clean_run_id text;
+  v_stars smallint;
+  v_inserted integer := 0;
+begin
+  if p_scenario_id not in (
+    '1516_leicester',
+    '0708_manutd',
+    '1819_tottenham',
+    '0304_arsenal',
+    '1314_atletico',
+    '2324_leverkusen',
+    '0910_inter'
+  ) then
+    raise exception 'Invalid story scenario_id';
+  end if;
+
+  if p_event_type not in ('start', 'complete') then
+    raise exception 'Invalid story event_type';
+  end if;
+
+  v_clean_run_id := left(trim(coalesce(p_run_id, '')), 120);
+  if v_clean_run_id = '' then
+    raise exception 'Missing run_id';
+  end if;
+
+  v_stars := greatest(0, least(3, coalesce(p_stars, 0)))::smallint;
+
+  insert into public.story_mode_run_events (run_id, event_type, scenario_id, stars_earned)
+  values (v_clean_run_id, p_event_type, p_scenario_id, v_stars)
+  on conflict (run_id, event_type) do nothing;
+
+  get diagnostics v_inserted = row_count;
+  if v_inserted = 0 then
+    return jsonb_build_object(
+      'recorded', false,
+      'duplicate', true,
+      'scenario_id', p_scenario_id
+    );
+  end if;
+
+  insert into public.story_mode_stats (
+    scenario_id,
+    started_count,
+    completed_count,
+    cleared_any_count,
+    star3_count,
+    last_played_at,
+    updated_at
+  ) values (
+    p_scenario_id,
+    case when p_event_type = 'start' then 1 else 0 end,
+    case when p_event_type = 'complete' then 1 else 0 end,
+    case when p_event_type = 'complete' and v_stars >= 1 then 1 else 0 end,
+    case when p_event_type = 'complete' and v_stars = 3 then 1 else 0 end,
+    now(),
+    now()
+  )
+  on conflict (scenario_id) do update
+  set
+    started_count = public.story_mode_stats.started_count + case when p_event_type = 'start' then 1 else 0 end,
+    completed_count = public.story_mode_stats.completed_count + case when p_event_type = 'complete' then 1 else 0 end,
+    cleared_any_count = public.story_mode_stats.cleared_any_count + case when p_event_type = 'complete' and v_stars >= 1 then 1 else 0 end,
+    star3_count = public.story_mode_stats.star3_count + case when p_event_type = 'complete' and v_stars = 3 then 1 else 0 end,
+    last_played_at = now(),
+    updated_at = now();
+
+  return jsonb_build_object(
+    'recorded', true,
+    'duplicate', false,
+    'scenario_id', p_scenario_id
+  );
+end;
+$$;
+
+grant execute on function public.record_story_mode_event(text, text, text, integer) to anon, authenticated;
+
 
 
 

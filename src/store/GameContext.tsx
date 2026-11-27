@@ -175,6 +175,7 @@ import {
   type HydratedStoryScenario,
 } from '../engine/storyModeEngine';
 import { getStoryScenarioMeta } from '../data/story/storyRegistry';
+import { reportStoryModeEvent } from '../services/storyStatsService';
 import type {
   StoryChecklistSummary,
   StoryCodexStorage,
@@ -7550,7 +7551,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         totalRounds <= 34 ? [9, 17, 25] : [10, 19, 28];
 
       const season: SeasonState = {
-        runId: `story_${meta.id}_${Date.now()}`,
+        runId: `story_${meta.id}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         leagueId: meta.leagueId,
         replacedClubName: meta.clubName,
         defaultTactic: state.defaultTactic,
@@ -8973,6 +8974,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
   }, [state.storyMode, state.season, state.starters, state.bench]);
 
+  // Report anonymous Story Mode start count once per unique runId (completely isolated from global_hof_rankings)
+  useEffect(() => {
+    if (
+      !state.storyMode ||
+      !state.season?.runId ||
+      state.phase !== 'season'
+    ) {
+      return;
+    }
+    void reportStoryModeEvent({
+      scenarioId: state.storyMode.scenarioId,
+      eventType: 'start',
+      runId: state.season.runId,
+    });
+  }, [state.phase, state.storyMode, state.season?.runId]);
+
   // Automatically record Story Mode completion & stars into isolated Story Codex (NEVER global rankings)
   useEffect(() => {
     if (
@@ -8997,6 +9014,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     ];
     if (wonCup) parts.push(`${meta.cupLabel} 우승`);
     if (wonUcl && meta.uclLabel) parts.push(`${meta.uclLabel} 우승`);
+    const scenarioIdForTelemetry = state.storyMode.scenarioId;
+    const runIdForTelemetry = state.season.runId;
+    const starsEarnedForTelemetry = storyChecklist.starsEarned;
 
     const timer = window.setTimeout(() => {
       const { nextCodex, isNewBest } = recordStoryCompletionInCodex({
@@ -9007,6 +9027,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setStoryCodex(nextCodex);
       setStoryLastNewBest(isNewBest);
       dispatch({ type: 'MARK_STORY_CODEX_RECORDED' });
+      if (runIdForTelemetry) {
+        void reportStoryModeEvent({
+          scenarioId: scenarioIdForTelemetry,
+          eventType: 'complete',
+          runId: runIdForTelemetry,
+          starsEarned: starsEarnedForTelemetry,
+        });
+      }
     }, 0);
     return () => window.clearTimeout(timer);
   }, [state.storyMode, state.season, state.phase, storyChecklist]);

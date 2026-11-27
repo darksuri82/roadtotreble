@@ -5,6 +5,15 @@
 
 ---
 
+## v10.1.6 — 스토리 모드 시나리오별 익명 도전 · 완주 · ★★★ 달성률 집계 (Supabase RPC & 스토리 허브 연동)
+
+- **스토리 모드 익명 통계 RPC & 허브 실시간 집계 (`supabase/schema.sql`, `src/services/storyStatsService.ts`, `src/store/GameContext.tsx`, `src/components/story/StoryModeHub.tsx`, `src/data/patchNotes.ts`, `src/components/common/WhatsNewModal.tsx`, `src/__tests__/v1016StoryTelemetryStats.test.ts`)**:
+  - `story_mode_stats`(7종 시나리오별 `started_count` · `completed_count` · `cleared_any_count` · `star3_count`), `story_mode_run_events`(`(run_id, event_type)` 중복 방지), 공개 읽기 전용 RLS 및 `SECURITY DEFINER` RPC(`record_story_mode_event`)를 `supabase/schema.sql`에 추가했습니다(개인정보 무수집 · `global_hof_rankings` 100% 격리).
+  - `GameContext.tsx`에서 스토리 모드 시즌 개막 시 `start`, 시즌·UCL 최종 종료 시 `complete`(획득 별 수 포함) 이벤트를 중복 방지 키와 함께 익명 전송하고, `runId`에 무작위 접미사를 붙여 동시 시작 충돌을 방지했습니다.
+  - `StoryModeHub.tsx` 헤더에 전체 누적 도전·★★★ 총합 배지를, 각 시나리오 카드 하단에 `도전 N · 완주 M · ★★★ X%` 통계를 표시합니다(Supabase 미연결/미적용 환경 안전 폴백).
+
+---
+
 ## v10.1.5 — 글로벌 일일 랭킹 TOP 20 확대 · 주간 랭킹(월~일) TOP 10 병행 운영
 
 - **일일 랭킹(오늘) TOP 20 확대 (`src/services/globalRankingService.ts`, `supabase/schema.sql`, `GlobalTop15CelebrationModal.tsx`, `SeasonSummary.tsx`, `LegacyHubModal.tsx`, `TitleScreen.tsx`, `HeaderNav.tsx`, `SystemGuideModal.tsx`, `SoloVisualTutorialModal.tsx`, `WhatsNewModal.tsx`, `v812GlobalTop15Ranking.test.ts`, `v95FixesDailyRankStoryWhatsNew.test.ts`, `v1014DailyWeeklyRanking.test.ts`)**:

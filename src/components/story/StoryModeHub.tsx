@@ -12,16 +12,23 @@ import {
   Star,
   Trash2,
   Trophy,
+  Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   loadStoryScenarioBundle,
   STORY_SCENARIOS,
 } from '../../data/story/storyRegistry';
 import { getTotalStoryStars } from '../../engine/storyModeEngine';
+import {
+  computeStoryCompletionRates,
+  fetchStoryGlobalStats,
+  type StoryScenarioGlobalStats,
+} from '../../services/storyStatsService';
 import { useGame } from '../../store/GameContext';
 import type {
   StoryScenarioDataBundle,
+  StoryScenarioId,
   StoryScenarioMeta,
 } from '../../types/storyMode';
 import { JerseySvg } from '../common/JerseySvg';
@@ -44,6 +51,26 @@ export function StoryModeHub() {
     meta: StoryScenarioMeta;
     bundle: StoryScenarioDataBundle;
   } | null>(null);
+  const [globalStats, setGlobalStats] = useState<{
+    byScenario: Partial<Record<StoryScenarioId, StoryScenarioGlobalStats>>;
+    totalStarted: number;
+    totalStar3: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchStoryGlobalStats().then((res) => {
+      if (cancelled || !res.ok) return;
+      setGlobalStats({
+        byScenario: res.statsByScenario,
+        totalStarted: res.totalStarted,
+        totalStar3: res.totalStar3,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const totalStars = getTotalStoryStars(storyCodex);
   const maxStars = STORY_SCENARIOS.length * 3;
@@ -98,14 +125,35 @@ export function StoryModeHub() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3.5 py-2.5 shrink-0">
-              <Star className="h-5 w-5 fill-amber-400 text-amber-300 shrink-0" />
-              <div className="leading-tight">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-amber-300/90">
-                  수집한 별
+            <div className="flex items-center gap-2 shrink-0">
+              {globalStats && globalStats.totalStarted > 0 && (
+                <div className="flex items-center gap-2 rounded-xl border border-slate-700/80 bg-[#0a1019] px-3 py-2.5 shrink-0">
+                  <Users className="h-4 w-4 text-sky-400 shrink-0" />
+                  <div className="leading-tight">
+                    <div className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
+                      누적 도전
+                    </div>
+                    <div className="font-mono text-sm font-extrabold text-slate-100 tabular-nums whitespace-nowrap">
+                      {globalStats.totalStarted.toLocaleString()}회
+                      {globalStats.totalStar3 > 0 && (
+                        <span className="ml-1.5 text-[10.5px] font-bold text-amber-300">
+                          ★★★ {globalStats.totalStar3.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="font-display text-lg font-extrabold text-white tabular-nums">
-                  {totalStars} <span className="text-xs text-slate-400">/ {maxStars}</span>
+              )}
+
+              <div className="flex items-center gap-2.5 rounded-xl border border-amber-500/35 bg-amber-500/10 px-3.5 py-2.5 shrink-0">
+                <Star className="h-5 w-5 fill-amber-400 text-amber-300 shrink-0" />
+                <div className="leading-tight">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-amber-300/90">
+                    수집한 별
+                  </div>
+                  <div className="font-display text-lg font-extrabold text-white tabular-nums">
+                    {totalStars} <span className="text-xs text-slate-400">/ {maxStars}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -281,15 +329,41 @@ export function StoryModeHub() {
 
                 {/* Card Footer CTA */}
                 <div className="mt-3.5 flex items-center justify-between gap-2 border-t border-slate-800/80 pt-3">
-                  <div className="min-w-0 text-[10.5px] text-slate-400 truncate">
-                    {rec?.bestSummaryText ? (
-                      <span className="inline-flex items-center gap-1 text-amber-200/90">
-                        <Trophy className="h-3 w-3 text-amber-400 shrink-0" />
-                        최고: {rec.bestSummaryText}
-                      </span>
-                    ) : (
-                      <span>미도전 시나리오</span>
-                    )}
+                  <div className="min-w-0 space-y-0.5 text-[10.5px] text-slate-400">
+                    <div className="truncate">
+                      {rec?.bestSummaryText ? (
+                        <span className="inline-flex items-center gap-1 text-amber-200/90">
+                          <Trophy className="h-3 w-3 text-amber-400 shrink-0" />
+                          최고: {rec.bestSummaryText}
+                        </span>
+                      ) : (
+                        <span>미도전 시나리오</span>
+                      )}
+                    </div>
+                    {(() => {
+                      const rates = computeStoryCompletionRates(
+                        globalStats?.byScenario[meta.id],
+                      );
+                      if (rates.startedCount <= 0) return null;
+                      return (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-mono text-[10px] text-slate-400 tabular-nums">
+                          <span className="inline-flex items-center gap-1 text-sky-300/90">
+                            <Users className="h-2.5 w-2.5 shrink-0" />
+                            도전 {rates.startedCount.toLocaleString()}
+                          </span>
+                          {rates.completedCount > 0 && (
+                            <>
+                              <span>완주 {rates.completedCount.toLocaleString()}</span>
+                              {rates.star3RatePct !== null && (
+                                <span className="text-amber-300/90">
+                                  ★★★ {rates.star3RatePct}%
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {meta.isPlayable ? (

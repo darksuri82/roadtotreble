@@ -185,8 +185,8 @@ describe('v10.1.4 Daily + Weekly (Mon~Sun) TOP 10 Ranking System', () => {
   });
 
   it('4) keeps v10.1.5 release metadata synchronized across patchNotes and WhatsNewModal', () => {
-    expect(CURRENT_APP_VERSION).toBe('v10.1.5');
-    expect(PATCH_NOTES[0].version).toBe('v10.1.5');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v10.1.5');
+    expect(PATCH_NOTES[0].version).toBe(CURRENT_APP_VERSION);
+    expect(PATCH_NOTES.some((p) => p.version === 'v10.1.5')).toBe(true);
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain(CURRENT_APP_VERSION);
   });
 });

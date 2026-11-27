@@ -42,7 +42,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.5';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.6';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -238,7 +238,7 @@ export function WhatsNewModal({
                     「스토리 모드」 7종 · 그 시절 5대 리그 룰렛 통합 개편!
                   </span>
                   <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
-                    v10.1.5 UPDATE
+                    v10.1.6 UPDATE
                   </span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-300">
@@ -249,11 +249,15 @@ export function WhatsNewModal({
                   <strong className="text-white">
                     09-10 인테르 밀란
                   </strong>
-                  을 포함한 7종 스토리 모드와 결산·드림 매치 OVR 1:1 정합화·MVP 각성 보정에 이어,{' '}
+                  을 포함한 7종 스토리 모드와{' '}
+                  <strong className="text-sky-200">
+                    시나리오별 익명 도전 · 완주 · ★★★ 달성률 집계
+                  </strong>
+                  , 그리고{' '}
                   <strong className="text-amber-200">
                     KST 일일(오늘 TOP 20) + 주간(월~일 TOP 10) 통합 랭킹 제도
                   </strong>
-                  를 새롭게 도입했습니다.
+                  를 함께 제공합니다.
                 </p>
                 <div className="overflow-hidden rounded-xl border border-slate-800/90 bg-[#070b12]">
                   <StoryPixelSceneSvg
