@@ -80,6 +80,22 @@ function pickLegendsForSlot(
   return picked;
 }
 
+/**
+ * Big-club threshold (`(att + mid + def) / 3 >= 81`, 12 top European clubs):
+ * - Big clubs extract candidates uniformly at random within each position-priority bucket
+ *   (preventing guaranteed 88~92 superstar exposure every time a giant rolls) while still
+ *   displaying the 3 picked cards sorted by OVR descending for clean visual comparison.
+ * - Mid/lower-table clubs (`< 81`) preserve top-OVR-first extraction so their standout aces
+ *   and awakening gems stay accessible without low-70s draft fatigue.
+ */
+export const BIG_CLUB_RANDOM_DRAFT_MIN_AVG = 81;
+
+export function isBigClubForRandomDraft(
+  club: Pick<Club, 'att' | 'mid' | 'def'>,
+): boolean {
+  return (club.att + club.mid + club.def) / 3 >= BIG_CLUB_RANDOM_DRAFT_MIN_AVG;
+}
+
 function compareByOvrDesc(a: Player, b: Player): number {
   if (b.ovr !== a.ovr) return b.ovr - a.ovr;
   return b.att + b.mid + b.def - (a.att + a.mid + a.def);
@@ -109,14 +125,17 @@ export function pickClubCandidatesForSlot(params: {
   const clubUnused = activePool.filter(
     (p) => p.club === club.name && !excludeIds.has(p.id),
   );
+  const useUniformRandom = isBigClubForRandomDraft(club);
 
   const picked: Player[] = [];
   const usedLocalIds = new Set<string>();
   const usedLocalNames = new Set<string>();
 
   const addFromBucket = (bucket: Player[]) => {
-    const sorted = [...bucket].sort(compareByOvrDesc);
-    for (const p of sorted) {
+    const ordered = useUniformRandom
+      ? shuffleWithRng(bucket, rng)
+      : [...bucket].sort(compareByOvrDesc);
+    for (const p of ordered) {
       if (picked.length >= count) break;
       if (usedLocalIds.has(p.id)) continue;
       usedLocalIds.add(p.id);
@@ -125,10 +144,10 @@ export function pickClubCandidatesForSlot(params: {
     }
   };
 
-  // Priority 1: Exact mainPositions match — strictly Top OVR first
+  // Priority 1: Exact mainPositions match (uniform random for big clubs, Top OVR first for mid/lower clubs)
   addFromBucket(clubUnused.filter((p) => p.mainPositions.includes(targetSub)));
 
-  // Priority 2: Secondary or compatible pair match — strictly Top OVR first
+  // Priority 2: Secondary or compatible pair match
   addFromBucket(
     clubUnused.filter(
       (p) =>
@@ -137,7 +156,7 @@ export function pickClubCandidatesForSlot(params: {
     ),
   );
 
-  // Priority 3: Same broad position line — strictly Top OVR first
+  // Priority 3: Same broad position line
   addFromBucket(clubUnused.filter((p) => p.position === targetBroad));
 
   // Fill remaining slots up to `count` (always guaranteeing 2..3 options per club)

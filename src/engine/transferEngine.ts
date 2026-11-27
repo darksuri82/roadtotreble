@@ -205,12 +205,12 @@ export function computePlayerMarketValueM(
  * - Key starter (79-83): ~50-66%
  * - Worldclass (84-87): ~30-45%
  * - Superstar (88+ / superstar): ~23-29% (minimum floor 20%)
- * - Classic FA: ~28-34% (minimum floor 22%)
+ * - Classic FA: ~21-26% (minimum floor 15%, cap 30% / 34% with champion bonus)
  */
 function computeBaseSigningChance(player: Player): number {
   const tier = getCardTier(player);
   if (tier === 'legend') {
-    return clamp(Math.round(34 - Math.max(0, player.ovr - 90) * 0.8), 28, 34);
+    return clamp(Math.round(26 - Math.max(0, player.ovr - 90) * 0.8), 21, 26);
   }
   if (tier === 'superstar' || player.ovr >= 88) {
     return clamp(Math.round(29 - Math.max(0, player.ovr - 88) * 1.4), 23, 29);
@@ -421,14 +421,14 @@ export function evaluateTransferTarget(
   const maxCap =
     tier === 'legend' || isLegendFa
       ? championBonusActive
-        ? 46
-        : 42
+        ? 34
+        : 30
       : tier === 'superstar' || player.ovr >= 88
         ? championBonusActive
           ? 41
           : 36
         : 95;
-  const minFloor = tier === 'legend' || isLegendFa ? 22 : 20;
+  const minFloor = tier === 'legend' || isLegendFa ? 15 : 20;
 
   const finalChance = clamp(
     Math.round(

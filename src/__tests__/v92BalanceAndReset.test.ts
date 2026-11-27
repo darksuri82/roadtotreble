@@ -112,7 +112,7 @@ describe('v9.2 Balance Calibration, Mobile Scroll & Pre-v9.0 Reset', () => {
     const ev1 = evaluateSquadBudget(oneLegendSquad);
     expect(ev1.capM).toBe(DRAFT_BUDGET_CAP_M);
     expect(ev1.ffpTier).toBe(0);
-    expect(ev1.remainingM).toBeGreaterThan(50);
+    expect(ev1.remainingM).toBeGreaterThan(40);
 
     // Stacking 3 Legends + same quality core pushes clearly into FFP pressure
     const threeLegendSquad: Player[] = [

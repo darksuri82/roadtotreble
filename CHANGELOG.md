@@ -5,6 +5,20 @@
 
 ---
 
+## v9.10.0 — 난이도 상승! 드래프트 예산 €900M · 빅클럽 12팀 균등 랜덤 추출 & 시대별 클래식 FA 성사율 하향 밸런스 패치
+
+- **드래프트 예산 소프트 캡 축소 (`src/engine/budgetEngine.ts`, `src/components/guide/SystemGuideModal.tsx`)**:
+  - `DRAFT_BUDGET_CAP_M`을 `€950M` → `€900M`으로 하향해 개막 초반 무페널티 슈퍼팀 구성을 억제하고 FFP 1단계(`€901~1,035M`)·2단계(`€1,036M+`) 경계 압박을 높였습니다(절약한 잔여 예산은 상한 없이 100% 시즌 이적 현금으로 이월 유지).
+- **드래프트 룰렛 빅클럽 12팀 균등 랜덤 추출 & 중하위권 OVR 상위순 유지 (`src/engine/draftEngine.ts`, `src/engine/mpLeagueDraft.ts`)**:
+  - `BIG_CLUB_RANDOM_DRAFT_MIN_AVG = 81` · `isBigClubForRandomDraft(club)`을 도입해 유럽 빅클럽 12팀(구단 평균 `81+`: 바르사·PSG·레알·바이에른·아스널·맨시티·리버풀·인테르·첼시·아틀레티코·맨유·토트넘)은 각 포지션 우선순위 버킷 내에서 기존 OVR 상위 3명 확정 노출 대신 **완전 균등 랜덤 추출**을 적용했습니다(싱글·멀티리그 공용, 화면에 표시되는 3장 카드는 비교 편의를 위해 OVR 내림차순 정렬 유지).
+  - 중하위권 84개 구단(평균 `< 81`)은 기존 OVR 상위순 추출을 유지해 70초반 잡카드 도배 피로도를 방지하고 중위권 에이스·각성 원석 발굴의 재미를 보존했습니다.
+- **이적시장 시대별 클래식 FA 영입 확률 하향 (`src/engine/transferEngine.ts`, `src/engine/budgetEngine.ts`)**:
+  - 일반 현역 트레이드·영입 공식과 경기 엔진(`matchEngine.ts` · `chemistryEngine.ts`)의 케미·시너지·전술 비중은 현행 그대로 유지하면서, 시대별 클래식 FA 기본 성사율만 `28~34%` → `21~26%`, 최종 확률 범위를 `22~42%(우승 46%)` → `15~30%(우승 34%)`, 현금 가산 보너스를 `€10M당 +1.5%p(최대 +15%p)` → `€10M당 +1.2%p(최대 +12%p)`로 하향했습니다.
+- **첫 화면 업데이트 팝업 · 패치노트 · 회귀 테스트 동기화 (`src/components/common/WhatsNewModal.tsx`, `src/data/patchNotes.ts`, `src/__tests__/v910BalanceTune.test.ts`)**:
+  - `CURRENT_APP_VERSION = 'v9.10.0'` 갱신 및 첫 화면 `WhatsNewModal` 최우선 탭에 **「난이도 상승!」** 밸런스 패치 안내를 추가했습니다.
+
+---
+
 ## v9.9.2 — 일일 랭킹 15,000점 초과 기록 제출 거부(`Invalid season_score`) & 결산 `0/10팀` 오표시 핫픽스
 
 - **일일 랭킹 고득점 제출 차단 및 결산 배너 오표시 수정 (`supabase/schema.sql`, `src/components/league/SeasonSummary.tsx`, `src/data/patchNotes.ts`, `src/components/common/WhatsNewModal.tsx`)**:

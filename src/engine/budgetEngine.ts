@@ -12,7 +12,7 @@ import type { Player } from '../types/player';
  *   active OVR 90 `€122M` and OVR 91 `€138M` — Superstar lower tier).
  *   Drafting 1 Classic fits comfortably under cap; stacking 2~3+ Classics creates real FFP pressure.
  */
-export const DRAFT_BUDGET_CAP_M = 950;
+export const DRAFT_BUDGET_CAP_M = 900;
 export const LEGEND_FLAT_DRAFT_COST_M = 130;
 export const FFP_TIER1_MAX_EXCESS_RATIO = 0.15; // +1% .. +15%
 export const FFP_TIER1_MAX_OVERRUN_PCT = Math.round(
@@ -44,8 +44,8 @@ export const FFP_UCL_SPECIAL_MAX_ATTEMPTS = 3;
 export const CASH_TO_TP_RATE = 1.25; // €1M -> +1.25 TP up to €100M
 export const CASH_TO_TP_SOFT_CAP_M = 100;
 export const CASH_TO_TP_OVER_CAP_RATE = 0.9; // €1M -> +0.90 TP above €100M
-export const CASH_LEGEND_CHANCE_PER_10M = 1.5; // +1.5%p per €10M
-export const CASH_LEGEND_CHANCE_MAX_BONUS = 15; // max +15%p
+export const CASH_LEGEND_CHANCE_PER_10M = 1.2; // +1.2%p per €10M
+export const CASH_LEGEND_CHANCE_MAX_BONUS = 12; // max +12%p
 export const CASH_STAR_GUARD_RELIEF_THRESHOLD_M = 80; // relaxes OVR-7 guard by 1 when adding €80M+
 
 export interface SquadBudgetEvaluation {

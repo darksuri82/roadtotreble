@@ -263,14 +263,14 @@ describe('v9.9.0 Title Pixel Redesign, First-Screen Profile Customizer & Streaml
   });
 
   it('5) keeps v9.9.2 patch notes, WhatsNewModal version keys, 30000 RPC score cap, and SeasonSummary failed-submit guard synchronized', () => {
-    expect(CURRENT_APP_VERSION).toBe('v9.9.2');
-    expect(PATCH_NOTES[0].version).toBe('v9.9.2');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.9.2');
+    expect(PATCH_NOTES.some((p) => p.version === 'v9.9.2')).toBe(true);
+    expect(PATCH_NOTES[0].version).toBe(CURRENT_APP_VERSION);
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain(CURRENT_APP_VERSION);
     expect(schemaSql).toContain('if v_score < 0 or v_score > 30000 then');
     expect(schemaSql).not.toContain('v_score > 15000');
     expect(seasonSummarySrc).toContain('(submitOk ? runSubmit?.totalCount : null)');
     withMockLocalStorage(() => {
-      expect(isWhatsNewDismissed('v9.9.2')).toBe(false);
+      expect(isWhatsNewDismissed(CURRENT_APP_VERSION)).toBe(false);
     });
   });
 });

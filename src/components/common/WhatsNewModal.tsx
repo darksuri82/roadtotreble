@@ -20,6 +20,12 @@ import { FORMATIONS } from '../../data/formations';
 import legendPlayersRaw from '../../data/legendPlayers.json';
 import { CURRENT_APP_VERSION } from '../../data/patchNotes';
 import { getPlayerAttributes } from '../../engine/attributeEngine';
+import {
+  CASH_LEGEND_CHANCE_MAX_BONUS,
+  CASH_LEGEND_CHANCE_PER_10M,
+  DRAFT_BUDGET_CAP_M,
+} from '../../engine/budgetEngine';
+import { BIG_CLUB_RANDOM_DRAFT_MIN_AVG } from '../../engine/draftEngine';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import {
   GLOBAL_DAILY_TOP_LIMIT,
@@ -33,7 +39,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.9.2';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.10.0';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -68,7 +74,7 @@ export function clearWhatsNewDismissal(): void {
   }
 }
 
-type WhatsNewTabId = 'v99' | 'v98' | 'v97' | 'story' | 'ranking' | 'classics';
+type WhatsNewTabId = 'v910' | 'v99' | 'v98' | 'v97' | 'story' | 'ranking' | 'classics';
 
 const TABS: Array<{
   id: WhatsNewTabId;
@@ -76,7 +82,8 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
-  { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9.2 NEW', icon: SlidersHorizontal },
+  { id: 'v910', label: '난이도 상승!', badge: '9.10 NEW', icon: Flame },
+  { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9', icon: SlidersHorizontal },
   { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8', icon: Users },
   { id: 'v97', label: '이적 프리뷰 · 각성', badge: '9.7', icon: ArrowLeftRight },
   { id: 'story', label: '팀 소개 · 위기 서사', badge: '9.7', icon: BookOpen },
@@ -96,7 +103,7 @@ export function WhatsNewModal({
   onOpenPatchNotes,
 }: WhatsNewModalProps) {
   useBodyScrollLock(true);
-  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v99');
+  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v910');
   const [dontShowAgain, setDontShowAgain] = useState<boolean>(false);
 
   const previewPlayers = useMemo(() => {
@@ -209,6 +216,90 @@ export function WhatsNewModal({
 
         {/* Single Scrollable Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y p-4 sm:p-5 space-y-4 break-keep">
+          {activeTab === 'v910' && (
+            <div className="space-y-3.5">
+              {/* Hero Difficulty Banner */}
+              <div className="rounded-2xl border border-rose-500/35 bg-gradient-to-br from-rose-950/30 via-[#0d1420] to-amber-950/20 p-4 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-sm sm:text-base font-black text-rose-200">
+                    <Flame className="h-4.5 w-4.5 text-rose-400 shrink-0" />
+                    난이도 상승! 전략 · 시너지 · 각성 중심 밸런스 개편
+                  </span>
+                  <span className="rounded-md border border-rose-400/40 bg-rose-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-rose-200 whitespace-nowrap">
+                    v9.10.0 BALANCE
+                  </span>
+                </div>
+                <p className="text-[11.5px] leading-relaxed text-slate-300">
+                  단순 오버롤 찍누 대신{' '}
+                  <strong className="text-white">
+                    드래프트 · 4색 케미 · 감독 궁합 · 전술 변주 · 포텐 각성
+                  </strong>
+                  이 모두 맞물렸을 때 역사 최강 보스(14-15 바르사 등)에 도전할 수 있도록 출발선과 클래식 유입 속도를 다듬었습니다.
+                </p>
+              </div>
+
+              {/* 3 Key Balance Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-[11px] tabular-nums">
+                <div className="rounded-xl border border-emerald-500/30 bg-[#090f19] p-3.5 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-extrabold text-emerald-200">
+                      드래프트 예산 축소
+                    </span>
+                    <span className="rounded bg-emerald-500/15 border border-emerald-400/35 px-1.5 py-0.5 font-mono text-[9.5px] font-black text-emerald-300">
+                      €950M → €{DRAFT_BUDGET_CAP_M}M
+                    </span>
+                  </div>
+                  <p className="leading-relaxed text-slate-400">
+                    초반 무페널티 슈퍼팀 구성을 억제하고 FFP 경계 압박을 높였습니다. 아낀 잔여 예산은{' '}
+                    <strong className="text-slate-200">상한 없이 100% 이적 현금</strong>으로 이월됩니다.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-sky-500/30 bg-[#090f19] p-3.5 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-extrabold text-sky-200">
+                      빅클럽 균등 랜덤 룰렛
+                    </span>
+                    <span className="rounded bg-sky-500/15 border border-sky-400/35 px-1.5 py-0.5 font-mono text-[9.5px] font-black text-sky-300">
+                      평균 {BIG_CLUB_RANDOM_DRAFT_MIN_AVG}+ (12팀)
+                    </span>
+                  </div>
+                  <p className="leading-relaxed text-slate-400">
+                    유럽 빅클럽 12팀은 포지션 버킷 내{' '}
+                    <strong className="text-slate-200">균등 랜덤 추출</strong>(표시 3장은 OVR순 정렬)로 개편하고, 중하위권 84팀은 OVR 상위순을 유지합니다(싱글·멀티 공용).
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-amber-500/30 bg-[#090f19] p-3.5 space-y-1.5">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-extrabold text-amber-200">
+                      클래식 FA 확률 하향
+                    </span>
+                    <span className="rounded bg-amber-500/15 border border-amber-400/35 px-1.5 py-0.5 font-mono text-[9.5px] font-black text-amber-300">
+                      15~30% (우승 34%)
+                    </span>
+                  </div>
+                  <p className="leading-relaxed text-slate-400">
+                    일반 현역 트레이드는 유지하고, 시대별 클래식 FA 성사율만 30%대 → 20%대 및 현금 가산{' '}
+                    <strong className="text-slate-200">
+                      €10M당 +{CASH_LEGEND_CHANCE_PER_10M}%p(최대 +{CASH_LEGEND_CHANCE_MAX_BONUS}%p)
+                    </strong>
+                    로 낮췄습니다.
+                  </p>
+                </div>
+              </div>
+
+              {/* Engine Preservation Note */}
+              <div className="rounded-xl border border-slate-800 bg-[#0b111c] px-3.5 py-2.5 text-[11px] text-slate-300 flex items-center gap-2">
+                <Shield className="h-4 w-4 text-emerald-400 shrink-0" />
+                <span>
+                  <strong className="text-white">경기 엔진 케미·시너지·전술 비중 현행 유지:</strong>{' '}
+                  낮아진 출발선 위에서 시너지·감독 궁합·수석 코치·포텐 각성으로 만드는 역전의 가치가 더 선명해집니다.
+                </span>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'v99' && (
             <div className="space-y-3.5">
               {/* 1. Upgraded Retro Pixel Hero Art Preview */}

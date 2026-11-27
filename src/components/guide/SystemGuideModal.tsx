@@ -276,8 +276,9 @@ export function SystemGuideContent({
               <div className="rounded-lg border border-slate-800 bg-[#0f1622] p-2.5">
                 <div className="font-bold text-slate-100">룰렛 &amp; 프리뷰</div>
                 <div className="mt-1 text-slate-400">
-                  매 픽 3구단(멀티 3~4인 시 4구단) 출현 · 후보 1회 클릭으로 피치
-                  시너지·예산 변화 즉시 프리뷰
+                  매 픽 3구단(멀티 3~4인 시 4구단) 출현 · 빅클럽(평균 81+)은
+                  포지션 내 균등 랜덤 추출(중하위권은 OVR 상위순), 카드 3장은
+                  OVR순 정렬 표시
                 </div>
               </div>
               <div className="rounded-lg border border-amber-500/30 bg-amber-950/15 p-2.5">
@@ -1063,7 +1064,7 @@ export function SystemGuideContent({
                 로스터 16인·GK 최소 1명 규칙이 항상 유지됩니다.
               </div>
               <div>
-                • 리그 순위가 높을수록 타 구단의 AI 영입 제안 수신 확률·건수가 증가합니다 (1위 최소 2건·2~4위 최소 1건 보장 / 이적시장 룰렛 클래식 확률은 순위 무관 {transferLegendPct}% 고정).
+                • 리그 순위가 높을수록 타 구단의 AI 영입 제안 수신 확률·건수가 증가합니다 (1위 최소 2건·2~4위 최소 1건 보장 / 이적시장 룰렛 클래식 출현율 {transferLegendPct}% 고정 · 클래식 FA 기본 성사율 15~30%, 우승 시 최대 34% + 현금 최대 +{CASH_LEGEND_CHANCE_MAX_BONUS}%p).
               </div>
             </div>
           </div>

@@ -130,19 +130,19 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
     });
     const squad: Player[] = [
       ...legends, // 135
-      makeActive('a1', 87), // 77
-      makeActive('a2', 87), // 77
-      makeActive('a3', 86), // 66
-      makeActive('a4', 86), // 66
-      makeActive('a5', 86), // 66
-      makeActive('a6', 85), // 56
-      makeActive('a7', 85), // 56
-      makeActive('a8', 85), // 56
-      makeActive('a9', 84), // 49
-      makeActive('a10', 84), // 49
+      makeActive('a1', 87), // 80
+      makeActive('a2', 85), // 57
+      makeActive('a3', 86), // 69
+      makeActive('a4', 86), // 69
+      makeActive('a5', 86), // 69
+      makeActive('a6', 85), // 57
+      makeActive('a7', 85), // 57
+      makeActive('a8', 85), // 57
+      makeActive('a9', 84), // 50
+      makeActive('a10', 84), // 50
       // 5 value bench picks (79..82)
-      makeActive('b1', 82), // 36
-      makeActive('b2', 81), // 32
+      makeActive('b1', 82), // 35
+      makeActive('b2', 81), // 31
       makeActive('b3', 80), // 28
       makeActive('b4', 79), // 24
       makeActive('b5', 79), // 24
@@ -164,15 +164,15 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
 
   it('classifies FFP Tier 1 (+1..+15%) and Tier 2 (>+15%) penalties accurately', () => {
     expect(FFP_TIER1_MAX_OVERRUN_PCT).toBe(15);
-    expect(classifyFfpTier(950)).toBe(0);
-    expect(classifyFfpTier(951)).toBe(1);
-    expect(classifyFfpTier(Math.floor(950 * 1.15))).toBe(1);
-    expect(classifyFfpTier(Math.ceil(950 * 1.15) + 1)).toBe(2);
+    expect(classifyFfpTier(DRAFT_BUDGET_CAP_M)).toBe(0);
+    expect(classifyFfpTier(DRAFT_BUDGET_CAP_M + 1)).toBe(1);
+    expect(classifyFfpTier(Math.floor(DRAFT_BUDGET_CAP_M * 1.15))).toBe(1);
+    expect(classifyFfpTier(Math.ceil(DRAFT_BUDGET_CAP_M * 1.15) + 1)).toBe(2);
 
     const highSuperstars: Player[] = Array.from({ length: 16 }, (_, i) => ({
       ...ACTIVE_PLAYERS[0],
       id: `ss-${i}`,
-      ovr: 90, // 118 each -> 1888M -> Tier 2
+      ovr: 90, // 122 each -> 1952M -> Tier 2
       isLegend: false,
     }));
     const tier2Eval = evaluateSquadBudget(highSuperstars);
@@ -187,7 +187,7 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
     const tier1Squad: Player[] = Array.from({ length: 16 }, (_, i) => ({
       ...ACTIVE_PLAYERS[0],
       id: `t1-${i}`,
-      ovr: i < 10 ? 86 : 85, // 10*66 + 6*56 = 996M (+4.8% -> Tier 1)
+      ovr: i < 10 ? 86 : 85, // 10*69 + 6*57 = 1032M (+14.7% -> Tier 1)
       isLegend: false,
     }));
     const tier1Eval = evaluateSquadBudget(tier1Squad);
@@ -239,7 +239,7 @@ describe('v9.0 Budget / FFP Soft Cap & Legend Flat Cost', () => {
     expect(computeCashOfferTp(120)).toBe(143); // 100 * 1.25 + 20 * 0.90
 
     expect(computeCashLegendChanceBonus(0)).toBe(0);
-    expect(computeCashLegendChanceBonus(40)).toBe(6); // 4 * 1.5
+    expect(computeCashLegendChanceBonus(40)).toBe(5); // round(4 * 1.2)
     expect(computeCashLegendChanceBonus(200)).toBe(CASH_LEGEND_CHANCE_MAX_BONUS);
 
     const clubEntry = ALL_CLUBS_WITH_LEAGUE.find((c) => c.club.att >= 85)!;

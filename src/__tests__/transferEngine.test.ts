@@ -193,11 +193,11 @@ describe('V5 Dynamic Form Transfer Market Engine', () => {
     expect(pKey).toBeLessThanOrEqual(80);
     expect(pWc).toBeGreaterThanOrEqual(20);
     expect(pWc).toBeLessThanOrEqual(55);
-    // V5.3.1: Minimum 20% signing probability floor for all high-OVR superstars & legends
+    // Superstars retain >=20% floor; v9.10.0 Era Classics sit in the 15..30% range
     expect(pSup).toBeGreaterThanOrEqual(20);
     expect(pSup).toBeLessThanOrEqual(36);
-    expect(pLeg).toBeGreaterThanOrEqual(22);
-    expect(pLeg).toBeLessThanOrEqual(42);
+    expect(pLeg).toBeGreaterThanOrEqual(15);
+    expect(pLeg).toBeLessThanOrEqual(30);
 
     // Worst-case stress check: 94 OVR superstar at Rank #1 club vs Rank #20 user club -> still >= 20%
     const worstCaseSup = evaluateTransferTarget({
