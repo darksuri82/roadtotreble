@@ -31,6 +31,7 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import {
   GLOBAL_DAILY_TOP_LIMIT,
   GLOBAL_PAST_DAY_ARCHIVE_LIMIT,
+  GLOBAL_WEEKLY_TOP_LIMIT,
 } from '../../services/globalRankingService';
 import type { Player } from '../../types/player';
 import { RoadToTrebleHeroSvg } from '../setup/RoadToTrebleHeroSvg';
@@ -41,7 +42,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.3';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.4';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -237,26 +238,22 @@ export function WhatsNewModal({
                     「스토리 모드」 7종 · 그 시절 5대 리그 룰렛 통합 개편!
                   </span>
                   <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
-                    v10.1.3 UPDATE
+                    v10.1.4 UPDATE
                   </span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-300">
                   <strong className="text-white">
                     23-24 바이엘 레버쿠젠
                   </strong>
-                  과{' '}
+                  ·{' '}
                   <strong className="text-white">
                     09-10 인테르 밀란
                   </strong>
-                  을 포함한 7종(최대 21★) 스토리 모드 3구단 시대 룰렛 통일에 이어,{' '}
-                  <strong className="text-emerald-300">
-                    최종 결산·드림 매치·명예의 전당 선수 카드 시너지/실효 OVR 1:1 정합화
-                  </strong>
-                  와{' '}
+                  을 포함한 7종 스토리 모드와 결산·드림 매치 OVR 1:1 정합화·MVP 각성 보정에 이어,{' '}
                   <strong className="text-amber-200">
-                    리그 MVP급 초특급 시즌 포텐 각성 밸런스 보정
+                    KST 일일(오늘 TOP 10) + 주간(월~일 TOP 10) 통합 랭킹 제도
                   </strong>
-                  까지 반영했습니다.
+                  를 새롭게 도입했습니다.
                 </p>
                 <div className="overflow-hidden rounded-xl border border-slate-800/90 bg-[#070b12]">
                   <StoryPixelSceneSvg
@@ -669,7 +666,7 @@ export function WhatsNewModal({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1.5 text-xs font-black text-sky-300">
                     <Globe className="h-3.5 w-3.5" />
-                    주간 순환 KST 일일 랭킹 &amp; 5대 리그 공정성 기준
+                    KST 일일 + 주간(월~일) TOP 10 랭킹 &amp; 5대 리그 공정성 기준
                   </span>
                   <span className="inline-flex items-center gap-1 rounded bg-slate-900 border border-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-400 whitespace-nowrap">
                     <Calendar className="h-3 w-3 text-sky-400" />
@@ -679,6 +676,7 @@ export function WhatsNewModal({
 
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                   {[
+                    { label: '🏆 주간 (월~일)', badge: `TOP ${GLOBAL_WEEKLY_TOP_LIMIT}`, active: true },
                     { label: '오늘', badge: `TOP ${GLOBAL_DAILY_TOP_LIMIT}`, active: true },
                     { label: '어제', badge: `TOP ${GLOBAL_PAST_DAY_ARCHIVE_LIMIT}`, active: false },
                     { label: '이번 주 이전 날짜', badge: `TOP ${GLOBAL_PAST_DAY_ARCHIVE_LIMIT} 아카이브`, active: false },
@@ -700,12 +698,13 @@ export function WhatsNewModal({
                 </div>
 
                 <p className="text-[11px] leading-relaxed text-slate-300">
-                  당일은 <strong className="text-sky-200">TOP 10</strong>으로 실시간 경쟁하고, 지난 날짜는{' '}
-                  <strong className="text-amber-300">TOP 3</strong>만 아카이브로 보존됩니다. 공정성을 위해{' '}
+                  당일은 <strong className="text-sky-200">일일 TOP 10</strong>으로 실시간 경쟁하고, 월요일~일요일 전체 최고 기록은{' '}
+                  <strong className="text-amber-300">주간 TOP 10</strong>으로 일주일 내내 유지됩니다(지난 날짜별{' '}
+                  <strong className="text-slate-200">TOP 3</strong> 아카이브 병행). 공정성을 위해{' '}
                   <strong className="text-rose-300">
                     5대 리그 풀 전체 체크 + 오늘(KST) 완료 시즌
                   </strong>
-                  만 일일 랭킹에 제출할 수 있으며, 모든 명전 기록에 완료 날짜가 표기됩니다.
+                  만 제출할 수 있으며, 모든 명전 기록에 완료 날짜가 표기됩니다.
                 </p>
               </div>
             </div>

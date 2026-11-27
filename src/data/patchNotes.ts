@@ -12,15 +12,34 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v10.1.3';
+export const CURRENT_APP_VERSION = 'v10.1.4';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v10.1.4',
+    codename:
+      '글로벌 일일 + 주간 랭킹(월~일 TOP 10) 통합 운영 개편',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '기존 KST 일일 랭킹(당일 TOP 10 · 지난 날짜 TOP 3 아카이브)에 더해, 월요일 00:00부터 일요일 23:59까지 한 주 전체 기록을 통합 집계하는 「주간 랭킹 TOP 10 (월~일)」 제도를 도입했습니다.',
+    sections: [
+      {
+        category: '1. KST 일일 랭킹 + 주간 랭킹 (월~일 TOP 10) 병행 운영',
+        items: [
+          '**주간 통합 TOP 10 탭 신설 (`globalRankingService.ts`, `LegacyHubModal.tsx`)**: 글로벌 랭킹 화면 최상단에 `🏆 주간 TOP 10` 탭을 추가해, 이번 주 월요일~일요일(`MM.DD(월) ~ MM.DD(일)`) 동안 등록된 모든 5대 리그 풀 정규 시즌 기록 중 상위 10팀을 한눈에 비교하고 드림 매치로 1:1 도전할 수 있습니다(각 팀 카드에 달성 날짜 칩 함께 표기).',
+          '**기존 일일 랭킹 100% 병행 유지**: 당일 실시간 경쟁(`오늘 TOP 10`)과 지난 날짜 아카이브(`어제 · MM.DD TOP 3`) 날짜 탭은 그대로 유지되며, 매주 월요일 00:00(KST) 주간 전체 초기화 시점에 일일·주간 랭킹이 함께 새 주간으로 시작됩니다.',
+          '**서버 주간 TOP 10 보존 가드 (`supabase/schema.sql`)**: `prune_global_daily_rankings()` 및 `submit_global_hof_ranking()`에 `weekly_top10` 보존 예외를 추가해, 특정 요일 4~10위 기록이라도 이번 주 주간 TOP 10에 포함되어 있으면 일요일까지 삭제되지 않고 유지됩니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v10.1.3',
     codename:
       '결산·드림매치 선수 카드 시너지/실효 OVR 1:1 정합화 & 리그 MVP급 시즌 포텐 각성 밸런스 보정',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'BALANCE',
     summary:
       '시즌 최종 결산·스토리 준비·드림 매치·명예의 전당에서 선수 상세 카드를 열 때 시너지 보너스가 `+0`으로 누락되거나 드림 매치 상대 피치에 실효 OVR과 `+시너지`가 이중으로 합산돼 보이던 표시 오류를 전면 교정했습니다. 또한 리그 MVP급 초특급 시즌을 보내고도 확률 상한과 팀 각성 횟수 감쇠 때문에 각성하지 못하던 불합리를 해소하는 MVP 시즌 각성 가속 구간을 도입했습니다.',
     sections: [

@@ -34,6 +34,7 @@ import type {
 import type { Player, PlaystyleId, Position, SubPosition } from '../types/player';
 
 export const GLOBAL_DAILY_TOP_LIMIT = 10;
+export const GLOBAL_WEEKLY_TOP_LIMIT = 10;
 export const GLOBAL_PAST_DAY_ARCHIVE_LIMIT = 3;
 /** Backward-compatible alias now equal to GLOBAL_DAILY_TOP_LIMIT (10). */
 export const GLOBAL_TOP15_LIMIT = GLOBAL_DAILY_TOP_LIMIT;
@@ -76,6 +77,22 @@ export function getKstWeekStartKey(input?: Date | string): string {
   const y = monday.getUTCFullYear();
   const m = String(monday.getUTCMonth() + 1).padStart(2, '0');
   const day = String(monday.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Returns the Sunday 'YYYY-MM-DD' of the KST week containing `input` (Monday + 6 days).
+ */
+export function getKstWeekEndKey(input?: Date | string): string {
+  const kst = toKstShiftedDate(input);
+  const dayOfWeek = kst.getUTCDay();
+  const daysSinceMonday = (dayOfWeek + 6) % 7;
+  const sunday = new Date(
+    Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() - daysSinceMonday + 6),
+  );
+  const y = sunday.getUTCFullYear();
+  const m = String(sunday.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(sunday.getUTCDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
 }
 
@@ -163,12 +180,16 @@ export interface DailyRankingBucket {
 
 export interface WeeklyDailyRankingsBoard {
   weekStartKey: string;
+  weekEndKey: string;
   todayKey: string;
   dateKeys: string[];
   buckets: DailyRankingBucket[];
   byDate: Record<string, DailyRankingBucket>;
   todayEntries: GlobalHofRankingEntry[];
   todayCutoffScore: number | null;
+  /** Combined Mon~Sun TOP 10 entries across the entire current KST week (deduplicated by runId, ranked 1..10) */
+  weeklyEntries: GlobalHofRankingEntry[];
+  weeklyCutoffScore: number | null;
 }
 
 export function isV9EraGlobalEntry(
@@ -956,10 +977,11 @@ function mapRawRowToEntry(
 }
 
 /**
- * Groups global ranking entries into the current KST weekly board:
+ * Groups global ranking entries into the current KST Daily + Weekly board:
  * - Weekly reset every Monday 00:00 KST (entries from earlier weeks are excluded).
- * - Today (`todayKey`): capped at TOP 10 (`GLOBAL_DAILY_TOP_LIMIT`).
- * - Earlier days of the same week (`dateKey < todayKey`): capped at TOP 3 (`GLOBAL_PAST_DAY_ARCHIVE_LIMIT`).
+ * - Weekly TOP 10 (Mon~Sun): aggregates all valid current-week entries and retains TOP 10 (`GLOBAL_WEEKLY_TOP_LIMIT`).
+ * - Daily Today (`todayKey`): capped at TOP 10 (`GLOBAL_DAILY_TOP_LIMIT`).
+ * - Daily Earlier days of the same week (`dateKey < todayKey`): capped at TOP 3 (`GLOBAL_PAST_DAY_ARCHIVE_LIMIT`).
  * - Excludes past-dated records mistakenly submitted on a later day (`achievedAt` KST date != `rankingDate`)
  *   and entries explicitly flagged as `fullFiveLeaguePool === false`.
  */
@@ -969,11 +991,13 @@ export function groupWeeklyDailyRankings(
 ): WeeklyDailyRankingsBoard {
   const todayKey = getKstDateKey(referenceDate);
   const weekStartKey = getKstWeekStartKey(referenceDate);
+  const weekEndKey = getKstWeekEndKey(referenceDate);
   const dateKeys = getKstWeekDateKeys(referenceDate);
   const dateKeySet = new Set(dateKeys);
 
   const rawByDate = new Map<string, GlobalHofRankingEntry[]>();
   for (const dk of dateKeys) rawByDate.set(dk, []);
+  const validWeekByRunId = new Map<string, GlobalHofRankingEntry>();
 
   for (const entry of entries) {
     if (!isV9EraGlobalEntry(entry)) continue;
@@ -983,11 +1007,16 @@ export function groupWeeklyDailyRankings(
       entry.rankingWeekStart?.trim() || getKstWeekStartKey(entry.achievedAt);
     if (entryWeek !== weekStartKey || !dateKeySet.has(entryDate)) continue;
     if (!isAchievedDateMatchingRankingDate(entry.achievedAt, entryDate)) continue;
-    rawByDate.get(entryDate)?.push({
+    const normalized: GlobalHofRankingEntry = {
       ...entry,
       rankingDate: entryDate,
       rankingWeekStart: entryWeek,
-    });
+    };
+    rawByDate.get(entryDate)?.push(normalized);
+    const prev = validWeekByRunId.get(normalized.runId);
+    if (!prev || compareGlobalRankingEntries(normalized, prev) < 0) {
+      validWeekByRunId.set(normalized.runId, normalized);
+    }
   }
 
   const buckets: DailyRankingBucket[] = [];
@@ -1020,20 +1049,34 @@ export function groupWeeklyDailyRankings(
     byDate[dk] = bucket;
   }
 
+  const weeklyEntries = [...validWeekByRunId.values()]
+    .sort(compareGlobalRankingEntries)
+    .slice(0, GLOBAL_WEEKLY_TOP_LIMIT)
+    .map((e, idx) => ({ ...e, rank: idx + 1 }));
+  const weeklyCutoffScore =
+    weeklyEntries.length >= GLOBAL_WEEKLY_TOP_LIMIT
+      ? weeklyEntries[GLOBAL_WEEKLY_TOP_LIMIT - 1].seasonScore
+      : weeklyEntries.length > 0
+        ? weeklyEntries[weeklyEntries.length - 1].seasonScore
+        : null;
+
   const todayBucket = byDate[todayKey];
   return {
     weekStartKey,
+    weekEndKey,
     todayKey,
     dateKeys,
     buckets,
     byDate,
     todayEntries: todayBucket?.entries ?? [],
     todayCutoffScore: todayBucket?.cutoffScore ?? null,
+    weeklyEntries,
+    weeklyCutoffScore,
   };
 }
 
 /**
- * Pure mirror of the PostgreSQL KST Daily TOP 10 / Past-Day TOP 3 / Weekly Reset RPC.
+ * Pure mirror of the PostgreSQL KST Daily TOP 10 / Weekly (Mon~Sun) TOP 10 / Past-Day TOP 3 / Weekly Reset RPC.
  */
 export function applyDailyTop10RankingLogic(
   existing: readonly GlobalHofRankingEntry[],
@@ -1122,11 +1165,20 @@ export function applyDailyTop10RankingLogic(
     rankingDate: todayKey,
     rankingWeekStart: weekStartKey,
   };
-  const nextAll = [
-    ...beforeBoard.buckets.flatMap((b) => b.entries),
-    taggedCandidate,
-  ];
-  const afterBoard = groupWeeklyDailyRankings(nextAll, referenceDate);
+  const preservedByRunId = new Map<string, GlobalHofRankingEntry>();
+  for (const e of beforeBoard.buckets.flatMap((b) => b.entries)) {
+    preservedByRunId.set(e.runId, e);
+  }
+  for (const e of beforeBoard.weeklyEntries) {
+    if (!preservedByRunId.has(e.runId)) {
+      preservedByRunId.set(e.runId, e);
+    }
+  }
+  preservedByRunId.set(taggedCandidate.runId, taggedCandidate);
+  const afterBoard = groupWeeklyDailyRankings(
+    [...preservedByRunId.values()],
+    referenceDate,
+  );
   const inserted = afterBoard.todayEntries.find(
     (e) => e.runId === candidate.runId,
   );

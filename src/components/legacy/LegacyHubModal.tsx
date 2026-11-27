@@ -44,9 +44,11 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
 import {
   fetchWeeklyDailyRankings,
+  formatKstDateTabLabel,
   formatKstDisplayDate,
   GLOBAL_DAILY_TOP_LIMIT,
   GLOBAL_PAST_DAY_ARCHIVE_LIMIT,
+  GLOBAL_WEEKLY_TOP_LIMIT,
   groupWeeklyDailyRankings,
   isHofEntryFromTodayKst,
   reconstructSquadFromGlobalRanking,
@@ -175,7 +177,9 @@ function LegacyHubModalContent({
     if (res.ok && res.weekly) {
       setWeeklyBoard(res.weekly);
       setSelectedDateKey((prev) =>
-        res.weekly!.byDate[prev] ? prev : res.weekly!.todayKey,
+        prev === 'weekly' || res.weekly!.byDate[prev]
+          ? prev
+          : res.weekly!.todayKey,
       );
     } else {
       setGlobalError(res.error ?? '랭킹을 불러오지 못했습니다.');
@@ -191,7 +195,9 @@ function LegacyHubModalContent({
       if (res.ok && res.weekly) {
         setWeeklyBoard(res.weekly);
         setSelectedDateKey((prev) =>
-          res.weekly!.byDate[prev] ? prev : res.weekly!.todayKey,
+          prev === 'weekly' || res.weekly!.byDate[prev]
+            ? prev
+            : res.weekly!.todayKey,
         );
         setGlobalError(null);
       } else {
@@ -204,13 +210,21 @@ function LegacyHubModalContent({
     };
   }, [globalRankingsVersion]);
 
-  const activeDailyBucket =
-    weeklyBoard.byDate[selectedDateKey] ??
-    weeklyBoard.byDate[weeklyBoard.todayKey] ??
-    weeklyBoard.buckets[0];
-  const globalEntries = activeDailyBucket?.entries ?? [];
-  const globalCutoff = activeDailyBucket?.cutoffScore ?? null;
-  const activeDailyLimit = activeDailyBucket?.limit ?? GLOBAL_DAILY_TOP_LIMIT;
+  const isWeeklyView = selectedDateKey === 'weekly';
+  const activeDailyBucket = isWeeklyView
+    ? null
+    : (weeklyBoard.byDate[selectedDateKey] ??
+      weeklyBoard.byDate[weeklyBoard.todayKey] ??
+      weeklyBoard.buckets[0]);
+  const globalEntries = isWeeklyView
+    ? weeklyBoard.weeklyEntries
+    : (activeDailyBucket?.entries ?? []);
+  const globalCutoff = isWeeklyView
+    ? weeklyBoard.weeklyCutoffScore
+    : (activeDailyBucket?.cutoffScore ?? null);
+  const activeDailyLimit = isWeeklyView
+    ? GLOBAL_WEEKLY_TOP_LIMIT
+    : (activeDailyBucket?.limit ?? GLOBAL_DAILY_TOP_LIMIT);
 
   const localRunIds = useMemo(
     () => new Set(legacyState.hallOfFame.map((e) => e.runId ?? e.id)),
@@ -478,7 +492,7 @@ function LegacyHubModalContent({
                     : 'text-slate-400 border border-transparent hover:text-white'
                 }`}
               >
-                🌍 일일 랭킹
+                🌍 일일·주간 랭킹
               </button>
               <button
                 type="button"
@@ -1883,34 +1897,70 @@ function LegacyHubModalContent({
 
           {tab === 'global_top15' && !selectedGlobal && (
             <div className="space-y-4">
-              {/* Weekly KST Daily Ranking Policy Bar */}
+              {/* Weekly + Daily KST Ranking Policy Bar */}
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800/90 bg-[#0b1018] px-3.5 py-2 text-[11px] text-slate-400 break-keep">
                 <span>
-                  <strong className="text-sky-300">KST 일일 랭킹</strong> · 당일{' '}
+                  <strong className="text-sky-300">KST 일일·주간 랭킹</strong> · 당일{' '}
                   <strong className="text-slate-200">
                     TOP {GLOBAL_DAILY_TOP_LIMIT}
                   </strong>{' '}
-                  경쟁 · 지난 날짜는{' '}
+                  · 주간(월~일){' '}
                   <strong className="text-amber-300">
+                    TOP {GLOBAL_WEEKLY_TOP_LIMIT}
+                  </strong>{' '}
+                  유지 · 지난 날짜{' '}
+                  <strong className="text-slate-300">
                     TOP {GLOBAL_PAST_DAY_ARCHIVE_LIMIT}
                   </strong>{' '}
-                  아카이브 · 매주 월요일 00:00(KST) 주간 초기화
+                  아카이브 · 매주 월요일 00:00 초기화
                 </span>
                 <span className="font-mono text-[10px] text-slate-500 whitespace-nowrap">
-                  {weeklyBoard.weekStartKey.slice(5).replace('-', '.')} 주간
+                  {weeklyBoard.weekStartKey.slice(5).replace('-', '.')} (월) ~{' '}
+                  {weeklyBoard.weekEndKey.slice(5).replace('-', '.')} (일)
                 </span>
               </div>
 
-              {/* Weekly Date Tabs (Today -> Earlier Days of This Week) */}
+              {/* Weekly TOP 10 + Daily Date Tabs (Weekly TOP 10 | Today -> Earlier Days of This Week) */}
               <div
                 role="tablist"
-                aria-label="이번 주 일일 랭킹 날짜 선택"
+                aria-label="주간 및 이번 주 일일 랭킹 선택"
                 className="flex items-center gap-1.5 overflow-x-auto pb-1"
               >
+                <button
+                  id="legacy-ranking-tab-weekly"
+                  type="button"
+                  role="tab"
+                  aria-selected={isWeeklyView}
+                  onClick={() => setSelectedDateKey('weekly')}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-extrabold transition cursor-pointer whitespace-nowrap ${
+                    isWeeklyView
+                      ? 'border-amber-400/70 bg-amber-500/20 text-amber-200 shadow-sm shadow-amber-500/15'
+                      : 'border-amber-500/25 bg-[#12110b] text-amber-300/85 hover:border-amber-400/50 hover:text-amber-200'
+                  }`}
+                >
+                  <Trophy className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                  <span>주간 TOP {GLOBAL_WEEKLY_TOP_LIMIT}</span>
+                  <span
+                    className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-black tabular-nums ${
+                      isWeeklyView
+                        ? 'bg-amber-400/25 text-amber-100'
+                        : 'bg-slate-900/90 text-amber-300/75'
+                    }`}
+                  >
+                    {weeklyBoard.weeklyEntries.length}/{GLOBAL_WEEKLY_TOP_LIMIT}
+                  </span>
+                </button>
+
+                <span
+                  className="h-5 w-px shrink-0 bg-slate-800/90 mx-0.5"
+                  aria-hidden="true"
+                />
+
                 {weeklyBoard.buckets.map((bucket) => {
                   const isActive =
+                    !isWeeklyView &&
                     (activeDailyBucket?.dateKey ?? weeklyBoard.todayKey) ===
-                    bucket.dateKey;
+                      bucket.dateKey;
                   const count = bucket.entries.length;
                   return (
                     <button
@@ -1923,7 +1973,7 @@ function LegacyHubModalContent({
                         isActive
                           ? bucket.isToday
                             ? 'border-sky-400/60 bg-sky-500/18 text-sky-200 shadow-sm shadow-sky-500/15'
-                            : 'border-amber-400/55 bg-amber-500/15 text-amber-200'
+                            : 'border-emerald-400/50 bg-emerald-500/14 text-emerald-200'
                           : 'border-slate-800 bg-[#0a0f17] text-slate-400 hover:border-slate-700 hover:text-slate-200'
                       }`}
                     >
@@ -1933,7 +1983,7 @@ function LegacyHubModalContent({
                           isActive
                             ? bucket.isToday
                               ? 'bg-sky-400/20 text-sky-200'
-                              : 'bg-amber-400/20 text-amber-200'
+                              : 'bg-emerald-400/20 text-emerald-200'
                             : 'bg-slate-900 text-slate-500'
                         }`}
                       >
@@ -1946,28 +1996,37 @@ function LegacyHubModalContent({
                 })}
               </div>
 
-              {/* Top Bar: Active Date Status + Cutoff + Refresh */}
+              {/* Top Bar: Active Board Status + Cutoff + Refresh */}
               <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-slate-800 bg-[#090e15] px-3.5 py-2.5">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <span
                     className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-black whitespace-nowrap ${
-                      activeDailyBucket?.isToday
-                        ? 'border-sky-400/35 bg-sky-500/15 text-sky-300'
-                        : 'border-amber-400/35 bg-amber-500/15 text-amber-300'
+                      isWeeklyView
+                        ? 'border-amber-400/45 bg-amber-500/18 text-amber-200'
+                        : activeDailyBucket?.isToday
+                          ? 'border-sky-400/35 bg-sky-500/15 text-sky-300'
+                          : 'border-emerald-400/35 bg-emerald-500/12 text-emerald-300'
                     }`}
                   >
-                    <Globe className="h-3.5 w-3.5" />
-                    {activeDailyBucket?.isToday
-                      ? `오늘의 랭킹 TOP ${activeDailyLimit}`
-                      : `${activeDailyBucket?.label ?? selectedDateKey} TOP ${activeDailyLimit} 아카이브`}
+                    {isWeeklyView ? (
+                      <Trophy className="h-3.5 w-3.5 text-amber-300" />
+                    ) : (
+                      <Globe className="h-3.5 w-3.5" />
+                    )}
+                    {isWeeklyView
+                      ? `이번 주 주간 랭킹 TOP ${GLOBAL_WEEKLY_TOP_LIMIT} (월~일)`
+                      : activeDailyBucket?.isToday
+                        ? `오늘의 일일 랭킹 TOP ${activeDailyLimit}`
+                        : `${activeDailyBucket?.label ?? selectedDateKey} TOP ${activeDailyLimit} 아카이브`}
                   </span>
                   <span className="font-mono text-[11px] text-slate-300 tabular-nums">
                     {globalEntries.length} / {activeDailyLimit}
                   </span>
-                  {activeDailyBucket?.isToday &&
+                  {(isWeeklyView || activeDailyBucket?.isToday) &&
                     globalEntries.length >= activeDailyLimit &&
                     globalCutoff !== null && (
                       <span className="rounded bg-slate-900 border border-slate-800 px-2 py-0.5 font-mono text-[11px] text-amber-300 tabular-nums">
+                        {isWeeklyView ? '주간 ' : ''}
                         {activeDailyLimit}위 컷 {globalCutoff.toLocaleString()}{' '}
                         PTS
                       </span>
@@ -2010,7 +2069,7 @@ function LegacyHubModalContent({
                 <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-10 text-center space-y-2">
                   <Globe className="mx-auto h-9 w-9 text-slate-600" />
                   <p className="text-sm font-bold text-slate-300">
-                    일일 랭킹 서버가 연결되어 있지 않습니다.
+                    일일·주간 랭킹 서버가 연결되어 있지 않습니다.
                   </p>
                   <p className="text-xs text-slate-500">
                     로컬 명예의 전당과 싱글플레이는 정상적으로 이용할 수 있습니다.
@@ -2044,14 +2103,18 @@ function LegacyHubModalContent({
                 <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/50 p-10 text-center space-y-2">
                   <Trophy className="mx-auto h-10 w-10 text-slate-600" />
                   <p className="text-sm font-bold text-slate-300">
-                    {activeDailyBucket?.isToday
-                      ? `오늘의 일일 랭킹 TOP ${activeDailyLimit}에 아직 기록이 없습니다.`
-                      : `${activeDailyBucket?.label ?? selectedDateKey}에 보존된 TOP ${activeDailyLimit} 기록이 없습니다.`}
+                    {isWeeklyView
+                      ? `이번 주 주간 랭킹 TOP ${GLOBAL_WEEKLY_TOP_LIMIT}에 아직 기록이 없습니다.`
+                      : activeDailyBucket?.isToday
+                        ? `오늘의 일일 랭킹 TOP ${activeDailyLimit}에 아직 기록이 없습니다.`
+                        : `${activeDailyBucket?.label ?? selectedDateKey}에 보존된 TOP ${activeDailyLimit} 기록이 없습니다.`}
                   </p>
                   <p className="text-xs text-slate-500 break-keep">
-                    {activeDailyBucket?.isToday
-                      ? '싱글플레이 시즌을 완주해 명예의 전당에 등록하면 오늘의 첫 번째 랭커가 될 수 있습니다.'
-                      : '매주 월요일 00:00(KST) 주간 초기화 이후 일별 상위 3팀이 이 날짜에 아카이브됩니다.'}
+                    {isWeeklyView
+                      ? '월요일 00:00 ~ 일요일 23:59(KST) 동안 5대 리그 전체 풀 싱글플레이 시즌을 완료하면 주간 TOP 10에 도전할 수 있습니다.'
+                      : activeDailyBucket?.isToday
+                        ? '싱글플레이 시즌을 완주해 명예의 전당에 등록하면 오늘의 첫 번째 랭커가 될 수 있습니다.'
+                        : '매주 월요일 00:00(KST) 주간 초기화 이후 일별 상위 3팀(주간 TOP 10 포함)이 이 날짜에 아카이브됩니다.'}
                   </p>
                 </div>
               ) : (
@@ -2143,6 +2206,14 @@ function LegacyHubModalContent({
                                 <span className="text-[11px] font-semibold text-slate-300 truncate">
                                   {entry.managerName}
                                 </span>
+                                {isWeeklyView && entry.rankingDate && (
+                                  <span className="rounded bg-sky-500/15 border border-sky-400/30 px-1.5 py-0.5 text-[9.5px] font-bold text-sky-200 whitespace-nowrap">
+                                    {formatKstDateTabLabel(
+                                      entry.rankingDate,
+                                      weeklyBoard.todayKey,
+                                    )}
+                                  </span>
+                                )}
                                 {isMine && (
                                   <span className="rounded bg-emerald-500/20 border border-emerald-400/40 px-1.5 py-0.5 text-[9px] font-black text-emerald-300">
                                     MY

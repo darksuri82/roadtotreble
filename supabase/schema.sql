@@ -294,8 +294,15 @@ begin
      ) !~ '^v(9|[1-9][0-9]+)(\.|$)';
   get diagnostics v_deleted_weeks = row_count;
 
-  -- 2) Past days in current week: retain strictly TOP 3 per day
-  with ranked_past as (
+  -- 2) Past days in current week: retain TOP 3 per day PLUS protect any row in Weekly (Mon~Sun) TOP 10
+  with weekly_top10 as (
+    select id
+    from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+    order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
+    limit 10
+  ),
+  ranked_past as (
     select id,
            row_number() over (
              partition by ranking_date
@@ -306,7 +313,8 @@ begin
       and ranking_date < v_today_kst
   )
   delete from public.global_hof_rankings
-  where id in (select id from ranked_past where rk > 3);
+  where id in (select id from ranked_past where rk > 3)
+    and id not in (select id from weekly_top10);
   get diagnostics v_deleted_past_days = row_count;
 
   -- 3) Today: retain strictly TOP 10
@@ -450,8 +458,15 @@ begin
        )
      ) !~ '^v(9|[1-9][0-9]+)(\.|$)';
 
-  -- 0b) Past days within this week: retain strictly TOP 3 per date
-  with ranked_past as (
+  -- 0b) Past days within this week: retain TOP 3 per date PLUS protect Weekly (Mon~Sun) TOP 10
+  with weekly_top10 as (
+    select id
+    from public.global_hof_rankings
+    where ranking_week_start = v_week_start_kst
+    order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
+    limit 10
+  ),
+  ranked_past as (
     select id,
            row_number() over (
              partition by ranking_date
@@ -462,7 +477,8 @@ begin
       and ranking_date < v_today_kst
   )
   delete from public.global_hof_rankings
-  where id in (select id from ranked_past where rk > 3);
+  where id in (select id from ranked_past where rk > 3)
+    and id not in (select id from weekly_top10);
 
   -- 1) Duplicate run_id guard within current week/today
   select ranked.rk into v_existing_rank
@@ -682,6 +698,14 @@ grant execute on function public.submit_global_hof_ranking(jsonb) to anon, authe
 -- -- delete from public.global_hof_rankings
 -- -- where to_char((achieved_at at time zone 'Asia/Seoul'), 'YYYY-MM-DD') <> ranking_date
 -- --   and to_char(((achieved_at + interval '10 minutes') at time zone 'Asia/Seoul'), 'YYYY-MM-DD') <> ranking_date;
+--
+-- =============================================================================
+-- v10.1.4 Production SQL (Optional idempotent RPC refresh in Supabase SQL Editor)
+-- Re-run `prune_global_daily_rankings` & `submit_global_hof_ranking` above so any
+-- record inside the current Mon~Sun Weekly TOP 10 is protected from past-day TOP 3
+-- pruning until the Monday 00:00 KST weekly reset.
+-- =============================================================================
+
 
 
 

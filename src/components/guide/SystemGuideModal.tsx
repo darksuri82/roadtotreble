@@ -1315,7 +1315,7 @@ export function SystemGuideContent({
             <p className="text-[11px] text-slate-300">{HOF_RESET_NOTICE_TEXT}</p>
             <div className="text-[10.5px] text-slate-400 space-y-1">
               <div>
-                • 로컬 명전은 개인 시즌 기록을 영구 보존하며, 일일 랭킹은 <strong className="text-slate-200">KST 기준 당일 TOP 10 · 지난 날짜 TOP 3 아카이브 · 매주 월요일 00:00 주간 전체 초기화</strong>로 공정한 최신 메타 경쟁을 유지합니다(히든 업적·드림매치 전적 보존).
+                • 로컬 명전은 개인 시즌 기록을 영구 보존하며, 글로벌 랭킹은 <strong className="text-slate-200">KST 기준 당일 일일 TOP 10 · 주간(월~일) 통합 TOP 10 · 지난 날짜 TOP 3 아카이브 · 매주 월요일 00:00 주간 전체 초기화</strong>로 공정한 최신 메타 경쟁을 유지합니다(히든 업적·드림매치 전적 보존).
               </div>
               <div>
                 • <strong className="text-rose-300">공정성 기준:</strong> 드래프트 설정에서 <strong className="text-slate-200">5대 리그 풀을 모두 체크</strong>하고 <strong className="text-slate-200">오늘(KST) 완료한 시즌</strong>만 오늘의 일일 랭킹에 제출할 수 있습니다(일부 리그 풀 선택 시즌·지난 날짜 기록은 개인 명예의 전당 보관만 가능).

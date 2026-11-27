@@ -355,9 +355,9 @@ describe('v10.1.3 Final Summary Synergy, MVP Awakening Ramp & Dream Match OVR Pa
     expect(classicProb.finalProb).toBe(0);
   });
 
-  it('4) keeps v10.1.3 release metadata synchronized across patchNotes and WhatsNewModal', () => {
-    expect(CURRENT_APP_VERSION).toBe('v10.1.3');
-    expect(PATCH_NOTES[0].version).toBe('v10.1.3');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v10.1.3');
+  it('4) keeps v10.1.3 patch history preserved and latest release metadata synchronized across patchNotes and WhatsNewModal', () => {
+    expect(PATCH_NOTES.some((entry) => entry.version === 'v10.1.3')).toBe(true);
+    expect(PATCH_NOTES[0].version).toBe(CURRENT_APP_VERSION);
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain(CURRENT_APP_VERSION);
   });
 });

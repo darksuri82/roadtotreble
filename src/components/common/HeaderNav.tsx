@@ -193,10 +193,10 @@ export function HeaderNav() {
               type="button"
               onClick={() => openLegacyModal('global_top15')}
               className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0e141d] p-1.5 sm:px-2 sm:py-1 text-[11px] font-semibold text-sky-300 hover:border-sky-400/50 hover:text-sky-200 transition-colors cursor-pointer whitespace-nowrap shrink-0"
-              title="일일 랭킹 (당일 TOP 10 · 주간 TOP 3 아카이브) 열기"
+              title="일일·주간 랭킹 (당일 TOP 10 · 주간 월~일 TOP 10 · 지난 날짜 TOP 3) 열기"
             >
               <Globe className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-              <span className="hidden sm:inline">일일 랭킹</span>
+              <span className="hidden sm:inline">일일·주간 랭킹</span>
             </button>
 
             {!isTitle && (

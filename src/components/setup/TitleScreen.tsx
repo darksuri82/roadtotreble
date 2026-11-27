@@ -319,10 +319,10 @@ export function TitleScreen() {
               </span>
               <div className="min-w-0">
                 <div className="text-[11px] font-bold text-white sm:text-[13px] truncate">
-                  일일 랭킹
+                  일일·주간 랭킹
                 </div>
                 <div className="text-[10px] text-sky-300/90 truncate sm:text-[11px]">
-                  오늘 TOP 10 · 1대1
+                  일일·주간 TOP 10
                 </div>
               </div>
             </div>

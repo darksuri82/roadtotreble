@@ -976,7 +976,7 @@ export function SeasonSummary() {
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-[#090e15] px-3.5 py-2 text-xs">
                 <div className="flex flex-wrap items-center gap-2 text-slate-300">
                   <span className="rounded bg-sky-500/15 border border-sky-400/30 px-2 py-0.5 text-[10px] font-black text-sky-300 whitespace-nowrap">
-                    🌍 일일 랭킹 TOP 10
+                    🌍 일일·주간 랭킹 TOP 10
                   </span>
                   {enteredRank !== null ? (
                     <span className="font-bold text-emerald-300 tabular-nums">
@@ -1005,7 +1005,7 @@ export function SeasonSummary() {
                   onClick={() => openLegacyModal('global_top15')}
                   className="shrink-0 text-[11px] font-bold text-sky-300 hover:underline cursor-pointer whitespace-nowrap"
                 >
-                  일일 랭킹 보기 →
+                  일일·주간 랭킹 보기 →
                 </button>
               </div>
             );

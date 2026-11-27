@@ -5,6 +5,15 @@
 
 ---
 
+## v10.1.4 — 글로벌 일일 + 주간 랭킹(월~일 TOP 10) 통합 운영 개편
+
+- **KST 일일 랭킹 + 주간(월~일) TOP 10 병행 운영 (`src/services/globalRankingService.ts`, `src/components/legacy/LegacyHubModal.tsx`, `supabase/schema.sql`, `TitleScreen.tsx`, `HeaderNav.tsx`, `SeasonSummary.tsx`, `SystemGuideModal.tsx`, `SoloVisualTutorialModal.tsx`, `WhatsNewModal.tsx`, `v1014DailyWeeklyRanking.test.ts`)**:
+  - `GLOBAL_WEEKLY_TOP_LIMIT = 10`·`getKstWeekEndKey`·`WeeklyDailyRankingsBoard.weeklyEntries`/`weeklyCutoffScore`를 추가해 월~일 전체 유효 기록 중 통합 TOP 10을 실시간 산출합니다.
+  - `LegacyHubModal`에 `🏆 주간 TOP 10` 탭(달성 날짜 칩·주간 10위 컷·1:1 드림 매치 도전 지원)을 신설하고, 기존 `오늘 TOP 10`·`지난 날짜 TOP 3 아카이브` 일일 랭킹을 그대로 병행 유지합니다.
+  - `supabase/schema.sql`의 `prune_global_daily_rankings()`·`submit_global_hof_ranking()`에 `weekly_top10` 보존 예외를 추가해 주간 TOP 10 기록이 일요일까지 삭제되지 않도록 보호했습니다.
+
+---
+
 ## v10.1.3 — 결산·드림매치 선수 카드 시너지/실효 OVR 1:1 정합화 & 리그 MVP급 시즌 포텐 각성 밸런스 보정
 
 - **1. 최종 결산 · 스토리 준비 · 드림 매치 · 명예의 전당 선수 카드 시너지 표시 완전 수정 (`SeasonSummary.tsx`, `StorySetupScreen.tsx`, `OpponentPitchView.tsx`, `MatchDayTacticsRoom.tsx`, `DreamMatchArena.tsx`, `LegacyHubModal.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`, `PlayerDetailModal.tsx`)**:
