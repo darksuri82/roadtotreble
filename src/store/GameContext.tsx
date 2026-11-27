@@ -804,6 +804,38 @@ function applyPostUserMatchConditionAndEvents(params: {
     undefined,
     { staffCoachId, ffpChemPenalty: season.budgetState?.chemPenalty ?? 0 },
   );
+  // Combine League + Cup + UCL stats for user players so multi-competition heroics count toward sustained form
+  const combinedAwakeningStats: Record<string, PlayerSeasonStats> = {
+    ...season.allPlayerStats,
+  };
+  for (const p of fullSquad) {
+    const lg = season.allPlayerStats[p.id];
+    const cupSt = season.cupPlayerStats?.[p.id];
+    const uclSt = season.uclPlayerStats?.[p.id];
+    const parts = [lg, cupSt, uclSt].filter(
+      (s): s is PlayerSeasonStats => Boolean(s && s.appearances > 0),
+    );
+    if (parts.length > 1) {
+      const apps = parts.reduce((sum, s) => sum + s.appearances, 0);
+      const rSum = parts.reduce((sum, s) => sum + s.ratingSum, 0);
+      combinedAwakeningStats[p.id] = {
+        ...parts[0],
+        appearances: apps,
+        starts: parts.reduce((sum, s) => sum + s.starts, 0),
+        subAppearances: parts.reduce((sum, s) => sum + s.subAppearances, 0),
+        minutesPlayed: parts.reduce((sum, s) => sum + (s.minutesPlayed ?? 0), 0),
+        goals: parts.reduce((sum, s) => sum + s.goals, 0),
+        assists: parts.reduce((sum, s) => sum + s.assists, 0),
+        xgSum: parts.reduce((sum, s) => sum + s.xgSum, 0),
+        cleanSheets: parts.reduce((sum, s) => sum + s.cleanSheets, 0),
+        momCount: parts.reduce((sum, s) => sum + s.momCount, 0),
+        ratingSum: rSum,
+        avgRating: apps > 0 ? rSum / apps : 0,
+      };
+    } else if (parts.length === 1) {
+      combinedAwakeningStats[p.id] = parts[0];
+    }
+  }
   const awakeningResult = evaluatePostMatchAwakening({
     starters,
     bench,
@@ -816,7 +848,7 @@ function applyPostUserMatchConditionAndEvents(params: {
     assistsByPlayerId,
     minutesByPlayerId,
     cleanSheet: oppGoals === 0,
-    allPlayerStats: season.allPlayerStats,
+    allPlayerStats: combinedAwakeningStats,
     slotSynergies: chemForAwakening.slotSynergies,
     conditionMap: mergedConditions,
     managerTraitId,
@@ -7067,8 +7099,59 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           });
 
       let nextTrackers = state.season.achievementTrackers;
+      let workingConditions: PlayerConditionMap = {
+        ...state.season.playerConditions,
+      };
+      let rollingSeason: SeasonState = {
+        ...state.season,
+        nextMatchTactic: null,
+        ucl: sim.ucl,
+        uclPlayerStats: sim.uclPlayerStats,
+        userUclMatchHistory: [
+          ...state.season.userUclMatchHistory,
+          ...sim.newUserMatches,
+        ],
+        playerConditions: workingConditions,
+      };
+      let rollingStarters = state.starters;
+      let rollingBench = state.bench;
       for (const m of sim.newUserMatches) {
         nextTrackers = updateTrackersForUserMatch(nextTrackers, m);
+        const post = applyPostUserMatchConditionAndEvents({
+          season: rollingSeason,
+          workingConditions,
+          formation: state.formation,
+          tactic: activeTactic,
+          managerTraitId: state.manager.traitId,
+          starters: rollingStarters,
+          bench: rollingBench,
+          userMatchResult: m,
+          competition: 'ucl',
+          round: m.round,
+          isShortRest: true,
+          teamName: state.userClub.name,
+          managerName: state.manager.name,
+          allowEventTrigger: false,
+        });
+        workingConditions = post.playerConditions;
+        rollingSeason = {
+          ...rollingSeason,
+          playerConditions: post.playerConditions,
+          managerEvents: post.managerEvents,
+          pendingInjuryAlerts: post.pendingInjuryAlerts,
+          tacticalAdaptation: post.tacticalAdaptation,
+          awakenedPlayers: post.awakenedPlayers,
+          pendingAwakeningAlerts: post.pendingAwakeningAlerts,
+          storyCrisisLog: post.storyCrisisLog,
+        };
+        rollingStarters = applyAwakenedPlayersToSlots(
+          rollingStarters,
+          rollingSeason.awakenedPlayers,
+        );
+        rollingBench = applyAwakenedPlayersToSlots(
+          rollingBench,
+          rollingSeason.awakenedPlayers,
+        );
       }
 
       const globalAwards = computeGlobalSeasonAwards({
@@ -7085,16 +7168,11 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
 
       const updated: GameState = {
         ...state,
+        starters: rollingStarters,
+        bench: rollingBench,
         phase: 'season_end',
         season: {
-          ...state.season,
-          nextMatchTactic: null,
-          ucl: sim.ucl,
-          uclPlayerStats: sim.uclPlayerStats,
-          userUclMatchHistory: [
-            ...state.season.userUclMatchHistory,
-            ...sim.newUserMatches,
-          ],
+          ...rollingSeason,
           achievementTrackers: nextTrackers,
           globalAwards,
           liveHalftime: null,

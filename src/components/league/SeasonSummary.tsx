@@ -2291,6 +2291,14 @@ export function SeasonSummary() {
         const starterIdx = resolved
           ? state.starters.findIndex((p) => p?.id === resolved.id)
           : -1;
+        const isUserBench =
+          starterIdx < 0 &&
+          Boolean(resolved && state.bench.some((p) => p?.id === resolved.id));
+        const isUserPlayer = starterIdx >= 0 || isUserBench;
+        const matchedSlotSynergy =
+          starterIdx >= 0
+            ? (chemistry.slotSynergies?.[starterIdx] ?? null)
+            : null;
         const matchedSlotSubPos =
           starterIdx >= 0
             ? FORMATIONS[state.formation]?.slots[starterIdx]?.subPosition
@@ -2299,9 +2307,13 @@ export function SeasonSummary() {
           <PlayerDetailModal
             player={resolved}
             slotSubPosition={matchedSlotSubPos}
-            managerTraitId={state.manager.traitId}
+            slotSynergy={matchedSlotSynergy}
+            managerTraitId={isUserPlayer ? state.manager.traitId : null}
             seasonStats={breakdown.total}
             competitionStats={breakdown}
+            condition={
+              resolved ? (season.playerConditions?.[resolved.id] ?? null) : null
+            }
             onClose={() => setInspectedPlayer(null)}
           />
         );

@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { HIDDEN_ACHIEVEMENTS } from '../../data/achievements';
+import { FORMATIONS } from '../../data/formations';
 import {
   buildUnifiedLeaderboard,
   ERA_BEST_XI_DREAM_TEAMS,
@@ -2751,26 +2752,56 @@ function LegacyHubModalContent({
         </div>
       </div>
 
-      {inspectedPlayer && (
-        <PlayerDetailModal
-          player={inspectedPlayer}
-          slotSynergy={
-            Object.values(
-              historicalPitchData?.chem.slotSynergies ??
-                userEntryPitchData?.chem.slotSynergies ??
-                globalPitchData?.chem.slotSynergies ??
-                {},
-            ).find((s) => s.playerId === inspectedPlayer.id) ?? null
-          }
-          managerTraitId={
-            selectedHistorical?.managerTraitId ??
-            selectedEntry?.managerTraitId ??
-            selectedGlobal?.managerTraitId ??
-            null
-          }
-          onClose={() => setInspectedPlayer(null)}
-        />
-      )}
+      {inspectedPlayer && (() => {
+        const activePitch = historicalPitchData
+          ? {
+              formation: selectedHistorical!.formation,
+              starters: selectedHistorical!.starters,
+              slotSynergies: historicalPitchData.chem.slotSynergies,
+              managerTraitId: selectedHistorical!.managerTraitId,
+              managerRating: selectedHistorical!.managerRating,
+            }
+          : userEntryPitchData && selectedEntry
+            ? {
+                formation: selectedEntry.formation,
+                starters: userEntryPitchData.starters,
+                slotSynergies: userEntryPitchData.chem.slotSynergies,
+                managerTraitId: selectedEntry.managerTraitId,
+                managerRating: selectedEntry.managerRating,
+              }
+            : globalPitchData && selectedGlobal
+              ? {
+                  formation: selectedGlobal.formation,
+                  starters: globalPitchData.starters,
+                  slotSynergies: globalPitchData.chem.slotSynergies,
+                  managerTraitId: selectedGlobal.managerTraitId,
+                  managerRating: selectedGlobal.managerRating,
+                }
+              : null;
+        const starterIdx = activePitch
+          ? activePitch.starters.findIndex((p) => p?.id === inspectedPlayer.id)
+          : -1;
+        const slotSubPos =
+          activePitch && starterIdx >= 0
+            ? FORMATIONS[activePitch.formation]?.slots[starterIdx]?.subPosition
+            : undefined;
+        const slotSyn = activePitch
+          ? (Object.values(activePitch.slotSynergies).find(
+              (s) => s.playerId === inspectedPlayer.id,
+            ) ?? null)
+          : null;
+        return (
+          <PlayerDetailModal
+            player={inspectedPlayer}
+            slotSubPosition={slotSubPos}
+            slotSynergy={slotSyn}
+            managerTraitId={activePitch?.managerTraitId ?? null}
+            managerRating={activePitch?.managerRating}
+            ignoreSeasonCondition
+            onClose={() => setInspectedPlayer(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

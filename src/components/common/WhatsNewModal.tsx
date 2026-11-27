@@ -41,7 +41,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.2';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.3';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -237,7 +237,7 @@ export function WhatsNewModal({
                     「스토리 모드」 7종 · 그 시절 5대 리그 룰렛 통합 개편!
                   </span>
                   <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
-                    v10.1.2 UPDATE
+                    v10.1.3 UPDATE
                   </span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-300">
@@ -248,11 +248,15 @@ export function WhatsNewModal({
                   <strong className="text-white">
                     09-10 인테르 밀란
                   </strong>
-                  을 포함한 7종(최대 21★) 스토리 모드 전체를{' '}
-                  <strong className="text-amber-200">
-                    싱글플레이와 동일한 3구단 룰렛(시즌 3회 + UCL 직전 1회 · 창당 3회 협상, 100% 그 시절 5대 리그 풀)
+                  을 포함한 7종(최대 21★) 스토리 모드 3구단 시대 룰렛 통일에 이어,{' '}
+                  <strong className="text-emerald-300">
+                    최종 결산·드림 매치·명예의 전당 선수 카드 시너지/실효 OVR 1:1 정합화
                   </strong>
-                  으로 통일하고, 인테르·레버쿠젠 경기 스킵 크래시까지 완전 수정했습니다.
+                  와{' '}
+                  <strong className="text-amber-200">
+                    리그 MVP급 초특급 시즌 포텐 각성 밸런스 보정
+                  </strong>
+                  까지 반영했습니다.
                 </p>
                 <div className="overflow-hidden rounded-xl border border-slate-800/90 bg-[#070b12]">
                   <StoryPixelSceneSvg

@@ -316,6 +316,11 @@ export function StorySetupScreen() {
         <PlayerDetailModal
           player={inspectPlayer.player}
           slotSubPosition={inspectPlayer.slotSubPosition}
+          slotSynergy={
+            Object.values(chemistry.slotSynergies).find(
+              (s) => s.playerId === inspectPlayer.player.id,
+            ) ?? null
+          }
           managerTraitId={state.manager.traitId}
           onClose={() => setInspectPlayer(null)}
         />

@@ -43,7 +43,10 @@ import type { SlotRef } from '../common/PitchBoard';
 import { StaffCoachBadge } from '../common/StaffCoachBadge';
 import { TacticsGuideModal } from '../common/TacticsGuideModal';
 import { UnifiedTacticsStrip } from '../common/UnifiedTacticsStrip';
-import { OpponentPitchView } from './OpponentPitchView';
+import {
+  OpponentPitchView,
+  type OpponentPlayerInspectContext,
+} from './OpponentPitchView';
 
 function shortFormationLabel(id: FormationId): string {
   if (id === '4-4-2-diamond') return '4-4-2◇';
@@ -75,7 +78,10 @@ interface MatchDayTacticsRoomProps {
   onSwapSquad: (from: SlotRef, to: SlotRef) => void;
   onAutoOptimize?: () => void;
   onInspectPlayer?: (player: Player, slotSubPosition?: SubPosition) => void;
-  onClickOpponentPlayerName?: (playerId: string) => void;
+  onClickOpponentPlayerName?: (
+    playerId: string,
+    context?: OpponentPlayerInspectContext,
+  ) => void;
   locked?: boolean;
   blindOpponentStatus?: 'editing' | 'locked' | null;
   firstLegBanner?: {
@@ -1020,6 +1026,7 @@ export function MatchDayTacticsRoom({
             <OpponentPitchView
               opponent={opponent}
               roster={opponentRoster}
+              opponentManagerOverride={oppManager}
               onClickPlayerName={onClickOpponentPlayerName}
             />
           </div>
@@ -1118,6 +1125,7 @@ export function MatchDayTacticsRoom({
               <OpponentPitchView
                 opponent={opponent}
                 roster={opponentRoster}
+                opponentManagerOverride={oppManager}
                 onClickPlayerName={onClickOpponentPlayerName}
               />
             </div>

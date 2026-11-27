@@ -12,7 +12,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FORMATION_LIST } from '../../data/formations';
+import { FORMATION_LIST, FORMATIONS } from '../../data/formations';
 import { MANAGER_TRAITS } from '../../data/managerTraits';
 import { ModalBodyLock } from '../../hooks/useBodyScrollLock';
 import {
@@ -188,6 +188,7 @@ export function UclDashboard() {
     player: Player;
     slotSubPosition?: SubPosition;
     fallbackStats?: PlayerSeasonStats | null;
+    overrideContext?: import('../league/OpponentPitchView').OpponentPlayerInspectContext | null;
   } | null>(null);
   const [inspectedMatch, setInspectedMatch] = useState<MatchResult | null>(null);
   const [inspectedTie, setInspectedTie] = useState<UclKnockoutTie | null>(null);
@@ -825,22 +826,42 @@ export function UclDashboard() {
       />
 
       {/* Player Inspector */}
-      {inspected && (
-        <PlayerDetailModal
-          player={inspected.player}
-          slotSubPosition={inspected.slotSubPosition}
-          slotSynergy={
-            Object.values(chemistry.slotSynergies).find(
+      {inspected && (() => {
+        const starterIdx = state.starters.findIndex(
+          (p) => p?.id === inspected.player.id,
+        );
+        const isUserPlayer =
+          starterIdx >= 0 ||
+          state.bench.some((p) => p?.id === inspected.player.id);
+        const oppCtx = inspected.overrideContext;
+        const resolvedSubPos =
+          inspected.slotSubPosition ??
+          oppCtx?.slotSubPosition ??
+          (starterIdx >= 0
+            ? FORMATIONS[state.formation]?.slots[starterIdx]?.subPosition
+            : undefined);
+        const resolvedSyn = isUserPlayer
+          ? (Object.values(chemistry.slotSynergies).find(
               (s) => s.playerId === inspected.player.id,
-            ) ?? null
-          }
-          managerTraitId={state.manager.traitId}
-          seasonStats={inspectedBreakdown?.total ?? null}
-          competitionStats={inspectedBreakdown}
-          condition={season.playerConditions?.[inspected.player.id] ?? null}
-          onClose={() => setInspected(null)}
-        />
-      )}
+            ) ?? null)
+          : (oppCtx?.slotSynergy ?? null);
+        const resolvedMgrTrait = isUserPlayer
+          ? state.manager.traitId
+          : (oppCtx?.managerTraitId ?? null);
+        return (
+          <PlayerDetailModal
+            player={inspected.player}
+            slotSubPosition={resolvedSubPos}
+            slotSynergy={resolvedSyn}
+            managerTraitId={resolvedMgrTrait}
+            managerRating={isUserPlayer ? undefined : oppCtx?.managerRating}
+            seasonStats={inspectedBreakdown?.total ?? null}
+            competitionStats={inspectedBreakdown}
+            condition={season.playerConditions?.[inspected.player.id] ?? null}
+            onClose={() => setInspected(null)}
+          />
+        );
+      })()}
 
       {state.storyMode && <StoryChecklistTracker />}
 
@@ -1846,7 +1867,17 @@ export function UclDashboard() {
                     onInspectPlayer={(player, slotSubPosition) =>
                       setInspected({ player, slotSubPosition })
                     }
-                    onClickOpponentPlayerName={(pid) => openPlayerById(pid)}
+                    onClickOpponentPlayerName={(pid, ctx) => {
+                      if (ctx) {
+                        setInspected({
+                          player: ctx.player,
+                          slotSubPosition: ctx.slotSubPosition,
+                          overrideContext: ctx,
+                        });
+                      } else {
+                        openPlayerById(pid);
+                      }
+                    }}
                   >
                     {/* Action Buttons */}
                     <div className="flex flex-wrap gap-2">

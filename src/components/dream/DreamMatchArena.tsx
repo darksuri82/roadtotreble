@@ -57,6 +57,7 @@ import type {
   FormationId,
   ManagerRouletteState,
   ManagerTraitId,
+  PlayerSlotSynergy,
   UserClubProfile,
 } from '../../types/game';
 import { DEFAULT_MANAGER_AVATAR, DEFAULT_MANAGER_NAME } from '../../types/game';
@@ -184,6 +185,9 @@ export function DreamMatchArena() {
   const [inspected, setInspected] = useState<{
     player: Player;
     slotSubPosition?: SubPosition;
+    slotSynergy?: PlayerSlotSynergy | null;
+    managerTraitId?: ManagerTraitId | null;
+    managerRating?: number;
   } | null>(null);
   const [legacyFallbackNotice, setLegacyFallbackNotice] = useState<boolean>(false);
 
@@ -254,6 +258,24 @@ export function DreamMatchArena() {
       managerSynergyCount: selectedHistoricalOpponent.managerSynergyCount,
     };
   }, [activeGlobalOpponent, selectedHistoricalOpponent]);
+
+  const oppChemistry = useMemo(
+    () =>
+      calculateChemistry(
+        oppMatchBundle.club.formation,
+        oppMatchBundle.starters,
+        oppMatchBundle.club.defaultTactic,
+        activeOpponent.managerTraitId,
+        activeOpponent.managerRating,
+      ),
+    [
+      oppMatchBundle.club.formation,
+      oppMatchBundle.starters,
+      oppMatchBundle.club.defaultTactic,
+      activeOpponent.managerTraitId,
+      activeOpponent.managerRating,
+    ],
+  );
 
   const currentSeasonStarters = useMemo(
     () => state.starters.filter((p): p is Player => p !== null),
@@ -2072,7 +2094,17 @@ export function DreamMatchArena() {
             onInspectPlayer={(p, sub) =>
               setInspected({ player: p, slotSubPosition: sub })
             }
-            onClickOpponentPlayerName={(playerId) => {
+            onClickOpponentPlayerName={(playerId, ctx) => {
+              if (ctx) {
+                setInspected({
+                  player: ctx.player,
+                  slotSubPosition: ctx.slotSubPosition,
+                  slotSynergy: ctx.slotSynergy,
+                  managerTraitId: ctx.managerTraitId,
+                  managerRating: ctx.managerRating,
+                });
+                return;
+              }
               const found = allPlayerLookup.get(playerId);
               if (found) setInspected({ player: found });
             }}
@@ -2112,7 +2144,14 @@ export function DreamMatchArena() {
                 <button
                   key={bp.id}
                   type="button"
-                  onClick={() => setInspected({ player: bp })}
+                  onClick={() =>
+                    setInspected({
+                      player: bp,
+                      slotSynergy: null,
+                      managerTraitId: activeOpponent.managerTraitId,
+                      managerRating: activeOpponent.managerRating,
+                    })
+                  }
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-200 hover:border-amber-400/50 hover:text-amber-200 cursor-pointer"
                 >
                   <span className="rounded bg-slate-800 px-1 py-0.2 font-mono text-[10px] font-bold text-slate-400">
@@ -2257,15 +2296,70 @@ export function DreamMatchArena() {
         />
       )}
 
-      {/* Player Detail Modal (works for BOTH user squad & all 17 historical players!) */}
-      {inspected && (
-        <PlayerDetailModal
-          player={inspected.player}
-          slotSubPosition={inspected.slotSubPosition}
-          managerTraitId={manager.traitId}
-          onClose={() => setInspected(null)}
-        />
-      )}
+      {/* Player Detail Modal (works for BOTH user squad & all historical/global opponents!) */}
+      {inspected && (() => {
+        const pid = inspected.player.id;
+        const oppStarterIdx = oppMatchBundle.starters.findIndex((p) => p.id === pid);
+        const isOppPlayer =
+          oppStarterIdx >= 0 || oppMatchBundle.bench.some((p) => p.id === pid);
+        const userChem = stage === 'draft' ? draftPreviewChem : chemistry;
+        const userStarterIdx = starters.findIndex((p) => p?.id === pid);
+        const isUserPlayer =
+          userStarterIdx >= 0 || bench.some((p) => p?.id === pid);
+
+        let resolvedSubPos = inspected.slotSubPosition;
+        let resolvedSyn =
+          inspected.slotSynergy !== undefined ? inspected.slotSynergy : null;
+        let resolvedMgrTrait =
+          inspected.managerTraitId !== undefined
+            ? inspected.managerTraitId
+            : null;
+        let resolvedMgrRating = inspected.managerRating;
+
+        if (inspected.managerTraitId === undefined) {
+          if (isOppPlayer && !isUserPlayer) {
+            resolvedMgrTrait = activeOpponent.managerTraitId;
+            resolvedMgrRating = activeOpponent.managerRating;
+            if (oppStarterIdx >= 0) {
+              resolvedSubPos =
+                resolvedSubPos ??
+                FORMATIONS[oppMatchBundle.club.formation]?.slots[oppStarterIdx]
+                  ?.subPosition;
+              resolvedSyn =
+                oppChemistry.slotSynergies?.[oppStarterIdx] ??
+                Object.values(oppChemistry.slotSynergies).find(
+                  (s) => s.playerId === pid,
+                ) ??
+                null;
+            }
+          } else {
+            resolvedMgrTrait = manager.traitId;
+            if (userStarterIdx >= 0) {
+              resolvedSubPos =
+                resolvedSubPos ??
+                FORMATIONS[formation]?.slots[userStarterIdx]?.subPosition;
+              resolvedSyn =
+                userChem.slotSynergies?.[userStarterIdx] ??
+                Object.values(userChem.slotSynergies).find(
+                  (s) => s.playerId === pid,
+                ) ??
+                null;
+            }
+          }
+        }
+
+        return (
+          <PlayerDetailModal
+            player={inspected.player}
+            slotSubPosition={resolvedSubPos}
+            slotSynergy={resolvedSyn}
+            managerTraitId={resolvedMgrTrait}
+            managerRating={resolvedMgrRating}
+            ignoreSeasonCondition
+            onClose={() => setInspected(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

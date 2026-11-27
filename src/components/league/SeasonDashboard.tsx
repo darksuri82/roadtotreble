@@ -142,6 +142,7 @@ export function SeasonDashboard() {
   const [inspectedPlayer, setInspectedPlayer] = useState<{
     playerId: string;
     fallbackStats?: PlayerSeasonStats | null;
+    overrideContext?: import('./OpponentPitchView').OpponentPlayerInspectContext | null;
   } | null>(null);
   const [inspectedMatch, setInspectedMatch] = useState<MatchResult | null>(null);
   const [inspectedClub, setInspectedClub] = useState<{
@@ -899,8 +900,11 @@ export function SeasonDashboard() {
                 onInspectPlayer={(p) =>
                   setInspectedPlayer({ playerId: p.id })
                 }
-                onClickOpponentPlayerName={(pid) =>
-                  setInspectedPlayer({ playerId: pid })
+                onClickOpponentPlayerName={(pid, ctx) =>
+                  setInspectedPlayer({
+                    playerId: pid,
+                    overrideContext: ctx ?? null,
+                  })
                 }
               >
                 {/* Match Actions */}
@@ -1843,13 +1847,16 @@ export function SeasonDashboard() {
 
       {/* Player Detail Modal with Competition Breakdown */}
       {inspectedPlayer && (() => {
-        const resolved = resolvePlayerById({
-          playerId: inspectedPlayer.playerId,
-          starters: state.starters,
-          bench: state.bench,
-          season,
-          fallbackStats: inspectedPlayer.fallbackStats,
-        });
+        const oppCtx = inspectedPlayer.overrideContext ?? null;
+        const resolved =
+          oppCtx?.player ??
+          resolvePlayerById({
+            playerId: inspectedPlayer.playerId,
+            starters: state.starters,
+            bench: state.bench,
+            season,
+            fallbackStats: inspectedPlayer.fallbackStats,
+          });
         const breakdown = buildPlayerCompetitionBreakdown(
           inspectedPlayer.playerId,
           season,
@@ -1858,22 +1865,33 @@ export function SeasonDashboard() {
         const starterIdx = resolved
           ? state.starters.findIndex((p) => p?.id === resolved.id)
           : -1;
-        const matchedSlotSynergy =
-          starterIdx >= 0 ? chemistry.slotSynergies?.[starterIdx] ?? null : null;
-        const matchedSlotSubPos =
-          starterIdx >= 0
+        const isUserPlayer =
+          starterIdx >= 0 ||
+          Boolean(resolved && state.bench.some((p) => p?.id === resolved.id));
+        const matchedSlotSynergy = isUserPlayer
+          ? starterIdx >= 0
+            ? (chemistry.slotSynergies?.[starterIdx] ?? null)
+            : null
+          : (oppCtx?.slotSynergy ?? null);
+        const matchedSlotSubPos = isUserPlayer
+          ? starterIdx >= 0
             ? FORMATIONS[state.formation]?.slots[starterIdx]?.subPosition
-            : undefined;
+            : undefined
+          : oppCtx?.slotSubPosition;
+        const matchedMgrTrait = isUserPlayer
+          ? state.manager.traitId
+          : (oppCtx?.managerTraitId ?? null);
         return (
           <PlayerDetailModal
             player={resolved}
             slotSubPosition={matchedSlotSubPos}
-            managerTraitId={state.manager.traitId}
+            managerTraitId={matchedMgrTrait}
+            managerRating={isUserPlayer ? undefined : oppCtx?.managerRating}
             slotSynergy={matchedSlotSynergy}
             seasonStats={breakdown.total}
             competitionStats={breakdown}
             condition={
-              resolved ? season.playerConditions?.[resolved.id] ?? null : null
+              resolved ? (season.playerConditions?.[resolved.id] ?? null) : null
             }
             onClose={() => setInspectedPlayer(null)}
           />

@@ -1,3 +1,4 @@
+import { Info } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { getClubManager } from '../../data/aiManagers';
 import { FORMATIONS } from '../../data/formations';
@@ -16,19 +17,42 @@ import {
 } from '../../engine/conditionEngine';
 import { getClubRealDepthPool } from '../../engine/dataLoader';
 import { optimizeCurrentStartersForFormation } from '../../engine/lineupOptimizer';
+import { evaluatePositionFit } from '../../engine/positionEngine';
 import { TACTICS } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
-import type { ChemistryLineType, FormationId } from '../../types/game';
+import type {
+  ChemistryLineType,
+  FormationId,
+  ManagerTraitId,
+  PlayerSlotSynergy,
+} from '../../types/game';
 import type { Club } from '../../types/league';
-import type { Player } from '../../types/player';
+import { getCardTier } from '../../types/player';
+import type { Player, SubPosition } from '../../types/player';
 import { CountryFlagSvg } from '../common/CountryFlagSvg';
 import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PlayerNameButton } from '../common/PlayerNameButton';
 
+export interface OpponentPlayerInspectContext {
+  player: Player;
+  slotSubPosition?: SubPosition;
+  slotSynergy?: PlayerSlotSynergy | null;
+  managerTraitId?: ManagerTraitId | null;
+  managerRating?: number;
+}
+
 interface OpponentPitchViewProps {
   opponent: Club;
   roster: Player[];
-  onClickPlayerName?: (playerId: string) => void;
+  opponentManagerOverride?: {
+    name: string;
+    ovr: number;
+    traitId: ManagerTraitId;
+  };
+  onClickPlayerName?: (
+    playerId: string,
+    context?: OpponentPlayerInspectContext,
+  ) => void;
 }
 
 const LINE_COLORS: Record<ChemistryLineType, string> = {
@@ -59,7 +83,12 @@ function assignRosterToFormation(
   const xi = roster.slice(0, config.slots.length);
 
   // Curated HOF historical squads are already strictly ordered to match their formation slots
-  if (opponent.id.startsWith('hist-') && xi.length === config.slots.length) {
+  if (
+    (opponent.id.startsWith('hist-') ||
+      opponent.id.startsWith('era-') ||
+      opponent.id.startsWith('global-rank-')) &&
+    xi.length === config.slots.length
+  ) {
     return xi;
   }
 
@@ -94,17 +123,27 @@ function shortLastName(name: string): string {
 export function OpponentPitchView({
   opponent,
   roster,
+  opponentManagerOverride,
   onClickPlayerName,
 }: OpponentPitchViewProps) {
   const { state } = useGame();
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
-  const conditionMap = state.season?.playerConditions;
+  const isDreamOrGlobalOpponent =
+    opponent.id.startsWith('hist-') ||
+    opponent.id.startsWith('era-') ||
+    opponent.id.startsWith('global-rank-');
+  const conditionMap = isDreamOrGlobalOpponent
+    ? undefined
+    : state.season?.playerConditions;
   const config = FORMATIONS[opponent.formation] ?? FORMATIONS['4-3-3'];
-  const oppManager = useMemo(() => getClubManager(opponent), [opponent]);
+  const oppManager = useMemo(
+    () => opponentManagerOverride ?? getClubManager(opponent),
+    [opponentManagerOverride, opponent],
+  );
 
   const { expectedStarters, injuredPlayers } = useMemo(() => {
-    // Historical HOF & Era Best XI dream match opponents have their fixed curated 11 starters (no season injuries)
-    if (opponent.id.startsWith('hist-') || opponent.id.startsWith('era-')) {
+    // Historical HOF, Era Best XI & Global TOP 15 dream match opponents have their fixed curated 11 starters (no season injuries)
+    if (isDreamOrGlobalOpponent) {
       return {
         expectedStarters: roster.slice(0, 11),
         injuredPlayers: [],
@@ -131,7 +170,7 @@ export function OpponentPitchView({
       injuredPlayers: res.injuredPlayers,
     };
   }, [
-    opponent.id,
+    isDreamOrGlobalOpponent,
     opponent.name,
     roster,
     conditionMap,
@@ -173,17 +212,32 @@ export function OpponentPitchView({
     return lineup
       .map((p, idx) => {
         if (!p) return null;
-        const syn = oppChemistry.slotSynergies[idx];
+        const slot = config.slots[idx];
+        const syn = oppChemistry.slotSynergies[idx] ?? null;
+        const fit = slot
+          ? evaluatePositionFit(
+              p,
+              slot.subPosition,
+              oppManager.traitId,
+              slot.alternateSubPositions,
+            )
+          : null;
+        const baseFitOvr = fit ? fit.effectiveOvr : p.ovr;
+        const totalBonus = syn?.totalBonus ?? 0;
+        const effectiveOvr = baseFitOvr + totalBonus;
         return {
           player: p,
-          displayOvr: syn ? syn.effectiveOvrWithSynergy : p.ovr,
-          totalBonus: syn?.totalBonus ?? 0,
+          baseFitOvr,
+          effectiveOvr,
+          totalBonus,
+          slotSubPosition: slot?.subPosition,
+          slotSynergy: syn,
         };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null)
-      .sort((a, b) => b.displayOvr - a.displayOvr || b.player.ovr - a.player.ovr)
+      .sort((a, b) => b.effectiveOvr - a.effectiveOvr || b.player.ovr - a.player.ovr)
       .slice(0, 3);
-  }, [lineup, oppChemistry.slotSynergies]);
+  }, [lineup, config.slots, oppChemistry.slotSynergies, oppManager.traitId]);
 
   return (
     <div className="space-y-1.5">
@@ -371,28 +425,46 @@ export function OpponentPitchView({
         {/* Opponent 11 Player Nodes */}
         {config.slots.map((slot, idx) => {
           const player = lineup[idx];
-          const syn = oppChemistry.slotSynergies[idx];
-          const displayOvr = syn
-            ? syn.effectiveOvrWithSynergy
-            : (player?.ovr ?? 0);
+          const syn = oppChemistry.slotSynergies[idx] ?? null;
+          const fit = player
+            ? evaluatePositionFit(
+                player,
+                slot.subPosition,
+                oppManager.traitId,
+                slot.alternateSubPositions,
+              )
+            : null;
+          const baseFitOvr = fit ? fit.effectiveOvr : (player?.ovr ?? 0);
+          const hasPenalty = Boolean(fit && fit.penalty < 0);
           const totalBonus = syn?.totalBonus ?? 0;
+          const effectiveOvr = baseFitOvr + totalBonus;
           const neighborBonus = syn?.neighborBonus ?? 0;
           const managerBonus = syn?.managerBonus ?? 0;
           const primaryStyle = player?.playstyles[0]
             ? PLAYSTYLES[player.playstyles[0]]?.shortName
             : null;
-          const isLegendCard = Boolean(player?.isLegend);
-          const isSuper = !isLegendCard && ((player?.ovr ?? 0) >= 91 || displayOvr >= 92);
-          const isWorld = !isLegendCard && !isSuper && ((player?.ovr ?? 0) >= 87 || displayOvr >= 88);
+          const tier = player ? getCardTier(player) : null;
+          const isLegendCard = tier === 'legend';
+          const isSuper = tier === 'superstar';
+          const isWorld = tier === 'worldclass';
+          const inspectContext: OpponentPlayerInspectContext | undefined = player
+            ? {
+                player,
+                slotSubPosition: slot.subPosition,
+                slotSynergy: syn,
+                managerTraitId: oppManager.traitId,
+                managerRating: oppManager.ovr,
+              }
+            : undefined;
           const synTooltip =
             player && syn
               ? [
-                  `${player.name} (기본 ${player.ovr} → 실효 ${displayOvr})`,
+                  `${player.name} (기본 ${player.ovr}${hasPenalty && fit ? ` · 포지션 ${fit.penalty}` : ''}${totalBonus > 0 ? ` · 시너지 +${totalBonus}` : ''} → 실효 ${effectiveOvr})`,
                   ...(primaryStyle ? [primaryStyle] : []),
                   ...syn.reasons,
                 ].join(' · ')
               : player
-                ? `${player.name} (OVR ${player.ovr}${primaryStyle ? ` · ${primaryStyle}` : ''})`
+                ? `${player.name} (기본 OVR ${player.ovr}${primaryStyle ? ` · ${primaryStyle}` : ''})`
                 : undefined;
 
           return (
@@ -410,12 +482,18 @@ export function OpponentPitchView({
                 e.stopPropagation();
                 setHoveredIdx((prev) => (prev === idx ? null : idx));
               }}
+              onContextMenu={(e) => {
+                if (player && onClickPlayerName) {
+                  e.preventDefault();
+                  onClickPlayerName(player.id, inspectContext);
+                }
+              }}
               style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
-              className="absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center cursor-pointer"
+              className="group absolute -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center cursor-pointer"
             >
               <div
                 title={synTooltip}
-                className={`flex flex-col items-center rounded-lg px-1.5 py-0.5 min-w-[54px] sm:min-w-[66px] max-w-[84px] sm:max-w-[94px] text-center shadow-md transition-colors ${
+                className={`relative flex flex-col items-center rounded-lg px-1.5 py-0.5 min-w-[54px] sm:min-w-[66px] max-w-[84px] sm:max-w-[94px] text-center shadow-md transition-colors ${
                   isLegendCard
                     ? 'bg-gradient-to-b from-amber-950/95 via-stone-900/95 to-amber-950/95 border border-amber-400/90 shadow-[0_0_10px_rgba(251,191,36,0.34)]'
                     : isSuper
@@ -425,23 +503,52 @@ export function OpponentPitchView({
                         : 'border border-slate-700/75 bg-[#0f1621]/95 hover:border-slate-500/80'
                 }`}
               >
+                {hasPenalty && fit && (
+                  <span
+                    className={`absolute -top-2 -left-1.5 rounded px-1 text-[8px] font-bold leading-tight ${
+                      fit.fit === 'secondary'
+                        ? 'border border-amber-400/45 bg-[#231a0d]/95 text-amber-200'
+                        : 'border border-rose-400/50 bg-[#271318]/95 text-rose-200'
+                    }`}
+                  >
+                    {fit.penalty}
+                  </span>
+                )}
+                {player && onClickPlayerName && (
+                  <button
+                    type="button"
+                    aria-label={`${player.name} 상세 정보`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onClickPlayerName(player.id, inspectContext);
+                    }}
+                    className="hidden sm:flex absolute -top-1.5 -right-1.5 h-3.5 w-3.5 items-center justify-center rounded-full border border-slate-700 bg-slate-900/95 text-slate-400 opacity-30 group-hover:opacity-100 hover:border-slate-400 hover:text-white transition-opacity cursor-pointer z-30"
+                  >
+                    <Info className="w-2.5 h-2.5" />
+                  </button>
+                )}
                 <div className="flex items-center justify-center gap-0.5 leading-none tabular-nums">
                   <span
                     className={`font-display text-[11px] sm:text-xs font-bold ${
-                      isLegendCard
-                        ? 'text-amber-300'
-                        : isSuper
-                          ? 'text-cyan-200'
-                          : isWorld
-                            ? 'text-sky-200'
-                            : 'text-slate-100'
+                      hasPenalty && fit
+                        ? fit.fit === 'secondary'
+                          ? 'text-amber-300/90'
+                          : 'text-rose-300'
+                        : isLegendCard
+                          ? 'text-amber-300'
+                          : isSuper
+                            ? 'text-cyan-200'
+                            : isWorld
+                              ? 'text-sky-200'
+                              : 'text-slate-100'
                     }`}
                   >
-                    {player ? displayOvr : '-'}
+                    {player ? baseFitOvr : '-'}
                   </span>
                   {totalBonus > 0 && (
                     <span
                       title={[
+                        `기본 ${baseFitOvr} + 시너지 ${totalBonus} = 실효 ${effectiveOvr}`,
                         neighborBonus > 0
                           ? `연결 ${syn?.lineCount ?? 0}선 (+${neighborBonus})`
                           : null,
@@ -475,7 +582,7 @@ export function OpponentPitchView({
                   <div className="mt-0.5 flex items-center justify-center gap-0.5 max-w-full">
                     {onClickPlayerName ? (
                       <PlayerNameButton
-                        onClick={() => onClickPlayerName(player.id)}
+                        onClick={() => onClickPlayerName(player.id, inspectContext)}
                         title={synTooltip ?? `${player.name} 세부 스탯`}
                         className="max-w-[70px] sm:max-w-[84px] text-[8.5px] sm:text-[9.5px] font-semibold text-slate-200 text-center leading-tight"
                       >
@@ -534,36 +641,58 @@ export function OpponentPitchView({
       {keyThreats.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 px-1 text-[10px]">
           <span className="font-semibold text-slate-400 shrink-0">핵심 경계</span>
-          {keyThreats.map(({ player: p, displayOvr, totalBonus }) => (
-            <span
-              key={`threat-${p.id}`}
-              className="inline-flex items-center gap-1 rounded-md bg-[#0d131d] border border-slate-800 px-1.5 py-0.5 text-slate-200"
-            >
-              <CountryFlagSvg
-                code={p.nationalityCode}
-                nationality={p.nationality}
-                size="xs"
-              />
-              {onClickPlayerName ? (
-                <PlayerNameButton
-                  onClick={() => onClickPlayerName(p.id)}
-                  className="font-semibold text-slate-200"
-                >
-                  {p.name}
-                </PlayerNameButton>
-              ) : (
-                <span className="font-semibold">{p.name}</span>
-              )}
-              <span className="font-mono text-amber-200/90 font-bold tabular-nums">
-                {displayOvr}
-              </span>
-              {totalBonus > 0 && (
-                <span className="text-[9px] font-bold text-emerald-300/85 tabular-nums">
-                  +{totalBonus}
+          {keyThreats.map(
+            ({
+              player: p,
+              baseFitOvr,
+              effectiveOvr,
+              totalBonus,
+              slotSubPosition,
+              slotSynergy,
+            }) => (
+              <span
+                key={`threat-${p.id}`}
+                title={
+                  totalBonus > 0
+                    ? `기본 ${baseFitOvr} + 시너지 ${totalBonus} = 실효 ${effectiveOvr}`
+                    : `기본 OVR ${baseFitOvr}`
+                }
+                className="inline-flex items-center gap-1 rounded-md bg-[#0d131d] border border-slate-800 px-1.5 py-0.5 text-slate-200"
+              >
+                <CountryFlagSvg
+                  code={p.nationalityCode}
+                  nationality={p.nationality}
+                  size="xs"
+                />
+                {onClickPlayerName ? (
+                  <PlayerNameButton
+                    onClick={() =>
+                      onClickPlayerName(p.id, {
+                        player: p,
+                        slotSubPosition,
+                        slotSynergy,
+                        managerTraitId: oppManager.traitId,
+                        managerRating: oppManager.ovr,
+                      })
+                    }
+                    className="font-semibold text-slate-200"
+                  >
+                    {p.name}
+                  </PlayerNameButton>
+                ) : (
+                  <span className="font-semibold">{p.name}</span>
+                )}
+                <span className="font-mono text-amber-200/90 font-bold tabular-nums">
+                  {baseFitOvr}
                 </span>
-              )}
-            </span>
-          ))}
+                {totalBonus > 0 && (
+                  <span className="text-[9px] font-bold text-emerald-300/85 tabular-nums">
+                    +{totalBonus}
+                  </span>
+                )}
+              </span>
+            ),
+          )}
         </div>
       )}
 

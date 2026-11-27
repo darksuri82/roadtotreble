@@ -5,6 +5,17 @@
 
 ---
 
+## v10.1.3 — 결산·드림매치 선수 카드 시너지/실효 OVR 1:1 정합화 & 리그 MVP급 시즌 포텐 각성 밸런스 보정
+
+- **1. 최종 결산 · 스토리 준비 · 드림 매치 · 명예의 전당 선수 카드 시너지 표시 완전 수정 (`SeasonSummary.tsx`, `StorySetupScreen.tsx`, `OpponentPitchView.tsx`, `MatchDayTacticsRoom.tsx`, `DreamMatchArena.tsx`, `LegacyHubModal.tsx`, `SeasonDashboard.tsx`, `UclDashboard.tsx`, `PlayerDetailModal.tsx`)**:
+  - `SeasonSummary`·`StorySetupScreen`의 `PlayerDetailModal`에 `slotSynergy`가 누락되어 카드 내 `시너지 +0` 및 포텐 각성 체크리스트 `시너지 +1↑` 미체크로 표시되던 UI 버그를 수정했습니다(실제 경기·각성 엔진에는 정상 반영 중이었음).
+  - `OpponentPitchView`가 실효 OVR(`99`) 옆에 `+3`을 중복 표기하던 혼선을 제거해 유저 `PitchBoard`와 동일하게 **`기본 OVR(96) + 녹색 시너지(+3 ★)`** 형식으로 통일하고, 상대 선수 카드 클릭 시에도 상대 팀의 실제 `slotSynergy`·`slotSubPosition`·`managerTraitId`·`managerRating`이 그대로 전달되어 피치와 카드가 1:1 일치하도록 교정했습니다(`DreamMatchArena`·`LegacyHubModal`은 `ignoreSeasonCondition`으로 정규 시즌 부상/사기 혼입 차단).
+- **2. 리그 MVP급 초특급 시즌 포텐 각성 밸런스 보정 & UCL 스킵 각성 보완 (`awakeningEngine.ts`, `GameContext.tsx`, `v1013SynergyAwakeningDreamMatch.test.ts`)**:
+  - 주포지션·시너지·감독 궁합을 갖춘 88 미만 현역 선수가 장기 엘리트(12G+ · 7.75+) 또는 MVP급 시즌(16G+ · 7.95+ / 공격P 20+ / MOM 8+ / 수비·GK CS 55%+)을 기록할 때 연속 선발 페널티를 면제하고 경기당 상한(`9.5%~22%`) 및 팀 각성 감쇠 하한을 보정해 역사급 활약이 안정적으로 각성으로 이어지도록 개선했습니다(팀 평균 `0~3명/시즌`, 클래식 `0%`, 88+ 초희귀 유지).
+  - `GameContext.tsx`에서 리그+컵+UCL 통합 시즌 기록을 각성 판정에 전달하고, `SKIP_UCL_TO_FINAL_SUMMARY`에서도 UCL 경기 각성 판정이 누락되지 않도록 보완했습니다.
+
+---
+
 ## v10.1.2 — 스토리 모드 맨유·아스널 라이벌 보정 +1 완화 & `★ 미션` 핵심 선수 표기 1:1 정합화
 
 - **07-08 맨유 · 03-04 아스널 라이벌 보정 +1 완화 (`0708_manutd.json`, `0304_arsenal.json`)**: 기존 +2~+3 상향으로 과도해지던 라이벌 전력을 원년 대비 정확히 `+1`(≤92) 수준으로 완화했습니다.

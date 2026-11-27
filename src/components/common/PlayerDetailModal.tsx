@@ -42,9 +42,12 @@ interface PlayerDetailModalProps {
   slotSubPosition?: SubPosition;
   slotSynergy?: PlayerSlotSynergy | null;
   managerTraitId?: ManagerTraitId | null;
+  managerRating?: number;
   seasonStats?: PlayerSeasonStats | null;
   competitionStats?: PlayerCompetitionStatsBreakdown | null;
   condition?: PlayerConditionState | null;
+  /** When true (e.g. Dream Match / Hall of Fame), do not fall back to the active regular season's playerConditions */
+  ignoreSeasonCondition?: boolean;
   onClose: () => void;
 }
 
@@ -53,16 +56,19 @@ export function PlayerDetailModal({
   slotSubPosition,
   slotSynergy = null,
   managerTraitId = null,
+  managerRating,
   seasonStats = null,
   competitionStats = null,
   condition: conditionProp = null,
+  ignoreSeasonCondition = false,
   onClose,
 }: PlayerDetailModalProps) {
   const { state } = useGame();
   useBodyScrollLock(Boolean(player));
-  const condition =
-    conditionProp ??
-    (player ? (state.season?.playerConditions?.[player.id] ?? null) : null);
+  const condition = ignoreSeasonCondition
+    ? conditionProp
+    : (conditionProp ??
+      (player ? (state.season?.playerConditions?.[player.id] ?? null) : null));
 
   useEffect(() => {
     if (!player) return;
@@ -84,7 +90,11 @@ export function PlayerDetailModal({
   const fit = slotSubPosition
     ? evaluatePositionFit(player, slotSubPosition, managerTraitId)
     : null;
-  const mgrSynergy = evaluateManagerPlayerSynergy(player, managerTraitId);
+  const mgrSynergy = evaluateManagerPlayerSynergy(
+    player,
+    managerTraitId,
+    managerRating,
+  );
   const playerSynBonus = slotSynergy?.neighborBonus ?? 0;
   const managerSynBonus = slotSynergy
     ? slotSynergy.managerBonus

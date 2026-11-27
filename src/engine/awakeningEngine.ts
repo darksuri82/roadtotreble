@@ -496,6 +496,10 @@ export function computeAwakeningCandidateProbability(params: {
   if (minutes >= 80) perfMult *= 1.12;
   else if (minutes < 60) perfMult *= 0.82;
 
+  const isSuperstarTier = player.ovr >= AWAKENING_SUPERSTAR_OVR_THRESHOLD;
+  let eliteSeasonForm = false;
+  let mvpSeasonForm = false;
+
   if (st && st.appearances >= AWAKENING_MIN_APPEARANCES) {
     const seasonAdjAvg = st.avgRating + ovrExpectationOffset * 0.7;
     if (st.appearances >= 8 && seasonAdjAvg >= 7.4) perfMult *= 1.32;
@@ -503,11 +507,39 @@ export function computeAwakeningCandidateProbability(params: {
     else if (seasonAdjAvg < 6.75) perfMult *= 0.62;
 
     const gaPerApp = (st.goals + st.assists) / Math.max(1, st.appearances);
+    const totalGA = st.goals + st.assists;
     const csRate = st.cleanSheets / Math.max(1, st.appearances);
+    const momCount = st.momCount ?? 0;
     if ((player.position === 'FW' || player.position === 'MF') && gaPerApp >= 0.65) {
       perfMult *= 1.18;
     } else if ((player.position === 'GK' || player.position === 'DF') && csRate >= 0.4) {
       perfMult *= 1.15;
+    }
+
+    // v10.1.3 Sustained Elite / MVP-Caliber Season Ramp (eligible < 88 active players only)
+    // Ensures an 8.0+ / 25+ G+A League MVP with natural position & active synergy isn't RNG-robbed
+    // by the flat 7.40 season ceiling or 4.4% per-match cap.
+    const hasActiveSupport = wellUtilized || (syn?.neighborBonus ?? 0) >= 2;
+    if (!isSuperstarTier && positionPenalty === 0 && !cond?.injury && hasActiveSupport) {
+      const isAttOrMid = player.position === 'FW' || player.position === 'MF';
+      const isDefOrGk = player.position === 'GK' || player.position === 'DF';
+      eliteSeasonForm =
+        st.appearances >= 12 &&
+        (seasonAdjAvg >= 7.75 ||
+          (isAttOrMid && gaPerApp >= 0.85 && seasonAdjAvg >= 7.55) ||
+          (isDefOrGk && csRate >= 0.5 && seasonAdjAvg >= 7.6));
+      mvpSeasonForm =
+        st.appearances >= 16 &&
+        (seasonAdjAvg >= 7.95 ||
+          (isAttOrMid && totalGA >= 20 && seasonAdjAvg >= 7.75) ||
+          (momCount >= 8 && seasonAdjAvg >= 7.75) ||
+          (isDefOrGk && csRate >= 0.55 && seasonAdjAvg >= 7.8));
+
+      if (mvpSeasonForm) {
+        perfMult *= st.appearances >= 24 && wellUtilized ? 4.8 : 3.8;
+      } else if (eliteSeasonForm) {
+        perfMult *= 2.0;
+      }
     }
   }
 
@@ -545,15 +577,19 @@ export function computeAwakeningCandidateProbability(params: {
   if (cond?.injury) {
     utilMult *= 0.25;
   } else if (cond) {
+    let workloadMult = 0.8;
     if (cond.consecutiveMatchesPlayed <= 6) {
-      utilMult *= 1.14;
+      workloadMult = 1.14;
     } else if (cond.consecutiveMatchesPlayed <= 14) {
-      utilMult *= 1.02;
+      workloadMult = 1.02;
     } else if (cond.consecutiveMatchesPlayed <= 22) {
-      utilMult *= 0.9;
-    } else {
-      utilMult *= 0.8;
+      workloadMult = 0.9;
     }
+    // Ironman players sustaining healthy elite/MVP-caliber form shouldn't be penalized for starting every match
+    if (eliteSeasonForm || mvpSeasonForm) {
+      workloadMult = Math.max(0.98, workloadMult);
+    }
+    utilMult *= workloadMult;
   }
 
   // 2e. Position fit (natural role vs forced out-of-position)
@@ -576,10 +612,17 @@ export function computeAwakeningCandidateProbability(params: {
 
   // 3) Tier multiplier (<=76 x2.25, 77..79 x1.95, 80..81 x1.65, 82..84 x1.40, 85..87 x0.80, 88+ x0.04)
   const tierMult = getAwakeningTierRateMultiplier(player.ovr);
-  const maxCandidateProb =
+  const baseMaxCandidateProb =
     player.ovr <= 80
       ? AWAKENING_LOW_OVR_MAX_CANDIDATE_PROB
       : AWAKENING_MAX_CANDIDATE_PROB;
+  const maxCandidateProb = mvpSeasonForm
+    ? (st?.appearances ?? 0) >= 24 && wellUtilized
+      ? 0.22
+      : 0.16
+    : eliteSeasonForm
+      ? 0.095
+      : baseMaxCandidateProb;
 
   const finalProb = clamp(
     AWAKENING_BASE_ELIGIBLE_PROB *
@@ -734,6 +777,44 @@ export function evaluatePostMatchAwakening(
     const cond = conditionMap?.[player.id];
     const mgrFit = evaluateManagerPlayerSynergy(player, managerTraitId);
     const positionPenalty = positionPenaltyByPlayerId.get(player.id) ?? 0;
+    const wellUtilized =
+      mgrFit.isMatch && (syn?.neighborBonus ?? 0) >= 1 && positionPenalty === 0;
+
+    // v10.1.3 Protect historic MVP-caliber seasons on well-utilized eligible (<88) players
+    // from being choked off simply because 2~3 teammates awakened earlier in the season.
+    let candidateTeamCountMult = teamCountMult;
+    if (
+      st &&
+      !player.isLegend &&
+      player.ovr < AWAKENING_SUPERSTAR_OVR_THRESHOLD &&
+      wellUtilized &&
+      !cond?.injury &&
+      st.appearances >= 16
+    ) {
+      const ovrOffset =
+        player.ovr <= 77 ? 0.45 : player.ovr <= 80 ? 0.3 : player.ovr <= 83 ? 0.15 : 0;
+      const seasonAdjAvg = st.avgRating + ovrOffset * 0.7;
+      const totalGA = st.goals + st.assists;
+      const csRate = st.cleanSheets / Math.max(1, st.appearances);
+      const isAttOrMid = player.position === 'FW' || player.position === 'MF';
+      const isDefOrGk = player.position === 'GK' || player.position === 'DF';
+      const isHistoricMvpSeason =
+        seasonAdjAvg >= 7.95 ||
+        (isAttOrMid && totalGA >= 20 && seasonAdjAvg >= 7.75) ||
+        ((st.momCount ?? 0) >= 8 && seasonAdjAvg >= 7.75) ||
+        (isDefOrGk && csRate >= 0.55 && seasonAdjAvg >= 7.8);
+
+      if (isHistoricMvpSeason) {
+        if (alreadyCount < 3) {
+          candidateTeamCountMult = Math.max(
+            teamCountMult,
+            AWAKENING_SECOND_COUNT_MULT,
+          );
+        } else if (alreadyCount === 3 && st.appearances >= 20) {
+          candidateTeamCountMult = Math.max(teamCountMult, 0.35);
+        }
+      }
+    }
 
     const evalRes = computeAwakeningCandidateProbability({
       player,
@@ -748,7 +829,7 @@ export function evaluatePostMatchAwakening(
       condition: cond,
       managerTraitId,
       positionPenalty,
-      teamCountMult,
+      teamCountMult: candidateTeamCountMult,
       coachMult,
     });
 
