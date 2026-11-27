@@ -5,6 +5,21 @@
 
 ---
 
+## v9.9.0 — 첫 화면 고급 도트 일러스트 리디자인 · 감독/구단 커스텀 첫 화면 분리 및 빠른 시작 플로우
+
+- **1. 첫 화면 고급 도트 일러스트 & 타이틀 비주얼 리디자인 (`src/components/setup/RoadToTrebleHeroSvg.tsx`, `src/components/common/PixelManagerAvatar.tsx`, `src/components/setup/TitleScreen.tsx`, `src/index.css`)**:
+  - 트레블 로드 핵심 구도(**출발선 감독 → 계단식 황금/잔디 길 → 리그·자국 컵·챔피언스리그 빅이어 트로피 → 정상 위 고트(GOAT)**)를 유지한 채 `280×108` 고밀도 레트로 도트 아트로 전면 업그레이드했습니다(디더링 야간 스타디움 하늘 · 2층 관중석 실루엣 · 4대 투광등 스포트라이트 빛줄기 · 잔디 스트라이프 디더링 · 3D 트로피 받침대 · 정상 빅이어 & 고트 절제된 픽셀 반짝임).
+  - `getManagerAvatarRects()` 공용 픽셀 빌더를 추출해 길의 출발선에 선 감독 도트 캐릭터와 코너 깃발이 현재 유저가 커스텀한 감독 외형 및 구단 색상을 실시간으로 반영하도록 연동했습니다.
+  - 기존 다크 슬레이트·에메랄드·골드 톤을 유지하면서 `ROAD TO TREBLE` 엠블럼 타이틀, 입체감 있는 `[새 시즌 시작]` 메인 CTA, 보조 버튼(`멀티플레이`·`드림 매치`) 및 하단 4종 메뉴 카드 위계를 정돈해 모바일(360~430px)·데스크톱 한 화면 균형을 최적화했습니다.
+- **2. 감독·구단 커스텀 첫 화면 1줄 바 분리 & 영구 저장 연동 (`src/utils/clubPresets.ts`, `src/components/common/ProfileCustomizerModal.tsx`, `src/components/multiplayer/MpProfileCustomizerModal.tsx`, `src/store/GameContext.tsx`, `src/components/setup/TitleScreen.tsx`)**:
+  - 첫 화면 메인 카드 내부에 높이 50px의 슬림한 1줄 프로필 바(`감독 도트 아바타 + 구단 유니폼/구단명 · 감독명 + [감독 커스텀]`)를 배치했습니다.
+  - 공용 `ProfileCustomizerModal`(`MpProfileCustomizerModal` 통합 재사용)에서 감독 외형·이름·구단명·약칭·유니폼 색상/패턴·6개 프리셋을 한 번에 설정하며, `localStorage`(`rtt_active_user_profile_v1`)에 영구 저장되어 기존 프리셋·멀티플레이 커스텀과 충돌 없이 자동 동기화됩니다(최초 방문 시 깔끔한 기본값 자동 세팅).
+- **3. 새 시즌 빠른 시작 플로우 단축 & 설정 단계 상단 칩 연동 (`src/components/setup/FormationSelect.tsx`, `src/components/setup/ManagerRouletteScreen.tsx`, `src/components/league/LeagueSelect.tsx`, `src/components/common/ActiveProfileChip.tsx`, `src/components/common/HeaderNav.tsx`)**:
+  - `START_NEW_CAREER` / `RESET_GAME`이 저장된 구단·감독 프로필을 그대로 유지하도록 개선하고, `FormationSelect`의 구단/유니폼 입력 폼과 `ManagerRouletteScreen`의 감독 외형 입력 폼을 제거해 `[새 시즌 시작]` 클릭 후 바로 `드래프트 풀 · 포메이션 · 전술(1단계)` → `감독 특성 선택(2단계)`으로 매끄럽게 진입하도록 단축했습니다.
+  - 설정 각 단계 상단에 컴팩트 `ActiveProfileChip`을 배치해 필요 시 모달로 즉시 수정할 수 있으며, `WhatsNewModal.tsx`·`patchNotes.ts`(`v9.9.0`) 및 신규 회귀 테스트 `src/__tests__/v99TitleRedesignAndQuickStart.test.ts`(5건)를 추가했습니다.
+
+---
+
 ## v9.8.0 — 멀티리그 드래프트 빠른 선발 · UCL 프리뷰 전술 수정 · 각성 결산 반영 & 중복 팝업 수정 · 방장/참가자 전수 점검 및 싱글 UI/기능 통일
 
 - **1. 멀티리그 드래프트 `[빠른 선발]` 추가 & 중복 픽 방지 (`src/engine/mpLeagueDraft.ts`, `src/components/multiplayer/league/MpLeagueDraftBoard.tsx`)**:

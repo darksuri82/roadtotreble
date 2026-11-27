@@ -26,8 +26,8 @@ import { PixelManagerAvatar } from './PixelManagerAvatar';
 import { TacticsGuideModal } from './TacticsGuideModal';
 
 const STEPS: { phase: GamePhase; label: string }[] = [
-  { phase: 'setup', label: '구단' },
-  { phase: 'manager_roulette', label: '감독' },
+  { phase: 'setup', label: '전술' },
+  { phase: 'manager_roulette', label: '특성' },
   { phase: 'draft', label: '드래프트' },
   { phase: 'league_select', label: '리그' },
   { phase: 'season', label: '리그·컵' },

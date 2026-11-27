@@ -5,6 +5,7 @@ import { getWeakestClub, LEAGUES } from '../../engine/dataLoader';
 import { TACTIC_LIST } from '../../engine/tacticEngine';
 import { useGame } from '../../store/GameContext';
 import type { LeagueId } from '../../types/league';
+import { ActiveProfileChip } from '../common/ActiveProfileChip';
 import { JerseySvg } from '../common/JerseySvg';
 import { PitchBoard } from '../common/PitchBoard';
 
@@ -46,7 +47,7 @@ export function LeagueSelect() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6">
-      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold tracking-[0.18em] text-emerald-400 uppercase">
             STEP 4 · DRAFT COMPLETE · 16 PLAYERS READY
@@ -54,12 +55,14 @@ export function LeagueSelect() {
           <h1 className="mt-1 font-display text-3xl font-bold text-white">
             도전할 유럽 5대 리그를 선택하세요
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            선택한 리그의 전력 최하위 구단을 대체해 편입됩니다. 시작 전 포메이션(6종)·기본 전술(5종) 변경 및 선발↔벤치 자유 교체가 가능합니다.
+          <p className="mt-1 text-sm text-slate-400 break-keep">
+            선택한 리그의 전력 최하위 구단을 대체해 편입됩니다. 시작 전 포메이션(10종)·기본 전술(5종) 변경 및 선발↔벤치 자유 교체가 가능합니다.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#101822] px-4 py-2.5 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <ActiveProfileChip />
+          <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#101822] px-4 py-2.5 text-xs">
           <div>
             <span className="text-slate-400">OVR</span>{' '}
             <strong className="font-display text-base text-white">
@@ -89,6 +92,7 @@ export function LeagueSelect() {
             <Zap className="w-3.5 h-3.5" />
             <span>케미</span>
             <strong className="font-display text-base">{chemistry.total}</strong>
+          </div>
           </div>
         </div>
       </div>

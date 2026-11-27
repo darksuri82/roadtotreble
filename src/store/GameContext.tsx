@@ -209,17 +209,32 @@ import {
   submitGlobalHofRanking,
 } from '../services/globalRankingService';
 import { extractRoomCodeFromUrl } from '../services/multiplayerService';
-import { normalizeManagerAvatar, saveClubPreset } from '../utils/clubPresets';
+import {
+  DEFAULT_USER_CLUB_PROFILE,
+  hasSavedActiveUserProfile,
+  loadActiveUserProfile,
+  normalizeClubProfile,
+  normalizeManagerAvatar,
+  saveActiveUserProfile,
+  saveClubPreset,
+} from '../utils/clubPresets';
 
 const GAME_STORAGE_KEY = 'football_draft_game_state_v5';
 
-const DEFAULT_USER_CLUB: UserClubProfile = {
-  name: 'FC 유나이티드 드림',
-  shortName: 'FUD',
-  primaryColor: '#10b981',
-  secondaryColor: '#0f172a',
-  pattern: 'sash',
-};
+const DEFAULT_USER_CLUB: UserClubProfile = DEFAULT_USER_CLUB_PROFILE;
+
+function hydrateWithPersistedProfile(base: GameState): GameState {
+  const saved = loadActiveUserProfile();
+  return {
+    ...base,
+    userClub: { ...saved.clubProfile },
+    manager: {
+      ...base.manager,
+      name: saved.managerName,
+      avatar: { ...saved.managerAvatar },
+    },
+  };
+}
 
 function createEmptyStarters(): (Player | null)[] {
   return Array.from({ length: 11 }, () => null);
@@ -253,7 +268,7 @@ const ALL_LEAGUE_IDS: LeagueId[] = [
 export function createInitialState(): GameState {
   return {
     phase: 'title',
-    userClub: DEFAULT_USER_CLUB,
+    userClub: { ...DEFAULT_USER_CLUB },
     manager: {
       name: DEFAULT_MANAGER_NAME,
       avatar: { ...DEFAULT_MANAGER_AVATAR },
@@ -1620,6 +1635,14 @@ type GameAction =
   | { type: 'BACK_TO_CLUB_SETUP' }
   | { type: 'GO_TO_MANAGER_ROULETTE' }
   | {
+      type: 'APPLY_USER_PROFILE';
+      payload: {
+        clubProfile: UserClubProfile;
+        managerName: string;
+        managerAvatar: ManagerAvatarConfig;
+      };
+    }
+  | {
       type: 'UPDATE_MANAGER_PROFILE';
       payload: { name?: string; avatar?: Partial<ManagerAvatarConfig> };
     }
@@ -2984,10 +3007,19 @@ function executeBidirectionalTrade(params: {
 function coreGameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'START_NEW_CAREER': {
+      const fresh = createInitialState();
+      const preservedClub = normalizeClubProfile(state.userClub);
+      const preservedName = state.manager.name.trim() || DEFAULT_MANAGER_NAME;
+      const preservedAvatar = normalizeManagerAvatar(state.manager.avatar);
       return {
-        ...createInitialState(),
+        ...fresh,
         phase: 'setup',
-        userClub: state.userClub,
+        userClub: preservedClub,
+        manager: {
+          ...fresh.manager,
+          name: preservedName,
+          avatar: preservedAvatar,
+        },
       };
     }
 
@@ -3006,25 +3038,62 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'GO_TO_MANAGER_ROULETTE': {
+      const fresh = createInitialState();
+      const preservedClub = normalizeClubProfile(state.userClub);
+      const preservedName = state.manager.name.trim() || DEFAULT_MANAGER_NAME;
+      const preservedAvatar = normalizeManagerAvatar(state.manager.avatar);
       return {
-        ...createInitialState(),
+        ...fresh,
         phase: 'manager_roulette',
-        userClub: state.userClub,
+        userClub: preservedClub,
+        manager: {
+          ...fresh.manager,
+          name: preservedName,
+          avatar: preservedAvatar,
+        },
+      };
+    }
+
+    case 'APPLY_USER_PROFILE': {
+      const cleanClub = normalizeClubProfile(action.payload.clubProfile);
+      const cleanManagerName =
+        action.payload.managerName.trim().slice(0, 14) || DEFAULT_MANAGER_NAME;
+      const cleanAvatar = normalizeManagerAvatar(action.payload.managerAvatar);
+      saveActiveUserProfile({
+        clubProfile: cleanClub,
+        managerName: cleanManagerName,
+        managerAvatar: cleanAvatar,
+      });
+      return {
+        ...state,
+        userClub: cleanClub,
+        manager: {
+          ...state.manager,
+          name: cleanManagerName,
+          avatar: cleanAvatar,
+        },
       };
     }
 
     case 'UPDATE_MANAGER_PROFILE': {
+      const nextName =
+        action.payload.name !== undefined
+          ? action.payload.name
+          : state.manager.name;
+      const nextAvatar = action.payload.avatar
+        ? normalizeManagerAvatar({ ...state.manager.avatar, ...action.payload.avatar })
+        : state.manager.avatar;
+      saveActiveUserProfile({
+        clubProfile: state.userClub,
+        managerName: nextName,
+        managerAvatar: nextAvatar,
+      });
       return {
         ...state,
         manager: {
           ...state.manager,
-          name:
-            action.payload.name !== undefined
-              ? action.payload.name
-              : state.manager.name,
-          avatar: action.payload.avatar
-            ? { ...state.manager.avatar, ...action.payload.avatar }
-            : state.manager.avatar,
+          name: nextName,
+          avatar: nextAvatar,
         },
       };
     }
@@ -3060,12 +3129,19 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
       if (!state.manager.traitId) return state;
       const trimmedManagerName = state.manager.name.trim() || DEFAULT_MANAGER_NAME;
       const normalizedAvatar = normalizeManagerAvatar(state.manager.avatar);
-      saveClubPreset(state.userClub, {
+      const cleanClub = normalizeClubProfile(state.userClub);
+      saveActiveUserProfile({
+        clubProfile: cleanClub,
+        managerName: trimmedManagerName,
+        managerAvatar: normalizedAvatar,
+      });
+      saveClubPreset(cleanClub, {
         name: trimmedManagerName,
         avatar: normalizedAvatar,
       });
       return {
         ...state,
+        userClub: cleanClub,
         manager: {
           ...state.manager,
           name: trimmedManagerName,
@@ -3087,9 +3163,18 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case 'UPDATE_CLUB_PROFILE': {
+      const nextClub: UserClubProfile = {
+        ...state.userClub,
+        ...action.payload,
+      };
+      saveActiveUserProfile({
+        clubProfile: nextClub,
+        managerName: state.manager.name,
+        managerAvatar: state.manager.avatar,
+      });
       return {
         ...state,
-        userClub: { ...state.userClub, ...action.payload },
+        userClub: nextClub,
       };
     }
 
@@ -7063,7 +7148,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         // Ignore
       }
       clearPhase2Handoff();
-      return createInitialState();
+      return hydrateWithPersistedProfile(createInitialState());
     }
 
     default:
@@ -7464,7 +7549,7 @@ export function loadSavedGameState(): GameState {
       return createInitialState();
     }
     const raw = window.localStorage.getItem(GAME_STORAGE_KEY);
-    if (!raw) return createInitialState();
+    if (!raw) return hydrateWithPersistedProfile(createInitialState());
     const parsed = JSON.parse(raw) as GameState;
     if (
       parsed &&
@@ -7629,11 +7714,14 @@ export function loadSavedGameState(): GameState {
           return committed;
         }
       }
+      if (parsed.phase === 'title' && hasSavedActiveUserProfile()) {
+        return hydrateWithPersistedProfile(parsed);
+      }
       return parsed;
     }
-    return createInitialState();
+    return hydrateWithPersistedProfile(createInitialState());
   } catch {
-    return createInitialState();
+    return hydrateWithPersistedProfile(createInitialState());
   }
 }
 
@@ -7685,6 +7773,11 @@ interface GameContextValue {
   proceedToManagerRoulette: () => void;
   backToClubSetup: () => void;
   goToManagerRoulette: () => void;
+  applyUserProfile: (payload: {
+    clubProfile: UserClubProfile;
+    managerName: string;
+    managerAvatar: ManagerAvatarConfig;
+  }) => void;
   updateManagerProfile: (patch: {
     name?: string;
     avatar?: Partial<ManagerAvatarConfig>;
@@ -8297,6 +8390,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'PROCEED_TO_MANAGER_ROULETTE' }),
       backToClubSetup: () => dispatch({ type: 'BACK_TO_CLUB_SETUP' }),
       goToManagerRoulette: () => dispatch({ type: 'GO_TO_MANAGER_ROULETTE' }),
+      applyUserProfile: (payload) =>
+        dispatch({ type: 'APPLY_USER_PROFILE', payload }),
       updateManagerProfile: (patch) =>
         dispatch({ type: 'UPDATE_MANAGER_PROFILE', payload: patch }),
       selectManagerTrait: (traitId) =>

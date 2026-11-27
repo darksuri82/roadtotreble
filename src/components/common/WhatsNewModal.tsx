@@ -8,6 +8,7 @@ import {
   Globe,
   ScrollText,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   TrendingDown,
   Users,
@@ -25,13 +26,14 @@ import {
   GLOBAL_PAST_DAY_ARCHIVE_LIMIT,
 } from '../../services/globalRankingService';
 import type { Player } from '../../types/player';
+import { RoadToTrebleHeroSvg } from '../setup/RoadToTrebleHeroSvg';
 import { PlayerCard } from './PlayerCard';
 
 export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.8.0';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.9.0';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -66,7 +68,7 @@ export function clearWhatsNewDismissal(): void {
   }
 }
 
-type WhatsNewTabId = 'v98' | 'v97' | 'story' | 'ranking' | 'classics';
+type WhatsNewTabId = 'v99' | 'v98' | 'v97' | 'story' | 'ranking' | 'classics';
 
 const TABS: Array<{
   id: WhatsNewTabId;
@@ -74,7 +76,8 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
-  { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8 NEW', icon: Users },
+  { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9 NEW', icon: SlidersHorizontal },
+  { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8', icon: Users },
   { id: 'v97', label: '이적 프리뷰 · 각성', badge: '9.7', icon: ArrowLeftRight },
   { id: 'story', label: '팀 소개 · 위기 서사', badge: '9.7', icon: BookOpen },
   { id: 'ranking', label: '일일 랭킹 · 공정성', badge: '9.5~9.6', icon: Globe },
@@ -93,7 +96,7 @@ export function WhatsNewModal({
   onOpenPatchNotes,
 }: WhatsNewModalProps) {
   useBodyScrollLock(true);
-  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v98');
+  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v99');
   const [dontShowAgain, setDontShowAgain] = useState<boolean>(false);
 
   const previewPlayers = useMemo(() => {
@@ -206,6 +209,51 @@ export function WhatsNewModal({
 
         {/* Single Scrollable Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y p-4 sm:p-5 space-y-4 break-keep">
+          {activeTab === 'v99' && (
+            <div className="space-y-3.5">
+              {/* 1. Upgraded Retro Pixel Hero Art Preview */}
+              <div className="rounded-2xl border border-emerald-500/30 bg-[#0d1522] p-3.5 sm:p-4 space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-300">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    첫 화면 고급 도트 일러스트 리디자인
+                  </span>
+                  <span className="rounded bg-amber-500/15 border border-amber-400/35 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-200 whitespace-nowrap">
+                    280×108 픽셀 · 실시간 감독 연동
+                  </span>
+                </div>
+                <div className="overflow-hidden rounded-xl border border-slate-700/80 bg-[#060b14]">
+                  <RoadToTrebleHeroSvg />
+                </div>
+                <p className="text-[11px] leading-relaxed text-slate-300">
+                  디더링 야간 스타디움·관중석·투광등 빛줄기·잔디 스트라이프·3D 트로피 받침대·정상 빅이어 &amp; 고트(GOAT) 반짝임을 고밀도 도트 아트로 업그레이드하고, 출발선에 <strong className="text-emerald-200">내가 커스텀한 감독 도트 캐릭터와 구단 깃발</strong>이 실시간 반영됩니다.
+                </p>
+              </div>
+
+              {/* 2. Compact Profile Bar + Streamlined Quick Start Flow */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px] text-slate-300">
+                <div className="rounded-xl border border-slate-800 bg-[#090f19] p-3.5 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-extrabold text-emerald-200">
+                    <SlidersHorizontal className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    첫 화면 1줄 감독 · 구단 커스텀 바
+                  </div>
+                  <p className="leading-relaxed text-slate-400">
+                    첫 화면 슬림 프로필 바에서 감독 외형·이름·구단명·유니폼 디자인을 한 번에 커스텀하고 영구 저장합니다(싱글·멀티플레이 자동 연동 · 프리셋 6개 지원).
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-800 bg-[#090f19] p-3.5 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-extrabold text-amber-200">
+                    <Wand2 className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                    새 시즌 빠른 시작 (중복 입력 제거)
+                  </div>
+                  <p className="leading-relaxed text-slate-400">
+                    [새 시즌 시작] 클릭 시 구단·외형 입력을 생략하고 바로 <strong className="text-white">드래프트 풀 · 포메이션 · 전술 → 감독 특성 선택</strong>으로 진입합니다. 각 단계 상단 칩에서 언제든 모달 수정도 가능합니다.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'v98' && (
             <div className="space-y-3.5">
               {/* 1. Draft Quick Lineup + UCL Preview Inline Tactics */}

@@ -285,20 +285,26 @@ interface PixelManagerAvatarProps {
   pose?: ManagerPoseId;
 }
 
+export interface PixelManagerAvatarRects {
+  width: number;
+  height: number;
+  rects: { x: number; y: number; w: number; fill: string }[];
+}
+
 /**
- * 2-head-tall chibi pixel-art football manager avatar (28x34 pixel grid)
- * with strictly separated Male/Female silhouettes, faces, hairstyles, outfits,
- * plus optional dynamic facial expressions and celebration/despair arm poses.
+ * Pure pixel-grid builder for the 28x34 chibi pixel manager so both
+ * PixelManagerAvatar and RoadToTrebleHeroSvg share one pixel-accurate source.
  */
-export function PixelManagerAvatar({
+export function getManagerAvatarRects({
   avatar,
   clubPrimaryColor = '#10b981',
   clubSecondaryColor = '#f8fafc',
-  size = 84,
-  className = '',
   expression = 'default',
   pose = 'default',
-}: PixelManagerAvatarProps) {
+}: Pick<
+  PixelManagerAvatarProps,
+  'avatar' | 'clubPrimaryColor' | 'clubSecondaryColor' | 'expression' | 'pose'
+>): PixelManagerAvatarRects {
   const cfg = normalizeAvatarForGender(avatar);
   const isFemale = cfg.gender === 'female';
   const skin =
@@ -1328,6 +1334,31 @@ export function PixelManagerAvatar({
       x += w;
     }
   }
+
+  return { width: W, height: H, rects };
+}
+
+/**
+ * 2-head-tall chibi pixel-art football manager avatar (28x34 pixel grid)
+ * with strictly separated Male/Female silhouettes, faces, hairstyles, outfits,
+ * plus optional dynamic facial expressions and celebration/despair arm poses.
+ */
+export function PixelManagerAvatar({
+  avatar,
+  clubPrimaryColor = '#10b981',
+  clubSecondaryColor = '#f8fafc',
+  size = 84,
+  className = '',
+  expression = 'default',
+  pose = 'default',
+}: PixelManagerAvatarProps) {
+  const { width: W, height: H, rects } = getManagerAvatarRects({
+    avatar,
+    clubPrimaryColor,
+    clubSecondaryColor,
+    expression,
+    pose,
+  });
 
   return (
     <svg
