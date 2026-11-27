@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
 import { compareScoreWithHistoricalTeams } from '../../data/historicalTeams';
+import { getStoryNoUclReason } from '../../data/story/storyRegistry';
 import {
   computeMatchesOnlyAnalytics,
   computeSquadPlayerAnalytics,
@@ -501,6 +502,10 @@ export function SeasonSummary() {
     });
 
   const isStoryMode = Boolean(state.storyMode);
+  const storyNoUclReason =
+    isStoryMode && !state.storyMode?.hasUcl
+      ? getStoryNoUclReason(state.storyMode?.scenarioId)
+      : null;
   const finalRank = getUserRank(season.standings, USER_CLUB_ID);
   const userRow = season.standings[finalRank - 1];
   const fourthRow = season.standings[3];
@@ -566,6 +571,7 @@ export function SeasonSummary() {
             userStanding={userRow}
             finalRank={finalRank}
             canEnterUcl={canStartUcl}
+            storyNoUclReason={storyNoUclReason}
             onEnterUcl={enterUclMode}
             onClose={() => setShowLeagueFinaleBanner(false)}
           />
@@ -633,9 +639,17 @@ export function SeasonSummary() {
                   ? 'UEFA 챔피언스리그 우승 달성!'
                   : canStartUcl
                     ? '챔피언스리그 진출 성공! 트레블에 도전하세요'
-                    : qualifiedForUcl
-                      ? '시즌 여정이 마무리되었습니다'
-                      : '아쉽게 챔피언스리그 진출권을 놓쳤습니다'}
+                    : storyNoUclReason
+                      ? finalRank === 1 && wonCup
+                        ? `${league.koreanName}·${season.cup?.meta.koreanName ?? '자국 컵'} 더블 달성!`
+                        : finalRank === 1
+                          ? `${league.koreanName} 정상 등극! 역사적인 우승`
+                          : wonCup
+                            ? `${season.cup?.meta.koreanName ?? '자국 컵'} 우승으로 시즌을 마쳤습니다`
+                            : `${league.koreanName} 최종 ${finalRank}위로 시즌을 마쳤습니다`
+                      : qualifiedForUcl
+                        ? '시즌 여정이 마무리되었습니다'
+                        : '아쉽게 챔피언스리그 진출권을 놓쳤습니다'}
             </h1>
 
             <p className="max-w-xl text-sm text-slate-300 leading-relaxed">
@@ -649,7 +663,7 @@ export function SeasonSummary() {
                   : userRow.goalDifference}
                 )
               </strong>
-              {!qualifiedForUcl && fourthRow && (
+              {!qualifiedForUcl && !storyNoUclReason && fourthRow && (
                 <span className="text-slate-400">
                   {' '}
                   · 4위 {fourthRow.teamName}과{' '}
@@ -657,6 +671,16 @@ export function SeasonSummary() {
                 </span>
               )}
             </p>
+
+            {storyNoUclReason && (
+              <p
+                id="story-no-ucl-reason-note"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-xs font-semibold text-sky-200"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-sky-300 shrink-0" />
+                {storyNoUclReason}
+              </p>
+            )}
 
             {/* Primary Actions */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -2079,7 +2103,8 @@ export function SeasonSummary() {
               <p className="text-sm font-bold text-white">
                 {canStartUcl
                   ? '아직 챔피언스리그에 출전하지 않았습니다.'
-                  : '이번 시즌 챔피언스리그에 진출하지 못했습니다.'}
+                  : (storyNoUclReason ??
+                    '이번 시즌 챔피언스리그에 진출하지 못했습니다.')}
               </p>
               {canStartUcl && (
                 <div className="flex flex-wrap justify-center gap-2">

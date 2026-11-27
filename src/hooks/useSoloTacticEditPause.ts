@@ -21,6 +21,8 @@ export interface SoloTacticEditSessionState {
   startTacticEdit: () => void;
   /** Confirms [수정 확정], resumes auto-advance, and shows next-match notice if tactics changed */
   confirmTacticEdit: () => void;
+  /** Marks tactics as directly modified (e.g. during between-match intermission) to show the next-match notice */
+  markTacticModified: () => void;
   /** Resets edit mode & notice (e.g. when live auto-advance stops) */
   resetTacticEdit: () => void;
 }
@@ -51,6 +53,10 @@ export function useSoloTacticEditSession(
     }
   }, [tacticSignature, matchScopeKey]);
 
+  const markTacticModified = useCallback(() => {
+    setNoticeScopeKey(matchScopeKey);
+  }, [matchScopeKey]);
+
   const resetTacticEdit = useCallback(() => {
     setTacticEditMode(false);
     setNoticeScopeKey(null);
@@ -66,6 +72,7 @@ export function useSoloTacticEditSession(
     tacticNoticeLabel,
     startTacticEdit,
     confirmTacticEdit,
+    markTacticModified,
     resetTacticEdit,
   };
 }

@@ -27,6 +27,7 @@ interface LeagueFinaleBannerModalProps {
   userStanding: StandingRow;
   finalRank: number;
   canEnterUcl?: boolean;
+  storyNoUclReason?: string | null;
   onEnterUcl?: () => void;
   onClose: () => void;
 }
@@ -57,6 +58,7 @@ export function LeagueFinaleBannerModal({
   userStanding,
   finalRank,
   canEnterUcl = false,
+  storyNoUclReason = null,
   onEnterUcl,
   onClose,
 }: LeagueFinaleBannerModalProps) {
@@ -185,20 +187,28 @@ export function LeagueFinaleBannerModal({
             {isChampion
               ? `👑 ${leagueName} 챔피언! (최종 1위)`
               : isUclSpot
-                ? `🏆 챔피언스리그 진출! (최종 ${finalRank}위)`
+                ? storyNoUclReason
+                  ? `✨ ${leagueName} TOP ${uclSpots} 피니시 (최종 ${finalRank}위)`
+                  : `🏆 챔피언스리그 진출! (최종 ${finalRank}위)`
                 : isRelegated
                   ? `🔻 강등! (최종 ${finalRank}위)`
                   : `${leagueName} 최종 ${finalRank}위`}
           </h2>
 
           <p className="text-xs text-slate-300 leading-relaxed">
-            {isChampion
-              ? `${totalRounds}라운드 대장정 끝에 정상을 차지하며 유럽 챔피언스리그 1시드(Pot 1) 자격을 획득했습니다!`
-              : isUclSpot
-                ? `치열한 상위권 경쟁을 뚫고 TOP ${uclSpots}에 안착하여 UEFA 챔피언스리그 본선 티켓을 거머쥐었습니다!`
+            {storyNoUclReason
+              ? isChampion
+                ? `${totalRounds}라운드 대장정 끝에 리그 정상을 차지했습니다! (${storyNoUclReason})`
                 : isRelegated
                   ? `${leagueName} 잔류 마지노선(${relegationStartRank - 1}위)을 지키지 못하고 강등권(${relegationStartRank}~${totalTeams}위)으로 시즌을 마감했습니다.`
-                  : `${totalRounds}라운드 정규 리그 일정을 모두 마쳤습니다. 아래에서 시즌 최종 성적을 확인하세요.`}
+                  : `${totalRounds}라운드 정규 리그를 최종 ${finalRank}위로 마쳤습니다. (${storyNoUclReason})`
+              : isChampion
+                ? `${totalRounds}라운드 대장정 끝에 정상을 차지하며 유럽 챔피언스리그 1시드(Pot 1) 자격을 획득했습니다!`
+                : isUclSpot
+                  ? `치열한 상위권 경쟁을 뚫고 TOP ${uclSpots}에 안착하여 UEFA 챔피언스리그 본선 티켓을 거머쥐었습니다!`
+                  : isRelegated
+                    ? `${leagueName} 잔류 마지노선(${relegationStartRank - 1}위)을 지키지 못하고 강등권(${relegationStartRank}~${totalTeams}위)으로 시즌을 마감했습니다.`
+                    : `${totalRounds}라운드 정규 리그 일정을 모두 마쳤습니다. 아래에서 시즌 최종 성적을 확인하세요.`}
           </p>
         </div>
 

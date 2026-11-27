@@ -1,5 +1,16 @@
-import { Check, Pause, Play, Radio, SlidersHorizontal, Square, Tv } from 'lucide-react';
+import {
+  Check,
+  FastForward,
+  Loader2,
+  Pause,
+  Play,
+  Radio,
+  SlidersHorizontal,
+  Square,
+  Tv,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { TACTICS } from '../../engine/tacticEngine';
 import type { Club, MatchResult } from '../../types/league';
 import type { MpCastMatch, MpFeedItem } from '../../types/mpLeague';
 import {
@@ -7,9 +18,12 @@ import {
   LIVE_PK_KICK_INTERVAL_MS,
   LiveTickerMatchCard,
 } from '../multiplayer/league/MpLiveTicker';
+import { JerseySvg } from './JerseySvg';
 
 export const SOLO_LIVE_SPEED_OPTIONS = [5000, 7000, 9000] as const;
 export type SoloLiveDurationMs = (typeof SOLO_LIVE_SPEED_OPTIONS)[number];
+/** Between-match preparation interval (3s) so players can react & adjust tactics before important matches. */
+export const SOLO_LIVE_INTERMISSION_MS = 3000;
 
 /** Converts a solo MatchResult into the shared live scoreboard match structure (deduping ET events + keeping PK kicks). */
 export function matchResultToCastMatch(
@@ -102,6 +116,25 @@ export function matchResultToCastMatch(
   };
 }
 
+export interface SoloLiveIntermissionInfo {
+  /** Remaining wait time in ms (0..totalMs) */
+  remainingMs: number;
+  /** Total wait time in ms (default SOLO_LIVE_INTERMISSION_MS = 3000) */
+  totalMs: number;
+  /** Label of the upcoming match (e.g. "ROUND 12" or "FA컵 8강") */
+  nextRoundLabel: string;
+  /** Upcoming opponent club (if available) */
+  nextOpponent: Club | null;
+  /** True when user is home */
+  isHome?: boolean;
+  /** True when upcoming match is a big/important match (rival, top-4 clash, or cup) */
+  isImportantMatch?: boolean;
+  /** Optional badge label for important match */
+  importantBadge?: string | null;
+  /** Optional callback to skip the remaining intermission countdown and start immediately */
+  onStartNow?: () => void;
+}
+
 interface SoloLiveScoreboardProps {
   match: MpCastMatch | null;
   clubsById: Record<string, Club>;
@@ -112,7 +145,7 @@ interface SoloLiveScoreboardProps {
   pauseReasonLabel?: string | null;
   /** Optional status notice (e.g. tactic changed → applies from next match). */
   noticeLabel?: string | null;
-  /** True while user is explicitly editing tactics in the squad tab */
+  /** True while user is explicitly editing tactics */
   tacticEditActive?: boolean;
   onStartTacticEdit?: () => void;
   onConfirmTacticEdit?: () => void;
@@ -121,6 +154,8 @@ interface SoloLiveScoreboardProps {
   onMatchDone: (matchKey: string) => void;
   /** Called when user pauses mid-stream and chooses to jump straight into this match's 2D broadcast. */
   onEnterLiveMatch?: (minute: number, inPenalties: boolean) => void;
+  /** Between-match 3-second preparation intermission state (shown while match === null) */
+  intermission?: SoloLiveIntermissionInfo | null;
   /** When true (UCL only), render broadcast SVG penalty shootout visual instead of plain O/X board. */
   useUclPkVisual?: boolean;
 }
@@ -142,6 +177,7 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
     onStop,
     onMatchDone,
     onEnterLiveMatch,
+    intermission = null,
     useUclPkVisual = false,
   } = props;
 
@@ -167,6 +203,25 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
       !progressStateRef.current.finished,
   );
 
+  const showIntermissionCard = Boolean(
+    !match && intermission && (!pauseReasonLabel || tacticEditActive),
+  );
+  const intermissionTotalMs = Math.max(
+    1,
+    intermission?.totalMs ?? SOLO_LIVE_INTERMISSION_MS,
+  );
+  const intermissionRemainingMs = Math.max(
+    0,
+    Math.min(intermissionTotalMs, intermission?.remainingMs ?? intermissionTotalMs),
+  );
+  const intermissionProgressPct = Math.max(
+    0,
+    Math.min(
+      100,
+      ((intermissionTotalMs - intermissionRemainingMs) / intermissionTotalMs) * 100,
+    ),
+  );
+
   return (
     <div className="rounded-xl sm:rounded-2xl border border-emerald-500/35 bg-[#0c131d] p-2.5 sm:p-3.5 space-y-2.5 shadow-lg">
       {/* Compact control bar */}
@@ -176,13 +231,24 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
             className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-extrabold ${
               paused || pauseReasonLabel
                 ? 'border-amber-400/45 bg-amber-500/15 text-amber-200'
-                : 'border-emerald-500/45 bg-emerald-500/15 text-emerald-200'
+                : showIntermissionCard
+                  ? 'border-sky-400/45 bg-sky-500/15 text-sky-200'
+                  : 'border-emerald-500/45 bg-emerald-500/15 text-emerald-200'
             }`}
           >
-            <Radio
-              className={`w-3 h-3 ${paused || pauseReasonLabel ? '' : 'animate-pulse'}`}
-            />
-            {pauseReasonLabel ?? (paused ? '일시정지' : '라이브 자동진행')}
+            {showIntermissionCard && !paused && !pauseReasonLabel ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <Radio
+                className={`w-3 h-3 ${paused || pauseReasonLabel ? '' : 'animate-pulse'}`}
+              />
+            )}
+            {pauseReasonLabel ??
+              (paused
+                ? '일시정지'
+                : showIntermissionCard
+                  ? '다음 경기 대기'
+                  : '라이브 자동진행')}
           </span>
 
           {tacticEditActive && onConfirmTacticEdit ? (
@@ -193,7 +259,7 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
               className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1 text-[11px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer shadow-sm"
             >
               <Check className="w-3 h-3" />
-              수정 확정 · 재개
+              {match ? '수정 확정 · 재개' : '수정 확정 · 바로 시작'}
             </button>
           ) : (
             onStartTacticEdit && (
@@ -272,18 +338,24 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
           <button
             type="button"
             onClick={onStop}
-            title="진행 중인 경기를 즉시 확정하고 자동진행을 중단합니다"
+            title={
+              match
+                ? '진행 중인 경기를 즉시 확정하고 자동진행을 중단합니다'
+                : '다음 경기 시작 전에 자동진행을 중단합니다'
+            }
             className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#0b1018] px-2.5 py-1 text-[11px] font-bold text-slate-400 hover:border-rose-500/40 hover:text-rose-200 cursor-pointer whitespace-nowrap"
           >
             <Square className="w-2.5 h-2.5 fill-current" />
-            확정·중단
+            {match ? '확정·중단' : '중단'}
           </button>
         </div>
       </div>
 
       {tacticEditActive && (
         <div className="rounded-lg border border-amber-400/35 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-200">
-          전술 수정 중 · 수정 확정 시 자동진행이 재개되며 변경된 전술은 다음 경기부터 적용됩니다
+          {match
+            ? '전술 수정 중 · 수정 확정 시 자동진행이 재개되며 변경된 전술은 다음 경기부터 적용됩니다'
+            : '전술 수정 중 · 하단 전술실 또는 스쿼드 탭에서 수정 후 [수정 확정 · 바로 시작]을 누르면 다음 경기에 즉시 적용됩니다'}
         </div>
       )}
 
@@ -293,7 +365,7 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
         </div>
       )}
 
-      {/* Smooth 60fps Live Scoreboard Match Card (+ Extra PK Shootout Phase) */}
+      {/* Smooth 60fps Live Scoreboard Match Card (+ Extra PK Shootout Phase) OR 3s Next-Match Intermission */}
       {match ? (
         <SoloScoreboardMatchRunner
           key={match.key}
@@ -308,6 +380,143 @@ export function SoloLiveScoreboard(props: SoloLiveScoreboardProps) {
           }}
           onDone={onMatchDone}
         />
+      ) : showIntermissionCard && intermission ? (
+        <div
+          id="solo-live-intermission-card"
+          className={`rounded-xl border px-3 py-2.5 space-y-2 transition-colors ${
+            tacticEditActive
+              ? 'border-amber-400/45 bg-amber-950/15'
+              : intermission.isImportantMatch
+                ? 'border-amber-400/50 bg-gradient-to-r from-[#0e1524] via-[#151520] to-[#0e1524]'
+                : 'border-sky-500/35 bg-[#0b111d]'
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-[11px] font-extrabold">
+              <Loader2
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  tacticEditActive || paused
+                    ? 'text-amber-300'
+                    : 'text-sky-300 animate-spin'
+                }`}
+              />
+              <span
+                className={
+                  tacticEditActive || paused ? 'text-amber-200' : 'text-sky-200'
+                }
+              >
+                {tacticEditActive
+                  ? '전술 대비 중 (카운트다운 정지)'
+                  : paused
+                    ? '다음 경기 대기 일시정지'
+                    : '다음 경기 준비 중 · 전술 수정 시 바로 적용'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <span
+                id="solo-live-intermission-timer"
+                className={`rounded-md border px-2 py-0.5 font-mono text-[11px] font-extrabold tabular-nums ${
+                  tacticEditActive || paused
+                    ? 'border-amber-400/40 bg-amber-500/15 text-amber-200'
+                    : 'border-sky-400/40 bg-sky-500/15 text-sky-200'
+                }`}
+              >
+                {(intermissionRemainingMs / 1000).toFixed(1)}초
+              </span>
+              {!tacticEditActive && intermission.onStartNow && (
+                <button
+                  id="solo-live-intermission-start-now-btn"
+                  type="button"
+                  onClick={intermission.onStartNow}
+                  className="inline-flex items-center gap-1 rounded-md border border-emerald-400/45 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-extrabold text-emerald-200 hover:bg-emerald-500/25 cursor-pointer"
+                >
+                  <FastForward className="w-3 h-3" />
+                  바로 시작
+                </button>
+              )}
+            </div>
+          </div>
+
+          {intermission.nextOpponent && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/90 bg-[#090e17] px-2.5 py-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <JerseySvg
+                  primaryColor={intermission.nextOpponent.primaryColor}
+                  secondaryColor={intermission.nextOpponent.secondaryColor}
+                  pattern={intermission.nextOpponent.pattern}
+                  size={24}
+                />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[10px] font-bold text-slate-400">
+                      {intermission.nextRoundLabel}
+                    </span>
+                    <span className="truncate text-xs font-extrabold text-white">
+                      {intermission.isHome ? 'vs' : '@'}{' '}
+                      {intermission.nextOpponent.name}
+                    </span>
+                    <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
+                      {intermission.isHome ? '홈' : '원정'}
+                    </span>
+                    {intermission.importantBadge && (
+                      <span className="rounded border border-amber-400/45 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-200">
+                        {intermission.importantBadge}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 text-[10px] font-semibold text-slate-400 tabular-nums">
+                    상대 예상: {intermission.nextOpponent.formation} ·{' '}
+                    {TACTICS[intermission.nextOpponent.defaultTactic].shortName}{' '}
+                    · OVR{' '}
+                    {Math.round(
+                      (intermission.nextOpponent.att +
+                        intermission.nextOpponent.mid +
+                        intermission.nextOpponent.def) /
+                        3,
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {tacticEditActive && onConfirmTacticEdit ? (
+                <button
+                  type="button"
+                  onClick={onConfirmTacticEdit}
+                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1 text-[11px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer shrink-0"
+                >
+                  <Check className="w-3 h-3" />
+                  수정 확정 · 시작
+                </button>
+              ) : (
+                onStartTacticEdit && (
+                  <button
+                    type="button"
+                    onClick={onStartTacticEdit}
+                    className="inline-flex items-center gap-1 rounded-lg border border-sky-400/45 bg-sky-500/20 px-2.5 py-1 text-[11px] font-extrabold text-sky-100 hover:bg-sky-500/30 cursor-pointer shrink-0"
+                  >
+                    <SlidersHorizontal className="w-3 h-3" />
+                    전술 대비
+                  </button>
+                )
+              )}
+            </div>
+          )}
+
+          {/* Smooth 3-second loading bar */}
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800/90">
+            <div
+              className={`h-full rounded-full transition-[width] duration-100 ease-linear ${
+                tacticEditActive || paused
+                  ? 'bg-amber-400'
+                  : intermission.isImportantMatch
+                    ? 'bg-gradient-to-r from-amber-400 via-sky-400 to-emerald-400'
+                    : 'bg-gradient-to-r from-sky-400 to-emerald-400'
+              }`}
+              style={{ width: `${intermissionProgressPct}%` }}
+            />
+          </div>
+        </div>
       ) : (
         <div className="rounded-xl border border-slate-800/80 bg-[#0b1018] px-3 py-3 text-center text-xs font-bold text-slate-400">
           {pauseReasonLabel ?? (paused ? '일시정지됨 · 재개를 누르면 이어서 진행됩니다' : '다음 라운드 준비 중...')}

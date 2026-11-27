@@ -1,9 +1,11 @@
 import {
   Award,
   FastForward,
+  Loader2,
   Play,
   Radio,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   Trophy,
   Tv,
@@ -26,7 +28,7 @@ import { didUserWinCup } from '../../engine/cupEngine';
 import { USER_CLUB_ID } from '../../engine/matchEngine';
 import { formatMainPositions } from '../../engine/positionEngine';
 import { getUserRank } from '../../engine/standingsEngine';
-import { TACTIC_LIST } from '../../engine/tacticEngine';
+import { TACTIC_LIST, TACTICS } from '../../engine/tacticEngine';
 import {
   didUserWinUcl,
   findNextUserUclLeaguePhaseFixture,
@@ -68,7 +70,10 @@ import { PixelStatusIcon } from '../common/PixelStatusIcon';
 import { PixelTrophySvg } from '../common/PixelTrophySvg';
 import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
-import { matchResultToCastMatch } from '../common/SoloLiveScoreboard';
+import {
+  matchResultToCastMatch,
+  SOLO_LIVE_INTERMISSION_MS,
+} from '../common/SoloLiveScoreboard';
 import type { SoloLiveDurationMs } from '../common/SoloLiveScoreboard';
 import { StaffCoachBadge } from '../common/StaffCoachBadge';
 import {
@@ -108,7 +113,7 @@ interface SpectatePrevSnap {
   championTeamId: string | null;
 }
 
-const LP_NEXT_ROUND_COUNTDOWN_MS = 1100;
+const LP_NEXT_ROUND_COUNTDOWN_MS = SOLO_LIVE_INTERMISSION_MS;
 
 function isUclKoStage(stage: UclPhaseStage): stage is UclKnockoutStage {
   return (
@@ -201,6 +206,7 @@ export function UclDashboard() {
     useState<SoloLiveDurationMs>(5000);
   const [settledCastHold, setSettledCastHold] = useState<SettledCastHold | null>(null);
   const [lpNextRoundRemainingMs, setLpNextRoundRemainingMs] = useState<number | null>(null);
+  const [lpTacticEditedRound, setLpTacticEditedRound] = useState<number | null>(null);
   const [spectateCast, setSpectateCast] = useState<{
     cast: MpCastLive;
     prevSnap: SpectatePrevSnap;
@@ -402,6 +408,7 @@ export function UclDashboard() {
     setLiveAutoUserPaused(false);
     setSettledCastHold(null);
     setLpNextRoundRemainingMs(null);
+    setLpTacticEditedRound(null);
     setSpectateCast(null);
     setSpectateSettled(false);
     setLiveOverlays({});
@@ -414,6 +421,7 @@ export function UclDashboard() {
     setLiveAutoUserPaused(false);
     setSettledCastHold(null);
     setLpNextRoundRemainingMs(null);
+    setLpTacticEditedRound(null);
     setSpectateCast(null);
     setSpectateSettled(false);
     setAutoPopupMode('lp');
@@ -1039,6 +1047,36 @@ export function UclDashboard() {
             const zoneText =
               rank <= 8 ? '16강 직행권' : rank <= 24 ? '플레이오프권' : '탈락권';
 
+            const showLpIntermission = Boolean(
+              lpNextRoundRemainingMs !== null &&
+                !isLpCompletedSettled &&
+                nextLeaguePhaseFixture,
+            );
+            const nextLpOppId = nextLeaguePhaseFixture
+              ? nextLeaguePhaseFixture.homeTeamId === USER_CLUB_ID
+                ? nextLeaguePhaseFixture.awayTeamId
+                : nextLeaguePhaseFixture.homeTeamId
+              : null;
+            const nextLpOpp = nextLpOppId ? (clubsById[nextLpOppId] ?? null) : null;
+            const nextLpOppOvr = nextLpOpp
+              ? Math.round((nextLpOpp.att + nextLpOpp.mid + nextLpOpp.def) / 3)
+              : 0;
+            const nextLpIsHome =
+              nextLeaguePhaseFixture?.homeTeamId === USER_CLUB_ID;
+            const nextLpRoundNo = ucl.leaguePhaseRound + 1;
+            const lpIntermissionPct =
+              lpNextRoundRemainingMs !== null
+                ? Math.max(
+                    0,
+                    Math.min(
+                      100,
+                      ((LP_NEXT_ROUND_COUNTDOWN_MS - lpNextRoundRemainingMs) /
+                        LP_NEXT_ROUND_COUNTDOWN_MS) *
+                        100,
+                    ),
+                  )
+                : 0;
+
             popupFooter = (
               <div className="border-t border-slate-800 bg-[#080f1d] px-3.5 py-2.5 sm:px-4 space-y-2.5">
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums">
@@ -1060,6 +1098,149 @@ export function UclDashboard() {
                     </span>
                   )}
                 </div>
+
+                {showLpIntermission && nextLpOpp && lpNextRoundRemainingMs !== null && (
+                  <div
+                    id="solo-ucl-lp-intermission-card"
+                    className={`rounded-xl border px-3 py-2.5 space-y-2 ${
+                      nextLpOppOvr >= 84
+                        ? 'border-amber-400/45 bg-gradient-to-r from-[#0c1528] via-[#151524] to-[#0c1528]'
+                        : 'border-sky-500/35 bg-[#0b1323]'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-[11px] font-extrabold">
+                        <Loader2
+                          className={`h-3.5 w-3.5 shrink-0 ${
+                            liveAutoUserPaused
+                              ? 'text-amber-300'
+                              : 'text-sky-300 animate-spin'
+                          }`}
+                        />
+                        <span
+                          className={
+                            liveAutoUserPaused ? 'text-amber-200' : 'text-sky-200'
+                          }
+                        >
+                          {liveAutoUserPaused
+                            ? `다음 경기(${nextLpRoundNo}R) 일시정지 · 전술 수정 후 재개`
+                            : `다음 경기(${nextLpRoundNo}R) 준비 중 · 전술 수정 시 바로 적용`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded-md border border-sky-400/40 bg-sky-500/15 px-2 py-0.5 font-mono text-[11px] font-extrabold tabular-nums text-sky-200">
+                          {(lpNextRoundRemainingMs / 1000).toFixed(1)}초
+                        </span>
+                        <button
+                          id="solo-ucl-lp-start-now-btn"
+                          type="button"
+                          onClick={() => {
+                            setLiveAutoUserPaused(false);
+                            setLpNextRoundRemainingMs(0);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-md border border-emerald-400/45 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-extrabold text-emerald-200 hover:bg-emerald-500/25 cursor-pointer touch-manipulation"
+                        >
+                          <FastForward className="h-3 w-3" />
+                          바로 시작
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800/90 bg-[#080f1c] px-2.5 py-1.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <JerseySvg
+                          primaryColor={nextLpOpp.primaryColor}
+                          secondaryColor={nextLpOpp.secondaryColor}
+                          pattern={nextLpOpp.pattern}
+                          size={22}
+                        />
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs font-extrabold text-white">
+                            <span className="text-[10px] font-bold text-sky-300">
+                              {nextLpRoundNo}R
+                            </span>
+                            <span className="truncate">
+                              {nextLpIsHome ? 'vs' : '@'} {nextLpOpp.name}
+                            </span>
+                            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
+                              {nextLpIsHome ? '홈' : '원정'}
+                            </span>
+                            {nextLpOppOvr >= 84 && (
+                              <span className="rounded border border-amber-400/45 bg-amber-500/15 px-1.5 py-0.5 text-[9px] font-extrabold text-amber-200">
+                                ⚡ 강팀 (OVR {nextLpOppOvr})
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] font-semibold text-slate-400 tabular-nums">
+                            상대 예상: {nextLpOpp.formation} ·{' '}
+                            {TACTICS[nextLpOpp.defaultTactic].shortName} · OVR{' '}
+                            {nextLpOppOvr}
+                          </div>
+                        </div>
+                      </div>
+
+                      {lpTacticEditedRound === nextLpRoundNo && (
+                        <span className="rounded-md border border-emerald-400/45 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-extrabold text-emerald-200">
+                          ✓ {nextLpRoundNo}R 전술 즉시 적용
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Quick 5-tactic switch directly inside the 3s UCL intermission */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
+                        <span className="inline-flex items-center gap-1 text-slate-300">
+                          <SlidersHorizontal className="h-3 w-3 text-sky-300" />
+                          즉시 전술 변경 ({nextLpRoundNo}R 바로 적용)
+                        </span>
+                        <span className="text-sky-300">
+                          현재: {TACTICS[activeTactic].shortName}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-1">
+                        {TACTIC_LIST.map((t) => {
+                          const isCur = activeTactic === t.id;
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => {
+                                setNextMatchTactic(
+                                  t.id === season.defaultTactic ? null : t.id,
+                                );
+                                setLpTacticEditedRound(nextLpRoundNo);
+                                setLpNextRoundRemainingMs((prev) =>
+                                  prev === null
+                                    ? LP_NEXT_ROUND_COUNTDOWN_MS
+                                    : Math.max(prev, 2200),
+                                );
+                              }}
+                              className={`rounded-lg border px-1.5 py-1 text-[10px] font-extrabold transition-colors cursor-pointer touch-manipulation truncate ${
+                                isCur
+                                  ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200'
+                                  : 'border-slate-800 bg-[#0c1424] text-slate-300 hover:border-sky-400/45 hover:text-white'
+                              }`}
+                            >
+                              {t.shortName}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Smooth 3-second loading bar */}
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800/90">
+                      <div
+                        className={`h-full rounded-full transition-[width] duration-100 ease-linear ${
+                          liveAutoUserPaused
+                            ? 'bg-amber-400'
+                            : 'bg-gradient-to-r from-sky-400 to-emerald-400'
+                        }`}
+                        style={{ width: `${lpIntermissionPct}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {isLpCompletedSettled && (
                   <div className="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-slate-800/80">

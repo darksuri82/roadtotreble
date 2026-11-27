@@ -1166,15 +1166,15 @@ export function SystemGuideContent({
               <div className="rounded-lg border border-slate-800 bg-[#0f1622] p-2.5">
                 <div className="font-bold text-sky-300">라이브 자동진행</div>
                 <div className="mt-0.5 text-slate-400">
-                  5·7·9초 템포 · 일시정지 후 [2D 경기 중계 입장]으로 멈춘 분
-                  그대로 난입 가능 · 컵/이적/부상 시 자동 정지
+                  5·7·9초 템포 · 경기 사이 3초 로딩 대기로 다음 상대 확인 ·
+                  일시정지 후 [2D 경기 중계 입장] 난입 및 컵/이적/부상 자동 정지
                 </div>
               </div>
               <div className="rounded-lg border border-slate-800 bg-[#0f1622] p-2.5">
                 <div className="font-bold text-emerald-300">자동진행 중 전술 수정</div>
                 <div className="mt-0.5 text-slate-400">
-                  [전술 수정]으로 일시정지 → 변경 후 [수정 확정] 클릭 시 다음
-                  경기 즉시 반영·자동 재개
+                  경기 사이 3초 대기 중 하단 전술실(또는 [전술 수정])에서 전술·
+                  포메이션·선발을 바꾸면 바로 다음 경기에 즉시 반영
                 </div>
               </div>
             </div>

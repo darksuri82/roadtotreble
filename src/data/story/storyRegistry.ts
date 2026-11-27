@@ -1458,3 +1458,27 @@ export async function loadStoryScenarioBundle(
   bundleCache.set(id, bundle);
   return bundle;
 }
+
+/**
+ * Historical explanation for story scenarios that did not participate in the UEFA Champions League
+ * due to their actual previous-season league finish (e.g. 15-16 Leicester, 23-24 Leverkusen).
+ */
+export function getStoryNoUclReason(
+  scenarioId: StoryScenarioId | undefined | null,
+): string | null {
+  if (!scenarioId) return null;
+  switch (scenarioId) {
+    case '1516_leicester':
+      return '아쉬웠던 직전 시즌(14-15 EPL 14위) 성적으로 인해 15-16 시즌 챔피언스리그에는 출전하지 않습니다.';
+    case '2324_leverkusen':
+      return '아쉬웠던 직전 시즌(22-23 분데스리가 6위) 성적으로 인해 23-24 시즌 챔피언스리그에는 출전하지 않습니다.';
+    default: {
+      const meta = STORY_SCENARIOS.find((s) => s.id === scenarioId);
+      if (meta && !meta.hasUcl) {
+        return `아쉬웠던 직전 시즌 성적으로 인해 ${meta.seasonLabel} 시즌 챔피언스리그에는 출전하지 않습니다.`;
+      }
+      return null;
+    }
+  }
+}
+

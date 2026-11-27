@@ -2,11 +2,13 @@ import {
   ArrowLeftRight,
   Award,
   Calendar,
+  Check,
   FastForward,
   Globe,
   Play,
   Radio,
   SkipForward,
+  SlidersHorizontal,
   Star,
   Trophy,
   Users,
@@ -15,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FORMATIONS } from '../../data/formations';
+import { getStoryNoUclReason } from '../../data/story/storyRegistry';
 import {
   buildFfpPenaltyHelpItems,
   formatFfpBadgeSummary,
@@ -66,6 +69,7 @@ import { PlayerDetailModal } from '../common/PlayerDetailModal';
 import { PlayerNameButton } from '../common/PlayerNameButton';
 import {
   matchResultToCastMatch,
+  SOLO_LIVE_INTERMISSION_MS,
   SoloLiveScoreboard,
 } from '../common/SoloLiveScoreboard';
 import type { SoloLiveDurationMs } from '../common/SoloLiveScoreboard';
@@ -158,6 +162,9 @@ export function SeasonDashboard() {
   const [liveAutoCupPromptOpen, setLiveAutoCupPromptOpen] = useState(false);
   const [liveAutoResumePrompt, setLiveAutoResumePrompt] =
     useState<LiveAutoResumeReason | null>(null);
+  const [liveAutoIntermissionMs, setLiveAutoIntermissionMs] = useState<
+    number | null
+  >(null);
   const liveAutoNeedsPromptRef = useRef<LiveAutoResumeReason | null>(null);
   const prevTransferOpenRef = useRef<boolean>(false);
 
@@ -277,12 +284,14 @@ export function SeasonDashboard() {
     // Commit the streamed match result now → updates standings/stats/events/injuries/transfers with zero spoilers
     setSoloTickerPlaying(false);
     commitLiveMatch();
+    setLiveAutoIntermissionMs(SOLO_LIVE_INTERMISSION_MS);
   }, [commitLiveMatch, setSoloTickerPlaying]);
 
   const handleEnterLive2DFromStream = useCallback(
     (minute: number, inPenalties: boolean) => {
       liveAutoNeedsPromptRef.current =
         streamHalftime?.competition === 'cup' ? 'cup' : 'live_match';
+      setLiveAutoIntermissionMs(null);
       setLiveAutoUserPaused(false);
       enterLiveBroadcastFromStream(minute, inPenalties);
     },
@@ -295,6 +304,7 @@ export function SeasonDashboard() {
     tacticNoticeLabel,
     startTacticEdit,
     confirmTacticEdit,
+    markTacticModified,
     resetTacticEdit,
   } = useSoloTacticEditSession({
     tacticSignature,
@@ -304,8 +314,32 @@ export function SeasonDashboard() {
 
   const handleStartLiveTacticEdit = useCallback(() => {
     startTacticEdit();
-    setActiveTab('squad');
-  }, [startTacticEdit]);
+    if (liveTickerPlaying) {
+      // Mid-match: MatchDayTacticsRoom still reflects the running match, so switch to Squad tab
+      setActiveTab('squad');
+    } else if (activeTab !== 'match' && activeTab !== 'squad') {
+      // Between-match 3s intermission: show MatchDayTacticsRoom with the upcoming opponent & 5-zone matchup
+      setActiveTab('match');
+    }
+  }, [startTacticEdit, liveTickerPlaying, activeTab]);
+
+  const handleConfirmLiveTacticEdit = useCallback(() => {
+    confirmTacticEdit();
+    setLiveAutoUserPaused(false);
+    if (liveAutoActive && !liveTickerPlaying) {
+      // Launch the upcoming match right away with the newly confirmed tactics
+      setLiveAutoIntermissionMs(0);
+    }
+  }, [confirmTacticEdit, liveAutoActive, liveTickerPlaying]);
+
+  const handleIntermissionTacticTouch = useCallback(() => {
+    if (!liveAutoActive || liveTickerPlaying || tacticEditMode) return;
+    // Keep at least 2.2s remaining so rapid adjustments aren't cut off mid-click, and confirm next-match application
+    setLiveAutoIntermissionMs((prev) =>
+      prev === null ? SOLO_LIVE_INTERMISSION_MS : Math.max(prev, 2200),
+    );
+    markTacticModified();
+  }, [liveAutoActive, liveTickerPlaying, tacticEditMode, markTacticModified]);
 
   useEffect(() => {
     const handleGoToTactics = () => {
@@ -331,6 +365,7 @@ export function SeasonDashboard() {
     setLiveAutoUserPaused(false);
     setLiveAutoCupPromptOpen(false);
     setLiveAutoResumePrompt(null);
+    setLiveAutoIntermissionMs(null);
     cancelSoloStreamMatch();
     setSoloTickerPlaying(false);
   }, [cancelSoloStreamMatch, setSoloTickerPlaying, resetTacticEdit]);
@@ -350,6 +385,19 @@ export function SeasonDashboard() {
     liveAutoCupPromptOpen ||
     liveAutoResumePrompt !== null;
 
+  const handleStartIntermissionNow = useCallback(() => {
+    if (
+      !liveAutoActive ||
+      liveTickerPlaying ||
+      tacticEditMode ||
+      liveAutoBlockedByEvent
+    ) {
+      return;
+    }
+    setLiveAutoUserPaused(false);
+    setLiveAutoIntermissionMs(0);
+  }, [liveAutoActive, liveTickerPlaying, tacticEditMode, liveAutoBlockedByEvent]);
+
   useEffect(() => {
     if (
       !season ||
@@ -363,24 +411,48 @@ export function SeasonDashboard() {
     }
     if (season.currentRound >= season.totalRounds && !pendingCupNode) {
       liveAutoNeedsPromptRef.current = null;
-      const stopT = window.setTimeout(() => setLiveAutoActive(false), 0);
+      const stopT = window.setTimeout(() => {
+        setLiveAutoIntermissionMs(null);
+        setLiveAutoActive(false);
+      }, 0);
       return () => window.clearTimeout(stopT);
     }
     // After direct cup/2D play, transfer window, or injury handling, ask user whether to continue or stay paused
     if (liveAutoNeedsPromptRef.current !== null) {
       const reason = liveAutoNeedsPromptRef.current;
       liveAutoNeedsPromptRef.current = null;
-      const promptT = window.setTimeout(() => setLiveAutoResumePrompt(reason), 80);
+      const promptT = window.setTimeout(() => {
+        setLiveAutoIntermissionMs(null);
+        setLiveAutoResumePrompt(reason);
+      }, 80);
       return () => window.clearTimeout(promptT);
     }
     if (pendingCupNode) {
-      const cupT = window.setTimeout(() => setLiveAutoCupPromptOpen(true), 120);
+      const cupT = window.setTimeout(() => {
+        setLiveAutoIntermissionMs(null);
+        setLiveAutoCupPromptOpen(true);
+      }, 120);
       return () => window.clearTimeout(cupT);
     }
-    const timer = window.setTimeout(() => {
-      launchNextLiveAutoMatch(false);
-    }, 620);
-    return () => window.clearTimeout(timer);
+    if (liveAutoIntermissionMs === null) {
+      const initT = window.setTimeout(() => {
+        setLiveAutoIntermissionMs(SOLO_LIVE_INTERMISSION_MS);
+      }, 0);
+      return () => window.clearTimeout(initT);
+    }
+    if (liveAutoIntermissionMs <= 0) {
+      const launchT = window.setTimeout(() => {
+        setLiveAutoIntermissionMs(null);
+        launchNextLiveAutoMatch(false);
+      }, 0);
+      return () => window.clearTimeout(launchT);
+    }
+    const tickT = window.setTimeout(() => {
+      setLiveAutoIntermissionMs((prev) =>
+        prev === null ? null : Math.max(0, prev - 100),
+      );
+    }, 100);
+    return () => window.clearTimeout(tickT);
   }, [
     season,
     state.phase,
@@ -388,6 +460,7 @@ export function SeasonDashboard() {
     liveAutoUserPaused,
     liveTickerPlaying,
     liveAutoBlockedByEvent,
+    liveAutoIntermissionMs,
     pendingCupNode,
     launchNextLiveAutoMatch,
   ]);
@@ -495,6 +568,7 @@ export function SeasonDashboard() {
 
   const handleStartLiveAuto = () => {
     setSkipFlowState('idle');
+    setLiveAutoIntermissionMs(null);
     setLiveAutoActive(true);
     setLiveAutoUserPaused(false);
     setActiveTab('match');
@@ -542,8 +616,47 @@ export function SeasonDashboard() {
                             ? '컵 우승 축하'
                             : null;
 
+  const isLiveAutoIntermission = Boolean(
+    liveAutoActive &&
+      !liveTickerPlaying &&
+      !liveAutoPauseReason &&
+      nextOpponent &&
+      skipFlowState !== 'running',
+  );
+
+  const nextOpponentRank = nextOpponent
+    ? getUserRank(displayStandings, nextOpponent.id)
+    : 99;
+  const isStoryBigMatch = Boolean(
+    state.storyMode &&
+      nextOpponent &&
+      state.storyMode.bigMatchClubIds.includes(nextOpponent.id),
+  );
+  const nextOpponentOvr = nextOpponent
+    ? Math.round((nextOpponent.att + nextOpponent.mid + nextOpponent.def) / 3)
+    : 0;
+  const isImportantNextMatch = Boolean(
+    isNextCupMatch ||
+      isStoryBigMatch ||
+      (nextOpponent && nextOpponentRank <= 4) ||
+      (nextOpponent && nextOpponentOvr >= 84),
+  );
+  const importantNextMatchBadge = isNextCupMatch
+    ? '🏆 컵대회'
+    : isStoryBigMatch
+      ? '⭐ 빅매치'
+      : nextOpponent && nextOpponentRank <= 4
+        ? `🔥 상위권 맞대결 (${nextOpponentRank}위)`
+        : nextOpponent && nextOpponentOvr >= 84
+          ? `⚡ 강팀 맞대결 (OVR ${nextOpponentOvr})`
+          : null;
+
+  // Lock bottom MatchDayTacticsRoom while a match is actively streaming or fast-skipping,
+  // but unlock it during the 3-second intermission so players can immediately adjust tactics for the upcoming match!
   const isAutoSimBottomLocked =
-    liveAutoActive || skipFlowState === 'running' || liveTickerPlaying;
+    skipFlowState === 'running' ||
+    liveTickerPlaying ||
+    (liveAutoActive && !isLiveAutoIntermission);
 
   const controlsBlocked =
     hasPendingFfpNotice ||
@@ -717,9 +830,12 @@ export function SeasonDashboard() {
                 guideTab="legacy"
                 items={[
                   '2D 중계: 직접 경기를 관전하며 하프타임(45\') 전술 수싸움 및 최대 5명 교체 지휘',
-                  '라이브 자동진행(5/7/9초): 일시정지 후 [2D 경기 중계 입장]으로 멈춘 분 그대로 난입 가능',
+                  '라이브 자동진행(5/7/9초): 경기 사이 3초 대기 중 전술 수정 시 다음 경기에 즉시 반영 · 일시정지 후 [2D 경기 중계 입장] 가능',
                   '자동진행 중 [전술 수정] → [수정 확정]으로 다음 경기 전술 즉시 반영 · 컵/이적/부상 시 자동 멈춤',
-                  '리그 4위 이내 진입 시 36팀 UEFA 챔피언스리그 자동 진출',
+                  state.storyMode && !state.storyMode.hasUcl
+                    ? (getStoryNoUclReason(state.storyMode.scenarioId) ??
+                      '아쉬웠던 직전 시즌 성적으로 이번 시즌 챔피언스리그에는 출전하지 않습니다.')
+                    : '리그 4위 이내 진입 시 36팀 UEFA 챔피언스리그 자동 진출',
                 ]}
               />
             </div>
@@ -809,10 +925,7 @@ export function SeasonDashboard() {
               onStartTacticEdit={
                 liveAutoPauseReason ? undefined : handleStartLiveTacticEdit
               }
-              onConfirmTacticEdit={() => {
-                confirmTacticEdit();
-                setLiveAutoUserPaused(false);
-              }}
+              onConfirmTacticEdit={handleConfirmLiveTacticEdit}
               onTogglePause={() => {
                 if (liveAutoPauseReason || tacticEditMode) return;
                 setLiveAutoUserPaused((p) => !p);
@@ -820,6 +933,24 @@ export function SeasonDashboard() {
               onStop={stopLiveAuto}
               onMatchDone={handleLiveAutoMatchDone}
               onEnterLiveMatch={handleEnterLive2DFromStream}
+              intermission={
+                isLiveAutoIntermission
+                  ? {
+                      remainingMs:
+                        liveAutoIntermissionMs ?? SOLO_LIVE_INTERMISSION_MS,
+                      totalMs: SOLO_LIVE_INTERMISSION_MS,
+                      nextRoundLabel:
+                        isNextCupMatch && season.cup && pendingCupStage
+                          ? `${season.cup.meta.koreanName} ${CUP_STAGE_LABELS[pendingCupStage]}`
+                          : `ROUND ${nextRoundNumber}`,
+                      nextOpponent,
+                      isHome: isNextHome,
+                      isImportantMatch: isImportantNextMatch,
+                      importantBadge: importantNextMatchBadge,
+                      onStartNow: handleStartIntermissionNow,
+                    }
+                  : null
+              }
             />
           </div>
           <div className="lg:col-span-5">
@@ -852,6 +983,48 @@ export function SeasonDashboard() {
               <span className="text-[10px] font-semibold text-slate-400 whitespace-nowrap">
                 상단 스코어보드에서 제어
               </span>
+            </div>
+          )}
+          {!isAutoSimBottomLocked && isLiveAutoIntermission && (
+            <div
+              id="solo-live-intermission-tactics-banner"
+              className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 text-[11px] font-bold ${
+                tacticEditMode
+                  ? 'border-amber-400/45 bg-amber-500/12 text-amber-200'
+                  : 'border-sky-400/40 bg-sky-500/10 text-sky-200'
+              }`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${
+                    tacticEditMode
+                      ? 'bg-amber-400'
+                      : 'bg-emerald-400 animate-pulse'
+                  }`}
+                />
+                {tacticEditMode
+                  ? '전술 대비 중 (카운트다운 정지) · 아래에서 수정한 전술·포메이션·선발이 다음 경기에 바로 적용됩니다'
+                  : '다음 경기 대기 중 · 지금 아래 전술실에서 전술·포메이션·선발을 수정하면 바로 다음 경기에 적용됩니다'}
+              </span>
+              {tacticEditMode ? (
+                <button
+                  type="button"
+                  onClick={handleConfirmLiveTacticEdit}
+                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1 text-[11px] font-extrabold text-slate-950 hover:bg-emerald-400 cursor-pointer shrink-0"
+                >
+                  <Check className="w-3 h-3" />
+                  수정 확정 · 바로 시작
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStartLiveTacticEdit}
+                  className="inline-flex items-center gap-1 rounded-lg border border-sky-400/45 bg-sky-500/20 px-2.5 py-1 text-[11px] font-extrabold text-sky-100 hover:bg-sky-500/30 cursor-pointer shrink-0"
+                >
+                  <SlidersHorizontal className="w-3 h-3" />
+                  타이머 멈추고 전술 수정
+                </button>
+              )}
             </div>
           )}
           <div
@@ -891,12 +1064,26 @@ export function SeasonDashboard() {
                 managerTraitId={state.manager.traitId}
                 tacticalHistory={season.tacticalAdaptation?.history}
                 staffCoachId={season.staffCoach?.hiredCoachId ?? null}
-                onSelectTactic={(tId) =>
-                  setNextMatchTactic(tId === season.defaultTactic ? null : tId)
+                onSelectTactic={(tId) => {
+                  setNextMatchTactic(tId === season.defaultTactic ? null : tId);
+                  handleIntermissionTacticTouch();
+                }}
+                onChangeFormation={(f) => {
+                  changeFormation(f);
+                  handleIntermissionTacticTouch();
+                }}
+                onSwapSquad={(a, b) => {
+                  swapSquadPositions(a, b);
+                  handleIntermissionTacticTouch();
+                }}
+                onAutoOptimize={
+                  state.storyMode
+                    ? undefined
+                    : () => {
+                        autoOptimizeLineup();
+                        handleIntermissionTacticTouch();
+                      }
                 }
-                onChangeFormation={changeFormation}
-                onSwapSquad={swapSquadPositions}
-                onAutoOptimize={state.storyMode ? undefined : autoOptimizeLineup}
                 onInspectPlayer={(p) =>
                   setInspectedPlayer({ playerId: p.id })
                 }
@@ -916,6 +1103,7 @@ export function SeasonDashboard() {
                       onClick={() => {
                         if (liveAutoActive && isNextCupMatch && liveAutoUserPaused) {
                           liveAutoNeedsPromptRef.current = 'cup';
+                          setLiveAutoIntermissionMs(null);
                           setLiveAutoUserPaused(false);
                           startLiveMatch();
                         } else {
@@ -923,7 +1111,7 @@ export function SeasonDashboard() {
                           startLiveMatch();
                         }
                       }}
-                      disabled={controlsBlocked}
+                      disabled={controlsBlocked && !isLiveAutoIntermission}
                       className="sm:col-span-8 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-extrabold text-slate-950 hover:bg-emerald-400 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                       <Play className="w-4 h-4 fill-current" />
@@ -1101,10 +1289,7 @@ export function SeasonDashboard() {
               ? {
                   editing: tacticEditMode,
                   onStartEdit: startTacticEdit,
-                  onConfirmEdit: () => {
-                    confirmTacticEdit();
-                    setLiveAutoUserPaused(false);
-                  },
+                  onConfirmEdit: handleConfirmLiveTacticEdit,
                 }
               : undefined
           }

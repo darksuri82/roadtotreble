@@ -3462,6 +3462,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           ? {
               ...state.season,
               defaultTactic: nextTactic,
+              nextMatchTactic: null,
               clubs: state.season.clubs.map((c) =>
                 c.id === USER_CLUB_ID
                   ? { ...c, defaultTactic: nextTactic }
