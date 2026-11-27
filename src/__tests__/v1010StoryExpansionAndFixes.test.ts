@@ -413,6 +413,15 @@ describe('v10.1.0 — 23-24 Leverkusen & 09-10 Inter Scenarios, 2-Tier Transfer 
           expect(validFormations.has(fm)).toBe(true);
         }
       }
+      const referencedTargetIds = new Set<string>();
+      for (const val of Object.values(bundle.missionTargets ?? {})) {
+        if (Array.isArray(val)) {
+          for (const id of val) referencedTargetIds.add(id);
+        } else if (typeof val === 'string') {
+          referencedTargetIds.add(val);
+        }
+      }
+      expect(new Set(bundle.missionKeyPlayerIds)).toEqual(referencedTargetIds);
     }
   });
 });

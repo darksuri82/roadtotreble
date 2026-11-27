@@ -8058,6 +8058,12 @@ export function loadSavedStoryGameState(): GameState | null {
     }
     parsed.storyMode.winterMaxSignings = undefined;
     parsed.storyMode.allowUclTransferWindow = parsed.storyMode.hasUcl;
+    if (
+      parsed.storyMode.missionTargets &&
+      Object.keys(parsed.storyMode.missionTargets).length === 0
+    ) {
+      parsed.storyMode.missionKeyPlayerIds = [];
+    }
     if (parsed.season.budgetState) {
       parsed.season.budgetState = {
         ...parsed.season.budgetState,

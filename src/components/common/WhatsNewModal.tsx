@@ -41,7 +41,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.1';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.2';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -92,7 +92,7 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
-  { id: 'v100', label: '스토리 모드 7종 · 시대 룰렛!', badge: '10.1.1', icon: BookOpen },
+  { id: 'v100', label: '스토리 모드 7종 · 시대 룰렛!', badge: '10.1.2', icon: BookOpen },
   { id: 'v910', label: '난이도 상승!', badge: '9.10', icon: Flame },
   { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9', icon: SlidersHorizontal },
   { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8', icon: Users },
@@ -237,7 +237,7 @@ export function WhatsNewModal({
                     「스토리 모드」 7종 · 그 시절 5대 리그 룰렛 통합 개편!
                   </span>
                   <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
-                    v10.1.1 UPDATE
+                    v10.1.2 UPDATE
                   </span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-300">

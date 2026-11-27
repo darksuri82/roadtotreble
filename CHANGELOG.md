@@ -5,6 +5,13 @@
 
 ---
 
+## v10.1.2 — 스토리 모드 맨유·아스널 라이벌 보정 +1 완화 & `★ 미션` 핵심 선수 표기 1:1 정합화
+
+- **07-08 맨유 · 03-04 아스널 라이벌 보정 +1 완화 (`0708_manutd.json`, `0304_arsenal.json`)**: 기존 +2~+3 상향으로 과도해지던 라이벌 전력을 원년 대비 정확히 `+1`(≤92) 수준으로 완화했습니다.
+- **`★ 미션` 배지 · 방출 경고 1:1 정합화 (`0304_arsenal.json`, `1314_atletico.json`, `GameContext.tsx`, `v1010StoryExpansionAndFixes.test.ts`)**: 개별 선수 별 조건이 없는 아스널·아틀레티코의 불필요한 `missionKeyPlayerIds`를 비워, 실제 ★★★ 별 조건에 직결된 5종 시나리오 핵심 선수만 정확히 표기되도록 통일했습니다.
+
+---
+
 ## v10.1.1 — 스토리 모드 인테르·레버쿠젠 경기 스킵 크래시 수정 & 7종 통합 5대 리그 시대 룰렛(시즌 3회 + UCL 직전 1회) 개편
 
 - **1. 경기 스킵·즉시 완료 검은 화면 크래시 및 데이터 무결성 전수 수정 (`0910_inter.json`, `2324_leverkusen.json`, `1314_atletico.json`, `src/engine/matchEngine.ts`, `src/engine/storyModeEngine.ts`, `src/store/GameContext.tsx`)**:
