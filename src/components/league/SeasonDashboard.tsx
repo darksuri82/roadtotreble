@@ -457,6 +457,7 @@ export function SeasonDashboard() {
     season.currentRound,
     season.transferWindows,
     season.transferMarket.completedWindows,
+    season.totalRounds,
   );
 
   const viewedStatsMap = isViewingUserLeague
@@ -759,20 +760,28 @@ export function SeasonDashboard() {
             className="h-full rounded-full bg-emerald-500 transition-all duration-300"
             style={{ width: `${progressPct}%` }}
           />
-          {season.transferWindows.map((winRound, i) => {
-            const leftPct = (winRound / season.totalRounds) * 100;
-            const done = season.transferMarket.completedWindows.includes(i + 1);
-            return (
-              <div
-                key={winRound}
-                style={{ left: `${leftPct}%` }}
-                title={`제 ${i + 1}차 이적시장 (${winRound}R 종료 후)`}
-                className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full border border-slate-950 ${
-                  done ? 'bg-emerald-400' : 'bg-amber-400'
-                }`}
-              />
-            );
-          })}
+          {season.transferWindows
+            .map((winRound, i) => ({ winRound, windowIndex: i + 1 }))
+            .filter(({ winRound }) => winRound > 0 && winRound <= season.totalRounds)
+            .map(({ winRound, windowIndex }, _idx, arr) => {
+              const leftPct = (winRound / season.totalRounds) * 100;
+              const done =
+                season.transferMarket.completedWindows.includes(windowIndex);
+              const label =
+                arr.length === 1
+                  ? `겨울 이적시장 (${winRound}R 종료 후)`
+                  : `제 ${windowIndex}차 이적시장 (${winRound}R 종료 후)`;
+              return (
+                <div
+                  key={`${windowIndex}-${winRound}`}
+                  style={{ left: `${leftPct}%` }}
+                  title={label}
+                  className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full border border-slate-950 ${
+                    done ? 'bg-emerald-400' : 'bg-amber-400'
+                  }`}
+                />
+              );
+            })}
         </div>
       </section>
 

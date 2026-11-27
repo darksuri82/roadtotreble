@@ -54,10 +54,10 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
     ],
     cashBudgetM: 25,
     cashBudgetNote: '승격 2년 차 소형 구단 긴축 재정 (€25M)',
-    transferRule: 'standard_3_windows',
-    transferRuleLabel: '3차 이적창 개방 · 소형 예산 €25M',
+    transferRule: 'winter_1_only',
+    transferRuleLabel: '시즌 1회 (겨울 19R) · 소형 예산 €25M',
     transferRuleReason:
-      '10R·19R·28R 이적시장이 모두 열리지만, 승격 2년 차 소형 구단 체급에 맞춘 €25M 긴축 현금 안에서 5대 리그 상위팀·EPL 구단을 직접 지목해 알짜 트레이드를 설계해야 합니다.',
+      '시즌 중 겨울 이적시장(19R) 단 1회만 열립니다. 승격 2년 차 소형 구단 체급에 맞춘 €25M 긴축 현금 안에서 15-16 5대 리그 상위팀·EPL 구단을 직접 지목해 알짜 트레이드를 설계해야 합니다.',
     checklist: [
       {
         id: 'lei_epl_title',
@@ -250,10 +250,10 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
     ],
     cashBudgetM: 100,
     cashBudgetNote: '세계 최상위 수익 · 대형 투자 빅클럽 재정 (€100M)',
-    transferRule: 'standard_3_windows',
-    transferRuleLabel: '3차 이적창 개방 · 빅클럽 예산 €100M',
+    transferRule: 'winter_plus_ucl',
+    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 빅클럽 €100M',
     transferRuleReason:
-      '07-08 맨유는 테베스·하그리브스·나니·안데르송을 영입하던 세계 최고 수준의 빅클럽 재정을 보유했습니다. €100M 현금으로 5대 리그 상위팀과 자유롭게 협상하되, 박지성 육성의 균형을 지켜야 합니다.',
+      '겨울 이적시장(19R) 1회와 UCL 16강 직전 1회 이적창이 열립니다. €100M 빅클럽 현금으로 07-08 5대 리그 상위팀·EPL 구단과 협상하되, 박지성 육성의 균형을 지켜야 합니다.',
     checklist: [
       {
         id: 'mun_double',
@@ -444,10 +444,10 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
     ],
     cashBudgetM: 55,
     cashBudgetNote: '신구장 건설 대출 압박 긴축 재정 (€55M)',
-    transferRule: 'standard_3_windows',
-    transferRuleLabel: '3차 이적창 개방 · 긴축 예산 €55M',
+    transferRule: 'winter_plus_ucl',
+    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 긴축 €55M',
     transferRuleReason:
-      '신구장 건설 비용 여파로 빅6 중 가장 빠듯한 €55M 예산이 주어집니다. 3차 이적창에서 5대 리그 상위팀·EPL 구단을 직접 지목해 얇은 뎁스를 보강하세요.',
+      '신구장 건설 비용 여파로 빅6 중 가장 빠듯한 €55M 예산이 주어집니다. 겨울(19R) 1회와 UCL 16강 직전 1회 이적창에서 18-19 5대 리그 상위팀·EPL 구단을 직접 지목해 얇은 뎁스를 보강하세요.',
     checklist: [
       {
         id: 'tot_epl_title',
@@ -653,9 +653,9 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
     cashBudgetNote: '에미레이츠 신구장 건설 긴축 · 겨울 1회 한정 (€30M)',
     transferRule: 'winter_1_only',
     winterMaxSignings: 1,
-    transferRuleLabel: '겨울(19R) 1회 · 최대 1명 제한 (€30M)',
+    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 최대 1명 (€30M)',
     transferRuleReason:
-      '03-04 아스널은 에미레이츠 신구장 건설 재정 압박과 이미 완성된 인빈시블스 원년 스쿼드의 정체성을 지키기 위해, 실제 겨울 이적시장(레예스 영입) 고증에 맞춰 겨울 19R 단 1회(최대 1명 · €30M)만 보강할 수 있습니다.',
+      '03-04 아스널은 에미레이츠 신구장 건설 재정 압박과 인빈시블스 원년 스쿼드의 정체성을 지키기 위해, 겨울(19R) 1회와 UCL 16강 직전 1회 이적창에서 각각 최대 1명(€30M 예산 내)만 보강할 수 있습니다.',
     checklist: [
       {
         id: 'ars_epl_title',
@@ -848,10 +848,10 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
     ],
     cashBudgetM: 45,
     cashBudgetNote: '바르사·레알 대비 중소형 빅클럽 알짜 재정 (€45M)',
-    transferRule: 'standard_3_windows',
-    transferRuleLabel: '3차 이적창 개방 · 중소형 예산 €45M',
+    transferRule: 'winter_plus_ucl',
+    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 중소형 €45M',
     transferRuleReason:
-      '거대 양강 바르사·레알의 절반에도 못 미치는 €45M 예산이지만, 3차 이적창에서 5대 리그 상위팀·라리가 구단을 직접 지목해 촐리스모 전사들을 보강할 수 있습니다.',
+      '거대 양강 바르사·레알의 절반에도 못 미치는 €45M 예산이지만, 겨울(19R) 1회와 UCL 16강 직전 1회 이적창에서 13-14 5대 리그 상위팀·라리가 구단을 직접 지목해 촐리스모 전사들을 보강할 수 있습니다.',
     checklist: [
       {
         id: 'atm_laliga_title',

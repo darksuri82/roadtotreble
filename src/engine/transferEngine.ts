@@ -96,17 +96,22 @@ export function getNextTransferWindowRound(
   currentRound: number,
   transferWindows: [number, number, number],
   completedWindows: number[],
+  totalRounds = 38,
 ): number | null {
+  const upcoming: number[] = [];
   for (let i = 0; i < transferWindows.length; i += 1) {
+    const winRound = transferWindows[i];
     const windowIndex = i + 1;
     if (
-      transferWindows[i] > currentRound &&
+      winRound > currentRound &&
+      winRound <= totalRounds &&
       !completedWindows.includes(windowIndex)
     ) {
-      return transferWindows[i];
+      upcoming.push(winRound);
     }
   }
-  return null;
+  if (upcoming.length === 0) return null;
+  return Math.min(...upcoming);
 }
 
 export function createOpenTransferState(
@@ -249,6 +254,32 @@ export function estimateVirtualClubRank(
   return {
     rank: idx === -1 ? Math.ceil(league.clubs.length / 2) : idx + 1,
     leagueSize: league.clubs.length,
+  };
+}
+
+/**
+ * Estimates a realistic Top-4 league rank (1..4) for foreign Story Mode clubs
+ * purely from the era's `storyTransferPool` without consulting 2026-27 `LEAGUES`.
+ */
+export function estimateStoryForeignClubRank(
+  club: Club,
+  leagueId: LeagueId,
+  storyTransferPool: { club: Club; leagueId: LeagueId; roster: Player[] }[],
+): { rank: number; leagueSize: number } {
+  const leagueSize = leagueId === 'bundesliga' ? 18 : 20;
+  const peers = storyTransferPool
+    .filter((entry) => entry.leagueId === leagueId)
+    .map((entry) => ({
+      id: entry.club.id,
+      score:
+        (entry.club.att + entry.club.mid + entry.club.def) / 3 +
+        seededUnit(`story-rank-${entry.club.id}`) * 0.4,
+    }))
+    .sort((a, b) => b.score - a.score);
+  const idx = peers.findIndex((p) => p.id === club.id);
+  return {
+    rank: idx === -1 ? 2 : idx + 1,
+    leagueSize,
   };
 }
 
@@ -545,6 +576,7 @@ export function buildTransferClubSquad(params: {
   allPlayerStats: Record<string, PlayerSeasonStats>;
   isUserLeague: boolean;
   championBonusActive?: boolean;
+  strictRosterOnly?: boolean;
 }): TransferTargetPlayer[] {
   const {
     club,
@@ -562,6 +594,7 @@ export function buildTransferClubSquad(params: {
     allPlayerStats,
     isUserLeague,
     championBonusActive = false,
+    strictRosterOnly,
   } = params;
 
   const squad16 = buildAiClubSquad16({
@@ -570,6 +603,7 @@ export function buildTransferClubSquad(params: {
     liveAiRoster: aiRoster,
     ownedIds,
     excludeIds,
+    strictRosterOnly,
   });
 
   let shockCount = 0;
@@ -1410,6 +1444,7 @@ export function buildTradeClubOfferForClub(params: {
   ownedIds: Set<string>;
   excludeIds?: Set<string>;
   championBonusActive?: boolean;
+  strictRosterOnly?: boolean;
 }): TransferClubOffer {
   const {
     club,
@@ -1427,6 +1462,7 @@ export function buildTradeClubOfferForClub(params: {
     ownedIds,
     excludeIds,
     championBonusActive = false,
+    strictRosterOnly,
   } = params;
 
   const squad = buildTransferClubSquad({
@@ -1445,6 +1481,7 @@ export function buildTradeClubOfferForClub(params: {
     allPlayerStats,
     isUserLeague,
     championBonusActive,
+    strictRosterOnly,
   });
 
   const clubNeeds = analyzeClubPositionNeeds(squad.map((s) => s.player));
@@ -1614,9 +1651,10 @@ export function generateIncomingTradeOffers(
       ? new Set<LeagueId>(allowedLeagueIds)
       : null;
   const excludedClubs = new Set<string>(excludeClubIds);
+  const isStoryPool = Boolean(storyTransferPool && storyTransferPool.length > 0);
   const storyRosterByClubId = new Map<string, Player[]>();
   const basePool =
-    storyTransferPool && storyTransferPool.length > 0
+    isStoryPool && storyTransferPool
       ? storyTransferPool.map((item) => {
           storyRosterByClubId.set(item.club.id, item.roster);
           return { club: item.club, leagueId: item.leagueId };
@@ -1655,9 +1693,13 @@ export function generateIncomingTradeOffers(
       liveAiRoster: liveRoster,
       ownedIds,
       excludeIds: globalExclude,
+      strictRosterOnly: isStoryPool,
     });
     const clubRoster = squad16.all16.filter(
-      (p) => !globalExclude.has(p.id) && !usedAiPlayerIds.has(p.id),
+      (p) =>
+        !globalExclude.has(p.id) &&
+        !usedAiPlayerIds.has(p.id) &&
+        (!isStoryPool || !p.isGenerated),
     );
 
     if (clubRoster.length < 11) continue;
@@ -1793,6 +1835,14 @@ export function generateIncomingTradeOffers(
         clubRank = idx + 1;
         leagueSize = table.length;
       }
+    } else if (isStoryPool && storyTransferPool) {
+      const est = estimateStoryForeignClubRank(
+        entry.club,
+        entry.leagueId,
+        storyTransferPool,
+      );
+      clubRank = est.rank;
+      leagueSize = est.leagueSize;
     } else {
       const est = estimateVirtualClubRank(
         entry.club,

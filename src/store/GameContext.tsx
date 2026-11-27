@@ -66,6 +66,8 @@ import {
   getClubRealDepthPool,
   getLeagueById,
   getWeakestClub,
+  isStoryEraClubId,
+  isStoryEraPlayerId,
   LEGEND_PLAYERS,
   pickReplacementForAiClub,
   sanitizeAiClubRoster,
@@ -2937,6 +2939,7 @@ function executeBidirectionalTrade(params: {
         allPlayerStats: nextStats,
         isUserLeague: offer.leagueId === season.leagueId,
         championBonusActive: Boolean(tm.championBonusActive),
+        strictRosterOnly: Boolean(state.storyMode),
       });
       return {
         ...offer,
@@ -5835,6 +5838,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             excludeIds: globalExcludeIds,
             swapOutPlayer: outPlayer,
             round: state.season.currentRound,
+            strictRosterOnly: Boolean(state.storyMode),
           });
           const updatedRoster = [...roster];
           updatedRoster[idx] = replacement;
@@ -6004,6 +6008,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
               excludeIds: globalExcludeIds,
               swapOutPlayer: outPlayer,
               round: state.season.currentRound,
+              strictRosterOnly: Boolean(state.storyMode),
             });
             const updatedRoster = [...roster];
             updatedRoster[idx] = replacement;
@@ -6194,6 +6199,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         liveAiRoster,
         ownedIds,
         excludeIds: globalExcludeIds,
+        strictRosterOnly: Boolean(state.storyMode),
       }).all16;
       const aiNeeds = analyzeClubPositionNeeds(partnerSquad16);
 
@@ -6429,17 +6435,27 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         new Set([...tm.completedWindows, tm.windowIndex]),
       );
 
-      // If closing the UCL Special Window, advance UCL stage into Swiss League Phase!
+      // If closing the UCL Special Window, advance UCL stage into R16 (Story Mode) or Swiss League Phase!
       const nextUcl =
         tm.isUclSpecial && state.season.ucl?.stage === 'special_transfer'
           ? {
               ...state.season.ucl,
-              stage: 'league_phase' as const,
+              stage: state.season.ucl.isDirectR16
+                ? ('r16' as const)
+                : ('league_phase' as const),
             }
           : state.season.ucl;
 
       return {
         ...state,
+        ...(state.storyMode
+          ? {
+              storyMode: {
+                ...state.storyMode,
+                signingsThisWindow: 0,
+              },
+            }
+          : {}),
         season: {
           ...state.season,
           ucl: nextUcl,
@@ -6564,7 +6580,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         state.season.departedPlayerIds,
       );
 
-      // Story Mode: jump directly to authentic 16-team UCL Round of 16 (no league phase, no special transfer)
+      // Story Mode: jump directly to authentic 16-team UCL Round of 16 with 1 pre-UCL era transfer window
       if (state.storyMode) {
         const prep = state.storyMode.uclR16Prepared;
         if (!state.storyMode.hasUcl || !prep) return state;
@@ -6585,20 +6601,34 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           originLabels: prep.originLabels,
           excludeIds,
           ownedIds,
+          startWithSpecialTransfer: true,
+        });
+        const storyPreUclTransfer = openTransferWindowWithIncomingOffers({
+          season: state.season,
+          starters: state.starters,
+          bench: state.bench,
+          windowIndex: 4,
+          triggerRound: state.season.totalRounds,
+          userRank,
+          storyMode: state.storyMode,
+          options: {
+            isUclSpecial: true,
+            championBonusActive: userRank === 1,
+          },
         });
         return {
           ...state,
           phase: 'ucl',
+          storyMode: {
+            ...state.storyMode,
+            signingsThisWindow: 0,
+          },
           season: {
             ...state.season,
             ucl,
             uclPlayerStats,
             userUclMatchHistory: [],
-            transferMarket: createClosedTransferState(
-              state.season.transferMarket.completedWindows,
-              state.season.transferMarket.history,
-              state.season.transferMarket.tradeHistory ?? [],
-            ),
+            transferMarket: storyPreUclTransfer,
             liveHalftime: null,
           },
         };
@@ -7384,9 +7414,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         ffpTier: 0 as const,
         transferCashM: meta.cashBudgetM,
         chemPenalty: 0,
-        window1MaxAttempts: meta.transferRule === 'winter_1_only' ? 0 : 3,
+        window1MaxAttempts: 0,
         window2MaxAttempts: meta.winterMaxSignings ?? 3,
-        window3MaxAttempts: meta.transferRule === 'winter_1_only' ? 0 : 3,
+        window3MaxAttempts: 0,
         scoreMultiplier: 1.0,
         extraLossMoraleDrop: 0,
       };
@@ -7434,8 +7464,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         aiRosters,
       });
 
-      const transferWindows: [number, number, number] =
-        meta.transferRule === 'winter_1_only' ? [99, 19, 99] : [10, 19, 28];
+      // Story Mode: 1 league transfer window (winter 19R) + 1 pre-UCL transfer window (if scenario has UCL)
+      const transferWindows: [number, number, number] = [99, 19, 99];
 
       const season: SeasonState = {
         runId: `story_${meta.id}_${Date.now()}`,
@@ -7958,6 +7988,69 @@ export function loadSavedStoryGameState(): GameState | null {
           .filter((pl): pl is Player => pl !== null);
       }
       parsed.season.aiRosters = nextAi;
+    }
+    if (parsed.storyMode.transferPoolClubs) {
+      parsed.storyMode.transferPoolClubs = parsed.storyMode.transferPoolClubs.map(
+        (entry) => ({
+          ...entry,
+          roster: entry.roster
+            .map((pl) => ensureAttrs(pl))
+            .filter((pl): pl is Player => pl !== null),
+        }),
+      );
+    }
+    if (parsed.storyMode.uclR16Prepared?.aiRosters) {
+      const nextPrepAi: Record<string, Player[]> = {};
+      for (const [cid, list] of Object.entries(
+        parsed.storyMode.uclR16Prepared.aiRosters,
+      )) {
+        nextPrepAi[cid] = list
+          .map((pl) => ensureAttrs(pl))
+          .filter((pl): pl is Player => pl !== null);
+      }
+      parsed.storyMode.uclR16Prepared = {
+        ...parsed.storyMode.uclR16Prepared,
+        aiRosters: nextPrepAi,
+      };
+    }
+    // Migrate v10.0.0 3-window league schedule [10,19,28] to single winter window [99,19,99]
+    if (
+      parsed.season.transferWindows &&
+      (parsed.season.transferWindows[0] !== 99 ||
+        parsed.season.transferWindows[2] !== 99)
+    ) {
+      parsed.season.transferWindows = [99, 19, 99];
+    }
+    // Purge any stale modern/generated incoming offers from pre-v10.0.1 open transfer windows
+    if (parsed.season.transferMarket?.isOpen) {
+      const hasLeak = (parsed.season.transferMarket.incomingOffers ?? []).some(
+        (off) =>
+          !isStoryEraClubId(off.club.id) ||
+          off.aiOffersPlayers.some(
+            (p) => Boolean(p.isGenerated) || !isStoryEraPlayerId(p.id),
+          ),
+      );
+      if (hasLeak) {
+        const userRank = getUserRank(parsed.season.standings, USER_CLUB_ID);
+        parsed.season.transferMarket = {
+          ...parsed.season.transferMarket,
+          incomingOffers: generateIncomingTradeOffers({
+            windowIndex: parsed.season.transferMarket.windowIndex,
+            currentRound: parsed.season.currentRound,
+            userLeagueId: parsed.season.leagueId,
+            userRank,
+            userStarters: parsed.starters,
+            userBench: parsed.bench,
+            standings: parsed.season.standings,
+            otherLeagues: parsed.season.otherLeagues,
+            aiRosters: parsed.season.aiRosters,
+            allPlayerStats: parsed.season.allPlayerStats,
+            conditionMap: parsed.season.playerConditions,
+            departedPlayerIds: parsed.season.departedPlayerIds ?? [],
+            storyTransferPool: parsed.storyMode.transferPoolClubs,
+          }),
+        };
+      }
     }
     if (parsed.season.liveHalftime) {
       const committed = gameReducer(parsed, { type: 'COMMIT_LIVE_MATCH' });

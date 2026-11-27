@@ -41,7 +41,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.0.0';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.0.1';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -237,7 +237,7 @@ export function WhatsNewModal({
                     대형 신규 콘텐츠 「스토리 모드」 5종 전격 출시!
                   </span>
                   <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
-                    v10.0.0 MAJOR
+                    v10.0.1 HOTFIX
                   </span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-300">
@@ -245,11 +245,11 @@ export function WhatsNewModal({
                   <strong className="text-white">
                     그 시절 실제 스쿼드 · 감독 · 전술 · UCL 16강 토너먼트
                   </strong>
-                  로 곧장 뛰어들어 ★★★ 미션에 도전하세요. 시작 시 감독과 에이스들이 등장하는{' '}
+                  로 곧장 뛰어들어 ★★★ 미션에 도전하세요.{' '}
                   <strong className="text-amber-200">
-                    탭형 도트 일러스트 문학 프롤로그
+                    v10.0.1에서 이적시장 현시대 로스터·가상 선수 혼입을 전면 차단하고 시즌 1회(19R) + UCL 16강 직전 1회
                   </strong>
-                  가 펼쳐집니다.
+                  로 깔끔하게 개편했습니다.
                 </p>
                 <div className="overflow-hidden rounded-xl border border-slate-800/90 bg-[#070b12]">
                   <StoryPixelSceneSvg
@@ -298,10 +298,10 @@ export function WhatsNewModal({
                 </div>
                 <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-3 space-y-1">
                   <div className="font-extrabold text-sky-200">
-                    5대 리그 35구단 직접 지목
+                    100% 시대 로스터 · 시즌 1회+UCL 1회
                   </div>
                   <p className="text-slate-400 leading-relaxed">
-                    룰렛 대신 자국 19팀 + 타 4대 리그 상위 4팀씩 16팀을 직접 골라 현금 협상(아스널은 겨울 1회 한정).
+                    5대 리그 35구단 직접 지목 및 수신 제안 모두 그 시절 로스터만 등장하며, 겨울(19R) 1회 + UCL 16강 직전 1회 개방됩니다.
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-1">

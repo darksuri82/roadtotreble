@@ -95,12 +95,13 @@ describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists 
 
     const leicester = getStoryScenarioMeta('1516_leicester');
     expect(leicester.cashBudgetM).toBe(25);
-    expect(leicester.transferRule).toBe('standard_3_windows');
+    expect(leicester.transferRule).toBe('winter_1_only');
     expect(leicester.hasUcl).toBe(false);
     expect(leicester.introSlides.length).toBe(3);
 
     const manutd = getStoryScenarioMeta('0708_manutd');
     expect(manutd.cashBudgetM).toBe(100);
+    expect(manutd.transferRule).toBe('winter_plus_ucl');
     expect(manutd.hasUcl).toBe(true);
     expect(manutd.introSlides.length).toBe(3);
 
@@ -205,7 +206,7 @@ describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists 
     expect(seasonState.season!.clubs).toHaveLength(20);
     expect(seasonState.season!.budgetState?.transferCashM).toBe(25);
     expect(seasonState.season!.budgetState?.ffpTier).toBe(0);
-    expect(seasonState.season!.transferWindows).toEqual([10, 19, 28]);
+    expect(seasonState.season!.transferWindows).toEqual([99, 19, 99]);
     expect(seasonState.season!.otherLeagues).toEqual({});
   });
 

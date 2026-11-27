@@ -12,15 +12,41 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v10.0.0';
+export const CURRENT_APP_VERSION = 'v10.0.1';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v10.0.1',
+    codename:
+      '스토리 모드 이적시장·수신 제안·구단 로스터 현시대/가상 선수 혼입 완전 차단 & 시즌 1회(19R) + UCL 직전 1회 개편',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '스토리 모드 이적시장에서 상대 구단 탐색·받은 트레이드 제안·역제안 프리뷰·구단 상세 화면에 26-27 현시대 선수(마르무시·토날리·브로베이 등) 및 가상 보충 선수(잭 우드 등)가 혼입되던 근본 원인을 전수 차단해 100% 그 시절 실제 로스터만 등장하도록 수정했습니다. 또한 시즌 중 3회 열리던 이적시장을 리그 중 1회(겨울 19R) + UCL 16강 직전 1회로 간결하게 개편했습니다.',
+    sections: [
+      {
+        category: '1. 스토리 모드 전 구간 현시대·가상 선수 혼입 완전 차단',
+        items: [
+          '**`buildAiClubSquad16` · `pickReplacementForAiClub` · `sanitizeAiClubRoster` 시대 격리 (`src/engine/dataLoader.ts`)**: 스토리 모드 구단(`_YYYY`)·선수(`sYYYY_`)에 대해 26-27 `ACTIVE_PLAYERS` 병합 및 가상 로테이션 선수(`generateClubRotationPlayer`) 자동 채우기를 전면 차단했습니다.',
+          '**수신 트레이드 제안 & 역제안 피치 프리뷰 완벽 보정 (`src/engine/transferEngine.ts`, `src/components/transfer/TransferMarketModal.tsx`)**: 수신 제안 생성과 `[피치 프리뷰 · 수정]` 역제안 화면(타 4대 리그 구단 포함) 모두 100% 해당 스토리 시대의 35개 구단 실제 로스터와 시대별 리그 순위(타 리그 상위 4팀 1~4위)만 사용하도록 교정했습니다.',
+          '**구단 상세·경기 프리뷰·UCL 16강 & 기존 세이브 자동 정화 (`src/utils/playerLookup.ts`, `src/engine/uclEngine.ts`, `src/store/GameContext.tsx`)**: 대시보드·UCL·라이브 중계 로스터 조회 경로를 모두 시대 격리하고, 기존 v10.0.0 세이브 로드 시에도 혼입된 수신 제안과 이적창 일정을 자동 정화·마이그레이션합니다.',
+        ],
+      },
+      {
+        category: '2. 스토리 모드 이적시장 1회(겨울 19R) + UCL 16강 직전 1회 개편',
+        items: [
+          '**리그 중 이적시장 3회 → 1회 축소 (`src/store/GameContext.tsx`, `src/data/story/storyRegistry.ts`)**: 모든 스토리 시나리오의 리그 이적창을 겨울 19R 단 1회(`[99, 19, 99]`)로 간결화하고, `getNextTransferWindowRound` 및 시즌 진행 바가 센티넬(99R)을 오표시하지 않도록 수정했습니다.',
+          '**UCL 16강 직전 이적시장 신설 (`src/store/GameContext.tsx`, `src/engine/uclEngine.ts`)**: UCL 진출 4종 시나리오(07-08 맨유 · 18-19 토트넘 · 03-04 아스널 · 13-14 아틀레티코)는 UCL 16강 진입 직전에 그 시절 35구단 기반 `UCL 16강 직전 이적시장`이 1회 열리며, 종료 시 즉시 실제 16강 토너먼트로 돌입합니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v10.0.0',
     codename:
       '대형 신규 콘텐츠 「스토리 모드 (History Story Mode)」 5종 출시 — 도트 문학 프롤로그 · 5대 리그 직접 지목 이적시장 · UCL 16강 직행',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'MAJOR',
     summary:
       '유럽 축구 역사상 가장 극적인 5개 시즌(15-16 레스터 · 07-08 맨유 · 18-19 토트넘 · 03-04 아스널 · 13-14 아틀레티코)을 실제 그 시절 스쿼드·감독·전술로 지휘하는 대형 신규 콘텐츠 「스토리 모드」를 출시합니다. 탭형 도트 일러스트 문학 프롤로그, [빠른 선발] 없는 순수 수동 지휘, 5대 리그 35개 구단 직접 지목 현금 협상 이적시장, 실제 그 해 UCL 16강 토너먼트 직행, 그리고 일일 랭킹·일반 세이브와 완전히 분리된 ★★★ 별 도감을 경험해 보세요.',
     sections: [

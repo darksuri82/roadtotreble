@@ -5,6 +5,20 @@
 
 ---
 
+## v10.0.1 — 스토리 모드 현시대·가상 선수 혼입 전면 차단 & 이적시장 시즌 1회(19R) + UCL 16강 직전 1회 개편
+
+- **1. 스토리 모드 전 구간 100% 시대 로스터 격리 (`src/engine/dataLoader.ts`, `src/engine/transferEngine.ts`, `src/engine/uclEngine.ts`, `src/utils/playerLookup.ts`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/store/GameContext.tsx`)**:
+  - `isStoryEraClubId` / `isStoryEraPlayerId` 및 `strictRosterOnly` 플래그를 도입해 `buildAiClubSquad16`·`pickReplacementForAiClub`·`sanitizeAiClubRoster`가 스토리 모드 구단에 26-27 `ACTIVE_PLAYERS`를 병합하거나 16인 패딩용 가상 선수(`generateClubRotationPlayer`)를 생성하던 근본 버그를 완전 차단했습니다.
+  - `generateIncomingTradeOffers`가 스토리 모드에서 100% 시대 35구단 실제 로스터만 제안하고 타 4대 리그 구단 순위를 `estimateStoryForeignClubRank`로 계산하도록 교정했으며, `TransferMarketModal`의 `[피치 프리뷰 · 수정]` 역제안(`handleStartCounterOffer`) 및 트레이드 직후 라이브 갱신(`activeClubOffer`)이 타 4대 리그 시대 로스터를 정확히 유지하도록 수정했습니다.
+  - 기존 v10.0.0 세이브(`loadSavedStoryGameState`) 로드 시에도 레거시 3차 이적창(`[10,19,28]`)을 `[99,19,99]`로 자동 마이그레이션하고 혼입된 수신 제안을 시대 로스터로 즉시 재생성합니다.
+- **2. 스토리 모드 이적시장 시즌 1회(19R) + UCL 16강 직전 1회 개편 (`src/store/GameContext.tsx`, `src/engine/uclEngine.ts`, `src/engine/transferEngine.ts`, `src/data/story/storyRegistry.ts`, `src/types/storyMode.ts`, `src/components/league/SeasonDashboard.tsx`, `src/components/league/FastSimModal.tsx`)**:
+  - 5종 시나리오 전체의 리그 이적시장을 겨울 19R 1회(`[99, 19, 99]`)로 간결화하고, `getNextTransferWindowRound` 및 시즌 진행 바가 센티넬 라운드(`99`)를 제외하고 `19R`만 정확히 표시하도록 수정했습니다.
+  - UCL 진출 4종 시나리오(07-08 맨유 · 18-19 토트넘 · 03-04 아스널 · 13-14 아틀레티코)는 `ENTER_UCL_MODE` 시 `stage: 'special_transfer'`로 **UCL 16강 직전 이적시장**을 1회 개방하고, 종료 시 즉시 `r16` 토너먼트로 진입합니다(아스널은 창당 최대 1명 제한 유지).
+- **3. 문서·업데이트 팝업·회귀 테스트 동기화 (`src/data/patchNotes.ts`, `src/components/common/WhatsNewModal.tsx`, `src/components/guide/SystemGuideModal.tsx`, `src/__tests__/storyModePhase1.test.ts`, `src/__tests__/v1001StoryEraRosterAndWindows.test.ts`)**:
+  - `CURRENT_APP_VERSION = 'v10.0.1'` 갱신 및 5종 200구단 전수 시대 로스터 격리·수신 제안·역제안·단일 이적창+UCL 직전 이적창·세이브 마이그레이션 회귀 테스트 추가.
+
+---
+
 ## v10.0.0 — 대형 신규 콘텐츠 「스토리 모드 (History Story Mode)」 5종 출시 · 도트 문학 프롤로그 · 5대 리그 직접 지목 이적시장 & UCL 16강 직행
 
 - **1. 스토리 모드 프레임워크 · 전용 UI · 탭형 도트 문학 프롤로그 (`src/types/storyMode.ts`, `src/data/story/storyRegistry.ts`, `src/engine/storyModeEngine.ts`, `src/components/story/StoryPixelSceneSvg.tsx`, `src/components/story/StoryIntroModal.tsx`, `src/components/story/StoryModeHub.tsx`, `src/components/story/StorySetupScreen.tsx`, `src/components/story/StoryChecklistTracker.tsx`, `src/components/story/StorySummaryCard.tsx`, `src/components/setup/TitleScreen.tsx`, `src/App.tsx`)**:

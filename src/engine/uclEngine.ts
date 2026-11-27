@@ -451,6 +451,7 @@ export function createStoryUclR16State(params: {
   originLabels: Record<string, string>;
   excludeIds?: Set<string>;
   ownedIds?: Set<string>;
+  startWithSpecialTransfer?: boolean;
 }): {
   ucl: UclTournamentState;
   uclPlayerStats: Record<string, PlayerSeasonStats>;
@@ -465,6 +466,7 @@ export function createStoryUclR16State(params: {
     originLabels,
     excludeIds,
     ownedIds,
+    startWithSpecialTransfer = false,
   } = params;
 
   const effectiveOwned = new Set<string>(ownedIds ?? []);
@@ -487,6 +489,7 @@ export function createStoryUclR16State(params: {
         roster: base,
         excludeIds: effectiveExclude,
         ownedIds: effectiveOwned,
+        strictRosterOnly: true,
       });
     }
   }
@@ -518,7 +521,7 @@ export function createStoryUclR16State(params: {
   });
 
   const ucl: UclTournamentState = {
-    stage: 'r16',
+    stage: startWithSpecialTransfer ? 'special_transfer' : 'r16',
     teams,
     clubs: clubsWithUser,
     aiRosters,

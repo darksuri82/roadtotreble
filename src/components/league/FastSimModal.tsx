@@ -107,6 +107,7 @@ function FastSimModalInner({
       season.currentRound,
       season.transferWindows,
       season.transferMarket.completedWindows,
+      season.totalRounds,
     );
     return {
       startRound: season.currentRound,
@@ -243,6 +244,7 @@ function FastSimModalInner({
           season.currentRound,
           season.transferWindows,
           season.transferMarket.completedWindows,
+          season.totalRounds,
         )
       : null;
     if (remainingTransfer !== null) {

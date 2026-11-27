@@ -1342,7 +1342,7 @@ export function SystemGuideContent({
                 • <strong className="text-white">드래프트 생략 · 수동 지휘 전용:</strong> 실제 그 시절 20개 자국 리그 팀 로스터와 감독·전술로 즉시 개막하며, <strong className="text-rose-300">[빠른 선발]이 전면 제거</strong>되어 유저가 직접 선발·전술·로테이션을 운영합니다.
               </div>
               <div>
-                • <strong className="text-white">5대 리그 35구단 직접 지목 이적시장:</strong> 룰렛 대신 자국 리그 19팀 + 타 4대 리그 당시 상위 4팀씩 16팀을 직접 지목해 현금 협상합니다(아스널은 신구장 긴축·원년 고증으로 겨울 19R 1회 · 최대 1명 제한).
+                • <strong className="text-white">5대 리그 35구단 직접 지목 이적시장 (시즌 1회 + UCL 직전 1회):</strong> 룰렛 대신 자국 리그 19팀 + 타 4대 리그 당시 상위 4팀씩 16팀을 <strong className="text-amber-200">100% 그 시절 실제 로스터</strong>로 직접 지목해 현금 협상합니다. 리그 중 겨울(19R) 1회 + UCL 진출 시 16강 직전 1회 개방됩니다(아스널은 신구장 긴축 고증으로 창당 최대 1명 제한).
               </div>
               <div>
                 • <strong className="text-white">UCL 16강 직행 &amp; 랭킹 완전 격리:</strong> UCL 진출 4종은 36팀 리그 페이즈 없이 실제 그 해 16강 토너먼트로 직행하며, 스토리 모드 세이브·별 도감은 일반 드래프트 세이브 및 <strong className="text-amber-200">일일 글로벌 랭킹과 완전히 분리</strong>됩니다.

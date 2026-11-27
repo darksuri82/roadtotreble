@@ -59,6 +59,17 @@ export const ALL_CLUBS_WITH_LEAGUE: ClubWithLeague[] = LEAGUES.flatMap((l) =>
   l.clubs.map((club) => ({ club, leagueId: l.id })),
 );
 
+/** Returns true for historical Story Mode club IDs (e.g. `tot_0708`, `sun_0708`). */
+export function isStoryEraClubId(clubId: string | undefined | null): boolean {
+  return Boolean(clubId && /_\d{4}$/.test(clubId));
+}
+
+/** Returns true for historical Story Mode player IDs (e.g. `s0708_tot_0708_berbatov`). */
+export function isStoryEraPlayerId(playerId: string | undefined | null): boolean {
+  return Boolean(playerId && /^s\d{4}_/.test(playerId));
+}
+
+
 const ACTIVE_PLAYERS_BY_CLUB = new Map<string, Player[]>();
 for (const p of ACTIVE_PLAYERS) {
   const arr = ACTIVE_PLAYERS_BY_CLUB.get(p.club);
@@ -428,6 +439,7 @@ export function pickReplacementForAiClub(params: {
   excludeIds: Set<string>;
   swapOutPlayer?: Player | null;
   round?: number;
+  strictRosterOnly?: boolean;
 }): Player {
   const {
     club,
@@ -437,24 +449,36 @@ export function pickReplacementForAiClub(params: {
     excludeIds,
     swapOutPlayer,
     round = 0,
+    strictRosterOnly,
   } = params;
+
+  const isStrictEra = Boolean(
+    strictRosterOnly ||
+      isStoryEraClubId(club.id) ||
+      isStoryEraPlayerId(departedPlayer.id) ||
+      currentRoster.some((p) => isStoryEraPlayerId(p.id)),
+  );
 
   const rosterIds = new Set<string>(currentRoster.map((p) => p.id));
   const blockedIds = new Set<string>([...excludeIds, ...rosterIds, departedPlayer.id]);
   const blockedNames = new Set<string>(currentRoster.map((p) => p.name));
   blockedNames.add(departedPlayer.name);
-  for (const id of blockedIds) {
-    const p = PLAYER_BY_ID_MAP.get(id);
-    if (p && !p.isLegend) blockedNames.add(p.name);
+  if (!isStrictEra) {
+    for (const id of blockedIds) {
+      const p = PLAYER_BY_ID_MAP.get(id);
+      if (p && !p.isLegend) blockedNames.add(p.name);
+    }
   }
 
   const targetSub = departedPlayer.mainPositions[0] ?? 'CM';
   const targetBroad = departedPlayer.position;
 
-  // 1) Real bench/depth player of the same club matching position
-  const clubDepth = ACTIVE_PLAYERS.filter(
-    (p) => p.club === club.name && !blockedIds.has(p.id),
-  ).sort((a, b) => b.ovr - a.ovr);
+  // 1) Real bench/depth player of the same club matching position (never use modern 26-27 ACTIVE_PLAYERS for Story Mode era clubs)
+  const clubDepth = isStrictEra
+    ? []
+    : ACTIVE_PLAYERS.filter(
+        (p) => p.club === club.name && !blockedIds.has(p.id),
+      ).sort((a, b) => b.ovr - a.ovr);
 
   const exactSub = clubDepth.find((p) => p.mainPositions.includes(targetSub));
   if (exactSub) return exactSub;
@@ -462,11 +486,11 @@ export function pickReplacementForAiClub(params: {
   const sameBroad = clubDepth.find((p) => p.position === targetBroad);
   if (sameBroad) return sameBroad;
 
-  // 2) Trade-swap outgoing non-Legend player if same broad position & not already on this club
+  // 2) Trade-swap outgoing non-Legend player if same broad position (or any non-Legend swap player in strict era mode) & not already on this club
   if (
     swapOutPlayer &&
     !swapOutPlayer.isLegend &&
-    swapOutPlayer.position === targetBroad &&
+    (swapOutPlayer.position === targetBroad || isStrictEra) &&
     !rosterIds.has(swapOutPlayer.id)
   ) {
     return {
@@ -505,9 +529,24 @@ export function sanitizeAiClubRoster(params: {
   ownedIds?: Set<string>;
   excludeIds?: Set<string>;
   round?: number;
+  strictRosterOnly?: boolean;
 }): Player[] {
-  const { club, leagueId, roster, ownedIds, excludeIds, round = 0 } = params;
+  const {
+    club,
+    leagueId,
+    roster,
+    ownedIds,
+    excludeIds,
+    round = 0,
+    strictRosterOnly,
+  } = params;
   if (!roster || roster.length === 0) return roster;
+
+  const isStrictEra = Boolean(
+    strictRosterOnly ||
+      isStoryEraClubId(club.id) ||
+      roster.some((p) => isStoryEraPlayerId(p.id)),
+  );
 
   const blockedOwned = ownedIds ?? new Set<string>();
   const seenIds = new Set<string>();
@@ -546,6 +585,33 @@ export function sanitizeAiClubRoster(params: {
     baseExclude.add(player.id);
     // Only backfill slots that belong to the starting XI (indices 0..10) so bench/extra duplicates simply drop cleanly
     if (index >= 11) continue;
+
+    // In Story Mode era rosters (14~17 real players), promote an existing era bench player into the vacated starter slot first
+    if (isStrictEra) {
+      let benchIdx = -1;
+      for (let b = 11; b < working.length; b += 1) {
+        const cand = working[b];
+        if (cand && cand.position === player.position) {
+          benchIdx = b;
+          break;
+        }
+      }
+      if (benchIdx === -1) {
+        for (let b = 11; b < working.length; b += 1) {
+          const cand = working[b];
+          if (cand && (player.position === 'GK' || cand.position !== 'GK')) {
+            benchIdx = b;
+            break;
+          }
+        }
+      }
+      if (benchIdx !== -1) {
+        working[index] = working[benchIdx];
+        working[benchIdx] = null;
+        continue;
+      }
+    }
+
     const currentNonNull = working.filter((x): x is Player => x !== null);
     const replacement = pickReplacementForAiClub({
       club,
@@ -554,6 +620,7 @@ export function sanitizeAiClubRoster(params: {
       currentRoster: currentNonNull,
       excludeIds: baseExclude,
       round,
+      strictRosterOnly: isStrictEra,
     });
     working[index] = replacement;
     baseExclude.add(replacement.id);
@@ -577,6 +644,8 @@ export interface AiClubSquad16 {
  * - Core Bench 5 sorted by highest OVR:
  *   1 GK (키퍼 1) + 2 DF (수비 2) + 2 FW/MF (공격·중원 2: FW 1 + MF 1 preferred)
  * Strictly excludes user-owned and departed players while preserving live mid-season trade arrivals.
+ * When `strictRosterOnly` is true (or for Story Mode era clubs/rosters), strictly uses `liveAiRoster`
+ * without merging modern 2026-27 `ACTIVE_PLAYERS` or synthesizing fake rotation players.
  */
 export function buildAiClubSquad16(params: {
   club: Club;
@@ -584,28 +653,45 @@ export function buildAiClubSquad16(params: {
   liveAiRoster?: Player[];
   ownedIds?: Set<string>;
   excludeIds?: Set<string>;
+  strictRosterOnly?: boolean;
 }): AiClubSquad16 {
-  const { club, leagueId, liveAiRoster, ownedIds, excludeIds } = params;
+  const {
+    club,
+    leagueId,
+    liveAiRoster,
+    ownedIds,
+    excludeIds,
+    strictRosterOnly,
+  } = params;
   const formation = FORMATIONS[club.formation] ?? FORMATIONS['4-3-3'];
+
+  const isStrictEra = Boolean(
+    strictRosterOnly ||
+      isStoryEraClubId(club.id) ||
+      (liveAiRoster && liveAiRoster.some((p) => isStoryEraPlayerId(p.id))),
+  );
 
   const userOwned = ownedIds ?? new Set<string>();
   const globalBlocked = excludeIds ?? userOwned;
 
   const poolMap = new Map<string, Player>();
   const usedNames = new Set<string>();
-  for (const id of globalBlocked) {
-    const p = PLAYER_BY_ID_MAP.get(id);
-    if (p && !p.isLegend) usedNames.add(p.name);
-  }
-  for (const id of userOwned) {
-    const p = PLAYER_BY_ID_MAP.get(id);
-    if (p && !p.isLegend) usedNames.add(p.name);
+  if (!isStrictEra) {
+    for (const id of globalBlocked) {
+      const p = PLAYER_BY_ID_MAP.get(id);
+      if (p && !p.isLegend) usedNames.add(p.name);
+    }
+    for (const id of userOwned) {
+      const p = PLAYER_BY_ID_MAP.get(id);
+      if (p && !p.isLegend) usedNames.add(p.name);
+    }
   }
 
   // 1) Include live season roster players first (reflects mid-season trade arrivals!)
   if (liveAiRoster && liveAiRoster.length > 0) {
     for (const p of liveAiRoster) {
       if (userOwned.has(p.id)) continue;
+      if (isStrictEra && p.isGenerated) continue;
       if (!poolMap.has(p.id)) {
         poolMap.set(p.id, p);
         usedNames.add(p.name);
@@ -613,13 +699,15 @@ export function buildAiClubSquad16(params: {
     }
   }
 
-  // 2) Include all remaining real 2026-27 players of this club from ACTIVE_PLAYERS
-  for (const p of ACTIVE_PLAYERS) {
-    if (p.club !== club.name) continue;
-    if (globalBlocked.has(p.id) || userOwned.has(p.id)) continue;
-    if (!poolMap.has(p.id)) {
-      poolMap.set(p.id, p);
-      usedNames.add(p.name);
+  // 2) Include all remaining real 2026-27 players of this club from ACTIVE_PLAYERS (NEVER in Story Mode!)
+  if (!isStrictEra) {
+    for (const p of ACTIVE_PLAYERS) {
+      if (p.club !== club.name) continue;
+      if (globalBlocked.has(p.id) || userOwned.has(p.id)) continue;
+      if (!poolMap.has(p.id)) {
+        poolMap.set(p.id, p);
+        usedNames.add(p.name);
+      }
     }
   }
 
@@ -651,6 +739,15 @@ export function buildAiClubSquad16(params: {
         (p) => !pickedIds.has(p.id) && p.position === slot.position,
       );
     }
+    // In strict era mode, always prefer any remaining real era player over synthesizing a fake player
+    if (!found && isStrictEra) {
+      found =
+        candidatePool.find(
+          (p) =>
+            !pickedIds.has(p.id) &&
+            (slot.position === 'GK' ? p.position === 'GK' : p.position !== 'GK'),
+        ) ?? candidatePool.find((p) => !pickedIds.has(p.id));
+    }
 
     if (found) {
       pickedIds.add(found.id);
@@ -673,10 +770,32 @@ export function buildAiClubSquad16(params: {
     starters.push(gen);
   }
 
-  // Remaining pool for Core Bench 5: [GK 1, DF 2, MF/FW 2]
+  // Remaining pool for Bench
   const remaining = candidatePool.filter((p) => !pickedIds.has(p.id));
   const bench: Player[] = [];
   const benchSlotLabels: string[] = [];
+
+  // Story Mode strict era mode: expose all remaining authentic era players on the bench (no fake generated fillers!)
+  if (isStrictEra) {
+    const posRank: Record<string, number> = { GK: 0, DF: 1, MF: 2, FW: 3 };
+    const orderedRemaining = [...remaining].sort(
+      (a, b) =>
+        (posRank[a.position] ?? 4) - (posRank[b.position] ?? 4) ||
+        b.ovr - a.ovr,
+    );
+    for (const p of orderedRemaining) {
+      pickedIds.add(p.id);
+      bench.push(p);
+      benchSlotLabels.push(`벤치 ${p.position}`);
+    }
+    return {
+      starters,
+      starterSlotLabels,
+      bench,
+      benchSlotLabels,
+      all16: [...starters, ...bench],
+    };
+  }
 
   const makeFallbackBench = (sub: SubPosition, tag: string): Player => {
     const seedVal = hashString(`${club.id}-b5-${tag}-${sub}`);

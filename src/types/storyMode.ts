@@ -26,7 +26,7 @@ export type StoryScenarioId =
   | '1314_atletico';
 
 export type StoryTransferRule =
-  | 'standard_3_windows'
+  | 'winter_plus_ucl'
   | 'winter_1_only';
 
 export type StoryPixelBackdropId =

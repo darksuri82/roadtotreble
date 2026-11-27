@@ -2,6 +2,8 @@ import {
   ACTIVE_PLAYERS,
   buildAiClubSquad16,
   getLeagueById,
+  isStoryEraClubId,
+  isStoryEraPlayerId,
   LEGEND_PLAYERS,
 } from '../engine/dataLoader';
 import { USER_CLUB_ID } from '../engine/matchEngine';
@@ -469,12 +471,16 @@ export function resolveClubRoster(params: {
   }
 
   if (club) {
+    const strictRosterOnly =
+      isStoryEraClubId(club.id) ||
+      Boolean(liveRoster?.some((p) => isStoryEraPlayerId(p.id)));
     return buildAiClubSquad16({
       club,
       leagueId: resolvedLeagueId,
       liveAiRoster: liveRoster,
       ownedIds,
       excludeIds,
+      strictRosterOnly,
     }).all16;
   }
 

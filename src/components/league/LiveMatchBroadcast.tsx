@@ -821,6 +821,11 @@ export function LiveMatchBroadcast({
     ...ownedPlayerIds,
     ...(gameCtx.state.season?.departedPlayerIds ?? []),
   ]);
+  const storyOppRoster =
+    gameCtx.state.storyMode?.uclR16Prepared?.aiRosters?.[oppClub.id] ??
+    gameCtx.state.storyMode?.transferPoolClubs.find(
+      (c) => c.club.id === oppClub.id,
+    )?.roster;
   const rawOppRoster =
     override?.opponentRoster ??
     (halftime.competition === 'ucl'
@@ -828,6 +833,7 @@ export function LiveMatchBroadcast({
         gameCtx.state.season?.aiRosters?.[oppClub.id])
       : (gameCtx.state.season?.aiRosters?.[oppClub.id] ??
         gameCtx.state.season?.ucl?.aiRosters?.[oppClub.id])) ??
+    storyOppRoster ??
     buildAiClubRoster(
       oppClub,
       gameCtx.state.season?.leagueId ?? 'epl',

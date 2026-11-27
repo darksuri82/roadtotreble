@@ -51,6 +51,7 @@ import {
   buildTradeClubOfferForClub,
   computePlayerMarketValueM,
   computePlayerTradePoints,
+  estimateStoryForeignClubRank,
   evaluateTradePackage,
   selectAutoFillerPlayers,
 } from '../../engine/transferEngine';
@@ -394,12 +395,71 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     [userRosterEntries],
   );
 
-  // Active partner club offer (either counter-offer club from incoming tab OR selected roulette reel)
+  // Active partner club offer (either counter-offer/Story club OR selected roulette reel)
   const activeClubOffer: TransferClubOffer | null = useMemo(() => {
-    if (counterOfferClub) return counterOfferClub;
+    if (counterOfferClub) {
+      if (
+        isStoryMode &&
+        counterOfferClub.club &&
+        counterOfferClub.leagueId !== 'LEGEND'
+      ) {
+        const clubId = counterOfferClub.club.id;
+        const leagueId = counterOfferClub.leagueId;
+        const storyEntry = state.storyMode?.transferPoolClubs.find(
+          (c) => c.club.id === clubId,
+        );
+        const isUserLeague = leagueId === season.leagueId;
+        const liveRoster = isUserLeague
+          ? season.aiRosters[clubId] ?? storyEntry?.roster
+          : storyEntry?.roster;
+        if (liveRoster && liveRoster.length > 0) {
+          const ownedIds = new Set(userSquadPlayers.map((p) => p.id));
+          const excludeIds = new Set<string>([
+            ...ownedIds,
+            ...(season.departedPlayerIds ?? []),
+          ]);
+          return buildTradeClubOfferForClub({
+            club: storyEntry?.club ?? counterOfferClub.club,
+            leagueId,
+            clubRank: counterOfferClub.clubRank,
+            leagueSize: counterOfferClub.leagueSize,
+            currentRound: season.currentRound,
+            totalRounds: season.totalRounds,
+            windowIndex: tm.windowIndex,
+            userRank: getUserRank(season.standings, USER_CLUB_ID),
+            userLeagueSize: season.standings.length || 20,
+            isUserLeague,
+            aiRoster: liveRoster,
+            allPlayerStats: season.allPlayerStats,
+            ownedIds,
+            excludeIds,
+            championBonusActive: Boolean(tm.championBonusActive),
+            strictRosterOnly: true,
+          });
+        }
+      }
+      return counterOfferClub;
+    }
     if (!tm.hasSpunClubs || tm.rolledClubs.length === 0) return null;
     return tm.rolledClubs[activeReelIdx] ?? tm.rolledClubs[0] ?? null;
-  }, [counterOfferClub, tm.hasSpunClubs, tm.rolledClubs, activeReelIdx]);
+  }, [
+    counterOfferClub,
+    isStoryMode,
+    state.storyMode?.transferPoolClubs,
+    season.leagueId,
+    season.aiRosters,
+    season.departedPlayerIds,
+    season.currentRound,
+    season.totalRounds,
+    season.standings,
+    season.allPlayerStats,
+    userSquadPlayers,
+    tm.windowIndex,
+    tm.championBonusActive,
+    tm.hasSpunClubs,
+    tm.rolledClubs,
+    activeReelIdx,
+  ]);
 
   // All available (not-yet-signed) targets on the active partner club (16-man squad: 11 starters + 5 core bench)
   const availablePartnerTargets = useMemo(() => {
@@ -768,16 +828,20 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       ...(season.departedPlayerIds ?? []),
     ]);
     const isUserLeague = offer.leagueId === season.leagueId;
+    const storyPoolEntry = state.storyMode?.transferPoolClubs.find(
+      (c) => c.club.id === offer.club.id,
+    );
     const liveRoster = isUserLeague
-      ? season.aiRosters[offer.club.id]
-      : season.otherLeagues?.[offer.leagueId]?.aiRosters?.[offer.club.id];
+      ? season.aiRosters[offer.club.id] ?? storyPoolEntry?.roster
+      : storyPoolEntry?.roster ??
+        season.otherLeagues?.[offer.leagueId]?.aiRosters?.[offer.club.id];
     const statsMap = isUserLeague
       ? season.allPlayerStats
       : season.otherLeagues?.[offer.leagueId]?.playerStats ??
         season.allPlayerStats;
 
     const clubOffer = buildTradeClubOfferForClub({
-      club: offer.club,
+      club: storyPoolEntry?.club ?? offer.club,
       leagueId: offer.leagueId,
       clubRank: offer.clubRank,
       leagueSize: offer.leagueSize,
@@ -792,6 +856,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       ownedIds,
       excludeIds,
       championBonusActive: isChampBonus,
+      strictRosterOnly: isStoryMode,
     });
 
     setCounterOfferOrigin(activeTab);
@@ -836,12 +901,24 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     const standIdx = isUserLeague
       ? season.standings.findIndex((s) => s.teamId === entry.club.id)
       : -1;
-    const clubRank = standIdx !== -1 ? standIdx + 1 : 2;
+    const foreignEst =
+      !isUserLeague && state.storyMode?.transferPoolClubs
+        ? estimateStoryForeignClubRank(
+            entry.club,
+            entry.leagueId,
+            state.storyMode.transferPoolClubs,
+          )
+        : null;
+    const clubRank =
+      standIdx !== -1 ? standIdx + 1 : (foreignEst?.rank ?? 2);
+    const leagueSize = isUserLeague
+      ? season.standings.length || 20
+      : (foreignEst?.leagueSize ?? 20);
     const clubOffer = buildTradeClubOfferForClub({
       club: entry.club,
       leagueId: entry.leagueId,
       clubRank,
-      leagueSize: isUserLeague ? season.standings.length || 20 : 20,
+      leagueSize,
       currentRound: season.currentRound,
       totalRounds: season.totalRounds,
       windowIndex: tm.windowIndex,
@@ -852,7 +929,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
       allPlayerStats: season.allPlayerStats,
       ownedIds,
       excludeIds,
-      championBonusActive: false,
+      championBonusActive: Boolean(tm.championBonusActive),
+      strictRosterOnly: true,
     });
     setCounterOfferOrigin('explore');
     setCounterOfferClub(clubOffer);
@@ -926,8 +1004,12 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           <div className="flex flex-wrap items-center gap-1.5 min-w-0">
             <h2 className="text-sm sm:text-base font-black text-white">
               {isUclSpecial
-                ? 'UCL 특별 트레이드'
-                : `제 ${tm.windowIndex}차 트레이드 (${tm.triggerRound}R)`}
+                ? isStoryMode
+                  ? 'UCL 16강 직전 이적시장'
+                  : 'UCL 특별 트레이드'
+                : isStoryMode
+                  ? `겨울 이적시장 (${tm.triggerRound}R)`
+                  : `제 ${tm.windowIndex}차 트레이드 (${tm.triggerRound}R)`}
             </h2>
             <span className="rounded-md border border-emerald-400/35 bg-emerald-500/12 px-2 py-0.5 text-[11px] font-extrabold text-emerald-300 tabular-nums whitespace-nowrap">
               {tm.attemptsRemaining}/{tm.maxAttempts}회
@@ -978,7 +1060,9 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
               <ArrowLeft className="h-3.5 w-3.5" />
               {counterOfferOrigin === 'incoming'
                 ? '받은 제안으로'
-                : '트레이드 룰렛으로'}
+                : isStoryMode
+                  ? '5대 리그 구단 목록'
+                  : '트레이드 룰렛으로'}
             </button>
           )}
           <button
@@ -1014,7 +1098,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           구단 트레이드 탐색
           {counterOfferClub && (
             <span className="rounded bg-amber-500/18 border border-amber-400/35 px-1.5 py-0.2 text-[10px] font-bold text-amber-200">
-              역제안 · {counterOfferClub.club?.shortName ?? ''}
+              {isStoryMode ? '지목' : '역제안'} · {counterOfferClub.club?.shortName ?? ''}
             </span>
           )}
         </button>
@@ -1062,7 +1146,11 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
             onClick={() => handleExitCounterOffer('explore')}
             className="rounded-lg border border-slate-700/80 bg-slate-900/80 px-2.5 py-1.5 text-[11px] font-bold text-slate-300 hover:border-sky-400/50 hover:text-white transition cursor-pointer touch-manipulation"
           >
-            {tm.hasSpunClubs ? '추첨 구단 보기' : '트레이드 룰렛'}
+            {isStoryMode
+              ? '5대 리그 구단 목록'
+              : tm.hasSpunClubs
+                ? '추첨 구단 보기'
+                : '트레이드 룰렛'}
           </button>
         )}
         <div className="ml-auto hidden sm:flex items-center gap-2 text-[11px] text-slate-400">
