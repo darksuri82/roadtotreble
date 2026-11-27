@@ -118,8 +118,8 @@ describe('v10.1.4 Daily + Weekly (Mon~Sun) TOP 10 Ranking System', () => {
       makeRankingEntry('tue-1', 13950, '2026-11-24', weekStart),
       makeRankingEntry('tue-2', 13650, '2026-11-24', weekStart),
       makeRankingEntry('tue-3', 12800, '2026-11-24', weekStart),
-      // Today (Thursday) has 11 scores (14100 down to 12100)
-      ...Array.from({ length: 11 }, (_, i) =>
+      // Today (Thursday) has 22 scores (14100 down to 9900) -> capped to Daily TOP 20
+      ...Array.from({ length: 22 }, (_, i) =>
         makeRankingEntry(`thu-${i + 1}`, 14100 - i * 200, '2026-11-26', weekStart),
       ),
       // Previous week record (must be excluded from both Daily & Weekly)
@@ -132,15 +132,17 @@ describe('v10.1.4 Daily + Weekly (Mon~Sun) TOP 10 Ranking System', () => {
 
     const board = groupWeeklyDailyRankings(entries, thuNoonKst);
 
-    // Daily caps intact
+    // Daily caps intact (Today TOP 20, Past-day TOP 3)
     expect(board.weekStartKey).toBe('2026-11-23');
     expect(board.weekEndKey).toBe('2026-11-29');
+    expect(GLOBAL_DAILY_TOP_LIMIT).toBe(20);
+    expect(GLOBAL_WEEKLY_TOP_LIMIT).toBe(10);
     expect(board.todayEntries.length).toBe(GLOBAL_DAILY_TOP_LIMIT);
     expect(board.byDate['2026-11-23'].entries.length).toBe(
       GLOBAL_PAST_DAY_ARCHIVE_LIMIT,
     );
 
-    // Weekly TOP 10 combines Mon~Thu and retains Monday's #4~#6 high scorers!
+    // Weekly TOP 10 combines Mon~Thu and retains Monday's #4~#5 high scorers!
     expect(board.weeklyEntries.length).toBe(GLOBAL_WEEKLY_TOP_LIMIT);
     expect(board.weeklyEntries[0].runId).toBe('thu-1'); // 14100
     expect(board.weeklyEntries[0].rank).toBe(1);
@@ -182,9 +184,9 @@ describe('v10.1.4 Daily + Weekly (Mon~Sun) TOP 10 Ranking System', () => {
     expect(board.weeklyEntries.some((e) => e.runId === 'mon-5')).toBe(true);
   });
 
-  it('4) keeps v10.1.4 release metadata synchronized across patchNotes and WhatsNewModal', () => {
-    expect(CURRENT_APP_VERSION).toBe('v10.1.4');
-    expect(PATCH_NOTES[0].version).toBe('v10.1.4');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v10.1.4');
+  it('4) keeps v10.1.5 release metadata synchronized across patchNotes and WhatsNewModal', () => {
+    expect(CURRENT_APP_VERSION).toBe('v10.1.5');
+    expect(PATCH_NOTES[0].version).toBe('v10.1.5');
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v10.1.5');
   });
 });

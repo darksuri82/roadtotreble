@@ -1,5 +1,6 @@
 import { Crown, Globe, Sparkles, Trophy, X } from 'lucide-react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { GLOBAL_DAILY_TOP_LIMIT } from '../../services/globalRankingService';
 import type { GlobalTop15CelebrationPayload } from '../../types/legacy';
 
 interface GlobalTop15CelebrationModalProps {
@@ -41,7 +42,7 @@ function getRankStyle(rank: number): {
     badgeClass:
       'bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/20',
     ringClass: 'border-emerald-400/45',
-    label: `오늘의 일일 랭킹 TOP 10 진입`,
+    label: `오늘의 일일 랭킹 TOP ${GLOBAL_DAILY_TOP_LIMIT} 진입`,
   };
 }
 
@@ -67,7 +68,7 @@ export function GlobalTop15CelebrationModal({
           <div className="flex items-center gap-2">
             <Globe className="h-4 w-4 text-emerald-400 shrink-0" />
             <span className="text-xs font-extrabold tracking-wide text-emerald-300 uppercase">
-              Daily Ranking · TOP 10 (KST)
+              Daily Ranking · TOP {GLOBAL_DAILY_TOP_LIMIT} (KST)
             </span>
           </div>
           <button

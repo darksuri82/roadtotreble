@@ -42,7 +42,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.4';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.5';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -238,7 +238,7 @@ export function WhatsNewModal({
                     「스토리 모드」 7종 · 그 시절 5대 리그 룰렛 통합 개편!
                   </span>
                   <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
-                    v10.1.4 UPDATE
+                    v10.1.5 UPDATE
                   </span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-300">
@@ -251,7 +251,7 @@ export function WhatsNewModal({
                   </strong>
                   을 포함한 7종 스토리 모드와 결산·드림 매치 OVR 1:1 정합화·MVP 각성 보정에 이어,{' '}
                   <strong className="text-amber-200">
-                    KST 일일(오늘 TOP 10) + 주간(월~일 TOP 10) 통합 랭킹 제도
+                    KST 일일(오늘 TOP 20) + 주간(월~일 TOP 10) 통합 랭킹 제도
                   </strong>
                   를 새롭게 도입했습니다.
                 </p>
@@ -666,7 +666,7 @@ export function WhatsNewModal({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1.5 text-xs font-black text-sky-300">
                     <Globe className="h-3.5 w-3.5" />
-                    KST 일일 + 주간(월~일) TOP 10 랭킹 &amp; 5대 리그 공정성 기준
+                    KST 일일 TOP 20 + 주간(월~일) TOP 10 랭킹 &amp; 5대 리그 공정성 기준
                   </span>
                   <span className="inline-flex items-center gap-1 rounded bg-slate-900 border border-slate-800 px-2 py-0.5 font-mono text-[10px] text-slate-400 whitespace-nowrap">
                     <Calendar className="h-3 w-3 text-sky-400" />
@@ -698,7 +698,7 @@ export function WhatsNewModal({
                 </div>
 
                 <p className="text-[11px] leading-relaxed text-slate-300">
-                  당일은 <strong className="text-sky-200">일일 TOP 10</strong>으로 실시간 경쟁하고, 월요일~일요일 전체 최고 기록은{' '}
+                  당일은 <strong className="text-sky-200">일일 TOP 20</strong>으로 실시간 경쟁하고, 월요일~일요일 전체 최고 기록은{' '}
                   <strong className="text-amber-300">주간 TOP 10</strong>으로 일주일 내내 유지됩니다(지난 날짜별{' '}
                   <strong className="text-slate-200">TOP 3</strong> 아카이브 병행). 공정성을 위해{' '}
                   <strong className="text-rose-300">

@@ -221,8 +221,8 @@ describe('v9.5.0 Realistic Sub-Attributes, FFP -12%, Historical Boss OVR, KST Da
     });
 
     const rawEntries: GlobalHofRankingEntry[] = [
-      // 12 entries today -> capped to TOP 10
-      ...Array.from({ length: 12 }, (_, i) =>
+      // 22 entries today -> capped to TOP 20
+      ...Array.from({ length: 22 }, (_, i) =>
         makeEntry(`today-${i}`, 10000 - i * 50, '2026-11-26', '2026-11-23'),
       ),
       // 6 entries yesterday -> capped to TOP 3 archive

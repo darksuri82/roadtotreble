@@ -322,7 +322,7 @@ export function TitleScreen() {
                   일일·주간 랭킹
                 </div>
                 <div className="text-[10px] text-sky-300/90 truncate sm:text-[11px]">
-                  일일·주간 TOP 10
+                  일일 TOP 20 · 주간 TOP 10
                 </div>
               </div>
             </div>

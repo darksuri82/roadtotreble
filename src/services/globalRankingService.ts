@@ -33,10 +33,10 @@ import type {
 } from '../types/legacy';
 import type { Player, PlaystyleId, Position, SubPosition } from '../types/player';
 
-export const GLOBAL_DAILY_TOP_LIMIT = 10;
+export const GLOBAL_DAILY_TOP_LIMIT = 20;
 export const GLOBAL_WEEKLY_TOP_LIMIT = 10;
 export const GLOBAL_PAST_DAY_ARCHIVE_LIMIT = 3;
-/** Backward-compatible alias now equal to GLOBAL_DAILY_TOP_LIMIT (10). */
+/** Backward-compatible alias now equal to GLOBAL_DAILY_TOP_LIMIT (20). */
 export const GLOBAL_TOP15_LIMIT = GLOBAL_DAILY_TOP_LIMIT;
 export const GLOBAL_RANKING_RULE_ERA = HOF_RULE_ERA_V9;
 const CELEBRATED_RUNS_STORAGE_KEY = 'rtt_global_top15_celebrated_v1';

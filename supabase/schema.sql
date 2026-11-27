@@ -317,7 +317,7 @@ begin
     and id not in (select id from weekly_top10);
   get diagnostics v_deleted_past_days = row_count;
 
-  -- 3) Today: retain strictly TOP 10
+  -- 3) Today: retain strictly TOP 20
   with ranked_today as (
     select id,
            row_number() over (
@@ -328,7 +328,7 @@ begin
       and ranking_date = v_today_kst
   )
   delete from public.global_hof_rankings
-  where id in (select id from ranked_today where rk > 10);
+  where id in (select id from ranked_today where rk > 20);
   get diagnostics v_deleted_today = row_count;
 
   return jsonb_build_object(
@@ -443,7 +443,7 @@ begin
     raise exception 'Invalid legend count in squad_snapshot';
   end if;
 
-  -- Serialize concurrent submissions to eliminate daily Top-10 race conditions
+  -- Serialize concurrent submissions to eliminate daily Top-20 race conditions
   perform pg_advisory_xact_lock(hashtext('global_hof_rankings_daily_weekly'));
 
   -- 0a) Weekly Reset (Monday 00:00 KST) & pre-v9.0 purge
@@ -500,7 +500,7 @@ begin
       and ranking_date = v_today_kst;
 
     return jsonb_build_object(
-      'entered', v_existing_rank <= 10,
+      'entered', v_existing_rank <= 20,
       'rank', v_existing_rank,
       'already_exists', true,
       'cutoff_score', v_cutoff_score,
@@ -528,20 +528,20 @@ begin
     );
   end if;
 
-  -- 2) Pre-check against today's 10th cutoff when today already has 10+ entries
+  -- 2) Pre-check against today's 20th cutoff when today already has 20+ entries
   select count(*) into v_total_before
   from public.global_hof_rankings
   where ranking_week_start = v_week_start_kst
     and ranking_date = v_today_kst;
 
-  if v_total_before >= 10 then
+  if v_total_before >= 20 then
     select season_score, is_treble, ucl_won, achieved_at
       into v_cutoff_row
     from public.global_hof_rankings
     where ranking_week_start = v_week_start_kst
       and ranking_date = v_today_kst
     order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
-    offset 9 limit 1;
+    offset 19 limit 1;
 
     if (
       v_score < v_cutoff_row.season_score
@@ -554,7 +554,7 @@ begin
         'rank', null,
         'already_exists', false,
         'cutoff_score', v_cutoff_row.season_score,
-        'total_count', least(v_total_before, 10),
+        'total_count', least(v_total_before, 20),
         'pruned_count', 0,
         'ranking_date', v_today_kst
       );
@@ -610,19 +610,19 @@ begin
     v_achieved_at
   );
 
-  -- 4) Immediately prune today's rows ranked 11th or lower in the same transaction
-  with today_top10 as (
+  -- 4) Immediately prune today's rows ranked 21st or lower in the same transaction
+  with today_top20 as (
     select id
     from public.global_hof_rankings
     where ranking_week_start = v_week_start_kst
       and ranking_date = v_today_kst
     order by season_score desc, is_treble desc, ucl_won desc, achieved_at asc, id asc
-    limit 10
+    limit 20
   )
   delete from public.global_hof_rankings
   where ranking_week_start = v_week_start_kst
     and ranking_date = v_today_kst
-    and id not in (select id from today_top10);
+    and id not in (select id from today_top20);
   get diagnostics v_pruned_count = row_count;
 
   -- 5) Compute final rank & updated cutoff for today
@@ -644,7 +644,7 @@ begin
     and ranking_date = v_today_kst;
 
   return jsonb_build_object(
-    'entered', v_new_rank is not null and v_new_rank <= 10,
+    'entered', v_new_rank is not null and v_new_rank <= 20,
     'rank', v_new_rank,
     'already_exists', false,
     'cutoff_score', v_cutoff_score,

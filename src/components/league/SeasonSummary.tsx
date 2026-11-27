@@ -39,7 +39,10 @@ import { getUserRank } from '../../engine/standingsEngine';
 import { generateSoloSeasonTeamStory } from '../../engine/teamStoryEngine';
 import { didUserWinUcl, getUserUclResultLabel } from '../../engine/uclEngine';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
-import { fetchGlobalTop15Rankings } from '../../services/globalRankingService';
+import {
+  fetchGlobalTop15Rankings,
+  GLOBAL_DAILY_TOP_LIMIT,
+} from '../../services/globalRankingService';
 import { useGame } from '../../store/GameContext';
 import type {
   BestXiEntry,
@@ -976,7 +979,7 @@ export function SeasonSummary() {
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-[#090e15] px-3.5 py-2 text-xs">
                 <div className="flex flex-wrap items-center gap-2 text-slate-300">
                   <span className="rounded bg-sky-500/15 border border-sky-400/30 px-2 py-0.5 text-[10px] font-black text-sky-300 whitespace-nowrap">
-                    🌍 일일·주간 랭킹 TOP 10
+                    🌍 일일 TOP {GLOBAL_DAILY_TOP_LIMIT} · 주간 TOP 10
                   </span>
                   {enteredRank !== null ? (
                     <span className="font-bold text-emerald-300 tabular-nums">
@@ -985,15 +988,17 @@ export function SeasonSummary() {
                   ) : submitError ? (
                     <span className="font-semibold text-rose-300 break-keep">
                       자동 등록 실패 ({submitError})
-                      {totalCount !== null ? ` · 오늘 ${totalCount}/10팀 등재 중` : ''}
+                      {totalCount !== null
+                        ? ` · 오늘 ${totalCount}/${GLOBAL_DAILY_TOP_LIMIT}팀 등재 중`
+                        : ''}
                     </span>
-                  ) : totalCount !== null && totalCount < 10 ? (
+                  ) : totalCount !== null && totalCount < GLOBAL_DAILY_TOP_LIMIT ? (
                     <span className="text-slate-300 tabular-nums">
-                      오늘 {totalCount}/10팀 등재 중
+                      오늘 {totalCount}/{GLOBAL_DAILY_TOP_LIMIT}팀 등재 중
                     </span>
                   ) : cutoffScore !== null ? (
                     <span className="text-slate-400 tabular-nums">
-                      오늘 10위 커트라인{' '}
+                      오늘 {GLOBAL_DAILY_TOP_LIMIT}위 커트라인{' '}
                       <strong className="font-mono text-slate-200">
                         {cutoffScore.toLocaleString()} PTS
                       </strong>

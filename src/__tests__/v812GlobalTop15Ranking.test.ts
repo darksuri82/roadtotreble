@@ -215,31 +215,31 @@ describe('v8.12 Global TOP 15 Ranking, Auto-Prune & 1v1 Challenge', () => {
     ).toBe(true);
   });
 
-  it('maintains strict daily TOP 10 cap, prunes 11th immediately, and respects tie-breakers', () => {
-    const initial10 = Array.from({ length: GLOBAL_TOP15_LIMIT }, (_, i) =>
+  it('maintains strict daily TOP 20 cap, prunes 21st immediately, and respects tie-breakers', () => {
+    const initial20 = Array.from({ length: GLOBAL_TOP15_LIMIT }, (_, i) =>
       makeRankingEntry(i + 1, 10000 - i * 100),
     );
-    // 10th currently has score 9100
-    expect(initial10[GLOBAL_TOP15_LIMIT - 1].seasonScore).toBe(9100);
+    // 20th currently has score 8100
+    expect(initial20[GLOBAL_TOP15_LIMIT - 1].seasonScore).toBe(8100);
 
-    // 1) Entry scoring 9000 -> rejected, list stays 10
-    const belowCutoff = makeRankingEntry(11, 9000);
-    const resFail = applyTop15RankingLogic(initial10, belowCutoff);
+    // 1) Entry scoring 8000 -> rejected, list stays 20
+    const belowCutoff = makeRankingEntry(21, 8000);
+    const resFail = applyTop15RankingLogic(initial20, belowCutoff);
     expect(resFail.result.entered).toBe(false);
     expect(resFail.result.rank).toBeNull();
     expect(resFail.result.prunedCount).toBe(0);
     expect(resFail.nextEntries.length).toBe(GLOBAL_TOP15_LIMIT);
-    expect(resFail.nextEntries.some((e) => e.runId === 'run-11')).toBe(false);
+    expect(resFail.nextEntries.some((e) => e.runId === 'run-21')).toBe(false);
 
-    // 2) Entry scoring 9550 -> enters at #6, pushes 9100 out (prunedCount = 1), stays exactly 10
-    const qualifier = makeRankingEntry(12, 9550);
-    const resEnter = applyTop15RankingLogic(initial10, qualifier);
+    // 2) Entry scoring 9550 -> enters at #6, pushes 8100 out (prunedCount = 1), stays exactly 20
+    const qualifier = makeRankingEntry(22, 9550);
+    const resEnter = applyTop15RankingLogic(initial20, qualifier);
     expect(resEnter.result.entered).toBe(true);
     expect(resEnter.result.rank).toBe(6);
     expect(resEnter.result.prunedCount).toBe(1);
     expect(resEnter.nextEntries.length).toBe(GLOBAL_TOP15_LIMIT);
-    expect(resEnter.nextEntries.some((e) => e.runId === 'run-10')).toBe(false);
-    expect(resEnter.result.cutoffScore).toBe(9200);
+    expect(resEnter.nextEntries.some((e) => e.runId === 'run-20')).toBe(false);
+    expect(resEnter.result.cutoffScore).toBe(8200);
 
     // 3) Duplicate runId guard -> does not insert twice
     const dupRes = applyTop15RankingLogic(resEnter.nextEntries, qualifier);
@@ -249,11 +249,11 @@ describe('v8.12 Global TOP 15 Ranking, Auto-Prune & 1v1 Challenge', () => {
     expect(dupRes.nextEntries.length).toBe(GLOBAL_TOP15_LIMIT);
 
     // 4) Tie-breaker: same score -> Treble beats non-Treble; same treble/ucl -> earlier achievedAt wins
-    const tieTreble = makeRankingEntry(13, 10000, {
+    const tieTreble = makeRankingEntry(23, 10000, {
       isTreble: true,
       achievedAt: '2026-11-28T00:00:00.000Z',
     });
-    const resTie = applyTop15RankingLogic(initial10, tieTreble);
+    const resTie = applyTop15RankingLogic(initial20, tieTreble);
     expect(resTie.result.entered).toBe(true);
     expect(resTie.result.rank).toBe(1);
   });

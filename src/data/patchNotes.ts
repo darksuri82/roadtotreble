@@ -12,15 +12,34 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v10.1.4';
+export const CURRENT_APP_VERSION = 'v10.1.5';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v10.1.5',
+    codename:
+      '글로벌 일일 랭킹 TOP 20 확대 · 주간 랭킹(월~일) TOP 10 병행 운영',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '일일 랭킹(오늘) 등재 정원을 기존 TOP 10에서 TOP 20으로 확대해 더 많은 유저가 실시간 순위 경쟁과 드림 매치 도전에 참여할 수 있도록 개편했습니다. 주간 랭킹(월~일)은 기존대로 TOP 10 정예 순위로 일주일 내내 유지됩니다.',
+    sections: [
+      {
+        category: '1. 일일 랭킹 TOP 20 확대 & 주간(월~일) TOP 10 정예 유지',
+        items: [
+          '**오늘의 일일 랭킹 정원 2배 확대 (`globalRankingService.ts`, `supabase/schema.sql`)**: `GLOBAL_DAILY_TOP_LIMIT` 및 서버 RPC(`submit_global_hof_ranking`, `prune_global_daily_rankings`)의 당일 정원을 `10 → 20`으로 상향해 오늘(KST) 완료된 상위 20팀이 실시간 등록·보존됩니다.',
+          '**주간(월~일) TOP 10 · 지난 날짜 TOP 3 아카이브 유지**: 주간 통합 랭킹은 한 주 최상위 `TOP 10`으로, 지난 날짜 아카이브는 일자별 `TOP 3`(주간 TOP 10 기록은 일요일까지 삭제 보호)로 유지되며 매주 월요일 00:00(KST) 전체 초기화됩니다.',
+          '**전 UI·가이드 동기화 (`LegacyHubModal`, `SeasonSummary`, `GlobalTop15CelebrationModal`, `TitleScreen`, `HeaderNav`, `SystemGuideModal`, `SoloVisualTutorialModal`)**: 당일 커트라인(20위)·진입 축하 배지·타이틀/헤더 안내 문구를 모두 `일일 TOP 20 · 주간 TOP 10` 기준으로 통일했습니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v10.1.4',
     codename:
       '글로벌 일일 + 주간 랭킹(월~일 TOP 10) 통합 운영 개편',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'FEATURE',
     summary:
       '기존 KST 일일 랭킹(당일 TOP 10 · 지난 날짜 TOP 3 아카이브)에 더해, 월요일 00:00부터 일요일 23:59까지 한 주 전체 기록을 통합 집계하는 「주간 랭킹 TOP 10 (월~일)」 제도를 도입했습니다.',
     sections: [

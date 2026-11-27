@@ -5,6 +5,14 @@
 
 ---
 
+## v10.1.5 — 글로벌 일일 랭킹 TOP 20 확대 · 주간 랭킹(월~일) TOP 10 병행 운영
+
+- **일일 랭킹(오늘) TOP 20 확대 (`src/services/globalRankingService.ts`, `supabase/schema.sql`, `GlobalTop15CelebrationModal.tsx`, `SeasonSummary.tsx`, `LegacyHubModal.tsx`, `TitleScreen.tsx`, `HeaderNav.tsx`, `SystemGuideModal.tsx`, `SoloVisualTutorialModal.tsx`, `WhatsNewModal.tsx`, `v812GlobalTop15Ranking.test.ts`, `v95FixesDailyRankStoryWhatsNew.test.ts`, `v1014DailyWeeklyRanking.test.ts`)**:
+  - `GLOBAL_DAILY_TOP_LIMIT` 및 `supabase/schema.sql`(`prune_global_daily_rankings`, `submit_global_hof_ranking`)의 당일 일일 랭킹 정원을 `10 → 20`으로 확대했습니다.
+  - 주간(월~일) 통합 랭킹은 정예 `TOP 10`, 지난 날짜 아카이브는 `TOP 3`(주간 TOP 10 보존 가드 포함)으로 유지하며 전 UI·가이드 문구를 동기화했습니다.
+
+---
+
 ## v10.1.4 — 글로벌 일일 + 주간 랭킹(월~일 TOP 10) 통합 운영 개편
 
 - **KST 일일 랭킹 + 주간(월~일) TOP 10 병행 운영 (`src/services/globalRankingService.ts`, `src/components/legacy/LegacyHubModal.tsx`, `supabase/schema.sql`, `TitleScreen.tsx`, `HeaderNav.tsx`, `SeasonSummary.tsx`, `SystemGuideModal.tsx`, `SoloVisualTutorialModal.tsx`, `WhatsNewModal.tsx`, `v1014DailyWeeklyRanking.test.ts`)**:

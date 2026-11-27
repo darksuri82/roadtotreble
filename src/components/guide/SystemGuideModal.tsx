@@ -1236,7 +1236,7 @@ export function SystemGuideContent({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-white">
                 <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-                명예의 전당 ({historicalCount}팀) · 일일 랭킹 TOP 10 · 년도별 베스트 11 ({eraBestXiCount}팀)
+                명예의 전당 ({historicalCount}팀) · 일일 TOP 20 · 주간 TOP 10 · 년도별 베스트 11 ({eraBestXiCount}팀)
               </div>
               <span className="rounded bg-amber-500/15 border border-amber-400/35 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-200 whitespace-nowrap">
                 자동 등재 {HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}+ · S+ 7,200+
@@ -1252,12 +1252,13 @@ export function SystemGuideContent({
                 </div>
               </div>
               <div className="rounded-lg border border-sky-500/25 bg-sky-950/15 p-2.5 space-y-1">
-                <div className="font-bold text-sky-300">KST 일일 랭킹 &amp; 드림 매치</div>
+                <div className="font-bold text-sky-300">KST 일일·주간 랭킹 &amp; 드림 매치</div>
                 <div className="text-slate-300">
-                  당일 <strong className="text-sky-200">TOP 10</strong> 실시간 경쟁 · 지난 날짜는{' '}
-                  <strong className="text-amber-300">TOP 3</strong> 아카이브 ·{' '}
-                  <strong className="text-slate-200">매주 월요일 00:00(KST)</strong> 주간 초기화.
-                  역대 클럽 {historicalCount}팀·일일 랭킹·<strong className="text-cyan-300">년도별 베스트 11 (1960s~2010s · {eraBestXiCount}팀)</strong> 2D 대결 지원
+                  당일 <strong className="text-sky-200">일일 TOP 20</strong> 실시간 경쟁 · 월~일 통합{' '}
+                  <strong className="text-amber-300">주간 TOP 10</strong> 유지 · 지난 날짜{' '}
+                  <strong className="text-slate-200">TOP 3</strong> 아카이브 ·{' '}
+                  <strong className="text-slate-200">매주 월요일 00:00(KST)</strong> 초기화.
+                  역대 클럽 {historicalCount}팀·일일·주간 랭킹·<strong className="text-cyan-300">년도별 베스트 11 (1960s~2010s · {eraBestXiCount}팀)</strong> 2D 대결 지원
                 </div>
               </div>
             </div>
@@ -1315,7 +1316,7 @@ export function SystemGuideContent({
             <p className="text-[11px] text-slate-300">{HOF_RESET_NOTICE_TEXT}</p>
             <div className="text-[10.5px] text-slate-400 space-y-1">
               <div>
-                • 로컬 명전은 개인 시즌 기록을 영구 보존하며, 글로벌 랭킹은 <strong className="text-slate-200">KST 기준 당일 일일 TOP 10 · 주간(월~일) 통합 TOP 10 · 지난 날짜 TOP 3 아카이브 · 매주 월요일 00:00 주간 전체 초기화</strong>로 공정한 최신 메타 경쟁을 유지합니다(히든 업적·드림매치 전적 보존).
+                • 로컬 명전은 개인 시즌 기록을 영구 보존하며, 글로벌 랭킹은 <strong className="text-slate-200">KST 기준 당일 일일 TOP 20 · 주간(월~일) 통합 TOP 10 · 지난 날짜 TOP 3 아카이브 · 매주 월요일 00:00 주간 전체 초기화</strong>로 공정한 최신 메타 경쟁을 유지합니다(히든 업적·드림매치 전적 보존).
               </div>
               <div>
                 • <strong className="text-rose-300">공정성 기준:</strong> 드래프트 설정에서 <strong className="text-slate-200">5대 리그 풀을 모두 체크</strong>하고 <strong className="text-slate-200">오늘(KST) 완료한 시즌</strong>만 오늘의 일일 랭킹에 제출할 수 있습니다(일부 리그 풀 선택 시즌·지난 날짜 기록은 개인 명예의 전당 보관만 가능).

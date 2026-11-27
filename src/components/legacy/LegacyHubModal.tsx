@@ -442,7 +442,7 @@ function LegacyHubModalContent({
                   items={[
                     `자동 등재: 시즌 스코어 ${HOF_AUTO_INDUCTION_MIN_SCORE.toLocaleString()}+ (역대 강팀급) · S+ 등급 · UCL 우승 · 트레블 달성 시`,
                     '수동 등재: 기준 미만 시즌도 시즌 결산 화면의 [수동 등록] 버튼으로 직접 등재 가능',
-                    `일일 랭킹(KST): 당일 TOP ${GLOBAL_DAILY_TOP_LIMIT} 경쟁 · 지난 날짜 TOP ${GLOBAL_PAST_DAY_ARCHIVE_LIMIT} 아카이브 · 매주 월요일 00:00(KST) 주간 초기화`,
+                    `일일·주간 랭킹(KST): 당일 TOP ${GLOBAL_DAILY_TOP_LIMIT} · 주간(월~일) TOP ${GLOBAL_WEEKLY_TOP_LIMIT} · 지난 날짜 TOP ${GLOBAL_PAST_DAY_ARCHIVE_LIMIT} 아카이브 · 매주 월요일 00:00 초기화`,
                     '랭킹 공정성: 5대 리그 드래프트 풀을 모두 선택하고 오늘(KST) 완료한 시즌만 일일 랭킹에 제출 가능 (지난 기록 · 일부 리그 풀은 개인 명전만 가능)',
                   ]}
                 />
