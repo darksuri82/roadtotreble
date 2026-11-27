@@ -5,6 +5,17 @@
 
 ---
 
+## v10.1.1 — 스토리 모드 인테르·레버쿠젠 경기 스킵 크래시 수정 & 7종 통합 5대 리그 시대 룰렛(시즌 3회 + UCL 직전 1회) 개편
+
+- **1. 경기 스킵·즉시 완료 검은 화면 크래시 및 데이터 무결성 전수 수정 (`0910_inter.json`, `2324_leverkusen.json`, `1314_atletico.json`, `src/engine/matchEngine.ts`, `src/engine/storyModeEngine.ts`, `src/store/GameContext.tsx`)**:
+  - `0910_inter.json`(키에보·볼로냐·리보르노·오세르) 및 `2324_leverkusen.json`(우니온 베를린·다름슈타트·유벤투스)에 기재된 비표준 전술 키 `park_the_bus` 14건을 유효 전술 `counter`로 전수 교정했습니다.
+  - `matchEngine.ts` 전술 파훼 헤드라인 방어 체이닝, `storyModeEngine.ts` `sanitizeStoryTacticId`, `loadSavedStoryGameState` 세이브 자동 자가 치유(기존 v10.1.0 세이브 포함)를 추가하고, `1314_atletico.json`의 레반테/레버쿠젠 `lev_1314` ID 충돌을 `b04_1314`로 분리했습니다.
+- **2. 스토리 모드 7종 통합 시대 룰렛 이적시장 개편 (`src/engine/transferEngine.ts`, `src/store/GameContext.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/data/story/storyRegistry.ts`, `src/types/storyMode.ts`)**:
+  - 7종 시나리오 전체를 싱글플레이와 동일한 **시즌 3회(10·19·28R / 34R 분데스리가 9·17·25R) + UCL 진출 시 16강 직전 1회(총 4회) · 창당 3회 협상**으로 통일했습니다.
+  - 35구단 수동 목록 브라우저를 제거하고 `spinTransferClubs({ storyTransferPool })` 기반 3구단 룰렛으로 개편해, **100% 해당 스토리 시즌의 자국 리그 전체 + 타 4대 리그 상위 4팀 실제 로스터**에서만 추첨·협상하도록 통일했습니다(클래식 FA 미출현, 미션 핵심 선수 방출 경고 유지).
+
+---
+
 ## v10.1.0 — 스토리 모드 7종 확장 (23-24 레버쿠젠 · 09-10 인테르) · 빅클럽/언더독 2단계 밸런스 개편 · 박지성 월베 ★3 & 3대 버그 수정
 
 - **1. 신규 역사 시나리오 2종 추가 (`src/data/story/scenarios/2324_leverkusen.json`, `src/data/story/scenarios/0910_inter.json`, `src/data/story/storyRegistry.ts`, `src/types/storyMode.ts`, `src/engine/storyModeEngine.ts`, `src/components/story/StoryPixelSceneSvg.tsx`)**:

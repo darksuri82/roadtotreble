@@ -28,6 +28,8 @@ export type StoryScenarioId =
   | '0910_inter';
 
 export type StoryTransferRule =
+  | 'standard_3_plus_ucl'
+  | 'standard_3_only'
   | 'winter_plus_ucl'
   | 'winter_1_only';
 

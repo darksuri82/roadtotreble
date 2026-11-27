@@ -18,6 +18,7 @@ import type {
 } from '../types/league';
 import type { Player, Position, SubPosition } from '../types/player';
 import { getCardTier } from '../types/player';
+import type { StoryTransferPoolClub } from '../types/storyMode';
 import { getMoraleTier, isPlayerActivelyInjured } from './conditionEngine';
 import {
   ALL_CLUBS_WITH_LEAGUE,
@@ -685,15 +686,16 @@ export interface SpinTransferClubsParams {
   legendBonusActive: boolean;
   championBonusActive?: boolean;
   allowedLeagueIds?: LeagueId[];
+  /** When provided (Story Mode), roulette spins 3 unique clubs strictly from this historical era pool with 0% Legend FA slots. */
+  storyTransferPool?: StoryTransferPoolClub[];
   rng?: () => number;
 }
 
 /**
  * Spins the V5 3-Club Transfer Market Roulette:
- * - Draws 3 unique clubs from the user's selected draftLeaguePool (default all 96 European Top-5 clubs),
- *   with a fixed rare chance (2.5% per reel, regardless of league standing) for a
- *   golden [LEGEND FA] slot presenting exactly 1 Legend player (unaffected by league pool filter).
- * - Each club slot contains its full 2026-27 browseable squad with dynamic form values & probabilities.
+ * - In regular mode, draws 3 unique clubs from `draftLeaguePool` (default 96 European Top-5 clubs) with 2.5%/reel Era Classic FA chance.
+ * - In Story Mode (`storyTransferPool`), draws 3 unique clubs strictly from the scenario's historical era pool
+ *   (same-season domestic league AI clubs + Top 4 of the other 4 leagues) with 0% Legend FA and strict era rosters.
  */
 export function spinTransferClubs(
   params: SpinTransferClubsParams,
@@ -712,24 +714,43 @@ export function spinTransferClubs(
     departedPlayerIds = [],
     championBonusActive = false,
     allowedLeagueIds,
+    storyTransferPool,
     rng = Math.random,
   } = params;
 
   const excludeIds = new Set<string>([...ownedIds, ...departedPlayerIds]);
+  const isStoryRoulette = Boolean(
+    storyTransferPool && storyTransferPool.length >= 3,
+  );
 
-  // Fixed base 2.5% per reel regardless of league rank/UCL champion status
-  const legendRate = TRANSFER_ROULETTE_LEGEND_RATE;
+  // Story Mode strictly rolls historical era clubs (0% Legend FA); regular mode uses fixed 2.5%/reel
+  const legendRate = isStoryRoulette ? 0 : TRANSFER_ROULETTE_LEGEND_RATE;
   const userLeagueSize = standings.length || 20;
 
-  const allowedSet =
-    allowedLeagueIds && allowedLeagueIds.length > 0
-      ? new Set<LeagueId>(allowedLeagueIds)
-      : null;
-  const filteredClubPool = allowedSet
-    ? ALL_CLUBS_WITH_LEAGUE.filter((entry) => allowedSet.has(entry.leagueId))
-    : ALL_CLUBS_WITH_LEAGUE;
-  const clubPool =
-    filteredClubPool.length >= 3 ? filteredClubPool : ALL_CLUBS_WITH_LEAGUE;
+  type RoulettePoolEntry = {
+    club: Club;
+    leagueId: LeagueId;
+    storyRoster?: Player[];
+  };
+
+  let clubPool: RoulettePoolEntry[];
+  if (isStoryRoulette && storyTransferPool) {
+    clubPool = storyTransferPool.map((entry) => ({
+      club: entry.club,
+      leagueId: entry.leagueId,
+      storyRoster: entry.roster,
+    }));
+  } else {
+    const allowedSet =
+      allowedLeagueIds && allowedLeagueIds.length > 0
+        ? new Set<LeagueId>(allowedLeagueIds)
+        : null;
+    const filteredClubPool = allowedSet
+      ? ALL_CLUBS_WITH_LEAGUE.filter((entry) => allowedSet.has(entry.leagueId))
+      : ALL_CLUBS_WITH_LEAGUE;
+    clubPool =
+      filteredClubPool.length >= 3 ? filteredClubPool : ALL_CLUBS_WITH_LEAGUE;
+  }
 
   const pickedClubIds = new Set<string>();
   const usedLegendIds = new Set<string>(excludeIds);
@@ -804,6 +825,14 @@ export function spinTransferClubs(
         clubRank = est.rank;
         leagueSize = est.leagueSize;
       }
+    } else if (isStoryRoulette && storyTransferPool) {
+      const est = estimateStoryForeignClubRank(
+        picked.club,
+        picked.leagueId,
+        storyTransferPool,
+      );
+      clubRank = est.rank;
+      leagueSize = est.leagueSize;
     } else {
       const bgStandings = otherLeagues?.[picked.leagueId]?.standings;
       const bgIdx = bgStandings
@@ -824,9 +853,13 @@ export function spinTransferClubs(
       }
     }
 
-    const liveClubRoster = isUserLeague
-      ? aiRosters[picked.club.id]
-      : otherLeagues?.[picked.leagueId]?.aiRosters?.[picked.club.id];
+    const liveClubRoster = isStoryRoulette
+      ? isUserLeague
+        ? aiRosters[picked.club.id] ?? picked.storyRoster
+        : picked.storyRoster
+      : isUserLeague
+        ? aiRosters[picked.club.id]
+        : otherLeagues?.[picked.leagueId]?.aiRosters?.[picked.club.id];
     const clubStatsMap = isUserLeague
       ? allPlayerStats
       : otherLeagues?.[picked.leagueId]?.playerStats ?? allPlayerStats;
@@ -847,6 +880,7 @@ export function spinTransferClubs(
       allPlayerStats: clubStatsMap,
       isUserLeague,
       championBonusActive,
+      strictRosterOnly: isStoryRoulette,
     });
 
     const clubNeeds = analyzeClubPositionNeeds(squad.map((t) => t.player));

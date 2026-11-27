@@ -53,12 +53,12 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
       },
     ],
     cashBudgetM: 35,
-    cashBudgetNote: '언더독 보너스 포함 소형 구단 재정 (€35M)',
-    transferRule: 'winter_1_only',
+    cashBudgetNote: '승격 2년 차 레스터 재정 (€35M)',
+    transferRule: 'standard_3_only',
     allowUclTransferWindow: false,
-    transferRuleLabel: '시즌 1회 (겨울 19R · 4회 협상) · 예산 €35M',
+    transferRuleLabel: '시즌 3회 (10·19·28R 룰렛 · 창당 3회) · €35M',
     transferRuleReason:
-      '시즌 중 겨울 이적시장(19R) 단 1회만 열리지만, 언더독 보정으로 4회 협상 기회와 €35M 현금이 주어집니다. 15-16 5대 리그 상위팀·EPL 구단을 직접 지목해 알짜 트레이드를 설계해 보세요.',
+      '싱글플레이와 동일하게 시즌 중 3회(10R·19R·28R) 이적시장이 열리며 창당 3회 제안 기회가 주어집니다. 단, 룰렛 풀은 15-16 EPL 19개 팀 + 타 4대 리그 당시 상위 4팀(총 35개 팀) 실제 로스터로만 구성됩니다.',
     checklist: [
       {
         id: 'lei_epl_title',
@@ -250,13 +250,12 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
       },
     ],
     cashBudgetM: 45,
-    cashBudgetNote: '완성형 빅클럽 보강 제한 · 창당 최대 1명 (€45M)',
-    transferRule: 'winter_plus_ucl',
-    winterMaxSignings: 1,
+    cashBudgetNote: '07-08 맨유 시즌 이적 예산 (€45M)',
+    transferRule: 'standard_3_plus_ucl',
     allowUclTransferWindow: true,
-    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 최대 1명 (€45M)',
+    transferRuleLabel: '시즌 3회 + UCL 직전 1회 (총 4회 · 창당 3회) · €45M',
     transferRuleReason:
-      '이미 유럽 최정상급 원년 스쿼드를 갖춘 07-08 맨유는 빅클럽 밸런스 보정으로 겨울(19R)과 UCL 16강 직전 창에서 각각 최대 1명(€45M 예산 내)만 보강할 수 있습니다. 강화된 첼시·아스널·바르사·밀란을 상대로 박지성 육성과 로테이션을 정밀하게 운영하세요.',
+      '싱글플레이와 동일하게 시즌 3회(10·19·28R) + UCL 16강 직전 1회(총 4회) 이적시장이 열리며 창당 3회 제안 기회가 주어집니다. 룰렛 풀은 07-08 EPL 19개 팀 + 타 4대 리그 당시 상위 4팀(총 35개 팀) 실제 로스터로만 구성됩니다.',
     checklist: [
       {
         id: 'mun_double',
@@ -446,12 +445,12 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
       },
     ],
     cashBudgetM: 65,
-    cashBudgetNote: '언더독 보너스 포함 북런던 긴축 재정 (€65M)',
-    transferRule: 'winter_plus_ucl',
+    cashBudgetNote: '북런던 신구장 시즌 재정 (€65M)',
+    transferRule: 'standard_3_plus_ucl',
     allowUclTransferWindow: true,
-    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 4회 협상 (€65M)',
+    transferRuleLabel: '시즌 3회 + UCL 직전 1회 (총 4회 · 창당 3회) · €65M',
     transferRuleReason:
-      '98점 맨시티·97점 리버풀의 틈을 뚫어야 하는 언더독 보정으로 겨울(19R)과 UCL 16강 직전 창에서 각각 4회 협상과 €65M 예산이 주어집니다. 18-19 5대 리그 상위팀·EPL 구단을 직접 지목해 얇은 뎁스를 보강하세요.',
+      '싱글플레이와 동일하게 시즌 3회(10·19·28R) + UCL 16강 직전 1회(총 4회) 이적시장이 열리며 창당 3회 제안 기회가 주어집니다. 룰렛 풀은 18-19 EPL 19개 팀 + 타 4대 리그 당시 상위 4팀(총 35개 팀) 실제 로스터로만 구성됩니다.',
     checklist: [
       {
         id: 'tot_epl_title',
@@ -654,13 +653,12 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
       },
     ],
     cashBudgetM: 25,
-    cashBudgetNote: '인빈시블스 원년 스쿼드 엄격 제한 · 겨울 1회 한정 (€25M)',
-    transferRule: 'winter_1_only',
-    winterMaxSignings: 1,
-    allowUclTransferWindow: false,
-    transferRuleLabel: '겨울(19R) 단 1회 · 최대 1명 한정 (UCL 창 없음 · €25M)',
+    cashBudgetNote: '에미레이츠 신구장 건설 긴축 재정 (€25M)',
+    transferRule: 'standard_3_plus_ucl',
+    allowUclTransferWindow: true,
+    transferRuleLabel: '시즌 3회 + UCL 직전 1회 (총 4회 · 창당 3회) · €25M',
     transferRuleReason:
-      '03-04 아스널은 이미 완성된 인빈시블스 스쿼드의 정체성과 밸런스를 지키기 위해 겨울(19R) 단 1회 이적창에서 최대 1명(€25M 예산 내)만 보강할 수 있으며, UCL 직전 이적창은 열리지 않습니다. 강화된 아브라모비치 첼시·맨유·AC밀란·레알을 원년 멤버로 돌파하세요.',
+      '싱글플레이와 동일하게 시즌 3회(10·19·28R) + UCL 16강 직전 1회(총 4회) 이적시장이 열리며 창당 3회 제안 기회가 주어집니다. 룰렛 풀은 03-04 EPL 19개 팀 + 타 4대 리그 당시 상위 4팀(총 35개 팀) 실제 로스터로만 구성됩니다.',
     checklist: [
       {
         id: 'ars_epl_title',
@@ -852,12 +850,12 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
       },
     ],
     cashBudgetM: 55,
-    cashBudgetNote: '언더독 보너스 포함 중소형 빅클럽 재정 (€55M)',
-    transferRule: 'winter_plus_ucl',
+    cashBudgetNote: '13-14 아틀레티코 시즌 재정 (€55M)',
+    transferRule: 'standard_3_plus_ucl',
     allowUclTransferWindow: true,
-    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 4회 협상 (€55M)',
+    transferRuleLabel: '시즌 3회 + UCL 직전 1회 (총 4회 · 창당 3회) · €55M',
     transferRuleReason:
-      '메시 바르사·BBC 레알을 상대하는 언더독 보정으로 겨울(19R)과 UCL 16강 직전 창에서 각각 4회 협상과 €55M 예산이 주어집니다. 13-14 5대 리그 상위팀·라리가 구단을 직접 지목해 촐리스모 전사들을 보강해 보세요.',
+      '싱글플레이와 동일하게 시즌 3회(10·19·28R) + UCL 16강 직전 1회(총 4회) 이적시장이 열리며 창당 3회 제안 기회가 주어집니다. 룰렛 풀은 13-14 라리가 19개 팀 + 타 4대 리그 당시 상위 4팀(총 35개 팀) 실제 로스터로만 구성됩니다.',
     checklist: [
       {
         id: 'atm_laliga_title',
@@ -1048,12 +1046,12 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
       },
     ],
     cashBudgetM: 50,
-    cashBudgetNote: '언더독 보너스 포함 분데스리가 도전자 재정 (€50M)',
-    transferRule: 'winter_1_only',
+    cashBudgetNote: '23-24 레버쿠젠 시즌 재정 (€50M)',
+    transferRule: 'standard_3_only',
     allowUclTransferWindow: false,
-    transferRuleLabel: '시즌 1회 (겨울 17R · 4회 협상) · 예산 €50M',
+    transferRuleLabel: '시즌 3회 (9·17·25R 룰렛 · 창당 3회) · €50M',
     transferRuleReason:
-      '18개 구단 34라운드 분데스리가 일정에 맞춰 겨울 이적시장(17R) 1회가 열리며, 언더독 보정으로 4회 협상과 €50M 현금이 주어집니다. 23-24 5대 리그 상위팀·분데스리가 구단을 직접 지목해 무패 질주의 완성도를 높이세요.',
+      '싱글플레이 분데스리가와 동일하게 시즌 중 3회(9R·17R·25R) 이적시장이 열리며 창당 3회 제안 기회가 주어집니다. 룰렛 풀은 23-24 분데스리가 17개 팀 + 타 4대 리그 당시 상위 4팀(총 33개 팀) 실제 로스터로만 구성됩니다.',
     checklist: [
       {
         id: 'lev_bundesliga_title',
@@ -1245,12 +1243,12 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
       },
     ],
     cashBudgetM: 60,
-    cashBudgetNote: '언더독 도전자 보정 포함 밀라노 재정 (€60M)',
-    transferRule: 'winter_plus_ucl',
+    cashBudgetNote: '09-10 인테르 시즌 재정 (€60M)',
+    transferRule: 'standard_3_plus_ucl',
     allowUclTransferWindow: true,
-    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 4회 협상 (€60M)',
+    transferRuleLabel: '시즌 3회 + UCL 직전 1회 (총 4회 · 창당 3회) · €60M',
     transferRuleReason:
-      '메시·사비·이니에스타의 최강 바르셀로나와 첼시·바이에른을 돌파해야 하는 트레블 도전입니다. 겨울(19R)과 UCL 16강 직전 창에서 각각 4회 협상과 €60M 예산으로 09-10 5대 리그 상위팀·세리에 A 구단에서 핵심 전력을 보강하세요.',
+      '싱글플레이와 동일하게 시즌 3회(10·19·28R) + UCL 16강 직전 1회(총 4회) 이적시장이 열리며 창당 3회 제안 기회가 주어집니다. 룰렛 풀은 09-10 세리에 A 19개 팀 + 타 4대 리그 당시 상위 4팀(총 35개 팀) 실제 로스터로만 구성됩니다.',
     checklist: [
       {
         id: 'int_seriea_title',

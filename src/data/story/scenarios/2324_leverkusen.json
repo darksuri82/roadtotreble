@@ -3656,7 +3656,7 @@
       "secondaryColor": "#FFFFFF",
       "pattern": "solid",
       "formation": "3-5-2",
-      "defaultTactic": "park_the_bus",
+      "defaultTactic": "counter",
       "att": 76,
       "mid": 77,
       "def": 78,
@@ -3668,7 +3668,7 @@
           "3-5-2"
         ],
         "preferredTactics": [
-          "park_the_bus"
+          "counter"
         ]
       },
       "roster": [
@@ -4380,7 +4380,7 @@
       "secondaryColor": "#FFFFFF",
       "pattern": "solid",
       "formation": "3-4-2-1",
-      "defaultTactic": "park_the_bus",
+      "defaultTactic": "counter",
       "att": 73,
       "mid": 73,
       "def": 72,
@@ -4392,7 +4392,7 @@
           "3-4-2-1"
         ],
         "preferredTactics": [
-          "park_the_bus"
+          "counter"
         ]
       },
       "roster": [
@@ -7186,7 +7186,7 @@
       "secondaryColor": "#111111",
       "pattern": "stripes",
       "formation": "3-5-2",
-      "defaultTactic": "park_the_bus",
+      "defaultTactic": "counter",
       "att": 83,
       "mid": 83,
       "def": 85,
@@ -7198,7 +7198,7 @@
           "3-5-2"
         ],
         "preferredTactics": [
-          "park_the_bus"
+          "counter"
         ]
       },
       "roster": [

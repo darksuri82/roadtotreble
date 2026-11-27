@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  getStoryScenarioMeta,
   loadStoryScenarioBundle,
   STORY_SCENARIOS,
 } from '../data/story/storyRegistry';
@@ -125,8 +124,10 @@ describe('v10.1.0 — 23-24 Leverkusen & 09-10 Inter Scenarios, 2-Tier Transfer 
       payload: { bundle },
     });
     expect(started.season!.totalRounds).toBe(34);
-    expect(started.season!.transferWindows).toEqual([99, 17, 99]);
-    expect(started.season!.budgetState?.window2MaxAttempts).toBe(4);
+    expect(started.season!.transferWindows).toEqual([9, 17, 25]);
+    expect(started.season!.budgetState?.window1MaxAttempts).toBe(3);
+    expect(started.season!.budgetState?.window2MaxAttempts).toBe(3);
+    expect(started.season!.budgetState?.window3MaxAttempts).toBe(3);
     expect(started.season!.budgetState?.transferCashM).toBe(50);
   });
 
@@ -305,18 +306,10 @@ describe('v10.1.0 — 23-24 Leverkusen & 09-10 Inter Scenarios, 2-Tier Transfer 
     expect(noCup.starsEarned).toBe(2);
   });
 
-  it('enforces 2-tier transfer balance: underdogs get 4 attempts, Man Utd gets max 1/window, Arsenal skips pre-UCL window entirely', async () => {
-    // 1) Underdogs: generous 4 attempts
-    for (const id of [
-      '1516_leicester',
-      '1819_tottenham',
-      '1314_atletico',
-      '2324_leverkusen',
-      '0910_inter',
-    ] as const) {
-      const meta = getStoryScenarioMeta(id);
+  it('unifies all 7 Story Mode scenarios to 3 league windows + 1 pre-UCL window (3 attempts each) with 100% era roulette pool and 0% Legend FA', async () => {
+    for (const meta of STORY_SCENARIOS) {
       expect(meta.winterMaxSignings).toBeUndefined();
-      const bundle = await loadStoryScenarioBundle(id);
+      const bundle = await loadStoryScenarioBundle(meta.id);
       const setup = gameReducer({} as GameState, {
         type: 'ENTER_STORY_SETUP',
         payload: { bundle },
@@ -325,58 +318,101 @@ describe('v10.1.0 — 23-24 Leverkusen & 09-10 Inter Scenarios, 2-Tier Transfer 
         type: 'START_STORY_SEASON',
         payload: { bundle },
       });
-      expect(started.season!.budgetState?.window2MaxAttempts).toBe(4);
+      const expectedWindows =
+        started.season!.totalRounds <= 34 ? [9, 17, 25] : [10, 19, 28];
+      expect(started.season!.transferWindows).toEqual(expectedWindows);
+      expect(started.season!.budgetState?.window1MaxAttempts).toBe(3);
+      expect(started.season!.budgetState?.window2MaxAttempts).toBe(3);
+      expect(started.season!.budgetState?.window3MaxAttempts).toBe(3);
+
+      // Verify pre-UCL window opens with 3 attempts for ALL 5 UCL scenarios (including Arsenal!)
+      if (meta.hasUcl) {
+        const uclState = gameReducer(
+          {
+            ...started,
+            phase: 'season_end',
+            season: {
+              ...started.season!,
+              currentRound: started.season!.totalRounds,
+            },
+          },
+          { type: 'ENTER_UCL_MODE' },
+        );
+        expect(uclState.phase).toBe('ucl');
+        expect(uclState.season!.ucl?.stage).toBe('special_transfer');
+        expect(uclState.season!.transferMarket.isOpen).toBe(true);
+        expect(uclState.season!.transferMarket.maxAttempts).toBe(3);
+
+        // Spin roulette inside Story Mode -> must return 3 unique era clubs, 0 Legend slots, 0 modern/generated players
+        const spun = gameReducer(uclState, { type: 'TRANSFER_SPIN_CLUBS' });
+        expect(spun.season!.transferMarket.hasSpunClubs).toBe(true);
+        expect(spun.season!.transferMarket.rolledClubs).toHaveLength(3);
+        const validPoolIds = new Set(
+          spun.storyMode!.transferPoolClubs.map((c) => c.club.id),
+        );
+        const rolledIds = new Set<string>();
+        for (const offer of spun.season!.transferMarket.rolledClubs) {
+          expect(offer.isLegendSlot).toBe(false);
+          expect(offer.club).not.toBeNull();
+          expect(validPoolIds.has(offer.club!.id)).toBe(true);
+          expect(rolledIds.has(offer.club!.id)).toBe(false);
+          rolledIds.add(offer.club!.id);
+          for (const target of offer.squad) {
+            expect(MODERN_ACTIVE_IDS.has(target.player.id)).toBe(false);
+            expect(isStoryEraPlayerId(target.player.id)).toBe(true);
+            expect(Boolean(target.player.isGenerated)).toBe(false);
+          }
+        }
+      }
     }
-
-    // 2) 07-08 Man Utd: strict 1 signing/window, opens pre-UCL window with max 1 attempt
-    const munBundle = await loadStoryScenarioBundle('0708_manutd');
-    const munSetup = gameReducer({} as GameState, {
-      type: 'ENTER_STORY_SETUP',
-      payload: { bundle: munBundle },
-    });
-    const munStarted = gameReducer(munSetup, {
-      type: 'START_STORY_SEASON',
-      payload: { bundle: munBundle },
-    });
-    expect(munStarted.season!.budgetState?.window2MaxAttempts).toBe(1);
-    const munUcl = gameReducer(
-      {
-        ...munStarted,
-        phase: 'season_end',
-        season: { ...munStarted.season!, currentRound: 38 },
-      },
-      { type: 'ENTER_UCL_MODE' },
-    );
-    expect(munUcl.season!.ucl?.stage).toBe('special_transfer');
-    expect(munUcl.season!.transferMarket.isOpen).toBe(true);
-    expect(munUcl.season!.transferMarket.maxAttempts).toBe(1);
-
-    // 3) 03-04 Arsenal: strictest — winter 19R max 1 signing, NO pre-UCL transfer window (direct to r16!)
-    const arsBundle = await loadStoryScenarioBundle('0304_arsenal');
-    const arsSetup = gameReducer({} as GameState, {
-      type: 'ENTER_STORY_SETUP',
-      payload: { bundle: arsBundle },
-    });
-    const arsStarted = gameReducer(arsSetup, {
-      type: 'START_STORY_SEASON',
-      payload: { bundle: arsBundle },
-    });
-    expect(arsStarted.season!.budgetState?.window2MaxAttempts).toBe(1);
-    const arsUcl = gameReducer(
-      {
-        ...arsStarted,
-        phase: 'season_end',
-        season: { ...arsStarted.season!, currentRound: 38 },
-      },
-      { type: 'ENTER_UCL_MODE' },
-    );
-    expect(arsUcl.phase).toBe('ucl');
-    expect(arsUcl.season!.ucl?.stage).toBe('r16');
-    expect(arsUcl.season!.transferMarket.isOpen).toBe(false);
   });
 
-  it('validates all 7 scenarios exist with total max 21 stars', () => {
+  it('guarantees valid TacticId, FormationId, unique club IDs, and zero park_the_bus crash bugs across all 7 scenarios', async () => {
+    const validTactics = new Set([
+      'possession',
+      'gegenpressing',
+      'counter',
+      'wingplay',
+      'balanced',
+    ]);
+    const validFormations = new Set([
+      '4-3-3',
+      '4-4-2',
+      '4-4-2-diamond',
+      '4-2-3-1',
+      '3-5-2',
+      '3-5-2-dm',
+      '3-4-3',
+      '3-4-2-1',
+      '3-3-3-1',
+      '3-2-4-1',
+    ]);
+
     expect(STORY_SCENARIOS).toHaveLength(7);
     expect(STORY_SCENARIOS.length * 3).toBe(21);
+
+    for (const meta of STORY_SCENARIOS) {
+      const bundle = await loadStoryScenarioBundle(meta.id);
+      const poolIds = new Set<string>();
+      for (const c of [...bundle.domesticClubs, ...bundle.foreignTop4Clubs]) {
+        expect(poolIds.has(c.id)).toBe(false);
+        poolIds.add(c.id);
+      }
+      const allClubs = [
+        ...bundle.domesticClubs,
+        ...bundle.foreignTop4Clubs,
+        ...(bundle.uclR16ExtraClubs ?? []),
+      ];
+      for (const c of allClubs) {
+        expect(validTactics.has(c.defaultTactic)).toBe(true);
+        expect(validFormations.has(c.formation)).toBe(true);
+        for (const t of c.manager.preferredTactics ?? []) {
+          expect(validTactics.has(t)).toBe(true);
+        }
+        for (const fm of c.manager.preferredFormations ?? []) {
+          expect(validFormations.has(fm)).toBe(true);
+        }
+      }
+    }
   });
 });

@@ -241,11 +241,11 @@ describe('Story Mode Phase 2 — All 7 Scenarios Playable, Data Integrity, UCL R
     });
 
     expect(started.phase).toBe('season');
-    expect(started.season?.transferWindows).toEqual([99, 19, 99]);
+    expect(started.season?.transferWindows).toEqual([10, 19, 28]);
     expect(started.season?.budgetState?.transferCashM).toBe(25);
-    expect(started.storyMode?.winterMaxSignings).toBe(1);
-    expect(started.storyMode?.allowUclTransferWindow).toBe(false);
-    expect(started.storyMode?.transferRule).toBe('winter_1_only');
+    expect(started.storyMode?.winterMaxSignings).toBeUndefined();
+    expect(started.storyMode?.allowUclTransferWindow).toBe(true);
+    expect(started.storyMode?.transferRule).toBe('standard_3_plus_ucl');
   });
 
   it('evaluates 03-04 Arsenal unbeaten 38-match and UCL double checklist accurately', async () => {

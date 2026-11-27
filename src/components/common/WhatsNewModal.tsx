@@ -41,7 +41,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.0';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.1';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -92,7 +92,7 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
-  { id: 'v100', label: '스토리 모드 7종 확장!', badge: '10.1 NEW', icon: BookOpen },
+  { id: 'v100', label: '스토리 모드 7종 · 시대 룰렛!', badge: '10.1.1', icon: BookOpen },
   { id: 'v910', label: '난이도 상승!', badge: '9.10', icon: Flame },
   { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9', icon: SlidersHorizontal },
   { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8', icon: Users },
@@ -234,25 +234,25 @@ export function WhatsNewModal({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1.5 text-sm sm:text-base font-black text-amber-200">
                     <BookOpen className="h-4.5 w-4.5 text-amber-400 shrink-0" />
-                    「스토리 모드」 7종 확장! 23-24 무패 레버쿠젠 · 09-10 트레블 인테르 추가
+                    「스토리 모드」 7종 · 그 시절 5대 리그 룰렛 통합 개편!
                   </span>
                   <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
-                    v10.1.0 EXPANSION
+                    v10.1.1 UPDATE
                   </span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-300">
                   <strong className="text-white">
-                    23-24 바이엘 레버쿠젠(18팀 분데스리가 무패 도전)
+                    23-24 바이엘 레버쿠젠
                   </strong>
                   과{' '}
                   <strong className="text-white">
-                    09-10 인테르 밀란(이탈리아 최초 트레블)
+                    09-10 인테르 밀란
                   </strong>
-                  이 합류해 총 7종(최대 21★)으로 확장되었습니다.{' '}
+                  을 포함한 7종(최대 21★) 스토리 모드 전체를{' '}
                   <strong className="text-amber-200">
-                    언더독 5팀 4회 협상·예산 상향, 맨유·아스널 강호 라이벌 상향 &amp; 1명 보강 제한, 박지성 ★3 월드 베스트 XI 전환
+                    싱글플레이와 동일한 3구단 룰렛(시즌 3회 + UCL 직전 1회 · 창당 3회 협상, 100% 그 시절 5대 리그 풀)
                   </strong>
-                  과 개막 부상 오표시·레거시 도전과제 격리까지 반영했습니다.
+                  으로 통일하고, 인테르·레버쿠젠 경기 스킵 크래시까지 완전 수정했습니다.
                 </p>
                 <div className="overflow-hidden rounded-xl border border-slate-800/90 bg-[#070b12]">
                   <StoryPixelSceneSvg
@@ -293,18 +293,18 @@ export function WhatsNewModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
                 <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3 space-y-1">
                   <div className="font-extrabold text-rose-200">
-                    2단계 밸런스 · 수동 지휘
+                    수동 지휘 · 라이벌 밸런스
                   </div>
                   <p className="text-slate-400 leading-relaxed">
-                    언더독 5팀은 4회 협상·예산 상향, 맨유·아스널은 라이벌 강화 &amp; 창당 최대 1명 제한으로 긴장감을 조율했습니다.
+                    [빠른 선발] 없이 직접 전술·라인업을 지휘하며, 맨유·아스널 라이벌 전력 보정으로 7종 모두 팽팽한 긴장감을 제공합니다.
                   </p>
                 </div>
                 <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-3 space-y-1">
                   <div className="font-extrabold text-sky-200">
-                    100% 시대 로스터 · 박지성 월베 ★3
+                    그 시절 5대 리그 룰렛 (3+1회)
                   </div>
                   <p className="text-slate-400 leading-relaxed">
-                    겨울(17R/19R) 1회 + UCL 직전 1회 모두 그 시절 실제 로스터만 등장하며, 07-08 맨유 ★3은 박지성 월베 선정으로 개편했습니다.
+                    싱글플레이와 동일한 시즌 3회 + UCL 직전 1회(창당 3회) 룰렛으로 진행되며, 풀은 100% 그 시절 자국 전체 + 타 4대 리그 상위 4팀입니다.
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-1">

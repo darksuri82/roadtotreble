@@ -51,7 +51,6 @@ import {
   buildTradeClubOfferForClub,
   computePlayerMarketValueM,
   computePlayerTradePoints,
-  estimateStoryForeignClubRank,
   evaluateTradePackage,
   selectAutoFillerPlayers,
 } from '../../engine/transferEngine';
@@ -264,9 +263,15 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     () => new Set(state.storyMode?.missionKeyPlayerIds ?? []),
     [state.storyMode?.missionKeyPlayerIds],
   );
-  const [storyLeagueFilter, setStoryLeagueFilter] = useState<
-    import('../../types/league').LeagueId
-  >(season.leagueId);
+  const rouletteVisualPool = useMemo(
+    () =>
+      isStoryMode &&
+      state.storyMode?.transferPoolClubs &&
+      state.storyMode.transferPoolClubs.length > 0
+        ? state.storyMode.transferPoolClubs
+        : ALL_CLUBS_WITH_LEAGUE,
+    [isStoryMode, state.storyMode?.transferPoolClubs],
+  );
 
   const incomingOffers = tm.incomingOffers ?? [];
   const pendingIncomingCount = incomingOffers.filter(
@@ -886,62 +891,6 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
     setActiveTab(dest);
   };
 
-  const handleSelectStoryClub = (
-    entry: import('../../types/storyMode').StoryTransferPoolClub,
-  ) => {
-    const ownedIds = new Set(userSquadPlayers.map((p) => p.id));
-    const excludeIds = new Set<string>([
-      ...ownedIds,
-      ...(season.departedPlayerIds ?? []),
-    ]);
-    const isUserLeague = entry.leagueId === season.leagueId;
-    const liveRoster = isUserLeague
-      ? season.aiRosters[entry.club.id] ?? entry.roster
-      : entry.roster;
-    const standIdx = isUserLeague
-      ? season.standings.findIndex((s) => s.teamId === entry.club.id)
-      : -1;
-    const foreignEst =
-      !isUserLeague && state.storyMode?.transferPoolClubs
-        ? estimateStoryForeignClubRank(
-            entry.club,
-            entry.leagueId,
-            state.storyMode.transferPoolClubs,
-          )
-        : null;
-    const clubRank =
-      standIdx !== -1 ? standIdx + 1 : (foreignEst?.rank ?? 2);
-    const leagueSize = isUserLeague
-      ? season.standings.length || 20
-      : (foreignEst?.leagueSize ?? 20);
-    const clubOffer = buildTradeClubOfferForClub({
-      club: entry.club,
-      leagueId: entry.leagueId,
-      clubRank,
-      leagueSize,
-      currentRound: season.currentRound,
-      totalRounds: season.totalRounds,
-      windowIndex: tm.windowIndex,
-      userRank: getUserRank(season.standings, USER_CLUB_ID),
-      userLeagueSize: season.standings.length || 20,
-      isUserLeague,
-      aiRoster: liveRoster,
-      allPlayerStats: season.allPlayerStats,
-      ownedIds,
-      excludeIds,
-      championBonusActive: Boolean(tm.championBonusActive),
-      strictRosterOnly: true,
-    });
-    setCounterOfferOrigin('explore');
-    setCounterOfferClub(clubOffer);
-    setSelectedAiPlayerIds([]);
-    setSelectedUserSlots([]);
-    setCustomFillerIds(null);
-    setCashOfferM(0);
-    setPosFilter('ALL');
-    setActiveTab('explore');
-  };
-
   const handleSubmitTrade = () => {
     if (
       ffpEmbargoActive ||
@@ -1005,11 +954,9 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
             <h2 className="text-sm sm:text-base font-black text-white">
               {isUclSpecial
                 ? isStoryMode
-                  ? 'UCL 16강 직전 이적시장'
+                  ? 'UCL 16강 직전 트레이드'
                   : 'UCL 특별 트레이드'
-                : isStoryMode
-                  ? `겨울 이적시장 (${tm.triggerRound}R)`
-                  : `제 ${tm.windowIndex}차 트레이드 (${tm.triggerRound}R)`}
+                : `제 ${tm.windowIndex}차 트레이드 (${tm.triggerRound}R)`}
             </h2>
             <span className="rounded-md border border-emerald-400/35 bg-emerald-500/12 px-2 py-0.5 text-[11px] font-extrabold text-emerald-300 tabular-nums whitespace-nowrap">
               {tm.attemptsRemaining}/{tm.maxAttempts}회
@@ -1050,21 +997,19 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {counterOfferClub &&
-            activeTab === 'explore' &&
-            (!isStoryMode || counterOfferOrigin === 'incoming') && (
-              <button
-                id="counter-offer-back-btn"
-                type="button"
-                onClick={() => handleExitCounterOffer()}
-                className="inline-flex items-center gap-1 rounded-xl border border-amber-400/45 bg-amber-500/12 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-extrabold text-amber-200 hover:bg-amber-500/22 hover:text-amber-100 transition cursor-pointer touch-manipulation whitespace-nowrap"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" />
-                {counterOfferOrigin === 'incoming'
-                  ? '받은 제안으로'
-                  : '트레이드 룰렛으로'}
-              </button>
-            )}
+          {counterOfferClub && activeTab === 'explore' && (
+            <button
+              id="counter-offer-back-btn"
+              type="button"
+              onClick={() => handleExitCounterOffer()}
+              className="inline-flex items-center gap-1 rounded-xl border border-amber-400/45 bg-amber-500/12 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-extrabold text-amber-200 hover:bg-amber-500/22 hover:text-amber-100 transition cursor-pointer touch-manipulation whitespace-nowrap"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              {counterOfferOrigin === 'incoming'
+                ? '받은 제안으로'
+                : '트레이드 룰렛으로'}
+            </button>
+          )}
           <button
             id="close-transfer-window-btn"
             type="button"
@@ -1098,7 +1043,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
           구단 트레이드 탐색
           {counterOfferClub && (
             <span className="rounded bg-amber-500/18 border border-amber-400/35 px-1.5 py-0.2 text-[10px] font-bold text-amber-200">
-              {isStoryMode ? '지목' : '역제안'} · {counterOfferClub.club?.shortName ?? ''}
+              역제안 · {counterOfferClub.club?.shortName ?? ''}
             </span>
           )}
         </button>
@@ -1146,11 +1091,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
             onClick={() => handleExitCounterOffer('explore')}
             className="rounded-lg border border-slate-700/80 bg-slate-900/80 px-2.5 py-1.5 text-[11px] font-bold text-slate-300 hover:border-sky-400/50 hover:text-white transition cursor-pointer touch-manipulation"
           >
-            {isStoryMode
-              ? '5대 리그 구단 목록'
-              : tm.hasSpunClubs
-                ? '추첨 구단 보기'
-                : '트레이드 룰렛'}
+            {tm.hasSpunClubs ? '추첨 구단 보기' : '트레이드 룰렛'}
           </button>
         )}
         <div className="ml-auto hidden sm:flex items-center gap-2 text-[11px] text-slate-400">
@@ -1688,123 +1629,13 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                   </button>
                 </div>
               </div>
-            ) : isStoryMode && !counterOfferClub ? (
-              <div
-                id="story-direct-scout-browser"
-                className="rounded-2xl border border-amber-500/35 bg-[#0c1320] p-4 sm:p-5 space-y-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/40 bg-amber-500/15 px-2.5 py-0.5 text-[10.5px] font-extrabold text-amber-300">
-                      <Sparkles className="h-3 w-3" />
-                      {state.storyMode?.seasonLabel} 시대 5대 리그 직접 스카우팅 (운빨 0%)
-                    </div>
-                    <h3 className="text-base sm:text-lg font-black text-white">
-                      협상할 구단을 직접 지목하세요
-                    </h3>
-                    <p
-                      className="text-[11.5px] text-slate-400"
-                      style={{ wordBreak: 'keep-all' }}
-                    >
-                      {state.storyMode?.transferRuleReason}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-right shrink-0">
-                    <div className="text-[10px] font-bold text-emerald-300/80">
-                      보유 현금 예산
-                    </div>
-                    <div className="font-mono text-base font-black text-emerald-300">
-                      €{availableCashM}M
-                    </div>
-                  </div>
-                </div>
-
-                {/* 5-League Tabs */}
-                <div className="grid grid-cols-5 gap-1.5 rounded-xl border border-slate-800 bg-[#080e18] p-1">
-                  {(
-                    [
-                      ['epl', 'EPL'],
-                      ['laliga', '라리가'],
-                      ['seriea', '세리에 A'],
-                      ['bundesliga', '분데스리가'],
-                      ['ligue1', '리그 1'],
-                    ] as [import('../../types/league').LeagueId, string][]
-                  ).map(([lid, label]) => {
-                    const count = (
-                      state.storyMode?.transferPoolClubs ?? []
-                    ).filter((c) => c.leagueId === lid).length;
-                    const active = storyLeagueFilter === lid;
-                    return (
-                      <button
-                        key={lid}
-                        type="button"
-                        onClick={() => setStoryLeagueFilter(lid)}
-                        className={`rounded-lg px-2 py-2 text-[11px] sm:text-xs font-extrabold transition-colors cursor-pointer whitespace-nowrap ${
-                          active
-                            ? 'bg-sky-500/20 text-sky-200 border border-sky-400/50'
-                            : 'text-slate-400 border border-transparent hover:bg-slate-800/70 hover:text-white'
-                        }`}
-                      >
-                        {label}{' '}
-                        <span className="font-mono text-[10px] opacity-75">
-                          ({count})
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Era Club Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                  {(state.storyMode?.transferPoolClubs ?? [])
-                    .filter((c) => c.leagueId === storyLeagueFilter)
-                    .map((entry) => {
-                      const avgOvr = Math.round(
-                        (entry.club.att + entry.club.mid + entry.club.def) / 3,
-                      );
-                      const standIdx =
-                        entry.leagueId === season.leagueId
-                          ? season.standings.findIndex(
-                              (s) => s.teamId === entry.club.id,
-                            )
-                          : -1;
-                      return (
-                        <button
-                          key={entry.club.id}
-                          type="button"
-                          onClick={() => handleSelectStoryClub(entry)}
-                          className="group flex items-center gap-2.5 rounded-xl border border-slate-800 bg-[#101827] p-2.5 text-left hover:border-sky-400/65 hover:bg-[#142036] transition-colors cursor-pointer"
-                        >
-                          <JerseySvg
-                            primaryColor={entry.club.primaryColor}
-                            secondaryColor={entry.club.secondaryColor}
-                            pattern={entry.club.pattern}
-                            label={entry.club.shortName}
-                            size={34}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-xs font-extrabold text-white group-hover:text-sky-200">
-                              {entry.club.name}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400">
-                              <span>OVR {avgOvr}</span>
-                              {standIdx !== -1 && (
-                                <span className="text-amber-300">
-                                  · {standIdx + 1}위
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                </div>
-              </div>
             ) : !tm.hasSpunClubs && !counterOfferClub ? (
               <div className="rounded-2xl border border-slate-800 bg-[#0c1320] p-5 sm:p-6 text-center space-y-4">
                 <div className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[11px] font-bold text-sky-200">
                   <Dices className="h-3.5 w-3.5" />
-                  협상 구단 3곳 추첨
+                  {isStoryMode
+                    ? `${state.storyMode?.seasonLabel} 시대 5대 리그 룰렛 · 3곳 추첨`
+                    : '협상 구단 3곳 추첨'}
                 </div>
                 <h3 className="text-base sm:text-lg font-black text-white">
                   트레이드 협상 구단 추첨
@@ -1813,8 +1644,8 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                 <div className="grid grid-cols-3 gap-3 max-w-xl mx-auto">
                   {[0, 1, 2].map((rIdx) => {
                     const spinClub =
-                      ALL_CLUBS_WITH_LEAGUE[
-                        (tick * 7 + rIdx * 19) % ALL_CLUBS_WITH_LEAGUE.length
+                      rouletteVisualPool[
+                        (tick * 7 + rIdx * 19) % rouletteVisualPool.length
                       ];
                     return (
                       <div
@@ -1867,35 +1698,23 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
               </div>
             ) : (
               <>
-                {isStoryMode && counterOfferClub && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/35 bg-[#101827] px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => handleExitCounterOffer('explore')}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-bold text-slate-200 hover:border-sky-400/60 hover:text-white cursor-pointer whitespace-nowrap"
-                    >
-                      <ArrowLeft className="h-3.5 w-3.5" />
-                      5대 리그 다른 구단 지목하기
-                    </button>
-                    {selectedUserPlayers.some((p) => missionKeySet.has(p.id)) && (
-                      <span className="inline-flex items-center gap-1 rounded-lg border border-rose-400/50 bg-rose-500/15 px-2.5 py-1 text-[11px] font-extrabold text-rose-200">
-                        <ShieldAlert className="h-3.5 w-3.5 text-rose-300 shrink-0" />
-                        ★ 미션 핵심 선수 방출 주의 — 트레이드 시 ★★★ 달성 불가 위험!
-                      </span>
-                    )}
-                  </div>
-                )}
+                {isStoryMode &&
+                  selectedUserPlayers.some((p) => missionKeySet.has(p.id)) && (
+                    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-rose-400/50 bg-rose-500/15 px-3 py-2 text-[11px] font-extrabold text-rose-200">
+                      <ShieldAlert className="h-3.5 w-3.5 text-rose-300 shrink-0" />
+                      ★ 미션 핵심 선수 방출 주의 — 트레이드 시 ★★★ 달성 불가 위험!
+                    </div>
+                  )}
 
                 {/* Partner Club Selector Strip */}
-                {!isStoryMode && (
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   {tm.rolledClubs.map((offer, idx) => {
                     const isSelected =
                       !counterOfferClub && activeReelIdx === idx;
                     const isLocked = idx < lockedCount || !animating;
                     const spinClub =
-                      ALL_CLUBS_WITH_LEAGUE[
-                        (tick * 7 + idx * 23) % ALL_CLUBS_WITH_LEAGUE.length
+                      rouletteVisualPool[
+                        (tick * 7 + idx * 23) % rouletteVisualPool.length
                       ];
                     return (
                       <button
@@ -2010,7 +1829,6 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                     );
                   })}
                 </div>
-                )}
 
                 {/* Counter-offer active club indicator is handled cleanly in header & negotiation table */}
 

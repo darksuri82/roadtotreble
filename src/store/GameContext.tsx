@@ -170,6 +170,7 @@ import {
   hydrateStoryScenarioBundle,
   loadStoryCodex,
   recordStoryCompletionInCodex,
+  sanitizeStoryTacticId,
   STORY_ACTIVE_SAVE_KEY,
   type HydratedStoryScenario,
 } from '../engine/storyModeEngine';
@@ -2394,7 +2395,7 @@ function openTransferWindowWithIncomingOffers(params: {
         isUclSpecial: options?.isUclSpecial,
       });
   const maxAttemptsOverride = storyMode
-    ? storyMode.winterMaxSignings ?? 4
+    ? 3
     : isRegularWindow
       ? getFfpWindowMaxAttempts(season.budgetState, windowIndex, 3)
       : undefined;
@@ -2904,6 +2905,71 @@ function executeBidirectionalTrade(params: {
       !(entry.replacementPlayerId && sentIds.has(entry.replacementPlayerId)),
   );
 
+  // 6b) Update Story Mode transferPoolClubs & UCL R16 prepared rosters first so rolledClubs reflects live foreign era rosters
+  let nextStoryMode = state.storyMode;
+  if (state.storyMode) {
+    const incomingIdSet = new Set(allIncomingRaw.map((p) => p.id));
+    const updatedTransferPool = state.storyMode.transferPoolClubs.map((entry) => {
+      if (entry.club.id !== partnerClub.id) return entry;
+      const updatedRoster = [
+        ...entry.roster.filter((p) => !incomingIdSet.has(p.id)),
+        ...userSentPlayers.map((p) => ({
+          ...p,
+          club: entry.club.name,
+          leagueId: entry.leagueId,
+        })),
+      ];
+      const optimized = reoptimizeAiClubRoster({
+        roster: updatedRoster,
+        formation: entry.club.formation,
+        managerTraitId: entry.club.manager?.traitId ?? null,
+      });
+      const updatedClub = adjustAiClubRatingsForRosterChange(
+        entry.club,
+        entry.roster,
+        optimized,
+      );
+      return {
+        ...entry,
+        club: updatedClub,
+        roster: optimized,
+      };
+    });
+
+    let updatedUclR16 = state.storyMode.uclR16Prepared;
+    if (updatedUclR16) {
+      const updatedUclAiRosters = { ...updatedUclR16.aiRosters };
+      const partnerEntry = updatedTransferPool.find(
+        (c) => c.club.id === partnerClub.id,
+      );
+      if (partnerEntry && updatedUclAiRosters[partnerClub.id]) {
+        updatedUclAiRosters[partnerClub.id] = partnerEntry.roster;
+      }
+      // Also strip any newly signed user players from all other UCL R16 rosters
+      for (const [cid, list] of Object.entries(updatedUclAiRosters)) {
+        if (cid === partnerClub.id) continue;
+        if (list.some((p) => incomingIdSet.has(p.id))) {
+          updatedUclAiRosters[cid] = list.filter((p) => !incomingIdSet.has(p.id));
+        }
+      }
+      updatedUclR16 = {
+        ...updatedUclR16,
+        clubs: updatedUclR16.clubs.map((c) => {
+          const matched = updatedTransferPool.find((t) => t.club.id === c.id);
+          return matched ? matched.club : c;
+        }),
+        aiRosters: updatedUclAiRosters,
+      };
+    }
+
+    nextStoryMode = {
+      ...state.storyMode,
+      signingsThisWindow: state.storyMode.signingsThisWindow + 1,
+      transferPoolClubs: updatedTransferPool,
+      uclR16Prepared: updatedUclR16,
+    };
+  }
+
   // 7) Update rolledClubs squads (rebuild partner club's 16-man squad so new arrivals & bench promotions reflect immediately)
   const postTradeOwnedIds = new Set<string>([
     ...nextStarters.filter((p): p is Player => p !== null).map((p) => p.id),
@@ -2919,10 +2985,14 @@ function executeBidirectionalTrade(params: {
       return offer;
     }
     if (offer.club.id === partnerClub.id) {
+      const storyPoolRoster = nextStoryMode?.transferPoolClubs.find(
+        (c) => c.club.id === partnerClub.id,
+      )?.roster;
       const updatedLiveRoster =
         partnerLeagueId === season.leagueId
-          ? nextAiRosters[partnerClub.id]
-          : nextOtherLeagues?.[partnerLeagueId]?.aiRosters?.[partnerClub.id];
+          ? nextAiRosters[partnerClub.id] ?? storyPoolRoster
+          : storyPoolRoster ??
+            nextOtherLeagues?.[partnerLeagueId]?.aiRosters?.[partnerClub.id];
       const rebuiltSquad = buildTransferClubSquad({
         club: offer.club,
         leagueId: offer.leagueId,
@@ -3014,78 +3084,7 @@ function executeBidirectionalTrade(params: {
       (!isIncomingOffer && acceptanceChance > 0 && acceptanceChance <= 20),
   };
 
-  let nextStoryMode = state.storyMode;
-  let effectiveNextAttempts = nextAttempts;
-  if (state.storyMode) {
-    const incomingIdSet = new Set(allIncomingRaw.map((p) => p.id));
-    const updatedTransferPool = state.storyMode.transferPoolClubs.map((entry) => {
-      if (entry.club.id !== partnerClub.id) return entry;
-      const updatedRoster = [
-        ...entry.roster.filter((p) => !incomingIdSet.has(p.id)),
-        ...userSentPlayers.map((p) => ({
-          ...p,
-          club: entry.club.name,
-          leagueId: entry.leagueId,
-        })),
-      ];
-      const optimized = reoptimizeAiClubRoster({
-        roster: updatedRoster,
-        formation: entry.club.formation,
-        managerTraitId: entry.club.manager?.traitId ?? null,
-      });
-      const updatedClub = adjustAiClubRatingsForRosterChange(
-        entry.club,
-        entry.roster,
-        optimized,
-      );
-      return {
-        ...entry,
-        club: updatedClub,
-        roster: optimized,
-      };
-    });
-
-    let updatedUclR16 = state.storyMode.uclR16Prepared;
-    if (updatedUclR16) {
-      const updatedUclAiRosters = { ...updatedUclR16.aiRosters };
-      const partnerEntry = updatedTransferPool.find(
-        (c) => c.club.id === partnerClub.id,
-      );
-      if (partnerEntry && updatedUclAiRosters[partnerClub.id]) {
-        updatedUclAiRosters[partnerClub.id] = partnerEntry.roster;
-      }
-      // Also strip any newly signed user players from all other UCL R16 rosters
-      for (const [cid, list] of Object.entries(updatedUclAiRosters)) {
-        if (cid === partnerClub.id) continue;
-        if (list.some((p) => incomingIdSet.has(p.id))) {
-          updatedUclAiRosters[cid] = list.filter((p) => !incomingIdSet.has(p.id));
-        }
-      }
-      updatedUclR16 = {
-        ...updatedUclR16,
-        clubs: updatedUclR16.clubs.map((c) => {
-          const matched = updatedTransferPool.find((t) => t.club.id === c.id);
-          return matched ? matched.club : c;
-        }),
-        aiRosters: updatedUclAiRosters,
-      };
-    }
-
-    const nextSignings = state.storyMode.signingsThisWindow + 1;
-    if (
-      typeof state.storyMode.winterMaxSignings === 'number' &&
-      nextSignings >= state.storyMode.winterMaxSignings
-    ) {
-      effectiveNextAttempts = 0;
-    }
-
-    nextStoryMode = {
-      ...state.storyMode,
-      signingsThisWindow: nextSignings,
-      transferPoolClubs: updatedTransferPool,
-      uclR16Prepared: updatedUclR16,
-    };
-  }
+  const effectiveNextAttempts = nextAttempts;
 
   return {
     ...state,
@@ -5718,9 +5717,12 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         aiRosters: state.season.aiRosters,
         ownedIds,
         departedPlayerIds: state.season.departedPlayerIds ?? [],
-        legendBonusActive: tm.legendBonusActive,
+        legendBonusActive: state.storyMode ? false : tm.legendBonusActive,
         championBonusActive: Boolean(tm.championBonusActive),
         allowedLeagueIds: state.draftLeaguePool,
+        ...(state.storyMode
+          ? { storyTransferPool: state.storyMode.transferPoolClubs }
+          : {}),
       });
 
       return {
@@ -6591,8 +6593,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             mergedAiRosters[c.id] = state.season.aiRosters[c.id];
           }
         }
-        const openPreUclWindow =
-          state.storyMode.allowUclTransferWindow !== false;
+        const openPreUclWindow = true;
         const { ucl, uclPlayerStats } = createStoryUclR16State({
           seasonLabel: prep.seasonLabel,
           userClub: userClubEntry,
@@ -6605,25 +6606,19 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           ownedIds,
           startWithSpecialTransfer: openPreUclWindow,
         });
-        const storyPreUclTransfer = openPreUclWindow
-          ? openTransferWindowWithIncomingOffers({
-              season: state.season,
-              starters: state.starters,
-              bench: state.bench,
-              windowIndex: 4,
-              triggerRound: state.season.totalRounds,
-              userRank,
-              storyMode: state.storyMode,
-              options: {
-                isUclSpecial: true,
-                championBonusActive: userRank === 1,
-              },
-            })
-          : createClosedTransferState(
-              state.season.transferMarket.completedWindows,
-              state.season.transferMarket.history,
-              state.season.transferMarket.tradeHistory ?? [],
-            );
+        const storyPreUclTransfer = openTransferWindowWithIncomingOffers({
+          season: state.season,
+          starters: state.starters,
+          bench: state.bench,
+          windowIndex: 4,
+          triggerRound: state.season.totalRounds,
+          userRank,
+          storyMode: state.storyMode,
+          options: {
+            isUclSpecial: true,
+            championBonusActive: userRank === 1,
+          },
+        });
         return {
           ...state,
           phase: 'ucl',
@@ -7422,9 +7417,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         ffpTier: 0 as const,
         transferCashM: meta.cashBudgetM,
         chemPenalty: 0,
-        window1MaxAttempts: 0,
-        window2MaxAttempts: meta.winterMaxSignings ?? 4,
-        window3MaxAttempts: 0,
+        window1MaxAttempts: 3,
+        window2MaxAttempts: 3,
+        window3MaxAttempts: 3,
         scoreMultiplier: 1.0,
         extraLossMoraleDrop: 0,
       };
@@ -7472,9 +7467,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         aiRosters,
       });
 
-      // Story Mode: 1 winter transfer window (17R for 18-team Bundesliga / 19R for 20-team leagues)
-      const winterRound = totalRounds <= 34 ? 17 : 19;
-      const transferWindows: [number, number, number] = [99, winterRound, 99];
+      // Story Mode: unified 3 league transfer windows matching Single Player ([9,17,25] for 34R Bundesliga / [10,19,28] for 38R leagues)
+      const transferWindows: [number, number, number] =
+        totalRounds <= 34 ? [9, 17, 25] : [10, 19, 28];
 
       const season: SeasonState = {
         runId: `story_${meta.id}_${Date.now()}`,
@@ -7998,10 +7993,38 @@ export function loadSavedStoryGameState(): GameState | null {
       }
       parsed.season.aiRosters = nextAi;
     }
+    const sanitizeClubTactics = (c: Club): Club => ({
+      ...c,
+      defaultTactic: sanitizeStoryTacticId(c.defaultTactic),
+      ...(c.manager
+        ? {
+            manager: {
+              ...c.manager,
+              ...(c.manager.preferredTactics
+                ? {
+                    preferredTactics: c.manager.preferredTactics.map((t) =>
+                      sanitizeStoryTacticId(t),
+                    ),
+                  }
+                : {}),
+            },
+          }
+        : {}),
+    });
+    if (parsed.season.clubs) {
+      parsed.season.clubs = parsed.season.clubs.map(sanitizeClubTactics);
+    }
+    if (parsed.season.ucl?.clubs) {
+      parsed.season.ucl = {
+        ...parsed.season.ucl,
+        clubs: parsed.season.ucl.clubs.map(sanitizeClubTactics),
+      };
+    }
     if (parsed.storyMode.transferPoolClubs) {
       parsed.storyMode.transferPoolClubs = parsed.storyMode.transferPoolClubs.map(
         (entry) => ({
           ...entry,
+          club: sanitizeClubTactics(entry.club),
           roster: entry.roster
             .map((pl) => ensureAttrs(pl))
             .filter((pl): pl is Player => pl !== null),
@@ -8019,17 +8042,29 @@ export function loadSavedStoryGameState(): GameState | null {
       }
       parsed.storyMode.uclR16Prepared = {
         ...parsed.storyMode.uclR16Prepared,
+        clubs: parsed.storyMode.uclR16Prepared.clubs.map(sanitizeClubTactics),
         aiRosters: nextPrepAi,
       };
     }
-    // Migrate v10.0.0 3-window league schedule [10,19,28] to single winter window [99,17|19,99]
+    // Migrate v10.0.1/v10.1.0 single-window schedule [99,17|19,99] to unified 3-window schedule [9,17,25] / [10,19,28]
+    const standardWindows: [number, number, number] =
+      parsed.season.totalRounds <= 34 ? [9, 17, 25] : [10, 19, 28];
     if (
-      parsed.season.transferWindows &&
-      (parsed.season.transferWindows[0] !== 99 ||
-        parsed.season.transferWindows[2] !== 99)
+      !parsed.season.transferWindows ||
+      parsed.season.transferWindows[0] === 99 ||
+      parsed.season.transferWindows[2] === 99
     ) {
-      const migratedWinterRound = parsed.season.totalRounds <= 34 ? 17 : 19;
-      parsed.season.transferWindows = [99, migratedWinterRound, 99];
+      parsed.season.transferWindows = standardWindows;
+    }
+    parsed.storyMode.winterMaxSignings = undefined;
+    parsed.storyMode.allowUclTransferWindow = parsed.storyMode.hasUcl;
+    if (parsed.season.budgetState) {
+      parsed.season.budgetState = {
+        ...parsed.season.budgetState,
+        window1MaxAttempts: 3,
+        window2MaxAttempts: 3,
+        window3MaxAttempts: 3,
+      };
     }
     // Purge any stale modern/generated incoming offers from pre-v10.0.1 open transfer windows
     if (parsed.season.transferMarket?.isOpen) {

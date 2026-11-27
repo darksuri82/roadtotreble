@@ -97,22 +97,22 @@ describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists 
 
     const leicester = getStoryScenarioMeta('1516_leicester');
     expect(leicester.cashBudgetM).toBe(35);
-    expect(leicester.transferRule).toBe('winter_1_only');
+    expect(leicester.transferRule).toBe('standard_3_only');
     expect(leicester.hasUcl).toBe(false);
     expect(leicester.introSlides.length).toBe(3);
 
     const manutd = getStoryScenarioMeta('0708_manutd');
     expect(manutd.cashBudgetM).toBe(45);
-    expect(manutd.winterMaxSignings).toBe(1);
-    expect(manutd.transferRule).toBe('winter_plus_ucl');
+    expect(manutd.winterMaxSignings).toBeUndefined();
+    expect(manutd.transferRule).toBe('standard_3_plus_ucl');
     expect(manutd.hasUcl).toBe(true);
     expect(manutd.introSlides.length).toBe(3);
 
     const arsenal = getStoryScenarioMeta('0304_arsenal');
-    expect(arsenal.transferRule).toBe('winter_1_only');
-    expect(arsenal.winterMaxSignings).toBe(1);
-    expect(arsenal.allowUclTransferWindow).toBe(false);
-    expect(arsenal.transferRuleReason).toContain('인빈시블스');
+    expect(arsenal.transferRule).toBe('standard_3_plus_ucl');
+    expect(arsenal.winterMaxSignings).toBeUndefined();
+    expect(arsenal.allowUclTransferWindow).toBe(true);
+    expect(arsenal.transferRuleReason).toContain('룰렛');
   });
 
   it('hydrates 15-16 Leicester dynamic JSON with 20 EPL clubs + 16 foreign Top-4 clubs and compressed OVR <= 92', async () => {
@@ -210,7 +210,7 @@ describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists 
     expect(seasonState.season!.clubs).toHaveLength(20);
     expect(seasonState.season!.budgetState?.transferCashM).toBe(35);
     expect(seasonState.season!.budgetState?.ffpTier).toBe(0);
-    expect(seasonState.season!.transferWindows).toEqual([99, 19, 99]);
+    expect(seasonState.season!.transferWindows).toEqual([10, 19, 28]);
     expect(seasonState.season!.otherLeagues).toEqual({});
   });
 

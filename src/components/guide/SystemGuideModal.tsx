@@ -1342,7 +1342,7 @@ export function SystemGuideContent({
                 • <strong className="text-white">드래프트 생략 · 수동 지휘 전용:</strong> 실제 그 시절 자국 리그(18~20팀) 로스터와 감독·전술로 즉시 개막하며, <strong className="text-rose-300">[빠른 선발]이 전면 제거</strong>되어 유저가 직접 선발·전술·로테이션을 운영합니다.
               </div>
               <div>
-                • <strong className="text-white">5대 리그 직접 지목 이적시장 (2단계 밸런스):</strong> 자국 리그 AI + 타 4대 리그 당시 상위 4팀씩 <strong className="text-amber-200">100% 그 시절 실제 로스터</strong>로 겨울(17R/19R) 1회 + UCL 직전 1회 협상합니다. 언더독 5팀(레스터·토트넘·아틀레티코·레버쿠젠·인테르)은 <strong className="text-emerald-300">창당 4회 협상</strong>, 완성형 강호 2팀(맨유·아스널)은 <strong className="text-rose-300">창당 최대 1명 제한</strong>(아스널은 UCL 창 없음)이 적용됩니다.
+                • <strong className="text-white">그 시절 5대 리그 룰렛 이적시장 (시즌 3회 + UCL 직전 1회):</strong> 싱글플레이와 동일하게 시즌 중 3회(10·19·28R / 분데스리가 9·17·25R) + UCL 진출 시 16강 직전 1회(총 4회 · 창당 3회 협상) 3구단 룰렛으로 진행되며, 룰렛 풀은 <strong className="text-amber-200">100% 해당 시즌 자국 리그 전체 + 타 4대 리그 상위 4팀</strong> 실제 로스터로만 구성됩니다.
               </div>
               <div>
                 • <strong className="text-white">UCL 16강 직행 &amp; 커리어 완전 격리:</strong> UCL 진출 5종은 36팀 리그 페이즈 없이 실제 그 해 16강 토너먼트로 직행하며, 스토리 모드 세이브·별 도감은 일반 드래프트 세이브 · <strong className="text-amber-200">레거시 도전과제 24종 · 일일 글로벌 랭킹과 완전히 분리</strong>됩니다.

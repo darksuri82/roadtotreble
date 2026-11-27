@@ -1041,7 +1041,7 @@ function resolveMatchStrengths(params: {
           awayPreMatchCounter.responseLevelLabel === '없음'
             ? '맞춤 대응'
             : awayPreMatchCounter.responseLevelLabel,
-        headline: `[전술 파훼 발동] ${awayManager.name} 감독이 ${timingPhrase}(${TACTICS[orig].shortName} → ${TACTICS[applied].shortName})로 대응`,
+        headline: `[전술 파훼 발동] ${awayManager.name} 감독이 ${timingPhrase}(${TACTICS[orig]?.shortName ?? orig} → ${TACTICS[applied]?.shortName ?? applied})로 대응`,
       };
     } else if (homePreMatchCounter?.overrideAiTactic && homeManager) {
       const orig = homeClub.defaultTactic;
@@ -1064,7 +1064,7 @@ function resolveMatchStrengths(params: {
           homePreMatchCounter.responseLevelLabel === '없음'
             ? '맞춤 대응'
             : homePreMatchCounter.responseLevelLabel,
-        headline: `[전술 파훼 발동] ${homeManager.name} 감독이 ${timingPhrase}(${TACTICS[orig].shortName} → ${TACTICS[applied].shortName})로 대응`,
+        headline: `[전술 파훼 발동] ${homeManager.name} 감독이 ${timingPhrase}(${TACTICS[orig]?.shortName ?? orig} → ${TACTICS[applied]?.shortName ?? applied})로 대응`,
       };
     }
   }

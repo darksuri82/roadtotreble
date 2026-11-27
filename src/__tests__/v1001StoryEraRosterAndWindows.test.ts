@@ -272,7 +272,7 @@ describe('v10.0.1 — Story Mode 100% Era Roster Isolation & 1 Winter + 1 Pre-UC
     });
     expect(checkTransferWindowTrigger(28, [99, 19, 99], [2])).toBeNull();
 
-    // All scenarios initialize with a single winter window ([99, 17, 99] for 18-team Bundesliga, [99, 19, 99] for 20-team leagues)
+    // All scenarios initialize with unified 3 league windows ([9, 17, 25] for 18-team Bundesliga, [10, 19, 28] for 20-team leagues)
     for (const scenarioId of ALL_SCENARIO_IDS) {
       const bundle = await loadStoryScenarioBundle(scenarioId);
       const setup = gameReducer({} as GameState, {
@@ -283,8 +283,9 @@ describe('v10.0.1 — Story Mode 100% Era Roster Isolation & 1 Winter + 1 Pre-UC
         type: 'START_STORY_SEASON',
         payload: { bundle },
       });
-      const expectedWinter = started.season!.totalRounds <= 34 ? 17 : 19;
-      expect(started.season!.transferWindows).toEqual([99, expectedWinter, 99]);
+      const expectedWindows =
+        started.season!.totalRounds <= 34 ? [9, 17, 25] : [10, 19, 28];
+      expect(started.season!.transferWindows).toEqual(expectedWindows);
     }
 
     // UCL scenario (07-08 Man Utd): ENTER_UCL_MODE opens pre-UCL era transfer window, TRANSFER_CLOSE_WINDOW starts R16
@@ -353,7 +354,7 @@ describe('v10.0.1 — Story Mode 100% Era Roster Isolation & 1 Winter + 1 Pre-UC
         season: {
           ...started.season!,
           currentRound: 10,
-          transferWindows: [10, 19, 28],
+          transferWindows: [99, 19, 99],
           transferMarket: {
             ...started.season!.transferMarket,
             isOpen: true,
@@ -390,7 +391,7 @@ describe('v10.0.1 — Story Mode 100% Era Roster Isolation & 1 Winter + 1 Pre-UC
 
       const loaded = loadSavedStoryGameState();
       expect(loaded).not.toBeNull();
-      expect(loaded!.season!.transferWindows).toEqual([99, 19, 99]);
+      expect(loaded!.season!.transferWindows).toEqual([10, 19, 28]);
       for (const off of loaded!.season!.transferMarket.incomingOffers ?? []) {
         expect(isStoryEraClubId(off.club.id)).toBe(true);
         for (const p of off.aiOffersPlayers) {

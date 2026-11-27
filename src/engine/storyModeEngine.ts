@@ -132,6 +132,21 @@ export function buildStoryPlayerFromSeed(
     : playerWithRatings;
 }
 
+const VALID_STORY_TACTICS = new Set<string>([
+  'possession',
+  'gegenpressing',
+  'counter',
+  'wingplay',
+  'balanced',
+]);
+
+export function sanitizeStoryTacticId(tactic: string | undefined): Club['defaultTactic'] {
+  if (tactic && VALID_STORY_TACTICS.has(tactic)) {
+    return tactic as Club['defaultTactic'];
+  }
+  return 'counter';
+}
+
 function buildClubFromSeed(seed: StoryClubSeed, roster: Player[]): Club {
   const topScorersList = [...roster]
     .filter((p) => p.position === 'FW' || p.position === 'MF')
@@ -143,6 +158,10 @@ function buildClubFromSeed(seed: StoryClubSeed, roster: Player[]): Club {
     topScorersList[1] ?? roster[1]?.name ?? seed.shortName,
     topScorersList[2] ?? roster[2]?.name ?? seed.shortName,
   ];
+  const safeDefaultTactic = sanitizeStoryTacticId(seed.defaultTactic);
+  const safePreferredTactics = seed.manager.preferredTactics?.map((t) =>
+    sanitizeStoryTacticId(t),
+  );
   return {
     id: seed.id,
     name: seed.name,
@@ -151,12 +170,15 @@ function buildClubFromSeed(seed: StoryClubSeed, roster: Player[]): Club {
     secondaryColor: seed.secondaryColor,
     pattern: seed.pattern ?? 'solid',
     formation: seed.formation,
-    defaultTactic: seed.defaultTactic,
+    defaultTactic: safeDefaultTactic,
     att: seed.att,
     mid: seed.mid,
     def: seed.def,
     topScorers,
-    manager: { ...seed.manager },
+    manager: {
+      ...seed.manager,
+      ...(safePreferredTactics ? { preferredTactics: safePreferredTactics } : {}),
+    },
   };
 }
 
