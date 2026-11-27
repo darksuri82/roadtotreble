@@ -5,6 +5,16 @@
 
 ---
 
+## v9.9.1 — 첫 화면 타이틀 시인성 · 튜토리얼 우상단 테두리 · 팀 컬러 깃발 · 챔스 정상 웅장함 & 커스텀 바 톤 폴리싱
+
+- **타이틀 화면 & 도트 일러스트 5대 비주얼 폴리싱 (`src/index.css`, `src/components/setup/TitleScreen.tsx`, `src/components/setup/RoadToTrebleHeroSvg.tsx`, `src/components/common/WhatsNewModal.tsx`, `src/data/patchNotes.ts`)**:
+  - `ROAD TO TREBLE` 타이틀의 `bg-clip-text` 위 `text-shadow` 암부 겹침을 `filter: drop-shadow`로 교정해 깔끔하고 또렷한 시인성을 확보했습니다.
+  - `입문 튜토리얼` 버튼을 히어로 카드 우상단으로 이동하고 테두리 버튼 스타일을 적용했습니다.
+  - 출발선 감독 옆 깃발에 1px 도트 윤곽선과 유저 구단의 메인·보조 컬러 및 패턴(`clubPattern`)을 선명하게 반영하고, 첫 화면 1줄 감독 커스텀 바의 표면/테두리 톤(`#141f30`)을 배경과 은은하게 구분했습니다.
+  - 챔피언스리그 빅이어 정상 구역의 사각 박스를 제거하고 부드러운 원형 천정광·수렴형 투광등 빛줄기·좌우 기념 기둥·3단 황금 단상 및 확대된 빅이어(`1.38x`)로 웅장한 정상 연출을 보강했습니다.
+
+---
+
 ## v9.9.0 — 첫 화면 고급 도트 일러스트 리디자인 · 감독/구단 커스텀 첫 화면 분리 및 빠른 시작 플로우
 
 - **1. 첫 화면 고급 도트 일러스트 & 타이틀 비주얼 리디자인 (`src/components/setup/RoadToTrebleHeroSvg.tsx`, `src/components/common/PixelManagerAvatar.tsx`, `src/components/setup/TitleScreen.tsx`, `src/index.css`)**:

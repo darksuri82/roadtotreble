@@ -33,7 +33,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.9.0';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.4.0 ~ v9.9.1';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -76,7 +76,7 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
-  { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9 NEW', icon: SlidersHorizontal },
+  { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9.1 NEW', icon: SlidersHorizontal },
   { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8', icon: Users },
   { id: 'v97', label: '이적 프리뷰 · 각성', badge: '9.7', icon: ArrowLeftRight },
   { id: 'story', label: '팀 소개 · 위기 서사', badge: '9.7', icon: BookOpen },

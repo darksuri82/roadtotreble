@@ -233,10 +233,11 @@ describe('v9.9.0 Title Pixel Redesign, First-Screen Profile Customizer & Streaml
   });
 
   it('4) separates club/avatar customization onto TitleScreen compact bar and removes redundant input walls from setup steps', () => {
-    // TitleScreen embeds compact 1-line profile bar + passes live manager/club props to RoadToTrebleHeroSvg
+    // TitleScreen embeds compact 1-line profile bar + passes live manager/club/pattern props to RoadToTrebleHeroSvg
     expect(titleScreenSrc).toContain('title-profile-customizer-btn');
     expect(titleScreenSrc).toContain('h-[50px]');
     expect(titleScreenSrc).toContain('managerAvatar={state.manager.avatar}');
+    expect(titleScreenSrc).toContain('clubPattern={state.userClub.pattern}');
     expect(titleScreenSrc).toContain('ProfileCustomizerModal');
 
     // FormationSelect removes redundant club/preset forms while keeping 10 formations + ActiveProfileChip
@@ -259,12 +260,12 @@ describe('v9.9.0 Title Pixel Redesign, First-Screen Profile Customizer & Streaml
     expect(profileModalSrc).toContain('modal-panel');
   });
 
-  it('5) keeps v9.9.0 patch notes and WhatsNewModal version keys synchronized', () => {
-    expect(CURRENT_APP_VERSION).toBe('v9.9.0');
-    expect(PATCH_NOTES[0].version).toBe('v9.9.0');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.9.0');
+  it('5) keeps v9.9.1 patch notes and WhatsNewModal version keys synchronized', () => {
+    expect(CURRENT_APP_VERSION).toBe('v9.9.1');
+    expect(PATCH_NOTES[0].version).toBe('v9.9.1');
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.9.1');
     withMockLocalStorage(() => {
-      expect(isWhatsNewDismissed('v9.9.0')).toBe(false);
+      expect(isWhatsNewDismissed('v9.9.1')).toBe(false);
     });
   });
 });

@@ -85,54 +85,58 @@ export function TitleScreen() {
           />
 
           <div className="relative mx-auto max-w-2xl">
-            {/* Minimal Eyebrow */}
-            <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] sm:text-[11px] font-semibold tracking-[0.2em] text-slate-400 uppercase">
-              <span className="font-mono text-slate-400">2026-27</span>
-              <span className="text-slate-700">·</span>
-              <button
-                id="hero-version-badge"
-                type="button"
-                onClick={() => setShowWhatsNew(true)}
-                className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300 hover:border-emerald-400/50 hover:text-emerald-200 transition-colors cursor-pointer"
-                title="주요 업데이트 안내 보기"
-              >
-                <Sparkles className="h-2.5 w-2.5" />
-                <span>{CURRENT_APP_VERSION}</span>
-              </button>
-              <span className="text-slate-700">·</span>
+            {/* Top Utility Row: Left = Season & Version, Top-Right = Bordered Tutorial Button */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-[11px] font-semibold tracking-[0.16em] text-slate-400 uppercase min-w-0">
+                <span className="font-mono text-slate-400 whitespace-nowrap">
+                  2026-27
+                </span>
+                <span className="text-slate-700">·</span>
+                <button
+                  id="hero-version-badge"
+                  type="button"
+                  onClick={() => setShowWhatsNew(true)}
+                  className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-300 hover:border-emerald-400/50 hover:text-emerald-200 transition-colors cursor-pointer whitespace-nowrap"
+                  title="주요 업데이트 안내 보기"
+                >
+                  <Sparkles className="h-2.5 w-2.5 shrink-0" />
+                  <span>{CURRENT_APP_VERSION}</span>
+                </button>
+              </div>
+
               <button
                 id="hero-tutorial-btn"
                 type="button"
                 onClick={() => setTutorialMode('replay')}
-                className="inline-flex items-center gap-1 tracking-normal font-bold text-slate-300 hover:text-emerald-300 transition-colors cursor-pointer whitespace-nowrap"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/85 bg-[#121c2a] px-2.5 py-1 text-[10.5px] sm:text-[11px] font-bold text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-emerald-400/55 hover:bg-emerald-500/12 hover:text-emerald-200 transition-colors cursor-pointer whitespace-nowrap shrink-0"
               >
-                <GraduationCap className="h-3 w-3 text-emerald-400 shrink-0" />
+                <GraduationCap className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                 입문 튜토리얼
               </button>
             </div>
 
-            {/* Official Game Title with Refined Emblem Framing */}
-            <div className="mt-1.5 sm:mt-2 flex flex-col items-center">
+            {/* Official Game Title — Clean High-Contrast Platinum/Gold Wordmark */}
+            <div className="mt-2 sm:mt-2.5 flex flex-col items-center">
               <div className="flex items-center justify-center gap-2.5 sm:gap-4">
                 <span
                   aria-hidden="true"
-                  className="hidden sm:block h-px w-8 bg-gradient-to-r from-transparent via-emerald-400/50 to-amber-300/70"
+                  className="hidden sm:block h-px w-8 bg-gradient-to-r from-transparent via-emerald-400/55 to-amber-300/75"
                 />
-                <h1 className="font-display title-emblem-wordmark bg-gradient-to-b from-white via-slate-100 to-amber-100/95 bg-clip-text text-[2rem] leading-none font-bold tracking-[0.04em] text-transparent sm:text-[3.35rem]">
+                <h1 className="font-display title-emblem-wordmark bg-gradient-to-b from-white via-slate-50 to-amber-100 bg-clip-text text-[2.1rem] leading-none font-bold tracking-[0.05em] text-transparent sm:text-[3.4rem]">
                   ROAD TO TREBLE
                 </h1>
                 <span
                   aria-hidden="true"
-                  className="hidden sm:block h-px w-8 bg-gradient-to-l from-transparent via-emerald-400/50 to-amber-300/70"
+                  className="hidden sm:block h-px w-8 bg-gradient-to-l from-transparent via-emerald-400/55 to-amber-300/75"
                 />
               </div>
               <div
                 aria-hidden="true"
                 className="mt-1.5 flex items-center gap-1.5"
               >
-                <span className="h-px w-10 bg-gradient-to-r from-transparent to-emerald-400/50" />
-                <span className="h-1 w-1 rotate-45 bg-amber-400/80" />
-                <span className="h-px w-10 bg-gradient-to-l from-transparent to-emerald-400/50" />
+                <span className="h-px w-12 bg-gradient-to-r from-transparent to-emerald-400/60" />
+                <span className="h-1 w-1 rotate-45 bg-amber-300/90" />
+                <span className="h-px w-12 bg-gradient-to-l from-transparent to-emerald-400/60" />
               </div>
             </div>
 
@@ -142,6 +146,7 @@ export function TitleScreen() {
                 managerAvatar={state.manager.avatar}
                 clubPrimaryColor={state.userClub.primaryColor}
                 clubSecondaryColor={state.userClub.secondaryColor}
+                clubPattern={state.userClub.pattern}
               />
               <div className="grid grid-cols-4 border-t border-slate-800/90 bg-[#0a1019] px-1.5 py-1.5 sm:px-2.5 sm:py-2 text-[10px] font-bold sm:text-[11px]">
                 {ROAD_STAGES.map((stage, idx) => (
@@ -170,11 +175,11 @@ export function TitleScreen() {
                 id="title-profile-customizer-btn"
                 type="button"
                 onClick={() => setShowProfileCustomizer(true)}
-                className="group flex h-[50px] w-full items-center justify-between gap-2 rounded-xl border border-slate-800/90 bg-[#0b111b] px-2.5 py-1.5 text-left transition-colors hover:border-emerald-500/45 hover:bg-[#101826] cursor-pointer touch-manipulation sm:px-3"
+                className="group flex h-[50px] w-full items-center justify-between gap-2 rounded-xl border border-slate-700/80 bg-[#141f30] px-2.5 py-1.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-colors hover:border-emerald-400/55 hover:bg-[#19263a] cursor-pointer touch-manipulation sm:px-3"
                 title="감독 외형 · 이름 · 구단명 · 유니폼 커스텀"
               >
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <div className="flex h-8 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-800 bg-[#080d14]">
+                  <div className="flex h-8 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-700/80 bg-[#0c1320]">
                     <PixelManagerAvatar
                       avatar={state.manager.avatar}
                       clubPrimaryColor={state.userClub.primaryColor}
@@ -194,17 +199,17 @@ export function TitleScreen() {
                       <span className="truncate text-xs sm:text-[13px] font-extrabold text-white">
                         {state.userClub.name}
                       </span>
-                      <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-1 py-px font-mono text-[9.5px] font-bold text-emerald-300 shrink-0">
+                      <span className="rounded border border-emerald-400/30 bg-emerald-500/12 px-1 py-px font-mono text-[9.5px] font-bold text-emerald-300 shrink-0">
                         {state.userClub.shortName}
                       </span>
                     </div>
-                    <div className="truncate text-[10px] sm:text-[11px] text-slate-400">
+                    <div className="truncate text-[10px] sm:text-[11px] text-slate-300/90">
                       {state.manager.name} 감독
                     </div>
                   </div>
                 </div>
 
-                <span className="inline-flex items-center gap-1 rounded-lg border border-slate-700/80 bg-[#121b28] px-2.5 py-1.5 text-[11px] font-bold text-slate-200 transition-colors group-hover:border-emerald-400/50 group-hover:bg-emerald-500/12 group-hover:text-emerald-200 whitespace-nowrap shrink-0">
+                <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-500/35 bg-[#1c2b40] px-2.5 py-1.5 text-[11px] font-bold text-emerald-100 transition-colors group-hover:border-emerald-400/60 group-hover:bg-emerald-500/18 group-hover:text-white whitespace-nowrap shrink-0">
                   <SlidersHorizontal className="h-3 w-3 text-emerald-400 shrink-0" />
                   감독 커스텀
                 </span>
