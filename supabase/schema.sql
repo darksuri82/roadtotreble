@@ -393,7 +393,7 @@ begin
   if coalesce((p_entry->'squad_snapshot'->>'fullFiveLeaguePool')::boolean, false) is not true then
     raise exception 'All 5 major leagues must be enabled in the draft pool for daily rankings';
   end if;
-  if v_score < 0 or v_score > 15000 then
+  if v_score < 0 or v_score > 30000 then
     raise exception 'Invalid season_score';
   end if;
   if v_team_avg_ovr > 96.5 then

@@ -941,16 +941,25 @@ export function SeasonSummary() {
               lastGlobalSubmitResult.runId === season.runId
                 ? lastGlobalSubmitResult.result
                 : null;
+            const submitOk = Boolean(runSubmit?.ok);
+            const submitError =
+              runSubmit && !runSubmit.ok ? (runSubmit.error ?? null) : null;
             const enteredRank =
-              runSubmit?.ok && runSubmit.entered && runSubmit.rank
+              submitOk && runSubmit?.entered && runSubmit.rank
                 ? runSubmit.rank
                 : null;
             const cutoffScore =
-              runSubmit?.cutoffScore ?? globalCutoffInfo?.cutoffScore ?? null;
+              (submitOk ? runSubmit?.cutoffScore : null) ??
+              globalCutoffInfo?.cutoffScore ??
+              null;
             const totalCount =
-              runSubmit?.totalCount ?? globalCutoffInfo?.totalCount ?? null;
+              (submitOk ? runSubmit?.totalCount : null) ??
+              globalCutoffInfo?.totalCount ??
+              null;
 
-            if (enteredRank === null && totalCount === null) return null;
+            if (enteredRank === null && totalCount === null && !submitError) {
+              return null;
+            }
 
             return (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-[#090e15] px-3.5 py-2 text-xs">
@@ -961,6 +970,11 @@ export function SeasonSummary() {
                   {enteredRank !== null ? (
                     <span className="font-bold text-emerald-300 tabular-nums">
                       오늘의 랭킹 #{enteredRank}위 등재 완료
+                    </span>
+                  ) : submitError ? (
+                    <span className="font-semibold text-rose-300 break-keep">
+                      자동 등록 실패 ({submitError})
+                      {totalCount !== null ? ` · 오늘 ${totalCount}/10팀 등재 중` : ''}
                     </span>
                   ) : totalCount !== null && totalCount < 10 ? (
                     <span className="text-slate-300 tabular-nums">

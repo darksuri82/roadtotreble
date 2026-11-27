@@ -12,15 +12,33 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v9.9.1';
+export const CURRENT_APP_VERSION = 'v9.9.2';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v9.9.2',
+    codename:
+      '일일 랭킹 15,000점 초과 기록 제출 거부(`Invalid season_score`) 및 결산 `0/10팀` 오표시 핫픽스',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '역대급 트레블 시즌(15,000 PTS 초과) 제출 시 Supabase RPC의 구 15,000점 상한으로 자동·수동 등록이 거부되던 오류를 테이블 제약과 동일한 30,000점으로 교정하고, 제출 실패 시 시즌 결산 화면에 `오늘 0/10팀 등재 중`으로 잘못 표시되던 UI 버그를 수정했습니다.',
+    sections: [
+      {
+        category: '일일 랭킹 핫픽스',
+        items: [
+          'Supabase `submit_global_hof_ranking` RPC의 `season_score` 상한을 `15,000` → `30,000`으로 상향(`global_hof_rankings` 테이블 제약과 통일)해 15,000점 이상 초대형 트레블 시즌도 정상 자동·수동 등록되도록 수정했습니다.',
+          '`SeasonSummary` 결산 일일 랭킹 바가 제출 실패 응답의 `totalCount: 0`을 실제 서버 인원으로 덮어쓰며 `오늘 0/10팀 등재 중`으로 잘못 표시하던 문제를 수정해, 성공 응답(`ok: true`)일 때만 결과 카운트를 사용하고 실패 시 실제 등재 인원과 사유를 정확히 안내합니다.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v9.9.1',
     codename:
       '첫 화면 타이틀 시인성 개선 · 입문 튜토리얼 우상단 배치 · 팀 컬러 깃발/챔스 정상 웅장함 & 감독 커스텀 바 대비 폴리싱',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'FEATURE',
     summary:
       'ROAD TO TREBLE 타이틀 글씨의 암부 그림자 겹침을 해결해 깔끔하고 선명하게 개선하고, 입문 튜토리얼 버튼을 우상단 테두리 버튼으로 분리했습니다. 출발선 팀 컬러 깃발 윤곽 강화, 감독 커스텀 바의 은은한 배경 톤 분리, 챔피언스리그 빅이어 정상의 웅장한 스포트라이트·3단 기념 단상 연출을 다듬었습니다.',
     sections: [

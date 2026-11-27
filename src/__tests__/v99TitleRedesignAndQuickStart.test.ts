@@ -6,10 +6,12 @@ import {
 } from '../components/common/WhatsNewModal';
 import profileModalSrc from '../components/common/ProfileCustomizerModal.tsx?raw';
 import leagueSelectSrc from '../components/league/LeagueSelect.tsx?raw';
+import seasonSummarySrc from '../components/league/SeasonSummary.tsx?raw';
 import formationSelectSrc from '../components/setup/FormationSelect.tsx?raw';
 import managerRouletteSrc from '../components/setup/ManagerRouletteScreen.tsx?raw';
 import heroSvgSrc from '../components/setup/RoadToTrebleHeroSvg.tsx?raw';
 import titleScreenSrc from '../components/setup/TitleScreen.tsx?raw';
+import schemaSql from '../../supabase/schema.sql?raw';
 import { CURRENT_APP_VERSION, PATCH_NOTES } from '../data/patchNotes';
 import {
   createInitialState,
@@ -260,12 +262,15 @@ describe('v9.9.0 Title Pixel Redesign, First-Screen Profile Customizer & Streaml
     expect(profileModalSrc).toContain('modal-panel');
   });
 
-  it('5) keeps v9.9.1 patch notes and WhatsNewModal version keys synchronized', () => {
-    expect(CURRENT_APP_VERSION).toBe('v9.9.1');
-    expect(PATCH_NOTES[0].version).toBe('v9.9.1');
-    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.9.1');
+  it('5) keeps v9.9.2 patch notes, WhatsNewModal version keys, 30000 RPC score cap, and SeasonSummary failed-submit guard synchronized', () => {
+    expect(CURRENT_APP_VERSION).toBe('v9.9.2');
+    expect(PATCH_NOTES[0].version).toBe('v9.9.2');
+    expect(WHATS_NEW_HIGHLIGHT_RANGE).toContain('v9.9.2');
+    expect(schemaSql).toContain('if v_score < 0 or v_score > 30000 then');
+    expect(schemaSql).not.toContain('v_score > 15000');
+    expect(seasonSummarySrc).toContain('(submitOk ? runSubmit?.totalCount : null)');
     withMockLocalStorage(() => {
-      expect(isWhatsNewDismissed('v9.9.1')).toBe(false);
+      expect(isWhatsNewDismissed('v9.9.2')).toBe(false);
     });
   });
 });

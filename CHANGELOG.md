@@ -5,6 +5,14 @@
 
 ---
 
+## v9.9.2 — 일일 랭킹 15,000점 초과 기록 제출 거부(`Invalid season_score`) & 결산 `0/10팀` 오표시 핫픽스
+
+- **일일 랭킹 고득점 제출 차단 및 결산 배너 오표시 수정 (`supabase/schema.sql`, `src/components/league/SeasonSummary.tsx`, `src/data/patchNotes.ts`, `src/components/common/WhatsNewModal.tsx`)**:
+  - `submit_global_hof_ranking` RPC의 `v_score > 15000` 제한을 테이블 제약과 동일한 `v_score > 30000`으로 상향해 15,000 PTS 초과 트레블 시즌도 정상 자동·수동 등록되도록 수정했습니다.
+  - `SeasonSummary` 일일 랭킹 바가 실패 응답(`ok: false`, `totalCount: 0`)을 실제 등재 인원으로 덮어써 `오늘 0/10팀 등재 중`으로 표시하던 버그를 수정해 성공 시에만 제출 카운트를 사용하고 실패 시 실제 인원·사유를 표기합니다.
+
+---
+
 ## v9.9.1 — 첫 화면 타이틀 시인성 · 튜토리얼 우상단 테두리 · 팀 컬러 깃발 · 챔스 정상 웅장함 & 커스텀 바 톤 폴리싱
 
 - **타이틀 화면 & 도트 일러스트 5대 비주얼 폴리싱 (`src/index.css`, `src/components/setup/TitleScreen.tsx`, `src/components/setup/RoadToTrebleHeroSvg.tsx`, `src/components/common/WhatsNewModal.tsx`, `src/data/patchNotes.ts`)**:
