@@ -76,9 +76,9 @@ function makeStats(
   };
 }
 
-describe('Story Mode Phase 2 — All 5 Scenarios Playable, Data Integrity, UCL R16 & Checklists', () => {
-  it('enables all 5 scenarios as playable with 3-chapter pixel-art literary prologues', () => {
-    expect(STORY_SCENARIOS).toHaveLength(5);
+describe('Story Mode Phase 2 — All 7 Scenarios Playable, Data Integrity, UCL R16 & Checklists', () => {
+  it('enables all 7 scenarios as playable with 3-chapter pixel-art literary prologues', () => {
+    expect(STORY_SCENARIOS).toHaveLength(7);
     for (const meta of STORY_SCENARIOS) {
       expect(meta.isPlayable).toBe(true);
       expect(meta.introSlides).toHaveLength(3);
@@ -242,8 +242,9 @@ describe('Story Mode Phase 2 — All 5 Scenarios Playable, Data Integrity, UCL R
 
     expect(started.phase).toBe('season');
     expect(started.season?.transferWindows).toEqual([99, 19, 99]);
-    expect(started.season?.budgetState?.transferCashM).toBe(30);
+    expect(started.season?.budgetState?.transferCashM).toBe(25);
     expect(started.storyMode?.winterMaxSignings).toBe(1);
+    expect(started.storyMode?.allowUclTransferWindow).toBe(false);
     expect(started.storyMode?.transferRule).toBe('winter_1_only');
   });
 
@@ -429,7 +430,7 @@ describe('Story Mode Phase 2 — All 5 Scenarios Playable, Data Integrity, UCL R
     expect(notBestDef.starsEarned).toBe(2);
   });
 
-  it('tracks full 15/15 star codex completion across all 5 scenarios', () => {
+  it('tracks full 21/21 star codex completion across all 7 scenarios', () => {
     let codex = createEmptyStoryCodex();
     for (const meta of STORY_SCENARIOS) {
       const m = getStoryScenarioMeta(meta.id);
@@ -450,6 +451,6 @@ describe('Story Mode Phase 2 — All 5 Scenarios Playable, Data Integrity, UCL R
       expect(isNewBest).toBe(true);
       codex = nextCodex;
     }
-    expect(getTotalStoryStars(codex)).toBe(15);
+    expect(getTotalStoryStars(codex)).toBe(21);
   });
 });

@@ -1050,21 +1050,21 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {counterOfferClub && activeTab === 'explore' && (
-            <button
-              id="counter-offer-back-btn"
-              type="button"
-              onClick={() => handleExitCounterOffer()}
-              className="inline-flex items-center gap-1 rounded-xl border border-amber-400/45 bg-amber-500/12 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-extrabold text-amber-200 hover:bg-amber-500/22 hover:text-amber-100 transition cursor-pointer touch-manipulation whitespace-nowrap"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              {counterOfferOrigin === 'incoming'
-                ? '받은 제안으로'
-                : isStoryMode
-                  ? '5대 리그 구단 목록'
+          {counterOfferClub &&
+            activeTab === 'explore' &&
+            (!isStoryMode || counterOfferOrigin === 'incoming') && (
+              <button
+                id="counter-offer-back-btn"
+                type="button"
+                onClick={() => handleExitCounterOffer()}
+                className="inline-flex items-center gap-1 rounded-xl border border-amber-400/45 bg-amber-500/12 px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-extrabold text-amber-200 hover:bg-amber-500/22 hover:text-amber-100 transition cursor-pointer touch-manipulation whitespace-nowrap"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                {counterOfferOrigin === 'incoming'
+                  ? '받은 제안으로'
                   : '트레이드 룰렛으로'}
-            </button>
-          )}
+              </button>
+            )}
           <button
             id="close-transfer-window-btn"
             type="button"
@@ -1155,7 +1155,10 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
         )}
         <div className="ml-auto hidden sm:flex items-center gap-2 text-[11px] text-slate-400">
           <Users className="h-3.5 w-3.5 text-slate-500" />
-          <span>우리 로스터 {userSquadPlayers.length}인 (선발 11 · 벤치 5 유지)</span>
+          <span>
+            우리 로스터 {userSquadPlayers.length}인 (선발 11 · 벤치{' '}
+            {Math.max(0, userSquadPlayers.length - 11)} 유지)
+          </span>
         </div>
       </div>
 
@@ -3028,7 +3031,7 @@ function TransferMarketModalInner({ embedded }: { embedded: boolean }) {
                                   />
                                   <div className="min-w-0">
                                     <div className="truncate text-xs font-black text-emerald-300">
-                                      📤 {state.userClub.name} ({state.formation} · 주전 11 + 벤치 5)
+                                      📤 {state.userClub.name} ({state.formation} · 주전 11 + 벤치 {Math.max(0, userSquadPlayers.length - 11)})
                                     </div>
                                     <div className="text-[10px] text-slate-400">
                                       🔥 상대 최우선 니즈 +32% · ✨ 보강 니즈 +18% · ⚠️ 포화 -25%

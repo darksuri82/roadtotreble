@@ -21,7 +21,7 @@ import {
   persistGameStateToStorage,
 } from '../store/GameContext';
 import type { GameState, SeasonState } from '../types/game';
-import type { MatchResult, PlayerSeasonStats, StandingRow } from '../types/league';
+import type { PlayerSeasonStats, StandingRow } from '../types/league';
 import type { HallOfFameEntry } from '../types/legacy';
 
 function makeStanding(
@@ -84,23 +84,26 @@ function makeStats(
 }
 
 describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists & Isolation', () => {
-  it('registers all 5 confirmed scenarios with authentic era budgets and explicit transfer rules', () => {
+  it('registers all 7 confirmed scenarios with authentic era budgets and explicit transfer rules', () => {
     expect(STORY_SCENARIOS.map((s) => s.id)).toEqual([
       '1516_leicester',
       '0708_manutd',
       '1819_tottenham',
       '0304_arsenal',
       '1314_atletico',
+      '2324_leverkusen',
+      '0910_inter',
     ]);
 
     const leicester = getStoryScenarioMeta('1516_leicester');
-    expect(leicester.cashBudgetM).toBe(25);
+    expect(leicester.cashBudgetM).toBe(35);
     expect(leicester.transferRule).toBe('winter_1_only');
     expect(leicester.hasUcl).toBe(false);
     expect(leicester.introSlides.length).toBe(3);
 
     const manutd = getStoryScenarioMeta('0708_manutd');
-    expect(manutd.cashBudgetM).toBe(100);
+    expect(manutd.cashBudgetM).toBe(45);
+    expect(manutd.winterMaxSignings).toBe(1);
     expect(manutd.transferRule).toBe('winter_plus_ucl');
     expect(manutd.hasUcl).toBe(true);
     expect(manutd.introSlides.length).toBe(3);
@@ -108,7 +111,8 @@ describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists 
     const arsenal = getStoryScenarioMeta('0304_arsenal');
     expect(arsenal.transferRule).toBe('winter_1_only');
     expect(arsenal.winterMaxSignings).toBe(1);
-    expect(arsenal.transferRuleReason).toContain('신구장');
+    expect(arsenal.allowUclTransferWindow).toBe(false);
+    expect(arsenal.transferRuleReason).toContain('인빈시블스');
   });
 
   it('hydrates 15-16 Leicester dynamic JSON with 20 EPL clubs + 16 foreign Top-4 clubs and compressed OVR <= 92', async () => {
@@ -204,7 +208,7 @@ describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists 
     expect(seasonState.phase).toBe('season');
     expect(seasonState.season).not.toBeNull();
     expect(seasonState.season!.clubs).toHaveLength(20);
-    expect(seasonState.season!.budgetState?.transferCashM).toBe(25);
+    expect(seasonState.season!.budgetState?.transferCashM).toBe(35);
     expect(seasonState.season!.budgetState?.ffpTier).toBe(0);
     expect(seasonState.season!.transferWindows).toEqual([99, 19, 99]);
     expect(seasonState.season!.otherLeagues).toEqual({});
@@ -261,93 +265,12 @@ describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists 
     expect(fail19.starsEarned).toBe(2);
   });
 
-  it('evaluates 07-08 Man Utd Park Ji-sung checklist including UCL Final starter + TOP 3 rating', async () => {
+  it('evaluates 07-08 Man Utd Park Ji-sung checklist including Star 3 World Best XI selection', async () => {
     const bundle = await loadStoryScenarioBundle('0708_manutd');
     const hydrated = hydrateStoryScenarioBundle(bundle);
     const parkId = bundle.missionTargets.parkId!;
 
-    const makeFinalResult = (
-      parkRating: number,
-      parkIsSub: boolean,
-    ): MatchResult =>
-      ({
-        fixtureId: 'ucl-final-0',
-        round: 1,
-        homeTeamId: USER_CLUB_ID,
-        awayTeamId: 'che_0708',
-        homeGoals: 2,
-        awayGoals: 1,
-        homeXg: 1.8,
-        awayXg: 1.1,
-        homePossession: 52,
-        homeShots: 14,
-        awayShots: 10,
-        homeShotsOnTarget: 6,
-        awayShotsOnTarget: 4,
-        homeTactic: 'counter',
-        awayTactic: 'balanced',
-        homeFormation: '4-4-2',
-        awayFormation: '4-3-3',
-        homeTacticBonus: 0,
-        awayTacticBonus: 0,
-        events: [],
-        momPlayerId: 's0708_mun_0708_ronaldo',
-        momPlayerName: '크리스티아누 호날두',
-        momRating: 8.6,
-        playerRatings: [
-          {
-            playerId: 's0708_mun_0708_ronaldo',
-            playerName: '크리스티아누 호날두',
-            teamId: USER_CLUB_ID,
-            position: 'FW',
-            subPosition: 'RM',
-            rating: 8.6,
-            goals: 1,
-            assists: 0,
-            xg: 0.7,
-            minutesPlayed: 90,
-          },
-          {
-            playerId: 's0708_mun_0708_rooney',
-            playerName: '웨인 루니',
-            teamId: USER_CLUB_ID,
-            position: 'FW',
-            subPosition: 'ST',
-            rating: 8.1,
-            goals: 1,
-            assists: 0,
-            xg: 0.6,
-            minutesPlayed: 90,
-          },
-          {
-            playerId: parkId,
-            playerName: '박지성',
-            teamId: USER_CLUB_ID,
-            position: 'MF',
-            subPosition: 'LM',
-            rating: parkRating,
-            goals: 0,
-            assists: 1,
-            xg: 0.2,
-            minutesPlayed: parkIsSub ? 25 : 90,
-            isSub: parkIsSub,
-          },
-          {
-            playerId: 's0708_mun_0708_vidic',
-            playerName: '네마냐 비디치',
-            teamId: USER_CLUB_ID,
-            position: 'DF',
-            subPosition: 'CB',
-            rating: 7.7,
-            goals: 0,
-            assists: 0,
-            xg: 0.1,
-            minutesPlayed: 90,
-          },
-        ],
-      }) as MatchResult;
-
-    const makeSeason = (parkRating: number, parkIsSub: boolean) =>
+    const makeSeason = (worldBestPlayerIds: string[] | null) =>
       ({
         currentRound: 38,
         totalRounds: 38,
@@ -364,25 +287,7 @@ describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists 
           completed: true,
           championTeamId: USER_CLUB_ID,
           userEliminatedAt: null,
-          ties: {
-            playoff: [],
-            r16: [],
-            qf: [],
-            sf: [],
-            final: [
-              {
-                id: 'ucl-final-0',
-                stage: 'final',
-                tieIndex: 0,
-                teamAId: USER_CLUB_ID,
-                teamBId: 'che_0708',
-                leg1: makeFinalResult(parkRating, parkIsSub),
-                aggTeamA: 2,
-                aggTeamB: 1,
-                winnerId: USER_CLUB_ID,
-              },
-            ],
-          },
+          ties: { playoff: [], r16: [], qf: [], sf: [], final: [] },
         },
         awakenedPlayers: {
           [parkId]: {
@@ -393,34 +298,47 @@ describe('Story Mode Phase 1 — Framework, Data Integrity, UCL R16, Checklists 
             statDeltas: [],
           },
         },
+        globalAwards: worldBestPlayerIds
+          ? {
+              worldBestXi: worldBestPlayerIds.map((pid, idx) => ({
+                slotLabel: idx === 0 ? 'LM' : 'CM',
+                position: 'MF',
+                stats: makeStats(pid, 7, 5),
+                score: 90,
+                leagueId: 'epl',
+              })),
+            }
+          : null,
       }) as unknown as SeasonState;
 
-    // Starter & 7.9 (Rank 3) -> 3 stars!
+    // Park Ji-sung selected to World Best XI -> 3 stars!
     const pass3 = evaluateStoryChecklist({
       storyMode: hydrated.runtimeState,
-      season: makeSeason(7.9, false),
+      season: makeSeason([parkId, 's0708_mun_0708_ronaldo']),
       starters: hydrated.userStarters,
       bench: hydrated.userBench,
     });
+    expect(pass3.items[2].status).toBe('achieved');
     expect(pass3.starsEarned).toBe(3);
 
-    // Sub appearance -> Star 3 fails even with high rating
-    const subFail = evaluateStoryChecklist({
+    // World Best XI computed without Park Ji-sung -> Star 3 fails
+    const missedXi = evaluateStoryChecklist({
       storyMode: hydrated.runtimeState,
-      season: makeSeason(8.4, true),
+      season: makeSeason(['s0708_mun_0708_ronaldo', 's0708_mun_0708_rooney']),
       starters: hydrated.userStarters,
       bench: hydrated.userBench,
     });
-    expect(subFail.items[2].status).toBe('failed');
+    expect(missedXi.items[2].status).toBe('failed');
+    expect(missedXi.starsEarned).toBe(2);
 
-    // Starter & 7.5 (Rank 4, below TOP 3) -> Star 3 fails
-    const rank4Fail = evaluateStoryChecklist({
+    // Before globalAwards are finalized -> in_progress
+    const pendingXi = evaluateStoryChecklist({
       storyMode: hydrated.runtimeState,
-      season: makeSeason(7.5, false),
+      season: makeSeason(null),
       starters: hydrated.userStarters,
       bench: hydrated.userBench,
     });
-    expect(rank4Fail.items[2].status).toBe('failed');
+    expect(pendingXi.items[2].status).toBe('in_progress');
   });
 
   it('strictly blocks Story Mode entries from Global Daily Ranking and isolates Story Codex & Save keys', async () => {

@@ -306,6 +306,7 @@ export function hydrateStoryScenarioBundle(
     transferRuleLabel: meta.transferRuleLabel,
     transferRuleReason: meta.transferRuleReason,
     winterMaxSignings: meta.winterMaxSignings,
+    allowUclTransferWindow: meta.allowUclTransferWindow ?? meta.hasUcl,
     signingsThisWindow: 0,
     initialCashBudgetM: meta.cashBudgetM,
     transferPoolClubs,
@@ -480,47 +481,27 @@ export function evaluateStoryChecklist(params: {
       progressText: `박지성 각성 ${parkAwakened ? '완료' : '미달성'} · 공격P ${parkContrib.total}/15 (${parkContrib.goals}골 ${parkContrib.assists}도움)`,
     });
 
-    // 3) Park Ji-sung starts UCL Final AND finishes in Team Rating TOP 3 while winning UCL
-    const finalMatch = season.ucl?.ties.final?.[0]?.leg1;
+    // 3) Park Ji-sung selected to World Best XI (globalAwards.worldBestXi)
+    const worldBestXi = season.globalAwards?.worldBestXi ?? null;
+    const parkLeagueSt = season.allPlayerStats[parkId];
+    const parkAvgRating = parkLeagueSt?.avgRating ?? 0;
     let star3Status: StoryChecklistEvalItem['status'] = 'in_progress';
-    let star3Text = 'UCL 결승 대기 중';
+    let star3Text =
+      parkAvgRating > 0
+        ? `시즌 진행 중 (박지성 평균 평점 ${parkAvgRating.toFixed(2)} · 공격P ${parkContrib.total})`
+        : '월드 베스트 XI 결산 대기 중';
 
-    if (finalMatch && uclFinished) {
-      const userRatings = finalMatch.playerRatings
-        .filter((r) => r.teamId === USER_CLUB_ID)
-        .sort((a, b) => b.rating - a.rating);
-      const parkRating = userRatings.find((r) => r.playerId === parkId);
-      const startedFinal = Boolean(parkRating && !parkRating.isSub);
-      const top3Cutoff =
-        userRatings.length >= 3
-          ? userRatings[2].rating
-          : (userRatings[userRatings.length - 1]?.rating ?? 10);
-      const inTop3 = Boolean(
-        parkRating && parkRating.rating >= top3Cutoff - 0.001,
+    if (worldBestXi && worldBestXi.length > 0) {
+      const inWorldBestXi = worldBestXi.some(
+        (entry) => entry.stats.playerId === parkId,
       );
-      const parkRank = parkRating
-        ? userRatings.filter((r) => r.rating > parkRating.rating + 0.001)
-            .length + 1
-        : null;
-
-      if (wonUcl && startedFinal && inTop3) {
+      if (inWorldBestXi) {
         star3Status = 'achieved';
-        star3Text = `결승 선발 · 평점 ${parkRating?.rating.toFixed(1)} (팀 ${parkRank}위) 우승!`;
+        star3Text = `박지성 월드 베스트 XI 선정 달성! (공격P ${parkContrib.total})`;
       } else {
         star3Status = 'failed';
-        if (!wonUcl) {
-          star3Text = 'UCL 우승 실패';
-        } else if (!startedFinal) {
-          star3Text = parkRating
-            ? '결승 교체 출전 (선발 조건 미달)'
-            : '박지성 결승 미출전';
-        } else {
-          star3Text = `결승 선발 · 평점 ${parkRating?.rating.toFixed(1)} (팀 ${parkRank}위 · TOP 3 미달)`;
-        }
+        star3Text = `월드 베스트 XI 미선정 (평균 평점 ${parkAvgRating.toFixed(2)} · 공격P ${parkContrib.total})`;
       }
-    } else if (uclUserEliminated) {
-      star3Status = 'failed';
-      star3Text = 'UCL 토너먼트 탈락';
     }
 
     items.push({
@@ -606,6 +587,102 @@ export function evaluateStoryChecklist(params: {
             ? 'failed'
             : 'in_progress',
       progressText: `리그 ${losses}패 · UCL ${wonUcl ? '우승' : uclUserEliminated ? '탈락' : '진행/대기'}`,
+    });
+  } else if (storyMode.scenarioId === '2324_leverkusen') {
+    // 1) Bundesliga Title
+    items.push({
+      ...defs[0],
+      status: wonLeague
+        ? 'achieved'
+        : cannotWinLeague
+          ? 'failed'
+          : 'in_progress',
+      progressText: wonLeague
+        ? `분데스리가 우승 (${userRow?.points ?? 0}점)`
+        : `현재 ${userRank}위 · ${userRow?.points ?? 0}점 (${season.currentRound}/${season.totalRounds}R)`,
+    });
+
+    // 2) Wirtz / Grimaldo / Boniface >= 1 Awakening AND Wirtz league G+A >= 18
+    const levTrioIds = storyMode.missionTargets.leverkusenTrioIds ?? [];
+    const wirtzId = storyMode.missionTargets.wirtzId ?? '';
+    const levAwakenedCount = levTrioIds.filter(isPlayerAwakened).length;
+    const wirtzStat = season.allPlayerStats[wirtzId];
+    const wirtzGa = (wirtzStat?.goals ?? 0) + (wirtzStat?.assists ?? 0);
+    const star2Ok = levAwakenedCount >= 1 && wirtzGa >= 18;
+    items.push({
+      ...defs[1],
+      status: star2Ok
+        ? 'achieved'
+        : leagueFinished
+          ? 'failed'
+          : 'in_progress',
+      progressText: `핵심 3인방 각성 ${levAwakenedCount}/1 · 비르츠 리그 공격P ${wirtzGa}/18`,
+    });
+
+    // 3) Unbeaten Bundesliga Title OR Bundesliga + DFB-Pokal Double
+    const losses = userRow?.lost ?? 0;
+    const unbeatenLeague = wonLeague && losses === 0;
+    const domesticDouble = wonLeague && wonCup;
+    const star3Ok = unbeatenLeague || domesticDouble;
+    const cannotUnbeaten = losses > 0 || cannotWinLeague;
+    const cannotDouble = cannotWinLeague || cupUserEliminated;
+    items.push({
+      ...defs[2],
+      status: star3Ok
+        ? 'achieved'
+        : cannotUnbeaten && cannotDouble
+          ? 'failed'
+          : 'in_progress',
+      progressText: unbeatenLeague
+        ? '분데스리가 34경기 무패 우승 달성!'
+        : domesticDouble
+          ? '분데스리가 · DFB-포칼 더블 달성!'
+          : `리그 ${losses}패 · 포칼 ${wonCup ? '우승' : cupUserEliminated ? '탈락' : '진행 중'}`,
+    });
+  } else if (storyMode.scenarioId === '0910_inter') {
+    // 1) Serie A Title
+    items.push({
+      ...defs[0],
+      status: wonLeague
+        ? 'achieved'
+        : cannotWinLeague
+          ? 'failed'
+          : 'in_progress',
+      progressText: wonLeague
+        ? `세리에 A 우승 (${userRow?.points ?? 0}점)`
+        : `현재 ${userRank}위 · ${userRow?.points ?? 0}점 (${season.currentRound}/${season.totalRounds}R)`,
+    });
+
+    // 2) Milito / Sneijder / Eto'o combined league G+A >= 45 AND >= 1 Awakening (or Milito 18+ goals)
+    const interTrioIds = storyMode.missionTargets.interTrioIds ?? [];
+    const militoId = storyMode.missionTargets.militoId ?? '';
+    const trioGa = interTrioIds.reduce((sum, id) => {
+      const s = season.allPlayerStats[id];
+      return sum + (s?.goals ?? 0) + (s?.assists ?? 0);
+    }, 0);
+    const militoGoals = season.allPlayerStats[militoId]?.goals ?? 0;
+    const star2Ok = trioGa >= 45 && militoGoals >= 18;
+    items.push({
+      ...defs[1],
+      status: star2Ok
+        ? 'achieved'
+        : leagueFinished
+          ? 'failed'
+          : 'in_progress',
+      progressText: `트리오 리그 공격P ${trioGa}/45 · 밀리토 ${militoGoals}/18골`,
+    });
+
+    // 3) Historic Italian Treble (Serie A + Coppa Italia + 09-10 UCL)
+    const trebleOk = wonLeague && wonCup && wonUcl;
+    const cannotTreble = cannotWinLeague || cupUserEliminated || uclUserEliminated;
+    items.push({
+      ...defs[2],
+      status: trebleOk
+        ? 'achieved'
+        : cannotTreble
+          ? 'failed'
+          : 'in_progress',
+      progressText: `리그 ${wonLeague ? '우승' : `${userRank}위`} · 코파 ${wonCup ? '우승' : cupUserEliminated ? '탈락' : '진행 중'} · UCL ${wonUcl ? '우승' : uclUserEliminated ? '탈락' : '진행/대기'}`,
     });
   } else {
     // 1314_atletico

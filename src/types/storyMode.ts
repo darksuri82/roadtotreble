@@ -23,7 +23,9 @@ export type StoryScenarioId =
   | '1819_tottenham'
   | '0304_arsenal'
   | '0708_manutd'
-  | '1314_atletico';
+  | '1314_atletico'
+  | '2324_leverkusen'
+  | '0910_inter';
 
 export type StoryTransferRule =
   | 'winter_plus_ucl'
@@ -38,7 +40,9 @@ export type StoryPixelBackdropId =
   | 'moscow_rain_final'
   | 'white_hart_lane'
   | 'highbury_unbeaten'
-  | 'calderon_fortress';
+  | 'calderon_fortress'
+  | 'bayarena_unbeaten'
+  | 'san_siro_treble';
 
 export interface StoryPixelCharacterSpec {
   name: string;
@@ -128,8 +132,10 @@ export interface StoryScenarioMeta {
   transferRuleLabel: string;
   /** User-facing historical rationale for transfer rules (especially Arsenal winter-1) */
   transferRuleReason: string;
-  /** Max signings allowed per window (undefined = standard 3 attempts) */
+  /** Max signings/attempts allowed per window (undefined = underdog generous 4 attempts) */
   winterMaxSignings?: number;
+  /** Whether a pre-UCL transfer window opens before UCL R16 (defaults to hasUcl; false for 03-04 Arsenal strict mode) */
+  allowUclTransferWindow?: boolean;
   checklist: [StoryChecklistDef, StoryChecklistDef, StoryChecklistDef];
   introSlides: StoryIntroSlide[];
   /** True when the dynamic scenario JSON bundle is shipped and playable */
@@ -192,7 +198,7 @@ export interface StoryScenarioDataBundle {
   userStarterIds: string[];
   /** 5~6 bench player IDs from userClub roster */
   userBenchIds: string[];
-  /** 20 clubs in the domestic league (including userClubId) */
+  /** 18 or 20 clubs in the domestic league (including userClubId) */
   domesticClubs: StoryClubSeed[];
   /** Top 4 clubs from each of the other 4 major European leagues (16 clubs) for direct scouting */
   foreignTop4Clubs: StoryClubSeed[];
@@ -212,6 +218,10 @@ export interface StoryScenarioDataBundle {
     vardyId?: string;
     deskIds?: string[];
     parkId?: string;
+    leverkusenTrioIds?: string[];
+    wirtzId?: string;
+    interTrioIds?: string[];
+    militoId?: string;
   };
 }
 
@@ -239,9 +249,10 @@ export interface StoryModeRuntimeState {
   transferRuleLabel: string;
   transferRuleReason: string;
   winterMaxSignings?: number;
+  allowUclTransferWindow?: boolean;
   signingsThisWindow: number;
   initialCashBudgetM: number;
-  /** 35 era clubs (19 domestic AI + 16 other-4-league Top 4) available for direct scouting */
+  /** Era clubs (domestic AI + 16 other-4-league Top 4) available for direct scouting */
   transferPoolClubs: StoryTransferPoolClub[];
   /** Prepared 16-team UCL R16 package for immediate transition after domestic league */
   uclR16Prepared?: StoryUclR16Prepared | null;

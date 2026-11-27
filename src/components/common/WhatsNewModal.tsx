@@ -41,7 +41,7 @@ export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.0.1';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.0';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -92,7 +92,7 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
-  { id: 'v100', label: '스토리 모드 출시!', badge: '10.0 NEW', icon: BookOpen },
+  { id: 'v100', label: '스토리 모드 7종 확장!', badge: '10.1 NEW', icon: BookOpen },
   { id: 'v910', label: '난이도 상승!', badge: '9.10', icon: Flame },
   { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9', icon: SlidersHorizontal },
   { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8', icon: Users },
@@ -234,33 +234,36 @@ export function WhatsNewModal({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="inline-flex items-center gap-1.5 text-sm sm:text-base font-black text-amber-200">
                     <BookOpen className="h-4.5 w-4.5 text-amber-400 shrink-0" />
-                    대형 신규 콘텐츠 「스토리 모드」 5종 전격 출시!
+                    「스토리 모드」 7종 확장! 23-24 무패 레버쿠젠 · 09-10 트레블 인테르 추가
                   </span>
                   <span className="rounded-md border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-amber-200 whitespace-nowrap">
-                    v10.0.1 HOTFIX
+                    v10.1.0 EXPANSION
                   </span>
                 </div>
                 <p className="text-[11.5px] leading-relaxed text-slate-300">
-                  드래프트를 생략하고{' '}
                   <strong className="text-white">
-                    그 시절 실제 스쿼드 · 감독 · 전술 · UCL 16강 토너먼트
+                    23-24 바이엘 레버쿠젠(18팀 분데스리가 무패 도전)
                   </strong>
-                  로 곧장 뛰어들어 ★★★ 미션에 도전하세요.{' '}
+                  과{' '}
+                  <strong className="text-white">
+                    09-10 인테르 밀란(이탈리아 최초 트레블)
+                  </strong>
+                  이 합류해 총 7종(최대 21★)으로 확장되었습니다.{' '}
                   <strong className="text-amber-200">
-                    v10.0.1에서 이적시장 현시대 로스터·가상 선수 혼입을 전면 차단하고 시즌 1회(19R) + UCL 16강 직전 1회
+                    언더독 5팀 4회 협상·예산 상향, 맨유·아스널 강호 라이벌 상향 &amp; 1명 보강 제한, 박지성 ★3 월드 베스트 XI 전환
                   </strong>
-                  로 깔끔하게 개편했습니다.
+                  과 개막 부상 오표시·레거시 도전과제 격리까지 반영했습니다.
                 </p>
                 <div className="overflow-hidden rounded-xl border border-slate-800/90 bg-[#070b12]">
                   <StoryPixelSceneSvg
-                    backdrop="three_lungs_engine"
-                    accentColor="#ef4444"
-                    characters={STORY_SCENARIOS[1].introSlides[1].characters}
+                    backdrop="bayarena_unbeaten"
+                    accentColor="#dc2626"
+                    characters={STORY_SCENARIOS[5].introSlides[1].characters}
                   />
                 </div>
               </div>
 
-              {/* 5 Scenarios Compact Grid */}
+              {/* 7 Scenarios Compact Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] tabular-nums">
                 {STORY_SCENARIOS.map((sc) => (
                   <div
@@ -290,26 +293,26 @@ export function WhatsNewModal({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
                 <div className="rounded-xl border border-rose-500/30 bg-rose-950/20 p-3 space-y-1">
                   <div className="font-extrabold text-rose-200">
-                    [빠른 선발] 전면 제거
+                    2단계 밸런스 · 수동 지휘
                   </div>
                   <p className="text-slate-400 leading-relaxed">
-                    자동 최적이 아닌 유저가 직접 라인업·전술·로테이션을 짜는 순수 실력 플레이.
+                    언더독 5팀은 4회 협상·예산 상향, 맨유·아스널은 라이벌 강화 &amp; 창당 최대 1명 제한으로 긴장감을 조율했습니다.
                   </p>
                 </div>
                 <div className="rounded-xl border border-sky-500/30 bg-sky-950/20 p-3 space-y-1">
                   <div className="font-extrabold text-sky-200">
-                    100% 시대 로스터 · 시즌 1회+UCL 1회
+                    100% 시대 로스터 · 박지성 월베 ★3
                   </div>
                   <p className="text-slate-400 leading-relaxed">
-                    5대 리그 35구단 직접 지목 및 수신 제안 모두 그 시절 로스터만 등장하며, 겨울(19R) 1회 + UCL 16강 직전 1회 개방됩니다.
+                    겨울(17R/19R) 1회 + UCL 직전 1회 모두 그 시절 실제 로스터만 등장하며, 07-08 맨유 ★3은 박지성 월베 선정으로 개편했습니다.
                   </p>
                 </div>
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-3 space-y-1">
                   <div className="font-extrabold text-emerald-200">
-                    일일 랭킹 · 세이브 완전 분리
+                    도전과제 · 일일 랭킹 완전 분리
                   </div>
                   <p className="text-slate-400 leading-relaxed">
-                    일반 커리어와 세이브·랭킹이 섞이지 않으며 전용 ★★★ 별 도감(최대 15★)으로 기록됩니다.
+                    일반 커리어 세이브·레거시 도전과제 24종·일일 랭킹과 완전 격리되며 전용 ★★★ 별 도감(최대 21★)으로 기록됩니다.
                   </p>
                 </div>
               </div>

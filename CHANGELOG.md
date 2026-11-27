@@ -5,6 +5,23 @@
 
 ---
 
+## v10.1.0 — 스토리 모드 7종 확장 (23-24 레버쿠젠 · 09-10 인테르) · 빅클럽/언더독 2단계 밸런스 개편 · 박지성 월베 ★3 & 3대 버그 수정
+
+- **1. 신규 역사 시나리오 2종 추가 (`src/data/story/scenarios/2324_leverkusen.json`, `src/data/story/scenarios/0910_inter.json`, `src/data/story/storyRegistry.ts`, `src/types/storyMode.ts`, `src/engine/storyModeEngine.ts`, `src/components/story/StoryPixelSceneSvg.tsx`)**:
+  - **23-24 바이엘 레버쿠젠 《네버쿠젠에서 무패쿠젠으로》** (`34구단 494명`, `17.84 kB gzip`, OVR ≤ 92): 18팀 34라운드 분데스리가(겨울 17R `[99,17,99]` · 4회 협상 · `€50M`) + DFB-포칼 + 샤비 알론소 `3-4-2-1` + 전용 도트 배경(`bayarena_unbeaten`) · ★★★ 분데스리가 우승 / 비르츠·그리말도·보니페이스 각성 & 비르츠 리그 공격P 18+ / 34경기 무패 우승 또는 DFB-포칼 더블.
+  - **09-10 인테르 밀란 《스페셜 원의 이탈리아 최초 트레블》** (`41구단 590명`, `20.28 kB gzip`, OVR ≤ 92): 20팀 38라운드 세리에 A(겨울 19R + UCL 직전 1회 · 창당 4회 협상 · `€60M`) + 코파 이탈리아 + 실제 09-10 UCL 16강(첼시·바르사·바이에른 등) + 조제 무리뉴 `4-2-3-1` + 전용 도트 배경(`san_siro_treble`) · ★★★ 세리에 A 우승 / 밀리토·스네이더르·에투 공격P 45+ & 밀리토 18골+ / 이탈리아 최초 트레블.
+  - 총 7종 시나리오 · 별 도감 최대 `21★`로 확장.
+- **2. 스토리 모드 2단계 밸런스 개편 & 박지성 ★3 월드 베스트 XI 전환 (`src/data/story/scenarios/0708_manutd.json`, `src/data/story/scenarios/0304_arsenal.json`, `src/data/story/storyRegistry.ts`, `src/engine/storyModeEngine.ts`, `src/store/GameContext.tsx`)**:
+  - 기존 언더독 3종(레스터·토트넘·아틀레티코)의 AI 전력과 도전 난이도는 100% 보존하면서, 언더독 5종 전체에 **창당 4회 협상**과 상향 예산(레스터 `€35M` · 토트넘 `€65M` · 아틀레티코 `€55M` · 레버쿠젠 `€50M` · 인테르 `€60M`) 적용.
+  - 시너지 풀가동으로 압도적이던 `07-08 맨유`·`03-04 아스널`의 리그·UCL 라이벌 전력을 `+2~+3` 상향(≤92 캡 유지)하고, 빅클럽 보강을 **창당 최대 1명**으로 제한(맨유 `€45M` 겨울+UCL 창당 1명, 아스널 `€25M` 겨울 19R 단 1회 · `allowUclTransferWindow: false`).
+  - `07-08 맨유` ★3 미션을 "박지성 UCL 결승 선발 & 평점 TOP 3 우승"에서 **"박지성 월드 베스트 XI(월베) 선정"**(`season.globalAwards.worldBestXi`)으로 개편.
+- **3. 스토리 모드 3대 UI·규칙 버그 수정 (`src/components/common/PitchBoard.tsx`, `src/components/story/StorySetupScreen.tsx`, `src/components/transfer/TransferMarketModal.tsx`, `src/store/GameContext.tsx`)**:
+  - `PitchBoard`에 `missionHighlightPlayerIds` 전용 프롭을 신설해 스토리 개막 준비 화면에서 미션 핵심 선수에게 붉은 `부상 발생` 대신 황금빛 `★ 미션` 배지가 표시되도록 수정.
+  - `GameContext` 실시간 레거시 도전과제 24종 `useEffect`에 `state.storyMode` 차단 가드를 추가해 스토리 모드에서 일반 도전과제가 해금되지 않도록 격리.
+  - `TransferMarketModal` 스토리 모드 상단의 중복 `← 트레이드 룰렛으로` 버튼을 숨기고, 고정 `벤치 5` 표기를 실제 벤치 인원 수로 동적 표기하도록 수정.
+
+---
+
 ## v10.0.1 — 스토리 모드 현시대·가상 선수 혼입 전면 차단 & 이적시장 시즌 1회(19R) + UCL 16강 직전 1회 개편
 
 - **1. 스토리 모드 전 구간 100% 시대 로스터 격리 (`src/engine/dataLoader.ts`, `src/engine/transferEngine.ts`, `src/engine/uclEngine.ts`, `src/utils/playerLookup.ts`, `src/components/transfer/TransferMarketModal.tsx`, `src/components/league/LiveMatchBroadcast.tsx`, `src/store/GameContext.tsx`)**:

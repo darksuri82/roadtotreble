@@ -2394,7 +2394,7 @@ function openTransferWindowWithIncomingOffers(params: {
         isUclSpecial: options?.isUclSpecial,
       });
   const maxAttemptsOverride = storyMode
-    ? storyMode.winterMaxSignings ?? 3
+    ? storyMode.winterMaxSignings ?? 4
     : isRegularWindow
       ? getFfpWindowMaxAttempts(season.budgetState, windowIndex, 3)
       : undefined;
@@ -6591,6 +6591,8 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
             mergedAiRosters[c.id] = state.season.aiRosters[c.id];
           }
         }
+        const openPreUclWindow =
+          state.storyMode.allowUclTransferWindow !== false;
         const { ucl, uclPlayerStats } = createStoryUclR16State({
           seasonLabel: prep.seasonLabel,
           userClub: userClubEntry,
@@ -6601,21 +6603,27 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
           originLabels: prep.originLabels,
           excludeIds,
           ownedIds,
-          startWithSpecialTransfer: true,
+          startWithSpecialTransfer: openPreUclWindow,
         });
-        const storyPreUclTransfer = openTransferWindowWithIncomingOffers({
-          season: state.season,
-          starters: state.starters,
-          bench: state.bench,
-          windowIndex: 4,
-          triggerRound: state.season.totalRounds,
-          userRank,
-          storyMode: state.storyMode,
-          options: {
-            isUclSpecial: true,
-            championBonusActive: userRank === 1,
-          },
-        });
+        const storyPreUclTransfer = openPreUclWindow
+          ? openTransferWindowWithIncomingOffers({
+              season: state.season,
+              starters: state.starters,
+              bench: state.bench,
+              windowIndex: 4,
+              triggerRound: state.season.totalRounds,
+              userRank,
+              storyMode: state.storyMode,
+              options: {
+                isUclSpecial: true,
+                championBonusActive: userRank === 1,
+              },
+            })
+          : createClosedTransferState(
+              state.season.transferMarket.completedWindows,
+              state.season.transferMarket.history,
+              state.season.transferMarket.tradeHistory ?? [],
+            );
         return {
           ...state,
           phase: 'ucl',
@@ -7415,7 +7423,7 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         transferCashM: meta.cashBudgetM,
         chemPenalty: 0,
         window1MaxAttempts: 0,
-        window2MaxAttempts: meta.winterMaxSignings ?? 3,
+        window2MaxAttempts: meta.winterMaxSignings ?? 4,
         window3MaxAttempts: 0,
         scoreMultiplier: 1.0,
         extraLossMoraleDrop: 0,
@@ -7464,8 +7472,9 @@ function coreGameReducer(state: GameState, action: GameAction): GameState {
         aiRosters,
       });
 
-      // Story Mode: 1 league transfer window (winter 19R) + 1 pre-UCL transfer window (if scenario has UCL)
-      const transferWindows: [number, number, number] = [99, 19, 99];
+      // Story Mode: 1 winter transfer window (17R for 18-team Bundesliga / 19R for 20-team leagues)
+      const winterRound = totalRounds <= 34 ? 17 : 19;
+      const transferWindows: [number, number, number] = [99, winterRound, 99];
 
       const season: SeasonState = {
         runId: `story_${meta.id}_${Date.now()}`,
@@ -8013,13 +8022,14 @@ export function loadSavedStoryGameState(): GameState | null {
         aiRosters: nextPrepAi,
       };
     }
-    // Migrate v10.0.0 3-window league schedule [10,19,28] to single winter window [99,19,99]
+    // Migrate v10.0.0 3-window league schedule [10,19,28] to single winter window [99,17|19,99]
     if (
       parsed.season.transferWindows &&
       (parsed.season.transferWindows[0] !== 99 ||
         parsed.season.transferWindows[2] !== 99)
     ) {
-      parsed.season.transferWindows = [99, 19, 99];
+      const migratedWinterRound = parsed.season.totalRounds <= 34 ? 17 : 19;
+      parsed.season.transferWindows = [99, migratedWinterRound, 99];
     }
     // Purge any stale modern/generated incoming offers from pre-v10.0.1 open transfer windows
     if (parsed.season.transferMarket?.isOpen) {
@@ -8544,8 +8554,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   );
 
   // Real-time 24 Hidden Achievements evaluation + instant unlock toast notifications
+  // Hard isolation: Story Mode runs NEVER unlock regular Legacy Achievements!
   useEffect(() => {
-    if (!state.season) return;
+    if (state.storyMode || !state.season) return;
     const earnedIds = evaluateAchievements({
       leagueId: state.season.leagueId,
       totalRounds: state.season.totalRounds,
@@ -8583,6 +8594,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return () => window.clearTimeout(timer);
     }
   }, [
+    state.storyMode,
     state.season,
     state.starters,
     state.bench,

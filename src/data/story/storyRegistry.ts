@@ -52,12 +52,13 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
         pitch: '후반 1-0 승리를 지키는 모건·후트·캉테 수비 블록 완성',
       },
     ],
-    cashBudgetM: 25,
-    cashBudgetNote: '승격 2년 차 소형 구단 긴축 재정 (€25M)',
+    cashBudgetM: 35,
+    cashBudgetNote: '언더독 보너스 포함 소형 구단 재정 (€35M)',
     transferRule: 'winter_1_only',
-    transferRuleLabel: '시즌 1회 (겨울 19R) · 소형 예산 €25M',
+    allowUclTransferWindow: false,
+    transferRuleLabel: '시즌 1회 (겨울 19R · 4회 협상) · 예산 €35M',
     transferRuleReason:
-      '시즌 중 겨울 이적시장(19R) 단 1회만 열립니다. 승격 2년 차 소형 구단 체급에 맞춘 €25M 긴축 현금 안에서 15-16 5대 리그 상위팀·EPL 구단을 직접 지목해 알짜 트레이드를 설계해야 합니다.',
+      '시즌 중 겨울 이적시장(19R) 단 1회만 열리지만, 언더독 보정으로 4회 협상 기회와 €35M 현금이 주어집니다. 15-16 5대 리그 상위팀·EPL 구단을 직접 지목해 알짜 트레이드를 설계해 보세요.',
     checklist: [
       {
         id: 'lei_epl_title',
@@ -157,7 +158,7 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
         eraTag: '38라운드의 기적을 향해',
         title: '동화는 이제 당신의 전술판에서 시작된다',
         narrative:
-          '부유한 거인들의 돈과 스타 군단 앞에서 당신에게 쥐어진 현금은 단 €25M. 빠른 선발 없이 스스로 짠 라인업과 정밀한 역습, 그리고 겨울의 승부수로 불가능을 역사로 바꾸십시오.',
+          '부유한 거인들의 돈과 스타 군단 앞에서 당신에게 쥐어진 현금은 단 €35M. 빠른 선발 없이 스스로 짠 라인업과 정밀한 역습, 그리고 겨울의 승부수로 불가능을 역사로 바꾸십시오.',
         quote: '“딜리 딩, 딜리 동! 이제 깨어날 시간입니다.”',
         backdrop: 'underdog_crown',
         characters: [
@@ -248,12 +249,14 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
         pitch: '박지성·루니·호날두의 다재다능한 포지션 호환으로 팀 시너지를 증폭',
       },
     ],
-    cashBudgetM: 100,
-    cashBudgetNote: '세계 최상위 수익 · 대형 투자 빅클럽 재정 (€100M)',
+    cashBudgetM: 45,
+    cashBudgetNote: '완성형 빅클럽 보강 제한 · 창당 최대 1명 (€45M)',
     transferRule: 'winter_plus_ucl',
-    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 빅클럽 €100M',
+    winterMaxSignings: 1,
+    allowUclTransferWindow: true,
+    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 최대 1명 (€45M)',
     transferRuleReason:
-      '겨울 이적시장(19R) 1회와 UCL 16강 직전 1회 이적창이 열립니다. €100M 빅클럽 현금으로 07-08 5대 리그 상위팀·EPL 구단과 협상하되, 박지성 육성의 균형을 지켜야 합니다.',
+      '이미 유럽 최정상급 원년 스쿼드를 갖춘 07-08 맨유는 빅클럽 밸런스 보정으로 겨울(19R)과 UCL 16강 직전 창에서 각각 최대 1명(€45M 예산 내)만 보강할 수 있습니다. 강화된 첼시·아스널·바르사·밀란을 상대로 박지성 육성과 로테이션을 정밀하게 운영하세요.',
     checklist: [
       {
         id: 'mun_double',
@@ -270,8 +273,8 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
       {
         id: 'mun_park_ucl_final',
         starIndex: 3,
-        shortLabel: '박지성 UCL 결승 선발 & 평점 TOP 3 우승',
-        detail: '박지성이 UCL 결승전 선발 출전 + 팀 내 평점 TOP 3 기록하며 우승',
+        shortLabel: '박지성 월드 베스트 XI 선정',
+        detail: '시즌 결산 월드 베스트 XI(월베)에 박지성 선정',
       },
     ],
     introSlides: [
@@ -442,12 +445,13 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
         pitch: '맨시티·리버풀 맞대결과 UCL 토너먼트 승부처에 강한 변칙 운영',
       },
     ],
-    cashBudgetM: 55,
-    cashBudgetNote: '신구장 건설 대출 압박 긴축 재정 (€55M)',
+    cashBudgetM: 65,
+    cashBudgetNote: '언더독 보너스 포함 북런던 긴축 재정 (€65M)',
     transferRule: 'winter_plus_ucl',
-    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 긴축 €55M',
+    allowUclTransferWindow: true,
+    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 4회 협상 (€65M)',
     transferRuleReason:
-      '신구장 건설 비용 여파로 빅6 중 가장 빠듯한 €55M 예산이 주어집니다. 겨울(19R) 1회와 UCL 16강 직전 1회 이적창에서 18-19 5대 리그 상위팀·EPL 구단을 직접 지목해 얇은 뎁스를 보강하세요.',
+      '98점 맨시티·97점 리버풀의 틈을 뚫어야 하는 언더독 보정으로 겨울(19R)과 UCL 16강 직전 창에서 각각 4회 협상과 €65M 예산이 주어집니다. 18-19 5대 리그 상위팀·EPL 구단을 직접 지목해 얇은 뎁스를 보강하세요.',
     checklist: [
       {
         id: 'tot_epl_title',
@@ -558,7 +562,7 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
         eraTag: '2019년 6월 · 마드리드의 밤을 다시 쓰다',
         title: '준우승의 눈물을 트로피의 함성으로',
         narrative:
-          '에티하드의 기적과 암스테르담의 버저비터를 넘어 도달했던 마드리드의 밤, 현실의 토트넘은 마지막 문턱에서 고개를 떨구었습니다. 긴축 예산 €55M과 당신의 전술판으로 DESK의 공격포인트 60+를 폭발시키고, 그날의 눈물을 우승의 환희로 바꾸십시오.',
+          '에티하드의 기적과 암스테르담의 버저비터를 넘어 도달했던 마드리드의 밤, 현실의 토트넘은 마지막 문턱에서 고개를 떨구었습니다. 언더독 예산 €65M과 당신의 전술판으로 DESK의 공격포인트 60+를 폭발시키고, 그날의 눈물을 우승의 환희로 바꾸십시오.',
         quote: '“감히 도전하는 것이 곧 행동하는 것이다 — To Dare Is To Do.”',
         backdrop: 'underdog_crown',
         characters: [
@@ -649,13 +653,14 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
         pitch: '원정 빅매치 0패 방어에 초점을 맞춘 캠벨·투레·콜 철벽 라인',
       },
     ],
-    cashBudgetM: 30,
-    cashBudgetNote: '에미레이츠 신구장 건설 긴축 · 겨울 1회 한정 (€30M)',
+    cashBudgetM: 25,
+    cashBudgetNote: '인빈시블스 원년 스쿼드 엄격 제한 · 겨울 1회 한정 (€25M)',
     transferRule: 'winter_1_only',
     winterMaxSignings: 1,
-    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 최대 1명 (€30M)',
+    allowUclTransferWindow: false,
+    transferRuleLabel: '겨울(19R) 단 1회 · 최대 1명 한정 (UCL 창 없음 · €25M)',
     transferRuleReason:
-      '03-04 아스널은 에미레이츠 신구장 건설 재정 압박과 인빈시블스 원년 스쿼드의 정체성을 지키기 위해, 겨울(19R) 1회와 UCL 16강 직전 1회 이적창에서 각각 최대 1명(€30M 예산 내)만 보강할 수 있습니다.',
+      '03-04 아스널은 이미 완성된 인빈시블스 스쿼드의 정체성과 밸런스를 지키기 위해 겨울(19R) 단 1회 이적창에서 최대 1명(€25M 예산 내)만 보강할 수 있으며, UCL 직전 이적창은 열리지 않습니다. 강화된 아브라모비치 첼시·맨유·AC밀란·레알을 원년 멤버로 돌파하세요.',
     checklist: [
       {
         id: 'ars_epl_title',
@@ -846,12 +851,13 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
         pitch: '바르사·레알 맞대결과 UCL 토너먼트에서 극한의 집중력을 발휘',
       },
     ],
-    cashBudgetM: 45,
-    cashBudgetNote: '바르사·레알 대비 중소형 빅클럽 알짜 재정 (€45M)',
+    cashBudgetM: 55,
+    cashBudgetNote: '언더독 보너스 포함 중소형 빅클럽 재정 (€55M)',
     transferRule: 'winter_plus_ucl',
-    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 중소형 €45M',
+    allowUclTransferWindow: true,
+    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 4회 협상 (€55M)',
     transferRuleReason:
-      '거대 양강 바르사·레알의 절반에도 못 미치는 €45M 예산이지만, 겨울(19R) 1회와 UCL 16강 직전 1회 이적창에서 13-14 5대 리그 상위팀·라리가 구단을 직접 지목해 촐리스모 전사들을 보강할 수 있습니다.',
+      '메시 바르사·BBC 레알을 상대하는 언더독 보정으로 겨울(19R)과 UCL 16강 직전 창에서 각각 4회 협상과 €55M 예산이 주어집니다. 13-14 5대 리그 상위팀·라리가 구단을 직접 지목해 촐리스모 전사들을 보강해 보세요.',
     checklist: [
       {
         id: 'atm_laliga_title',
@@ -994,6 +1000,400 @@ export const STORY_SCENARIOS: readonly StoryScenarioMeta[] = [
     ],
     isPlayable: true,
   },
+  {
+    id: '2324_leverkusen',
+    seasonLabel: '23-24',
+    clubName: '바이엘 레버쿠젠',
+    clubShortName: 'B04',
+    title: '네버쿠젠에서 무패쿠젠으로',
+    subtitle: '120년 무관의 꼬리표를 떼어낸 샤비 알론소와 90분 이후의 마법',
+    leagueId: 'bundesliga',
+    leagueLabel: '23-24 분데스리가',
+    cupLabel: 'DFB-포칼',
+    hasUcl: false,
+    difficulty: '어려움',
+    accentColor: '#dc2626',
+    clubProfile: {
+      name: '바이엘 레버쿠젠',
+      shortName: 'B04',
+      primaryColor: '#E32221',
+      secondaryColor: '#111111',
+      pattern: 'solid',
+    },
+    managerName: '샤비 알론소',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'parted',
+      hairColor: 'brown',
+      outfit: 'navy_coat',
+    },
+    defaultFormation: '3-4-2-1',
+    defaultTactic: 'possession',
+    managerTraitOptions: [
+      {
+        traitId: 'tiki_taka',
+        tag: '역사적 기본 · 알론소 하프스페이스 점유',
+        pitch: '자카·팔라시오스의 안정적 빌드업과 비르츠의 하프스페이스 창조력을 극대화',
+      },
+      {
+        traitId: 'wing_bomber',
+        tag: '대안 1 · 그리말도·프림퐁 양翼 폭격',
+        pitch: '양쪽 윙백의 오버래핑과 컷백 화력으로 3-4-2-1 측면 파괴력을 끌어올림',
+      },
+      {
+        traitId: 'halftime_wizard',
+        tag: '대안 2 · 90분 이후의 레버쿠젠 타임',
+        pitch: '후반 전술 변화와 막판 집중력으로 패배 직전의 경기를 뒤집는 무패 DNA',
+      },
+    ],
+    cashBudgetM: 50,
+    cashBudgetNote: '언더독 보너스 포함 분데스리가 도전자 재정 (€50M)',
+    transferRule: 'winter_1_only',
+    allowUclTransferWindow: false,
+    transferRuleLabel: '시즌 1회 (겨울 17R · 4회 협상) · 예산 €50M',
+    transferRuleReason:
+      '18개 구단 34라운드 분데스리가 일정에 맞춰 겨울 이적시장(17R) 1회가 열리며, 언더독 보정으로 4회 협상과 €50M 현금이 주어집니다. 23-24 5대 리그 상위팀·분데스리가 구단을 직접 지목해 무패 질주의 완성도를 높이세요.',
+    checklist: [
+      {
+        id: 'lev_bundesliga_title',
+        starIndex: 1,
+        shortLabel: '분데스리가 첫 우승',
+        detail: '바이에른 뮌헨 11연패를 깨고 구단 사상 첫 분데스리가 1위 달성',
+      },
+      {
+        id: 'lev_trio_wirtz',
+        starIndex: 2,
+        shortLabel: '핵심 3인방 각성 & 비르츠 공격P 18+',
+        detail: '비르츠·그리말도·보니페이스 중 1명 이상 각성 + 비르츠 리그 공격P 18 이상',
+      },
+      {
+        id: 'lev_unbeaten_or_double',
+        starIndex: 3,
+        shortLabel: '분데스리가 무패 우승 또는 DFB-포칼 더블',
+        detail: '34경기 0패 무패 우승 또는 분데스리가·DFB-포칼 국내 더블 달성',
+      },
+    ],
+    introSlides: [
+      {
+        id: 'lev-1',
+        chapterLabel: 'CHAPTER 01',
+        eraTag: '2023년 8월 · 바이아레나',
+        title: '“네버쿠젠”이라는 조롱을 지울 젊은 지휘자',
+        narrative:
+          '120년 역사 동안 단 한 번도 마이스터샬레를 들지 못해 “네버쿠젠”이라 불렸던 팀. 강등권에서 구단을 구해낸 젊은 명장 샤비 알론소는 3-4-2-1의 정교한 설계도를 펼쳐 들고, 바이에른 뮌헨의 11연패 제국에 정면으로 도전장을 던집니다.',
+        quote: '“우리를 둘러싼 과거의 별명은 중요하지 않습니다. 오늘부터 새로운 역사를 씁니다.”',
+        backdrop: 'bayarena_unbeaten',
+        characters: [
+          {
+            name: '알론소',
+            roleLabel: '감독',
+            kind: 'manager',
+            skinTone: 'peach',
+            hairColor: 'brown',
+            hairStyle: 'parted',
+            primaryColor: '#E32221',
+            secondaryColor: '#111111',
+            x: 130,
+            emblem: 'shield',
+          },
+        ],
+      },
+      {
+        id: 'lev-2',
+        chapterLabel: 'CHAPTER 02',
+        eraTag: '3-4-2-1 · 끊임없이 움직이는 붉은 톱니바퀴',
+        title: '천재의 발끝과 양翼의 질주가 여는 신세계',
+        narrative:
+          '중원의 나침반 그라니트 자카가 템포를 조율하면, 그리말도와 프림퐁이 좌우 터치라인을 불태웁니다. 그리고 하프스페이스 사이를 유령처럼 파고든 20세 천재 플로리안 비르츠가 보니페이스에게 완벽한 결승 패스를 찔러 넣습니다.',
+        quote: '“종료 휘슬이 울리기 전까지, 레버쿠젠의 경기는 결코 끝나지 않는다.”',
+        backdrop: 'counter_sprint',
+        characters: [
+          {
+            name: '그리말도',
+            shirtNumber: 20,
+            kind: 'player',
+            skinTone: 'peach',
+            hairColor: 'brown',
+            hairStyle: 'short',
+            primaryColor: '#E32221',
+            secondaryColor: '#111111',
+            x: 70,
+            emblem: 'bolt',
+          },
+          {
+            name: '비르츠',
+            shirtNumber: 10,
+            kind: 'player',
+            skinTone: 'light',
+            hairColor: 'blonde',
+            hairStyle: 'short',
+            primaryColor: '#E32221',
+            secondaryColor: '#111111',
+            x: 130,
+            emblem: 'ball',
+          },
+          {
+            name: '보니페이스',
+            shirtNumber: 22,
+            kind: 'player',
+            skinTone: 'deep',
+            hairColor: 'black',
+            hairStyle: 'buzz',
+            primaryColor: '#E32221',
+            secondaryColor: '#111111',
+            x: 190,
+          },
+        ],
+      },
+      {
+        id: 'lev-3',
+        chapterLabel: 'CHAPTER 03',
+        eraTag: '34라운드 · 독일 최초 무패 우승의 서사',
+        title: '케인의 바이에른을 넘어 황금의 마이스터샬레로',
+        narrative:
+          '해리 케인을 영입한 절대 강자 바이에른 뮌헨과 도르트문트·라이프치히가 기다리는 34라운드 대장정. 겨울 17R 이적시장의 승부수와 흔들리지 않는 전술로 120년 한을 풀고, 무패 우승 또는 DFB-포칼 더블의 전설을 완성하십시오.',
+        quote: '“더 이상 네버쿠젠은 없다. 오늘 우리는 불멸의 챔피언이다.”',
+        backdrop: 'underdog_crown',
+        characters: [
+          {
+            name: '자카',
+            shirtNumber: 34,
+            kind: 'player',
+            skinTone: 'light',
+            hairColor: 'brown',
+            hairStyle: 'short',
+            primaryColor: '#E32221',
+            secondaryColor: '#111111',
+            x: 72,
+          },
+          {
+            name: '비르츠',
+            shirtNumber: 10,
+            kind: 'player',
+            skinTone: 'light',
+            hairColor: 'blonde',
+            hairStyle: 'short',
+            primaryColor: '#E32221',
+            secondaryColor: '#111111',
+            x: 130,
+            emblem: 'crown',
+          },
+          {
+            name: '타',
+            shirtNumber: 4,
+            kind: 'player',
+            skinTone: 'deep',
+            hairColor: 'black',
+            hairStyle: 'buzz',
+            primaryColor: '#E32221',
+            secondaryColor: '#111111',
+            x: 188,
+            emblem: 'shield',
+          },
+        ],
+      },
+    ],
+    isPlayable: true,
+  },
+  {
+    id: '0910_inter',
+    seasonLabel: '09-10',
+    clubName: '인테르 밀란',
+    clubShortName: 'INT',
+    title: '스페셜 원의 이탈리아 최초 트레블',
+    subtitle: '펩 바르사와 판 할 바이에른을 격파한 산 시로의 철벽과 직선 역습',
+    leagueId: 'seriea',
+    leagueLabel: '09-10 세리에 A',
+    cupLabel: '코파 이탈리아',
+    hasUcl: true,
+    uclLabel: '09-10 UCL 16강',
+    difficulty: '극한',
+    accentColor: '#2563eb',
+    clubProfile: {
+      name: '인테르 밀란',
+      shortName: 'INT',
+      primaryColor: '#0068A8',
+      secondaryColor: '#111111',
+      pattern: 'stripes',
+    },
+    managerName: '조제 무리뉴',
+    managerAvatar: {
+      gender: 'male',
+      skinTone: 'peach',
+      hairStyle: 'parted',
+      hairColor: 'silver',
+      outfit: 'classic_suit',
+    },
+    defaultFormation: '4-2-3-1',
+    defaultTactic: 'counter',
+    managerTraitOptions: [
+      {
+        traitId: 'catenaccio',
+        tag: '역사적 기본 · 무리뉴식 실리 철벽',
+        pitch: '루시우·사무엘·사네티의 질식 수비 블록과 칼날 같은 역습으로 토너먼트를 제압',
+      },
+      {
+        traitId: 'big_game_hunter',
+        tag: '대안 1 · 스페셜 원의 토너먼트 마법',
+        pitch: '첼시·바르셀로나·바이에른과의 빅매치에서 극한의 승부사 기질을 발휘',
+      },
+      {
+        traitId: 'underdog_killer',
+        tag: '대안 2 · 캄프 누의 기적',
+        pitch: '최강 바르셀로나와 세리에 A 추격자들을 상대로 점유율을 내주고 승리를 쟁취',
+      },
+    ],
+    cashBudgetM: 60,
+    cashBudgetNote: '언더독 도전자 보정 포함 밀라노 재정 (€60M)',
+    transferRule: 'winter_plus_ucl',
+    allowUclTransferWindow: true,
+    transferRuleLabel: '시즌 1회(19R) + UCL 직전 1회 · 창당 4회 협상 (€60M)',
+    transferRuleReason:
+      '메시·사비·이니에스타의 최강 바르셀로나와 첼시·바이에른을 돌파해야 하는 트레블 도전입니다. 겨울(19R)과 UCL 16강 직전 창에서 각각 4회 협상과 €60M 예산으로 09-10 5대 리그 상위팀·세리에 A 구단에서 핵심 전력을 보강하세요.',
+    checklist: [
+      {
+        id: 'int_seriea_title',
+        starIndex: 1,
+        shortLabel: '세리에 A 우승',
+        detail: 'AS 로마의 맹추격을 뿌리치고 09-10 세리에 A 스쿠데토 제패',
+      },
+      {
+        id: 'int_trio_milito',
+        starIndex: 2,
+        shortLabel: '트리오 공격P 45+ & 밀리토 18골+',
+        detail: '밀리토·스네이더르·에투 리그 공격포인트 합산 45 이상 + 밀리토 리그 18골 이상',
+      },
+      {
+        id: 'int_historic_treble',
+        starIndex: 3,
+        shortLabel: '이탈리아 최초 트레블',
+        detail: '세리에 A + 코파 이탈리아 + 09-10 UEFA 챔피언스리그 3관왕 달성',
+      },
+    ],
+    introSlides: [
+      {
+        id: 'int-1',
+        chapterLabel: 'CHAPTER 01',
+        eraTag: '2009년 8월 · 주세페 메아차',
+        title: '에이스를 내주고 얻은 다섯 개의 조각',
+        narrative:
+          '팀의 간판 즐라탄 이브라히모비치가 바르셀로나로 떠났지만, 조제 무리뉴는 미소를 지었습니다. 에투·밀리토·스네이더르·루시우·모타가 합류한 순간, 인테르는 개인이 아닌 철의 군단으로 다시 태어났습니다.',
+        quote: '“우리를 두려워하지 않는 팀은 없다. 우리는 승리를 위해 모든 것을 바칠 준비가 됐다.”',
+        backdrop: 'san_siro_treble',
+        characters: [
+          {
+            name: '무리뉴',
+            roleLabel: '감독',
+            kind: 'manager',
+            skinTone: 'peach',
+            hairColor: 'silver',
+            hairStyle: 'parted',
+            primaryColor: '#0068A8',
+            secondaryColor: '#111111',
+            x: 130,
+            emblem: 'shield',
+          },
+        ],
+      },
+      {
+        id: 'int-2',
+        chapterLabel: 'CHAPTER 02',
+        eraTag: '밀리토 · 스네이더르 · 에투',
+        title: '우주 최강을 침몰시킨 단 세 번의 터치',
+        narrative:
+          '스네이더르의 예리한 킬패스 한 줄기, 측면 수비까지 헌신하는 에투의 질주, 그리고 어떤 각도에서도 골망을 찢는 ‘왕자’ 디에고 밀리토의 결정력. 네라주리의 직선 역습은 점유율 축구의 정점마저 무너뜨릴 칼날이 되었습니다.',
+        quote: '“공을 오래 쥐고 있을 필요는 없다. 단 한 번의 역습으로 심장을 찌르면 된다.”',
+        backdrop: 'counter_sprint',
+        characters: [
+          {
+            name: '스네이더르',
+            shirtNumber: 10,
+            kind: 'player',
+            skinTone: 'light',
+            hairColor: 'brown',
+            hairStyle: 'buzz',
+            primaryColor: '#0068A8',
+            secondaryColor: '#111111',
+            x: 70,
+            emblem: 'ball',
+          },
+          {
+            name: '밀리토',
+            shirtNumber: 22,
+            kind: 'player',
+            skinTone: 'peach',
+            hairColor: 'brown',
+            hairStyle: 'short',
+            primaryColor: '#0068A8',
+            secondaryColor: '#111111',
+            x: 130,
+            emblem: 'crown',
+          },
+          {
+            name: '에투',
+            shirtNumber: 9,
+            kind: 'player',
+            skinTone: 'deep',
+            hairColor: 'black',
+            hairStyle: 'buzz',
+            primaryColor: '#0068A8',
+            secondaryColor: '#111111',
+            x: 190,
+            emblem: 'bolt',
+          },
+        ],
+      },
+      {
+        id: 'int-3',
+        chapterLabel: 'CHAPTER 03',
+        eraTag: '2010년 5월 · 산티아고 베르나베우를 향해',
+        title: '45년 만의 빅이어, 이탈리아 최초의 트레블',
+        narrative:
+          '로마와의 살얼음판 스쿠데토 경쟁, 코파 이탈리아 결승, 그리고 첼시·바르셀로나·바이에른이 버티는 09-10 챔피언스리그 토너먼트. 캡틴 사네티의 투혼과 스페셜 원의 지략으로 세 개의 트로피를 모두 밀라노로 가져오십시오.',
+        quote: '“이탈리아 축구 역사상 누구도 밟지 못한 정상 — 이제 우리의 차례다.”',
+        backdrop: 'underdog_crown',
+        characters: [
+          {
+            name: '줄리우 세자르',
+            shirtNumber: 12,
+            kind: 'player',
+            skinTone: 'tan',
+            hairColor: 'brown',
+            hairStyle: 'short',
+            primaryColor: '#1e293b',
+            secondaryColor: '#38bdf8',
+            x: 72,
+          },
+          {
+            name: '사네티',
+            shirtNumber: 4,
+            kind: 'player',
+            skinTone: 'peach',
+            hairColor: 'black',
+            hairStyle: 'parted',
+            primaryColor: '#0068A8',
+            secondaryColor: '#111111',
+            x: 130,
+            emblem: 'crown',
+          },
+          {
+            name: '루시우',
+            shirtNumber: 6,
+            kind: 'player',
+            skinTone: 'tan',
+            hairColor: 'brown',
+            hairStyle: 'buzz',
+            primaryColor: '#0068A8',
+            secondaryColor: '#111111',
+            x: 188,
+            emblem: 'shield',
+          },
+        ],
+      },
+    ],
+    isPlayable: true,
+  },
 ];
 
 export const STORY_SCENARIO_BY_ID: Record<StoryScenarioId, StoryScenarioMeta> =
@@ -1042,6 +1442,16 @@ export async function loadStoryScenarioBundle(
       break;
     case '1314_atletico':
       mod = (await import('./scenarios/1314_atletico.json')) as unknown as {
+        default: StoryScenarioDataBundle;
+      };
+      break;
+    case '2324_leverkusen':
+      mod = (await import('./scenarios/2324_leverkusen.json')) as unknown as {
+        default: StoryScenarioDataBundle;
+      };
+      break;
+    case '0910_inter':
+      mod = (await import('./scenarios/0910_inter.json')) as unknown as {
         default: StoryScenarioDataBundle;
       };
       break;

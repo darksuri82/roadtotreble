@@ -1,0 +1,8673 @@
+{
+  "scenarioId": "2324_leverkusen",
+  "domesticLeagueId": "bundesliga",
+  "userClubId": "lev_2324",
+  "userStarterIds": [
+    "s2324_lev_2324_hradecky",
+    "s2324_lev_2324_tapsoba",
+    "s2324_lev_2324_tah",
+    "s2324_lev_2324_kossounou",
+    "s2324_lev_2324_grimaldo",
+    "s2324_lev_2324_xhaka",
+    "s2324_lev_2324_palacios",
+    "s2324_lev_2324_frimpong",
+    "s2324_lev_2324_wirtz",
+    "s2324_lev_2324_hofmann",
+    "s2324_lev_2324_boniface"
+  ],
+  "userBenchIds": [
+    "s2324_lev_2324_kovar",
+    "s2324_lev_2324_hincapie",
+    "s2324_lev_2324_stanisic",
+    "s2324_lev_2324_andrich",
+    "s2324_lev_2324_adli",
+    "s2324_lev_2324_schick"
+  ],
+  "domesticClubs": [
+    {
+      "id": "lev_2324",
+      "name": "바이엘 레버쿠젠",
+      "shortName": "B04",
+      "leagueId": "bundesliga",
+      "primaryColor": "#E32221",
+      "secondaryColor": "#111111",
+      "pattern": "solid",
+      "formation": "3-4-2-1",
+      "defaultTactic": "possession",
+      "att": 85,
+      "mid": 85,
+      "def": 84,
+      "manager": {
+        "name": "사비 알론소",
+        "ovr": 89,
+        "traitId": "tiki_taka",
+        "preferredFormations": [
+          "3-4-2-1"
+        ],
+        "preferredTactics": [
+          "possession"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_lev_2324_hradecky",
+          "name": "루카시 흐라데츠키",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 83,
+          "nat": "핀란드",
+          "code": "FI",
+          "sta": 81,
+          "styles": [
+            "shot_stopper"
+          ],
+          "note": "무패 시즌 주장 · 분데스리가 최소 실점(24실점)의 수문장"
+        },
+        {
+          "id": "s2324_lev_2324_tapsoba",
+          "name": "에드몽 탑소바",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 84,
+          "nat": "부르키나파소",
+          "code": "BF",
+          "sta": 87,
+          "styles": [
+            "ball_playing_cb"
+          ],
+          "note": "후방 빌드업의 시발점이 된 침착한 센터백"
+        },
+        {
+          "id": "s2324_lev_2324_tah",
+          "name": "요나탄 타",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 85,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 86,
+          "styles": [
+            "stopper_cb",
+            "ball_playing_cb"
+          ],
+          "note": "스리백 중앙을 완벽히 통솔한 무패 수비 리더"
+        },
+        {
+          "id": "s2324_lev_2324_kossounou",
+          "name": "오딜롱 코수누",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 82,
+          "nat": "코트디부아르",
+          "code": "CI",
+          "sta": 86,
+          "styles": [
+            "ball_playing_cb"
+          ],
+          "sec": [
+            "RB"
+          ]
+        },
+        {
+          "id": "s2324_lev_2324_grimaldo",
+          "name": "알렉스 그리말도",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "LB"
+          ],
+          "ovr": 85,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 92,
+          "styles": [
+            "attacking_wingback"
+          ],
+          "sec": [
+            "LM"
+          ],
+          "note": "23-24 분데스리가 도움왕 · 왼발 프리킥·오버래핑의 마법사"
+        },
+        {
+          "id": "s2324_lev_2324_xhaka",
+          "name": "그라니트 자카",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 85,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 93,
+          "styles": [
+            "deep_playmaker",
+            "ball_winner"
+          ],
+          "note": "알론소 축구의 심장 · 패스·템포 조절의 절대 사령관"
+        },
+        {
+          "id": "s2324_lev_2324_palacios",
+          "name": "에세키엘 팔라시오스",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 83,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 90,
+          "styles": [
+            "box_to_box",
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_lev_2324_frimpong",
+          "name": "제레미 프림퐁",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "RB"
+          ],
+          "ovr": 84,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 92,
+          "styles": [
+            "attacking_wingback",
+            "line_breaker"
+          ],
+          "sec": [
+            "RM",
+            "RW"
+          ],
+          "note": "우측 터치라인을 찢어버린 폭발적 윙백"
+        },
+        {
+          "id": "s2324_lev_2324_wirtz",
+          "name": "플로리안 비르츠",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "LW"
+          ],
+          "ovr": 86,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 88,
+          "styles": [
+            "playmaker_10",
+            "inverted_winger"
+          ],
+          "sec": [
+            "CM"
+          ],
+          "note": "23-24 분데스리가 올해의 선수 · 레버쿠젠 무패 신화의 천재 10번"
+        },
+        {
+          "id": "s2324_lev_2324_hofmann",
+          "name": "요나스 호프만",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "RM"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 86,
+          "styles": [
+            "playmaker_10",
+            "classic_winger"
+          ],
+          "sec": [
+            "RW",
+            "CM"
+          ]
+        },
+        {
+          "id": "s2324_lev_2324_boniface",
+          "name": "빅터 보니페이스",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "나이지리아",
+          "code": "NG",
+          "sta": 84,
+          "styles": [
+            "complete_forward",
+            "poacher"
+          ],
+          "note": "23-24 분데스리가 올해의 신인 · 피지컬과 기술을 겸비한 최전방 폭격기"
+        },
+        {
+          "id": "s2324_lev_2324_kovar",
+          "name": "마테이 코바르",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 77,
+          "nat": "체코",
+          "code": "CZ",
+          "sta": 78,
+          "styles": [
+            "sweeper_keeper"
+          ]
+        },
+        {
+          "id": "s2324_lev_2324_hincapie",
+          "name": "피에로 인카피에",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "LB"
+          ],
+          "ovr": 82,
+          "nat": "에콰도르",
+          "code": "EC",
+          "sta": 88,
+          "styles": [
+            "ball_playing_cb",
+            "stopper_cb"
+          ],
+          "sec": [
+            "LWB"
+          ]
+        },
+        {
+          "id": "s2324_lev_2324_stanisic",
+          "name": "요시프 스타니시치",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "RB"
+          ],
+          "ovr": 80,
+          "nat": "크로아티아",
+          "code": "HR",
+          "sta": 86,
+          "styles": [
+            "stopper_cb"
+          ],
+          "sec": [
+            "RWB"
+          ]
+        },
+        {
+          "id": "s2324_lev_2324_andrich",
+          "name": "로베르트 안드리히",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 90,
+          "styles": [
+            "ball_winner",
+            "box_to_box"
+          ],
+          "sec": [
+            "CB"
+          ],
+          "note": "후반 추가시간 극장골과 중원 투지의 상징"
+        },
+        {
+          "id": "s2324_lev_2324_adli",
+          "name": "아민 아들리",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "CAM"
+          ],
+          "ovr": 80,
+          "nat": "모로코",
+          "code": "MA",
+          "sta": 86,
+          "styles": [
+            "inverted_winger",
+            "line_breaker"
+          ],
+          "sec": [
+            "RW",
+            "ST"
+          ]
+        },
+        {
+          "id": "s2324_lev_2324_schick",
+          "name": "파트리크 쉬크",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 82,
+          "nat": "체코",
+          "code": "CZ",
+          "sta": 81,
+          "styles": [
+            "poacher",
+            "complete_forward"
+          ],
+          "note": "90분+ 극장 역전골의 사나이"
+        }
+      ]
+    },
+    {
+      "id": "bay_2324",
+      "name": "바이에른 뮌헨",
+      "shortName": "BAY",
+      "leagueId": "bundesliga",
+      "primaryColor": "#DC052D",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "gegenpressing",
+      "att": 90,
+      "mid": 88,
+      "def": 87,
+      "manager": {
+        "name": "토마스 투헬",
+        "ovr": 86,
+        "traitId": "big_game_hunter",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "gegenpressing"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_bay_2324_neuer",
+          "name": "마누엘 노이어",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 88,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "sweeper_keeper"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_davies",
+          "name": "알폰소 데이비스",
+          "pos": "DF",
+          "main": [
+            "LB",
+            "LWB"
+          ],
+          "ovr": 84,
+          "nat": "캐나다",
+          "code": "CA",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_kim",
+          "name": "김민재",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 85,
+          "nat": "대한민국",
+          "code": "KR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_deligt",
+          "name": "마테이스 더 리흐트",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 86,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_kimmich",
+          "name": "요주아 키미히",
+          "pos": "DF",
+          "main": [
+            "RB",
+            "CDM"
+          ],
+          "ovr": 88,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "deep_playmaker",
+            "attacking_wingback"
+          ],
+          "sec": [
+            "CM"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_goretzka",
+          "name": "레온 고레츠카",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_laimer",
+          "name": "콘라트 라이머",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 87,
+          "styles": [
+            "ball_winner",
+            "box_to_box"
+          ],
+          "sec": [
+            "RB"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_sane",
+          "name": "리로이 사네",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "RW"
+          ],
+          "ovr": 86,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger",
+            "line_breaker"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_musiala",
+          "name": "자말 무시알라",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "LW"
+          ],
+          "ovr": 88,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10",
+            "inverted_winger"
+          ],
+          "sec": [
+            "CM"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_coman",
+          "name": "킹슬리 코망",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "LW"
+          ],
+          "ovr": 84,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "classic_winger"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_kane",
+          "name": "해리 케인",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 91,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 82,
+          "styles": [
+            "complete_forward",
+            "poacher"
+          ],
+          "note": "23-24 분데스리가 36골 유러피언 골든슈"
+        },
+        {
+          "id": "s2324_bay_2324_ulreich",
+          "name": "스벤 울라이히",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_upamecano",
+          "name": "다요 우파메카노",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 84,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "ball_playing_cb"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_mazraoui",
+          "name": "누사이르 마즈라위",
+          "pos": "DF",
+          "main": [
+            "RB",
+            "LB"
+          ],
+          "ovr": 81,
+          "nat": "모로코",
+          "code": "MA",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_pavlovic",
+          "name": "알렉산다르 파블로비치",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "deep_playmaker"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_muller",
+          "name": "토마스 뮐러",
+          "pos": "FW",
+          "main": [
+            "CAM",
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_bay_2324_gnabry",
+          "name": "세르주 그나브리",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "LW"
+          ],
+          "ovr": 83,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "vfb_2324",
+      "name": "VfB 슈투트가르트",
+      "shortName": "VFB",
+      "leagueId": "bundesliga",
+      "primaryColor": "#E32219",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-4-2",
+      "defaultTactic": "possession",
+      "att": 85,
+      "mid": 83,
+      "def": 83,
+      "manager": {
+        "name": "제바스티안 회네스",
+        "ovr": 85,
+        "traitId": "tiki_taka",
+        "preferredFormations": [
+          "4-4-2"
+        ],
+        "preferredTactics": [
+          "possession"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_vfb_2324_nubels",
+          "name": "알렉산더 뉘벨",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 83,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_mittelstadt",
+          "name": "막시밀리안 미텔슈테트",
+          "pos": "DF",
+          "main": [
+            "LB",
+            "LWB"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_anton",
+          "name": "발데마르 안톤",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 83,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "ball_playing_cb"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_ito",
+          "name": "이토 히로키",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "LB"
+          ],
+          "ovr": 82,
+          "nat": "일본",
+          "code": "JP",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_vagnoman",
+          "name": "요샤 파그노만",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_fuhrich",
+          "name": "크리스 퓌리히",
+          "pos": "MF",
+          "main": [
+            "LM",
+            "LW"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "classic_winger"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_stiller",
+          "name": "안겔로 슈틸러",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "deep_playmaker"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_karazor",
+          "name": "아타칸 카라조르",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 81,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_millot",
+          "name": "엔조 미요",
+          "pos": "MF",
+          "main": [
+            "RM",
+            "CAM"
+          ],
+          "ovr": 81,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_guirassy",
+          "name": "세루 기라시",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 86,
+          "nat": "기니",
+          "code": "GN",
+          "sta": 82,
+          "styles": [
+            "complete_forward",
+            "poacher"
+          ],
+          "note": "23-24 분데스리가 28골 폭발"
+        },
+        {
+          "id": "s2324_vfb_2324_undav",
+          "name": "데니스 운다브",
+          "pos": "FW",
+          "main": [
+            "ST",
+            "CAM"
+          ],
+          "ovr": 83,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "complete_forward"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_bredlow",
+          "name": "파비안 브레들로",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 74,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_rouault",
+          "name": "앙토니 루오",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 78,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_leweling",
+          "name": "제이미 레벨링",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "RM"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_vfb_2324_dahoud",
+          "name": "마흐무드 다후드",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rbl_2324",
+      "name": "RB 라이프치히",
+      "shortName": "RBL",
+      "leagueId": "bundesliga",
+      "primaryColor": "#DD0741",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-4-2",
+      "defaultTactic": "gegenpressing",
+      "att": 86,
+      "mid": 85,
+      "def": 84,
+      "manager": {
+        "name": "마르코 로제",
+        "ovr": 84,
+        "traitId": "gegenpress_guru",
+        "preferredFormations": [
+          "4-4-2"
+        ],
+        "preferredTactics": [
+          "gegenpressing"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_rbl_2324_gulacsi",
+          "name": "페테르 굴라치",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 83,
+          "nat": "헝가리",
+          "code": "HU",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_raum",
+          "name": "다비트 라움",
+          "pos": "DF",
+          "main": [
+            "LB",
+            "LWB"
+          ],
+          "ovr": 83,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_orban",
+          "name": "빌리 오르반",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 84,
+          "nat": "헝가리",
+          "code": "HU",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_lukeba",
+          "name": "카스텔로 뤼케바",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 82,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_henrichs",
+          "name": "베냐민 헨릭스",
+          "pos": "DF",
+          "main": [
+            "RB",
+            "LB"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_simons",
+          "name": "사비 시몬스",
+          "pos": "MF",
+          "main": [
+            "LM",
+            "CAM"
+          ],
+          "ovr": 85,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 84,
+          "styles": [
+            "playmaker_10",
+            "inverted_winger"
+          ],
+          "sec": [
+            "LW",
+            "RW"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_schlager",
+          "name": "크사버 슐라거",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 83,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_haidara",
+          "name": "아마두 아이다라",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 82,
+          "nat": "말리",
+          "code": "ML",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_olmo",
+          "name": "다니 올모",
+          "pos": "MF",
+          "main": [
+            "RM",
+            "CAM"
+          ],
+          "ovr": 86,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 84,
+          "styles": [
+            "playmaker_10"
+          ],
+          "sec": [
+            "RW",
+            "LW"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_openda",
+          "name": "로이스 오펜다",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 86,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 82,
+          "styles": [
+            "line_breaker",
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_sesko",
+          "name": "베냐민 세슈코",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "슬로베니아",
+          "code": "SI",
+          "sta": 82,
+          "styles": [
+            "complete_forward"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_blaswich",
+          "name": "야니스 블라스비히",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_simakan",
+          "name": "모하메드 시마칸",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "RB"
+          ],
+          "ovr": 82,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_kampl",
+          "name": "케빈 캄플",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "슬로베니아",
+          "code": "SI",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_rbl_2324_poulsen",
+          "name": "유수프 포울센",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 78,
+          "nat": "덴마크",
+          "code": "DK",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bvb_2324",
+      "name": "보루시아 도르트문트",
+      "shortName": "BVB",
+      "leagueId": "bundesliga",
+      "primaryColor": "#FDE100",
+      "secondaryColor": "#000000",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "counter",
+      "att": 85,
+      "mid": 85,
+      "def": 86,
+      "manager": {
+        "name": "에딘 테르지치",
+        "ovr": 84,
+        "traitId": "big_game_hunter",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_bvb_2324_kobel",
+          "name": "그레고어 코벨",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 87,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_maatsen",
+          "name": "이안 마트센",
+          "pos": "DF",
+          "main": [
+            "LB",
+            "LWB"
+          ],
+          "ovr": 81,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_schlotterbeck",
+          "name": "니코 슐로터베크",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 85,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "ball_playing_cb"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_hummels",
+          "name": "마츠 후멜스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 85,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "ball_playing_cb",
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_ryerson",
+          "name": "율리안 뤼에르손",
+          "pos": "DF",
+          "main": [
+            "RB",
+            "LB"
+          ],
+          "ovr": 81,
+          "nat": "노르웨이",
+          "code": "NO",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_can",
+          "name": "엠레 잔",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_sabitzer",
+          "name": "마르셀 자비처",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_sancho",
+          "name": "제이든 산초",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "RW"
+          ],
+          "ovr": 83,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_brandt",
+          "name": "율리안 브란트",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 85,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_adeyemi",
+          "name": "카림 아데예미",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "LW"
+          ],
+          "ovr": 81,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "line_breaker"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_fullkrug",
+          "name": "니클라스 퓔크루크",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_meyer",
+          "name": "알렉산더 마이어",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 75,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_sule",
+          "name": "니클라스 쥘레",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_reus",
+          "name": "마르코 로이스",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "LW"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_bvb_2324_malen",
+          "name": "도니얼 말런",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sge_2324",
+      "name": "아인트라흐트 프랑크푸르트",
+      "shortName": "SGE",
+      "leagueId": "bundesliga",
+      "primaryColor": "#E1000F",
+      "secondaryColor": "#111111",
+      "pattern": "solid",
+      "formation": "3-4-2-1",
+      "defaultTactic": "counter",
+      "att": 81,
+      "mid": 80,
+      "def": 80,
+      "manager": {
+        "name": "디노 토프묄러",
+        "ovr": 80,
+        "traitId": "direct_football",
+        "preferredFormations": [
+          "3-4-2-1"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_sge_2324_trapp",
+          "name": "케빈 트라프",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 83,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_tuta",
+          "name": "투타",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_koch",
+          "name": "로빈 코흐",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 81,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_pacho",
+          "name": "윌리안 파초",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 81,
+          "nat": "에콰도르",
+          "code": "EC",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_max",
+          "name": "필리프 막스",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "LB"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_skhiri",
+          "name": "엘리에스 스키리",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 81,
+          "nat": "튀니지",
+          "code": "TN",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_larsson",
+          "name": "우고 라르손",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 79,
+          "nat": "스웨덴",
+          "code": "SE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_knauff",
+          "name": "안스가르 크나우프",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "RM"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_gotze",
+          "name": "마리오 괴체",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 81,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_chaibi",
+          "name": "파레스 샤이비",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "LW"
+          ],
+          "ovr": 79,
+          "nat": "알제리",
+          "code": "DZ",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_marmoush",
+          "name": "오마르 마르무시",
+          "pos": "FW",
+          "main": [
+            "ST",
+            "LW"
+          ],
+          "ovr": 83,
+          "nat": "이집트",
+          "code": "EG",
+          "sta": 82,
+          "styles": [
+            "line_breaker"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_grahl",
+          "name": "옌스 그랄",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 73,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_buta",
+          "name": "아우렐리우 부타",
+          "pos": "DF",
+          "main": [
+            "RWB"
+          ],
+          "ovr": 76,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_sge_2324_ekitike",
+          "name": "위고 에키티케",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 79,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tsg_2324",
+      "name": "TSG 호펜하임",
+      "shortName": "TSG",
+      "leagueId": "bundesliga",
+      "primaryColor": "#1961B5",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "3-5-2",
+      "defaultTactic": "counter",
+      "att": 80,
+      "mid": 79,
+      "def": 78,
+      "manager": {
+        "name": "펠레그리노 마타라초",
+        "ovr": 78,
+        "traitId": "direct_football",
+        "preferredFormations": [
+          "3-5-2"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_tsg_2324_baumann",
+          "name": "올리버 바우만",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 83,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_kabak",
+          "name": "오잔 카바크",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "튀르키예",
+          "code": "TR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_grillitsch",
+          "name": "플로리안 그릴리치",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "CDM"
+          ],
+          "ovr": 79,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_brooks",
+          "name": "존 브룩스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 77,
+          "nat": "미국",
+          "code": "US",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_skov",
+          "name": "로베르트 스코우",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "LM"
+          ],
+          "ovr": 78,
+          "nat": "덴마크",
+          "code": "DK",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_stach",
+          "name": "안톤 슈타흐",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_promel",
+          "name": "그리샤 프뢰멜",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_kramaric",
+          "name": "안드레이 크라마리치",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "크로아티아",
+          "code": "HR",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_kaderabek",
+          "name": "파벨 카데라베크",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "RB"
+          ],
+          "ovr": 78,
+          "nat": "체코",
+          "code": "CZ",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_beier",
+          "name": "막시밀리안 바이어",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 81,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_weghorst",
+          "name": "바우트 베호르스트",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 79,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_philipp",
+          "name": "루카 필리프",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 72,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_akpoguma",
+          "name": "케빈 악포구마",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 76,
+          "nat": "나이지리아",
+          "code": "NG",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_tsg_2324_bebou",
+          "name": "이흘라스 베부",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 77,
+          "nat": "토고",
+          "code": "TG",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hdh_2324",
+      "name": "1. FC 하이덴하임",
+      "shortName": "HDH",
+      "leagueId": "bundesliga",
+      "primaryColor": "#E2001A",
+      "secondaryColor": "#00387B",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "counter",
+      "att": 78,
+      "mid": 77,
+      "def": 77,
+      "manager": {
+        "name": "프랑크 슈미트",
+        "ovr": 81,
+        "traitId": "underdog_killer",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_hdh_2324_muller",
+          "name": "케빈 뮐러",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_fohrenbach",
+          "name": "요나스 푀렌바흐",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_mainka",
+          "name": "파트리크 마인카",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_gimber",
+          "name": "베네딕트 김버",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_traore",
+          "name": "오마르 트라오레",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_maloney",
+          "name": "레나르트 말로니",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 78,
+          "nat": "미국",
+          "code": "US",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_schoppner",
+          "name": "얀 쇤프너",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_beste",
+          "name": "얀니클라스 베스테",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "LM"
+          ],
+          "ovr": 81,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_dinkci",
+          "name": "에렌 딩치",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "RW"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_beck",
+          "name": "아드리안 베크",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "CAM"
+          ],
+          "ovr": 75,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_kleindienst",
+          "name": "팀 클라인딘스트",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 80,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_eicher",
+          "name": "비투스 아이허",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 71,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_siersleben",
+          "name": "팀 지어슬레벤",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 74,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_hdh_2324_pieringer",
+          "name": "마르빈 피링거",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 75,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "svw_2324",
+      "name": "베르더 브레멘",
+      "shortName": "SVW",
+      "leagueId": "bundesliga",
+      "primaryColor": "#1D9053",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "3-5-2",
+      "defaultTactic": "counter",
+      "att": 79,
+      "mid": 78,
+      "def": 78,
+      "manager": {
+        "name": "올레 베르너",
+        "ovr": 79,
+        "traitId": "direct_football",
+        "preferredFormations": [
+          "3-5-2"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_svw_2324_zetterer",
+          "name": "미하엘 체터러",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_veljkovic",
+          "name": "밀로시 벨코비치",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 78,
+          "nat": "세르비아",
+          "code": "RS",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_friedl",
+          "name": "마르코 프리들",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_stark",
+          "name": "니클라스 슈타르크",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_agu",
+          "name": "펠릭스 아구",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "LB"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_lynen",
+          "name": "센네 리넨",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 78,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_stage",
+          "name": "옌스 스타게",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 79,
+          "nat": "덴마크",
+          "code": "DK",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_schmid",
+          "name": "로마노 슈미트",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 79,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_weiser",
+          "name": "미첼 바이저",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "RB"
+          ],
+          "ovr": 81,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_ducksch",
+          "name": "마르빈 두크슈",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 81,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_njinmah",
+          "name": "저스틴 은진마",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_pavlenka",
+          "name": "이르지 파블렌카",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 76,
+          "nat": "체코",
+          "code": "CZ",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_jung",
+          "name": "안토니 융",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "LB"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_svw_2324_bittencourt",
+          "name": "레오나르도 비텐쿠르트",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scf_2324",
+      "name": "SC 프라이부르크",
+      "shortName": "SCF",
+      "leagueId": "bundesliga",
+      "primaryColor": "#E30613",
+      "secondaryColor": "#111111",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "balanced",
+      "att": 79,
+      "mid": 79,
+      "def": 79,
+      "manager": {
+        "name": "크리스티안 슈트라이히",
+        "ovr": 82,
+        "traitId": "set_piece_master",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "balanced"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_scf_2324_atubolu",
+          "name": "노아 아투볼루",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_gunter",
+          "name": "크리스티안 귄터",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_lienhard",
+          "name": "필리프 린하르트",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 81,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_ginter",
+          "name": "마티아스 긴터",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_sildillia",
+          "name": "킬리안 실딜리아",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 77,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_eggestein",
+          "name": "막시밀리안 에게슈타인",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_hofler",
+          "name": "니콜라스 회플러",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_grifo",
+          "name": "빈첸초 그리포",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "LM"
+          ],
+          "ovr": 82,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_sallai",
+          "name": "롤란드 살라이",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "RW"
+          ],
+          "ovr": 79,
+          "nat": "헝가리",
+          "code": "HU",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_doan",
+          "name": "도안 리쓰",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "RM"
+          ],
+          "ovr": 80,
+          "nat": "일본",
+          "code": "JP",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_gregoritsch",
+          "name": "미하엘 그레고리치",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 79,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_muller",
+          "name": "플로리안 뮐러",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 75,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_kubler",
+          "name": "루카스 퀴블러",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_scf_2324_holer",
+          "name": "루카스 횔러",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fca_2324",
+      "name": "FC 아우크스부르크",
+      "shortName": "FCA",
+      "leagueId": "bundesliga",
+      "primaryColor": "#BA3733",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-4-2",
+      "defaultTactic": "counter",
+      "att": 78,
+      "mid": 77,
+      "def": 77,
+      "manager": {
+        "name": "예스 토루프",
+        "ovr": 78,
+        "traitId": "direct_football",
+        "preferredFormations": [
+          "4-4-2"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_fca_2324_dahmen",
+          "name": "핀 다멘",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_iago",
+          "name": "이아구",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 76,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_gouweleeuw",
+          "name": "제프리 하우엘레우",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 78,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_uduokhai",
+          "name": "펠릭스 우두오카이",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_mbabu",
+          "name": "케빈 음바부",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 77,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_vargas",
+          "name": "루벤 바르가스",
+          "pos": "MF",
+          "main": [
+            "LM",
+            "LW"
+          ],
+          "ovr": 79,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 84,
+          "styles": [
+            "classic_winger"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_jakic",
+          "name": "크리스티얀 야키치",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 78,
+          "nat": "크로아티아",
+          "code": "HR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_rexbehaj",
+          "name": "엘비스 렉스베차이",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_maier",
+          "name": "아르네 마이어",
+          "pos": "MF",
+          "main": [
+            "RM",
+            "CM"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "classic_winger"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_demirovic",
+          "name": "에르메딘 데미로비치",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 82,
+          "nat": "보스니아",
+          "code": "BA",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_tietz",
+          "name": "필리프 티츠",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_koubek",
+          "name": "토마시 코우베크",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 73,
+          "nat": "체코",
+          "code": "CZ",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_pedersen",
+          "name": "마스 페데르센",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 75,
+          "nat": "덴마크",
+          "code": "DK",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_fca_2324_michel",
+          "name": "스벤 미헬",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 74,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wob_2324",
+      "name": "VfL 볼프스부르크",
+      "shortName": "WOB",
+      "leagueId": "bundesliga",
+      "primaryColor": "#65B32E",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "balanced",
+      "att": 78,
+      "mid": 79,
+      "def": 78,
+      "manager": {
+        "name": "랄프 하젠휘틀",
+        "ovr": 79,
+        "traitId": "gegenpress_guru",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "balanced"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_wob_2324_casteels",
+          "name": "쿤 카스테일스",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 83,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_maehle",
+          "name": "요아킴 메흘레",
+          "pos": "DF",
+          "main": [
+            "LB",
+            "RB"
+          ],
+          "ovr": 79,
+          "nat": "덴마크",
+          "code": "DK",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_lacroix",
+          "name": "막상스 라크루아",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_bornauw",
+          "name": "세바스티안 보르나우",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 78,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_baku",
+          "name": "리들레 바쿠",
+          "pos": "DF",
+          "main": [
+            "RB",
+            "RM"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_arnold",
+          "name": "막시밀리안 아르놀트",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 81,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_svanberg",
+          "name": "마티아스 스반베리",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 79,
+          "nat": "스웨덴",
+          "code": "SE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_paredes",
+          "name": "케빈 파레데스",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "LM"
+          ],
+          "ovr": 77,
+          "nat": "미국",
+          "code": "US",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_majer",
+          "name": "로브로 마예르",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "크로아티아",
+          "code": "HR",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_wimmer",
+          "name": "파트리크 비머",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "RM"
+          ],
+          "ovr": 78,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_wind",
+          "name": "요나스 빈드",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 80,
+          "nat": "덴마크",
+          "code": "DK",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_pervan",
+          "name": "파바오 페르반",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 74,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_jenz",
+          "name": "모리츠 옌츠",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_wob_2324_behrens",
+          "name": "케빈 베렌스",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "m05_2324",
+      "name": "마인츠 05",
+      "shortName": "M05",
+      "leagueId": "bundesliga",
+      "primaryColor": "#C3141E",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "3-4-2-1",
+      "defaultTactic": "gegenpressing",
+      "att": 77,
+      "mid": 77,
+      "def": 77,
+      "manager": {
+        "name": "보 헨릭센",
+        "ovr": 78,
+        "traitId": "gegenpress_guru",
+        "preferredFormations": [
+          "3-4-2-1"
+        ],
+        "preferredTactics": [
+          "gegenpressing"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_m05_2324_zentner",
+          "name": "로빈 첸트너",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_kohr",
+          "name": "도미니크 코어",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "CDM"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_vandenberg",
+          "name": "셉 판 덴 베르흐",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_hancheolsen",
+          "name": "안드레아스 한체올센",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 77,
+          "nat": "노르웨이",
+          "code": "NO",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_mwene",
+          "name": "필리프 음웨네",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "RB"
+          ],
+          "ovr": 76,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_barreiro",
+          "name": "레안드로 바레이로",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 79,
+          "nat": "룩셈부르크",
+          "code": "LU",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_amiri",
+          "name": "나딤 아미리",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CAM"
+          ],
+          "ovr": 80,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_caci",
+          "name": "앙토니 카시",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "LWB"
+          ],
+          "ovr": 77,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_leejaesung",
+          "name": "이재성",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "대한민국",
+          "code": "KR",
+          "sta": 90,
+          "styles": [
+            "box_to_box",
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_gruda",
+          "name": "브라얀 그루다",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "RW"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_burkardt",
+          "name": "요나탄 부르카르트",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_riess",
+          "name": "다니엘 바츠",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 72,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_widmer",
+          "name": "실반 비드머",
+          "pos": "DF",
+          "main": [
+            "RWB"
+          ],
+          "ovr": 76,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_m05_2324_ajourque",
+          "name": "뤼도비크 아조르크",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 76,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bmg_2324",
+      "name": "보루시아 묀헨글라트바흐",
+      "shortName": "BMG",
+      "leagueId": "bundesliga",
+      "primaryColor": "#111111",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "balanced",
+      "att": 78,
+      "mid": 78,
+      "def": 76,
+      "manager": {
+        "name": "헤라르도 세오아네",
+        "ovr": 77,
+        "traitId": "wing_bomber",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "balanced"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_bmg_2324_nicolas",
+          "name": "모리츠 니콜라스",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_netz",
+          "name": "루카 네츠",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_elvedi",
+          "name": "니코 엘베디",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_itakura",
+          "name": "이타쿠라 코",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "일본",
+          "code": "JP",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_scally",
+          "name": "조 스캘리",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 77,
+          "nat": "미국",
+          "code": "US",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_weigl",
+          "name": "율리안 바이글",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_kone",
+          "name": "마누 코네",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_hack",
+          "name": "로빈 하크",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "LM"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_plea",
+          "name": "알라산 플레아",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "ST"
+          ],
+          "ovr": 80,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_honorat",
+          "name": "프랑크 오노라",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "RM"
+          ],
+          "ovr": 79,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_jordan",
+          "name": "조르당 시바체우",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 77,
+          "nat": "미국",
+          "code": "US",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_omlin",
+          "name": "요나스 오믈린",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 78,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_wober",
+          "name": "막시밀리안 뵈버",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 78,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bmg_2324_reitz",
+          "name": "로코 라이츠",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fcu_2324",
+      "name": "우니온 베를린",
+      "shortName": "FCU",
+      "leagueId": "bundesliga",
+      "primaryColor": "#EB1923",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "3-5-2",
+      "defaultTactic": "park_the_bus",
+      "att": 76,
+      "mid": 77,
+      "def": 78,
+      "manager": {
+        "name": "네나드 비엘리차",
+        "ovr": 76,
+        "traitId": "catenaccio",
+        "preferredFormations": [
+          "3-5-2"
+        ],
+        "preferredTactics": [
+          "park_the_bus"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_fcu_2324_ronnow",
+          "name": "프레데리크 뢰노브",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 81,
+          "nat": "덴마크",
+          "code": "DK",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_doekhi",
+          "name": "다닐류 두키",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_vogt",
+          "name": "케빈 포크트",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_leite",
+          "name": "디오구 레이트",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_gosens",
+          "name": "로빈 고젠스",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "LB"
+          ],
+          "ovr": 80,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_khedira",
+          "name": "라니 케디라",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_tousart",
+          "name": "뤼카 투자르",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 78,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_schafer",
+          "name": "안드라스 셰페르",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 77,
+          "nat": "헝가리",
+          "code": "HU",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_juranovic",
+          "name": "요시프 유라노비치",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "RB"
+          ],
+          "ovr": 78,
+          "nat": "크로아티아",
+          "code": "HR",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_volland",
+          "name": "케빈 폴란트",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_hollerbach",
+          "name": "베네딕트 홀러바흐",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_schwolow",
+          "name": "알렉산더 슈볼로",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 74,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_knoche",
+          "name": "로빈 크노헤",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_fcu_2324_vertessen",
+          "name": "요르베 페르테선",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 76,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "boc_2324",
+      "name": "VfL 보훔",
+      "shortName": "BOC",
+      "leagueId": "bundesliga",
+      "primaryColor": "#005CA9",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "counter",
+      "att": 75,
+      "mid": 76,
+      "def": 75,
+      "manager": {
+        "name": "하이코 부처",
+        "ovr": 75,
+        "traitId": "underdog_killer",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_boc_2324_riemann",
+          "name": "마누엘 리만",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 78,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_bernardo",
+          "name": "베르나르두",
+          "pos": "DF",
+          "main": [
+            "LB",
+            "CB"
+          ],
+          "ovr": 77,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_schlotterbeck_k",
+          "name": "케벤 슐로터베크",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_ordets",
+          "name": "이반 오르데츠",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 76,
+          "nat": "우크라이나",
+          "code": "UA",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_passlack",
+          "name": "펠릭스 파슬라크",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 74,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_losilla",
+          "name": "앙토니 로실라",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 76,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_osterhage",
+          "name": "파트리크 오스터하게",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_wittek",
+          "name": "막시밀리안 비테크",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "LB"
+          ],
+          "ovr": 75,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_stoger",
+          "name": "케빈 슈퇴거",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_asano",
+          "name": "아사노 타쿠마",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "ST"
+          ],
+          "ovr": 77,
+          "nat": "일본",
+          "code": "JP",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_hofmann_p",
+          "name": "필리프 호프만",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 75,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_luthe",
+          "name": "안드레아스 루테",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 73,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_masovic",
+          "name": "에르한 마쇼비치",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 75,
+          "nat": "세르비아",
+          "code": "RS",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_boc_2324_broschinski",
+          "name": "모리츠 브로신스키",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 74,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "koe_2324",
+      "name": "1. FC 쾰른",
+      "shortName": "KOE",
+      "leagueId": "bundesliga",
+      "primaryColor": "#ED1C24",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "counter",
+      "att": 75,
+      "mid": 75,
+      "def": 75,
+      "manager": {
+        "name": "티모 슐츠",
+        "ovr": 74,
+        "traitId": "defensive_architect",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_koe_2324_schwabe",
+          "name": "마르빈 슈베베",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_finkgrafe",
+          "name": "막스 핑크그레페",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 74,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_chabot",
+          "name": "제프 샤보",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_hubers",
+          "name": "티모 휘버스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_thielmann",
+          "name": "얀 틸만",
+          "pos": "DF",
+          "main": [
+            "RB",
+            "RM"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_martel",
+          "name": "에리크 마르텔",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 77,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_ljubicic",
+          "name": "데얀 류비치치",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 77,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_kainz",
+          "name": "플로리안 카인츠",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "CAM"
+          ],
+          "ovr": 78,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_waldschmidt",
+          "name": "루카 발트슈미트",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "ST"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_maina",
+          "name": "린톤 마이나",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "LW"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_selke",
+          "name": "다비 젤케",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_pentke",
+          "name": "필리프 펜트케",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 71,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_pacarada",
+          "name": "레아르트 파차라다",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 74,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_koe_2324_adamyan",
+          "name": "사르기스 아다먄",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 74,
+          "nat": "아르메니아",
+          "code": "AM",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "d98_2324",
+      "name": "SV 다름슈타트 98",
+      "shortName": "D98",
+      "leagueId": "bundesliga",
+      "primaryColor": "#004E9E",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "3-4-2-1",
+      "defaultTactic": "park_the_bus",
+      "att": 73,
+      "mid": 73,
+      "def": 72,
+      "manager": {
+        "name": "토르스텐 리베르크네히트",
+        "ovr": 73,
+        "traitId": "catenaccio",
+        "preferredFormations": [
+          "3-4-2-1"
+        ],
+        "preferredTactics": [
+          "park_the_bus"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_d98_2324_schuhen",
+          "name": "마르셀 슈헨",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_klarer",
+          "name": "크리스토프 클라러",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 74,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_zimmermann",
+          "name": "크리스토프 치머만",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 73,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_maglica",
+          "name": "마테이 마글리차",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 73,
+          "nat": "크로아티아",
+          "code": "HR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_karic",
+          "name": "에미르 카리치",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "LB"
+          ],
+          "ovr": 73,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_holland",
+          "name": "파비안 홀란트",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 74,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_kempe",
+          "name": "토비아스 켐페",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 75,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_bader",
+          "name": "마티아스 바더",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "RB"
+          ],
+          "ovr": 73,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_mehlem",
+          "name": "마르빈 멜렘",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 75,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_skarke",
+          "name": "팀 슈카르케",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "RW"
+          ],
+          "ovr": 76,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_vilhelmsson",
+          "name": "오스카르 빌헬름손",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 74,
+          "nat": "스웨덴",
+          "code": "SE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_brunst",
+          "name": "알렉산더 브룬스트",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 70,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_ishrewood",
+          "name": "토마스 이셔우드",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 72,
+          "nat": "스웨덴",
+          "code": "SE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_d98_2324_pfeiffer",
+          "name": "루카 파이퍼",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 73,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    }
+  ],
+  "foreignTop4Clubs": [
+    {
+      "id": "mci_2324",
+      "name": "맨체스터 시티",
+      "shortName": "MCI",
+      "leagueId": "epl",
+      "primaryColor": "#6CABDD",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "possession",
+      "att": 91,
+      "mid": 90,
+      "def": 88,
+      "manager": {
+        "name": "펩 과르디올라",
+        "ovr": 92,
+        "traitId": "tiki_taka",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "possession"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_mci_2324_ederson",
+          "name": "에데르송",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 88,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 78,
+          "styles": [
+            "sweeper_keeper"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_gvardiol",
+          "name": "요슈코 그바르디올",
+          "pos": "DF",
+          "main": [
+            "LB",
+            "CB"
+          ],
+          "ovr": 85,
+          "nat": "크로아티아",
+          "code": "HR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_dias",
+          "name": "후벵 디아스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 89,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_akanji",
+          "name": "마누엘 아칸지",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 85,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_walker",
+          "name": "카일 워커",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 85,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_rodri",
+          "name": "로드리",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 92,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 87,
+          "styles": [
+            "deep_playmaker",
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_kovacic",
+          "name": "마테오 코바치치",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "크로아티아",
+          "code": "HR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_doku",
+          "name": "제레미 도쿠",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "RW"
+          ],
+          "ovr": 83,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_debruyne",
+          "name": "케빈 더 브라위너",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 90,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_foden",
+          "name": "필 포든",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "CAM"
+          ],
+          "ovr": 89,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 84,
+          "styles": [
+            "inverted_winger",
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_haaland",
+          "name": "엘링 홀란",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 91,
+          "nat": "노르웨이",
+          "code": "NO",
+          "sta": 82,
+          "styles": [
+            "poacher",
+            "line_breaker"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_ortega",
+          "name": "슈테판 오르테가",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 82,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_stones",
+          "name": "존 스톤스",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "CDM"
+          ],
+          "ovr": 86,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_silva",
+          "name": "베르나르두 실바",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "RW"
+          ],
+          "ovr": 88,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_mci_2324_alvarez",
+          "name": "훌리안 알바레스",
+          "pos": "FW",
+          "main": [
+            "ST",
+            "CAM"
+          ],
+          "ovr": 86,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ars_2324",
+      "name": "아스널",
+      "shortName": "ARS",
+      "leagueId": "epl",
+      "primaryColor": "#EF0107",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-3-3",
+      "defaultTactic": "possession",
+      "att": 87,
+      "mid": 88,
+      "def": 89,
+      "manager": {
+        "name": "미켈 아르테타",
+        "ovr": 87,
+        "traitId": "tiki_taka",
+        "preferredFormations": [
+          "4-3-3"
+        ],
+        "preferredTactics": [
+          "possession"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_ars_2324_raya",
+          "name": "다비드 라야",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 85,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_zinchenko",
+          "name": "올렉산드르 진첸코",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 82,
+          "nat": "우크라이나",
+          "code": "UA",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_gabriel",
+          "name": "가브리에우 마갈량이스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 87,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_saliba",
+          "name": "윌리암 살리바",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 88,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_white",
+          "name": "벤 화이트",
+          "pos": "DF",
+          "main": [
+            "RB",
+            "CB"
+          ],
+          "ovr": 85,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_rice",
+          "name": "데클란 라이스",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 88,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 87,
+          "styles": [
+            "ball_winner",
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_odegaard",
+          "name": "마르틴 외데고르",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CAM"
+          ],
+          "ovr": 89,
+          "nat": "노르웨이",
+          "code": "NO",
+          "sta": 87,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_havertz",
+          "name": "카이 하베르츠",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "ST"
+          ],
+          "ovr": 84,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_martinelli",
+          "name": "가브리엘 마르티넬리",
+          "pos": "FW",
+          "main": [
+            "LW"
+          ],
+          "ovr": 85,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_jesus",
+          "name": "가브리에우 제주스",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_saka",
+          "name": "부카요 사카",
+          "pos": "FW",
+          "main": [
+            "RW"
+          ],
+          "ovr": 88,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_ramsdale",
+          "name": "아론 램스데일",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 81,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_tomiyasu",
+          "name": "도미야스 다케히로",
+          "pos": "DF",
+          "main": [
+            "LB",
+            "RB"
+          ],
+          "ovr": 81,
+          "nat": "일본",
+          "code": "JP",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_jorginho",
+          "name": "조르지뉴",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 82,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_ars_2324_trossard",
+          "name": "레안드로 트로사르",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "ST"
+          ],
+          "ovr": 84,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "liv_2324",
+      "name": "리버풀",
+      "shortName": "LIV",
+      "leagueId": "epl",
+      "primaryColor": "#C8102E",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-3-3",
+      "defaultTactic": "gegenpressing",
+      "att": 88,
+      "mid": 86,
+      "def": 87,
+      "manager": {
+        "name": "위르겐 클롭",
+        "ovr": 90,
+        "traitId": "gegenpress_guru",
+        "preferredFormations": [
+          "4-3-3"
+        ],
+        "preferredTactics": [
+          "gegenpressing"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_liv_2324_alisson",
+          "name": "알리송 베케르",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 89,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_robertson",
+          "name": "앤드류 로버트슨",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 85,
+          "nat": "스코틀랜드",
+          "code": "GB-SCT",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_vandijk",
+          "name": "버질 판 다이크",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 89,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_konate",
+          "name": "이브라히마 코나테",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 84,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_trent",
+          "name": "트렌트 알렉산더아놀드",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 86,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_endo",
+          "name": "엔도 와타루",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 81,
+          "nat": "일본",
+          "code": "JP",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_macallister",
+          "name": "알렉시스 맥 알리스터",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 86,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_szoboszlai",
+          "name": "도미니크 소보슬라이",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CAM"
+          ],
+          "ovr": 84,
+          "nat": "헝가리",
+          "code": "HU",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_diaz",
+          "name": "루이스 디아스",
+          "pos": "FW",
+          "main": [
+            "LW"
+          ],
+          "ovr": 85,
+          "nat": "콜롬비아",
+          "code": "CO",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_nunez",
+          "name": "다르윈 누녜스",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "우루과이",
+          "code": "UY",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_salah",
+          "name": "모하메드 살라",
+          "pos": "FW",
+          "main": [
+            "RW"
+          ],
+          "ovr": 89,
+          "nat": "이집트",
+          "code": "EG",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_kelleher",
+          "name": "퀴빈 켈러허",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 80,
+          "nat": "아일랜드",
+          "code": "IE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_gomez",
+          "name": "조 고메즈",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "LB"
+          ],
+          "ovr": 81,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_gakpo",
+          "name": "코디 학포",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_liv_2324_jota",
+          "name": "디오구 조타",
+          "pos": "FW",
+          "main": [
+            "ST",
+            "LW"
+          ],
+          "ovr": 85,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "avl_2324",
+      "name": "애스턴 빌라",
+      "shortName": "AVL",
+      "leagueId": "epl",
+      "primaryColor": "#670E36",
+      "secondaryColor": "#95BFE5",
+      "pattern": "solid",
+      "formation": "4-4-2",
+      "defaultTactic": "counter",
+      "att": 84,
+      "mid": 83,
+      "def": 82,
+      "manager": {
+        "name": "우나이 에메리",
+        "ovr": 86,
+        "traitId": "big_game_hunter",
+        "preferredFormations": [
+          "4-4-2"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_avl_2324_martinez",
+          "name": "에밀리아노 마르티네스",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 87,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_digne",
+          "name": "뤼카 디뉴",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 81,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_torres",
+          "name": "파우 토레스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 83,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_konsa",
+          "name": "에즈리 콘사",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "RB"
+          ],
+          "ovr": 83,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_cash",
+          "name": "매티 캐시",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 80,
+          "nat": "폴란드",
+          "code": "PL",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_mcginn",
+          "name": "존 맥긴",
+          "pos": "MF",
+          "main": [
+            "LM",
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "스코틀랜드",
+          "code": "GB-SCT",
+          "sta": 84,
+          "styles": [
+            "classic_winger"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_douglasluiz",
+          "name": "더글라스 루이스",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 84,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_tielemans",
+          "name": "유리 틸레만스",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_bailey",
+          "name": "레온 베일리",
+          "pos": "MF",
+          "main": [
+            "RM",
+            "RW"
+          ],
+          "ovr": 83,
+          "nat": "자메이카",
+          "code": "JM",
+          "sta": 84,
+          "styles": [
+            "classic_winger"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_watkins",
+          "name": "올리 왓킨스",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 86,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_diaby",
+          "name": "무사 디아비",
+          "pos": "FW",
+          "main": [
+            "ST",
+            "RW"
+          ],
+          "ovr": 83,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_olsen",
+          "name": "로빈 올센",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 76,
+          "nat": "스웨덴",
+          "code": "SE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_carlos",
+          "name": "디에구 카를로스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_kamara",
+          "name": "부바카르 카마라",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 82,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_avl_2324_rogers",
+          "name": "모건 로저스",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "CAM"
+          ],
+          "ovr": 79,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "rma_2324",
+      "name": "레알 마드리드",
+      "shortName": "RMA",
+      "leagueId": "laliga",
+      "primaryColor": "#FFFFFF",
+      "secondaryColor": "#F5C400",
+      "pattern": "solid",
+      "formation": "4-3-3",
+      "defaultTactic": "counter",
+      "att": 90,
+      "mid": 90,
+      "def": 88,
+      "manager": {
+        "name": "카를로 안첼로티",
+        "ovr": 91,
+        "traitId": "big_game_hunter",
+        "preferredFormations": [
+          "4-3-3"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_rma_2324_lunin",
+          "name": "안드리 루닌",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 84,
+          "nat": "우크라이나",
+          "code": "UA",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_mendy",
+          "name": "페를랑 멘디",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 83,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_rudiger",
+          "name": "안토니오 뤼디거",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 88,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_nacho",
+          "name": "나초 페르난데스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 83,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_carvajal",
+          "name": "다니 카르바할",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 87,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_tchouameni",
+          "name": "오렐리앵 추아메니",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CB"
+          ],
+          "ovr": 85,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_kroos",
+          "name": "토니 크로스",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 89,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "deep_playmaker"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_valverde",
+          "name": "페데리코 발베르데",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "RM"
+          ],
+          "ovr": 89,
+          "nat": "우루과이",
+          "code": "UY",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_vinicius",
+          "name": "비니시우스 주니오르",
+          "pos": "FW",
+          "main": [
+            "LW"
+          ],
+          "ovr": 91,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_bellingham",
+          "name": "주드 벨링엄",
+          "pos": "FW",
+          "main": [
+            "ST",
+            "CAM"
+          ],
+          "ovr": 90,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 82,
+          "styles": [
+            "playmaker_10",
+            "box_to_box"
+          ],
+          "sec": [
+            "CM"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_rodrygo",
+          "name": "호드리구",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "ST"
+          ],
+          "ovr": 86,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_courtois",
+          "name": "티보 쿠르투아",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 89,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_camavinga",
+          "name": "에두아르도 카마빙가",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_modric",
+          "name": "루카 모드리치",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 86,
+          "nat": "크로아티아",
+          "code": "HR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_rma_2324_joselu",
+          "name": "호셀루",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 82,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bar_2324",
+      "name": "FC 바르셀로나",
+      "shortName": "BAR",
+      "leagueId": "laliga",
+      "primaryColor": "#A50044",
+      "secondaryColor": "#004D98",
+      "pattern": "stripes",
+      "formation": "4-3-3",
+      "defaultTactic": "possession",
+      "att": 87,
+      "mid": 87,
+      "def": 85,
+      "manager": {
+        "name": "차비 에르난데스",
+        "ovr": 84,
+        "traitId": "tiki_taka",
+        "preferredFormations": [
+          "4-3-3"
+        ],
+        "preferredTactics": [
+          "possession"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_bar_2324_terstegen",
+          "name": "마르크안드레 테어 슈테겐",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 88,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_cancelo",
+          "name": "주앙 칸셀루",
+          "pos": "DF",
+          "main": [
+            "LB",
+            "RB"
+          ],
+          "ovr": 84,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_araujo",
+          "name": "로날드 아라우호",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 86,
+          "nat": "우루과이",
+          "code": "UY",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_cubarsi",
+          "name": "파우 쿠바르시",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 81,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_kounde",
+          "name": "쥘 쿤데",
+          "pos": "DF",
+          "main": [
+            "RB",
+            "CB"
+          ],
+          "ovr": 86,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_christensen",
+          "name": "안드레아스 크리스텐센",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CB"
+          ],
+          "ovr": 83,
+          "nat": "덴마크",
+          "code": "DK",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_gundogan",
+          "name": "일카이 귄도안",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CAM"
+          ],
+          "ovr": 87,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_pedri",
+          "name": "페드리",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 86,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_raphinha",
+          "name": "하피냐",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "RW"
+          ],
+          "ovr": 85,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_lewandowski",
+          "name": "로베르트 레반도프스키",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 88,
+          "nat": "폴란드",
+          "code": "PL",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_yamal",
+          "name": "라민 야말",
+          "pos": "FW",
+          "main": [
+            "RW"
+          ],
+          "ovr": 84,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_pena",
+          "name": "이냐키 페냐",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 77,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_dejong",
+          "name": "프렝키 더 용",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 86,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_fermin",
+          "name": "페르민 로페스",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CAM"
+          ],
+          "ovr": 80,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_bar_2324_felix",
+          "name": "주앙 펠릭스",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "CAM"
+          ],
+          "ovr": 81,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "gir_2324",
+      "name": "지로나 FC",
+      "shortName": "GIR",
+      "leagueId": "laliga",
+      "primaryColor": "#CD2534",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "stripes",
+      "formation": "4-2-3-1",
+      "defaultTactic": "possession",
+      "att": 83,
+      "mid": 82,
+      "def": 80,
+      "manager": {
+        "name": "미첼 산체스",
+        "ovr": 84,
+        "traitId": "tiki_taka",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "possession"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_gir_2324_gazzaniga",
+          "name": "파울로 가사니가",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 81,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_gutierrez",
+          "name": "미겔 구티에레스",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 82,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_blind",
+          "name": "달레이 블린트",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "LB"
+          ],
+          "ovr": 81,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_garcia_e",
+          "name": "에리크 가르시아",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_couto",
+          "name": "얀 쿠투",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 80,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_aleixgarcia",
+          "name": "알레시 가르시아",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_herrera",
+          "name": "양헬 에레라",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 81,
+          "nat": "베네수엘라",
+          "code": "VE",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_savinho",
+          "name": "사비우",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "RW"
+          ],
+          "ovr": 83,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_ivanmartin",
+          "name": "이반 마르틴",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_tsygankov",
+          "name": "빅토르 치한코우",
+          "pos": "FW",
+          "main": [
+            "RW"
+          ],
+          "ovr": 82,
+          "nat": "우크라이나",
+          "code": "UA",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_dovbyk",
+          "name": "아르템 도우비크",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 85,
+          "nat": "우크라이나",
+          "code": "UA",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ],
+          "note": "23-24 라리가 피치치(득점왕)"
+        },
+        {
+          "id": "s2324_gir_2324_juancarlos",
+          "name": "후안 카를로스",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 73,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_davidlopez",
+          "name": "다비드 로페스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_gir_2324_stuani",
+          "name": "크리스티안 스투아니",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 78,
+          "nat": "우루과이",
+          "code": "UY",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "atm_2324",
+      "name": "아틀레티코 마드리드",
+      "shortName": "ATM",
+      "leagueId": "laliga",
+      "primaryColor": "#CB3524",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "stripes",
+      "formation": "3-5-2",
+      "defaultTactic": "counter",
+      "att": 85,
+      "mid": 84,
+      "def": 84,
+      "manager": {
+        "name": "디에고 시메오네",
+        "ovr": 88,
+        "traitId": "catenaccio",
+        "preferredFormations": [
+          "3-5-2"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_atm_2324_oblak",
+          "name": "얀 오블락",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 88,
+          "nat": "슬로베니아",
+          "code": "SI",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_hermoso",
+          "name": "마리오 에르모소",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 82,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_witsel",
+          "name": "악셀 비첼",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 81,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_gimenez",
+          "name": "호세 히메네스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 84,
+          "nat": "우루과이",
+          "code": "UY",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_lino",
+          "name": "사무엘 리누",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "LM"
+          ],
+          "ovr": 82,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_koke",
+          "name": "코케",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_depaul",
+          "name": "로드리고 데 파울",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_llorente",
+          "name": "마르코스 요렌테",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ],
+          "sec": [
+            "RWB"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_molina",
+          "name": "나우엘 몰리나",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "RB"
+          ],
+          "ovr": 81,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_griezmann",
+          "name": "앙투안 그리즈만",
+          "pos": "FW",
+          "main": [
+            "ST",
+            "CAM"
+          ],
+          "ovr": 88,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_morata",
+          "name": "알바로 모라타",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_moldovan",
+          "name": "호라치우 몰도반",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 76,
+          "nat": "루마니아",
+          "code": "RO",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_savic",
+          "name": "스테판 사비치",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 81,
+          "nat": "몬테네그로",
+          "code": "ME",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_atm_2324_correa",
+          "name": "앙헬 코레아",
+          "pos": "FW",
+          "main": [
+            "ST",
+            "RW"
+          ],
+          "ovr": 82,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "int_2324",
+      "name": "인테르 밀란",
+      "shortName": "INT",
+      "leagueId": "seriea",
+      "primaryColor": "#010E80",
+      "secondaryColor": "#111111",
+      "pattern": "stripes",
+      "formation": "3-5-2",
+      "defaultTactic": "possession",
+      "att": 88,
+      "mid": 88,
+      "def": 88,
+      "manager": {
+        "name": "시모네 인자기",
+        "ovr": 89,
+        "traitId": "total_football",
+        "preferredFormations": [
+          "3-5-2"
+        ],
+        "preferredTactics": [
+          "possession"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_int_2324_sommer",
+          "name": "얀 좀머",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 87,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_bastoni",
+          "name": "알레산드로 바스토니",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 87,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_acerbi",
+          "name": "프란체스코 아체르비",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 85,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_pavard",
+          "name": "뱅자맹 파바르",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "RB"
+          ],
+          "ovr": 85,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_dimarco",
+          "name": "페데리코 디마르코",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "LB"
+          ],
+          "ovr": 86,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_calhanoglu",
+          "name": "하칸 찰하노글루",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 87,
+          "nat": "튀르키예",
+          "code": "TR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_barella",
+          "name": "니콜로 바렐라",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 88,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_mkhitaryan",
+          "name": "헨리크 미키타리안",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "아르메니아",
+          "code": "AM",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_dumfries",
+          "name": "덴젤 둠프리스",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "RB"
+          ],
+          "ovr": 83,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_lautaro",
+          "name": "라우타로 마르티네스",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 89,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_thuram",
+          "name": "마르쿠스 튀람",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 85,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_audero",
+          "name": "에밀 아우데로",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 78,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_devrij",
+          "name": "스테판 더 프레이",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 83,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_frattesi",
+          "name": "다비데 프라테시",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_int_2324_arnautovic",
+          "name": "마르코 아르나우토비치",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 79,
+          "nat": "오스트리아",
+          "code": "AT",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "acm_2324",
+      "name": "AC 밀란",
+      "shortName": "ACM",
+      "leagueId": "seriea",
+      "primaryColor": "#FB090B",
+      "secondaryColor": "#111111",
+      "pattern": "stripes",
+      "formation": "4-2-3-1",
+      "defaultTactic": "counter",
+      "att": 85,
+      "mid": 84,
+      "def": 83,
+      "manager": {
+        "name": "스테파노 피올리",
+        "ovr": 83,
+        "traitId": "wing_bomber",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_acm_2324_maignan",
+          "name": "마이크 메냥",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 87,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_theo",
+          "name": "테오 에르난데스",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 87,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_tomori",
+          "name": "피카요 토모리",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 84,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_gabbia",
+          "name": "마테오 가비아",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_calabria",
+          "name": "다비데 칼라브리아",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 80,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_reijnders",
+          "name": "티자니 라인더르스",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 83,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_bennacer",
+          "name": "이스마엘 벤나세르",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 83,
+          "nat": "알제리",
+          "code": "DZ",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_leao",
+          "name": "하파엘 레앙",
+          "pos": "FW",
+          "main": [
+            "LW"
+          ],
+          "ovr": 86,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_loftuscheek",
+          "name": "루벤 로프터스치크",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_pulisic",
+          "name": "크리스티안 풀리시치",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "LW"
+          ],
+          "ovr": 85,
+          "nat": "미국",
+          "code": "US",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_giroud",
+          "name": "올리비에 지루",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_sportiello",
+          "name": "마르코 스포르티엘로",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 78,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_thiaw",
+          "name": "말릭 티아우",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_musah",
+          "name": "유누스 무사",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 78,
+          "nat": "미국",
+          "code": "US",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_acm_2324_okafor",
+          "name": "노아 오카포",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "ST"
+          ],
+          "ovr": 79,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "juv_2324",
+      "name": "유벤투스",
+      "shortName": "JUV",
+      "leagueId": "seriea",
+      "primaryColor": "#FFFFFF",
+      "secondaryColor": "#111111",
+      "pattern": "stripes",
+      "formation": "3-5-2",
+      "defaultTactic": "park_the_bus",
+      "att": 83,
+      "mid": 83,
+      "def": 85,
+      "manager": {
+        "name": "마시밀리아노 알레그리",
+        "ovr": 85,
+        "traitId": "catenaccio",
+        "preferredFormations": [
+          "3-5-2"
+        ],
+        "preferredTactics": [
+          "park_the_bus"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_juv_2324_szczesny",
+          "name": "보이치에흐 슈체스니",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 85,
+          "nat": "폴란드",
+          "code": "PL",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_danilo",
+          "name": "다닐루",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "RB"
+          ],
+          "ovr": 82,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_bremer",
+          "name": "글레이송 브레메르",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 86,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_gatti",
+          "name": "페데리코 가티",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 81,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_kostic",
+          "name": "필리프 코스티치",
+          "pos": "DF",
+          "main": [
+            "LWB",
+            "LM"
+          ],
+          "ovr": 80,
+          "nat": "세르비아",
+          "code": "RS",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_locatelli",
+          "name": "마누엘 로카텔리",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_rabiot",
+          "name": "아드리앙 라비오",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_mckennie",
+          "name": "웨스턴 맥케니",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 81,
+          "nat": "미국",
+          "code": "US",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_cambiaso",
+          "name": "안드레아 캄비아소",
+          "pos": "DF",
+          "main": [
+            "RWB",
+            "LWB"
+          ],
+          "ovr": 82,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_vlahovic",
+          "name": "두샨 블라호비치",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 85,
+          "nat": "세르비아",
+          "code": "RS",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_chiesa",
+          "name": "페데리코 키에사",
+          "pos": "FW",
+          "main": [
+            "ST",
+            "LW"
+          ],
+          "ovr": 84,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_perin",
+          "name": "마티아 페린",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 80,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_rugani",
+          "name": "다니엘레 루가니",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 78,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_juv_2324_yildiz",
+          "name": "케난 일디즈",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "ST"
+          ],
+          "ovr": 79,
+          "nat": "튀르키예",
+          "code": "TR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ata_2324",
+      "name": "아탈란타",
+      "shortName": "ATA",
+      "leagueId": "seriea",
+      "primaryColor": "#1E71B8",
+      "secondaryColor": "#111111",
+      "pattern": "stripes",
+      "formation": "3-4-2-1",
+      "defaultTactic": "gegenpressing",
+      "att": 85,
+      "mid": 84,
+      "def": 83,
+      "manager": {
+        "name": "잔 피에로 가스페리니",
+        "ovr": 87,
+        "traitId": "gegenpress_guru",
+        "preferredFormations": [
+          "3-4-2-1"
+        ],
+        "preferredTactics": [
+          "gegenpressing"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_ata_2324_carnesecchi",
+          "name": "마르코 카르네세키",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 82,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_djimsiti",
+          "name": "베라트 짐시티",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 82,
+          "nat": "알바니아",
+          "code": "AL",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_hien",
+          "name": "이삭 히엔",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 81,
+          "nat": "스웨덴",
+          "code": "SE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_scalvini",
+          "name": "조르조 스칼비니",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 82,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_ruggeri",
+          "name": "마테오 루제리",
+          "pos": "DF",
+          "main": [
+            "LWB"
+          ],
+          "ovr": 80,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_ederson_a",
+          "name": "에데르송",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 84,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_deroon",
+          "name": "마르턴 더 론",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "CDM"
+          ],
+          "ovr": 82,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_zappacosta",
+          "name": "다비데 차파코스타",
+          "pos": "DF",
+          "main": [
+            "RWB"
+          ],
+          "ovr": 81,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 87,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_koopmeiners",
+          "name": "퇸 코프메이너르스",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 85,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_lookman",
+          "name": "아데몰라 루크먼",
+          "pos": "FW",
+          "main": [
+            "CAM",
+            "LW"
+          ],
+          "ovr": 85,
+          "nat": "나이지리아",
+          "code": "NG",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ],
+          "note": "23-24 UEL 결승 해트트릭의 주역"
+        },
+        {
+          "id": "s2324_ata_2324_scamacca",
+          "name": "잔루카 스카마카",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_musso",
+          "name": "후안 무소",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 80,
+          "nat": "아르헨티나",
+          "code": "AR",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_kolasinac",
+          "name": "세아드 콜라시나츠",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "보스니아",
+          "code": "BA",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_ata_2324_deketelaere",
+          "name": "샤를 더 케텔라러",
+          "pos": "FW",
+          "main": [
+            "CAM",
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "벨기에",
+          "code": "BE",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "psg_2324",
+      "name": "파리 생제르맹",
+      "shortName": "PSG",
+      "leagueId": "ligue1",
+      "primaryColor": "#004170",
+      "secondaryColor": "#DA291C",
+      "pattern": "solid",
+      "formation": "4-3-3",
+      "defaultTactic": "possession",
+      "att": 89,
+      "mid": 86,
+      "def": 85,
+      "manager": {
+        "name": "루이스 엔리케",
+        "ovr": 88,
+        "traitId": "tiki_taka",
+        "preferredFormations": [
+          "4-3-3"
+        ],
+        "preferredTactics": [
+          "possession"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_psg_2324_donnarumma",
+          "name": "잔루이지 돈나룸마",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 88,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_nuno",
+          "name": "누누 멘드스",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 85,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_hernandez",
+          "name": "뤼카 에르난데스",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "LB"
+          ],
+          "ovr": 84,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_marquinhos",
+          "name": "마르키뉴스",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 87,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_hakimi",
+          "name": "아슈라프 하키미",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 86,
+          "nat": "모로코",
+          "code": "MA",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_vitinha",
+          "name": "비티냐",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 86,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_zaireemery",
+          "name": "워렌 자이르에머리",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 83,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_fabian",
+          "name": "파비안 루이스",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 84,
+          "nat": "스페인",
+          "code": "ES",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_mbappe",
+          "name": "킬리안 음바페",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "ST"
+          ],
+          "ovr": 92,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_kolo",
+          "name": "랑달 콜로 무아니",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 82,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_dembele",
+          "name": "우스만 뎀벨레",
+          "pos": "FW",
+          "main": [
+            "RW"
+          ],
+          "ovr": 86,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_navas",
+          "name": "케일러 나바스",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 81,
+          "nat": "코스타리카",
+          "code": "CR",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_skriniar",
+          "name": "밀란 슈크리니아르",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 83,
+          "nat": "슬로바키아",
+          "code": "SK",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_leekangin",
+          "name": "이강인",
+          "pos": "MF",
+          "main": [
+            "CM",
+            "RW"
+          ],
+          "ovr": 82,
+          "nat": "대한민국",
+          "code": "KR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_psg_2324_barcola",
+          "name": "브래들리 바르콜라",
+          "pos": "FW",
+          "main": [
+            "LW"
+          ],
+          "ovr": 82,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mon_2324",
+      "name": "AS 모나코",
+      "shortName": "MON",
+      "leagueId": "ligue1",
+      "primaryColor": "#E51A22",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "gegenpressing",
+      "att": 82,
+      "mid": 82,
+      "def": 80,
+      "manager": {
+        "name": "아디 휘터",
+        "ovr": 82,
+        "traitId": "gegenpress_guru",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "gegenpressing"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_mon_2324_majecki",
+          "name": "라도스와프 마예츠키",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 79,
+          "nat": "폴란드",
+          "code": "PL",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_jakobs",
+          "name": "이스마일 야콥스",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 78,
+          "nat": "세네갈",
+          "code": "SN",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_salisu",
+          "name": "모하메드 살리수",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "가나",
+          "code": "GH",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_kehrer",
+          "name": "틸로 케러",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "독일",
+          "code": "DE",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_vanderson",
+          "name": "반데르송",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 81,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_fofana",
+          "name": "유수프 포파나",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 83,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_zakaria",
+          "name": "데니스 자카리아",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_golovin",
+          "name": "알렉산드르 골로빈",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "CAM"
+          ],
+          "ovr": 83,
+          "nat": "러시아",
+          "code": "RU",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_minamino",
+          "name": "미나미노 다쿠미",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "RW"
+          ],
+          "ovr": 81,
+          "nat": "일본",
+          "code": "JP",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_akliouche",
+          "name": "마그네스 아클리우슈",
+          "pos": "FW",
+          "main": [
+            "RW",
+            "CAM"
+          ],
+          "ovr": 79,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_benyedder",
+          "name": "위삼 벤 예데르",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 83,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_kohn",
+          "name": "필리프 쾬",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 77,
+          "nat": "스위스",
+          "code": "CH",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_singo",
+          "name": "윌프리드 싱고",
+          "pos": "DF",
+          "main": [
+            "CB",
+            "RB"
+          ],
+          "ovr": 81,
+          "nat": "코트디부아르",
+          "code": "CI",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_mon_2324_balogun",
+          "name": "폴라린 발로건",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 79,
+          "nat": "미국",
+          "code": "US",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bre_2324",
+      "name": "스타드 브레스투아",
+      "shortName": "BRE",
+      "leagueId": "ligue1",
+      "primaryColor": "#E2001A",
+      "secondaryColor": "#FFFFFF",
+      "pattern": "solid",
+      "formation": "4-3-3",
+      "defaultTactic": "counter",
+      "att": 79,
+      "mid": 80,
+      "def": 80,
+      "manager": {
+        "name": "에리크 루아",
+        "ovr": 82,
+        "traitId": "underdog_killer",
+        "preferredFormations": [
+          "4-3-3"
+        ],
+        "preferredTactics": [
+          "counter"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_bre_2324_bizot",
+          "name": "마르코 비조트",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 81,
+          "nat": "네덜란드",
+          "code": "NL",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_locko",
+          "name": "브래들리 로코",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 79,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_brassier",
+          "name": "릴리앙 브라시에",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_chardonnet",
+          "name": "브렌당 샤르도네",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 79,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_lala",
+          "name": "케니 랄라",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 79,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_leesmelou",
+          "name": "피에르 리스멜루",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 82,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_magnetti",
+          "name": "위고 마녜티",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 78,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_camara_m",
+          "name": "마흐디 카마라",
+          "pos": "MF",
+          "main": [
+            "CM"
+          ],
+          "ovr": 79,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "box_to_box"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_satriano",
+          "name": "마르틴 사트리아노",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "ST"
+          ],
+          "ovr": 77,
+          "nat": "우루과이",
+          "code": "UY",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_mounie",
+          "name": "스티브 무니에",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 78,
+          "nat": "베냉",
+          "code": "BJ",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_delcastillo",
+          "name": "로맹 델 카스티요",
+          "pos": "FW",
+          "main": [
+            "RW"
+          ],
+          "ovr": 80,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_coudert",
+          "name": "그레구아르 쿠데르",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 72,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_lecardinal",
+          "name": "쥘리앙 르 카르디날",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 76,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_bre_2324_doumbia",
+          "name": "카모리 둠비아",
+          "pos": "MF",
+          "main": [
+            "CAM"
+          ],
+          "ovr": 77,
+          "nat": "말리",
+          "code": "ML",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lil_2324",
+      "name": "LOSC 릴",
+      "shortName": "LIL",
+      "leagueId": "ligue1",
+      "primaryColor": "#E01E13",
+      "secondaryColor": "#232B52",
+      "pattern": "solid",
+      "formation": "4-2-3-1",
+      "defaultTactic": "possession",
+      "att": 82,
+      "mid": 81,
+      "def": 81,
+      "manager": {
+        "name": "파울루 폰세카",
+        "ovr": 83,
+        "traitId": "tiki_taka",
+        "preferredFormations": [
+          "4-2-3-1"
+        ],
+        "preferredTactics": [
+          "possession"
+        ]
+      },
+      "roster": [
+        {
+          "id": "s2324_lil_2324_chevalier",
+          "name": "뤼카 슈발리에",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 83,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_ismaily",
+          "name": "이스마일리",
+          "pos": "DF",
+          "main": [
+            "LB"
+          ],
+          "ovr": 79,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_alexsandro",
+          "name": "알렉산드루",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "브라질",
+          "code": "BR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_yoro",
+          "name": "레니 요로",
+          "pos": "DF",
+          "main": [
+            "CB"
+          ],
+          "ovr": 82,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 82,
+          "styles": [
+            "stopper_cb"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_diakite",
+          "name": "바포데 디아키테",
+          "pos": "DF",
+          "main": [
+            "RB",
+            "CB"
+          ],
+          "ovr": 80,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_andre",
+          "name": "뱅자맹 앙드레",
+          "pos": "MF",
+          "main": [
+            "CDM"
+          ],
+          "ovr": 82,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_bentaleb",
+          "name": "나빌 벤탈렙",
+          "pos": "MF",
+          "main": [
+            "CDM",
+            "CM"
+          ],
+          "ovr": 80,
+          "nat": "알제리",
+          "code": "DZ",
+          "sta": 87,
+          "styles": [
+            "ball_winner"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_cabella",
+          "name": "레미 카벨라",
+          "pos": "FW",
+          "main": [
+            "LW",
+            "CAM"
+          ],
+          "ovr": 80,
+          "nat": "프랑스",
+          "code": "FR",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_angelgomes",
+          "name": "앙헬 고메스",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "CM"
+          ],
+          "ovr": 81,
+          "nat": "잉글랜드",
+          "code": "GB-ENG",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_zhegrova",
+          "name": "에돈 제그로바",
+          "pos": "FW",
+          "main": [
+            "RW"
+          ],
+          "ovr": 82,
+          "nat": "코소보",
+          "code": "XK",
+          "sta": 84,
+          "styles": [
+            "inverted_winger"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_david",
+          "name": "조너선 데이비드",
+          "pos": "FW",
+          "main": [
+            "ST"
+          ],
+          "ovr": 84,
+          "nat": "캐나다",
+          "code": "CA",
+          "sta": 82,
+          "styles": [
+            "poacher"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_mannone",
+          "name": "비토 만노네",
+          "pos": "GK",
+          "main": [
+            "GK"
+          ],
+          "ovr": 75,
+          "nat": "이탈리아",
+          "code": "IT",
+          "sta": 78,
+          "styles": [
+            "shot_stopper"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_tiagosantos",
+          "name": "티아구 산투스",
+          "pos": "DF",
+          "main": [
+            "RB"
+          ],
+          "ovr": 79,
+          "nat": "포르투갈",
+          "code": "PT",
+          "sta": 84,
+          "styles": [
+            "attacking_wingback"
+          ]
+        },
+        {
+          "id": "s2324_lil_2324_haraldsson",
+          "name": "하콘 하랄드손",
+          "pos": "MF",
+          "main": [
+            "CAM",
+            "LW"
+          ],
+          "ovr": 78,
+          "nat": "노르웨이",
+          "code": "NO",
+          "sta": 82,
+          "styles": [
+            "playmaker_10"
+          ]
+        }
+      ]
+    }
+  ],
+  "bigMatchClubIds": [
+    "bay_2324",
+    "bvb_2324",
+    "rbl_2324",
+    "vfb_2324"
+  ],
+  "missionKeyPlayerIds": [
+    "s2324_lev_2324_wirtz",
+    "s2324_lev_2324_grimaldo",
+    "s2324_lev_2324_boniface"
+  ],
+  "awakeningFocusPlayerIds": [
+    "s2324_lev_2324_wirtz",
+    "s2324_lev_2324_grimaldo",
+    "s2324_lev_2324_boniface",
+    "s2324_lev_2324_frimpong"
+  ],
+  "missionTargets": {
+    "leverkusenTrioIds": [
+      "s2324_lev_2324_wirtz",
+      "s2324_lev_2324_grimaldo",
+      "s2324_lev_2324_boniface"
+    ],
+    "wirtzId": "s2324_lev_2324_wirtz"
+  }
+}

@@ -1323,7 +1323,7 @@ export function SystemGuideContent({
             </div>
           </div>
 
-          {/* 6-4. History Story Mode (5 Scenarios) */}
+          {/* 6-4. History Story Mode (7 Scenarios) */}
           <div
             id="guide-legacy-story"
             className="scroll-mt-2 rounded-xl border border-amber-500/30 bg-[#0b1018] p-3.5 space-y-2.5"
@@ -1331,21 +1331,21 @@ export function SystemGuideContent({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 font-bold text-amber-200">
                 <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
-                스토리 모드 (History Story Mode · 5종 시나리오)
+                스토리 모드 (History Story Mode · 7종 시나리오)
               </div>
               <span className="rounded bg-amber-500/15 border border-amber-400/35 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300 whitespace-nowrap">
-                별 도감 ★★★ × 5 (최대 15★)
+                별 도감 ★★★ × 7 (최대 21★)
               </span>
             </div>
             <div className="text-[11px] text-slate-300 space-y-1">
               <div>
-                • <strong className="text-white">드래프트 생략 · 수동 지휘 전용:</strong> 실제 그 시절 20개 자국 리그 팀 로스터와 감독·전술로 즉시 개막하며, <strong className="text-rose-300">[빠른 선발]이 전면 제거</strong>되어 유저가 직접 선발·전술·로테이션을 운영합니다.
+                • <strong className="text-white">드래프트 생략 · 수동 지휘 전용:</strong> 실제 그 시절 자국 리그(18~20팀) 로스터와 감독·전술로 즉시 개막하며, <strong className="text-rose-300">[빠른 선발]이 전면 제거</strong>되어 유저가 직접 선발·전술·로테이션을 운영합니다.
               </div>
               <div>
-                • <strong className="text-white">5대 리그 35구단 직접 지목 이적시장 (시즌 1회 + UCL 직전 1회):</strong> 룰렛 대신 자국 리그 19팀 + 타 4대 리그 당시 상위 4팀씩 16팀을 <strong className="text-amber-200">100% 그 시절 실제 로스터</strong>로 직접 지목해 현금 협상합니다. 리그 중 겨울(19R) 1회 + UCL 진출 시 16강 직전 1회 개방됩니다(아스널은 신구장 긴축 고증으로 창당 최대 1명 제한).
+                • <strong className="text-white">5대 리그 직접 지목 이적시장 (2단계 밸런스):</strong> 자국 리그 AI + 타 4대 리그 당시 상위 4팀씩 <strong className="text-amber-200">100% 그 시절 실제 로스터</strong>로 겨울(17R/19R) 1회 + UCL 직전 1회 협상합니다. 언더독 5팀(레스터·토트넘·아틀레티코·레버쿠젠·인테르)은 <strong className="text-emerald-300">창당 4회 협상</strong>, 완성형 강호 2팀(맨유·아스널)은 <strong className="text-rose-300">창당 최대 1명 제한</strong>(아스널은 UCL 창 없음)이 적용됩니다.
               </div>
               <div>
-                • <strong className="text-white">UCL 16강 직행 &amp; 랭킹 완전 격리:</strong> UCL 진출 4종은 36팀 리그 페이즈 없이 실제 그 해 16강 토너먼트로 직행하며, 스토리 모드 세이브·별 도감은 일반 드래프트 세이브 및 <strong className="text-amber-200">일일 글로벌 랭킹과 완전히 분리</strong>됩니다.
+                • <strong className="text-white">UCL 16강 직행 &amp; 커리어 완전 격리:</strong> UCL 진출 5종은 36팀 리그 페이즈 없이 실제 그 해 16강 토너먼트로 직행하며, 스토리 모드 세이브·별 도감은 일반 드래프트 세이브 · <strong className="text-amber-200">레거시 도전과제 24종 · 일일 글로벌 랭킹과 완전히 분리</strong>됩니다.
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[10.5px] tabular-nums">

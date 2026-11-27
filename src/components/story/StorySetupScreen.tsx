@@ -139,7 +139,7 @@ export function StorySetupScreen() {
               managerTraitId={state.manager.traitId}
               tactic={state.defaultTactic}
               selectedSlot={selectedSlot}
-              highlightedPlayerIds={missionKeySet}
+              missionHighlightPlayerIds={missionKeySet}
               onSlotClick={handleSlotClick}
               onSlotSwap={(from, to) => {
                 swapSquadPositions(from, to);

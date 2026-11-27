@@ -74,6 +74,8 @@ interface PitchBoardProps {
   staminaByPlayerId?: Record<string, number>;
   conditionByPlayerId?: PlayerConditionMap;
   highlightedPlayerIds?: Set<string>;
+  /** Optional Story Mode mission-key players highlighted with amber ★ 미션 badge (never red injury badge) */
+  missionHighlightPlayerIds?: Set<string>;
   disabledBenchIds?: Set<string>;
   onSlotClick?: (area: 'starter' | 'bench', index: number) => void;
   onSlotSwap?: (from: SlotRef, to: SlotRef) => void;
@@ -155,6 +157,7 @@ export function PitchBoard({
   staminaByPlayerId,
   conditionByPlayerId: conditionProp,
   highlightedPlayerIds,
+  missionHighlightPlayerIds,
   disabledBenchIds,
   onSlotClick,
   onSlotSwap,
@@ -664,6 +667,9 @@ export function PitchBoard({
           const isHighlightedInjury = Boolean(
             player && highlightedPlayerIds?.has(player.id),
           );
+          const isMissionKey = Boolean(
+            player && !isHighlightedInjury && missionHighlightPlayerIds?.has(player.id),
+          );
           const tier = player ? getCardTier(player) : null;
           const isLegend = tier === 'legend';
           const classicEra = player && isLegend ? getClassicEra(player) : null;
@@ -793,7 +799,9 @@ export function PitchBoard({
                     ? selectedTone === 'rose'
                       ? 'ring-2 ring-rose-400 border-rose-400/95 outline-2 outline-offset-1 outline-rose-400/90 [animation:none] shadow-lg'
                       : 'ring-2 ring-emerald-400/90 border-emerald-400/95 outline-2 outline-offset-1 outline-emerald-400/90 [animation:none]'
-                    : ''
+                    : isMissionKey && player && !isHighlightedInjury && !isPreview
+                      ? 'ring-1 ring-amber-400/65 border-amber-400/75'
+                      : ''
                 } ${
                   isDragOver ? 'ring-2 ring-sky-400/80' : ''
                 }`}
@@ -817,6 +825,10 @@ export function PitchBoard({
                 ) : isPreview && player ? (
                   <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-emerald-600/90 px-1.5 py-0.2 text-[8px] font-bold text-white shadow">
                     프리뷰
+                  </span>
+                ) : isMissionKey && player ? (
+                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-amber-400/95 px-1.5 py-0.2 text-[8px] font-black text-slate-950 shadow">
+                    ★ 미션
                   </span>
                 ) : player?.awakening ? (
                   <Flame className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-3 h-3 text-orange-400 drop-shadow" />

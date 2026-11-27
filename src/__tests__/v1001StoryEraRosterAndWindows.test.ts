@@ -272,7 +272,7 @@ describe('v10.0.1 — Story Mode 100% Era Roster Isolation & 1 Winter + 1 Pre-UC
     });
     expect(checkTransferWindowTrigger(28, [99, 19, 99], [2])).toBeNull();
 
-    // All 5 scenarios initialize with [99, 19, 99]
+    // All scenarios initialize with a single winter window ([99, 17, 99] for 18-team Bundesliga, [99, 19, 99] for 20-team leagues)
     for (const scenarioId of ALL_SCENARIO_IDS) {
       const bundle = await loadStoryScenarioBundle(scenarioId);
       const setup = gameReducer({} as GameState, {
@@ -283,7 +283,8 @@ describe('v10.0.1 — Story Mode 100% Era Roster Isolation & 1 Winter + 1 Pre-UC
         type: 'START_STORY_SEASON',
         payload: { bundle },
       });
-      expect(started.season!.transferWindows).toEqual([99, 19, 99]);
+      const expectedWinter = started.season!.totalRounds <= 34 ? 17 : 19;
+      expect(started.season!.transferWindows).toEqual([99, expectedWinter, 99]);
     }
 
     // UCL scenario (07-08 Man Utd): ENTER_UCL_MODE opens pre-UCL era transfer window, TRANSFER_CLOSE_WINDOW starts R16

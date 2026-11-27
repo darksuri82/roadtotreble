@@ -28,20 +28,32 @@ function renderBackdrop(backdrop: StoryPixelBackdropId, accentColor: string) {
   const isMoscowRain = backdrop === 'moscow_rain_final';
   const isCounter = backdrop === 'counter_sprint';
   const isLungs = backdrop === 'three_lungs_engine';
-  const isCrown = backdrop === 'underdog_crown' || backdrop === 'highbury_unbeaten';
+  const isCrown =
+    backdrop === 'underdog_crown' ||
+    backdrop === 'highbury_unbeaten' ||
+    backdrop === 'bayarena_unbeaten' ||
+    backdrop === 'san_siro_treble';
 
   const skyTop =
-    backdrop === 'old_trafford_night' || backdrop === 'calderon_fortress'
+    backdrop === 'old_trafford_night' ||
+    backdrop === 'calderon_fortress' ||
+    backdrop === 'bayarena_unbeaten'
       ? '#160910'
       : isMoscowRain
         ? '#07111f'
-        : '#081022';
+        : backdrop === 'san_siro_treble'
+          ? '#070f24'
+          : '#081022';
   const skyMid =
-    backdrop === 'old_trafford_night' || backdrop === 'calderon_fortress'
+    backdrop === 'old_trafford_night' ||
+    backdrop === 'calderon_fortress' ||
+    backdrop === 'bayarena_unbeaten'
       ? '#26111a'
       : isMoscowRain
         ? '#0f1f36'
-        : '#101d38';
+        : backdrop === 'san_siro_treble'
+          ? '#0d1d42'
+          : '#101d38';
 
   return (
     <g>
