@@ -6,6 +6,7 @@ import {
   Crown,
   Flame,
   Globe,
+  Palette,
   ScrollText,
   Shield,
   SlidersHorizontal,
@@ -36,13 +37,15 @@ import {
 import type { Player } from '../../types/player';
 import { RoadToTrebleHeroSvg } from '../setup/RoadToTrebleHeroSvg';
 import { StoryPixelSceneSvg } from '../story/StoryPixelSceneSvg';
+import { JerseySvg } from './JerseySvg';
+import { PixelManagerAvatar } from './PixelManagerAvatar';
 import { PlayerCard } from './PlayerCard';
 
 export const WHATS_NEW_DISMISSED_STORAGE_KEY =
   'rtt_whats_new_dismissed_version_v1';
 
 /** Version range highlighted in the current What's New popup. */
-export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.6';
+export const WHATS_NEW_HIGHLIGHT_RANGE = 'v9.5.0 ~ v10.1.8';
 
 export function isWhatsNewDismissed(
   version: string = CURRENT_APP_VERSION,
@@ -78,6 +81,7 @@ export function clearWhatsNewDismissal(): void {
 }
 
 type WhatsNewTabId =
+  | 'v1018'
   | 'v100'
   | 'v910'
   | 'v99'
@@ -93,7 +97,8 @@ const TABS: Array<{
   badge: string;
   icon: typeof Crown;
 }> = [
-  { id: 'v100', label: '스토리 모드 7종 · 시대 룰렛!', badge: '10.1.2', icon: BookOpen },
+  { id: 'v1018', label: '감독 · 유니폼 커스텀', badge: '10.1.8', icon: Palette },
+  { id: 'v100', label: '스토리 모드 7종 · 시대 룰렛!', badge: '10.1.6', icon: BookOpen },
   { id: 'v910', label: '난이도 상승!', badge: '9.10', icon: Flame },
   { id: 'v99', label: '타이틀 도트 · 빠른 시작', badge: '9.9', icon: SlidersHorizontal },
   { id: 'v98', label: '멀티리그 대규모 정비', badge: '9.8', icon: Users },
@@ -115,7 +120,7 @@ export function WhatsNewModal({
   onOpenPatchNotes,
 }: WhatsNewModalProps) {
   useBodyScrollLock(true);
-  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v100');
+  const [activeTab, setActiveTab] = useState<WhatsNewTabId>('v1018');
   const [dontShowAgain, setDontShowAgain] = useState<boolean>(false);
 
   const previewPlayers = useMemo(() => {
@@ -228,6 +233,162 @@ export function WhatsNewModal({
 
         {/* Single Scrollable Content */}
         <div className="flex-1 overflow-y-auto overscroll-contain touch-pan-y p-4 sm:p-5 space-y-4 break-keep">
+          {activeTab === 'v1018' && (
+            <div className="space-y-3.5">
+              <div className="rounded-2xl border border-emerald-400/35 bg-gradient-to-br from-emerald-950/30 via-[#0d1420] to-sky-950/25 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-sm sm:text-base font-black text-emerald-200">
+                    <Palette className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
+                    나만의 감독 &amp; 구단 유니폼 커스텀 대폭 확장!
+                  </span>
+                  <span className="rounded-md border border-emerald-400/40 bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] font-black text-emerald-200 whitespace-nowrap">
+                    v10.1.8 UPDATE
+                  </span>
+                </div>
+                <p className="text-[11.5px] leading-relaxed text-slate-300">
+                  남녀 감독의 <strong className="text-white">헤어스타일 · 머리색 · 의상</strong>과
+                  구단 <strong className="text-white">유니폼 패턴 · 자유 컬러 피커</strong>가 대폭
+                  확장되었습니다. 타이틀 화면 상단 프로필 바에서 바로 나만의 감독과 유니폼을
+                  제작해 보세요.
+                </p>
+
+                {/* Live Pixel Showcase */}
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-800 bg-[#090e17] p-3 space-y-2">
+                    <div className="text-[11px] font-extrabold text-emerald-300">
+                      신규 남녀 감독 스타일 미리보기
+                    </div>
+                    <div className="flex items-end justify-around py-1">
+                      <PixelManagerAvatar
+                        avatar={{
+                          gender: 'male',
+                          skinTone: 'peach',
+                          hairStyle: 'cap',
+                          hairColor: 'brown',
+                          outfit: 'team_polo',
+                        }}
+                        clubPrimaryColor="#10b981"
+                        clubSecondaryColor="#f8fafc"
+                        size={48}
+                      />
+                      <PixelManagerAvatar
+                        avatar={{
+                          gender: 'male',
+                          skinTone: 'warm',
+                          hairStyle: 'curly',
+                          hairColor: 'auburn',
+                          outfit: 'tuxedo',
+                        }}
+                        size={48}
+                      />
+                      <PixelManagerAvatar
+                        avatar={{
+                          gender: 'female',
+                          skinTone: 'light',
+                          hairStyle: 'half_up',
+                          hairColor: 'ash_pink',
+                          outfit: 'female_coat_scarf',
+                        }}
+                        size={48}
+                      />
+                      <PixelManagerAvatar
+                        avatar={{
+                          gender: 'female',
+                          skinTone: 'peach',
+                          hairStyle: 'braid',
+                          hairColor: 'blonde',
+                          outfit: 'female_team_polo',
+                        }}
+                        clubPrimaryColor="#2563eb"
+                        clubSecondaryColor="#fbbf24"
+                        size={48}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-[#090e17] p-3 space-y-2">
+                    <div className="text-[11px] font-extrabold text-sky-300">
+                      신규 유니폼 패턴 7종 (총 12종)
+                    </div>
+                    <div className="flex items-center justify-around py-1.5">
+                      <JerseySvg
+                        primaryColor="#1e3a8a"
+                        secondaryColor="#fbbf24"
+                        pattern="chevron"
+                        label="CHV"
+                        size={42}
+                      />
+                      <JerseySvg
+                        primaryColor="#b91c1c"
+                        secondaryColor="#ffffff"
+                        pattern="checkered"
+                        label="CHK"
+                        size={42}
+                      />
+                      <JerseySvg
+                        primaryColor="#0f172a"
+                        secondaryColor="#10b981"
+                        pattern="center_band"
+                        label="BND"
+                        size={42}
+                      />
+                      <JerseySvg
+                        primaryColor="#7c3aed"
+                        secondaryColor="#38bdf8"
+                        pattern="gradient"
+                        label="GRD"
+                        size={42}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div className="rounded-xl border border-slate-800 bg-[#0d1420] p-3.5 space-y-1.5">
+                  <div className="text-xs font-extrabold text-white">
+                    1. 남녀 감독 헤어 · 머리색 · 의상 확장
+                  </div>
+                  <ul className="space-y-1 text-[11px] text-slate-300 list-disc pl-4">
+                    <li>
+                      <strong className="text-emerald-300">남성 헤어 9종</strong>: 컬리 펌 · 모히칸
+                      페이드 · 장발 묶음머리 · 팀 컬러 연동 터치라인 캡 추가
+                    </li>
+                    <li>
+                      <strong className="text-emerald-300">여성 헤어 8종</strong>: 숏 픽시컷 · 로우
+                      트윈테일 · 반묶음 롱헤어 · 사이드 브레이드 추가
+                    </li>
+                    <li>
+                      <strong className="text-emerald-300">머리색 9종 · 남 9 / 여 8 의상</strong>:
+                      턱시도 · 니트 베스트 · 레더 재킷 · 울 코트 &amp; 머플러 · 가디건 · 팀 폴로 및
+                      랜덤 외형 지원
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="rounded-xl border border-slate-800 bg-[#0d1420] p-3.5 space-y-1.5">
+                  <div className="text-xs font-extrabold text-white">
+                    2. 유니폼 12종 패턴 · 자유 컬러 피커
+                  </div>
+                  <ul className="space-y-1 text-[11px] text-slate-300 list-disc pl-4">
+                    <li>
+                      <strong className="text-sky-300">신규 패턴 7종</strong>: 핀스트라이프 · V
+                      쉐브론 · 쿼터 · 센터 밴드 · 체스트 밴드 · 체커보드 · 그라데이션
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">자유 컬러 피커 &amp; 스왑</strong>: 메인
+                      18종 · 보조 16종 추천 팔레트 + 직접 색상 선택(HEX) + 색상 반전 · 랜덤 유니폼
+                    </li>
+                    <li>
+                      <strong className="text-sky-300">프리셋 10슬롯</strong>: 나만의 감독·유니폼
+                      조합을 최대 10개까지 보관하고 즉시 전환
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'v100' && (
             <div className="space-y-3.5">
               {/* Hero Story Banner + Live Pixel Scene */}

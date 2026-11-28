@@ -485,6 +485,51 @@ export function RoadToTrebleHeroSvg({
             <rect x="12" y="58" width="3" height="9" fill={clubSecondaryColor} />
           </>
         )}
+        {clubPattern === 'pinstripes' && (
+          <>
+            <rect x="9" y="58" width="1" height="9" fill={clubSecondaryColor} />
+            <rect x="12" y="58" width="1" height="9" fill={clubSecondaryColor} />
+            <rect x="15" y="58" width="1" height="9" fill={clubSecondaryColor} />
+            <rect x="18" y="58" width="1" height="9" fill={clubSecondaryColor} />
+          </>
+        )}
+        {clubPattern === 'chevron' && (
+          <>
+            <rect x="8" y="59" width="3" height="2" fill={clubSecondaryColor} />
+            <rect x="17" y="59" width="3" height="2" fill={clubSecondaryColor} />
+            <rect x="10" y="61" width="3" height="2" fill={clubSecondaryColor} />
+            <rect x="15" y="61" width="3" height="2" fill={clubSecondaryColor} />
+            <rect x="12" y="63" width="4" height="2" fill={clubSecondaryColor} />
+          </>
+        )}
+        {clubPattern === 'quarters' && (
+          <>
+            <rect x="14" y="58" width="6" height="4" fill={clubSecondaryColor} />
+            <rect x="8" y="62" width="6" height="5" fill={clubSecondaryColor} />
+          </>
+        )}
+        {clubPattern === 'center_band' && (
+          <rect x="12" y="58" width="4" height="9" fill={clubSecondaryColor} />
+        )}
+        {clubPattern === 'chest_band' && (
+          <rect x="8" y="61" width="12" height="3" fill={clubSecondaryColor} />
+        )}
+        {clubPattern === 'checkered' && (
+          <>
+            <rect x="8" y="58" width="3" height="3" fill={clubSecondaryColor} />
+            <rect x="14" y="58" width="3" height="3" fill={clubSecondaryColor} />
+            <rect x="11" y="61" width="3" height="3" fill={clubSecondaryColor} />
+            <rect x="17" y="61" width="3" height="3" fill={clubSecondaryColor} />
+            <rect x="8" y="64" width="3" height="3" fill={clubSecondaryColor} />
+            <rect x="14" y="64" width="3" height="3" fill={clubSecondaryColor} />
+          </>
+        )}
+        {clubPattern === 'gradient' && (
+          <>
+            <rect x="8" y="62" width="12" height="2" fill={clubSecondaryColor} opacity="0.45" />
+            <rect x="8" y="64" width="12" height="3" fill={clubSecondaryColor} opacity="0.88" />
+          </>
+        )}
 
         {/* Subtle cloth fold specular highlight & bottom hem shade */}
         <rect x="8" y="58" width="12" height="1" fill="#ffffff" opacity="0.28" />

@@ -3,7 +3,19 @@ import type { Player, Position, SubPosition } from './player';
 
 export type LeagueId = 'epl' | 'laliga' | 'seriea' | 'bundesliga' | 'ligue1';
 
-export type JerseyPattern = 'solid' | 'stripes' | 'hoops' | 'sash' | 'half';
+export type JerseyPattern =
+  | 'solid'
+  | 'stripes'
+  | 'hoops'
+  | 'sash'
+  | 'half'
+  | 'pinstripes'
+  | 'chevron'
+  | 'quarters'
+  | 'center_band'
+  | 'chest_band'
+  | 'checkered'
+  | 'gradient';
 
 export type TacticId =
   | 'possession'

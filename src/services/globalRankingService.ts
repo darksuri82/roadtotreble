@@ -249,9 +249,16 @@ const VALID_LEAGUE_IDS = new Set<LeagueId>([
 const VALID_PATTERNS = new Set<JerseyPattern>([
   'solid',
   'stripes',
+  'pinstripes',
   'hoops',
   'sash',
   'half',
+  'chevron',
+  'quarters',
+  'center_band',
+  'chest_band',
+  'checkered',
+  'gradient',
 ]);
 
 function isValidFormation(value: unknown): value is FormationId {

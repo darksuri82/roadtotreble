@@ -235,10 +235,10 @@ describe('v2.7 Stage 1 Core Engine: Synergy OVR, Strict League Points, Concrete 
     const maleOutfits = new Set(getOutfitOptionsForGender('male').map((o) => o.id));
     const femaleOutfits = new Set(getOutfitOptionsForGender('female').map((o) => o.id));
 
-    expect(maleHairs.size).toBe(5);
-    expect(femaleHairs.size).toBe(4);
-    expect(maleOutfits.size).toBe(5);
-    expect(femaleOutfits.size).toBe(4);
+    expect(maleHairs.size).toBe(9);
+    expect(femaleHairs.size).toBe(8);
+    expect(maleOutfits.size).toBe(9);
+    expect(femaleOutfits.size).toBe(8);
 
     // Zero overlap between male-only and female-only catalogs
     for (const h of maleHairs) expect(femaleHairs.has(h)).toBe(false);

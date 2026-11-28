@@ -5,7 +5,7 @@ import type { JerseyPattern } from '../types/league';
 
 export const CLUB_PRESETS_STORAGE_KEY = 'pitch_manager_club_presets_v1';
 export const ACTIVE_PROFILE_STORAGE_KEY = 'rtt_active_user_profile_v1';
-export const MAX_CLUB_PRESETS = 6;
+export const MAX_CLUB_PRESETS = 10;
 
 export const DEFAULT_USER_CLUB_PROFILE: UserClubProfile = {
   name: 'FC 유나이티드 드림',
@@ -15,13 +15,22 @@ export const DEFAULT_USER_CLUB_PROFILE: UserClubProfile = {
   pattern: 'sash',
 };
 
-const VALID_PATTERNS = new Set<JerseyPattern>([
+export const ALL_JERSEY_PATTERNS: readonly JerseyPattern[] = [
   'solid',
   'stripes',
+  'pinstripes',
   'hoops',
   'sash',
   'half',
-]);
+  'chevron',
+  'quarters',
+  'center_band',
+  'chest_band',
+  'checkered',
+  'gradient',
+] as const;
+
+const VALID_PATTERNS = new Set<JerseyPattern>(ALL_JERSEY_PATTERNS);
 
 export interface ClubPreset extends UserClubProfile {
   id: string;

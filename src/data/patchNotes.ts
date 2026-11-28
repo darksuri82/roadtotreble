@@ -12,15 +12,42 @@ export interface PatchNoteEntry {
   sections: PatchNoteSection[];
 }
 
-export const CURRENT_APP_VERSION = 'v10.1.6';
+export const CURRENT_APP_VERSION = 'v10.1.8';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v10.1.8',
+    codename:
+      '감독 외형 커스텀 대폭 확장(남녀 헤어·의상·머리색) & 구단 유니폼 12종 패턴 · 자유 컬러 피커',
+    date: '2026.11',
+    tag: 'LATEST',
+    summary:
+      '나만의 감독과 구단 유니폼을 더욱 개성 있게 제작할 수 있도록 남녀 헤어스타일·의상·머리색을 대폭 추가하고, 구단 유니폼 패턴 12종·추천 컬러 확대·자유 RGB/HEX 컬러 피커·색상 반전·랜덤 조합·10슬롯 프리셋을 지원합니다.',
+    sections: [
+      {
+        category: '1. 감독 외형 커스텀 다양성 확대 (`PixelManagerAvatar.tsx`, `types/game.ts`, `ProfileCustomizerModal.tsx`)',
+        items: [
+          '**남성 헤어스타일 5 → 9종**: 기존 5종 + `컬리 펌`, `모히칸 페이드`, `장발 묶음머리`, `터치라인 캡`(구단 메인·보조 컬러 실시간 연동) 추가.',
+          '**여성 헤어스타일 4 → 8종**: 기존 4종 + `숏 픽시컷`, `로우 트윈테일`, `반묶음 롱헤어`, `사이드 브레이드` 추가.',
+          '**머리색 4 → 9종**: `체스트넛 레드`, `와인 레드`, `미드나잇 블루`, `애쉬 핑크`, `딥 에메랄드` 추가.',
+          '**남녀 감독 의상 대폭 추가 (남 5 → 9종 · 여 4 → 8종)**: 남성 `갈라 턱시도`, `니트 베스트 & 셔츠`, `블랙 레더 재킷`, `팀 컬러 폴로셔츠` / 여성 `울 코트 & 머플러`, `터치라인 패딩`, `가디건 & 슬랙스`, `팀 컬러 폴로 & 스커트` 추가 및 성별 전환 안전 매핑 · `랜덤 외형` 버튼 지원.',
+        ],
+      },
+      {
+        category: '2. 구단 유니폼 무늬 12종 & 자유 컬러 피커 (`JerseySvg.tsx`, `RoadToTrebleHeroSvg.tsx`, `ProfileCustomizerModal.tsx`, `clubPresets.ts`, `globalRankingService.ts`)',
+        items: [
+          '**유니폼 패턴 5 → 12종**: 기존 5종 + `핀스트라이프`, `V 쉐브론`, `쿼터`, `센터 밴드`, `체스트 밴드`, `체커보드`, `그라데이션` 추가 및 타이틀 화면 픽셀 깃발 배너 100% 연동.',
+          '**유니폼 컬러 확대 + 자유 컬러 피커**: 메인 18종 · 보조 16종 추천 팔레트 확대, 원하는 색을 직접 고르는 컬러 피커(`<input type="color">` + HEX 표기), `색상 반전`, `랜덤 유니폼` 버튼 및 프리셋 슬롯 `6 → 10개` 확장.',
+        ],
+      },
+    ],
+  },
   {
     version: 'v10.1.6',
     codename:
       '스토리 모드 시나리오별 익명 도전 · 완주 · ★★★ 달성률 집계 (Supabase RPC & 스토리 허브 연동)',
     date: '2026.11',
-    tag: 'LATEST',
+    tag: 'FEATURE',
     summary:
       '스토리 모드 7종 시나리오의 전 세계 누적 도전 수, 완주 수, ★★★ 달성률을 익명으로 집계하는 경량 Supabase 통계 RPC(`record_story_mode_event`)와 스토리 허브 실시간 표기 기능을 추가했습니다. 기존 일일·주간 글로벌 랭킹(`global_hof_rankings`)과는 100% 분리 유지됩니다.',
     sections: [

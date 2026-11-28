@@ -30,6 +30,8 @@ export function JerseySvg({
 }: JerseySvgProps) {
   const uid = useId().replace(/:/g, '');
   const clipId = `jersey-clip-${uid}`;
+  const shadeId = `jersey-shade-${uid}`;
+  const gradId = `jersey-grad-${uid}`;
   const textColor = getContrastText(primaryColor);
 
   const jerseyPath =
@@ -49,17 +51,59 @@ export function JerseySvg({
         <clipPath id={clipId}>
           <path d={jerseyPath} />
         </clipPath>
+        <linearGradient
+          id={shadeId}
+          x1="0"
+          y1="0"
+          x2="100"
+          y2="100"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
+          <stop offset="50%" stopColor="#000000" stopOpacity="0" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0.8" />
+        </linearGradient>
+        {pattern === 'gradient' && (
+          <linearGradient
+            id={gradId}
+            x1="50"
+            y1="8"
+            x2="50"
+            y2="94"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="14%" stopColor={primaryColor} />
+            <stop offset="90%" stopColor={secondaryColor} />
+          </linearGradient>
+        )}
       </defs>
 
       {/* Base Jersey Body */}
       <g clipPath={`url(#${clipId})`}>
-        <rect x="0" y="0" width="100" height="100" fill={primaryColor} />
+        <rect
+          x="0"
+          y="0"
+          width="100"
+          height="100"
+          fill={pattern === 'gradient' ? `url(#${gradId})` : primaryColor}
+        />
 
         {pattern === 'stripes' && (
           <>
             <rect x="28" y="0" width="11" height="100" fill={secondaryColor} />
             <rect x="45" y="0" width="10" height="100" fill={secondaryColor} />
             <rect x="61" y="0" width="11" height="100" fill={secondaryColor} />
+          </>
+        )}
+
+        {pattern === 'pinstripes' && (
+          <>
+            <rect x="31" y="0" width="2.5" height="100" fill={secondaryColor} opacity="0.92" />
+            <rect x="38" y="0" width="2.5" height="100" fill={secondaryColor} opacity="0.92" />
+            <rect x="45" y="0" width="2.5" height="100" fill={secondaryColor} opacity="0.92" />
+            <rect x="52.5" y="0" width="2.5" height="100" fill={secondaryColor} opacity="0.92" />
+            <rect x="59.5" y="0" width="2.5" height="100" fill={secondaryColor} opacity="0.92" />
+            <rect x="66.5" y="0" width="2.5" height="100" fill={secondaryColor} opacity="0.92" />
           </>
         )}
 
@@ -79,6 +123,55 @@ export function JerseySvg({
           <rect x="50" y="0" width="50" height="100" fill={secondaryColor} />
         )}
 
+        {pattern === 'chevron' && (
+          <polygon
+            points="18,24 50,48 82,24 82,38 50,62 18,38"
+            fill={secondaryColor}
+          />
+        )}
+
+        {pattern === 'quarters' && (
+          <>
+            <rect x="50" y="0" width="50" height="52" fill={secondaryColor} />
+            <rect x="0" y="52" width="50" height="48" fill={secondaryColor} />
+          </>
+        )}
+
+        {pattern === 'center_band' && (
+          <>
+            <rect x="40" y="0" width="20" height="100" fill={secondaryColor} />
+            <rect x="36.2" y="0" width="1.8" height="100" fill={secondaryColor} opacity="0.72" />
+            <rect x="62" y="0" width="1.8" height="100" fill={secondaryColor} opacity="0.72" />
+          </>
+        )}
+
+        {pattern === 'chest_band' && (
+          <>
+            <rect x="0" y="34" width="100" height="22" fill={secondaryColor} />
+            <rect x="0" y="30.5" width="100" height="1.8" fill={secondaryColor} opacity="0.65" />
+            <rect x="0" y="57.7" width="100" height="1.8" fill={secondaryColor} opacity="0.65" />
+          </>
+        )}
+
+        {pattern === 'checkered' && (
+          <>
+            {[0, 1, 2, 3, 4, 5, 6, 7].map((row) =>
+              [0, 1, 2, 3, 4, 5, 6, 7].map((col) =>
+                (row + col) % 2 === 1 ? (
+                  <rect
+                    key={`${row}-${col}`}
+                    x={col * 12.5}
+                    y={row * 12.5}
+                    width="12.5"
+                    height="12.5"
+                    fill={secondaryColor}
+                  />
+                ) : null,
+              ),
+            )}
+          </>
+        )}
+
         {/* Sleeve cuffs */}
         <polygon points="8,24 19,46 24,43 13,21" fill={secondaryColor} opacity="0.9" />
         <polygon points="92,24 81,46 76,43 87,21" fill={secondaryColor} opacity="0.9" />
@@ -89,18 +182,10 @@ export function JerseySvg({
           y="0"
           width="100"
           height="100"
-          fill="url(#jerseyShade)"
+          fill={`url(#${shadeId})`}
           opacity="0.22"
         />
       </g>
-
-      <defs>
-        <linearGradient id="jerseyShade" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.6" />
-          <stop offset="50%" stopColor="#000000" stopOpacity="0" />
-          <stop offset="100%" stopColor="#000000" stopOpacity="0.8" />
-        </linearGradient>
-      </defs>
 
       {/* Collar & Outline */}
       <path

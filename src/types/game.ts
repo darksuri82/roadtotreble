@@ -209,21 +209,46 @@ export type ManagerHairStyleId =
   | 'slick'
   | 'buzz'
   | 'bald'
+  | 'curly'
+  | 'mohawk'
+  | 'long_tied'
+  | 'cap'
   | 'bob'
   | 'ponytail'
   | 'long_wave'
-  | 'updo_bun';
-export type ManagerHairColorId = 'brown' | 'black' | 'silver' | 'blonde';
+  | 'updo_bun'
+  | 'pixie'
+  | 'twintail'
+  | 'half_up'
+  | 'braid';
+export type ManagerHairColorId =
+  | 'brown'
+  | 'black'
+  | 'silver'
+  | 'blonde'
+  | 'auburn'
+  | 'crimson'
+  | 'navy'
+  | 'ash_pink'
+  | 'emerald';
 export type ManagerOutfitId =
   | 'classic_suit'
   | 'navy_coat'
   | 'team_tracksuit'
   | 'casual_shirt'
   | 'puffer_jacket'
+  | 'tuxedo'
+  | 'sweater_vest'
+  | 'leather_jacket'
+  | 'team_polo'
   | 'female_blazer'
   | 'female_trench'
   | 'female_tracksuit'
-  | 'female_knit_skirt';
+  | 'female_knit_skirt'
+  | 'female_coat_scarf'
+  | 'female_puffer'
+  | 'female_cardigan'
+  | 'female_team_polo';
 
 export interface ManagerAvatarConfig {
   gender?: ManagerGenderId; // optional for legacy localStorage saves; defaults to 'male'

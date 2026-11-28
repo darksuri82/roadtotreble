@@ -42,6 +42,11 @@ export const HAIR_COLOR_OPTIONS: {
   { id: 'black', label: '제트 블랙', base: '#1e222d', shadow: '#11131a', highlight: '#3b4256' },
   { id: 'silver', label: '실버 그레이', base: '#cbd5e1', shadow: '#8596ab', highlight: '#f1f5f9' },
   { id: 'blonde', label: '골드 블론드', base: '#d9a441', shadow: '#a67421', highlight: '#f4d078' },
+  { id: 'auburn', label: '체스트넛 레드', base: '#8b3a2b', shadow: '#5c2217', highlight: '#b85a46' },
+  { id: 'crimson', label: '와인 레드', base: '#9f1239', shadow: '#680b25', highlight: '#e11d48' },
+  { id: 'navy', label: '미드나잇 블루', base: '#1e3a8a', shadow: '#122359', highlight: '#3b82f6' },
+  { id: 'ash_pink', label: '애쉬 핑크', base: '#d97ea8', shadow: '#9d4e74', highlight: '#f5b8d4' },
+  { id: 'emerald', label: '딥 에메랄드', base: '#0f766e', shadow: '#084c47', highlight: '#2dd4bf' },
 ];
 
 export interface HairStyleOption {
@@ -55,6 +60,10 @@ export const MALE_HAIR_STYLE_OPTIONS: HairStyleOption[] = [
   { id: 'parted', label: '가르마 펌', gender: 'male' },
   { id: 'slick', label: '올백 포마드', gender: 'male' },
   { id: 'buzz', label: '스포츠 컷', gender: 'male' },
+  { id: 'curly', label: '컬리 펌', gender: 'male' },
+  { id: 'mohawk', label: '모히칸 페이드', gender: 'male' },
+  { id: 'long_tied', label: '장발 묶음머리', gender: 'male' },
+  { id: 'cap', label: '터치라인 캡', gender: 'male' },
   { id: 'bald', label: '대머리 (민머리)', gender: 'male' },
 ];
 
@@ -63,6 +72,10 @@ export const FEMALE_HAIR_STYLE_OPTIONS: HairStyleOption[] = [
   { id: 'ponytail', label: '하이 포니테일', gender: 'female' },
   { id: 'long_wave', label: '웨이브 롱헤어', gender: 'female' },
   { id: 'updo_bun', label: '사이드뱅 올림머리', gender: 'female' },
+  { id: 'pixie', label: '숏 픽시컷', gender: 'female' },
+  { id: 'twintail', label: '로우 트윈테일', gender: 'female' },
+  { id: 'half_up', label: '반묶음 롱헤어', gender: 'female' },
+  { id: 'braid', label: '사이드 브레이드', gender: 'female' },
 ];
 
 export const HAIR_STYLE_OPTIONS: HairStyleOption[] = [
@@ -84,6 +97,10 @@ export const MALE_OUTFIT_OPTIONS: OutfitOption[] = [
   { id: 'team_tracksuit', label: '팀 컬러 트레이닝복', previewColor: '#10b981', gender: 'male', usesTeamColor: true },
   { id: 'casual_shirt', label: '캐주얼 셔츠', previewColor: '#e2e8f0', gender: 'male' },
   { id: 'puffer_jacket', label: '터치라인 패딩', previewColor: '#334155', gender: 'male' },
+  { id: 'tuxedo', label: '갈라 턱시도', previewColor: '#151922', gender: 'male' },
+  { id: 'sweater_vest', label: '니트 베스트 & 셔츠', previewColor: '#5b2333', gender: 'male' },
+  { id: 'leather_jacket', label: '블랙 레더 재킷', previewColor: '#1b1f28', gender: 'male' },
+  { id: 'team_polo', label: '팀 컬러 폴로셔츠', previewColor: '#10b981', gender: 'male', usesTeamColor: true },
 ];
 
 export const FEMALE_OUTFIT_OPTIONS: OutfitOption[] = [
@@ -91,6 +108,10 @@ export const FEMALE_OUTFIT_OPTIONS: OutfitOption[] = [
   { id: 'female_trench', label: '트렌치코트 & 원피스', previewColor: '#c49a6c', gender: 'female' },
   { id: 'female_tracksuit', label: '핏한 팀 트레이닝 셋업', previewColor: '#10b981', gender: 'female', usesTeamColor: true },
   { id: 'female_knit_skirt', label: '니트 & 스커트 코디', previewColor: '#f3e8d8', gender: 'female' },
+  { id: 'female_coat_scarf', label: '울 코트 & 머플러', previewColor: '#334155', gender: 'female' },
+  { id: 'female_puffer', label: '터치라인 패딩', previewColor: '#475569', gender: 'female' },
+  { id: 'female_cardigan', label: '가디건 & 슬랙스', previewColor: '#9f5f7a', gender: 'female' },
+  { id: 'female_team_polo', label: '팀 컬러 폴로 & 스커트', previewColor: '#10b981', gender: 'female', usesTeamColor: true },
 ];
 
 export const OUTFIT_OPTIONS: OutfitOption[] = [
@@ -129,15 +150,19 @@ function mapHairToGender(
 ): ManagerHairStyleId {
   if (gender === 'female') {
     if (hairStyle && FEMALE_HAIR_IDS.has(hairStyle)) return hairStyle;
-    if (hairStyle === 'parted') return 'long_wave';
+    if (hairStyle === 'parted' || hairStyle === 'curly') return 'long_wave';
     if (hairStyle === 'slick') return 'updo_bun';
-    if (hairStyle === 'buzz') return 'ponytail';
+    if (hairStyle === 'buzz' || hairStyle === 'mohawk') return 'pixie';
+    if (hairStyle === 'long_tied') return 'braid';
+    if (hairStyle === 'cap') return 'ponytail';
     return 'bob';
   }
   if (hairStyle && MALE_HAIR_IDS.has(hairStyle)) return hairStyle;
-  if (hairStyle === 'long_wave') return 'parted';
+  if (hairStyle === 'long_wave' || hairStyle === 'half_up') return 'parted';
   if (hairStyle === 'updo_bun') return 'slick';
-  if (hairStyle === 'ponytail') return 'buzz';
+  if (hairStyle === 'ponytail' || hairStyle === 'pixie') return 'buzz';
+  if (hairStyle === 'twintail') return 'curly';
+  if (hairStyle === 'braid') return 'long_tied';
   return 'fluffy';
 }
 
@@ -149,14 +174,19 @@ function mapOutfitToGender(
     if (outfit && FEMALE_OUTFIT_IDS.has(outfit)) return outfit;
     if (outfit === 'navy_coat') return 'female_trench';
     if (outfit === 'team_tracksuit') return 'female_tracksuit';
-    if (outfit === 'casual_shirt' || outfit === 'puffer_jacket') {
-      return 'female_knit_skirt';
-    }
+    if (outfit === 'team_polo') return 'female_team_polo';
+    if (outfit === 'puffer_jacket') return 'female_puffer';
+    if (outfit === 'sweater_vest') return 'female_cardigan';
+    if (outfit === 'leather_jacket') return 'female_coat_scarf';
+    if (outfit === 'casual_shirt') return 'female_knit_skirt';
     return 'female_blazer';
   }
   if (outfit && MALE_OUTFIT_IDS.has(outfit)) return outfit;
-  if (outfit === 'female_trench') return 'navy_coat';
+  if (outfit === 'female_trench' || outfit === 'female_coat_scarf') return 'navy_coat';
   if (outfit === 'female_tracksuit') return 'team_tracksuit';
+  if (outfit === 'female_team_polo') return 'team_polo';
+  if (outfit === 'female_puffer') return 'puffer_jacket';
+  if (outfit === 'female_cardigan') return 'sweater_vest';
   if (outfit === 'female_knit_skirt') return 'casual_shirt';
   return 'classic_suit';
 }
@@ -239,11 +269,35 @@ export function resolveManagerPalette(
     topHighlight = clubSecondaryColor;
     bottomMain = '#19202c';
     shoeMain = '#f1f5f9';
+  } else if (cfg.outfit === 'female_team_polo' || cfg.outfit === 'team_polo') {
+    topMain = clubPrimaryColor;
+    topShade = '#141b26';
+    topHighlight = clubSecondaryColor;
+    bottomMain = '#1e293b';
+    shoeMain = '#f1f5f9';
   } else if (cfg.outfit === 'female_knit_skirt') {
     topMain = '#f3e8d8';
     topShade = '#d6c3a8';
     topHighlight = '#ffffff';
     bottomMain = '#1e3454';
+    shoeMain = '#261b18';
+  } else if (cfg.outfit === 'female_coat_scarf') {
+    topMain = '#334155';
+    topShade = '#1e293b';
+    topHighlight = '#475569';
+    bottomMain = '#1e2430';
+    shoeMain = '#261b18';
+  } else if (cfg.outfit === 'female_puffer') {
+    topMain = '#3b475c';
+    topShade = '#222b3a';
+    topHighlight = '#64748b';
+    bottomMain = '#181e29';
+    shoeMain = '#f1f5f9';
+  } else if (cfg.outfit === 'female_cardigan') {
+    topMain = '#9f5f7a';
+    topShade = '#743e56';
+    topHighlight = '#c78aa4';
+    bottomMain = '#252c3b';
     shoeMain = '#261b18';
   } else if (cfg.outfit === 'navy_coat') {
     topMain = '#1f365c';
@@ -260,6 +314,21 @@ export function resolveManagerPalette(
     topShade = '#1a202c';
     topHighlight = '#4a5568';
     bottomMain = '#1a202c';
+  } else if (cfg.outfit === 'tuxedo') {
+    topMain = '#151922';
+    topShade = '#0b0e14';
+    topHighlight = '#334155';
+    bottomMain = '#151922';
+  } else if (cfg.outfit === 'sweater_vest') {
+    topMain = '#5b2333';
+    topShade = '#3b1520';
+    topHighlight = '#82354a';
+    bottomMain = '#27303f';
+  } else if (cfg.outfit === 'leather_jacket') {
+    topMain = '#1b1f28';
+    topShade = '#0f1218';
+    topHighlight = '#475569';
+    bottomMain = '#1e2430';
   }
 
   return {
@@ -335,9 +404,9 @@ export function getManagerAvatarRects({
   };
 
   // =========================================================================
-  // 0) BACK HAIR LAYER (behind head/shoulders for female long/bob/ponytail/bun)
+  // 0) BACK HAIR LAYER (behind head/shoulders for long/bob/ponytail/bun/twintail/half_up/braid/long_tied)
   // =========================================================================
-  if (cfg.hairStyle === 'long_wave') {
+  if (cfg.hairStyle === 'long_wave' || cfg.hairStyle === 'half_up') {
     // Flowing layered waves cascading behind shoulders
     rect(4, 10, 20, 14, hair.shadow);
     rect(5, 10, 18, 13, hair.base);
@@ -357,6 +426,13 @@ export function getManagerAvatarRects({
     px(22, 16, hair.highlight);
     px(21, 19, hair.highlight);
     px(22, 21, hair.shadow);
+    if (cfg.hairStyle === 'half_up') {
+      // Delicate half-up satin ribbon peeking behind crown
+      rect(11, 2, 6, 2, '#f43f5e');
+      px(13, 2, '#fda4af');
+      px(14, 2, '#fda4af');
+      rect(11, 1, 6, 1, O);
+    }
   } else if (cfg.hairStyle === 'bob') {
     // Rounded C-curl bob silhouette curving gently inward at jaw
     rect(5, 10, 18, 9, hair.shadow);
@@ -396,6 +472,59 @@ export function getManagerAvatarRects({
     px(17, 1, O);
     px(10, 2, O);
     px(17, 2, O);
+  } else if (cfg.hairStyle === 'twintail') {
+    // Low playful twin tails on both left and right sides
+    rect(3, 13, 4, 10, hair.base);
+    rect(3, 16, 2, 7, hair.shadow);
+    px(5, 15, hair.highlight);
+    px(4, 19, hair.highlight);
+    px(5, 13, '#f43f5e'); // left hair tie
+    px(6, 13, '#fb7185');
+    rect(2, 14, 1, 8, O);
+    px(3, 13, O);
+    px(3, 22, O);
+    rect(4, 23, 2, 1, O);
+
+    rect(21, 13, 4, 10, hair.base);
+    rect(23, 16, 2, 7, hair.shadow);
+    px(22, 15, hair.highlight);
+    px(23, 19, hair.highlight);
+    px(22, 13, '#f43f5e'); // right hair tie
+    px(21, 13, '#fb7185');
+    rect(25, 14, 1, 8, O);
+    px(24, 13, O);
+    px(24, 22, O);
+    rect(22, 23, 2, 1, O);
+  } else if (cfg.hairStyle === 'braid') {
+    // Soft back crown + sculpted side braid draping over right shoulder
+    rect(5, 10, 18, 9, hair.shadow);
+    rect(6, 10, 16, 8, hair.base);
+    rect(4, 11, 1, 7, O);
+    rect(23, 11, 1, 7, O);
+    // Braided plait segments descending on right side
+    rect(20, 16, 4, 9, hair.base);
+    px(21, 17, hair.highlight);
+    px(22, 18, hair.shadow);
+    px(21, 19, hair.highlight);
+    px(22, 20, hair.shadow);
+    px(21, 21, hair.highlight);
+    px(22, 22, hair.shadow);
+    // Ribbon tie near braid tip
+    rect(20, 23, 4, 1, '#fbbf24');
+    rect(21, 24, 2, 1, hair.shadow);
+    rect(24, 16, 1, 8, O);
+    px(23, 24, O);
+    rect(21, 25, 2, 1, O);
+    px(20, 24, O);
+  } else if (cfg.hairStyle === 'long_tied') {
+    // Male low tied samurai/footballer ponytail behind neck
+    rect(19, 13, 4, 7, hair.shadow);
+    rect(20, 13, 3, 6, hair.base);
+    px(21, 14, hair.highlight);
+    px(20, 14, '#cbd5e1'); // elastic tie
+    rect(23, 14, 1, 5, O);
+    px(22, 19, O);
+    rect(20, 20, 2, 1, O);
   }
 
   // =========================================================================
@@ -442,8 +571,13 @@ export function getManagerAvatarRects({
     px(20, 16, O);
   }
 
-  // Ears (tucked under bob/long_wave)
-  if (cfg.hairStyle !== 'long_wave' && cfg.hairStyle !== 'bob') {
+  // Ears (tucked under bob/long_wave/half_up/braid)
+  if (
+    cfg.hairStyle !== 'long_wave' &&
+    cfg.hairStyle !== 'bob' &&
+    cfg.hairStyle !== 'half_up' &&
+    cfg.hairStyle !== 'braid'
+  ) {
     rect(5, 13, 2, 3, skin.base);
     px(6, 15, skin.shadow);
     px(5, 12, O);
@@ -518,7 +652,7 @@ export function getManagerAvatarRects({
   }
 
   // =========================================================================
-  // 3) FRONT HAIR / BALD CRANIUM (5 Male-only + 4 Female-only)
+  // 3) FRONT HAIR / BALD CRANIUM / TOUCHLINE CAP (9 Male-only + 8 Female-only)
   // =========================================================================
   if (cfg.hairStyle === 'bald') {
     // Smooth rounded cranium with iconic touchline tactician gleam
@@ -634,6 +768,115 @@ export function getManagerAvatarRects({
     rect(22, 6, 1, 5, O);
     px(6, 11, O);
     px(21, 11, O);
+  } else if (cfg.hairStyle === 'curly') {
+    // Male: voluminous textured curly perm
+    rect(6, 2, 16, 8, hair.base);
+    rect(4, 4, 20, 7, hair.base);
+    // Textured curly puffs & specular curls
+    px(8, 3, hair.highlight);
+    px(12, 3, hair.highlight);
+    px(16, 3, hair.highlight);
+    px(19, 4, hair.highlight);
+    px(6, 5, hair.highlight);
+    px(10, 5, hair.shadow);
+    px(14, 5, hair.highlight);
+    px(18, 6, hair.shadow);
+    px(8, 7, hair.shadow);
+    px(12, 7, hair.highlight);
+    px(16, 7, hair.shadow);
+    // Scalloped curly fringe
+    rect(7, 9, 3, 2, hair.base);
+    rect(11, 9, 4, 2, hair.base);
+    rect(16, 9, 3, 2, hair.base);
+    px(10, 10, hair.shadow);
+    px(15, 10, hair.shadow);
+    rect(5, 10, 2, 2, hair.shadow);
+    rect(21, 10, 2, 2, hair.shadow);
+    // Puffy curly crown outline
+    rect(7, 1, 5, 1, O);
+    rect(13, 1, 5, 1, O);
+    px(12, 2, O);
+    px(6, 2, O);
+    px(18, 2, O);
+    px(19, 2, O);
+    px(5, 3, O);
+    px(21, 3, O);
+    px(4, 4, O);
+    px(22, 4, O);
+    rect(3, 5, 1, 5, O);
+    rect(24, 5, 1, 5, O);
+    px(4, 10, O);
+    px(23, 10, O);
+  } else if (cfg.hairStyle === 'mohawk') {
+    // Male: shaved fade sides + sculpted central mohawk crest
+    rect(7, 5, 14, 5, skin.base);
+    rect(6, 7, 16, 4, skin.base);
+    // Faded temple shadow
+    rect(6, 7, 2, 4, hair.shadow);
+    rect(20, 7, 2, 4, hair.shadow);
+    // Tall central mohawk crest
+    rect(11, 1, 6, 8, hair.base);
+    rect(12, 0, 4, 2, hair.base);
+    rect(12, 2, 4, 2, hair.highlight);
+    rect(13, 5, 2, 2, hair.highlight);
+    rect(11, 8, 6, 1, hair.shadow);
+    // Outline
+    rect(12, 0, 4, 1, O);
+    px(11, 1, O);
+    px(16, 1, O);
+    rect(10, 2, 1, 4, O);
+    rect(17, 2, 1, 4, O);
+    rect(7, 4, 3, 1, O);
+    rect(18, 4, 3, 1, O);
+    px(6, 5, O);
+    px(21, 5, O);
+    rect(5, 6, 1, 5, O);
+    rect(22, 6, 1, 5, O);
+  } else if (cfg.hairStyle === 'long_tied') {
+    // Male: sleek swept-back long hair with subtle stray temple lock
+    rect(7, 3, 14, 7, hair.base);
+    rect(6, 5, 16, 6, hair.base);
+    rect(9, 4, 10, 2, hair.highlight);
+    rect(8, 8, 12, 2, hair.shadow);
+    rect(9, 9, 10, 2, skin.base);
+    // Stylish loose side strand
+    rect(6, 10, 2, 4, hair.base);
+    rect(20, 10, 2, 4, hair.base);
+    px(7, 13, hair.shadow);
+    px(20, 13, hair.shadow);
+    rect(8, 2, 12, 1, O);
+    px(7, 3, O);
+    px(20, 3, O);
+    px(6, 4, O);
+    px(21, 4, O);
+    rect(5, 5, 1, 6, O);
+    rect(22, 5, 1, 6, O);
+  } else if (cfg.hairStyle === 'cap') {
+    // Male: iconic touchline manager cap in clubPrimaryColor + side hair tufts
+    rect(7, 3, 14, 5, clubPrimaryColor);
+    rect(6, 5, 16, 3, clubPrimaryColor);
+    // Cap front panel emblem in clubSecondaryColor
+    rect(12, 4, 4, 2, clubSecondaryColor);
+    px(13, 3, clubSecondaryColor);
+    px(14, 3, clubSecondaryColor);
+    // Curved cap visor brim (slightly angled right)
+    rect(6, 8, 18, 2, '#141a24');
+    rect(8, 8, 14, 1, clubSecondaryColor);
+    // Side hair peeking neatly beneath cap
+    rect(6, 10, 2, 2, hair.base);
+    rect(20, 10, 2, 2, hair.base);
+    px(6, 11, hair.shadow);
+    px(21, 11, hair.shadow);
+    // Crisp cap outline
+    rect(8, 2, 12, 1, O);
+    px(7, 3, O);
+    px(20, 3, O);
+    px(6, 4, O);
+    px(21, 4, O);
+    rect(5, 5, 1, 5, O);
+    rect(22, 5, 1, 3, O);
+    rect(24, 8, 1, 2, O);
+    rect(6, 10, 18, 1, O);
   } else if (cfg.hairStyle === 'bob') {
     // Female: soft C-curl bob with airy see-through bangs & inward-curled cheek tips
     rect(7, 3, 14, 7, hair.base);
@@ -702,8 +945,65 @@ export function getManagerAvatarRects({
     px(21, 4, O);
     rect(5, 5, 1, 6, O);
     rect(22, 5, 1, 6, O);
+  } else if (cfg.hairStyle === 'pixie') {
+    // Female: chic feathered short pixie cut with diagonal side bangs
+    rect(7, 3, 14, 7, hair.base);
+    rect(6, 5, 16, 6, hair.base);
+    rect(9, 4, 8, 2, hair.highlight);
+    // Feathered diagonal fringe
+    rect(7, 9, 10, 2, hair.base);
+    rect(18, 9, 3, 1, hair.base);
+    rect(17, 10, 3, 1, skin.base);
+    px(10, 11, hair.shadow);
+    px(14, 11, hair.shadow);
+    // Sleek tapered sideburns above earrings
+    rect(6, 10, 1, 2, hair.shadow);
+    rect(21, 10, 1, 2, hair.shadow);
+    rect(8, 2, 12, 1, O);
+    px(7, 3, O);
+    px(20, 3, O);
+    px(6, 4, O);
+    px(21, 4, O);
+    rect(5, 5, 1, 6, O);
+    rect(22, 5, 1, 6, O);
+  } else if (cfg.hairStyle === 'twintail') {
+    // Female: cute full bangs + soft temple locks framing twin tails
+    rect(7, 3, 14, 7, hair.base);
+    rect(6, 5, 16, 6, hair.base);
+    rect(9, 4, 10, 2, hair.highlight);
+    rect(7, 9, 14, 2, hair.base);
+    px(10, 10, skin.base);
+    px(14, 10, skin.base);
+    px(17, 10, skin.base);
+    rect(6, 10, 1, 4, hair.base);
+    rect(21, 10, 1, 4, hair.base);
+    rect(8, 2, 12, 1, O);
+    px(7, 3, O);
+    px(20, 3, O);
+    px(6, 4, O);
+    px(21, 4, O);
+    rect(5, 5, 1, 6, O);
+    rect(22, 5, 1, 6, O);
+  } else if (cfg.hairStyle === 'braid') {
+    // Female: smooth crown + side-parted bangs leading into right shoulder braid
+    rect(7, 3, 14, 7, hair.base);
+    rect(5, 5, 18, 6, hair.base);
+    rect(9, 4, 10, 2, hair.highlight);
+    rect(7, 9, 8, 2, hair.base);
+    rect(17, 9, 4, 2, hair.base);
+    rect(15, 9, 2, 2, skin.base);
+    rect(5, 10, 2, 7, hair.base);
+    rect(21, 10, 2, 8, hair.base);
+    px(22, 13, hair.highlight);
+    rect(8, 2, 12, 1, O);
+    px(7, 3, O);
+    px(20, 3, O);
+    px(6, 4, O);
+    px(21, 4, O);
+    rect(4, 5, 1, 7, O);
+    rect(23, 5, 1, 7, O);
   } else {
-    // Female: long_wave front crown + glossy bangs + face-framing side waves
+    // Female: long_wave & half_up front crown + glossy bangs + face-framing side waves
     rect(7, 3, 14, 7, hair.base);
     rect(5, 5, 18, 6, hair.base);
     rect(9, 4, 10, 2, hair.highlight);
@@ -788,6 +1088,54 @@ export function getManagerAvatarRects({
       isSkirtOrDress = true;
       shoeMain = '#261b18';
       shoeHi = '#523c36';
+    } else if (cfg.outfit === 'female_coat_scarf') {
+      topMain = '#334155';
+      topShade = '#1e293b';
+      topHighlight = '#64748b';
+      innerMain = '#be123c'; // warm burgundy wool scarf
+      accent = '#fb7185'; // scarf highlight weave
+      bottomMain = '#1e2430';
+      bottomShade = '#11161f';
+      bottomHighlight = '#3b455c';
+      isSkirtOrDress = true;
+      shoeMain = '#261b18';
+      shoeHi = '#4f3a34';
+    } else if (cfg.outfit === 'female_puffer') {
+      topMain = '#3b475c';
+      topShade = '#222b3a';
+      topHighlight = '#64748b';
+      innerMain = '#f8fafc';
+      accent = '#f59e0b';
+      bottomMain = '#181e29';
+      bottomShade = '#0e131b';
+      bottomHighlight = '#334155';
+      isSkirtOrDress = false; // fitted winter pants
+      shoeMain = '#f1f5f9';
+      shoeHi = '#94a3b8';
+    } else if (cfg.outfit === 'female_cardigan') {
+      topMain = '#9f5f7a';
+      topShade = '#743e56';
+      topHighlight = '#c78aa4';
+      innerMain = '#f8fafc';
+      accent = '#fde68a'; // pearl cardigan buttons
+      bottomMain = '#252c3b';
+      bottomShade = '#161b26';
+      bottomHighlight = '#3d475e';
+      isSkirtOrDress = false; // tailored slacks
+      shoeMain = '#261b18';
+      shoeHi = '#523c36';
+    } else if (cfg.outfit === 'female_team_polo') {
+      topMain = clubPrimaryColor;
+      topShade = '#151c26';
+      topHighlight = clubSecondaryColor;
+      innerMain = clubSecondaryColor;
+      accent = clubSecondaryColor;
+      bottomMain = '#1e293b'; // pleated athletic navy skirt
+      bottomShade = '#0f172a';
+      bottomHighlight = '#334155';
+      isSkirtOrDress = true;
+      shoeMain = '#f1f5f9';
+      shoeHi = clubPrimaryColor;
     }
 
     // Upper chest / shoulders (y=19..21, width 10px: x=9..18)
@@ -833,6 +1181,37 @@ export function getManagerAvatarRects({
       px(11, 21, accent);
       rect(10, 23, 8, 1, topShade); // fitted elastic waistband
       rect(13, 23, 2, 1, innerMain);
+    } else if (cfg.outfit === 'female_coat_scarf') {
+      // Cozy wrapped wool scarf at collar + draping scarf tail + double-breasted buttons
+      rect(11, 19, 6, 2, innerMain);
+      px(12, 19, accent);
+      px(15, 20, accent);
+      rect(12, 21, 2, 2, innerMain);
+      px(11, 22, '#cbd5e1');
+      px(16, 22, '#cbd5e1');
+      px(11, 23, '#cbd5e1');
+      px(16, 23, '#cbd5e1');
+    } else if (cfg.outfit === 'female_puffer') {
+      // Horizontal quilted touchline puffer seams + bright front zip
+      rect(10, 21, 8, 1, topShade);
+      rect(10, 23, 8, 1, topShade);
+      rect(13, 19, 2, 5, innerMain);
+      px(13, 20, accent);
+    } else if (cfg.outfit === 'female_cardigan') {
+      // Open soft cardigan over crisp white tee + pearl buttons
+      rect(12, 19, 4, 4, innerMain);
+      px(11, 20, accent);
+      px(11, 22, accent);
+      px(16, 20, accent);
+      px(16, 22, accent);
+      rect(10, 23, 8, 1, bottomShade);
+      rect(13, 23, 2, 1, '#fbbf24');
+    } else if (cfg.outfit === 'female_team_polo') {
+      // Sporty team polo collar + 2-button placket + club chest badge
+      rect(11, 19, 6, 1, innerMain);
+      rect(13, 20, 2, 2, innerMain);
+      px(16, 21, accent); // club crest dot
+      rect(10, 23, 8, 1, bottomShade);
     } else {
       // female_knit_skirt: cozy cream knit sweater + ribbon bow + tucked high waist
       rect(12, 19, 4, 1, innerMain);
@@ -872,10 +1251,10 @@ export function getManagerAvatarRects({
       px(20, 26, O);
       rect(8, 27, 12, 1, O);
     } else {
-      // Fitted hips into slim athletic joggers (female_tracksuit)
+      // Fitted hips into slim athletic joggers / slacks
       rect(9, 24, 10, 2, bottomMain);
       rect(8, 25, 12, 1, bottomMain);
-      px(9, 24, bottomHighlight); // side athletic stripe!
+      px(9, 24, bottomHighlight); // side highlight / stripe
       px(18, 24, bottomHighlight);
       px(8, 25, bottomHighlight);
       px(19, 25, bottomHighlight);
@@ -902,7 +1281,11 @@ export function getManagerAvatarRects({
     px(18, 23, O);
 
     // Slender female arms tucked naturally along upper torso (y=20..25)
-    rect(7, 20, 2, 3, topMain);
+    const femaleShortSleeve = cfg.outfit === 'female_team_polo';
+    rect(7, 20, 2, femaleShortSleeve ? 2 : 3, topMain);
+    if (femaleShortSleeve) {
+      rect(7, 22, 2, 1, skin.base);
+    }
     px(7, 20, O);
     px(6, 21, O);
     px(6, 22, O);
@@ -912,7 +1295,10 @@ export function getManagerAvatarRects({
     px(6, 24, O);
     px(7, 25, O);
 
-    rect(19, 20, 2, 3, topMain);
+    rect(19, 20, 2, femaleShortSleeve ? 2 : 3, topMain);
+    if (femaleShortSleeve) {
+      rect(19, 22, 2, 1, skin.base);
+    }
     px(20, 20, O);
     px(21, 21, O);
     px(21, 22, O);
@@ -922,14 +1308,16 @@ export function getManagerAvatarRects({
     px(21, 24, O);
     px(20, 25, O);
 
-    // Slim legs (skin/stockings under skirt, or slim joggers) + sleek footwear (y=27..32)
+    // Slim legs (skin/stockings under skirt, or slim joggers/slacks) + sleek footwear (y=27..32)
+    const darkTights =
+      cfg.outfit === 'female_blazer' || cfg.outfit === 'female_coat_scarf';
     const legMain = isSkirtOrDress
-      ? cfg.outfit === 'female_blazer'
-        ? '#262936' // sheer dark tights for blazer look
+      ? darkTights
+        ? '#262936' // sheer dark tights for blazer / winter wool coat
         : skin.base
       : bottomMain;
     const legShade = isSkirtOrDress
-      ? cfg.outfit === 'female_blazer'
+      ? darkTights
         ? '#181a24'
         : skin.shadow
       : bottomShade;
@@ -983,8 +1371,8 @@ export function getManagerAvatarRects({
     let accent = '#dc2626';
     let pantsMain = '#1e2530';
     let pantsShade = '#11161e';
-    const shoeMain = '#1b1d24';
-    const shoeHi = '#3d4354';
+    let shoeMain = '#1b1d24';
+    let shoeHi = '#3d4354';
 
     if (cfg.outfit === 'navy_coat') {
       topMain = '#1f365c';
@@ -1018,6 +1406,40 @@ export function getManagerAvatarRects({
       accent = '#f59e0b';
       pantsMain = '#1a202c';
       pantsShade = '#11151d';
+    } else if (cfg.outfit === 'tuxedo') {
+      topMain = '#151922';
+      topShade = '#0b0e14';
+      topHighlight = '#334155';
+      innerMain = '#f8fafc';
+      accent = '#e11d48'; // gala crimson bowtie
+      pantsMain = '#151922';
+      pantsShade = '#0b0e14';
+    } else if (cfg.outfit === 'sweater_vest') {
+      topMain = '#5b2333';
+      topShade = '#3b1520';
+      topHighlight = '#82354a';
+      innerMain = '#f1f5f9'; // crisp white shirt beneath vest
+      accent = '#fbbf24';
+      pantsMain = '#27303f';
+      pantsShade = '#181e29';
+    } else if (cfg.outfit === 'leather_jacket') {
+      topMain = '#1b1f28';
+      topShade = '#0f1218';
+      topHighlight = '#64748b';
+      innerMain = '#2d3442';
+      accent = '#cbd5e1'; // metallic silver zip
+      pantsMain = '#1e2430';
+      pantsShade = '#12161f';
+    } else if (cfg.outfit === 'team_polo') {
+      topMain = clubPrimaryColor;
+      topShade = '#151c26';
+      topHighlight = clubSecondaryColor;
+      innerMain = clubSecondaryColor;
+      accent = clubSecondaryColor;
+      pantsMain = '#1e293b';
+      pantsShade = '#0f172a';
+      shoeMain = '#f1f5f9';
+      shoeHi = clubPrimaryColor;
     }
 
     // Neck
@@ -1061,6 +1483,43 @@ export function getManagerAvatarRects({
       rect(9, 23, 10, 1, topShade);
       rect(9, 25, 10, 1, topShade);
       rect(13, 19, 2, 7, accent);
+    } else if (cfg.outfit === 'tuxedo') {
+      // Crisp white tuxedo bib + satin lapels + crimson bowtie + gold button
+      rect(12, 19, 4, 5, innerMain);
+      rect(12, 20, 4, 1, accent);
+      px(13, 20, '#fb7185');
+      px(11, 20, topHighlight);
+      px(16, 20, topHighlight);
+      px(11, 21, topHighlight);
+      px(16, 21, topHighlight);
+      px(12, 22, topHighlight);
+      px(15, 22, topHighlight);
+      px(13, 24, '#fbbf24');
+      px(16, 22, '#f8fafc'); // pocket square
+    } else if (cfg.outfit === 'sweater_vest') {
+      // White collared shirt V-neck + argyle/knit texture on burgundy vest
+      rect(12, 19, 4, 2, innerMain);
+      rect(13, 21, 2, 1, innerMain);
+      px(10, 22, topHighlight);
+      px(17, 22, topHighlight);
+      px(12, 23, topHighlight);
+      px(15, 23, topHighlight);
+      rect(9, 25, 10, 1, topShade);
+    } else if (cfg.outfit === 'leather_jacket') {
+      // Biker lapels + dark tee + metallic diagonal zipper
+      rect(12, 19, 4, 4, innerMain);
+      px(10, 20, topHighlight);
+      px(17, 20, topHighlight);
+      px(11, 21, accent);
+      px(16, 21, accent);
+      rect(13, 23, 2, 3, accent);
+      rect(9, 25, 10, 1, topShade);
+    } else if (cfg.outfit === 'team_polo') {
+      // Sporty touchline polo collar + contrast placket + club crest
+      rect(11, 19, 6, 1, innerMain);
+      rect(13, 20, 2, 3, innerMain);
+      px(10, 21, accent);
+      px(16, 22, accent);
     }
 
     // Broad straight shoulder & hem outline
@@ -1068,8 +1527,15 @@ export function getManagerAvatarRects({
     rect(17, 19, 3, 1, O);
     rect(8, 26, 12, 1, O);
 
-    // Sturdy male arms & hands
-    rect(6, 20, 2, 4, topMain);
+    // Sturdy male arms & hands (white shirt sleeves for sweater_vest, short sleeves for team_polo)
+    const maleSleeveColor =
+      cfg.outfit === 'sweater_vest' ? innerMain : topMain;
+    const maleShortSleeve = cfg.outfit === 'team_polo';
+
+    rect(6, 20, 2, maleShortSleeve ? 2 : 4, maleSleeveColor);
+    if (maleShortSleeve) {
+      rect(6, 22, 2, 2, skin.base);
+    }
     px(6, 20, O);
     px(5, 21, O);
     px(5, 22, O);
@@ -1080,7 +1546,10 @@ export function getManagerAvatarRects({
     px(5, 25, O);
     rect(6, 26, 2, 1, O);
 
-    rect(20, 20, 2, 4, topMain);
+    rect(20, 20, 2, maleShortSleeve ? 2 : 4, maleSleeveColor);
+    if (maleShortSleeve) {
+      rect(20, 22, 2, 2, skin.base);
+    }
     px(21, 20, O);
     px(22, 21, O);
     px(22, 22, O);

@@ -5,6 +5,17 @@
 
 ---
 
+## v10.1.8 — 감독 외형 커스텀 대폭 확장(남녀 헤어·의상·머리색) & 구단 유니폼 12종 패턴 · 자유 컬러 피커
+
+- **감독 외형 다양성 확대 (`src/types/game.ts`, `src/components/common/PixelManagerAvatar.tsx`, `src/components/common/ProfileCustomizerModal.tsx`)**:
+  - 남성 헤어스타일 `5 → 9종`(`컬리 펌`·`모히칸 페이드`·`장발 묶음머리`·팀 컬러 연동 `터치라인 캡`), 여성 헤어스타일 `4 → 8종`(`숏 픽시컷`·`로우 트윈테일`·`반묶음 롱헤어`·`사이드 브레이드`), 머리색 `4 → 9종`으로 확장했습니다.
+  - 남성 의상 `5 → 9종`(`갈라 턱시도`·`니트 베스트 & 셔츠`·`블랙 레더 재킷`·`팀 컬러 폴로셔츠`), 여성 의상 `4 → 8종`(`울 코트 & 머플러`·`터치라인 패딩`·`가디건 & 슬랙스`·`팀 컬러 폴로 & 스커트`)을 추가하고 성별 전환 안전 매핑과 `랜덤 외형` 버튼을 지원합니다.
+- **구단 유니폼 12종 패턴 · 자유 컬러 피커 · 10슬롯 프리셋 (`src/types/league.ts`, `src/components/common/JerseySvg.tsx`, `src/components/setup/RoadToTrebleHeroSvg.tsx`, `src/components/common/ProfileCustomizerModal.tsx`, `src/utils/clubPresets.ts`, `src/services/globalRankingService.ts`)**:
+  - 유니폼 패턴을 `5 → 12종`(`핀스트라이프`·`V 쉐브론`·`쿼터`·`센터 밴드`·`체스트 밴드`·`체커보드`·`그라데이션` 추가)으로 확장하고 타이틀 화면 깃발 배너 및 글로벌 랭킹 유효성 세트까지 동기화했습니다.
+  - 추천 메인 컬러 18종 · 보조 컬러 16종 확대, 자유 RGB/HEX 컬러 피커, `색상 반전`, `랜덤 유니폼` 버튼, 저장 프리셋 슬롯 `6 → 10개` 확장을 적용했습니다.
+
+---
+
 ## v10.1.6 — 스토리 모드 시나리오별 익명 도전 · 완주 · ★★★ 달성률 집계 (Supabase RPC & 스토리 허브 연동)
 
 - **스토리 모드 익명 통계 RPC & 허브 실시간 집계 (`supabase/schema.sql`, `src/services/storyStatsService.ts`, `src/store/GameContext.tsx`, `src/components/story/StoryModeHub.tsx`, `src/data/patchNotes.ts`, `src/components/common/WhatsNewModal.tsx`, `src/__tests__/v1016StoryTelemetryStats.test.ts`)**:

@@ -1,8 +1,10 @@
 import {
+  ArrowLeftRight,
   Bookmark,
   Check,
   Palette,
   Save,
+  Shuffle,
   Trash2,
   User,
   X,
@@ -21,6 +23,7 @@ import {
   DEFAULT_USER_CLUB_PROFILE,
   deleteClubPreset,
   loadClubPresets,
+  MAX_CLUB_PRESETS,
   saveClubPreset,
 } from '../../utils/clubPresets';
 import { JerseySvg } from './JerseySvg';
@@ -34,36 +37,59 @@ import {
   SKIN_TONE_OPTIONS,
 } from './PixelManagerAvatar';
 
-const PRIMARY_COLORS = [
+export const PRIMARY_COLORS = [
   '#10b981',
+  '#047857',
   '#ef4444',
+  '#b91c1c',
+  '#7f1d1d',
   '#2563eb',
-  '#f59e0b',
+  '#1e3a8a',
   '#0ea5e9',
-  '#f8fafc',
-  '#1e293b',
-  '#dc2626',
+  '#14b8a6',
+  '#f59e0b',
+  '#f97316',
+  '#eab308',
+  '#84cc16',
   '#7c3aed',
   '#ec4899',
+  '#f8fafc',
+  '#334155',
+  '#0f172a',
 ];
 
-const SECONDARY_COLORS = [
+export const SECONDARY_COLORS = [
   '#0f172a',
   '#ffffff',
   '#fbbf24',
+  '#f59e0b',
   '#10b981',
   '#ef4444',
+  '#991b1b',
   '#38bdf8',
-  '#e2e8f0',
   '#1d4ed8',
+  '#1e3a8a',
+  '#7c3aed',
+  '#ec4899',
+  '#f97316',
+  '#84cc16',
+  '#94a3b8',
+  '#e2e8f0',
 ];
 
-const PATTERNS: { id: JerseyPattern; label: string }[] = [
+export const JERSEY_PATTERN_OPTIONS: { id: JerseyPattern; label: string }[] = [
   { id: 'solid', label: '솔리드' },
   { id: 'stripes', label: '세로줄' },
+  { id: 'pinstripes', label: '핀스트라이프' },
   { id: 'hoops', label: '가로줄' },
   { id: 'sash', label: '사선' },
   { id: 'half', label: '하프' },
+  { id: 'chevron', label: 'V 쉐브론' },
+  { id: 'quarters', label: '쿼터' },
+  { id: 'center_band', label: '센터 밴드' },
+  { id: 'chest_band', label: '체스트 밴드' },
+  { id: 'checkered', label: '체커보드' },
+  { id: 'gradient', label: '그라데이션' },
 ];
 
 export interface ProfileCustomizerModalProps {
@@ -118,6 +144,47 @@ export function ProfileCustomizerModal({
   const handleGenderChange = (nextGender: ManagerGenderId) => {
     if (nextGender === activeGender) return;
     setAvatar((prev) => normalizeAvatarForGender(prev, nextGender));
+  };
+
+  const handleRandomizeAvatar = () => {
+    const pick = <T,>(arr: readonly T[]): T =>
+      arr[Math.floor(Math.random() * arr.length)];
+    const hairList = getHairStyleOptionsForGender(activeGender);
+    const outfitList = getOutfitOptionsForGender(activeGender);
+    setAvatar({
+      gender: activeGender,
+      skinTone: pick(SKIN_TONE_OPTIONS).id,
+      hairStyle: pick(hairList).id,
+      hairColor: pick(HAIR_COLOR_OPTIONS).id,
+      outfit: pick(outfitList).id,
+    });
+  };
+
+  const handleSwapJerseyColors = () => {
+    setClubProfile((prev) => ({
+      ...prev,
+      primaryColor: prev.secondaryColor,
+      secondaryColor: prev.primaryColor,
+    }));
+  };
+
+  const handleRandomizeJersey = () => {
+    const pick = <T,>(arr: readonly T[]): T =>
+      arr[Math.floor(Math.random() * arr.length)];
+    const primary = pick(PRIMARY_COLORS);
+    const secondaryCandidates = SECONDARY_COLORS.filter(
+      (c) => c.toLowerCase() !== primary.toLowerCase(),
+    );
+    const secondary = pick(
+      secondaryCandidates.length > 0 ? secondaryCandidates : SECONDARY_COLORS,
+    );
+    const pattern = pick(JERSEY_PATTERN_OPTIONS).id;
+    setClubProfile((prev) => ({
+      ...prev,
+      primaryColor: primary,
+      secondaryColor: secondary,
+      pattern,
+    }));
   };
 
   const handleApplyPreset = (preset: ClubPreset) => {
@@ -226,7 +293,7 @@ export function ProfileCustomizerModal({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-white whitespace-nowrap">
                 <Bookmark className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                저장된 프리셋 ({presets.length}/6)
+                저장된 프리셋 ({presets.length}/{MAX_CLUB_PRESETS})
               </div>
               <button
                 type="button"
@@ -250,7 +317,8 @@ export function ProfileCustomizerModal({
                   const isCurrent =
                     clubProfile.name.trim().toLowerCase() ===
                       preset.name.trim().toLowerCase() &&
-                    clubProfile.primaryColor === preset.primaryColor &&
+                    clubProfile.primaryColor.toLowerCase() ===
+                      preset.primaryColor.toLowerCase() &&
                     clubProfile.pattern === preset.pattern;
                   return (
                     <div
@@ -323,9 +391,19 @@ export function ProfileCustomizerModal({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Left: Manager Avatar & Name */}
             <div className="rounded-xl border border-slate-800/90 bg-[#0b1018] p-4 space-y-3.5">
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-white">
-                <User className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                감독 외형 &amp; 이름
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold text-white">
+                  <User className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                  감독 외형 &amp; 이름
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRandomizeAvatar}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#111822] px-2 py-1 text-[10px] font-bold text-slate-300 hover:border-emerald-400/60 hover:text-white cursor-pointer whitespace-nowrap"
+                >
+                  <Shuffle className="h-3 w-3 text-emerald-400 shrink-0" />
+                  랜덤 외형
+                </button>
               </div>
 
               <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#090d14] p-3">
@@ -407,12 +485,17 @@ export function ProfileCustomizerModal({
               {/* Hair Style */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="font-bold text-slate-400">헤어스타일</span>
+                  <span className="font-bold text-slate-400">
+                    헤어스타일 ({genderHairOptions.length}종)
+                  </span>
                   {isBald && (
                     <span className="font-bold text-amber-300">✨ 명장 광택</span>
                   )}
+                  {avatar.hairStyle === 'cap' && (
+                    <span className="font-bold text-sky-300">팀 컬러 연동</span>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {genderHairOptions.map((opt) => (
                     <button
                       key={opt.id}
@@ -423,7 +506,7 @@ export function ProfileCustomizerModal({
                       className={`rounded-lg border px-2 py-1.5 text-[11px] font-semibold cursor-pointer truncate ${
                         avatar.hairStyle === opt.id
                           ? 'border-emerald-400 bg-emerald-500/15 text-white'
-                          : 'border-slate-800 bg-[#111822] text-slate-400'
+                          : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600'
                       }`}
                     >
                       {opt.label}
@@ -435,7 +518,9 @@ export function ProfileCustomizerModal({
               {/* Hair Color */}
               {!isBald && (
                 <div className="space-y-1">
-                  <div className="text-[10px] font-bold text-slate-400">머리색</div>
+                  <div className="text-[10px] font-bold text-slate-400">
+                    머리색 ({HAIR_COLOR_OPTIONS.length}종)
+                  </div>
                   <div className="flex flex-wrap gap-1.5">
                     {HAIR_COLOR_OPTIONS.map((opt) => (
                       <button
@@ -447,7 +532,7 @@ export function ProfileCustomizerModal({
                         className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold cursor-pointer whitespace-nowrap ${
                           avatar.hairColor === opt.id
                             ? 'border-emerald-400 bg-emerald-500/15 text-white'
-                            : 'border-slate-800 bg-[#111822] text-slate-400'
+                            : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600'
                         }`}
                       >
                         <span
@@ -463,8 +548,10 @@ export function ProfileCustomizerModal({
 
               {/* Outfit */}
               <div className="space-y-1">
-                <div className="text-[10px] font-bold text-slate-400">감독 의상</div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="text-[10px] font-bold text-slate-400">
+                  감독 의상 ({genderOutfitOptions.length}종)
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
                   {genderOutfitOptions.map((opt) => {
                     const swatch = opt.usesTeamColor
                       ? clubProfile.primaryColor
@@ -476,17 +563,17 @@ export function ProfileCustomizerModal({
                         onClick={() =>
                           setAvatar((prev) => ({ ...prev, outfit: opt.id }))
                         }
-                        className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-semibold cursor-pointer whitespace-nowrap ${
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-[11px] font-semibold cursor-pointer truncate ${
                           avatar.outfit === opt.id
                             ? 'border-emerald-400 bg-emerald-500/15 text-white'
-                            : 'border-slate-800 bg-[#111822] text-slate-400'
+                            : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600'
                         }`}
                       >
                         <span
-                          className="h-2.5 w-2.5 rounded-sm border border-white/20"
+                          className="h-2.5 w-2.5 shrink-0 rounded-sm border border-white/20"
                           style={{ backgroundColor: swatch }}
                         />
-                        {opt.label}
+                        <span className="truncate">{opt.label}</span>
                       </button>
                     );
                   })}
@@ -496,9 +583,29 @@ export function ProfileCustomizerModal({
 
             {/* Right: Club Name & Jersey Customizer */}
             <div className="rounded-xl border border-slate-800/90 bg-[#0b1018] p-4 space-y-3.5">
-              <div className="flex items-center gap-1.5 text-xs font-extrabold text-white">
-                <Palette className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-                구단명 &amp; 유니폼 디자인
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-extrabold text-white">
+                  <Palette className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                  구단명 &amp; 유니폼 디자인
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleSwapJerseyColors}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#111822] px-2 py-1 text-[10px] font-bold text-slate-300 hover:border-sky-400/60 hover:text-white cursor-pointer whitespace-nowrap"
+                  >
+                    <ArrowLeftRight className="h-3 w-3 text-sky-400 shrink-0" />
+                    색상 반전
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRandomizeJersey}
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-[#111822] px-2 py-1 text-[10px] font-bold text-slate-300 hover:border-sky-400/60 hover:text-white cursor-pointer whitespace-nowrap"
+                  >
+                    <Shuffle className="h-3 w-3 text-sky-400 shrink-0" />
+                    랜덤 유니폼
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-[#090d14] p-3">
@@ -562,20 +669,20 @@ export function ProfileCustomizerModal({
               {/* Jersey Pattern */}
               <div className="space-y-1">
                 <div className="text-[10px] font-bold text-slate-400">
-                  유니폼 패턴
+                  유니폼 패턴 ({JERSEY_PATTERN_OPTIONS.length}종)
                 </div>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {PATTERNS.map((pat) => (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
+                  {JERSEY_PATTERN_OPTIONS.map((pat) => (
                     <button
                       key={pat.id}
                       type="button"
                       onClick={() =>
                         setClubProfile((prev) => ({ ...prev, pattern: pat.id }))
                       }
-                      className={`rounded-lg border py-1.5 text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
+                      className={`rounded-lg border px-1.5 py-1.5 text-[11px] font-bold transition cursor-pointer truncate ${
                         clubProfile.pattern === pat.id
                           ? 'border-sky-400 bg-sky-500/15 text-white'
-                          : 'border-slate-800 bg-[#111822] text-slate-400'
+                          : 'border-slate-800 bg-[#111822] text-slate-400 hover:border-slate-600'
                       }`}
                     >
                       {pat.label}
@@ -585,11 +692,32 @@ export function ProfileCustomizerModal({
               </div>
 
               {/* Primary Color */}
-              <div className="space-y-1">
-                <div className="text-[10px] font-bold text-slate-400">
-                  메인 컬러
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold text-slate-400">
+                    메인 컬러
+                  </span>
+                  <label className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-[#111822] px-2 py-0.5 text-[10px] font-mono font-bold text-slate-300 cursor-pointer hover:border-sky-400">
+                    <input
+                      type="color"
+                      aria-label="메인 컬러 직접 선택"
+                      value={
+                        /^#[0-9a-fA-F]{6}$/.test(clubProfile.primaryColor)
+                          ? clubProfile.primaryColor
+                          : '#10b981'
+                      }
+                      onChange={(e) =>
+                        setClubProfile((prev) => ({
+                          ...prev,
+                          primaryColor: e.target.value,
+                        }))
+                      }
+                      className="h-3.5 w-3.5 cursor-pointer border-0 bg-transparent p-0"
+                    />
+                    <span>{clubProfile.primaryColor.toUpperCase()}</span>
+                  </label>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {PRIMARY_COLORS.map((hex) => (
                     <button
                       key={hex}
@@ -598,8 +726,9 @@ export function ProfileCustomizerModal({
                       onClick={() =>
                         setClubProfile((prev) => ({ ...prev, primaryColor: hex }))
                       }
-                      className={`h-7 w-7 rounded-lg border-2 transition cursor-pointer ${
-                        clubProfile.primaryColor === hex
+                      className={`h-6 w-6 rounded-md border-2 transition cursor-pointer ${
+                        clubProfile.primaryColor.toLowerCase() ===
+                        hex.toLowerCase()
                           ? 'border-white scale-110 shadow'
                           : 'border-slate-700 opacity-85 hover:opacity-100'
                       }`}
@@ -610,11 +739,32 @@ export function ProfileCustomizerModal({
               </div>
 
               {/* Secondary Color */}
-              <div className="space-y-1">
-                <div className="text-[10px] font-bold text-slate-400">
-                  보조 컬러
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold text-slate-400">
+                    보조 컬러
+                  </span>
+                  <label className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-[#111822] px-2 py-0.5 text-[10px] font-mono font-bold text-slate-300 cursor-pointer hover:border-sky-400">
+                    <input
+                      type="color"
+                      aria-label="보조 컬러 직접 선택"
+                      value={
+                        /^#[0-9a-fA-F]{6}$/.test(clubProfile.secondaryColor)
+                          ? clubProfile.secondaryColor
+                          : '#0f172a'
+                      }
+                      onChange={(e) =>
+                        setClubProfile((prev) => ({
+                          ...prev,
+                          secondaryColor: e.target.value,
+                        }))
+                      }
+                      className="h-3.5 w-3.5 cursor-pointer border-0 bg-transparent p-0"
+                    />
+                    <span>{clubProfile.secondaryColor.toUpperCase()}</span>
+                  </label>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5">
                   {SECONDARY_COLORS.map((hex) => (
                     <button
                       key={hex}
@@ -626,8 +776,9 @@ export function ProfileCustomizerModal({
                           secondaryColor: hex,
                         }))
                       }
-                      className={`h-7 w-7 rounded-lg border-2 transition cursor-pointer ${
-                        clubProfile.secondaryColor === hex
+                      className={`h-6 w-6 rounded-md border-2 transition cursor-pointer ${
+                        clubProfile.secondaryColor.toLowerCase() ===
+                        hex.toLowerCase()
                           ? 'border-white scale-110 shadow'
                           : 'border-slate-700 opacity-85 hover:opacity-100'
                       }`}
